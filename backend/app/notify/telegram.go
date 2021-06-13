@@ -30,15 +30,18 @@ type Telegram struct {
 	TelegramParams
 }
 
+// telegramMsg is used to send message trough Telegram bot API
+type telegramMsg struct {
+	Text      string `json:"text"`
+	ParseMode string `json:"parse_mode,omitempty"`
+}
+
 const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
 // NewTelegram makes telegram bot for notifications
 func NewTelegram(params TelegramParams) (*Telegram, error) {
 	res := Telegram{TelegramParams: params}
-	if _, err := strconv.ParseInt(res.AdminChannelID, 10, 64); err != nil {
-		res.AdminChannelID = "@" + res.AdminChannelID // if channelID not a number enforce @ prefix
-	}
 
 	if res.apiPrefix == "" {
 		res.apiPrefix = telegramAPIPrefix
@@ -64,7 +67,13 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 		}()
 
 		if resp.StatusCode != http.StatusOK {
-			return errors.Errorf("unexpected telegram status code %d", resp.StatusCode)
+			tgErr := struct {
+				Description string `json:"description"`
+			}{}
+			if err = json.NewDecoder(resp.Body).Decode(&tgErr); err == nil {
+				return errors.Errorf("unexpected telegram API status code %d, error: %q", resp.StatusCode, tgErr.Description)
+			}
+			return errors.Errorf("unexpected telegram API status code %d", resp.StatusCode)
 		}
 
 		tgResp := struct {
@@ -92,34 +101,26 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 
 // Send to telegram recipients
 func (t *Telegram) Send(ctx context.Context, req Request) error {
-	var err error
-
-	if t.AdminChannelID != "" {
-		err = t.sendAdminNotification(ctx, req)
-		if err != nil {
-			return errors.Wrapf(err, "problem sending admin telegram notification")
-		}
-	}
-
-	return nil
-}
-
-func (t *Telegram) sendAdminNotification(ctx context.Context, req Request) error {
-	log.Printf("[DEBUG] send admin telegram notification to %s, comment id %s", t.AdminChannelID, req.Comment.ID)
+	log.Printf("[DEBUG] send telegram notification for comment ID %s", req.Comment.ID)
 
 	msg, err := buildTelegramMessage(req)
 	if err != nil {
-		return errors.Wrap(err, "failed to make telegram message body")
+		return errors.Wrapf(err, "failed to make telegram message body for comment ID %s", req.Comment.ID)
 	}
 
-	err = t.sendMessage(ctx, msg, t.AdminChannelID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to send admin notification about %s", req.Comment.ID)
+	if t.AdminChannelID != "" {
+		err := t.sendMessage(ctx, msg, t.AdminChannelID)
+		return errors.Wrapf(err,
+			"problem sending admin telegram notification about comment ID %s to %s", req.Comment.ID, t.AdminChannelID)
 	}
 	return nil
 }
 
 func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) error {
+	if _, err := strconv.ParseInt(chatID, 10, 64); err != nil {
+		chatID = "@" + chatID // if chatID not a number enforce @ prefix
+	}
+
 	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
 		t.apiPrefix, t.Token, chatID)
 	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
@@ -141,7 +142,13 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("unexpected telegram status code %d for url %q", resp.StatusCode, u)
+		tgErr := struct {
+			Description string `json:"description"`
+		}{}
+		if err = json.NewDecoder(resp.Body).Decode(&tgErr); err == nil {
+			return errors.Errorf("unexpected telegram API status code %d, error: %q", resp.StatusCode, tgErr.Description)
+		}
+		return errors.Errorf("unexpected telegram API status code %d", resp.StatusCode)
 	}
 
 	tgResp := struct {
@@ -155,21 +162,33 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 }
 
 func buildTelegramMessage(req Request) ([]byte, error) {
-	from := req.Comment.User.Name
-	if req.Comment.ParentID != "" {
-		from += " → " + req.parent.User.Name
-	}
-	from = "*" + from + "*"
-	link := fmt.Sprintf("↦ [original comment](%s)", req.Comment.Locator.URL+uiNav+req.Comment.ID)
+	commentURLPrefix := req.Comment.Locator.URL + uiNav
+
+	msg := "New reply to comment"
 	if req.Comment.PostTitle != "" {
-		link = fmt.Sprintf("↦ [%s](%s)", escapeTitle(req.Comment.PostTitle), req.Comment.Locator.URL+uiNav+req.Comment.ID)
+		msg += fmt.Sprintf(" for %q", req.Comment.PostTitle)
+	}
+	msg += ":"
+
+	if req.Comment.ParentID != "" {
+		msg += fmt.Sprintf(
+			"\n[Original comment](%s) from %s at %s:\n%s",
+			commentURLPrefix+req.parent.ID,
+			escapeText(req.parent.User.Name),
+			escapeText(req.parent.Timestamp.Format("02.01.2006 at 15:04")),
+			escapeText(req.parent.Orig),
+		)
 	}
 
-	msg := fmt.Sprintf("%s\n\n%s\n\n%s", from, req.Comment.Orig, link)
+	msg += fmt.Sprintf(
+		"\n[Reply](%s) from %s at %s:\n%s",
+		commentURLPrefix+req.Comment.ID,
+		escapeText(req.Comment.User.Name),
+		escapeText(req.Comment.Timestamp.Format("02.01.2006 at 15:04")),
+		escapeText(req.Comment.Orig),
+	)
 	msg = html.UnescapeString(msg)
-	body := struct {
-		Text string `json:"text"`
-	}{Text: msg}
+	body := telegramMsg{Text: msg, ParseMode: "MarkdownV2"}
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -177,8 +196,8 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	return b, nil
 }
 
-func escapeTitle(title string) string {
-	escSymbols := []string{"[", "]", "(", ")"}
+func escapeText(title string) string {
+	escSymbols := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", "!"}
 	res := title
 	for _, esc := range escSymbols {
 		res = strings.Replace(res, esc, "\\"+esc, -1)
@@ -192,5 +211,9 @@ func (t *Telegram) SendVerification(_ context.Context, _ VerificationRequest) er
 }
 
 func (t *Telegram) String() string {
-	return "telegram: " + t.AdminChannelID
+	result := "telegram"
+	if t.AdminChannelID != "" {
+		result += " with admin notifications to " + t.AdminChannelID
+	}
+	return result
 }

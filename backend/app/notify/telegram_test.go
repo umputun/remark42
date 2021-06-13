@@ -28,7 +28,7 @@ func TestTelegram_New(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 	assert.Equal(t, tb.Timeout, time.Second*5)
-	assert.Equal(t, "@remark_test", tb.AdminChannelID, "@ added")
+	assert.Equal(t, "remark_test", tb.AdminChannelID, "@ added")
 
 	st := time.Now()
 	_, err = NewTelegram(TelegramParams{
@@ -54,7 +54,7 @@ func TestTelegram_New(t *testing.T) {
 		Timeout:        2 * time.Second,
 		apiPrefix:      ts.URL + "/",
 	})
-	assert.EqualError(t, err, "unexpected telegram status code 404")
+	assert.EqualError(t, err, "unexpected telegram API status code 404")
 
 	_, err = NewTelegram(TelegramParams{
 		AdminChannelID: "remark_test",
@@ -95,9 +95,9 @@ func TestTelegram_Send(t *testing.T) {
 	defer ts.Close()
 
 	tb, err := NewTelegram(TelegramParams{
-		AdminChannelID: "remark_test",
-		Token:          "good-token",
-		apiPrefix:      ts.URL + "/",
+		AdminChannelID:    "remark_test",
+		Token:             "good-token",
+		apiPrefix:         ts.URL + "/",
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
@@ -126,9 +126,9 @@ func TestTelegram_Send(t *testing.T) {
 	assert.Error(t, err, "should fail")
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unexpected telegram status code 404", "send on broken tg")
+	assert.Contains(t, err.Error(), "unexpected telegram API status code 404", "send on broken tg")
 
-	assert.Equal(t, "telegram: @remark_test", tb.String())
+	assert.Equal(t, "telegram with admin notifications to remark_test", tb.String())
 
 	// bad API URL
 	tb.apiPrefix = "http://non-existent"
@@ -210,7 +210,7 @@ func Test_escapeTitle(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, escapeTitle(tt.inp))
+			assert.Equal(t, tt.out, escapeText(tt.inp))
 		})
 	}
 
