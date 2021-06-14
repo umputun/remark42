@@ -88,7 +88,7 @@ spec:
             cpu: "1"
             memory: "1Gi"
       securityContext:
-        # Has its own root priviledge drop. Can't do runAsUser / runAsGroup.
+        # Has its own root privilege drop. Can't do runAsUser / runAsGroup.
       volumes:
        - name: srvvar
          persistentVolumeClaim:

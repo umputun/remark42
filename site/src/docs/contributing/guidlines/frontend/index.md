@@ -1,5 +1,5 @@
 ---
-title: Frontend Development Guidlines
+title: Frontend Development Guidelines
 menuTitle: Frontend
 key: Frontend Guidelines
 parent: Guidelines

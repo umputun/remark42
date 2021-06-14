@@ -1,6 +1,6 @@
 ---
 layout: redirect.njk
-destination: /docs/configuration/frondend/
+destination: /docs/configuration/frontend/
 title: Configuration
 order: 200
 ---
