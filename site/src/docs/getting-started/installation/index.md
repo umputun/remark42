@@ -58,7 +58,7 @@ After that place the code snippet right after config.
 <!-- prettier-ignore-end -->
 
 ::: note 💡
-**Note that:** You can place the config with the snippet in any place of the HTML code of your site. If it closer to start of the HTML (for example in `<head>`) it will start loading sooner and show comments faster.
+**Note that:** You can place the config with the snippet in any place of the HTML code of your site. If it is closer to start of the HTML (for example in `<head>`) it will start loading sooner and show comments faster.
 :::
 
 Put the next code snippet on a page of your site where you want to have comments:
@@ -69,4 +69,4 @@ Put the next code snippet on a page of your site where you want to have comments
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/docs/latest/spa.md).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/docs/spa.md).

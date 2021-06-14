@@ -20,7 +20,7 @@ In order to integrate notifications from remark42 with the [slack](https://slack
 
 The slack token which you obtained before should be used as `NOTIFY_SLACK_TOKEN`. 
 
-You also need to set `NOTIFY_ADMINS=slack` for the slack notification to be active.
+You also need to set `NOTIFY_ADMINS=slack` for the Slack notification to be active.
 
 By default, the notification are sent to the `general` channel on slack. If you need another channel, you can specify it, for instance with `NOTIFY_SLACK_CHAN=random`.
 
@@ -33,7 +33,7 @@ By default, the notification are sent to the `general` channel on slack. If you 
 
 ### Verify the notifications on Slack 
 
-If all goes fine, you should be able to see the following message on your slack notification channel:
+If all goes fine, you should be able to see the following message on your Slack notification channel:
 
 > New comment from _author_ -> _original author_
 >> [Demo | Remark42](http://127.0.0.1:8080/web/#remark42__comment-11288987987)

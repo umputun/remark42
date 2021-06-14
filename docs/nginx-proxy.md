@@ -51,4 +51,4 @@ server {
 }
 ```
 
-note: `proxy_pass` points to internal DNS name `remark42` and expected to run from the same compose. If nginx runs outside of compose the real IP (or docker's bridge IP) should be used
+note: `proxy_pass` points to internal DNS name `remark42` and expected to run from the same compose. If nginx runs outside compose the real IP (or docker's bridge IP) should be used

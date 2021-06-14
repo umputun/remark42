@@ -25,7 +25,7 @@ Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable
 })
 ```
 
-- Created `remark42Instance` when the `div` containing remark42 has appear, usually at `mounted` or `componentDidMount` of the SPA lifecycle. Destroy the previous instance first, if neccessary.
+- Created `remark42Instance` when the `div` containing remark42 has appeared, usually at `mounted` or `componentDidMount` of the SPA lifecycle. Destroy the previous instance first, if necessary.
 
 ```ts
   initRemark42() {

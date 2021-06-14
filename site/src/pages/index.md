@@ -25,7 +25,7 @@ Remark42 gives you opportunity to have self-hosted, lightweight, and simple (yet
 - Export data to json with automatic backups
 - No external databases, everything embedded in a single data file
 - Fully dockerized and can be deployed in a single command
-- Self-contained executable can be deployed directly to Linux, Windows and MacOS
+- Self-contained executable can be deployed directly to Linux, Windows and macOS
 - Clean, lightweight and customizable UI with white and dark themes
 - Multi-site mode from a single instance
 - Integration with automatic SSL

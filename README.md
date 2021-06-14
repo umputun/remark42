@@ -488,7 +488,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/docs/latest/spa.md).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/docs/spa.md).
 
 ##### Themes
 
@@ -508,7 +508,7 @@ window.REMARK42.changeTheme('light');
 Right now Remark is translated to en, ru (partially), de, and fi languages.
 You can pick one using [configuration object](#setup-on-your-website).
 
-Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/latest/translation.md) for details.
+Do you want translate remark42 to other locale? Please see [this documentation](https://github.com/umputun/remark42/blob/master/docs/translation.md) for details.
 
 #### Last comments
 

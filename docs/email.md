@@ -10,14 +10,14 @@ This documentation describes how to enable the email-related capabilities of Rem
 
   enabling this will let the user log in using their emails:
 
-  ![Email authentication](/docs/latest/images/email_auth.png?raw=true)
+  ![Email authentication](/docs/images/email_auth.png?raw=true)
 
 - email notifications for any users except anonymous:
 
   GitHub or Google or Twitter or any other kind of user gets the ability to get
   email notifications about new replies to their comments (and any of the replies down the tree):
 
-  ![Email notifications subscription](/docs/latest/images/email_notifications.png?raw=true)
+  ![Email notifications subscription](/docs/images/email_notifications.png?raw=true)
 
 ## Setup email server connection
 
@@ -51,7 +51,7 @@ This is an example of a configuration using [Mailgun](https://www.mailgun.com/) 
 
 When you don't want to expose your IP (which is impossible with any SMTP provider)
 and for situations when connecting to external SMTP server is impossible due to firewall
-settings is setting up an SMTP-to-API bridge and sending messages trough it.
+settings is setting up an SMTP-to-API bridge and sending messages through it.
 
 To use any of containers below with in remark42 environment set following two `SMTP` variables:
 
@@ -104,7 +104,7 @@ This is an example of a configuration using [SendGrid](https://sendgrid.com/) em
 
 When you don't want to expose your IP (which is impossible with any SMTP provider)
 and for situations when connecting to external SMTP server is impossible due to firewall
-settings is setting up an SMTP-to-API bridge and sending messages trough it.
+settings is setting up an SMTP-to-API bridge and sending messages through it.
 
 To use any of containers below with in remark42 environment set following two `SMTP` variables:
 

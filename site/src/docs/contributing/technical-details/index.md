@@ -16,11 +16,11 @@ All heavy REST calls cached internally in LRU cache limited by `CACHE_MAX_ITEMS`
 
 User's activity throttled globally (up to 1000 simultaneous requests) and limited locally (per user, usually up to 10 req/sec). Request timeout set to 60 seconds.
 
-Admin authentication (`--admin-password` set) allows to hit Remark42 API without social login and with admin privileges. Adds basic-auth for username: admin, password: `${ADMIN_PASSWD}`.
+Admin authentication (`--admin-password` set) allows hitting Remark42 API without social login and with admin privileges. Adds basic-auth for username: admin, password: `${ADMIN_PASSWD}`.
 
 User can vote for the comment multiple times but only to change the vote. Double-voting not allowed.
 
-User can edit comments in 5 mins (configurable) window after creation.
+User can edit comments in 5 minutes (configurable) window after creation.
 User ID hashed and prefixed by oauth provider name to avoid collisions and potential abuse.
 
 All avatars resized and cached locally to prevent rate limiters from oauth providers, part of `go-pkgz/auth` functionality.

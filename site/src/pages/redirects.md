@@ -1,6 +1,6 @@
 ---
-# This file does hijinx with the "pagingation" system to generate many small pages from one set of data...
-# and uses that do to redirects from some URLs to others.
+# This file does hijinx with the "pagination" system to generate many small pages from one set of data...
+# and uses that do to redirect from some URLs to others.
 # We use this to try to keep old links working.
 #
 # There's limited power to this approach (it only works for specific pages listed; it can't glob),
