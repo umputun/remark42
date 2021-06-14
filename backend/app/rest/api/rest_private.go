@@ -331,6 +331,8 @@ func (s *private) sendTelegramConfirmationCtrl(w http.ResponseWriter, r *http.Re
 	}
 	existingAddress, err := s.dataService.GetUserTelegram(siteID, user.ID)
 	if err != nil {
+		// we don't care as much if we can't retrieve the current value of that field for the user,
+		// as it's only used to check if we're trying to set to the same value it's already set to
 		log.Printf("[WARN] can't read telegram for %s, %v", user.ID, err)
 	}
 	if address == existingAddress {
@@ -388,6 +390,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 || elems[0] != user.ID {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
@@ -440,6 +443,7 @@ func (s *private) setConfirmedTelegramCtrl(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 || elems[0] != user.ID {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
@@ -480,6 +484,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
 		rest.SendErrorHTML(w, r, http.StatusBadRequest,
@@ -491,6 +496,8 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	existingAddress, err := s.dataService.GetUserEmail(siteID, userID)
 	if err != nil {
+		// we don't care as much if we can't retrieve the current value of that field for the user,
+		// as it's only used to check if we're trying to set to the same value it's already set to
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
 	if existingAddress == "" {

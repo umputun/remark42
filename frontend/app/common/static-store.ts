@@ -29,7 +29,7 @@ export const StaticStore: StaticStoreType = {
     simple_view: false,
     anon_vote: false,
     email_notifications: false,
-    telegram_bot_username: "",
+    telegram_bot_username: '',
     emoji_enabled: false,
   },
   query: querySettings as QuerySettingsType,

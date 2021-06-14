@@ -656,7 +656,7 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	}
 }
 
-func TestRest_EmailAndTelegramNotification(t *testing.T) {
+func TestRest_EmailNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
@@ -686,9 +686,8 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[0].Emails)
-	assert.Empty(t, mockDestination.Get()[0].Telegrams)
 
-	// create child comment from another user, email and telegram notification only to admin expected
+	// create child comment from another user, email notification only to admin expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 456",
 	"pid": "%s",
@@ -707,7 +706,6 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 2, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[1].Emails)
-	assert.Empty(t, mockDestination.Get()[1].Telegrams)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -723,37 +721,10 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.GetVerify()))
 	assert.Equal(t, "good@example.com", mockDestination.GetVerify()[0].Email)
-	emailVerificationToken := mockDestination.GetVerify()[0].Token
+	verificationToken := mockDestination.GetVerify()[0].Token
 
 	// verify email
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", emailVerificationToken), nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-
-	// send confirmation token for telegram
-	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/telegram/subscribe?site=remark42&address=good_telegram", nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.GetVerify()))
-	assert.Equal(t, "good_telegram", mockDestination.GetVerify()[1].Telegram)
-	telegramVerificationToken := mockDestination.GetVerify()[1].Token
-
-	// verify telegram
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", telegramVerificationToken), nil)
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -779,7 +750,7 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: true,
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
 
-	// create child comment from another user, email and telegram notification expected
+	// create child comment from another user, email notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 789",
 	"pid": "%s",
@@ -798,7 +769,6 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 3, len(mockDestination.Get()))
 	assert.Equal(t, []string{"good@example.com"}, mockDestination.Get()[2].Emails)
-	assert.Equal(t, []string{"good_telegram"}, mockDestination.Get()[2].Telegrams)
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -811,18 +781,7 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
-	// delete user's telegram
-	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/telegram?site=remark42", nil)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-
-	// create child comment from another user, no email or telegram notification
+	// create child comment from another user, no email notification
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
 		`{"text": "test 321",
 	"user": {"name": "other_user"},
@@ -840,6 +799,151 @@ func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Emails)
+}
+
+
+func TestRest_TelegramNotification(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &notify.MockDest{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+
+	// create new comment from dev user
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 123",
+"user": {"name": "dev::good@example.com"},
+"locator":{"url": "https://radio-t.com/blah1",
+"site": "remark42"}}`))
+	assert.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	parentComment := store.Comment{}
+	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 1, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[0].Telegrams)
+
+	// create child comment from another user, telegram notification only to admin expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 456",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
+	assert.NoError(t, err)
+	req.Header.Add("X-JWT", anonToken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 2, len(mockDestination.Get()))
+	assert.Empty(t, mockDestination.Get()[1].Telegrams)
+
+	// send confirmation token for telegram
+	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/telegram/subscribe?site=remark42&address=good_telegram", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 1, len(mockDestination.GetVerify()))
+	assert.Equal(t, "good_telegram", mockDestination.GetVerify()[0].Telegram)
+	verificationToken := mockDestination.GetVerify()[0].Token
+
+	// verify telegram
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", verificationToken), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// get user information to verify the subscription
+	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var user store.User
+	err = json.Unmarshal(body, &user)
+	assert.NoError(t, err)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
+
+	// create child comment from another user, telegram notification expected
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+		`{"text": "test 789",
+	"pid": "%s",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`, parentComment.ID)))
+	assert.NoError(t, err)
+	req.Header.Add("X-JWT", anonToken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 3, len(mockDestination.Get()))
+	assert.Equal(t, []string{"good_telegram"}, mockDestination.Get()[2].Telegrams)
+
+	// delete user's telegram
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/telegram?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, no telegram notification
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+		`{"text": "test 321",
+	"user": {"name": "other_user"},
+	"locator":{"url": "https://radio-t.com/blah1",
+	"site": "remark42"}}`))
+	assert.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Telegrams)
 }
 
