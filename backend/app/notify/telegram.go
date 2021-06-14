@@ -181,29 +181,42 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 func buildTelegramMessage(req Request) ([]byte, error) {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := "New reply to comment"
+	msg := "↦ "
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf(" for %q", req.Comment.PostTitle)
+		msg += fmt.Sprintf("\"%q\" ", req.Comment.PostTitle)
 	}
-	msg += ":"
+
+	msg += fmt.Sprintf(
+		"[%s](%s)",
+		escapeText(req.Comment.User.Name),
+		commentURLPrefix+req.Comment.ID,
+	)
 
 	if req.Comment.ParentID != "" {
 		msg += fmt.Sprintf(
-			"\n[Original comment](%s) from %s at %s:\n%s",
-			commentURLPrefix+req.parent.ID,
+			" -> [%s](%s)",
 			escapeText(req.parent.User.Name),
-			escapeText(req.parent.Timestamp.Format("02.01.2006 at 15:04")),
+			commentURLPrefix+req.parent.ID,
+		)
+	}
+
+	msg += fmt.Sprintf(
+		"at %s",
+		escapeText(req.Comment.Timestamp.Format("02.01.2006 at 15:04")),
+	)
+
+	if req.Comment.ParentID != "" {
+		msg += fmt.Sprintf(
+			"\n\n\"_%s_\"",
 			escapeText(req.parent.Orig),
 		)
 	}
 
 	msg += fmt.Sprintf(
-		"\n[Reply](%s) from %s at %s:\n%s",
-		commentURLPrefix+req.Comment.ID,
-		escapeText(req.Comment.User.Name),
-		escapeText(req.Comment.Timestamp.Format("02.01.2006 at 15:04")),
+		"\n\n_%s_",
 		escapeText(req.Comment.Orig),
 	)
+
 	msg = html.UnescapeString(msg)
 	body := telegramMsg{Text: msg, ParseMode: "MarkdownV2"}
 	b, err := json.Marshal(body)
@@ -254,7 +267,7 @@ func (t *Telegram) SendVerification(ctx context.Context, req VerificationRequest
 
 // buildVerificationMessage generates verification telegram message based on given input
 func (t *Telegram) buildVerificationMessage(user, token, site string) ([]byte, error) {
-	result := fmt.Sprintf("This is confirmation for %s on site %s\n"+
+	result := fmt.Sprintf("Confirmation for *%s* on site %s\n"+
 		"Please copy and paste this text into “token” field on comments page to confirm subscription:\n\n\n"+
 		"```%s```",
 		escapeText(user), escapeText(site), escapeCode(token))

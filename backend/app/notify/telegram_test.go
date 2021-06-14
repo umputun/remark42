@@ -170,7 +170,7 @@ func TestTelegram_SendVerification(t *testing.T) {
 	// test buildVerificationMessage separately for message text
 	res, err := tb.buildVerificationMessage(req.User, req.Token, req.SiteID)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), "This is confirmation for test\\\\_username on site remark")
+	assert.Contains(t, string(res), `Confirmation for *test\\_username* on site remark`)
 	assert.Contains(t, string(res), `secret_`)
 }
 
