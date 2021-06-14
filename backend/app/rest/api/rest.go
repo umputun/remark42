@@ -55,13 +55,14 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter      float64
-	EmailNotifications bool
-	EmojiEnabled       bool
-	SimpleView         bool
-	ProxyCORS          bool
-	SendJWTHeader      bool
-	AllowedAncestors   []string // sets Content-Security-Policy "frame-ancestors ..."
+	UpdateLimiter       float64
+	EmailNotifications  bool
+	TelegramBotUsername string
+	EmojiEnabled        bool
+	SimpleView          bool
+	ProxyCORS           bool
+	SendJWTHeader       bool
+	AllowedAncestors    []string // sets Content-Security-Policy "frame-ancestors ..."
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -322,6 +323,9 @@ func (s *Rest) routes() chi.Router {
 			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
 			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
 			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
+			rauth.With(rejectAnonUser).Post("/telegram/subscribe", s.privRest.sendTelegramConfirmationCtrl)
+			rauth.With(rejectAnonUser).Post("/telegram/confirm", s.privRest.setConfirmedTelegramCtrl)
+			rauth.With(rejectAnonUser).Delete("/telegram", s.privRest.deleteTelegramCtrl)
 		})
 
 		// protected routes, anonymous rejected
@@ -407,40 +411,42 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	emails, _ := s.DataService.AdminStore.Email(siteID)
 
 	cnf := struct {
-		Version            string   `json:"version"`
-		EditDuration       int      `json:"edit_duration"`
-		AdminEdit          bool     `json:"admin_edit"`
-		MaxCommentSize     int      `json:"max_comment_size"`
-		Admins             []string `json:"admins"`
-		AdminEmail         string   `json:"admin_email"`
-		Auth               []string `json:"auth_providers"`
-		AnonVote           bool     `json:"anon_vote"`
-		LowScore           int      `json:"low_score"`
-		CriticalScore      int      `json:"critical_score"`
-		PositiveScore      bool     `json:"positive_score"`
-		ReadOnlyAge        int      `json:"readonly_age"`
-		MaxImageSize       int      `json:"max_image_size"`
-		EmailNotifications bool     `json:"email_notifications"`
-		EmojiEnabled       bool     `json:"emoji_enabled"`
-		SimpleView         bool     `json:"simple_view"`
-		SendJWTHeader      bool     `json:"send_jwt_header"`
+		Version             string   `json:"version"`
+		EditDuration        int      `json:"edit_duration"`
+		AdminEdit           bool     `json:"admin_edit"`
+		MaxCommentSize      int      `json:"max_comment_size"`
+		Admins              []string `json:"admins"`
+		AdminEmail          string   `json:"admin_email"`
+		Auth                []string `json:"auth_providers"`
+		AnonVote            bool     `json:"anon_vote"`
+		LowScore            int      `json:"low_score"`
+		CriticalScore       int      `json:"critical_score"`
+		PositiveScore       bool     `json:"positive_score"`
+		ReadOnlyAge         int      `json:"readonly_age"`
+		MaxImageSize        int      `json:"max_image_size"`
+		EmailNotifications  bool     `json:"email_notifications"`
+		TelegramBotUsername string   `json:"telegram_bot_username"`
+		EmojiEnabled        bool     `json:"emoji_enabled"`
+		SimpleView          bool     `json:"simple_view"`
+		SendJWTHeader       bool     `json:"send_jwt_header"`
 	}{
-		Version:            s.Version,
-		EditDuration:       int(s.DataService.EditDuration.Seconds()),
-		AdminEdit:          s.DataService.AdminEdits,
-		MaxCommentSize:     s.DataService.MaxCommentSize,
-		Admins:             admins,
-		AdminEmail:         emails,
-		LowScore:           s.ScoreThresholds.Low,
-		CriticalScore:      s.ScoreThresholds.Critical,
-		PositiveScore:      s.DataService.PositiveScore,
-		ReadOnlyAge:        s.ReadOnlyAge,
-		MaxImageSize:       s.ImageService.MaxSize,
-		EmailNotifications: s.EmailNotifications,
-		EmojiEnabled:       s.EmojiEnabled,
-		AnonVote:           s.AnonVote,
-		SimpleView:         s.SimpleView,
-		SendJWTHeader:      s.SendJWTHeader,
+		Version:             s.Version,
+		EditDuration:        int(s.DataService.EditDuration.Seconds()),
+		AdminEdit:           s.DataService.AdminEdits,
+		MaxCommentSize:      s.DataService.MaxCommentSize,
+		Admins:              admins,
+		AdminEmail:          emails,
+		LowScore:            s.ScoreThresholds.Low,
+		CriticalScore:       s.ScoreThresholds.Critical,
+		PositiveScore:       s.DataService.PositiveScore,
+		ReadOnlyAge:         s.ReadOnlyAge,
+		MaxImageSize:        s.ImageService.MaxSize,
+		EmailNotifications:  s.EmailNotifications,
+		TelegramBotUsername: s.TelegramBotUsername,
+		EmojiEnabled:        s.EmojiEnabled,
+		AnonVote:            s.AnonVote,
+		SimpleView:          s.SimpleView,
+		SendJWTHeader:       s.SendJWTHeader,
 	}
 
 	cnf.Auth = []string{}

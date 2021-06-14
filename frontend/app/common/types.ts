@@ -114,6 +114,7 @@ export interface Config {
   simple_view: boolean;
   anon_vote: boolean;
   email_notifications: boolean;
+  telegram_bot_username: string;
   emoji_enabled: boolean;
 }
 
