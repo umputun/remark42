@@ -97,6 +97,7 @@ func TestTelegram_Send(t *testing.T) {
 	tb, err := NewTelegram(TelegramParams{
 		AdminChannelID:    "remark_test",
 		Token:             "good-token",
+		UserNotifications: true,
 		apiPrefix:         ts.URL + "/",
 	})
 	assert.NoError(t, err)
@@ -106,7 +107,7 @@ func TestTelegram_Send(t *testing.T) {
 	cp := store.Comment{Text: "some parent text"}
 	cp.User.Name = "to"
 
-	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	assert.NoError(t, err)
 	c.PostTitle = "test title"
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
@@ -119,20 +120,21 @@ func TestTelegram_Send(t *testing.T) {
 	assert.NoError(t, err)
 
 	tb, err = NewTelegram(TelegramParams{
-		AdminChannelID: "remark_test",
-		Token:          "non-json-resp",
-		apiPrefix:      ts.URL + "/",
+		AdminChannelID:    "remark_test",
+		Token:             "non-json-resp",
+		UserNotifications: true,
+		apiPrefix:         ts.URL + "/",
 	})
 	assert.Error(t, err, "should fail")
-	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram API status code 404", "send on broken tg")
 
-	assert.Equal(t, "telegram with admin notifications to remark_test", tb.String())
+	assert.Equal(t, "telegram with admin notifications to remark_test with user notifications enabled", tb.String())
 
 	// bad API URL
 	tb.apiPrefix = "http://non-existent"
-	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
+	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	assert.Error(t, err)
 }
 
@@ -148,8 +150,28 @@ func TestTelegram_SendVerification(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 
-	err = tb.SendVerification(context.TODO(), VerificationRequest{})
+	// proper VerificationRequest without telegram
+	req := VerificationRequest{
+		SiteID: "remark",
+		User:   "test_username",
+		Token:  "secret_",
+	}
+	assert.NoError(t, tb.SendVerification(context.TODO(), req))
+
+	// proper VerificationRequest with telegram
+	req.Telegram = "test"
+	assert.NoError(t, tb.SendVerification(context.TODO(), req))
+
+	// VerificationRequest with canceled context
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+	assert.EqualError(t, tb.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
+
+	// test buildVerificationMessage separately for message text
+	res, err := tb.buildVerificationMessage(req.User, req.Token, req.SiteID)
 	assert.NoError(t, err)
+	assert.Contains(t, string(res), "This is confirmation for test\\\\_username on site remark")
+	assert.Contains(t, string(res), `secret_`)
 }
 
 func mockTelegramServer() *httptest.Server {

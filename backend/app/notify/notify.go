@@ -51,10 +51,11 @@ type Request struct {
 
 // VerificationRequest notification for user
 type VerificationRequest struct {
-	SiteID string
-	User   string
-	Email  string // if set, send email only
-	Token  string
+	SiteID   string
+	User     string
+	Email    string // if set, send email only
+	Telegram string // if set, send telegram only
+	Token    string
 }
 
 const defaultQueueSize = 100

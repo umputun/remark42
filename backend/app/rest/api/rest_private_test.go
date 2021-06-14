@@ -573,7 +573,7 @@ func (fs *MockFS) ReadFile(path string) ([]byte, error) {
 	return []byte(fmt.Sprintf("template %s", path)), nil
 }
 
-func TestRest_Email(t *testing.T) {
+func TestRest_EmailAndTelegram(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
@@ -617,6 +617,17 @@ func TestRest_Email(t *testing.T) {
 		{description: "unsubscribe user, wrong token", url: "/email/unsubscribe.html?site=remark42&tkn=jwt", method: http.MethodGet, responseCode: http.StatusForbidden},
 		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
 		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusConflict},
+		{description: "issue delete request without auth", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
+		{description: "issue delete request without site_id", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusBadRequest},
+		{description: "delete non-existent user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "set user telegram, token not set", url: "/api/v1/telegram/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send confirmation without address", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send confirmation", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user telegram, token is good", url: fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "send confirmation with same address", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusConflict},
+		{description: "delete user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
+		{description: "send another confirmation", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user telegram, token is good", url: fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
 	}
 	client := http.Client{}
 	for _, x := range testData {
@@ -645,7 +656,7 @@ func TestRest_Email(t *testing.T) {
 	}
 }
 
-func TestRest_EmailNotification(t *testing.T) {
+func TestRest_EmailAndTelegramNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
@@ -675,8 +686,9 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[0].Emails)
+	assert.Empty(t, mockDestination.Get()[0].Telegrams)
 
-	// create child comment from another user, email notification only to admin expected
+	// create child comment from another user, email and telegram notification only to admin expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 456",
 	"pid": "%s",
@@ -695,6 +707,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 2, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[1].Emails)
+	assert.Empty(t, mockDestination.Get()[1].Telegrams)
 
 	// send confirmation token for email
 	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", nil)
@@ -710,10 +723,37 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.GetVerify()))
 	assert.Equal(t, "good@example.com", mockDestination.GetVerify()[0].Email)
-	verificationToken := mockDestination.GetVerify()[0].Token
+	emailVerificationToken := mockDestination.GetVerify()[0].Token
 
 	// verify email
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), nil)
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", emailVerificationToken), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// send confirmation token for telegram
+	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/telegram/subscribe?site=remark42&address=good_telegram", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 2, len(mockDestination.GetVerify()))
+	assert.Equal(t, "good_telegram", mockDestination.GetVerify()[1].Telegram)
+	telegramVerificationToken := mockDestination.GetVerify()[1].Token
+
+	// verify telegram
+	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", telegramVerificationToken), nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -739,7 +779,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: true,
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
 
-	// create child comment from another user, email notification expected
+	// create child comment from another user, email and telegram notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 789",
 	"pid": "%s",
@@ -758,6 +798,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 3, len(mockDestination.Get()))
 	assert.Equal(t, []string{"good@example.com"}, mockDestination.Get()[2].Emails)
+	assert.Equal(t, []string{"good_telegram"}, mockDestination.Get()[2].Telegrams)
 
 	// delete user's email
 	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/email?site=remark42", nil)
@@ -770,7 +811,18 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
-	// create child comment from another user, no email notification
+	// delete user's telegram
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/telegram?site=remark42", nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	// create child comment from another user, no email or telegram notification
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
 		`{"text": "test 321",
 	"user": {"name": "other_user"},
@@ -788,6 +840,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Emails)
+	assert.Empty(t, mockDestination.Get()[3].Telegrams)
 }
 
 func TestRest_UserAllData(t *testing.T) {

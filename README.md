@@ -18,7 +18,7 @@ Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engi
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
 * Telegram, Slack and email notifications for Admins (get notified for each new comment)
-* Email notifications for users (get notified when someone responds to your comment)
+* Email and Telegram notifications for users (get notified when someone responds to your comment)
 * Export data to json with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
@@ -156,7 +156,7 @@ _this is the recommended way to run remark42_
 | auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
-| notify.users            | NOTIFY_USERS            | none                     | type of user notifications (email)              |
+| notify.users            | NOTIFY_USERS            | none                     | type of user notifications (telegram, email)    |
 | notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (telegram, slack and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | telegram channel                                |
