@@ -30,7 +30,6 @@ import { fetchComments, updateSorting, addComment, updateComment, unsetCommentMo
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
-import { Button } from 'components/button';
 import { Preloader } from 'components/preloader';
 import { Settings } from 'components/settings';
 import { AuthPanel } from 'components/auth-panel';
@@ -44,6 +43,9 @@ import { postMessageToParent, parseMessage } from 'utils/postMessage';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 import { logout } from 'components/auth/auth.api';
+import { Button } from 'components/auth/components/button';
+
+import styles from './Root.module.css';
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -304,7 +306,7 @@ export class Root extends Component<Props, State> {
                   ))}
 
                   {commentsShown < this.props.topComments.length && IS_MOBILE && (
-                    <Button kind="primary" size="middle" mix="root__show-more" onClick={this.showMore}>
+                    <Button className={clsx('more-comments', styles.moreComments)} onClick={this.showMore}>
                       <FormattedMessage id="root.show-more" defaultMessage="Show more" />
                     </Button>
                   )}
