@@ -45,7 +45,7 @@ import { setCollapse } from 'store/thread/actions';
 import { logout } from 'components/auth/auth.api';
 import { Button } from 'components/auth/components/button';
 
-import styles from './Root.module.css';
+import styles from './root.module.css';
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
