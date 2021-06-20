@@ -1,10 +1,12 @@
 ---
 title: Reproxy
+parent: Configuration
+order: 600
 ---
 
 ## How to configure remark42 with [Reproxy](https://reproxy.io)
 
-Example of Reproxy configuration (reverse proxy) running remark42 service on remark42.example.com with docker compose. Reproxy handles SSL termination with LE and gzip all the responses. 
+Example of Reproxy configuration (reverse proxy) running remark42 service on remark42.example.com with docker compose. Reproxy handles SSL termination with LE and gzip all the responses.
 
 ```yaml
 version: "3.4"
@@ -83,5 +85,4 @@ services:
       reproxy.route: '^/(.*)'
       reproxy.dest: '/$$1'
       reproxy.ping: '/ping'
-
 ```

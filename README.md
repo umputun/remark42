@@ -629,7 +629,7 @@ communicating with demo server backend running on `https://demo.remark42.com`.
 But you will not be able to login with any oauth providers due to security reasons.
 
 You can attach to locally running backend by providing `REMARK_URL` environment variable.
-```sh
+```shell
 npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 ```
 
@@ -637,7 +637,7 @@ npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 to `./frontend` folder and rewrite variables as you wish. For such functional we use `dotenv`
 
 The best way for start local developer environment:
-```sh
+```shell
 cp compose-dev-frontend.yml compose-private-frontend.yml
 docker-compose -f compose-private-frontend.yml up --build
 cd frontend
