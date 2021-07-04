@@ -190,7 +190,7 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	msg += fmt.Sprintf("\n\n%s", escapeText(req.Comment.Orig))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n\"> _%s_\"", escapeText(req.parent.Orig))
+		msg += fmt.Sprintf("\n\n> \"_%s_\"", escapeText(req.parent.Orig))
 	}
 
 	if req.Comment.PostTitle != "" {
