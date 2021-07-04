@@ -194,7 +194,7 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦ \"%q\" ", req.Comment.PostTitle)
+		msg += fmt.Sprintf("\n\n↦  [%s](%s)", req.Comment.PostTitle, req.Comment.Locator.URL)
 	}
 
 	msg = html.UnescapeString(msg)
