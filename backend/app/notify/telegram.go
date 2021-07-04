@@ -181,41 +181,21 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 func buildTelegramMessage(req Request) ([]byte, error) {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := "↦ "
+	msg := fmt.Sprintf("[%s](%s)", escapeText(req.Comment.User.Name), commentURLPrefix+req.Comment.ID)
+
+	if req.Comment.ParentID != "" {
+		msg += fmt.Sprintf(" -> [%s](%s)", escapeText(req.parent.User.Name), commentURLPrefix+req.parent.ID)
+	}
+
+	msg += fmt.Sprintf("\n\n_%s_", escapeText(req.Comment.Orig))
+
+	if req.Comment.ParentID != "" {
+		msg += fmt.Sprintf("\n\n\"_%s_\"", escapeText(req.parent.Orig))
+	}
+
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\"%q\" ", req.Comment.PostTitle)
+		msg += fmt.Sprintf("\n\n↦ \"%q\" ", req.Comment.PostTitle)
 	}
-
-	msg += fmt.Sprintf(
-		"[%s](%s)",
-		escapeText(req.Comment.User.Name),
-		commentURLPrefix+req.Comment.ID,
-	)
-
-	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(
-			" -> [%s](%s)",
-			escapeText(req.parent.User.Name),
-			commentURLPrefix+req.parent.ID,
-		)
-	}
-
-	msg += fmt.Sprintf(
-		"at %s",
-		escapeText(req.Comment.Timestamp.Format("02.01.2006 at 15:04")),
-	)
-
-	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(
-			"\n\n\"_%s_\"",
-			escapeText(req.parent.Orig),
-		)
-	}
-
-	msg += fmt.Sprintf(
-		"\n\n_%s_",
-		escapeText(req.Comment.Orig),
-	)
 
 	msg = html.UnescapeString(msg)
 	body := telegramMsg{Text: msg, ParseMode: "MarkdownV2"}
