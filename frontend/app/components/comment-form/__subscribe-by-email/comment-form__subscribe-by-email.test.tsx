@@ -20,13 +20,13 @@ import { LS_EMAIL_KEY } from 'common/constants';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
 
-const emailVerificationForSubscribeMock = (emailVerificationForSubscribe as unknown) as jest.Mock<
+const emailVerificationForSubscribeMock = emailVerificationForSubscribe as unknown as jest.Mock<
   ReturnType<typeof emailVerificationForSubscribe>
 >;
-const emailConfirmationForSubscribeMock = (emailConfirmationForSubscribe as unknown) as jest.Mock<
+const emailConfirmationForSubscribeMock = emailConfirmationForSubscribe as unknown as jest.Mock<
   ReturnType<typeof emailConfirmationForSubscribe>
 >;
-const unsubscribeFromEmailUpdatesMock = (unsubscribeFromEmailUpdates as unknown) as jest.Mock<
+const unsubscribeFromEmailUpdatesMock = unsubscribeFromEmailUpdates as unknown as jest.Mock<
   ReturnType<typeof unsubscribeFromEmailUpdates>
 >;
 
