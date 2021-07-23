@@ -13,6 +13,7 @@ module.exports = {
         'no-redeclare': 'off',
         'no-unused-vars': 'off',
         '@typescript-eslint/no-explicit-any': 'error',
+        'import/no-default-export': 'error',
       },
     },
     {
