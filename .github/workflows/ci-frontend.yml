@@ -7,13 +7,15 @@ on:
     paths:
       - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
+      - '!frontend/README.md'
   pull_request:
     paths:
       - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
+      - '!frontend/README.md'
 
 jobs:
-  check-transtations:
+  check-translations:
     runs-on: ubuntu-latest
     strategy:
       matrix:
