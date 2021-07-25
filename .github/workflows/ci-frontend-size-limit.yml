@@ -5,7 +5,7 @@ on:
     paths:
       - '.github/workflows/ci-frontend-size-limit.yml'
       - 'frontend/**'
-      - '!frontend/README.md'
+      - '!**.md'
 
 jobs:
   size:

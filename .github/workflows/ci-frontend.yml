@@ -7,12 +7,12 @@ on:
     paths:
       - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
-      - '!frontend/README.md'
+      - '!**.md'
   pull_request:
     paths:
       - '.github/workflows/ci-frontend.yml'
       - 'frontend/**'
-      - '!frontend/README.md'
+      - '!**.md'
 
 jobs:
   check-translations:
