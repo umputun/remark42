@@ -1,6 +1,5 @@
 # Remark42 [![Build Status](https://github.com/umputun/remark42/workflows/build/badge.svg)](https://github.com/umputun/remark42/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark42)](https://goreportcard.com/report/github.com/umputun/remark42) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark42/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark42?branch=master) [![codecov](https://codecov.io/gh/umputun/remark42/branch/master/graph/badge.svg)](https://codecov.io/gh/umputun/remark42)
 
-
 Remark42 is a self-hosted, lightweight and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles, or any other place where readers add comments.
 
 * Social login via Google, Twitter, Facebook, Microsoft, GitHub, Yandex and Telegram
@@ -35,7 +34,6 @@ Comments example:
 
 For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wiki/Admin-UI)
 </details>
-
 
 #
 
@@ -85,7 +83,6 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wi
     - [Admin](#admin)
   - [Privacy](#privacy)
   - [Technical details](#technical-details)
-
 
 ## Install
 
@@ -153,7 +150,7 @@ _this is the recommended way to run Remark42_
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | GitHub OAuth client secret                      |
 | auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
-| auth.telegram           | AUTH_TELEGRAM           |                          | Enable Telegram auth (telegram.token must be present |
+| auth.telegram           | AUTH_TELEGRAM           |                          | Enable Telegram auth (telegram.token must be present) |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local OAuth2 server, development mode only      |
@@ -218,8 +215,7 @@ _this is the recommended way to run Remark42_
 ##### Deprecated parameters
 
 The following list of command-line options is deprecated and will be removed in 2 minor releases or 1 major release (whichever is closer)
-from the version in which they were deprecated. After Remark42 version update, please check the startup log once for deprecation warnings
-to avoid trouble with unrecognized command-line options in the future.
+from the version in which they were deprecated. After Remark42 version update, please check the startup log once for deprecation warnings to avoid trouble with unrecognized command-line options in the future.
 
 <details>
 <summary>Deprecated options</summary>
@@ -237,6 +233,7 @@ to avoid trouble with unrecognized command-line options in the future.
 | notify.email.notify_admin | notify.admins=email | NOTIFY_EMAIL_ADMIN | NOTIFY_ADMINS=email | |     | 1.9.0               |
 | notify.telegram.token | telegram.token | NOTIFY_TELEGRAM_TOKEN | TELEGRAM_TOKEN | | Telegram token | 1.9.0               |
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | | Telegram timeout | 1.9.0     |
+
 </details>
 
 ##### Required parameters
@@ -253,18 +250,18 @@ The minimal `docker-compose.yml` has to include all required parameters:
 version: '2'
 
 services:
-    remark42:
-        image: umputun/remark42:latest
-        restart: always
-        container_name: "remark42"
-        environment:
-            - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
-            - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
-            - SECRET=abcd-123456-xyz-$%^&           # secret key
-            - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
-            - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
-        volumes:
-            - ./var:/srv/var                        # persistent volume to store all Remark42 data
+  remark42:
+    image: umputun/remark42:latest
+    restart: always
+    container_name: "remark42"
+    environment:
+      - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
+      - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
+      - SECRET=abcd-123456-xyz-$%^&           # secret key
+      - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
+      - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
+    volumes:
+      - ./var:/srv/var                        # persistent volume to store all Remark42 data
 ```
 
 #### Quick installation test
@@ -299,13 +296,13 @@ Authentication handled by external providers. You should setup OAuth2 for all (o
 4. In the left Nav pane, choose **"Credentials"**
 5. In the center pane, choose **"OAuth consent screen"** tab. Fill in **"Product name shown to users"** and hit save
 6. In the center pane, choose **"Credentials"** tab
-    * Open the **"New credentials"** drop down
-    * Choose **"OAuth client ID"**
-    * Choose **"Web application"**
-    * Application name is freeform, choose something appropriate
-    * Authorized origins is your domain, e.g.: `https://remark42.mysite.com`
-    * Authorized redirect URIs is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g.: `https://remark42.mysite.com/auth/google/callback`
-    * Choose **"Create"**
+  * Open the **"New credentials"** drop down
+  * Choose **"OAuth client ID"**
+  * Choose **"Web application"**
+  * Application name is freeform, choose something appropriate
+  * Authorized origins is your domain, e.g.: `https://remark42.mysite.com`
+  * Authorized redirect URIs is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g.: `https://remark42.mysite.com/auth/google/callback`
+  * Choose **"Create"**
 7. Take note of the **Client ID** and **Client Secret**
 
 _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://github.com/bitly/oauth2_proxy)_
@@ -320,15 +317,15 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 
 ##### Telegram Auth Provider
 
-1.  Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your own bot (call it, for example, "My site auth bot")
-1.	Write down resulting token as `TELEGRAM_TOKEN` into remark42 config, and also set `AUTH_TELEGRAM` to `true` to enable telegram auth for your users.
+1. Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your own bot (call it, for example, "My site auth bot")
+1. Write down resulting token as `TELEGRAM_TOKEN` into remark42 config, and also set `AUTH_TELEGRAM` to `true` to enable telegram auth for your users.
 
 ##### Twitter Auth provider
 
-1.	Create a new Twitter application https://developer.twitter.com/en/apps
-2.	Fill **App name**, **Description** and **URL** of your site
-3.	In the field **Callback URLs** enter the correct URL of your callback handler, e.g. domain + `/auth/twitter/callback`
-4.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and `AUTH_TWITTER_CSEC`
+1. Create a new Twitter application https://developer.twitter.com/en/apps
+2. Fill **App name**, **Description** and **URL** of your site
+3. In the field **Callback URLs** enter the correct URL of your callback handler, e.g. domain + `/auth/twitter/callback`
+4. Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and `AUTH_TWITTER_CSEC`
 
 ##### Yandex Auth provider
 
@@ -336,8 +333,8 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 2. Fill **"App name"** for your site
 3. Under **Platforms** select **"Web services"** and enter **"Callback URI #1"** constructed as domain + `/auth/yandex/callback`, i.e. `https://remark42.mysite.com/auth/yandex/callback`
 4. Select **Permissions**. You need the following permissions only from the **"Yandex.Passport API"** section:
-    * Access to the user avatar
-    * Access to username, first name and surname, gender
+  * Access to the user avatar
+  * Access to username, first name and surname, gender
 5. Fill out the rest of the fields if needed
 6. Take note of the **ID** and **Password**
 
@@ -352,8 +349,7 @@ Optionally, anonymous access can be turned on. In this case, an extra `anonymous
 
 #### Importing comments
 
-Remark42 supports importing comments from Disqus, WordPress, or native backup format.
-All imported comments have an `Imported` field set to `true`.
+Remark42 supports importing comments from Disqus, WordPress, or native backup format. All imported comments have an `Imported` field set to `true`.
 
 ##### Initial import from Disqus
 
@@ -393,8 +389,7 @@ Restore will clean all comments first and then will process with complete import
 
 ##### Backup format
 
-The backup file is a text file with all exported comments separated by EOL. Each backup record is a valid JSON with all key/value
-unmarshaled from `Comment` struct (see below).
+The backup file is a text file with all exported comments separated by EOL. Each backup record is a valid JSON with all key/value unmarshaled from `Comment` struct (see below).
 
 #### Admin users
 
@@ -402,11 +397,10 @@ Admins/moderators should be defined in `docker-compose.yml` as a list of user ID
 
 ```yaml
 environment:
-    - ADMIN_SHARED_ID=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
+  - ADMIN_SHARED_ID=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
 ```
 
-To get a user ID just log in and click on your username or any other user you want to promote to admins.
-It will expand login info and show the full user ID.
+To get a user ID just log in and click on your username or any other user you want to promote to admins. It will expand login info and show the full user ID.
 
 #### Docker parameters
 
@@ -423,21 +417,20 @@ Example of `docker-compose.yml`:
 version: '2'
 
 services:
-    remark42:
-        image: umputun/remark42:latest
-        restart: always
-        container_name: "remark42"
-        environment:
-            - APP_UID=2000                          # runs Remark42 app with non-default UID
-            - TIME_ZONE=GTC                         # sets container time to UTC
-
-            - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
-            - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
-            - SECRET=abcd-123456-xyz-$%^&           # secret key
-            - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
-            - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
-        volumes:
-            - ./var:/srv/var                        # persistent volume to store all Remark42 data
+  remark42:
+    image: umputun/remark42:latest
+    restart: always
+    container_name: "remark42"
+    environment:
+      - APP_UID=2000                          # runs Remark42 app with non-default UID
+      - TIME_ZONE=GTC                         # sets container time to UTC
+      - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
+      - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
+      - SECRET=abcd-123456-xyz-$%^&           # secret key
+      - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
+      - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
+    volumes:
+      - ./var:/srv/var                        # persistent volume to store all Remark42 data
 ```
 
 ### Setup on your website
@@ -505,12 +498,7 @@ If you want to set this up on a Single Page App, see [appropriate doc page](site
 
 ##### Themes
 
-Right now Remark42 has two themes: light and dark.
-You can pick one using a configuration object,
-but there is also a possibility to switch between themes in runtime.
-For this purpose Remark42 adds to `window` object named `REMARK42`,
-which contains a function `changeTheme`.
-Just call this function and pass a name of the theme that you want to turn on:
+Right now Remark42 has two themes: light and dark. You can pick one using a configuration object, but there is also a possibility to switch between themes in runtime. For this purpose Remark42 adds to `window` object named `REMARK42`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
 
 ```js
 window.REMARK42.changeTheme('light');
@@ -518,8 +506,7 @@ window.REMARK42.changeTheme('light');
 
 ##### Locales
 
-Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua) and Vietnamese (vi) languages.
-You can pick one using [configuration object](#setup-on-your-website).
+Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua) and Vietnamese (vi) languages. You can pick one using [configuration object](#setup-on-your-website).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](site/src/docs/contributing/translations/index.md) for details.
 
@@ -569,9 +556,7 @@ And then add a node like this in the place where you want to see a number of com
 <span class="remark42__counter" data-url="https://domain.com/path/to/article/"></span>
 ```
 
-You can use as many nodes like this as you need to.
-The script will found all of them by the class `remark__counter`,
-and it will use `data-url` attribute to define the page with comments.
+You can use as many nodes like this as you need to. The script will found all of them by the class `remark__counter`, and it will use `data-url` attribute to define the page with comments.
 
 Also script can use `url` property from `remark_config` object, or `window.location.origin + window.location.pathname` if nothing else is defined.
 
@@ -579,7 +564,7 @@ Also script can use `url` property from `remark_config` object, or `window.locat
 
 * to build Docker container - `make docker`. This command will produce container `umputun/remark42`
 * to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable
- `remark42` file with everything embedded
+  `remark42` file with everything embedded
 
 ## Development
 
@@ -599,20 +584,15 @@ docker-compose -f compose-private.yml build
 docker-compose -f compose-private.yml up
 ```
 
-It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev".
-To access the UI demo page go to `127.0.0.1:8080/web`.
-By default, you would be logged in as `dev_user` which is defined as admin.
-You can tweak any of [supported parameters](#parameters) in corresponded yml file.
+It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To access the UI demo page go to `127.0.0.1:8080/web`. By default, you would be logged in as `dev_user` which is defined as admin. You can tweak any of [supported parameters](#parameters) in corresponded yml file.
 
-Backend Docker Compose config by default skips running frontend related tests.
-Frontend Docker Compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
+Backend Docker Compose config by default skips running frontend related tests. Frontend Docker Compose config by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
 
 ### Backend development
 
 To run backend locally (development mode, without Docker) you have to have the latest stable `go` toolchain [installed](https://golang.org/doc/install).
 
-To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`.
-It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
+To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`. It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 
 `HTTP http://admin:password@127.0.0.1:8080/api/v1/find?site=remark&sort=-active&format=tree&url=http://127.0.0.1:8080`
 
@@ -623,6 +603,7 @@ It stars backend service with embedded bolt store on port `8080` with basic auth
 Frontend guide can be found here: [./frontend/README.md](./frontend/README.md).
 
 #### Build
+
 You should have at least 2GB RAM or swap enabled for building.
 
 * install [Node.js 12.11](https://nodejs.org/en/) or higher
@@ -631,16 +612,11 @@ You should have at least 2GB RAM or swap enabled for building.
 * run `npm run build` there
 * result files will be saved in `./frontend/public`
 
-**Note:** Running `npm install` will set up pre-commit hooks into your git repository.
-It used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
+**Note:** Running `npm install` will set up pre-commit hooks into your git repository. It used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
 
 #### Devserver
 
-For local development mode with Hot Reloading use `npm start` instead of `npm run build`.
-In this case, `webpack` will serve files using `webpack-dev-server` on `localhost:9000`.
-By visiting `127.0.0.1:9000/web` you will get a page with the main comments widget
-communicating with a demo server backend running on `https://demo.remark42.com`.
-But you will not be able to log in with any OAuth providers due to security reasons.
+For local development mode with Hot Reloading use `npm start` instead of `npm run build`. In this case, `webpack` will serve files using `webpack-dev-server` on `localhost:9000`. By visiting `127.0.0.1:9000/web` you will get a page with the main comments widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
 
 You can attach to the locally running backend by providing `REMARK_URL` environment variable.
 
@@ -648,8 +624,7 @@ You can attach to the locally running backend by providing `REMARK_URL` environm
 npx cross-env REMARK_URL=http://127.0.0.1:8080 npm start
 ```
 
-**Note:** If you want to redefine env variables such as `PORT` on your local instance you can add `.env` file
-to `./frontend` folder and rewrite variables as you wish. For such functional, we use `dotenv`.
+**Note:** If you want to redefine env variables such as `PORT` on your local instance you can add `.env` file to `./frontend` folder and rewrite variables as you wish. For such functional, we use `dotenv`.
 
 The best way to start a local developer environment:
 
@@ -669,6 +644,7 @@ Developer build running by `webpack-dev-server` supports devtools for [React](ht
 
 * `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of [supported providers](#register-oauth2-providers) and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only
 * `GET /auth/logout` - logout
+
 ```go
 type User struct {
     Name     string `json:"name"`
@@ -683,6 +659,7 @@ type User struct {
 ### Commenting
 
 * `POST /api/v1/comment` - add a comment, _auth required_
+
 ```go
 type Comment struct {
     ID          string    `json:"id"`      // comment ID, read only
@@ -711,11 +688,12 @@ type Edit struct {
     Summary   string    `json:"summary"`
 }
 ```
+
 * `POST /api/v1/preview` - preview comment in HTML. Body is `Comment` to render
 * `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree|plain` - find all comments for given post
 
-This is the primary call used by UI to show comments for the given post. It can return comments in two formats - `plain` and `tree`.
-In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like object with this structure:
+This is the primary call used by UI to show comments for the given post. It can return comments in two formats - `plain` and `tree`. In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like object with this structure:
+
 ```go
 type Tree struct {
     Nodes []Node         `json:"comments"`
@@ -727,9 +705,11 @@ type Node struct {
     Replies []Node        `json:"replies,omitempty"`
 }
 ```
+
 Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies are always sorted by time.
 
 * `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation. Body is `EditRequest` JSON
+
 ```go
 type EditRequest struct {
     Text    string `json:"text"`    // updated text
@@ -737,18 +717,22 @@ type EditRequest struct {
     Delete  bool   `json:"delete"`  // delete flag
 }{}
 ```
+
 * `GET /api/v1/last/{max}?site=site-id&since=ts-msec` - get up to `{max}` last comments, `since` (epoch time, milliseconds) is optional
 * `GET /api/v1/id/{id}?site=site-id` - get comment by `comment id`
 * `GET /api/v1/comments?site=site-id&user=id&limit=N` - get comment by `user id`, returns `response` object
+
 ```go
 type response struct {
     Comments []store.Comment `json:"comments"`
     Count    int             `json:"count"`
 }{}
 ```
+
 * `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
 * `POST /api/v1/count?site=siteID` - get number of comments for posts from post body (list of post IDs)
 * `GET /api/v1/list?site=site-id&limit=5&skip=2` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
+
 ```go
 type PostInfo struct {
     URL      string    `json:"url"`
@@ -758,11 +742,13 @@ type PostInfo struct {
     LastTS   time.Time `json:"last_time,omitempty"`
 }
 ```
+
 * `GET /api/v1/user` - get user info, _auth required_
 * `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease, _auth required_
 * `GET /api/v1/userdata?site=site-id` - export all user data to gz stream, _auth required_
 * `POST /api/v1/deleteme?site=site-id` - request deletion of user data, _auth required_
 * `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site
+
 ```go
 type Config struct {
     Version        string   `json:"version"`
@@ -779,6 +765,7 @@ type Config struct {
     EmojiEnabled   bool     `json:"emoji_enabled"`
 }
 ```
+
 * `GET /api/v1/info?site=site-idd&url=post-url` - returns `PostInfo` for site and URL
 
 ### Streaming API
@@ -814,6 +801,7 @@ data: {"url":"https://radio-t.com/blah1","count":8,"first_time":"2019-06-18T12:5
 event: info
 data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:53:48.125686-05:00","last_time":"2019-06-18T12:53:48.254669-05:00"}
 ```
+
 </details>
 
 ### RSS feeds
@@ -845,6 +833,7 @@ _returned ID should be appended to load image URL on caller side_
 * `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`
 * `PUT /api/v1/admin/user/{userid}?site=site-id&block=1&ttl=7d` - block or unblock user with optional TTL (default=permanent)
 * `GET api/v1/admin/blocked&site=site-id` - list of blocked user IDs
+
 ```go
 type BlockedUser struct {
     ID    string    `json:"id"`
@@ -852,15 +841,17 @@ type BlockedUser struct {
     Until time.Time `json:"time"`
 }
 ```
+
 * `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to JSON stream or gz file
 * `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body
 * `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form
-* `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n.
-From-url and new-url parts are separated by space. If URLs end with an asterisk (*) it means matching by the prefix. Remap procedure based on export/import chain so make the backup first
+* `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. From-url and new-url parts are separated by space. If URLs end with an asterisk (*) it means matching by the prefix. Remap procedure based on export/import chain so make the backup first
+
 ```
 http://oldsite.com* https://newsite.com*
 http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 ```
+
 * `GET /api/v1/admin/wait?site=site-id` - wait for completion for any async migration ops (import or remap)
 * `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment
 * `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info
