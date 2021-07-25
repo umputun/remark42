@@ -8,12 +8,13 @@ on:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
+      - '!**.md'
   pull_request:
     paths:
       - '.github/workflows/ci-test-backend.yml'
       - 'backend/**'
       - '!backend/scripts/**'
-
+      - '!**.md'
 jobs:
   backend:
     runs-on: ubuntu-latest

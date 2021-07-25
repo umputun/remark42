@@ -8,19 +8,19 @@ on:
       - '.github/workflows/ci-build.yml'
       - 'backend/**'
       - 'frontend/**'
-      - '!frontend/README.md'
       - '.dockerignore'
       - 'docker-init.sh'
       - 'Dockerfile'
+      - '!**.md'
   pull_request:
     paths:
       - '.github/workflows/ci-build.yml'
       - 'backend/**'
       - 'frontend/**'
-      - '!frontend/README.md'
       - '.dockerignore'
       - 'docker-init.sh'
       - 'Dockerfile'
+      - '!**.md'
 
 jobs:
   build:
