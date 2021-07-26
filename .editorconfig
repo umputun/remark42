@@ -1,6 +1,9 @@
 [*]
 insert_final_newline = true
 
-[*.{md,njk}]
-indent_style = tab
+[*.md]
+indent_style = space
 trim_trailing_whitespace = false
+
+[*.njk]
+indent_style = tab

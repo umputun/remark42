@@ -13,58 +13,58 @@ Add this snippet to the bottom of web page:
 
 ```html
 <script>
-	var remark_config = {
-		host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
-		site_id: 'YOUR_SITE_ID',
-		components: ['embed'], // optional param; which components to load. default to ["embed"]
-		// to load all components define components as ['embed', 'last-comments', 'counter']
-		// available component are:
-		//   - 'embed': basic comments widget
-		//   - 'last-comments': last comments widget, see `Last Comments` section below
-		//   - 'counter': counter widget, see `Counter` section below
-		url: 'PAGE_URL', // optional param; if it isn't defined
-		// `window.location.origin + window.location.pathname` will be used
-		//
-		// Note that if you use query parameters as significant part of URL
-		// (the one that actually changes content on page)
-		// you will have to configure URL manually to keep query params, as
-		// `window.location.origin + window.location.pathname` doesn't contain query params and
-		// hash. For example, default URL for `https://example/com/example-post?id=1#hash`
-		// would be `https://example/com/example-post`
-		//
-		// The problem with query params is that they often contain useless params added by
-		// various trackers (utm params) and doesn't have defined order, so Remark42 treats differently
-		// all this examples:
-		// https://example.com/?postid=1&date=2007-02-11
-		// https://example.com/?date=2007-02-11&postid=1
-		// https://example.com/?date=2007-02-11&postid=1&utm_source=google
-		//
-		// If you deal with query parameters make sure you pass only significant part of it
-		// in well defined order
-		max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
-		theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
-		page_title: 'Moving to Remark42', // optional param; if it isn't defined `document.title` will be used
-		locale: 'en', // set up locale and language, if it isn't defined default value ('en') will be used
-		show_email_subscription: false, // optional param; by default it is `true` and you can see email subscription feature
-		// in interface when enable it from backend side
-		// if you set this param in `false` you will get notifications email notifications as admin
-		// but your users won't have interface for subscription
-		simple_view: false, // optional param; overrides the parameter from the backend
-		// minimized UI with basic info only
-	}
+  var remark_config = {
+    host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
+    site_id: 'YOUR_SITE_ID',
+    components: ['embed'], // optional param; which components to load. default to ["embed"]
+    // to load all components define components as ['embed', 'last-comments', 'counter']
+    // available component are:
+    //   - 'embed': basic comments widget
+    //   - 'last-comments': last comments widget, see `Last Comments` section below
+    //   - 'counter': counter widget, see `Counter` section below
+    url: 'PAGE_URL', // optional param; if it isn't defined
+    // `window.location.origin + window.location.pathname` will be used
+    //
+    // Note that if you use query parameters as significant part of URL
+    // (the one that actually changes content on page)
+    // you will have to configure URL manually to keep query params, as
+    // `window.location.origin + window.location.pathname` doesn't contain query params and
+    // hash. For example, default URL for `https://example/com/example-post?id=1#hash`
+    // would be `https://example/com/example-post`
+    //
+    // The problem with query params is that they often contain useless params added by
+    // various trackers (utm params) and doesn't have defined order, so Remark42 treats differently
+    // all this examples:
+    // https://example.com/?postid=1&date=2007-02-11
+    // https://example.com/?date=2007-02-11&postid=1
+    // https://example.com/?date=2007-02-11&postid=1&utm_source=google
+    //
+    // If you deal with query parameters make sure you pass only significant part of it
+    // in well defined order
+    max_shown_comments: 10, // optional param; if it isn't defined default value (15) will be used
+    theme: 'dark', // optional param; if it isn't defined default value ('light') will be used
+    page_title: 'Moving to Remark42', // optional param; if it isn't defined `document.title` will be used
+    locale: 'en', // set up locale and language, if it isn't defined default value ('en') will be used
+    show_email_subscription: false, // optional param; by default it is `true` and you can see email subscription feature
+    // in interface when enable it from backend side
+    // if you set this param in `false` you will get notifications email notifications as admin
+    // but your users won't have interface for subscription
+    simple_view: false, // optional param; overrides the parameter from the backend
+    // minimized UI with basic info only
+  }
 </script>
 <script>
-	!(function (e, n) {
-		for (var o = 0; o < e.length; o++) {
-			var r = n.createElement('script'),
-				c = '.js',
-				d = n.head || n.body
-			'noModule' in r ? ((r.type = 'module'), (c = '.mjs')) : (r.async = !0),
-				(r.defer = !0),
-				(r.src = remark_config.host + '/web/' + e[o] + c),
-				d.appendChild(r)
-		}
-	})(remark_config.components || ['embed'], document)
+  !(function (e, n) {
+    for (var o = 0; o < e.length; o++) {
+      var r = n.createElement('script'),
+        c = '.js',
+        d = n.head || n.body
+      'noModule' in r ? ((r.type = 'module'), (c = '.mjs')) : (r.async = !0),
+        (r.defer = !0),
+        (r.src = remark_config.host + '/web/' + e[o] + c),
+        d.appendChild(r)
+    }
+  })(remark_config.components || ['embed'], document)
 </script>
 ```
 
@@ -100,11 +100,11 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
 
 ```html
 <script>
-	var remark_config = {
-		host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
-		site_id: 'YOUR_SITE_ID',
-		components: ['last-comments'],
-	}
+  var remark_config = {
+    host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
+    site_id: 'YOUR_SITE_ID',
+    components: ['last-comments'],
+  }
 </script>
 ```
 
@@ -124,11 +124,11 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
 
 ```html
 <script>
-	var remark_config = {
-		host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
-		site_id: 'YOUR_SITE_ID',
-		components: ['counter'],
-	}
+  var remark_config = {
+    host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
+    site_id: 'YOUR_SITE_ID',
+    components: ['counter'],
+  }
 </script>
 ```
 
@@ -136,8 +136,8 @@ And then add a node like this in the place where you want to see a number of com
 
 ```html
 <span
-	class="remark42__counter"
-	data-url="https://domain.com/path/to/article/"
+  class="remark42__counter"
+  data-url="https://domain.com/path/to/article/"
 ></span>
 ```
 
