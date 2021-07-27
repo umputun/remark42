@@ -1,14 +1,14 @@
 package provider
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint
 	"encoding/json"
 	"mime"
 	"net/http"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/logger"

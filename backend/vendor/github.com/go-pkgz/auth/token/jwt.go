@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
 
@@ -24,6 +24,7 @@ type Claims struct {
 	User        *User      `json:"user,omitempty"` // user info
 	SessionOnly bool       `json:"sess_only,omitempty"`
 	Handshake   *Handshake `json:"handshake,omitempty"` // used for oauth handshake
+	NoAva       bool       `json:"no-ava,omitempty"`    // disable avatar, always use identicon
 }
 
 // Handshake used for oauth handshake

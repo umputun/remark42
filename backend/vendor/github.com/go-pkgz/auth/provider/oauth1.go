@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dghubble/oauth1"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 
 	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
@@ -176,7 +176,7 @@ func (h Oauth1Handler) makeRedirURL(path string) string {
 	elems := strings.Split(path, "/")
 	newPath := strings.Join(elems[:len(elems)-1], "/")
 
-	return strings.TrimRight(h.URL, "/") + strings.TrimRight(newPath, "/") + urlCallbackSuffix
+	return strings.TrimSuffix(h.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }
 
 // initOauth2Handler makes oauth1 handler for given provider

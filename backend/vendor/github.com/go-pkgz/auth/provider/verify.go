@@ -8,8 +8,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/avatar"

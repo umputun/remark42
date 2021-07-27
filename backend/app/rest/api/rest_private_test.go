@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -800,7 +800,6 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Emails)
 }
-
 
 func TestRest_TelegramNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
