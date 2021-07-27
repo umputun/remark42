@@ -359,7 +359,7 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	}
 	const telegramDefaultDuration = time.Second * 5
 	if s.Notify.Telegram.Timeout != telegramDefaultDuration && s.Telegram.Timeout == telegramDefaultDuration {
-		s.Telegram.Token = s.Notify.Telegram.Token
+		s.Telegram.Timeout = s.Notify.Telegram.Timeout
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {

@@ -417,6 +417,8 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--auth.email.passwd=test_password",
 		"--auth.email.timeout=15s",
 		"--auth.email.template=file.tmpl",
+		"--notify.telegram.token=abcd",
+		"--notify.telegram.timeout=3m",
 	}
 	assert.Empty(t, s.SMTP.Host)
 	assert.Empty(t, s.SMTP.Port)
@@ -437,6 +439,8 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"},
 			{Old: "auth.email.template", Version: "1.5"},
 			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
+			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
+			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
