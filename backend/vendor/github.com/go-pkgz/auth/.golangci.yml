@@ -62,13 +62,11 @@ issues:
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint
-    - text: "Blacklisted import `crypto/md5`: weak cryptographic primitive"
+    - text: "G505: Blocklisted import crypto/sha1: weak cryptographic primitive"
       linters:
         - gosec
-    - text: "Blacklisted import `crypto/sha1`: weak cryptographic primitive"
+    - text: "Use of weak cryptographic primitive"
       linters:
         - gosec
-    - text: " Use of weak cryptographic primitive"
-      linters:
-        - gosec
+
   exclude-use-default: false

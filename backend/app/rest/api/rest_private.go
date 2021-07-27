@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
@@ -20,6 +19,7 @@ import (
 	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark42/backend/app/notify"

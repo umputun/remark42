@@ -122,6 +122,7 @@ func (em *Email) client() (c *smtp.Client, err error) {
 		tlsConf := &tls.Config{
 			InsecureSkipVerify: false,
 			ServerName:         em.Host,
+			MinVersion:         tls.VersionTLS12,
 		}
 		conn, e := tls.Dial("tcp", srvAddress, tlsConf)
 		if e != nil {

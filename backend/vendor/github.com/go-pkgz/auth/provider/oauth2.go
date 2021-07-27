@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/rest"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/logger"
@@ -77,7 +77,7 @@ func initOauth2Handler(p Params, service Oauth2Handler) Oauth2Handler {
 // Name returns provider name
 func (p Oauth2Handler) Name() string { return p.name }
 
-// LoginHandler - GET /login?from=redirect-back-url&site=siteID&session=1
+// LoginHandler - GET /login?from=redirect-back-url&[site|aud]=siteID&session=1&noava=1
 func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	p.Logf("[DEBUG] login with %s", p.Name())
@@ -94,6 +94,11 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	aud := r.URL.Query().Get("site") // legacy, for back compat
+	if aud == "" {
+		aud = r.URL.Query().Get("aud")
+	}
+
 	claims := token.Claims{
 		Handshake: &token.Handshake{
 			State: state,
@@ -102,10 +107,11 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
 		StandardClaims: jwt.StandardClaims{
 			Id:        cid,
-			Audience:  r.URL.Query().Get("site"),
+			Audience:  aud,
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
+		NoAva: r.URL.Query().Get("noava") == "1",
 	}
 
 	if _, err := p.JwtService.Set(w, claims); err != nil {
@@ -180,6 +186,9 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logf("[DEBUG] got raw user info %+v", jData)
 
 	u := p.mapUser(jData, data)
+	if oauthClaims.NoAva {
+		u.Picture = "" // reset picture on no avatar request
+	}
 	u, err = setAvatar(p.AvatarSaver, u, client)
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
@@ -199,6 +208,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 			Audience: oauthClaims.Audience,
 		},
 		SessionOnly: oauthClaims.SessionOnly,
+		NoAva:       oauthClaims.NoAva,
 	}
 
 	if _, err = p.JwtService.Set(w, claims); err != nil {
@@ -229,5 +239,5 @@ func (p Oauth2Handler) makeRedirURL(path string) string {
 	elems := strings.Split(path, "/")
 	newPath := strings.Join(elems[:len(elems)-1], "/")
 
-	return strings.TrimRight(p.URL, "/") + strings.TrimRight(newPath, "/") + urlCallbackSuffix
+	return strings.TrimSuffix(p.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }

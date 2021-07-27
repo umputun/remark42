@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/jrpc"
 	"github.com/go-pkgz/lcw/eventbus"
 	log "github.com/go-pkgz/lgr"
+	"github.com/golang-jwt/jwt"
 	"github.com/kyokomi/emoji/v2"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"

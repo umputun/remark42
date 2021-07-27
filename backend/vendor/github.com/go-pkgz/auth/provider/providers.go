@@ -2,7 +2,7 @@
 package provider
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint
 	"encoding/json"
 	"fmt"
 

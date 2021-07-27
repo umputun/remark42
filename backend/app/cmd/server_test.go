@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-pkgz/auth/token"
+	"github.com/golang-jwt/jwt"
 	"github.com/umputun/go-flags"
 	"go.uber.org/goleak"
 
