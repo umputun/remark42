@@ -1,6 +1,6 @@
 module github.com/umputun/remark42/memory_store
 
-go 1.15
+go 1.16
 
 require (
 	github.com/go-pkgz/jrpc v0.2.0
