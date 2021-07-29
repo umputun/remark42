@@ -9,6 +9,7 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const RefreshPlugin = require('@prefresh/webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
 const babelConfig = require('./.babelrc.js');
 
@@ -170,6 +171,7 @@ module.exports = (_, { mode, analyze }) => {
             plugins: [
               ['postcss-preset-env', { stage: 0 }],
               ['postcss-custom-properties', { importFrom: CUSTOM_PROPERTIES_PATH }],
+              'cssnano',
             ],
           },
         },
@@ -219,10 +221,16 @@ module.exports = (_, { mode, analyze }) => {
     }),
   ];
 
+  const optimization = {
+    // doc: https://webpack.js.org/plugins/css-minimizer-webpack-plugin/
+    minimizer: [`...`, new CssMinimizerPlugin()],
+  };
+
   const config = {
     entry,
     devtool: isDev ? 'source-map' : false,
     resolve,
+    optimization,
   };
 
   const legacyConfig = {
