@@ -1,37 +1,37 @@
-version: '2'
+version: "2"
 
 services:
-    remark:
-        build: .
-        image: umputun/remark42:latest
-        container_name: "remark42"
-        hostname: "remark42"
-        restart: always
+  remark:
+    build: .
+    image: umputun/remark42:latest
+    container_name: "remark42"
+    hostname: "remark42"
+    restart: always
 
-        logging:
-            driver: json-file
-            options:
-                max-size: "10m"
-                max-file: "5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-        # uncomment to expose directly (no proxy)
-        #ports:
-        #  - "80:8080"
+    # uncomment to expose directly (no proxy)
+    #ports:
+    #  - "80:8080"
 
-        environment:
-            - REMARK_URL
-            - SECRET
-            - STORE_BOLT_PATH=/srv/var/db
-            - BACKUP_PATH=/srv/var/backup
-            - DEBUG=true
-            - AUTH_GOOGLE_CID
-            - AUTH_GOOGLE_CSEC
-            - AUTH_GITHUB_CID
-            - AUTH_GITHUB_CSEC
-            - AUTH_FACEBOOK_CID
-            - AUTH_FACEBOOK_CSEC
-            - AUTH_DISQUS_CID
-            - AUTH_DISQUS_CSEC
-            # - ADMIN_PASSWD=password
-        volumes:
-            - ./var:/srv/var
+    environment:
+      - REMARK_URL
+      - SECRET
+      - STORE_BOLT_PATH=/srv/var/db
+      - BACKUP_PATH=/srv/var/backup
+      - DEBUG=true
+      - AUTH_GOOGLE_CID
+      - AUTH_GOOGLE_CSEC
+      - AUTH_GITHUB_CID
+      - AUTH_GITHUB_CSEC
+      - AUTH_FACEBOOK_CID
+      - AUTH_FACEBOOK_CSEC
+      - AUTH_DISQUS_CID
+      - AUTH_DISQUS_CSEC
+      # - ADMIN_PASSWD=password
+    volumes:
+      - ./var:/srv/var
