@@ -4,68 +4,68 @@
 #
 # build remark42 docker image - docker-compose -f compose-dev-backend.yml build
 # start remark42 service - docker-compose -f compose-dev-backend.yml up
-version: '2'
+version: "2"
 
 services:
-    remark42:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            args:
-                - SKIP_BACKEND_TEST
-                - BACKEND_TEST_TIMEOUT
-                - SKIP_FRONTEND_TEST=true
+  remark42:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SKIP_BACKEND_TEST
+        - BACKEND_TEST_TIMEOUT
+        - SKIP_FRONTEND_TEST=true
 
-        image: umputun/remark42:dev
-        container_name: "remark42-dev"
-        hostname: "remark42-dev"
+    image: umputun/remark42:dev
+    container_name: "remark42-dev"
+    hostname: "remark42-dev"
 
-        logging:
-            driver: json-file
-            options:
-                max-size: "10m"
-                max-file: "5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-        ports:
-            - "8080:8080" # primary rest server
-            - "8084:8084" # local oauth2 server
+    ports:
+      - "8080:8080" # primary rest server
+      - "8084:8084" # local oauth2 server
 
-        environment:
-            #            - APP_UID=1000
-            #            - TIME_ZONE=GMT
-            - REMARK_URL=http://127.0.0.1:8080
-            - SECRET=12345
-            - STORE_BOLT_PATH=/srv/var/db
-            - BACKUP_PATH=/srv/var/backup
-            - DEBUG=true
-            - ADMIN_PASSWD=password
-            - AUTH_DEV=true # activate local oauth "dev"
-            - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local ouath2
-            - NOTIFY_USERS
-            - NOTIFY_ADMINS
-            - TELEGRAM_TOKEN
-            - NOTIFY_TELEGRAM_CHAN
-            - NOTIFY_EMAIL_FROM
-            - ADMIN_SHARED_EMAIL
-            - NOTIFY_EMAIL_ADMIN
-            - SMTP_HOST
-            - SMTP_USERNAME
-            - SMTP_PASSWORD
-            - SMTP_PORT
-            - SMTP_TLS
-            - EMOJI=true
-            - ANON_VOTE=true
-            - VOTES_IP=true
-            - AUTH_EMAIL_ENABLE=true
-            - AUTH_TELEGRAM=true
-            - AUTH_ANON=true
-            - AUTH_GOOGLE_CID=1111
-            - AUTH_GOOGLE_CSEC=1111
-            - AUTH_GITHUB_CID=1111
-            - AUTH_GITHUB_CSEC=1111
-            - AUTH_FACEBOOK_CID=1111
-            - AUTH_FACEBOOK_CSEC=1111
-            - AUTH_TWITTER_CID=1111
-            - AUTH_TWITTER_CSEC=1111
-        volumes:
-            - ./var:/srv/var
+    environment:
+      #            - APP_UID=1000
+      #            - TIME_ZONE=GMT
+      - REMARK_URL=http://127.0.0.1:8080
+      - SECRET=12345
+      - STORE_BOLT_PATH=/srv/var/db
+      - BACKUP_PATH=/srv/var/backup
+      - DEBUG=true
+      - ADMIN_PASSWD=password
+      - AUTH_DEV=true # activate local oauth "dev"
+      - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local ouath2
+      - NOTIFY_USERS
+      - NOTIFY_ADMINS
+      - TELEGRAM_TOKEN
+      - NOTIFY_TELEGRAM_CHAN
+      - NOTIFY_EMAIL_FROM
+      - ADMIN_SHARED_EMAIL
+      - NOTIFY_EMAIL_ADMIN
+      - SMTP_HOST
+      - SMTP_USERNAME
+      - SMTP_PASSWORD
+      - SMTP_PORT
+      - SMTP_TLS
+      - EMOJI=true
+      - ANON_VOTE=true
+      - VOTES_IP=true
+      - AUTH_EMAIL_ENABLE=true
+      - AUTH_TELEGRAM=true
+      - AUTH_ANON=true
+      - AUTH_GOOGLE_CID=1111
+      - AUTH_GOOGLE_CSEC=1111
+      - AUTH_GITHUB_CID=1111
+      - AUTH_GITHUB_CSEC=1111
+      - AUTH_FACEBOOK_CID=1111
+      - AUTH_FACEBOOK_CSEC=1111
+      - AUTH_TWITTER_CID=1111
+      - AUTH_TWITTER_CSEC=1111
+    volumes:
+      - ./var:/srv/var
