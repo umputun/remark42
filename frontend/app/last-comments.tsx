@@ -35,10 +35,12 @@ async function init(): Promise<void> {
     throw new Error('Remark42: Site ID is undefined.');
   }
 
-  const styles = document.createElement('link');
-  styles.href = `${BASE_URL}/web/last-comments.css`;
-  styles.rel = 'stylesheet';
-  (document.head || document.body).appendChild(styles);
+  if (process.env.NODE_ENV === 'production') {
+    const styles = document.createElement('link');
+    styles.href = `${BASE_URL}/web/last-comments.css`;
+    styles.rel = 'stylesheet';
+    (document.head || document.body).appendChild(styles);
+  }
 
   (Array.from(nodes) as HTMLElement[]).forEach((node) => {
     const max = (node.dataset.max && parseInt(node.dataset.max, 10)) || max_last_comments || DEFAULT_LAST_COMMENTS_MAX;
