@@ -7,7 +7,5 @@ indent_style = space
 trim_trailing_whitespace = false
 
 [*.yml]
-quote_type= double
 indent_size = 2
 indent_style = space
-
