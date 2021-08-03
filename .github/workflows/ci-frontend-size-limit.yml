@@ -3,9 +3,9 @@ name: frontend
 on:
   pull_request:
     paths:
-      - '.github/workflows/ci-frontend-size-limit.yml'
-      - 'frontend/**'
-      - '!**.md'
+      - ".github/workflows/ci-frontend-size-limit.yml"
+      - "frontend/**"
+      - "!**.md"
 
 jobs:
   size:

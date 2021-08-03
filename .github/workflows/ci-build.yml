@@ -5,22 +5,22 @@ on:
     branches:
     tags:
     paths:
-      - '.github/workflows/ci-build.yml'
-      - 'backend/**'
-      - 'frontend/**'
-      - '.dockerignore'
-      - 'docker-init.sh'
-      - 'Dockerfile'
-      - '!**.md'
+      - ".github/workflows/ci-build.yml"
+      - "backend/**"
+      - "frontend/**"
+      - ".dockerignore"
+      - "docker-init.sh"
+      - "Dockerfile"
+      - "!**.md"
   pull_request:
     paths:
-      - '.github/workflows/ci-build.yml'
-      - 'backend/**'
-      - 'frontend/**'
-      - '.dockerignore'
-      - 'docker-init.sh'
-      - 'Dockerfile'
-      - '!**.md'
+      - ".github/workflows/ci-build.yml"
+      - "backend/**"
+      - "frontend/**"
+      - ".dockerignore"
+      - "docker-init.sh"
+      - "Dockerfile"
+      - "!**.md"
 
 jobs:
   build:

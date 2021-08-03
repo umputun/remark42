@@ -1,10 +1,9 @@
 # compose file demonstrating custom storage use. The memory_store (see backend/_example/memory_store) starts
 # in a separate container and remark42 communicates to mem_store.r42 via STORE_RPC_API url
 
-version: '2'
+version: "2"
 
 services:
-
   remark42:
     build:
       context: ../../..

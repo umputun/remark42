@@ -5,14 +5,14 @@ on:
     branches:
     tags:
     paths:
-      - '.github/workflows/ci-frontend.yml'
-      - 'frontend/**'
-      - '!**.md'
+      - ".github/workflows/ci-frontend.yml"
+      - "frontend/**"
+      - "!**.md"
   pull_request:
     paths:
-      - '.github/workflows/ci-frontend.yml'
-      - 'frontend/**'
-      - '!**.md'
+      - ".github/workflows/ci-frontend.yml"
+      - "frontend/**"
+      - "!**.md"
 
 jobs:
   check-translations:
