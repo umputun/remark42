@@ -1,7 +1,5 @@
 ---
 title: Site URL migration
-parent: Backup
-order: 400
 ---
 
 Here is an example on how to move your comments after your posts are moved, from `https://example.org/blog/<slug>` to `https://example.org/post/<slug>` in that example.

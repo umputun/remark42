@@ -1,7 +1,5 @@
 ---
 title: Development
-parent: Contributing
-order: 200
 ---
 
 You can use a fully functional local version to develop and test both frontend and backend. It requires at least 2GB RAM or swap enabled.

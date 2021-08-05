@@ -1,8 +1,5 @@
 ---
 title: Interface Translations
-menuTitle: Translations
-parent: Contributing
-order: 300
 ---
 
 ## Add a New Language to Remark42

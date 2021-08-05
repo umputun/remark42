@@ -1,7 +1,5 @@
 ---
 title: Authorization
-parent: Configuration
-order: 200
 ---
 
 ## OAuth Providers

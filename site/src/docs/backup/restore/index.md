@@ -1,8 +1,5 @@
 ---
 title: Restore Backup
-menuTitle: Restore
-parent: Backup
-order: 300
 ---
 
 Restore will clean all comments first and then will process with complete import from a given file.

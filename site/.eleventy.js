@@ -1,6 +1,5 @@
 const { format } = require('date-fns')
 const htmlmin = require('html-minifier')
-const navigationPlugin = require('@11ty/eleventy-navigation')
 const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
 
 function noteContainer() {
@@ -68,7 +67,7 @@ module.exports = function (eleventyConfig) {
 
 	eleventyConfig.addFilter(
 		'debug',
-		(content) => `<pre>${JSON.stringify(content, null, 2)}</pre>`
+		(content = {}) => `<pre>${JSON.stringify(content, null, 2)}</pre>`
 	)
 
 	// Minify HTML output
@@ -85,7 +84,6 @@ module.exports = function (eleventyConfig) {
 
 	eleventyConfig.setLibrary('md', getMarkdownLib())
 	eleventyConfig.addPlugin(syntaxHighlightPlugin)
-	eleventyConfig.addPlugin(navigationPlugin)
 
 	eleventyConfig.addCollection('docs', (collection) =>
 		collection.getFilteredByGlob('src/docs/**/*.md')

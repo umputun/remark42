@@ -1,7 +1,5 @@
 ---
 title: API
-parent: Contributing
-order: 400
 ---
 
 ## Authorization

@@ -1,7 +1,5 @@
 ---
 title: Technical Details
-order: 600
-parent: Contributing
 ---
 
 Remark42 uses boltdb (embedded key/value database) files under `STORE_BOLT_PATH` for storing data. Each site stored in a separate boltbd file.
