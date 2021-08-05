@@ -1,8 +1,18 @@
 .root {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px solid rgba(var(--white-color), 0.2);
   border-right-color: rgb(var(--white-color));
   animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
