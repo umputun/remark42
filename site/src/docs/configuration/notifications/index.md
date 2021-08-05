@@ -16,7 +16,7 @@ In order to integrate notifications from remark42 with the [slack](https://slack
 2. Click the OAuth & Permissions tab in the left sidebar.
 3. Below Bot Token Scopes, select the `chat:write`, `chat:write.public` and `channels:read` scopes. Then click Add an OAuth Scope.
 4. Scroll to the top of the page, and click on Install to workspace.
-5. You should see the "_View basic information about public channels in your workspace_",  "_Send Message as ..._" and "_Send messages to channels ... isn't a member of_" as the permission, then click allow.
+5. You should see the "_View basic information about public channels in your workspace_", "_Send Message as ..._" and "_Send messages to channels ... isn't a member of_" as the permission, then click allow.
 6. You can then see you token, in the form of `xoxb-...-...-...`
 
 ### Remark42 configuration
@@ -38,15 +38,16 @@ By default, the notification are sent to the `general` channel on slack. If you 
 If all goes fine, you should be able to see the following message on your Slack notification channel:
 
 > New comment from _author_ -> _original author_
->> [Demo | Remark42](http://127.0.0.1:8080/web/#remark42__comment-11288987987)
->> This is the comment written by _author_
-
+>
+> > [Demo | Remark42](http://127.0.0.1:8080/web/#remark42__comment-11288987987)
+> > This is the comment written by _author_
 
 ## Telegram
 
 ### Telegram notifications for administrators
 
 In order to integrate notifications about any comment on your sites with remark42 with [telegram](https://telegram.org)
+
 1. Set `NOTIFY_ADMINS=telegram`
 1. Make [a channel](https://telegram.org/faq_channels) and add it to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
 1. Get a token according to the instruction below and add it to the configuration as well

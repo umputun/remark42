@@ -71,14 +71,14 @@ Here is `docker-compose.yml` configuration part spinning up a container for
 ```yaml
 mailgun:
   image: stevenolen/mailgun-smtp-server
-  container_name: 'mail'
-  hostname: 'mail'
+  container_name: "mail"
+  hostname: "mail"
 
   logging:
     driver: json-file
     options:
-      max-size: '10m'
-      max-file: '5'
+      max-size: "10m"
+      max-file: "5"
 
   environment:
     - MG_KEY=key-123456789
@@ -124,14 +124,14 @@ Here is `docker-compose.yml` configuration part spinning up a container for
 ```yaml
 sendgrid:
   image: fgribreau/smtp-to-sendgrid-gateway
-  container_name: 'mail'
-  hostname: 'mail'
+  container_name: "mail"
+  hostname: "mail"
 
   logging:
     driver: json-file
     options:
-      max-size: '10m'
-      max-file: '5'
+      max-size: "10m"
+      max-file: "5"
 
   environment:
     - SENDGRID_API=key-123456789

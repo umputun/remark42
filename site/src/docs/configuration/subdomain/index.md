@@ -14,9 +14,9 @@ All README examples show configurations with remark42 on its own subdomain, i.e.
 - The backend `REMARK_URL` parameter will be `https://example.com/remark42`
 
 - And you also need to slightly modify the callback URL for the social media login API's:
-	- Facebook Valid OAuth Redirect URIs: `https://example.com/remark42/auth/facebook/callback`
-	- Google Authorized redirect URIs: `https://example.com/remark42/auth/google/callback`
-	- GitHub Authorised callback URL: `https://example.com/remark42/auth/github/callback`
+  - Facebook Valid OAuth Redirect URIs: `https://example.com/remark42/auth/facebook/callback`
+  - Google Authorized redirect URIs: `https://example.com/remark42/auth/google/callback`
+  - GitHub Authorised callback URL: `https://example.com/remark42/auth/github/callback`
 
 ### docker-compose configuration
 
@@ -25,7 +25,7 @@ Both Nginx and Caddy configuration below relies on remark42 available on hostnam
 Example `docker-compose.yaml`:
 
 ```yaml
-version: '2'
+version: "2"
 services:
   remark42:
     image: umputun/remark42:latest
@@ -40,8 +40,8 @@ services:
       - ./data:/srv/var
     logging:
       options:
-        max-size: '10m'
-        max-file: '1'
+        max-size: "10m"
+        max-file: "1"
 ```
 
 ### Nginx configuration

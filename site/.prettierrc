@@ -1,5 +1,13 @@
 {
 	"semi": false,
 	"singleQuote": true,
-	"arrowParens": "always"
+	"arrowParens": "always",
+	"overrides": [
+		{
+			"files": "*.md",
+			"options": {
+				"singleQuote": false
+			}
+		}
+	]
 }
