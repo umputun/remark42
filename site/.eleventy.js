@@ -52,6 +52,7 @@ module.exports = function (eleventyConfig) {
 	eleventyConfig.addWatchTarget('./.tmp/style.css')
 	eleventyConfig.addPassthroughCopy({ './.tmp/style.css': './style.css' })
 	eleventyConfig.addPassthroughCopy({ './public': './' })
+	eleventyConfig.addPassthroughCopy('./src/**/*.{gif,jpg,png,svg}')
 
 	eleventyConfig.addCollection('pages', (collection) =>
 		collection.getFilteredByGlob('pages/*.md')
