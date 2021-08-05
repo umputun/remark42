@@ -1,7 +1,5 @@
 ---
 title: Migration
-parent: Backup
-order: 300
 ---
 
 Remark42 supports importing comments from Disqus, WordPress, or native backup format. All imported comments have an `Imported` field set to `true`.

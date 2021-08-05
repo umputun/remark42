@@ -1,21 +1,16 @@
-{% macro renderList(entry, level) %}
-	{% if level === 1 %}
-		<h5 class="uppercase font-semibold text-sm text-gray-400 mb-2">{{ entry.title }}</h5>
-	{% else %}
+{% macro navItem(entry) %}
 	<li class="my-1">
-			<a class="py-1 px-2 -mx-2 block rounded text-gray-600 dark:text-gray-300 {% if entry.url === page.url %} bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 hover:text-brand-600{% else %} hover:text-gray-900 dark:hover:text-gray-400{% endif %}" href="{{ entry.url | url }}">{{ entry.title }}</a>
-		{% endif %}
-		{% if entry.children and level < 2 %}
-			<ul class="mb-8 font-medium">
-				{% for child in entry.children %}
-					{{renderList(child, level + 1)}}
-				{% endfor %}
-			</ul>
-		{% endif %}
-		{% if entry.children and level >= 2 and page.url.startsWith(entry.url) %}
+		<a class="py-1 px-2 -mx-2 block rounded text-gray-600 dark:text-gray-300 {% if page.url === '/docs' + entry.href %} bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 hover:text-brand-600{% else %} hover:text-gray-900 dark:hover:text-gray-400{% endif %}" href="/docs{{ entry.href | url }}">
+			{{ entry.title }}
+		</a>
+		{% if entry.children and page.url.startsWith('/docs' + entry.href) %}
 			<ul class="ml-4 font-normal">
-				{% for child in entry.children %}
-					{{renderList(child, level + 1)}}
+				{% for entry in entry.children %}
+					<li class="my-1">
+						<a class="py-1 px-2 -mx-2 block rounded text-gray-600 dark:text-gray-300 {% if page.url === '/docs' + entry.href %} bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 hover:text-brand-600{% else %} hover:text-gray-900 dark:hover:text-gray-400{% endif %}" href="/docs{{ entry.href | url }}">
+							{{ entry.title }}
+						</a>
+					</li>
 				{% endfor %}
 			</ul>
 		{% endif %}
@@ -33,8 +28,15 @@
 		Open Menu
 	</label>
 	<nav class="hidden md:block mr-10">
-		{% for entry in collections.docs | eleventyNavigation %}
-			{{renderList(entry, 1)}}
+		{% for entry in nav %}
+			{% if entry.section %}
+				<h5 class="uppercase font-semibold text-sm text-gray-400 mb-2">{{ entry.section }}</h5>
+			{% endif %}
+			<ul class="mb-8 font-medium">
+				{% for entry in entry.children %}
+					{{ navItem(entry) }}
+				{% endfor %}
+			</ul>
 		{% endfor %}
 	</nav>
 </aside>

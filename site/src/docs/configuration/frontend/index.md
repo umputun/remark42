@@ -1,8 +1,5 @@
 ---
 title: Frontend Configuration
-menuTitle: Frontend
-parent: Configuration
-order: 100
 ---
 
 ## Comments

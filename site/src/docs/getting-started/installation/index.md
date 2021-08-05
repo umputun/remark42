@@ -1,7 +1,5 @@
 ---
 title: Installation
-parent: Getting Started
-order: 100
 ---
 
 ## Setup Remark42 Instance on Your Server

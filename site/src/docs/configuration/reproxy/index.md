@@ -1,7 +1,5 @@
 ---
-title: Reproxy
-parent: Configuration
-order: 600
+title: Configure with Reproxy
 ---
 
 ## How to configure remark42 with [Reproxy](https://reproxy.io)

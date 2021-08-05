@@ -1,8 +1,5 @@
 ---
 title: Configure Instance on Subdomain
-menuTitle: Subdomain
-parent: Configuration
-order: 600
 ---
 
 ## How to configure remark42 without a subdomain

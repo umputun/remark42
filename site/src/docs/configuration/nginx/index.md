@@ -1,8 +1,5 @@
 ---
 title: Configure with Nginx
-menuTitle: Nginx
-parent: Configuration
-order: 500
 ---
 
 ## How to configure remark42 with nginx reverse proxy

@@ -1,9 +1,5 @@
 ---
 title: Frontend Development Guidelines
-menuTitle: Frontend
-key: Frontend Guidelines
-parent: Development
-order: 100
 ---
 
 ### Code Style

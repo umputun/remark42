@@ -1,8 +1,5 @@
 ---
 title: Automatic Backup
-menuTitle: Automatic
-parent: Backup
-order: 400
 ---
 
 Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./var/backup`). Backups kept up to `${MAX_BACKUP_FILES}` (default 10). Each backup file contains exported and gzipped content, i.e. all comments. At any point, the user can restore such backup and revert all comments to the desired state.
