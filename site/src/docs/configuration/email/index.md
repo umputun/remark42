@@ -13,14 +13,14 @@ This documentation describes how to enable the email-related capabilities of Rem
 
   enabling this will let the user log in using their emails:
 
-  ![Email authentication](email_auth.png?raw=true)
+  ![Email authentication](images/email_auth.png)
 
 - email notifications for any users except anonymous:
 
   GitHub or Google or Twitter or any other kind of user gets the ability to get
   email notifications about new replies to their comments (and any of the replies down the tree):
 
-  ![Email notifications subscription](email_notifications.png?raw=true)
+  ![Email notifications subscription](images/email_notifications.png)
 
 ## Setup email server connection
 
@@ -224,6 +224,7 @@ Remark42 uses golang templates for email templating. Templates are located in `b
 For getting access to the files you can use package `templates` from `backend/app/templates`
 
 Now we have following templates:
+
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
   – `email_reply.html.tmpl` – used for sending replies to user comments (when user subscribed to it) and for noticing admins about new comments on a site

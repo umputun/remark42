@@ -11,7 +11,7 @@
 		"yarn": ">=1.22"
 	},
 	"scripts": {
-		"dev": "npm-run-all clean -p dev:*",
+		"dev": "npm run clean && npm run dev:css | npm run dev:11ty",
 		"dev:11ty": "eleventy --serve --watch --quiet",
 		"dev:css": "postcss ./src/styles.css -o .tmp/style.css -w",
 		"build": "cross-env NODE_ENV=production run-s clean build:* --print-label",
