@@ -82,7 +82,7 @@ services:
     labels:
       reproxy.server: remark42.example.com
       reproxy.port: "8080"
-      reproxy.route: '^/(.*)'
-      reproxy.dest: '/$$1'
-      reproxy.ping: '/ping'
+      reproxy.route: "^/(.*)"
+      reproxy.dest: "/$$1"
+      reproxy.ping: "/ping"
 ```

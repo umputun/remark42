@@ -35,67 +35,67 @@ spec:
         app: remark42
     spec:
       containers:
-      - name: remark42
-        image: umputun/remark42:v1.8.1
-        ports:
-        # http:
-        - containerPort: 8080
-        env:
-          - name: REMARK_URL
-            value: "https://comments.mysite.com/"
-          - name: "SITE"
-            value: "mysite.com"
-          - name: SECRET
-            valueFrom:
-              secretKeyRef:
-                name: remark42
-                key: SECRET
-          - name: STORE_BOLT_PATH
-            value: "/srv/var/db"
-          - name: BACKUP_PATH
-            value: "/srv/var/backup"
-          - name: AUTH_GOOGLE_CID
-            valueFrom:
-              secretKeyRef:
-                name: remark42
-                key: AUTH_GOOGLE_CID
-          - name: AUTH_GOOGLE_CSEC
-            valueFrom:
-              secretKeyRef:
-                name: remark42
-                key: AUTH_GOOGLE_CSEC
-          - name: AUTH_GITHUB_CID
-            valueFrom:
-              secretKeyRef:
-                name: remark42
-                key: AUTH_GITHUB_CID
-          - name: AUTH_GITHUB_CSEC
-            valueFrom:
-              secretKeyRef:
-                name: remark42
-                key: AUTH_GITHUB_CSEC
-          - name: ADMIN_SHARED_ID
-            value: "google_b182b5daa0004104b348d9bde762b1880ed9d98d"
-          - name: TIME_ZONE
-            value: "Europe/Dublin"
-        volumeMounts:
-        - name: srvvar
-          mountPath: /srv/var
-        securityContext:
-          readOnlyRootFilesystem: false
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "25Mi"
-          limits:
-            cpu: "1"
-            memory: "1Gi"
+        - name: remark42
+          image: umputun/remark42:v1.8.1
+          ports:
+            # http:
+            - containerPort: 8080
+          env:
+            - name: REMARK_URL
+              value: "https://comments.mysite.com/"
+            - name: "SITE"
+              value: "mysite.com"
+            - name: SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: remark42
+                  key: SECRET
+            - name: STORE_BOLT_PATH
+              value: "/srv/var/db"
+            - name: BACKUP_PATH
+              value: "/srv/var/backup"
+            - name: AUTH_GOOGLE_CID
+              valueFrom:
+                secretKeyRef:
+                  name: remark42
+                  key: AUTH_GOOGLE_CID
+            - name: AUTH_GOOGLE_CSEC
+              valueFrom:
+                secretKeyRef:
+                  name: remark42
+                  key: AUTH_GOOGLE_CSEC
+            - name: AUTH_GITHUB_CID
+              valueFrom:
+                secretKeyRef:
+                  name: remark42
+                  key: AUTH_GITHUB_CID
+            - name: AUTH_GITHUB_CSEC
+              valueFrom:
+                secretKeyRef:
+                  name: remark42
+                  key: AUTH_GITHUB_CSEC
+            - name: ADMIN_SHARED_ID
+              value: "google_b182b5daa0004104b348d9bde762b1880ed9d98d"
+            - name: TIME_ZONE
+              value: "Europe/Dublin"
+          volumeMounts:
+            - name: srvvar
+              mountPath: /srv/var
+          securityContext:
+            readOnlyRootFilesystem: false
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "25Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
       securityContext:
         # Has its own root privilege drop. Can't do runAsUser / runAsGroup.
       volumes:
-       - name: srvvar
-         persistentVolumeClaim:
-           claimName: remark42
+        - name: srvvar
+          persistentVolumeClaim:
+            claimName: remark42
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -104,7 +104,7 @@ metadata:
   namespace: remark42
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
@@ -135,18 +135,18 @@ metadata:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   tls:
-  - hosts:
-    - comments.mysite.com
-    secretName: comments-tls
+    - hosts:
+        - comments.mysite.com
+      secretName: comments-tls
   rules:
-  - host: "comments.mysite.com"
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          serviceName: remark42-web
-          servicePort: 8080
+    - host: "comments.mysite.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              serviceName: remark42-web
+              servicePort: 8080
 ```
 
 Change `storageClassName` if you run on top of different cloud / bare metal.

@@ -28,10 +28,10 @@ Add config for Remark on a page of your site:
 
 ```html
 <script>
-	const remark_config = {
-		host: 'REMARK_URL',
-		site_id: 'YOUR_SITE_ID',
-	}
+  const remark_config = {
+    host: 'REMARK_URL',
+    site_id: 'YOUR_SITE_ID',
+  }
 </script>
 ```
 
@@ -42,10 +42,10 @@ For example:
 
 ```html
 <script>
-	const remark_config = {
-		host: 'https://demo.remark42.com',
-		site_id: 'remark',
-	}
+  const remark_config = {
+    host: 'https://demo.remark42.com',
+    site_id: 'remark',
+  }
 </script>
 ```
 
