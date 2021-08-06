@@ -299,7 +299,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		cancel()
 	}()
 
-	app, err := s.newServerApp()
+	app, err := s.newServerApp(ctx)
 	if err != nil {
 		log.Printf("[PANIC] failed to setup application, %+v", err)
 		return err
@@ -390,7 +390,7 @@ func contains(s string, a []string) bool {
 
 // newServerApp prepares application and return it with all active parts
 // doesn't start anything
-func (s *ServerCommand) newServerApp() (*serverApp, error) {
+func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 
 	if err := makeDirs(s.BackupLocation); err != nil {
 		return nil, errors.Wrap(err, "failed to create backup store")
@@ -444,7 +444,7 @@ func (s *ServerCommand) newServerApp() (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
 	authRefreshCache := newAuthRefreshCache()
-	authenticator, err := s.makeAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
+	authenticator, err := s.makeAuthenticator(ctx, dataService, avatarStore, adminStore, authRefreshCache)
 	if err != nil {
 		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make authenticator")
@@ -765,7 +765,7 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
+func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *auth.Service) error {
 
 	providers := 0
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
@@ -793,16 +793,24 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		providers++
 	}
 	if s.Auth.Telegram {
-		authenticator.AddCustomHandler(
-			&provider.TelegramHandler{
-				ProviderName: "telegram",
-				ErrorMsg:     "❌ Invalid auth request. Please try clicking link again.",
-				SuccessMsg:   "✅ You have successfully authenticated!",
-				Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
-				L:            log.Default(),
-				TokenService: authenticator.TokenService(),
-				AvatarSaver:  authenticator.AvatarProxy(),
-			})
+		telegram := &provider.TelegramHandler{
+			ProviderName: "telegram",
+			ErrorMsg:     "❌ Invalid auth request. Please try clicking link again.",
+			SuccessMsg:   "✅ You have successfully authenticated!",
+			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
+			L:            log.Default(),
+			TokenService: authenticator.TokenService(),
+			AvatarSaver:  authenticator.AvatarProxy(),
+		}
+		// Run Telegram provider in the background
+		go func() {
+			err := telegram.Run(ctx)
+			if err != nil {
+				log.Printf("[ERROR] telegram auth error %+v", err)
+			}
+		}()
+		authenticator.AddCustomHandler(telegram)
+
 		providers++
 	}
 
@@ -1004,7 +1012,7 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
-func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) (*auth.Service, error) {
+func (s *ServerCommand) makeAuthenticator(ctx context.Context, ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) (*auth.Service, error) {
 	authenticator := auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
@@ -1061,7 +1069,7 @@ func (s *ServerCommand) makeAuthenticator(ds *service.DataStore, avas avatar.Sto
 		UseGravatar:       true,
 	})
 
-	if err := s.addAuthProviders(authenticator); err != nil {
+	if err := s.addAuthProviders(ctx, authenticator); err != nil {
 		return nil, err
 	}
 

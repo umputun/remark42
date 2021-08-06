@@ -228,7 +228,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	// create app
-	app, err := opts.newServerApp()
+	app, err := opts.newServerApp(context.Background())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -283,7 +283,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
 
 	// create app
-	app, err := opts.newServerApp()
+	app, err := opts.newServerApp(context.Background())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -312,7 +312,7 @@ func TestServerApp_Failed(t *testing.T) {
 	// RO bolt location
 	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
 	assert.NoError(t, err)
-	_, err = opts.newServerApp()
+	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
 	t.Log(err)
 
@@ -322,7 +322,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.NoError(t, err)
-	_, err = opts.newServerApp()
+	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
 
@@ -332,7 +332,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	_, err = p.ParseArgs([]string{"--backup=/tmp", "----store.bolt.path=/tmp"})
 	assert.NoError(t, err)
-	_, err = opts.newServerApp()
+	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
@@ -343,7 +343,7 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.Error(t, err, "blah is invalid type")
 
 	opts.Store.Type = "blah"
-	_, err = opts.newServerApp()
+	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to make data store engine: unsupported store type blah")
 	t.Log(err)
 
@@ -353,7 +353,7 @@ func TestServerApp_Failed(t *testing.T) {
 	p = flags.NewParser(&opts, flags.Default)
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
 	assert.NoError(t, err)
-	_, err = opts.newServerApp()
+	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
 		"failed to make cache: cache backend initialization, redis PubSub initialisation: "+
 			"problem subscribing to channel remark42-cache on address wrong_address: "+
@@ -699,7 +699,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 }
 
 func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
-	app, err := cmd.newServerApp()
+	app, err := cmd.newServerApp(context.Background())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
