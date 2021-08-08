@@ -11,7 +11,7 @@ type Props = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & {
   selected?: boolean;
 };
 
-export function Button({ children, size, kind, suffix, selected, className, ...props }: Props) {
+export function Button({ children, size, kind, suffix, selected, className, onChange, ...props }: Props) {
   return (
     <button
       className={clsx(className, styles.button, kind && styles[kind], size && styles[size], {

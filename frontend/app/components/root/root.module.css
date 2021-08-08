@@ -1,3 +1,10 @@
+.sortPicker {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  font-size: 14px;
+}
+
 .moreComments {
   display: block;
   max-width: 320px;
