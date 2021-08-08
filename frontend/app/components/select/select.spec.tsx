@@ -5,26 +5,11 @@ import { render } from 'tests/utils';
 import { Select } from './select';
 
 const items = [
-  {
-    label: 'None',
-    value: 'none',
-  },
-  {
-    label: 'Oldest',
-    value: 'oldest',
-  },
-  {
-    label: 'Newest',
-    value: 'newest',
-  },
-  {
-    label: 'Best',
-    value: 'best',
-  },
-  {
-    label: 'Worst',
-    value: 'worst',
-  },
+  { label: 'None', value: 'none' },
+  { label: 'Oldest', value: 'oldest' },
+  { label: 'Newest', value: 'newest' },
+  { label: 'Best', value: 'best' },
+  { label: 'Worst', value: 'worst' },
 ];
 
 describe('<Select/>', () => {
