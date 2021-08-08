@@ -13,7 +13,6 @@ import styles from './sort-picker.module.css';
 
 export function SortPicker() {
   const dispatch = useDispatch();
-  const sort = useSelector((s: StoreState) => s.comments.sort);
   const intl = useIntl();
   const [items, itemsById] = useMemo(() => {
     const sortOptions = {
@@ -27,14 +26,16 @@ export function SortPicker() {
       '+controversy': intl.formatMessage(messages.leastControversial),
     };
     type SortItem = { value: string; label: string };
-    const sort: SortItem[] = Object.entries(sortOptions).map(([k, v]) => ({ value: k, label: v }));
-    const sortById = sort.reduce(
+    const sortItems: SortItem[] = Object.entries(sortOptions).map(([k, v]) => ({ value: k, label: v }));
+    const sortById = sortItems.reduce(
       (accum, s) => ({ ...accum, [s.value]: s }),
       {} as Record<keyof typeof sortOptions, SortItem>
     );
 
-    return [sort, sortById];
+    return [sortItems, sortById];
   }, []);
+  const sort = useSelector((s: StoreState) => s.comments.sort) || items[0].value;
+  const selected = itemsById[sort];
 
   function handleSortChange(evt: Event) {
     const { value } = evt.target as HTMLOptionElement;
@@ -49,7 +50,7 @@ export function SortPicker() {
   return (
     <span className={clsx('sort-picker', styles.root)}>
       <FormattedMessage id="sort-by" defaultMessage="Sort by" />{' '}
-      <Select items={items} selected={itemsById[sort]} onChange={handleSortChange} />
+      <Select items={items} selected={selected} onChange={handleSortChange} />
     </span>
   );
 }
