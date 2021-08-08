@@ -7,7 +7,7 @@ import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
 import { copy } from 'common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode } from 'common/types';
+import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Profile } from 'common/types';
 import { extractErrorMessageFromResponse, FetcherError } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
@@ -144,7 +144,13 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleUserInfoVisibility = () => {
-    postMessageToParent({ profile: this.props.data.user });
+    const profile: Profile = { ...this.props.data.user };
+
+    if (this.props.user?.id === profile.id) {
+      profile.current = '1';
+    }
+
+    postMessageToParent({ profile });
   };
 
   togglePin = () => {
