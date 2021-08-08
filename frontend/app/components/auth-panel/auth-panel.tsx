@@ -1,10 +1,9 @@
 import { h, Component } from 'preact';
-import { useSelector } from 'react-redux';
-import { FormattedMessage, defineMessages, IntlShape, useIntl } from 'react-intl';
+import { FormattedMessage, IntlShape, useIntl } from 'react-intl';
 import b from 'bem-react-helper';
 import clsx from 'clsx';
 
-import { User, Sorting, Theme, PostInfo } from 'common/types';
+import { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
 import { getHandleClickProps } from 'common/accessibility';

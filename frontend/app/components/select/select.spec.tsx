@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent, waitFor } from '@testing-library/preact';
+import { fireEvent } from '@testing-library/preact';
 import { h } from 'preact';
 import { render } from 'tests/utils';
 import { Select } from './select';
