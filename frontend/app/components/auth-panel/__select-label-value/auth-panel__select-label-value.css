@@ -1,9 +1,0 @@
-.auth-panel__select-label-value_focused {
-  outline: 1px dotted;
-  outline-color: inherit;
-
-  @supports (outline-color: -webkit-focus-ring-color) {
-    outline-color: -webkit-focus-ring-color;
-    outline-style: auto;
-  }
-}

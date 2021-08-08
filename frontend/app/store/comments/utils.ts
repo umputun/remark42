@@ -43,12 +43,12 @@ export function getPinnedComments(threads: Node[]): Comment[] {
   return threads.reduce((acc: Comment[], thread: Node) => acc.concat(findPinnedComments(thread)), []);
 }
 
-export function getInitialSort() {
+export function getInitialSort(): Sorting {
   const sort = getItem(LS_SORT_KEY) as Sorting;
 
-  if (sort) {
-    return sort;
+  if (!sort) {
+    return DEFAULT_SORT;
   }
 
-  return DEFAULT_SORT;
+  return sort;
 }

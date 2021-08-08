@@ -21,7 +21,7 @@ import {
   unhideUser,
   signout,
 } from 'store/user/actions';
-import { fetchComments, updateSorting, addComment, updateComment, unsetCommentMode } from 'store/comments/actions';
+import { fetchComments, addComment, updateComment, unsetCommentMode } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
@@ -30,6 +30,7 @@ import { Button } from 'components/auth/components/button';
 import { Preloader } from 'components/preloader';
 import { Settings } from 'components/settings';
 import { AuthPanel } from 'components/auth-panel';
+import { SortPicker } from 'components/sort-picker';
 import { CommentForm } from 'components/comment-form';
 import { Thread } from 'components/thread';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
@@ -39,7 +40,6 @@ import { bindActions } from 'utils/actionBinder';
 import { postMessageToParent, parseMessage } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
-import { Sorting } from 'common/types';
 
 import styles from './root.module.css';
 
@@ -66,7 +66,6 @@ const mapStateToProps = (state: StoreState) => ({
 });
 
 const boundActions = bindActions({
-  updateSorting,
   fetchComments,
   setUser,
   fetchUser,
@@ -129,12 +128,6 @@ export class Root extends Component<Props, State> {
 
     window.addEventListener('message', this.onMessage);
   }
-
-  changeSort = async (sort: Sorting) => {
-    if (sort === this.props.sort) return;
-
-    await this.props.updateSorting(sort);
-  };
 
   checkUrlHash = (e: Event & { newURL: string }) => {
     const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
@@ -224,7 +217,6 @@ export class Root extends Component<Props, State> {
         <AuthPanel
           user={this.props.user}
           hiddenUsers={this.props.hiddenUsers}
-          onSortChange={this.changeSort}
           isCommentsDisabled={isCommentsDisabled}
           postInfo={this.props.info}
           signout={this.props.signout}
@@ -261,7 +253,6 @@ export class Root extends Component<Props, State> {
                   simpleView={StaticStore.config.simple_view}
                 />
               )}
-
               {this.props.pinnedComments.length > 0 && (
                 <div
                   className="root__pinned-comments"
@@ -282,7 +273,9 @@ export class Root extends Component<Props, State> {
                   ))}
                 </div>
               )}
-
+              <div className={clsx('sort-picker', styles.sortPicker)}>
+                <SortPicker />
+              </div>
               {!!this.props.topComments.length && !props.isCommentsLoading && (
                 <div className="root__threads" role="list">
                   {(IS_MOBILE && commentsShown < this.props.topComments.length
@@ -305,7 +298,6 @@ export class Root extends Component<Props, State> {
                   )}
                 </div>
               )}
-
               {props.isCommentsLoading && (
                 <div className="root__threads" role="list">
                   <Preloader className="root__preloader" />
