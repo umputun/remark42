@@ -12,21 +12,20 @@ type Item = {
 type Props = {
   items: Item[];
   selected: Item;
-  onChange?: JSX.GenericEventHandler<HTMLSelectElement>;
-};
+} & Omit<JSX.HTMLAttributes<HTMLSelectElement>, 'className' | 'onFocus' | 'onBlur' | 'selected'>;
 
-export function Select({ items, selected, onChange }: Props) {
+export function Select({ items, selected, ...props }: Props) {
   const [focus, setFocus] = useState(false);
 
   return (
-    <span className={clsx('select', styles.root, focus && styles.rootFocused)}>
+    <span className={clsx('select', styles.root, { [styles.rootFocused]: focus, select_focused: focus })}>
       {selected.label}
       <Arrow className={clsx('select-arrow', styles.arrow)} />
       <select
+        {...props}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
         className={clsx('select-element', styles.select)}
-        onChange={onChange}
       >
         {items.map((i) => (
           <option key={i.value} value={i.value} selected={selected.value === i.value}>
