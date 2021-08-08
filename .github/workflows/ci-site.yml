@@ -38,6 +38,7 @@ jobs:
           USERNAME: ${{ github.actor }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
+        working-directory: ./site
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
@@ -54,6 +55,7 @@ jobs:
           USERNAME: ${{ github.actor }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
+        working-directory: ./site
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
