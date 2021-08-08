@@ -6,7 +6,7 @@ type Props = Omit<JSX.SVGAttributes<SVGSVGElement>, 'size'> & {
 
 export function SignOutIcon({ size = 16, ...props }: Props) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" fill="none" {...props}>
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         stroke="currentColor"
         stroke-linecap="round"
