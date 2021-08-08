@@ -43,10 +43,8 @@ jobs:
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          docker buildx build --push \
-              --build-arg CI=github --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
-              --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/${USERNAME}/remark24-site:${ref} .
+          docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64 э
+            -t ghcr.io/${USERNAME}/remark24-site:${ref} .
 
       - name: deploy tagged (latest) to ghcr.io and dockerhub
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -60,7 +58,5 @@ jobs:
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          docker buildx build --push \
-              --build-arg CI=github --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
-              --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/${USERNAME}/remark24-site:${ref} -t ghcr.io/${USERNAME}/remark24-site:latest
+          docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64 \
+            -t ghcr.io/${USERNAME}/remark24-site:${ref} -t ghcr.io/${USERNAME}/remark24-site:latest
