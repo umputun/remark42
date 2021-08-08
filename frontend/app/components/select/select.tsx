@@ -1,7 +1,9 @@
 import clsx from 'clsx';
-import { Arrow } from 'components/icons/arrow';
 import { h, JSX } from 'preact';
 import { useState } from 'preact/hooks';
+
+import { ArrowIcon } from 'components/icons/arrow';
+
 import styles from './select.module.css';
 
 type Item = {
@@ -20,7 +22,7 @@ export function Select({ items, selected, ...props }: Props) {
   return (
     <span className={clsx('select', styles.root, { [styles.rootFocused]: focus, select_focused: focus })}>
       {selected.label}
-      <Arrow className={clsx('select-arrow', styles.arrow)} />
+      <ArrowIcon className={clsx('select-arrow', styles.arrow)} />
       <select
         {...props}
         onFocus={() => setFocus(true)}
