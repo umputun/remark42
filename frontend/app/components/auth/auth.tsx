@@ -9,7 +9,7 @@ import { Input } from 'components/input';
 import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Spinner } from 'components/spinner/spinner';
-import { Arrow } from 'components/icons/arrow';
+import { ArrowIcon } from 'components/icons/arrow';
 
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
@@ -116,7 +116,7 @@ export function Auth() {
   );
   return (
     <div className={clsx('auth', styles.root)}>
-      <Button className="auth-button" selected={isDropdownShowed} onClick={handleClickSingIn} suffix={<Arrow />}>
+      <Button className="auth-button" selected={isDropdownShowed} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
         {intl.formatMessage(messages.signin)}
       </Button>
       {isDropdownShowed && (
