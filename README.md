@@ -14,7 +14,7 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 * Images upload with drag-and-drop
 * Extractor for recent comments, cross-post
 * RSS for all comments and each post
-* Telegram, Slack and email notifications for Admins (get notified for each new comment)
+* Telegram, Slack, Webhook and email notifications for Admins (get notified for each new comment)
 * Email and Telegram notifications for users (get notified when someone responds to your comment)
 * Export data to JSON with automatic backups
 * No external databases, everything embedded in a single data file
@@ -161,12 +161,16 @@ _this is the recommended way to run Remark42_
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
 | auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
 | notify.users            | NOTIFY_USERS            | none                     | type of user notifications (Telegram, email)    |
-| notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (Telegram, Slack and/or email) |
+| notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (Telegram, Slack, webhook and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | Telegram channel                                |
 | notify.slack.token      | NOTIFY_SLACK_TOKEN      |                          | Slack token                                     |
 | notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | Slack channel                                   |
-| notify.email.fromAddress | NOTIFY_EMAIL_FROM      |                          | from email address                              |
+| notify.webhook.url      | NOTIFY_WEBHOOK_URL      |                          | Webhook notification URL                        |
+| notify.webhook.template | NOTIFY_WEBHOOK_TEMPLATE | `{"text": "{{.Text}}"}`  | Webhook payload template                        |
+| notify.webhook.headers  | NOTIFY_WEBHOOK_HEADERS  |                          | HTTP header in format Header1:Value1,Header2:Value2,...|
+| notify.webhook.timeout  | NOTIFY_WEBHOOK_TIMEOUT  | `5s`                     | Webhook connection timeout                      |
+| notify.email.fromAddress| NOTIFY_EMAIL_FROM       |                          | from email address                              |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification` | verification message subject          |
 | telegram.token          | TELEGRAM_TOKEN          |                          | Telegram token (used for auth and Telegram notifications) |
 | telegram.timeout        | TELEGRAM_TIMEOUT        | `5s`                     | Telegram connection timeout                     |

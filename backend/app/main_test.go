@@ -6,9 +6,11 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -55,6 +57,67 @@ func Test_Main(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
+}
+
+func TestMain_WithWebhook(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "remark42")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	var webhookSent int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.StoreInt32(&webhookSent, 1)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		b, e := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
+
+		assert.Nil(t, e)
+		assert.Equal(t, "Comment: env test", string(b))
+	}))
+	defer ts.Close()
+
+	port := chooseRandomUnusedPort()
+	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
+		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg",
+		"--admin-passwd=password", "--site=remark", "--notify.admins=webhook"}
+
+	err = os.Setenv("NOTIFY_WEBHOOK_URL", ts.URL)
+	assert.NoError(t, err)
+	err = os.Setenv("NOTIFY_WEBHOOK_TEMPLATE", "Comment: {{.Orig}}")
+	assert.NoError(t, err)
+	err = os.Setenv("NOTIFY_WEBHOOK_HEADERS", "Content-Type:application/json")
+	assert.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		<-done
+		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		require.NoError(t, e)
+	}()
+
+	finished := make(chan struct{})
+	go func() {
+		main()
+		assert.Eventuallyf(t, func() bool {
+			return atomic.LoadInt32(&webhookSent) == int32(1)
+		}, time.Second, 100*time.Millisecond, "webhook was not sent")
+		close(finished)
+	}()
+
+	// defer cleanup because require check below can fail
+	defer func() {
+		close(done)
+		<-finished
+	}()
+
+	waitForHTTPServerStart(port)
+
+	resp, err := http.Post(fmt.Sprintf("http://admin:password@localhost:%d/api/v1/comment", port), "",
+		strings.NewReader(`{"text": "env test", "locator":{"url": "https://radio-t.com", "site": "remark"}}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 201, resp.StatusCode)
 }
 
 func TestGetDump(t *testing.T) {
