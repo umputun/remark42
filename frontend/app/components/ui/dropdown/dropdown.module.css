@@ -1,0 +1,19 @@
+.root {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: min-content;
+  background-color: rgb(var(--primary-background-color));
+  box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
+  border-radius: 6px;
+}
+
+.dropdown_bottom-left {
+  left: auto;
+  right: 0;
+}

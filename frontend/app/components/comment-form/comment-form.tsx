@@ -15,11 +15,11 @@ import { Auth } from 'components/auth';
 import { getJsonItem, updateJsonItem } from 'common/local-storage';
 import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 
-import { SubscribeByEmail } from './__subscribe-by-email';
-import { SubscribeByRSS } from './__subscribe-by-rss';
-
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
+import { MdIcon } from 'components/icons/md';
+
+import styles from './comment-form.module.css';
 
 let textareaId = 0;
 
@@ -420,22 +420,6 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     this.setState({ errorLock: false, isDisabled: false, buttonText: null });
   }
 
-  renderMarkdownTip = () => (
-    <div className="comment-form__markdown">
-      <FormattedMessage
-        id="commentForm.notice-about-styling"
-        defaultMessage="Styling with <a>Markdown</a> is supported"
-        values={{
-          a: (title: string) => (
-            <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
-              {title}
-            </a>
-          ),
-        }}
-      />
-    </div>
-  );
-
   render() {
     const { theme, mode, simpleView, mix, uploadImage, autofocus, user, intl } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
@@ -502,43 +486,38 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         <div className="comment-form__actions">
           {user ? (
             <>
-              <div>
-                {!simpleView && (
-                  <Button
-                    kind="secondary"
-                    theme={theme}
-                    size="large"
-                    mix="comment-form__button"
-                    disabled={isDisabled}
-                    onClick={this.getPreview}
-                  >
-                    <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
-                  </Button>
-                )}
-                <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
-                  {label}
+              {!simpleView && (
+                <Button
+                  kind="secondary"
+                  theme={theme}
+                  size="large"
+                  mix="comment-form__button"
+                  disabled={isDisabled}
+                  onClick={this.getPreview}
+                >
+                  <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
                 </Button>
-              </div>
-
+              )}
+              <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+                {label}
+              </Button>
+              {/* TODO: add markdown icon */}
               {!simpleView && mode === 'main' && (
-                <div className="comment-form__rss">
-                  {this.renderMarkdownTip()}
-                  <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-                  <SubscribeByRSS userId={user !== null ? user.id : null} />
-                  {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && (
-                    <>
-                      {' '}
-                      <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
-                    </>
-                  )}
-                </div>
+                <a
+                  className={styles.mdLink}
+                  target="_blank"
+                  href="markdown-help.html"
+                  title={intl.formatMessage({
+                    id: 'commentForm.notice-about-styling',
+                    defaultMessage: 'Styling with Markdown is supported',
+                  })}
+                >
+                  <MdIcon size={24} />
+                </a>
               )}
             </>
           ) : (
-            <>
-              <Auth />
-              {this.renderMarkdownTip()}
-            </>
+            <Auth />
           )}
         </div>
 

@@ -8,7 +8,6 @@ import * as localStorageModule from 'common/local-storage';
 import { TextareaAutosize } from 'components/textarea-autosize';
 
 import { CommentForm, CommentFormProps, messages } from './comment-form';
-import { SubscribeByEmail } from './__subscribe-by-email';
 import { IntlShape } from 'react-intl';
 
 function createEvent<E extends Event, T = unknown>(type: string, value: T): E {
@@ -41,25 +40,6 @@ describe('<CommentForm />', () => {
 
     expect(wrapper.exists('.comment-form__control-panel')).toEqual(false);
     expect(wrapper.exists('.comment-form__button_type_preview')).toEqual(false);
-    expect(wrapper.exists('.comment-form__rss')).toEqual(false);
-  });
-
-  it('should be shallowed with email subscription button', () => {
-    StaticStore.config.email_notifications = true;
-
-    const props = { ...DEFAULT_PROPS, user, intl };
-    const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
-
-    expect(wrapper.exists(SubscribeByEmail)).toEqual(true);
-  });
-
-  it('should be rendered without email subscription button when email_notifications disabled', () => {
-    StaticStore.config.email_notifications = false;
-
-    const props = { ...DEFAULT_PROPS, user, intl };
-    const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
-
-    expect(wrapper.exists(SubscribeByEmail)).toEqual(false);
   });
 
   describe('initial value of comment', () => {

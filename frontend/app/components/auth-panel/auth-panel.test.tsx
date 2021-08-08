@@ -29,16 +29,33 @@ const initialStore = {
 } as const;
 
 const mockStore = createMockStore([] as Middleware[]);
+const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
+  mount(
+    <IntlProvider locale="en" messages={enMessages}>
+      <Provider store={store}>
+        <AuthPanel {...props} />
+      </Provider>
+    </IntlProvider>
+  );
 
 describe('<AuthPanel />', () => {
-  const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
-    mount(
-      <IntlProvider locale="en" messages={enMessages}>
-        <Provider store={store}>
-          <AuthPanel {...props} />
-        </Provider>
-      </IntlProvider>
-    );
+  // it('should be shallowed with email subscription button', () => {
+  //   StaticStore.config.email_notifications = true;
+
+  //   const props = { ...DEFAULT_PROPS, user, intl };
+  //   const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
+
+  //   expect(wrapper.exists(SubscribeByEmail)).toEqual(true);
+  // });
+
+  // it('should be rendered without email subscription button when email_notifications disabled', () => {
+  //   StaticStore.config.email_notifications = false;
+
+  //   const props = { ...DEFAULT_PROPS, user, intl };
+  //   const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
+
+  //   expect(wrapper.exists(SubscribeByEmail)).toEqual(false);
+  // });
 
   describe('For not authorized : null', () => {
     it('should not render settings if there is no hidden users', () => {

@@ -1,0 +1,7 @@
+.mdLink {
+  color: rgb(var(--secondary-text-color));
+
+  &:hover {
+    color: rgb(var(--primary-color));
+  }
+}

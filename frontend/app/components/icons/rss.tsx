@@ -1,14 +1,12 @@
 import { h, JSX } from 'preact';
 
-type Props = Omit<JSX.SVGAttributes<SVGSVGElement>, 'size'> & {
-  size?: number | string;
-};
+type Props = { size?: number } & JSX.HTMLAttributes<SVGSVGElement>;
 
-export function SignOutIcon({ size = 16, ...props }: Props) {
+export function RssIcon({ size = 16, ...props }: Props) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
-        d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"
+        d="M4 11a9 9 0 019 9M4 4a16 16 0 0116 16M5 20a1 1 0 100-2 1 1 0 000 2z"
         stroke="currentColor"
         stroke-width="2"
         stroke-linecap="round"

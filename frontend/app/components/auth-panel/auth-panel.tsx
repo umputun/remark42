@@ -1,6 +1,5 @@
 import { h, Component } from 'preact';
 import { FormattedMessage, IntlShape, useIntl } from 'react-intl';
-import b from 'bem-react-helper';
 import clsx from 'clsx';
 
 import { User, Theme, PostInfo } from 'common/types';
@@ -17,6 +16,10 @@ import { IconButton } from 'components/icon-button/icon-button';
 import { messages } from 'components/auth/auth.messsages';
 
 import styles from './auth-panel.module.css';
+import { SubscribeByRSS } from 'components/subscribe-by-rss';
+import { StaticStore } from 'common/static-store';
+import { SubscribeByEmail } from 'components/subscribe-by-email';
+import { Tooltip } from 'components/ui/tooltip';
 
 interface OwnProps {
   user: User | null;
@@ -71,11 +74,10 @@ class AuthPanelComponent extends Component<Props, State> {
           </div>
           {user.name}
         </button>{' '}
-        <div className={clsx('user-logout-button', styles.userLogoutButton)}>
-          <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
-            <SignOutIcon size="14" />
-          </IconButton>
-        </div>
+        {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && <SubscribeByEmail />}
+        <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
+          <SignOutIcon />
+        </IconButton>
       </div>
     );
   };
@@ -83,7 +85,7 @@ class AuthPanelComponent extends Component<Props, State> {
   renderThirdPartyWarning = () => {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
-      <div className="auth-panel__column">
+      <div>
         <FormattedMessage
           id="authPanel.disabled-cookies"
           defaultMessage="Disable third-party cookies blocking to login or open comments in"
@@ -105,7 +107,7 @@ class AuthPanelComponent extends Component<Props, State> {
       return null;
     }
     return (
-      <div className="auth-panel__column">
+      <div>
         <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />
       </div>
     );
@@ -130,6 +132,7 @@ class AuthPanelComponent extends Component<Props, State> {
 
   renderReadOnlySwitch = () => {
     const { isCommentsDisabled } = this.props;
+
     return (
       <Button
         kind="link"
@@ -146,26 +149,28 @@ class AuthPanelComponent extends Component<Props, State> {
     );
   };
 
-  render({ user, postInfo, theme }: Props, { isBlockedVisible }: State) {
+  render({ user, postInfo }: Props, { isBlockedVisible }: State) {
     const { read_only } = postInfo;
     const isAdmin = user && user.admin;
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
+    const isAuthorized = !!user;
 
     return (
-      <div className={b('auth-panel', {}, { theme, loggedIn: !!user })}>
-        <div className="auth-panel__column">{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
+      <div className={clsx('top-panel', styles.root, { 'top-panel_loggedin': isAuthorized })}>
+        <div className={styles.col}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
-        <div className="auth-panel__column">
-          {isSettingsLabelVisible && this.renderSettingsLabel()}
-          {isSettingsLabelVisible && ' • '}
-          {isAdmin && this.renderReadOnlySwitch()}
-          {isAdmin && read_only && ' • '}
-          {!isAdmin && read_only && (
-            <span className="auth-panel__readonly-label">
+        <div className={styles.col}>
+          {read_only && (
+            <div>
               <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
-            </span>
+            </div>
           )}
+          {isSettingsLabelVisible && <div>{this.renderSettingsLabel()}</div>}
+          {isAdmin && <div>{this.renderReadOnlySwitch()}</div>}
+          <span className={styles.rss}>
+            <SubscribeByRSS userId={user?.id} />
+          </span>
         </div>
       </div>
     );

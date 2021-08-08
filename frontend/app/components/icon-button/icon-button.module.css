@@ -7,10 +7,12 @@
   transition: transfrom 0.15s ease-out;
   border-radius: 2px;
   appearance: none;
+  color: rgb(var(--secondary-text-color));
 
   &:hover {
     transform: scale(1.06);
     transition: transfrom 0.15s ease-in;
+    color: rgb(var(--primary-text-color));
   }
 
   &:active {

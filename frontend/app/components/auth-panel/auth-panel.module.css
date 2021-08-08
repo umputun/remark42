@@ -1,14 +1,27 @@
+.root {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  margin-bottom: 8px;
+  justify-content: space-between;
+  font-size: 14px;
+  line-height: 16px;
+}
+
 .user {
   display: flex;
   align-items: center;
   font-size: 14px;
 }
 
+.user > * + * {
+  margin-left: 4px;
+}
+
 .userButton {
   display: flex;
   align-items: center;
   font-weight: bold;
-  color: rgb(var(--secondary-text-color));
   transition: color 0.15s;
 
   &:hover {
@@ -25,4 +38,29 @@
   width: 20px;
   height: 20px;
   margin-right: 8px;
+}
+
+.col {
+  display: flex;
+  align-items: center;
+}
+
+.col:last-child {
+  margin-left: auto;
+}
+
+.col > * + * {
+  &::before {
+    display: inline-block;
+    content: '•';
+    margin: 0 0.4em;
+  }
+}
+
+.rss {
+  margin-left: 16px;
+
+  &::before {
+    display: none;
+  }
 }
