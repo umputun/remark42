@@ -619,6 +619,29 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 	}
 }
 
+func Test_splitAtCommas(t *testing.T) {
+
+	tbl := []struct {
+		inp string
+		res []string
+	}{
+		{"a string", []string{"a string"}},
+		{"vv1, vv2, vv3", []string{"vv1", "vv2", "vv3"}},
+		{`"vv1, blah", vv2, vv3`, []string{"vv1, blah", "vv2", "vv3"}},
+		{
+			`Access-Control-Allow-Headers:"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type",header123:val, foo:"bar1,bar2"`,
+			[]string{"Access-Control-Allow-Headers:\"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type\"", "header123:val", "foo:\"bar1,bar2\""},
+		},
+		{"", []string{}},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.res, splitAtCommas(tt.inp))
+		})
+	}
+}
+
 func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
 		port = 40000 + int(rand.Int31n(10000))

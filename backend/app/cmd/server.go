@@ -213,7 +213,7 @@ type SMTPGroup struct {
 type NotifyGroup struct {
 	Type      []string `long:"type" env:"TYPE" description:"[deprecated, use user and admin types instead] types of notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","` //nolint
 	Users     []string `long:"users" env:"USERS" description:"types of user notifications" choice:"none" choice:"email" choice:"telegram" default:"none" env-delim:","`                                                        //nolint
-	Admins    []string `long:"admins" env:"ADMINS" description:"types of admin notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" default:"none" env-delim:","`                                      //nolint
+	Admins    []string `long:"admins" env:"ADMINS" description:"types of admin notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" choice:"webhook" default:"none" env-delim:","`                     //nolint
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Channel string        `long:"chan" env:"CHAN" description:"telegram channel for admin notifications"`
@@ -230,6 +230,12 @@ type NotifyGroup struct {
 		Token   string `long:"token" env:"TOKEN" description:"slack token"`
 		Channel string `long:"chan" env:"CHAN" description:"slack channel"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
+	Webhook struct {
+		WebhookURL string        `long:"url" env:"URL" description:"webhook notification URL"`
+		Template   string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
+		Headers    []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,..."` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
+		Timeout    time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
+	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
 
 // SSLGroup defines options group for server ssl params
@@ -903,6 +909,25 @@ func (s *ServerCommand) makeNotify(dataStore *service.DataStore, authenticator *
 	var destinations []notify.Destination
 	var telegramBotUsername string
 
+	if contains("webhook", s.Notify.Admins) {
+		client := &http.Client{Timeout: 5 * time.Second}
+		webhookHeaders := s.Notify.Webhook.Headers
+		if len(webhookHeaders) == 0 {
+			webhookHeaders = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside "", parsed separately
+		}
+
+		whParams := notify.WebhookParams{
+			WebhookURL: s.Notify.Webhook.WebhookURL,
+			Template:   s.Notify.Webhook.Template,
+			Headers:    webhookHeaders,
+		}
+		webhook, err := notify.NewWebhook(client, whParams)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "failed to create webhook notification destination")
+		}
+		destinations = append(destinations, webhook)
+	}
+
 	if contains("slack", s.Notify.Admins) {
 		slack, err := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
 		if err != nil {
@@ -1089,6 +1114,49 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 	default:
 		return http.SameSiteDefaultMode
 	}
+}
+
+// splitAtCommas split s at commas, ignoring commas in strings.
+// Eliminate leading and trailing dbl quotes in each element only if both presented
+// based on https://stackoverflow.com/a/59318708
+func splitAtCommas(s string) []string {
+
+	cleanup := func(s string) string {
+		if s == "" {
+			return s
+		}
+		res := strings.TrimSpace(s)
+		if res[0] == '"' && res[len(res)-1] == '"' {
+			res = strings.TrimPrefix(res, `"`)
+			res = strings.TrimSuffix(res, `"`)
+		}
+		return res
+	}
+
+	var res []string
+	var beg int
+	var inString bool
+
+	for i := 0; i < len(s); i++ {
+		if s[i] == ',' && !inString {
+			res = append(res, cleanup(s[beg:i]))
+			beg = i + 1
+			continue
+		}
+
+		if s[i] == '"' {
+			if !inString {
+				inString = true
+			} else if i > 0 && s[i-1] != '\\' { // also allow \"
+				inString = false
+			}
+		}
+	}
+	res = append(res, cleanup(s[beg:]))
+	if len(res) == 1 && res[0] == "" {
+		return []string{}
+	}
+	return res
 }
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
