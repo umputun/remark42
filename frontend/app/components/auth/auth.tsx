@@ -8,6 +8,8 @@ import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
+import { Spinner } from 'components/spinner/spinner';
+import { Arrow } from 'components/icons/arrow';
 
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
@@ -17,7 +19,6 @@ import { getProviders, getTokenInvalidReason } from './auth.utils';
 import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
 
 import styles from './auth.module.css';
-import { Spinner } from 'components/spinner/spinner';
 
 export function Auth() {
   const intl = useIntl();
@@ -115,22 +116,7 @@ export function Auth() {
   );
   return (
     <div className={clsx('auth', styles.root)}>
-      <Button
-        className="auth-button"
-        selected={isDropdownShowed}
-        onClick={handleClickSingIn}
-        suffix={
-          <svg width="14" height="14" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M6 11.5L14.5 19L22 11"
-              stroke="currentColor"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        }
-      >
+      <Button className="auth-button" selected={isDropdownShowed} onClick={handleClickSingIn} suffix={<Arrow />}>
         {intl.formatMessage(messages.signin)}
       </Button>
       {isDropdownShowed && (
