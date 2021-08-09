@@ -15,11 +15,16 @@
 			{ "title": "Frontend", "href": "/configuration/frontend/" },
 			{ "title": "Authorization", "href": "/configuration/authorization/" },
 			{ "title": "Email", "href": "/configuration/email/" },
-			{ "title": "Notifications", "href": "/configuration/notifications/" },
-			{ "title": "Nginx", "href": "/configuration/nginx/" },
-			{ "title": "Reproxy", "href": "/configuration/reproxy/" },
-			{ "title": "Subdomain", "href": "/configuration/subdomain/" },
-			{ "title": "Kubernetes", "href": "/configuration/kubernetes/" }
+			{ "title": "Notifications", "href": "/configuration/notifications/" }
+		]
+	},
+	{
+		"section": "Manuals",
+		"children": [
+			{ "title": "Subdomain", "href": "/manuals/subdomain/" },
+			{ "title": "Reproxy", "href": "/manuals/reproxy/" },
+			{ "title": "Nginx", "href": "/manuals/nginx/" },
+			{ "title": "Kubernetes", "href": "/manuals/kubernetes/" }
 		]
 	},
 	{
