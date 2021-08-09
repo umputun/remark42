@@ -1,4 +1,4 @@
-import { COUNTER_NODE_CLASSNAME, BASE_URL, API_BASE } from 'common/constants.config';
+import { BASE_URL, API_BASE } from 'common/constants.config';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -7,6 +7,7 @@ if (document.readyState === 'loading') {
 }
 
 function init(): void {
+  const COUNTER_NODE_CLASSNAME = 'remark42__counter';
   const nodes = Array.from(document.getElementsByClassName(COUNTER_NODE_CLASSNAME)) as HTMLElement[];
 
   if (!nodes) {
