@@ -1,7 +1,6 @@
 import { Sorting, Theme } from './types';
 
 export { BASE_URL, API_BASE, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from './constants.config';
-export const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 export const MAX_SHOWN_ROOT_COMMENTS = 10;
 
 export const DEFAULT_SORT: Sorting = '-active';
