@@ -1,4 +1,4 @@
-name: frontend
+name: site
 
 on:
   push:
