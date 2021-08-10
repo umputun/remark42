@@ -8,11 +8,11 @@ Authentication handled by external providers. You should setup OAuth2 for all (o
 
 ### Facebook
 
-1. From https://developers.facebook.com select **"My Apps"**/**"Add a new App"**
-2. Set **"Display Name"** and **"Contact email"**
-3. Choose **"Facebook Login"** and then **"Web"**
-4. Set "Site URL" to your domain, e.g.: `https://remark42.mysite.com`
-5. Under **"Facebook login"**/**"Settings"** fill "Valid OAuth redirect URIs" with your callback URL constructed as domain + `/auth/facebook/callback`
+1. Open the list of apps on [Facebook Developers Platform](https://developers.facebook.com/apps)
+2. Create a new app with [this manual](https://developers.facebook.com/docs/development/create-an-app/) or use existing app
+3. Open your app and choose **"Facebook Login"** and then **"Web"**
+4. Set **"Site URL"** to your domain, e.g.: `https://remark42.mysite.com`
+5. Under **"Facebook login" / "Settings"** fill "Valid OAuth redirect URIs" with your callback URL constructed as domain plus `/auth/facebook/callback`, e.g `https://remark42.mysite.com/auth/facebook/callback`
 6. Select **"App Review"** and turn public flag on. This step may ask you to provide a link to your privacy policy
 
 ### GitHub
