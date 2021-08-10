@@ -28,7 +28,7 @@ Remark42 gives you opportunity to have self-hosted, lightweight, and simple (yet
 * Self-contained executable can be deployed directly to Linux, Windows and macOS
 * Clean, lightweight and customizable UI with white and dark themes
 * Multi-site mode from a single instance
-* Integration with automatic SSL (direct and via nginx-le)
+* Integration with automatic SSL (direct or via reproxy)
 * Privacy focused
 
 <div class="text-right italic">— The Remark42 Team</div>
