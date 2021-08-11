@@ -60,3 +60,9 @@ jobs:
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
           docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64 \
             -t ghcr.io/${USERNAME}/remark24-site:${ref} -t ghcr.io/${USERNAME}/remark24-site:latest
+
+      - name: remote site deployment from master
+        if: ${{ github.ref == 'refs/heads/master' }}
+        env:
+          UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
+        run: curl https://jess.umputun.com/update/remark42-site/${UPDATER_KEY}
