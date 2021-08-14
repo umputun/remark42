@@ -33,6 +33,29 @@ SMTP_PASSWORD
 SMTP_TIMEOUT
 ```
 
+## Setup email notifications
+
+### User notifications
+
+Here is the list of variables which affect user email notifications:
+
+```yaml
+NOTIFY_USERS=email
+NOTIFY_EMAIL_FROM=notify@example.com
+NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
+```
+
+### Admin notifications
+
+
+Here is the list of variables which affect admin notifications, which will be sent for each new comment on your site:
+
+```yaml
+NOTIFY_ADMINS=email
+NOTIFY_EMAIL_FROM=notify@example.com
+ADMIN_SHARED_EMAIL=admin@example.com
+```
+
 ### Mailgun
 
 This is an example of a configuration using [Mailgun](https://www.mailgun.com/) email service:
@@ -192,27 +215,6 @@ Usually, you don't need to change/set anything else. In case if you want to use 
 email template set `AUTH_EMAIL_TEMPLATE`, for instance
 `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`.
 See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
-
-## Setup email notifications
-
-Here is the list of variables which affect email notifications:
-
-```yaml
-NOTIFY_USERS
-NOTIFY_EMAIL_FROM
-NOTIFY_EMAIL_VERIFICATION_SUBJ
-# for administrator notifications for new comments on their site
-ADMIN_SHARED_EMAIL
-NOTIFY_ADMINS
-```
-
-After you set `SMTP_` variables, you can allow email notifications by setting these two variables:
-
-```yaml
-- NOTIFY_USERS=email
-# - NOTIFY_USERS=email,telegram # this is in case you want to have both email and telegram notifications enabled
-- NOTIFY_EMAIL_FROM=notify@example.com
-```
 
 ## Email messages templates
 
