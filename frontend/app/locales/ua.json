@@ -3,7 +3,7 @@
   "auth.email-address": "Email адреса",
   "auth.loading": "Завантаження...",
   "auth.oauth-button": "Увійти через {provider}",
-  "auth.oauth-source": "Використати соцільну мережу",
+  "auth.oauth-source": "Використати соціальну мережу",
   "auth.open-profile": "Відкрити мій профіль",
   "auth.or": "або",
   "auth.signin": "Увійти",
