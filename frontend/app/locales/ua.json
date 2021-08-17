@@ -2,7 +2,7 @@
   "auth.back": "Назад",
   "auth.email-address": "Email адреса",
   "auth.loading": "Завантаження...",
-  "auth.oauth-button": "Увійти через {provider}",
+  "auth.oauth-button": "Увійти за допомогою {provider}",
   "auth.oauth-source": "Використати соціальну мережу",
   "auth.open-profile": "Відкрити мій профіль",
   "auth.or": "або",
