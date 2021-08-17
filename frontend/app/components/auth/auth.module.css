@@ -195,3 +195,8 @@
   color: var(--error-color);
   line-height: 1.2;
 }
+
+.qr {
+  display: block;
+  margin: 0 auto 1.5rem auto;
+}

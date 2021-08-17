@@ -1,4 +1,4 @@
-import type { User, BlockedUser } from 'common/types';
+import type { User, BlockedUser, TelegramParams } from 'common/types';
 
 import {
   USER_SET,
@@ -10,6 +10,8 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
+  TELEGRAM_PARAMS_SET,
+  TELEGRAM_PARAMS_SET_ACTION,
 } from './types';
 
 export const user = (state: User | null = null, action: USER_ACTIONS): User | null => {
@@ -68,6 +70,19 @@ export const hiddenUsers = (state: { [id: string]: User } = {}, action: USER_ACT
       const newState = { ...state };
       delete newState[action.id];
       return newState;
+    }
+    default:
+      return state;
+  }
+};
+
+export const telegramParams = (
+  state: TelegramParams | null = null,
+  action: TELEGRAM_PARAMS_SET_ACTION
+): TelegramParams | null => {
+  switch (action.type) {
+    case TELEGRAM_PARAMS_SET: {
+      return action.telegramParams;
     }
     default:
       return state;

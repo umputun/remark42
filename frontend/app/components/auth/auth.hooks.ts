@@ -33,7 +33,13 @@ export function useDropdown(disableClosing?: boolean) {
     }
 
     function handleClickOutside(evt: MouseEvent) {
-      if (disableClosing || dropdownElement?.contains(evt.target as HTMLDivElement)) {
+      if (
+        disableClosing ||
+        dropdownElement?.contains(evt.target as HTMLDivElement) ||
+        (evt.target as Element).classList?.contains('telegram-auth')
+        // telegram button is gone from dropdown render by the time of this check
+        // without that condition click on telegram button considered as outside click
+      ) {
         return;
       }
 

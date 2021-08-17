@@ -1,10 +1,17 @@
-import { User, BlockedUser } from 'common/types';
+import { User, BlockedUser, TelegramParams } from 'common/types';
 
 export const USER_SET = 'USER/SET';
+
+export const TELEGRAM_PARAMS_SET = 'TELEGRAM_PARAMS/SET';
 
 export interface USER_SET_ACTION {
   type: typeof USER_SET;
   user: User | null;
+}
+
+export interface TELEGRAM_PARAMS_SET_ACTION {
+  type: typeof TELEGRAM_PARAMS_SET;
+  telegramParams: TelegramParams | null;
 }
 
 /**

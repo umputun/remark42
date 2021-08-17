@@ -2,9 +2,10 @@ import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import QRCode from 'qrcode.react';
 
-import { setUser } from 'store/user/actions';
+import { setTelegramParams, setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
@@ -16,19 +17,22 @@ import { OAuth } from './components/oauth';
 import { messages } from './auth.messsages';
 import { useDropdown } from './auth.hooks';
 import { getProviders, getTokenInvalidReason } from './auth.utils';
-import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
+import { emailSignin, verifyEmailSignin, anonymousSignin, verifyTelegramSignin } from './auth.api';
+import { StoreState } from 'store';
 
 import styles from './auth.module.css';
 
 export function Auth() {
   const intl = useIntl();
   const dispatch = useDispatch();
+  const telegramParams = useSelector((s: StoreState) => s.telegramParams);
   const [oauthProviders, formProviders] = getProviders();
 
   // UI State
   const [isLoading, setLoading] = useState(false);
   const [view, setView] = useState<typeof formProviders[number] | 'token'>(formProviders[0]);
-  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token');
+  const [isTelegramShown, toggleTelegram] = useState(false);
+  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || isTelegramShown);
 
   // Errors
   const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
@@ -42,6 +46,7 @@ export function Auth() {
     evt.preventDefault();
     setView(formProviders[0]);
     toggleDropdownState();
+    toggleTelegram(false);
   }
 
   function handleProviderChange(evt: Event) {
@@ -96,6 +101,23 @@ export function Auth() {
     setLoading(false);
   }
 
+  async function handleTelegramSubmit(evt: Event) {
+    evt.preventDefault();
+    setLoading(true);
+    setInvalidReason(null);
+    if (telegramParams) {
+      try {
+        const user = await verifyTelegramSignin(telegramParams.token);
+        dispath(setUser(user));
+        toggleTelegram(false);
+        dispath(setTelegramParams(null));
+      } catch (e) {
+        setInvalidReason(e.message || e.error);
+      }
+      setLoading(false);
+    }
+  }
+
   function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
     setView('email');
@@ -122,7 +144,68 @@ export function Auth() {
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
-            {isTokenView ? (
+            {isTelegramShown && telegramParams ? (
+              <>
+                <div className={clsx('auth-row', styles.row)}>
+                  <div className={styles.backButton}>
+                    <Button
+                      className="auth-back-button"
+                      size="xs"
+                      kind="transparent"
+                      onClick={() => toggleTelegram(false)}
+                    >
+                      <svg
+                        className={styles.backButtonArrow}
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M8.75 3L5 7.25L9 11"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      {intl.formatMessage(messages.back)}
+                    </Button>
+                  </div>
+                  <button
+                    className={clsx('auth-close-button', styles.closeButton)}
+                    title="Close sign-in dropdown"
+                    onClick={handleDropdownClose}
+                  >
+                    <CrossIcon />
+                  </button>
+                </div>
+                <p>
+                  {intl.formatMessage(messages.telegramMessage1)}{' '}
+                  <a
+                    href={`https://t.me/${telegramParams.bot}/?start=${telegramParams.token}`}
+                    className="comment-form__markdown-link"
+                  >
+                    {intl.formatMessage(messages.telegramLink)}
+                  </a>
+                  {window.screen.width >= 768 && ` ${intl.formatMessage(messages.telegramOptionalQR)}`}{' '}
+                  {intl.formatMessage(messages.telegramMessage2)}
+                  <br />
+                  {intl.formatMessage(messages.telegramMessage3)}
+                </p>
+                {window.screen.width >= 768 && (
+                  <QRCode
+                    value={`https://t.me/${telegramParams.bot}/?start=${telegramParams.token}`}
+                    className={clsx('qr', styles.qr)}
+                  />
+                )}
+                <Button key="submit" className="auth-submit" type="submit" onClick={handleTelegramSubmit}>
+                  {intl.formatMessage(messages.telegramCheck)}
+                </Button>
+                {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
+              </>
+            ) : isTokenView ? (
               <>
                 <div className={clsx('auth-row', styles.row)}>
                   <div className={styles.backButton}>
@@ -171,7 +254,7 @@ export function Auth() {
                     <h5 className={clsx('auth-form-title', styles.title)}>
                       {intl.formatMessage(messages.oauthSource)}
                     </h5>
-                    <OAuth providers={oauthProviders} />
+                    <OAuth providers={oauthProviders} toggleTelegram={toggleTelegram} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (
