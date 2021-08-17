@@ -28,7 +28,7 @@
   "comment.block-user": "Заблокувати користувача {userName} {duration}?",
   "comment.blocked-user": "Заблокованний",
   "comment.blocking-period": "Період блокування",
-  "comment.cancel": "Відмінити",
+  "comment.cancel": "Скасувати",
   "comment.controversy": "Суперечливість: {value}",
   "comment.copied": "Скопійовано!",
   "comment.copy": "Скопіювати",
