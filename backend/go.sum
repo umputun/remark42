@@ -107,6 +107,8 @@ github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-pkgz/auth v1.17.0 h1:m6seF+WbIUlLM96RNZvdq0kKDzZ8ynMOQpANJ1YDviQ=
 github.com/go-pkgz/auth v1.17.0/go.mod h1:KhMsOKhNU8fJbWKUYPhfGaYGgnZuSOIs52ojELWxOUk=
+github.com/go-pkgz/auth v1.17.1-0.20210817211320-fed26c31c35c h1:khIhLaxSlY6vxbAFYrxcePBJ7uuZTezKxZkiQ417cng=
+github.com/go-pkgz/auth v1.17.1-0.20210817211320-fed26c31c35c/go.mod h1:KhMsOKhNU8fJbWKUYPhfGaYGgnZuSOIs52ojELWxOUk=
 github.com/go-pkgz/expirable-cache v0.0.3 h1:rTh6qNPp78z0bQE6HDhXBHUwqnV9i09Vm6dksJLXQDc=
 github.com/go-pkgz/expirable-cache v0.0.3/go.mod h1:+IauqN00R2FqNRLCLA+X5YljQJrwB179PfiAoMPlTlQ=
 github.com/go-pkgz/jrpc v0.2.0 h1:CLy/eZyekjraVrxZV18N2R1mYLMJ/nWrgdfyIOGPY/E=

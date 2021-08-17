@@ -192,9 +192,15 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		token, err := randToken()
 		if err != nil {
 			rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to generate code")
+			return
 		}
 
 		th.requests.Lock()
+		if th.requests.data == nil {
+			th.requests.Unlock()
+			rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, errors.New("run goroutine is not running"), "failed to process login request")
+			return
+		}
 		th.requests.data[token] = tgAuthRequest{
 			expires: time.Now().Add(tgAuthRequestLifetime),
 		}
@@ -236,8 +242,11 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 	claims := authtoken.Claims{
 		User: &u,
 		StandardClaims: jwt.StandardClaims{
-			Id:     queryToken,
-			Issuer: th.ProviderName,
+			Audience:  r.URL.Query().Get("site"),
+			Id:        queryToken,
+			Issuer:    th.ProviderName,
+			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 		SessionOnly: false, // TODO
 	}
@@ -255,11 +264,11 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 	delete(th.requests.data, queryToken)
 }
 
-// AuthHandler does nothing since we're don't have any callbacks
-func (th *TelegramHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {}
+// AuthHandler does nothing since we don't have any callbacks
+func (th *TelegramHandler) AuthHandler(_ http.ResponseWriter, _ *http.Request) {}
 
 // LogoutHandler - GET /logout
-func (th *TelegramHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (th *TelegramHandler) LogoutHandler(w http.ResponseWriter, _ *http.Request) {
 	th.TokenService.Reset(w)
 }
 

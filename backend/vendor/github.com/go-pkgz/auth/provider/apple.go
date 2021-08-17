@@ -217,7 +217,7 @@ func (ah *AppleHandler) initPrivateKey() error {
 	return nil
 }
 
-// tokenKeyFunc use for verify JWT sign, it receive the parsed token and should return the key for validating.
+// tokenKeyFunc use for verify JWT sign, it receives the parsed token and should return the key for validating.
 func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (interface{}, error) {
 	if jwtToken == nil {
 		return nil, errors.New("failed to call token keyFunc, because token is nil")
