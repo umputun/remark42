@@ -108,6 +108,7 @@
   "errors.unexpected-error": "문제가 발생했습니다.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "고정된 댓글",
   "root.powered-by": "<a>Remark42</a> 제공",
   "root.show-more": "더보기",

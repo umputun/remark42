@@ -108,6 +108,7 @@
   "errors.unexpected-error": "出了些问题。",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "固定的评论",
   "root.powered-by": "由 <a>Remark42</a> 提供支持",
   "root.show-more": "显示更多",

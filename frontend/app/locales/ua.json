@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Щось пішло не так.",
   "profile.close": "Закрити профіль",
   "profile.request-to-delete-data": "Зробити запит на знищення моїх даних",
+  "retry": "Retry",
   "root.pinned-comments": "Закріпленні коментарі",
   "root.powered-by": "Powered by <a>Remark42</a>",
   "root.show-more": "Показати ще",

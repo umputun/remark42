@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Coś poszło nie tak.",
   "profile.close": "Zamknij profil",
   "profile.request-to-delete-data": "Poproś o usunięcie moich danych",
+  "retry": "Retry",
   "root.pinned-comments": "Przypięte komentarze",
   "root.powered-by": "Obsługiwane przez <a>Remark42</a>",
   "root.show-more": "Pokaż więcej",

@@ -106,6 +106,7 @@
   "errors.not-authorized": "Yetki yetersiz.",
   "errors.to-many-request": "Maksimum talep limitine ulaştınız.",
   "errors.unexpected-error": "Bir hata oluştu.",
+  "retry": "Retry",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
   "root.pinned-comments": "Sabitlenmiş yorumlar",

@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Jotain meni pieleen.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "Kiinnitetyt kommentit",
   "root.powered-by": "Powered by <a>Remark42</a>",
   "root.show-more": "Näytä lisää",

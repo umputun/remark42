@@ -67,6 +67,11 @@
   padding: 0 16px 16px;
 }
 
+.error {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
 .content::-webkit-scrollbar {
   width: 10px;
 }
@@ -101,6 +106,7 @@
 .info {
   max-width: 100%;
   margin: 0;
+  padding-right: 8px;
   overflow: hidden;
   line-height: 1;
 }
@@ -109,6 +115,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 16px;
   font-weight: 700;
 }
@@ -117,6 +124,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--color13);
 }
@@ -160,7 +168,7 @@
 }
 
 .preloader {
-  margin: 0 auto 18px;
+  margin: 0 auto;
   color: var(--color13);
 }
 

@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Leider ist etwas schiefgegangen.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "Angeheftete Kommentare",
   "root.powered-by": "Unterstützt von <a>Remark42</a>",
   "root.show-more": "Mehr anzeigen",

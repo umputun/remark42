@@ -1,6 +1,5 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
-import { waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -43,48 +42,68 @@ const commentsStub = [commentStub, commentStub, commentStub];
 describe('<Profile />', () => {
   it('should render preloader', () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
-    const { container } = render(<Profile />);
+    const { queryByLabelText, queryByRole } = render(<Profile />);
 
-    expect(container.querySelector('[aria-label="Loading..."]')).toBeInTheDocument();
+    expect(queryByLabelText('Loading...')).toBeInTheDocument();
+    expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+    expect(queryByRole('heading', { name: /recent comments/i })).not.toBeInTheDocument();
+  });
+
+  it('should render error', async () => {
+    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
+    jest.spyOn(api, 'getUserComments').mockImplementation(async () => {
+      throw new Error('error');
+    });
+    const { queryByLabelText, queryByRole, findByRole } = render(<Profile />);
+
+    expect(await findByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
+    expect(queryByRole('heading', { name: /recent comments/i })).not.toBeInTheDocument();
   });
 
   it('should render without comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
     const getUserComments = jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [] }));
 
-    const { getByText } = render(<Profile />);
+    const { findByText, queryByLabelText, queryByRole } = render(<Profile />);
 
-    await waitFor(() => expect(getUserComments).toHaveBeenCalledWith('1'));
-    await waitFor(() => expect(getByText("Don't have comments yet")).toBeInTheDocument());
+    expect(getUserComments).toHaveBeenCalledWith('1');
+    expect(await findByText("Don't have comments yet")).toBeInTheDocument();
+    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
+    expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
   });
 
   it('should render user with comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => userParamsStub);
     jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: commentsStub }));
 
-    const { getByText } = render(<Profile />);
+    const { findByText, queryByLabelText, queryByRole } = render(<Profile />);
 
-    await waitFor(() => expect(getByText('Recent comments')).toBeInTheDocument());
+    expect(await findByText('Recent comments')).toBeInTheDocument();
+    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
+    expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
   });
 
-  it('shoud render current user without comments', async () => {
+  it('should render current user without comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [] }));
 
-    const { getByText, getByTitle } = render(<Profile />);
+    const { getByText, getByTitle, findByText } = render(<Profile />);
 
     expect(getByTitle('Sign Out')).toBeInTheDocument();
     expect(getByText('Request my data removal')).toBeInTheDocument();
+    expect(await findByText("Don't have comments yet")).toBeInTheDocument();
   });
 
-  it('shoud render current user with comments', async () => {
+  it('should render current user with comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
     jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: commentsStub }));
 
-    const { getByText, getByTitle } = render(<Profile />);
+    const { findByText, queryByTitle, queryByText } = render(<Profile />);
 
-    expect(getByTitle('Sign Out')).toBeInTheDocument();
-    expect(getByText('Request my data removal')).toBeInTheDocument();
-    await waitFor(() => expect(getByText('My recent comments')).toBeInTheDocument());
+    expect(queryByTitle('Sign Out')).toBeInTheDocument();
+    expect(queryByText('Request my data removal')).toBeInTheDocument();
+    expect(await findByText('My recent comments')).toBeInTheDocument();
   });
 
   it('should render user without footer', async () => {

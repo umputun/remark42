@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Something went wrong.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "Pinned comments",
   "root.powered-by": "Powered by <a>Remark42</a>",
   "root.show-more": "Show more",
