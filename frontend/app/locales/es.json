@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Algo salió mal.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "Comentarios anclados",
   "root.powered-by": "Con la tecnología de <a>Remark42</a>",
   "root.show-more": "Mostrar más",

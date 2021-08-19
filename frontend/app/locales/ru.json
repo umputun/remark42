@@ -108,6 +108,7 @@
   "errors.unexpected-error": "Что-то пошло не так.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Повторить",
   "root.pinned-comments": "Закрепленные комментарии",
   "root.powered-by": "Работает на базе <a>Remark42</a>",
   "root.show-more": "Показать еще",

@@ -108,6 +108,7 @@
   "errors.unexpected-error": "不明なエラーが発生しました.",
   "profile.close": "Close profile",
   "profile.request-to-delete-data": "Request my data removal",
+  "retry": "Retry",
   "root.pinned-comments": "ピン留めしたコメント",
   "root.powered-by": "提供元: <a>Remark42</a>",
   "root.show-more": "その他を表示",

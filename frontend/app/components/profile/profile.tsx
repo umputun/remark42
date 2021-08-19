@@ -32,9 +32,26 @@ export function Profile() {
   const intl = useIntl();
   const rootRef = useRef<HTMLDivElement>(null);
   const user = useMemo(() => parseQuery(), []);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
   const [isSigningOut, setSigningOut] = useState(false);
+
+  async function fetchUserComments(userId: string) {
+    setIsCommentsLoading(true);
+    setError(false);
+    setComments(null);
+
+    try {
+      const { comments } = await getUserComments(userId);
+
+      setComments(comments);
+    } catch (err) {
+      setError(true);
+    } finally {
+      setIsCommentsLoading(false);
+    }
+  }
 
   function handleClickClose() {
     const rootElement = rootRef.current;
@@ -58,10 +75,12 @@ export function Profile() {
     await signout();
   }
 
+  function handleClickRetryCommentsRequest() {
+    fetchUserComments(user.id);
+  }
+
   useEffect(() => {
-    getUserComments(user.id)
-      .then(({ comments }) => setComments(comments))
-      .catch(() => setError(true));
+    fetchUserComments(user.id);
   }, [user.id]);
 
   useEffect(() => {
@@ -154,11 +173,17 @@ export function Profile() {
         </header>
         <section className={clsx('profile-content', styles.content)}>
           {error && (
-            <p className={clsx('profile-error', styles.error)}>
-              <FormattedMessage id="errors.0" defaultMessage="Something went wrong. Please try again a bit later." />
-            </p>
+            <>
+              <p className={clsx('profile-error', styles.error)}>
+                <FormattedMessage id="errors.0" defaultMessage="Something went wrong. Please try again a bit later." />
+              </p>
+              <Button kind="link" size="sm" onClick={handleClickRetryCommentsRequest}>
+                <FormattedMessage id="retry" defaultMessage="Retry" />
+              </Button>
+            </>
           )}
-          {comments === null ? <Preloader /> : commentsJSX}
+          {isCommentsLoading && <Preloader className={styles.preloader} />}
+          {comments !== null && commentsJSX}
         </section>
         {isCurrent ? (
           <footer className={clsx('profile-footer', styles.footer)}>
