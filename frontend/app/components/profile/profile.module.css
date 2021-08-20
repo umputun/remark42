@@ -67,6 +67,12 @@
   padding: 0 16px 16px;
 }
 
+.errorContent {
+  align-self: center;
+  text-align: center;
+  margin: auto;
+}
+
 .error {
   font-size: 14px;
   margin: 0 0 4px;
@@ -168,7 +174,7 @@
 }
 
 .preloader {
-  margin: 0 auto;
+  margin: auto;
   color: var(--color13);
 }
 

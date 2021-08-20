@@ -61,7 +61,7 @@ describe('<Profile />', () => {
     expect(queryByRole('heading', { name: /recent comments/i })).not.toBeInTheDocument();
   });
 
-  it('should render without comments', async () => {
+  it('should render user without comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
     const getUserComments = jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [] }));
 

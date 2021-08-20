@@ -173,14 +173,14 @@ export function Profile() {
         </header>
         <section className={clsx('profile-content', styles.content)}>
           {error && (
-            <>
+            <div className={styles.errorContent}>
               <p className={clsx('profile-error', styles.error)}>
                 <FormattedMessage id="errors.0" defaultMessage="Something went wrong. Please try again a bit later." />
               </p>
               <Button kind="link" size="sm" onClick={handleClickRetryCommentsRequest}>
                 <FormattedMessage id="retry" defaultMessage="Retry" />
               </Button>
-            </>
+            </div>
           )}
           {isCommentsLoading && <Preloader className={styles.preloader} />}
           {comments !== null && commentsJSX}
