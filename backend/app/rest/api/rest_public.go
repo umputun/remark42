@@ -227,16 +227,21 @@ func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GET /comments?site=siteID&user=id - returns comments for given userID
+// GET /comments?site=siteID&user=id&limit=123&skip=10 - returns comments for given userID
 func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 
-	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
-	if err != nil {
-		limit = 0
+	getNumWithDef := func(key string) int {
+		res, err := strconv.Atoi(r.URL.Query().Get(key))
+		if err != nil {
+			res = 0
+		}
+		return res
 	}
+
+	limit, skip := getNumWithDef("limit"), getNumWithDef("skip")
 
 	resp := struct {
 		Comments []store.Comment `json:"comments,omitempty"`
@@ -247,7 +252,7 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKeyWithUser(r)).Scopes(userID, siteID)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
-		comments, e := s.dataService.User(siteID, userID, limit, 0, rest.GetUserOrEmpty(r))
+		comments, e := s.dataService.User(siteID, userID, limit, skip, rest.GetUserOrEmpty(r))
 		if e != nil {
 			return nil, e
 		}

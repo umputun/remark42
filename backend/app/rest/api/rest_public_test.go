@@ -397,13 +397,15 @@ func TestRest_FindUserComments(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #3", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
+	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah3"}}
 
 	// add 3 comments
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
-	addComment(t, c2, ts)
+	addComment(t, c3, ts)
 
 	// add one deleted
 	id := addComment(t, c2, ts)
@@ -413,22 +415,42 @@ func TestRest_FindUserComments(t *testing.T) {
 	_, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=blah")
 	assert.Equal(t, 400, code, "noting for user blah")
 
-	res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
-	assert.Equal(t, 200, code)
+	{
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
+		assert.Equal(t, 200, code)
 
-	resp := struct {
-		Comments []store.Comment
-		Count    int
-	}{}
+		resp := struct {
+			Comments []store.Comment
+			Count    int
+		}{}
 
-	err = json.Unmarshal([]byte(res), &resp)
-	assert.NoError(t, err)
-	require.Equal(t, 3, len(resp.Comments), "should have 3 comments")
-	assert.Equal(t, 4, resp.Count, "should have 3 count")
+		err = json.Unmarshal([]byte(res), &resp)
+		assert.NoError(t, err)
+		require.Equal(t, 3, len(resp.Comments), "should have 3 comments")
+		assert.Equal(t, 4, resp.Count, "should have 3+1 count") // TODO: fix as we start to skip deleted
 
-	// user comment sorted with -time
-	assert.True(t, resp.Comments[0].Timestamp.After(resp.Comments[1].Timestamp))
-	assert.True(t, resp.Comments[1].Timestamp.After(resp.Comments[2].Timestamp))
+		// user comment sorted with -time
+		assert.True(t, resp.Comments[0].Timestamp.After(resp.Comments[1].Timestamp))
+		assert.True(t, resp.Comments[1].Timestamp.After(resp.Comments[2].Timestamp))
+	}
+
+	{
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev&skip=1&limit=2")
+		assert.Equal(t, 200, code)
+
+		resp := struct {
+			Comments []store.Comment
+			Count    int
+		}{}
+
+		err = json.Unmarshal([]byte(res), &resp)
+		assert.NoError(t, err)
+		require.Equal(t, 2, len(resp.Comments), "should have 2 comments due to the limit")
+		assert.Equal(t, 4, resp.Count, "should have 4 count")
+
+		assert.Equal(t, "https://radio-t.com/blah3", resp.Comments[0].Locator.URL)
+		assert.Equal(t, "https://radio-t.com/blah2", resp.Comments[1].Locator.URL)
+	}
 }
 
 func TestRest_UserInfo(t *testing.T) {
