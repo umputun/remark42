@@ -966,6 +966,7 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
+	c.PostTitle = c.SanitizeText(c.PostTitle)
 	return c
 }
 

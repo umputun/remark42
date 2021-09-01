@@ -172,3 +172,8 @@ func (c *Comment) escapeHTMLWithSome(inp string) string {
 	res = strings.Replace(res, "&amp;", "&", -1)
 	return res
 }
+
+// SanitizeText used to sanitize any input string
+func (c *Comment) SanitizeText(inp string) string {
+	return c.escapeHTMLWithSome(bluemonday.UGCPolicy().Sanitize(inp))
+}

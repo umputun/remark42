@@ -1095,6 +1095,7 @@ func TestService_Find(t *testing.T) {
 		User:      store.User{ID: "user1", Name: "user name"},
 		Score:     1,
 		Votes:     map[string]bool{"id-1": true, "id-2": true, "123456": false},
+		PostTitle: `some title, <a href="http://radio-t.com">link</a>`,
 	}
 	_, err = b.Engine.Create(comment) // create directly with engine, doesn't set Controversy
 	assert.NoError(t, err)
@@ -1107,6 +1108,9 @@ func TestService_Find(t *testing.T) {
 	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
 	assert.Equal(t, "id-1", res[1].ID)
 	assert.InDelta(t, 0, res[1].Controversy, 0.01)
+
+	// make sure title sanitized
+	assert.Equal(t, "some title, &lt;a href=\\\"http://radio-t.com\\\" rel=\\\"nofollow\\\"&gt;link&lt;/a&gt;", res[0].PostTitle)
 }
 
 func TestService_FindSince(t *testing.T) {

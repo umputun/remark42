@@ -224,5 +224,37 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeAsURL(tt.inp))
 		})
 	}
+}
+
+func TestComment_sanitizeText(t *testing.T) {
+
+	tbl := []struct {
+		inp, out string
+	}{
+		{
+			"/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085",
+			"/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085",
+			"https://radio-t.com/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085",
+		},
+		{
+			"<script>alert()</script>something",
+			"something",
+		},
+		{
+			"<a href=javascript:alert(document.domain)//>xxx</a>",
+			"&lt;a/&gt;xxx&lt;/a&gt;",
+		},
+	}
+
+	for i, tt := range tbl {
+		tt := tt
+		c := Comment{}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))
+		})
+	}
 
 }
