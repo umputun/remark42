@@ -1110,7 +1110,7 @@ func TestService_Find(t *testing.T) {
 	assert.InDelta(t, 0, res[1].Controversy, 0.01)
 
 	// make sure title sanitized
-	assert.Equal(t, "some title, &lt;a href=\\\"http://radio-t.com\\\" rel=\\\"nofollow\\\"&gt;link&lt;/a&gt;", res[0].PostTitle)
+	assert.Equal(t, "some title, &lt;a href=\"http://radio-t.com\" rel=\"nofollow\"&gt;link&lt;/a&gt;", res[0].PostTitle)
 }
 
 func TestService_FindSince(t *testing.T) {
