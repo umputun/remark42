@@ -87,16 +87,18 @@ func TestComment_Sanitize(t *testing.T) {
 
 func TestComment_PrepareUntrusted(t *testing.T) {
 	comment := Comment{
-		Text:      `blah`,
-		User:      User{ID: "username"},
-		ParentID:  "p123",
-		ID:        "123",
-		Locator:   Locator{SiteID: "site", URL: "url"},
-		Score:     10,
-		Pin:       true,
-		Deleted:   true,
-		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
-		Votes:     map[string]bool{"uu": true},
+		Text:        `blah`,
+		User:        User{ID: "username"},
+		ParentID:    "p123",
+		ID:          "123",
+		Locator:     Locator{SiteID: "site", URL: "url"},
+		Score:       10,
+		Pin:         true,
+		Deleted:     true,
+		Timestamp:   time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Votes:       map[string]bool{"uu": true},
+		Controversy: 123,
+		Imported:    true,
 	}
 
 	comment.PrepareUntrusted()
@@ -110,6 +112,8 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, make(map[string]bool), comment.Votes)
 	assert.Equal(t, make(map[string]VotedIPInfo), comment.VotedIPs)
 	assert.Equal(t, User{ID: "username"}, comment.User)
+	assert.Equal(t, 0., comment.Controversy)
+	assert.Equal(t, false, comment.Imported)
 
 }
 

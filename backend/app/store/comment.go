@@ -86,9 +86,11 @@ func (c *Comment) PrepareUntrusted() {
 	c.Votes = make(map[string]bool)
 	c.VotedIPs = make(map[string]VotedIPInfo)
 	c.Score = 0
+	c.Controversy = 0
 	c.Edit = nil
 	c.Pin = false
 	c.Deleted = false
+	c.Imported = false
 }
 
 // SetDeleted clears comment info, reset to deleted state. hard flag will clear all user info as well
