@@ -128,6 +128,7 @@ func (c *Comment) Sanitize() {
 	c.User.Name = c.escapeHTMLWithSome(c.User.Name)
 	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
+	c.PostTitle = p.Sanitize(c.PostTitle)
 }
 
 // Snippet from comment's text

@@ -73,6 +73,10 @@ func TestComment_Sanitize(t *testing.T) {
 			out: Comment{Text: "&lt;img src=x onerror=alert(1)&gt;",
 				Locator: Locator{URL: "/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085"}},
 		},
+		{
+			inp: Comment{Text: "blah blah", PostTitle: "<script>alert()</script>something"},
+			out: Comment{Text: "blah blah", PostTitle: "something"},
+		},
 	}
 
 	for n, tt := range tbl {
