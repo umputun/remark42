@@ -1048,7 +1048,7 @@ func TestService_UserReplies(t *testing.T) {
 	_, err = b.Create(c4)
 	require.NoError(t, err)
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	_, err = b.Create(c5)
 	require.NoError(t, err)
 
@@ -1057,10 +1057,12 @@ func TestService_UserReplies(t *testing.T) {
 	require.Equal(t, 3, len(cc), "3 replies to u1")
 	assert.Equal(t, "developer one u1", u)
 
-	cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*199)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(cc), "1 reply to u1 in last 200ms")
-	assert.Equal(t, "developer one u1", u)
+	assert.Eventually(t, func() bool {
+		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*199)
+		require.NoError(t, err)
+		require.Equal(t, "developer one u1", u)
+		return len(cc) == 1
+	}, 300*time.Millisecond, 30*time.Millisecond, "1 reply to u1 in the last 200ms")
 
 	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
 	assert.NoError(t, err)
