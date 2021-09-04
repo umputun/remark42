@@ -1059,10 +1059,10 @@ func TestService_UserReplies(t *testing.T) {
 
 	assert.Eventually(t, func() bool {
 		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*199)
-		require.NoError(t, err)
-		require.Equal(t, "developer one u1", u)
 		return len(cc) == 1
 	}, 300*time.Millisecond, 30*time.Millisecond, "1 reply to u1 in the last 200ms")
+	require.NoError(t, err)
+	require.Equal(t, "developer one u1", u)
 
 	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
 	assert.NoError(t, err)
