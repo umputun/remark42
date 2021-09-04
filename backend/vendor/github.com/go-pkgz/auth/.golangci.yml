@@ -26,14 +26,13 @@ linters-settings:
 linters:
   enable:
     - megacheck
-    - golint
+    - revive
     - govet
     - unconvert
     - megacheck
     - structcheck
     - gas
     - gocyclo
-    - dupl
     - misspell
     - unparam
     - varcheck

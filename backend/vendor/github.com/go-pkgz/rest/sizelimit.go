@@ -26,6 +26,8 @@ func SizeLimit(size int64) func(http.Handler) http.Handler {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
+			_ = r.Body.Close() // the original body already consumed
+
 			if int64(len(content)) > size {
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
 				return

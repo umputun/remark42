@@ -6,14 +6,18 @@ import (
 )
 
 // Elixir lexer.
-var Elixir = internal.Register(MustNewLexer(
+var Elixir = internal.Register(MustNewLazyLexer(
 	&Config{
 		Name:      "Elixir",
 		Aliases:   []string{"elixir", "ex", "exs"},
 		Filenames: []string{"*.ex", "*.exs"},
 		MimeTypes: []string{"text/x-elixir"},
 	},
-	Rules{
+	elixirRules,
+))
+
+func elixirRules() Rules {
+	return Rules{
 		"root": {
 			{`\s+`, Text, nil},
 			{`#.*$`, CommentSingle, nil},
@@ -28,6 +32,13 @@ var Elixir = internal.Register(MustNewLexer(
 			{`:"`, LiteralStringSymbol, Push("string_double_atom")},
 			{`:'`, LiteralStringSymbol, Push("string_single_atom")},
 			{`((?:\.\.\.|<<>>|%\{\}|%|\{\})|(?:(?:\.\.\.|[a-z_]\w*[!?]?)|[A-Z]\w*(?:\.[A-Z]\w*)*|(?:\<\<\<|\>\>\>|\|\|\||\&\&\&|\^\^\^|\~\~\~|\=\=\=|\!\=\=|\~\>\>|\<\~\>|\|\~\>|\<\|\>|\=\=|\!\=|\<\=|\>\=|\&\&|\|\||\<\>|\+\+|\-\-|\|\>|\=\~|\-\>|\<\-|\||\.|\=|\~\>|\<\~|\<|\>|\+|\-|\*|\/|\!|\^|\&)))(:)(?=\s|\n)`, ByGroups(LiteralStringSymbol, Punctuation), nil},
+			{`(fn|do|end|after|else|rescue|catch)\b`, Keyword, nil},
+			{`(not|and|or|when|in)\b`, OperatorWord, nil},
+			{`(case|cond|for|if|unless|try|receive|raise|quote|unquote|unquote_splicing|throw|super|while)\b`, Keyword, nil},
+			{`(def|defp|defmodule|defprotocol|defmacro|defmacrop|defdelegate|defexception|defstruct|defimpl|defcallback)\b`, KeywordDeclaration, nil},
+			{`(import|require|use|alias)\b`, KeywordNamespace, nil},
+			{`(nil|true|false)\b`, NameConstant, nil},
+			{`(_|__MODULE__|__DIR__|__ENV__|__CALLER__)\b`, NamePseudo, nil},
 			{`@(?:\.\.\.|[a-z_]\w*[!?]?)`, NameAttribute, nil},
 			{`(?:\.\.\.|[a-z_]\w*[!?]?)`, Name, nil},
 			{`(%?)([A-Z]\w*(?:\.[A-Z]\w*)*)`, ByGroups(Punctuation, NameClass), nil},
@@ -266,5 +277,5 @@ var Elixir = internal.Register(MustNewLexer(
 			{`\\.`, LiteralStringOther, nil},
 			{`'[a-zA-Z]*`, LiteralStringOther, Pop(1)},
 		},
-	},
-))
+	}
+}

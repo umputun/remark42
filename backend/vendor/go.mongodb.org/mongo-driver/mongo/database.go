@@ -133,7 +133,7 @@ func (db *Database) Aggregate(ctx context.Context, pipeline interface{},
 }
 
 func (db *Database) processRunCommand(ctx context.Context, cmd interface{},
-	opts ...*options.RunCmdOptions) (*operation.Command, *session.Client, error) {
+	cursorCommand bool, opts ...*options.RunCmdOptions) (*operation.Command, *session.Client, error) {
 	sess := sessionFromContext(ctx)
 	if sess == nil && db.client.sessionPool != nil {
 		var err error
@@ -165,11 +165,18 @@ func (db *Database) processRunCommand(ctx context.Context, cmd interface{},
 		readSelect = makePinnedSelector(sess, readSelect)
 	}
 
-	return operation.NewCommand(runCmdDoc).
-		Session(sess).CommandMonitor(db.client.monitor).
+	var op *operation.Command
+	switch cursorCommand {
+	case true:
+		cursorOpts := db.client.createBaseCursorOptions()
+		op = operation.NewCursorCommand(runCmdDoc, cursorOpts)
+	default:
+		op = operation.NewCommand(runCmdDoc)
+	}
+	return op.Session(sess).CommandMonitor(db.client.monitor).
 		ServerSelector(readSelect).ClusterClock(db.client.clock).
 		Database(db.name).Deployment(db.client.deployment).ReadConcern(db.readConcern).
-		Crypt(db.client.cryptFLE).ReadPreference(ro.ReadPreference), sess, nil
+		Crypt(db.client.cryptFLE).ReadPreference(ro.ReadPreference).ServerAPI(db.client.serverAPI), sess, nil
 }
 
 // RunCommand executes the given command against the database. This function does not obey the Database's read
@@ -178,6 +185,8 @@ func (db *Database) processRunCommand(ctx context.Context, cmd interface{},
 // The runCommand parameter must be a document for the command to be executed. It cannot be nil.
 // This must be an order-preserving type such as bson.D. Map types such as bson.M are not valid.
 // If the command document contains a session ID or any transaction-specific fields, the behavior is undefined.
+// Specifying API versioning options in the command document and declaring an API version on the client is not supported.
+// The behavior of RunCommand is undefined in this case.
 //
 // The opts parameter can be used to specify options for this operation (see the options.RunCmdOptions documentation).
 func (db *Database) RunCommand(ctx context.Context, runCommand interface{}, opts ...*options.RunCmdOptions) *SingleResult {
@@ -185,7 +194,7 @@ func (db *Database) RunCommand(ctx context.Context, runCommand interface{}, opts
 		ctx = context.Background()
 	}
 
-	op, sess, err := db.processRunCommand(ctx, runCommand, opts...)
+	op, sess, err := db.processRunCommand(ctx, runCommand, false, opts...)
 	defer closeImplicitSession(sess)
 	if err != nil {
 		return &SingleResult{err: err}
@@ -216,7 +225,7 @@ func (db *Database) RunCommandCursor(ctx context.Context, runCommand interface{}
 		ctx = context.Background()
 	}
 
-	op, sess, err := db.processRunCommand(ctx, runCommand, opts...)
+	op, sess, err := db.processRunCommand(ctx, runCommand, true, opts...)
 	if err != nil {
 		closeImplicitSession(sess)
 		return nil, replaceErrors(err)
@@ -227,7 +236,7 @@ func (db *Database) RunCommandCursor(ctx context.Context, runCommand interface{}
 		return nil, replaceErrors(err)
 	}
 
-	bc, err := op.ResultCursor(db.client.createBaseCursorOptions())
+	bc, err := op.ResultCursor()
 	if err != nil {
 		closeImplicitSession(sess)
 		return nil, replaceErrors(err)
@@ -271,7 +280,8 @@ func (db *Database) Drop(ctx context.Context) error {
 	op := operation.NewDropDatabase().
 		Session(sess).WriteConcern(wc).CommandMonitor(db.client.monitor).
 		ServerSelector(selector).ClusterClock(db.client.clock).
-		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE)
+		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE).
+		ServerAPI(db.client.serverAPI)
 
 	err = op.Execute(ctx)
 
@@ -361,7 +371,8 @@ func (db *Database) ListCollections(ctx context.Context, filter interface{}, opt
 	op := operation.NewListCollections(filterDoc).
 		Session(sess).ReadPreference(db.readPreference).CommandMonitor(db.client.monitor).
 		ServerSelector(selector).ClusterClock(db.client.clock).
-		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE)
+		Database(db.name).Deployment(db.client.deployment).Crypt(db.client.cryptFLE).
+		ServerAPI(db.client.serverAPI)
 
 	cursorOpts := db.client.createBaseCursorOptions()
 	if lco.NameOnly != nil {
@@ -488,9 +499,11 @@ func (db *Database) Watch(ctx context.Context, pipeline interface{},
 //
 // The opts parameter can be used to specify options for the operation (see the options.CreateCollectionOptions
 // documentation).
+//
+// For more information about the command, see https://docs.mongodb.com/manual/reference/command/create/.
 func (db *Database) CreateCollection(ctx context.Context, name string, opts ...*options.CreateCollectionOptions) error {
 	cco := options.MergeCreateCollectionOptions(opts...)
-	op := operation.NewCreate(name)
+	op := operation.NewCreate(name).ServerAPI(db.client.serverAPI)
 
 	if cco.Capped != nil {
 		op.Capped(*cco.Capped)
@@ -541,6 +554,27 @@ func (db *Database) CreateCollection(ctx context.Context, name string, opts ...*
 		}
 		op.Validator(validator)
 	}
+	if cco.ExpireAfterSeconds != nil {
+		op.ExpireAfterSeconds(*cco.ExpireAfterSeconds)
+	}
+	if cco.TimeSeriesOptions != nil {
+		idx, doc := bsoncore.AppendDocumentStart(nil)
+		doc = bsoncore.AppendStringElement(doc, "timeField", cco.TimeSeriesOptions.TimeField)
+
+		if cco.TimeSeriesOptions.MetaField != nil {
+			doc = bsoncore.AppendStringElement(doc, "metaField", *cco.TimeSeriesOptions.MetaField)
+		}
+		if cco.TimeSeriesOptions.Granularity != nil {
+			doc = bsoncore.AppendStringElement(doc, "granularity", *cco.TimeSeriesOptions.Granularity)
+		}
+
+		doc, err := bsoncore.AppendDocumentEnd(doc, idx)
+		if err != nil {
+			return err
+		}
+
+		op.TimeSeries(doc)
+	}
 
 	return db.executeCreateOperation(ctx, op)
 }
@@ -561,14 +595,15 @@ func (db *Database) CreateCollection(ctx context.Context, name string, opts ...*
 func (db *Database) CreateView(ctx context.Context, viewName, viewOn string, pipeline interface{},
 	opts ...*options.CreateViewOptions) error {
 
-	pipelineArray, _, err := transformAggregatePipelinev2(db.registry, pipeline)
+	pipelineArray, _, err := transformAggregatePipeline(db.registry, pipeline)
 	if err != nil {
 		return err
 	}
 
 	op := operation.NewCreate(viewName).
 		ViewOn(viewOn).
-		Pipeline(pipelineArray)
+		Pipeline(pipelineArray).
+		ServerAPI(db.client.serverAPI)
 	cvo := options.MergeCreateViewOptions(opts...)
 	if cvo.Collation != nil {
 		op.Collation(bsoncore.Document(cvo.Collation.ToDocument()))

@@ -32,9 +32,9 @@ func TestFormatter_FormatText(t *testing.T) {
 		},
 		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
 		{"smth\n```go\nfunc main(aa string) int {return 0}\n```", `<p>smth</p>
-<pre class="chroma"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
+<pre tabindex="0" class="chroma"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
 </pre>!converted`, "code with language"},
-		{"```\ntest_code\n```", `<pre class="chroma">test_code
+		{"```\ntest_code\n```", `<pre tabindex="0" class="chroma">test_code
 </pre>!converted`, "code without language"},
 	}
 	f := NewCommentFormatter(mockConverter{})

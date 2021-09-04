@@ -9,11 +9,11 @@ import (
 type InteractionType string
 
 // ActionType type represents the type of action (attachment, block, etc.)
-type actionType string
+type ActionType string
 
 // action is an interface that should be implemented by all callback action types
 type action interface {
-	actionType() actionType
+	actionType() ActionType
 }
 
 // Types of interactions that can be received.
@@ -121,6 +121,7 @@ type Container struct {
 	Type         string      `json:"type"`
 	ViewID       string      `json:"view_id"`
 	MessageTs    string      `json:"message_ts"`
+	ThreadTs     string      `json:"thread_ts,omitempty"`
 	AttachmentID json.Number `json:"attachment_id"`
 	ChannelID    string      `json:"channel_id"`
 	IsEphemeral  bool        `json:"is_ephemeral"`

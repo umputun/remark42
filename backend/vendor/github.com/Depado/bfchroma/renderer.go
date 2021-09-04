@@ -40,6 +40,13 @@ func WithoutAutodetect() Option {
 	}
 }
 
+// EmbedCSS will embed CSS needed for html.WithClasses() in beginning of the document
+func EmbedCSS() Option {
+	return func(r *Renderer) {
+		r.embedCSS = true
+	}
+}
+
 // ChromaOptions allows to pass Chroma html.Option such as Standalone()
 // WithClasses(), ClassPrefix(prefix)...
 func ChromaOptions(options ...html.Option) Option {
@@ -101,11 +108,19 @@ type Renderer struct {
 	ChromaOptions []html.Option
 	Style         *chroma.Style
 	Formatter     *html.Formatter
+	embedCSS bool
 }
 
 // RenderNode satisfies the Renderer interface
 func (r *Renderer) RenderNode(w io.Writer, node *bf.Node, entering bool) bf.WalkStatus {
 	switch node.Type {
+	case bf.Document:
+		if entering && r.embedCSS {
+			w.Write([]byte("<style>"))
+			r.Formatter.WriteCSS(w, r.Style)
+			w.Write([]byte("</style>"))
+		}
+		return r.Base.RenderNode(w, node, entering)
 	case bf.CodeBlock:
 		if err := r.RenderWithChroma(w, node.Literal, node.CodeBlockData); err != nil {
 			return r.Base.RenderNode(w, node, entering)
@@ -124,4 +139,9 @@ func (r *Renderer) RenderHeader(w io.Writer, ast *bf.Node) {
 // RenderFooter satisfies the Renderer interface
 func (r *Renderer) RenderFooter(w io.Writer, ast *bf.Node) {
 	r.Base.RenderFooter(w, ast)
+}
+
+// ChromaCSS returns CSS used with chroma's html.WithClasses() option
+func (r *Renderer) ChromaCSS(w io.Writer) error {
+	return r.Formatter.WriteCSS(w, r.Style)
 }

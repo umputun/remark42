@@ -1,15 +1,12 @@
 package circular
 
 import (
-	"strings"
-
 	. "github.com/alecthomas/chroma" // nolint
-	"github.com/alecthomas/chroma/lexers/h"
 	"github.com/alecthomas/chroma/lexers/internal"
 )
 
-// PHP lexer.
-var PHP = internal.Register(DelegatingLexer(h.HTML, MustNewLexer(
+// PHP lexer for pure PHP code (not embedded in HTML).
+var PHP = internal.Register(MustNewLazyLexer(
 	&Config{
 		Name:            "PHP",
 		Aliases:         []string{"php", "php3", "php4", "php5"},
@@ -19,12 +16,15 @@ var PHP = internal.Register(DelegatingLexer(h.HTML, MustNewLexer(
 		CaseInsensitive: true,
 		EnsureNL:        true,
 	},
-	Rules{
-		"root": {
-			{`<\?(php)?`, CommentPreproc, Push("php")},
-			{`[^<]+`, Other, nil},
-			{`<`, Other, nil},
-		},
+	phpRules,
+))
+
+func phpRules() Rules {
+	return phpCommonRules().Rename("php", "root")
+}
+
+func phpCommonRules() Rules {
+	return Rules{
 		"php": {
 			{`\?>`, CommentPreproc, Pop(1)},
 			{`(<<<)([\'"]?)((?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w]|[^\x00-\x7f])*)(\2\n.*?\n\s*)(\3)(;?)(\n)`, ByGroups(LiteralString, LiteralString, LiteralStringDelimiter, LiteralString, LiteralStringDelimiter, Punctuation, Text), nil},
@@ -51,8 +51,8 @@ var PHP = internal.Register(DelegatingLexer(h.HTML, MustNewLexer(
 			{`(\d+\.\d*|\d*\.\d+)(e[+-]?[0-9]+)?`, LiteralNumberFloat, nil},
 			{`\d+e[+-]?[0-9]+`, LiteralNumberFloat, nil},
 			{`0[0-7]+`, LiteralNumberOct, nil},
-			{`0x[a-f0-9]+`, LiteralNumberHex, nil},
-			{`\d+`, LiteralNumberInteger, nil},
+			{`0x[a-f0-9_]+`, LiteralNumberHex, nil},
+			{`[\d_]+`, LiteralNumberInteger, nil},
 			{`0b[01]+`, LiteralNumberBin, nil},
 			{`'([^'\\]*(?:\\.[^'\\]*)*)'`, LiteralStringSingle, nil},
 			{"`([^`\\\\]*(?:\\\\.[^`\\\\]*)*)`", LiteralStringBacktick, nil},
@@ -82,10 +82,5 @@ var PHP = internal.Register(DelegatingLexer(h.HTML, MustNewLexer(
 			{`(\$\{)(\S+)(\})`, ByGroups(LiteralStringInterpol, NameVariable, LiteralStringInterpol), nil},
 			{`[${\\]`, LiteralStringDouble, nil},
 		},
-	},
-).SetAnalyser(func(text string) float32 {
-	if strings.Contains(text, "<?php") {
-		return 0.5
 	}
-	return 0.0
-})))
+}

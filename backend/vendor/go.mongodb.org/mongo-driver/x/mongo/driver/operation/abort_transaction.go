@@ -33,6 +33,7 @@ type AbortTransaction struct {
 	selector      description.ServerSelector
 	writeConcern  *writeconcern.WriteConcern
 	retry         *driver.RetryMode
+	serverAPI     *driver.ServerAPIOptions
 }
 
 // NewAbortTransaction constructs and returns a new AbortTransaction.
@@ -40,7 +41,7 @@ func NewAbortTransaction() *AbortTransaction {
 	return &AbortTransaction{}
 }
 
-func (at *AbortTransaction) processResponse(response bsoncore.Document, srvr driver.Server, desc description.Server, currIndex int) error {
+func (at *AbortTransaction) processResponse(driver.ResponseInfo) error {
 	var err error
 	return err
 }
@@ -64,6 +65,7 @@ func (at *AbortTransaction) Execute(ctx context.Context) error {
 		Deployment:        at.deployment,
 		Selector:          at.selector,
 		WriteConcern:      at.writeConcern,
+		ServerAPI:         at.serverAPI,
 	}.Execute(ctx, nil)
 
 }
@@ -185,5 +187,15 @@ func (at *AbortTransaction) Retry(retry driver.RetryMode) *AbortTransaction {
 	}
 
 	at.retry = &retry
+	return at
+}
+
+// ServerAPI sets the server API version for this operation.
+func (at *AbortTransaction) ServerAPI(serverAPI *driver.ServerAPIOptions) *AbortTransaction {
+	if at == nil {
+		at = new(AbortTransaction)
+	}
+
+	at.serverAPI = serverAPI
 	return at
 }

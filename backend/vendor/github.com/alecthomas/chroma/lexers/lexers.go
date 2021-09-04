@@ -3,7 +3,7 @@
 // Sub-packages contain lexer implementations.
 package lexers
 
-// nolint: golint
+// nolint
 import (
 	"github.com/alecthomas/chroma"
 	_ "github.com/alecthomas/chroma/lexers/a"
@@ -32,6 +32,7 @@ import (
 	_ "github.com/alecthomas/chroma/lexers/w"
 	_ "github.com/alecthomas/chroma/lexers/x"
 	_ "github.com/alecthomas/chroma/lexers/y"
+	_ "github.com/alecthomas/chroma/lexers/z"
 )
 
 // Registry of Lexers.

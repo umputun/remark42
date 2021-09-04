@@ -1,7 +1,7 @@
 # auth - authentication via oauth2, direct and email
 [![Build Status](https://github.com/go-pkgz/auth/workflows/build/badge.svg)](https://github.com/go-pkgz/auth/actions) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/auth/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/auth?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/auth?status.svg)](https://pkg.go.dev/github.com/go-pkgz/auth?tab=doc)
 
-This library provides "social login" with Github, Google, Facebook, Microsoft, Twitter, Yandex, Battle.net, Apple and Telegram as well as custom auth providers and email verification.
+This library provides "social login" with Github, Google, Facebook, Microsoft, Twitter, Yandex, Battle.net, Apple, Patreon and Telegram as well as custom auth providers and email verification.
 
 - Multiple oauth2 providers can be used at the same time
 - Special `dev` provider allows local testing and development
@@ -548,6 +548,11 @@ For more details refer to [Yandex OAuth](https://tech.yandex.com/oauth/doc/dg/co
 
 For more details refer to [Complete Guide of Battle.net OAuth API and Login Button](https://hakanu.net/oauth/2017/01/26/complete-guide-of-battle-net-oauth-api-and-login-button/) or [the official Battle.net OAuth2 guide](https://develop.battle.net/documentation/guides/using-oauth)
 
+#### Patreon Auth Provider ####
+1.	Create a new Patreon client https://www.patreon.com/portal/registration/register-clients
+1.  Fill **"App Name"**, **"Description"**, **"App Category"** and **"Author"** for your site
+1.  Under **"Redirect URIs"** enter the correct url constructed as domain + `/auth/patreon/callback`. ie `https://example.mysite.com/auth/patreon/callback`
+1.  Take note of the **Client ID** and **Client Secret**
 
 #### Twitter Auth Provider
 1.	Create a new twitter application https://developer.twitter.com/en/apps

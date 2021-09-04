@@ -29,12 +29,16 @@ type DirectHandler struct {
 	TokenService TokenService
 	Issuer       string
 	AvatarSaver  AvatarSaver
+	UserIDFunc   UserIDFunc
 }
 
 // CredChecker defines interface to check credentials
 type CredChecker interface {
 	Check(user, password string) (ok bool, err error)
 }
+
+// UserIDFunc allows to provide custom func making userID instead of the default based on user's name hash
+type UserIDFunc func(user string, r *http.Request) string
 
 // CredCheckerFunc type is an adapter to allow the use of ordinary functions as CredsChecker.
 type CredCheckerFunc func(user, password string) (ok bool, err error)
@@ -91,9 +95,15 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "incorrect user or password")
 		return
 	}
+
+	userID := p.ProviderName + "_" + token.HashID(sha1.New(), creds.User)
+	if p.UserIDFunc != nil {
+		userID = p.ProviderName + "_" + token.HashID(sha1.New(), p.UserIDFunc(creds.User, r))
+	}
+
 	u := token.User{
 		Name: creds.User,
-		ID:   p.ProviderName + "_" + token.HashID(sha1.New(), creds.User),
+		ID:   userID,
 	}
 	u, err = setAvatar(p.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second})
 	if err != nil {

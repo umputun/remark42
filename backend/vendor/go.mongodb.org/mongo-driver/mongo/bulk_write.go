@@ -168,7 +168,7 @@ func (bw *bulkWrite) runInsert(ctx context.Context, batch bulkWriteBatch) (opera
 	var i int
 	for _, model := range batch.models {
 		converted := model.(*InsertOneModel)
-		doc, _, err := transformAndEnsureIDv2(bw.collection.registry, converted.Document)
+		doc, _, err := transformAndEnsureID(bw.collection.registry, converted.Document)
 		if err != nil {
 			return operation.InsertResult{}, err
 		}
@@ -181,7 +181,8 @@ func (bw *bulkWrite) runInsert(ctx context.Context, batch bulkWriteBatch) (opera
 		Session(bw.session).WriteConcern(bw.writeConcern).CommandMonitor(bw.collection.client.monitor).
 		ServerSelector(bw.selector).ClusterClock(bw.collection.client.clock).
 		Database(bw.collection.db.name).Collection(bw.collection.name).
-		Deployment(bw.collection.client.deployment).Crypt(bw.collection.client.cryptFLE)
+		Deployment(bw.collection.client.deployment).Crypt(bw.collection.client.cryptFLE).
+		ServerAPI(bw.collection.client.serverAPI)
 	if bw.bypassDocumentValidation != nil && *bw.bypassDocumentValidation {
 		op = op.BypassDocumentValidation(*bw.bypassDocumentValidation)
 	}
@@ -230,7 +231,8 @@ func (bw *bulkWrite) runDelete(ctx context.Context, batch bulkWriteBatch) (opera
 		Session(bw.session).WriteConcern(bw.writeConcern).CommandMonitor(bw.collection.client.monitor).
 		ServerSelector(bw.selector).ClusterClock(bw.collection.client.clock).
 		Database(bw.collection.db.name).Collection(bw.collection.name).
-		Deployment(bw.collection.client.deployment).Crypt(bw.collection.client.cryptFLE).Hint(hasHint)
+		Deployment(bw.collection.client.deployment).Crypt(bw.collection.client.cryptFLE).Hint(hasHint).
+		ServerAPI(bw.collection.client.serverAPI)
 	if bw.ordered != nil {
 		op = op.Ordered(*bw.ordered)
 	}
@@ -311,7 +313,7 @@ func (bw *bulkWrite) runUpdate(ctx context.Context, batch bulkWriteBatch) (opera
 		ServerSelector(bw.selector).ClusterClock(bw.collection.client.clock).
 		Database(bw.collection.db.name).Collection(bw.collection.name).
 		Deployment(bw.collection.client.deployment).Crypt(bw.collection.client.cryptFLE).Hint(hasHint).
-		ArrayFilters(hasArrayFilters)
+		ArrayFilters(hasArrayFilters).ServerAPI(bw.collection.client.serverAPI)
 	if bw.ordered != nil {
 		op = op.Ordered(*bw.ordered)
 	}
