@@ -99,7 +99,7 @@ func TestMain_WithWebhook(t *testing.T) {
 	finished := make(chan struct{})
 	go func() {
 		main()
-		assert.Eventuallyf(t, func() bool {
+		assert.Eventually(t, func() bool {
 			return atomic.LoadInt32(&webhookSent) == int32(1)
 		}, time.Second, 100*time.Millisecond, "webhook was not sent")
 		close(finished)
