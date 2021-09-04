@@ -1057,13 +1057,19 @@ func TestService_UserReplies(t *testing.T) {
 	require.Equal(t, 3, len(cc), "3 replies to u1")
 	assert.Equal(t, "developer one u1", u)
 
+	// mutex to prevent multiple b.UserReplies calls resulting in data race
+	l := sync.Mutex{}
 	assert.Eventually(t, func() bool {
-		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*199)
+		l.Lock()
+		defer l.Unlock()
+		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*299)
+		require.NoError(t, err)
+		require.Equal(t, "developer one u1", u)
 		return len(cc) == 1
-	}, 300*time.Millisecond, 30*time.Millisecond, "1 reply to u1 in the last 200ms")
-	require.NoError(t, err)
-	require.Equal(t, "developer one u1", u)
+	}, 300*time.Millisecond, 30*time.Millisecond, "1 reply to u1 in the last 300ms")
 
+	l.Lock()
+	defer l.Unlock()
 	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(cc), "0 replies to u2")
