@@ -37,6 +37,7 @@ type Delete struct {
 	retry        *driver.RetryMode
 	hint         *bool
 	result       DeleteResult
+	serverAPI    *driver.ServerAPIOptions
 }
 
 type DeleteResult struct {
@@ -73,8 +74,8 @@ func NewDelete(deletes ...bsoncore.Document) *Delete {
 // Result returns the result of executing this operation.
 func (d *Delete) Result() DeleteResult { return d.result }
 
-func (d *Delete) processResponse(response bsoncore.Document, srvr driver.Server, desc description.Server, _ int) error {
-	dr, err := buildDeleteResult(response, srvr)
+func (d *Delete) processResponse(info driver.ResponseInfo) error {
+	dr, err := buildDeleteResult(info.ServerResponse, info.Server)
 	d.result.N += dr.N
 	return err
 }
@@ -104,6 +105,7 @@ func (d *Delete) Execute(ctx context.Context) error {
 		Deployment:        d.deployment,
 		Selector:          d.selector,
 		WriteConcern:      d.writeConcern,
+		ServerAPI:         d.serverAPI,
 	}.Execute(ctx, nil)
 
 }
@@ -257,5 +259,15 @@ func (d *Delete) Hint(hint bool) *Delete {
 	}
 
 	d.hint = &hint
+	return d
+}
+
+// ServerAPI sets the server API version for this operation.
+func (d *Delete) ServerAPI(serverAPI *driver.ServerAPIOptions) *Delete {
+	if d == nil {
+		d = new(Delete)
+	}
+
+	d.serverAPI = serverAPI
 	return d
 }

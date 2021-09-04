@@ -20,6 +20,22 @@ linters:
     - wsl
     - gomnd
     - gocognit
+    - goerr113
+    - nolintlint
+    - testpackage
+    - godot
+    - nestif
+    - paralleltest
+    - nlreturn
+    - cyclop
+    - exhaustivestruct
+    - gci
+    - gofumpt
+    - errorlint
+    - exhaustive
+    - ifshort
+    - wrapcheck
+    - stylecheck
 
 linters-settings:
   govet:
@@ -31,6 +47,11 @@ linters-settings:
   goconst:
     min-len: 8
     min-occurrences: 3
+  forbidigo:
+    forbid:
+      - (Must)?NewLexer
+    exclude_godoc_examples: false
+
 
 issues:
   max-per-linter: 0

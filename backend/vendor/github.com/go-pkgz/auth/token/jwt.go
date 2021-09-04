@@ -36,10 +36,11 @@ type Handshake struct {
 
 const (
 	// default names for cookies and headers
-	defaultJWTCookieName  = "JWT"
-	defaultJWTHeaderKey   = "X-JWT"
-	defaultXSRFCookieName = "XSRF-TOKEN"
-	defaultXSRFHeaderKey  = "X-XSRF-TOKEN"
+	defaultJWTCookieName   = "JWT"
+	defaultJWTCookieDomain = ""
+	defaultJWTHeaderKey    = "X-JWT"
+	defaultXSRFCookieName  = "XSRF-TOKEN"
+	defaultXSRFHeaderKey   = "X-XSRF-TOKEN"
 
 	defaultIssuer = "go-pkgz/auth"
 
@@ -59,16 +60,17 @@ type Opts struct {
 	DisableXSRF    bool
 	DisableIAT     bool // disable IssuedAt claim
 	// optional (custom) names for cookies and headers
-	JWTCookieName  string
-	JWTHeaderKey   string
-	XSRFCookieName string
-	XSRFHeaderKey  string
-	JWTQuery       string
-	AudienceReader Audience      // allowed aud values
-	Issuer         string        // optional value for iss claim, usually application name
-	AudSecrets     bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
-	SendJWTHeader  bool          // if enabled send JWT as a header instead of cookie
-	SameSite       http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
+	JWTCookieName   string
+	JWTCookieDomain string
+	JWTHeaderKey    string
+	XSRFCookieName  string
+	XSRFHeaderKey   string
+	JWTQuery        string
+	AudienceReader  Audience      // allowed aud values
+	Issuer          string        // optional value for iss claim, usually application name
+	AudSecrets      bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
+	SendJWTHeader   bool          // if enabled send JWT as a header instead of cookie
+	SameSite        http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
 }
 
 // NewService makes JWT service
@@ -87,6 +89,7 @@ func NewService(opts Opts) *Service {
 	setDefault(&res.XSRFHeaderKey, defaultXSRFHeaderKey)
 	setDefault(&res.JWTQuery, defaultTokenQuery)
 	setDefault(&res.Issuer, defaultIssuer)
+	setDefault(&res.JWTCookieDomain, defaultJWTCookieDomain)
 
 	if opts.TokenDuration == 0 {
 		res.TokenDuration = defaultTokenDuration
@@ -239,11 +242,11 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 		cookieExpiration = int(j.CookieDuration.Seconds())
 	}
 
-	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/",
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain,
 		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.Id, HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.Id, HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
 		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 
@@ -312,11 +315,11 @@ func (j *Service) IsExpired(claims Claims) bool {
 
 // Reset token's cookies
 func (j *Service) Reset(w http.ResponseWriter) {
-	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/",
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/",
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 }

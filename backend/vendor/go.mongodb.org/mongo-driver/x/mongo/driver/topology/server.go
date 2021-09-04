@@ -179,7 +179,9 @@ func NewServer(addr address.Address, topologyID primitive.ObjectID, opts ...Serv
 		PoolMonitor: cfg.poolMonitor,
 	}
 
-	connectionOpts := append(cfg.connectionOpts, withErrorHandlingCallback(s.ProcessHandshakeError))
+	connectionOpts := make([]ConnectionOption, len(cfg.connectionOpts))
+	copy(connectionOpts, cfg.connectionOpts)
+	connectionOpts = append(connectionOpts, withErrorHandlingCallback(s.ProcessHandshakeError))
 	s.pool, err = newPool(pc, connectionOpts...)
 	if err != nil {
 		return nil, err
@@ -196,10 +198,16 @@ func (s *Server) Connect(updateCallback updateTopologyCallback) error {
 	if !atomic.CompareAndSwapInt32(&s.connectionstate, disconnected, connected) {
 		return ErrServerConnected
 	}
-	s.desc.Store(description.NewDefaultServer(s.address))
+
+	desc := description.NewDefaultServer(s.address)
+	if s.cfg.loadBalanced {
+		// LBs automatically start off with kind LoadBalancer because there is no monitoring routine for state changes.
+		desc.Kind = description.LoadBalancer
+	}
+	s.desc.Store(desc)
 	s.updateTopologyCallback.Store(updateCallback)
 
-	if !s.cfg.monitoringDisabled {
+	if !s.cfg.monitoringDisabled && !s.cfg.loadBalanced {
 		s.rttMonitor.connect()
 		s.closewg.Add(1)
 		go s.update()
@@ -266,10 +274,19 @@ func (s *Server) Connection(ctx context.Context) (driver.Connection, error) {
 	return &Connection{connection: connImpl}, nil
 }
 
-// ProcessHandshakeError implements SDAM error handling for errors that occur before a connection finishes handshaking.
-func (s *Server) ProcessHandshakeError(err error, startingGenerationNumber uint64) {
-	// ignore nil or stale error
-	if err == nil || startingGenerationNumber < atomic.LoadUint64(&s.pool.generation) {
+// ProcessHandshakeError implements SDAM error handling for errors that occur before a connection
+// finishes handshaking. opCtx is the context passed to Server.Connection() and is used to determine
+// whether or not an operation-scoped context deadline or cancellation was the cause of the
+// handshake error; it is not used for timeout or cancellation of ProcessHandshakeError.
+func (s *Server) ProcessHandshakeError(opCtx context.Context, err error, startingGenerationNumber uint64, serviceID *primitive.ObjectID) {
+	// Ignore the error if the server is behind a load balancer but the service ID is unknown. This indicates that the
+	// error happened when dialing the connection or during the MongoDB handshake, so we don't know the service ID to
+	// use for clearing the pool.
+	if err == nil || s.cfg.loadBalanced && serviceID == nil {
+		return
+	}
+	// Ignore the error if the connection is stale.
+	if startingGenerationNumber < s.pool.generation.getGeneration(serviceID) {
 		return
 	}
 
@@ -278,11 +295,67 @@ func (s *Server) ProcessHandshakeError(err error, startingGenerationNumber uint6
 		return
 	}
 
+	isCtxTimeoutOrCanceled := func(ctx context.Context) bool {
+		if ctx == nil {
+			return false
+		}
+
+		if ctx.Err() != nil {
+			return true
+		}
+
+		// In some networking functions, the deadline from the context is used to determine timeouts
+		// instead of the ctx.Done() chan closure. In that case, there can be a race condition
+		// between the networking functing returning an error and ctx.Err() returning an an error
+		// (i.e. the networking function returns an error caused by the context deadline, but
+		// ctx.Err() returns nil). If the operation-scoped context deadline was exceeded, assume
+		// operation-scoped context timeout caused the error.
+		if deadline, ok := ctx.Deadline(); ok && time.Now().After(deadline) {
+			return true
+		}
+
+		return false
+	}
+
+	isErrTimeoutOrCanceled := func(err error) bool {
+		for err != nil {
+			// Check for errors that implement the "net.Error" interface and self-report as timeout
+			// errors. Includes some "*net.OpError" errors and "context.DeadlineExceeded".
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				return true
+			}
+			// Check for context cancellation. Also handle the case where the cancellation error has
+			// been replaced by "net.errCanceled" (which isn't exported and can't be compared
+			// directly) by checking the error message.
+			if err == context.Canceled || err.Error() == "operation was canceled" {
+				return true
+			}
+
+			wrapper, ok := err.(interface{ Unwrap() error })
+			if !ok {
+				break
+			}
+			err = wrapper.Unwrap()
+		}
+
+		return false
+	}
+
+	// Ignore errors that indicate a client-side timeout occurred when the context passed into an
+	// operation timed out or was canceled (i.e. errors caused by an operation-scoped timeout).
+	// Timeouts caused by reaching connectTimeoutMS or other non-operation-scoped timeouts should
+	// still clear the pool.
+	// TODO(GODRIVER-2038): Remove this condition when connections are no longer created with an
+	// operation-scoped timeout.
+	if isCtxTimeoutOrCanceled(opCtx) && isErrTimeoutOrCanceled(wrappedConnErr) {
+		return
+	}
+
 	// Since the only kind of ConnectionError we receive from pool.Get will be an initialization error, we should set
 	// the description.Server appropriately. The description should not have a TopologyVersion because the staleness
 	// checking logic above has already determined that this description is not stale.
 	s.updateDescription(description.NewServerFromError(s.address, wrappedConnErr, nil))
-	s.pool.clear()
+	s.pool.clear(serviceID)
 	s.cancelCheck()
 }
 
@@ -386,7 +459,7 @@ func (s *Server) ProcessError(err error, conn driver.Connection) driver.ProcessE
 		// If the node is shutting down or is older than 4.2, we synchronously clear the pool
 		if cerr.NodeIsShuttingDown() || desc.WireVersion == nil || desc.WireVersion.Max < 8 {
 			res = driver.ConnectionPoolCleared
-			s.pool.clear()
+			s.pool.clear(desc.ServiceID)
 		}
 		return res
 	}
@@ -404,7 +477,7 @@ func (s *Server) ProcessError(err error, conn driver.Connection) driver.ProcessE
 		// If the node is shutting down or is older than 4.2, we synchronously clear the pool
 		if wcerr.NodeIsShuttingDown() || desc.WireVersion == nil || desc.WireVersion.Max < 8 {
 			res = driver.ConnectionPoolCleared
-			s.pool.clear()
+			s.pool.clear(desc.ServiceID)
 		}
 		return res
 	}
@@ -426,7 +499,7 @@ func (s *Server) ProcessError(err error, conn driver.Connection) driver.ProcessE
 	// monitoring check. The check is cancelled last to avoid a post-cancellation reconnect racing with
 	// updateDescription.
 	s.updateDescription(description.NewServerFromError(s.address, err, nil))
-	s.pool.clear()
+	s.pool.clear(desc.ServiceID)
 	s.cancelCheck()
 	return driver.ConnectionPoolCleared
 }
@@ -516,8 +589,10 @@ func (s *Server) update() {
 
 		s.updateDescription(desc)
 		if desc.LastError != nil {
-			// Clear the pool once the description has been updated to Unknown.
-			s.pool.clear()
+			// Clear the pool once the description has been updated to Unknown. Pass in a nil service ID to clear
+			// because the monitoring routine only runs for non-load balanced deployments in which servers don't return
+			// IDs.
+			s.pool.clear(nil)
 		}
 
 		// If the server supports streaming or we're already streaming, we want to move to streaming the next response
@@ -543,6 +618,12 @@ func (s *Server) update() {
 // parameter is used to determine if this is the first description from the
 // server.
 func (s *Server) updateDescription(desc description.Server) {
+	if s.cfg.loadBalanced {
+		// In load balanced mode, there are no updates from the monitoring routine. For errors encountered in pooled
+		// connections, the server should not be marked Unknown to ensure that the LB remains selectable.
+		return
+	}
+
 	defer func() {
 		//  ¯\_(ツ)_/¯
 		_ = recover()
@@ -570,20 +651,22 @@ func (s *Server) updateDescription(desc description.Server) {
 // createConnection creates a new connection instance but does not call connect on it. The caller must call connect
 // before the connection can be used for network operations.
 func (s *Server) createConnection() (*connection, error) {
-	opts := []ConnectionOption{
+	opts := make([]ConnectionOption, len(s.cfg.connectionOpts))
+	copy(opts, s.cfg.connectionOpts)
+	opts = append(opts,
 		WithConnectTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
 		WithReadTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
 		WithWriteTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
 		// We override whatever handshaker is currently attached to the options with a basic
 		// one because need to make sure we don't do auth.
 		WithHandshaker(func(h Handshaker) Handshaker {
-			return operation.NewIsMaster().AppName(s.cfg.appname).Compressors(s.cfg.compressionOpts)
+			return operation.NewIsMaster().AppName(s.cfg.appname).Compressors(s.cfg.compressionOpts).
+				ServerAPI(s.cfg.serverAPI)
 		}),
 		// Override any monitors specified in options with nil to avoid monitoring heartbeats.
 		WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor { return nil }),
 		withPoolMonitor(func(*event.PoolMonitor) *event.PoolMonitor { return nil }),
-	}
-	opts = append(s.cfg.connectionOpts, opts...)
+	)
 
 	return newConnection(s.address, opts...)
 }
@@ -640,7 +723,8 @@ func (s *Server) createBaseOperation(conn driver.Connection) *operation.IsMaster
 	return operation.
 		NewIsMaster().
 		ClusterClock(s.cfg.clock).
-		Deployment(driver.SingleConnectionDeployment{conn})
+		Deployment(driver.SingleConnectionDeployment{conn}).
+		ServerAPI(s.cfg.serverAPI)
 }
 
 func (s *Server) check() (description.Server, error) {

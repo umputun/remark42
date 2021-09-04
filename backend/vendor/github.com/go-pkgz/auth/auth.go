@@ -47,14 +47,14 @@ type Opts struct {
 	DisableIAT  bool // disable IssuedAt claim
 
 	// optional (custom) names for cookies and headers
-	JWTCookieName  string // default "JWT"
-	JWTHeaderKey   string // default "X-JWT"
-	XSRFCookieName string // default "XSRF-TOKEN"
-	XSRFHeaderKey  string // default "X-XSRF-TOKEN"
-	JWTQuery       string // default "token"
-
-	SendJWTHeader  bool          // if enabled send JWT as a header instead of cookie
-	SameSiteCookie http.SameSite // limit cross-origin requests with SameSite cookie attribute
+	JWTCookieName   string        // default "JWT"
+	JWTCookieDomain string        // default empty
+	JWTHeaderKey    string        // default "X-JWT"
+	XSRFCookieName  string        // default "XSRF-TOKEN"
+	XSRFHeaderKey   string        // default "X-XSRF-TOKEN"
+	JWTQuery        string        // default "token"
+	SendJWTHeader   bool          // if enabled send JWT as a header instead of cookie
+	SameSiteCookie  http.SameSite // limit cross-origin requests with SameSite cookie attribute
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
@@ -99,23 +99,24 @@ func NewService(opts Opts) (res *Service) {
 	}
 
 	jwtService := token.NewService(token.Opts{
-		SecretReader:   opts.SecretReader,
-		ClaimsUpd:      opts.ClaimsUpd,
-		SecureCookies:  opts.SecureCookies,
-		TokenDuration:  opts.TokenDuration,
-		CookieDuration: opts.CookieDuration,
-		DisableXSRF:    opts.DisableXSRF,
-		DisableIAT:     opts.DisableIAT,
-		JWTCookieName:  opts.JWTCookieName,
-		JWTHeaderKey:   opts.JWTHeaderKey,
-		XSRFCookieName: opts.XSRFCookieName,
-		XSRFHeaderKey:  opts.XSRFHeaderKey,
-		SendJWTHeader:  opts.SendJWTHeader,
-		JWTQuery:       opts.JWTQuery,
-		Issuer:         res.issuer,
-		AudienceReader: opts.AudienceReader,
-		AudSecrets:     opts.AudSecrets,
-		SameSite:       opts.SameSiteCookie,
+		SecretReader:    opts.SecretReader,
+		ClaimsUpd:       opts.ClaimsUpd,
+		SecureCookies:   opts.SecureCookies,
+		TokenDuration:   opts.TokenDuration,
+		CookieDuration:  opts.CookieDuration,
+		DisableXSRF:     opts.DisableXSRF,
+		DisableIAT:      opts.DisableIAT,
+		JWTCookieName:   opts.JWTCookieName,
+		JWTCookieDomain: opts.JWTCookieDomain,
+		JWTHeaderKey:    opts.JWTHeaderKey,
+		XSRFCookieName:  opts.XSRFCookieName,
+		XSRFHeaderKey:   opts.XSRFHeaderKey,
+		SendJWTHeader:   opts.SendJWTHeader,
+		JWTQuery:        opts.JWTQuery,
+		Issuer:          res.issuer,
+		AudienceReader:  opts.AudienceReader,
+		AudSecrets:      opts.AudSecrets,
+		SameSite:        opts.SameSiteCookie,
 	})
 
 	if opts.SecretReader == nil {
@@ -235,6 +236,8 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 		s.providers = append(s.providers, provider.NewService(provider.NewMicrosoft(p)))
 	case "twitter":
 		s.providers = append(s.providers, provider.NewService(provider.NewTwitter(p)))
+	case "patreon":
+		s.providers = append(s.providers, provider.NewService(provider.NewPatreon(p)))
 	case "dev":
 		s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
 	default:
@@ -303,6 +306,23 @@ func (s *Service) AddDirectProvider(name string, credChecker provider.CredChecke
 		TokenService: s.jwtService,
 		CredChecker:  credChecker,
 		AvatarSaver:  s.avatarProxy,
+	}
+	s.providers = append(s.providers, provider.NewService(dh))
+	s.authMiddleware.Providers = s.providers
+}
+
+// AddDirectProviderWithUserIDFunc adds provider with direct check against data store and sets custom UserIDFunc allows
+// to modify user's ID on the client side.
+// it doesn't do any handshake and uses provided credChecker to verify user and password from the request
+func (s *Service) AddDirectProviderWithUserIDFunc(name string, credChecker provider.CredChecker, ufn provider.UserIDFunc) {
+	dh := provider.DirectHandler{
+		L:            s.logger,
+		ProviderName: name,
+		Issuer:       s.issuer,
+		TokenService: s.jwtService,
+		CredChecker:  credChecker,
+		AvatarSaver:  s.avatarProxy,
+		UserIDFunc:   ufn,
 	}
 	s.providers = append(s.providers, provider.NewService(dh))
 	s.authMiddleware.Providers = s.providers

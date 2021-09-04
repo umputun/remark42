@@ -183,6 +183,7 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 	lmtHeaders := lmt.GetHeaders()
 	lmtContextValues := lmt.GetContextValues()
 	lmtBasicAuthUsers := lmt.GetBasicAuthUsers()
+	lmtIgnoreURL := lmt.GetIgnoreURL()
 
 	lmtHeadersIsSet := len(lmtHeaders) > 0
 	lmtContextValuesIsSet := len(lmtContextValues) > 0
@@ -244,7 +245,10 @@ func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 		}
 	}
 
-	sliceKey := []string{remoteIP, path}
+	sliceKey := []string{remoteIP}
+	if !lmtIgnoreURL {
+		sliceKey = append(sliceKey, path)
+	}
 
 	sliceKey = append(sliceKey, lmtMethods...)
 

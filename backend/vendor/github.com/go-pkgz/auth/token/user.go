@@ -16,7 +16,10 @@ import (
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")
 var reValidCrc64 = regexp.MustCompile("^[a-fA-F0-9]{16}$")
 
-const adminAttr = "admin" // predefined attribute key for bool isAdmin status
+const (
+	adminAttr          = "admin"       // predefined attribute key for bool isAdmin status
+	paidSubscriberAttr = "is_paid_sub" // predefined attribute key for bool paid subscriptions status
+)
 
 // User is the basic part of oauth data provided by service
 type User struct {
@@ -75,6 +78,16 @@ func (u *User) SetAdmin(val bool) {
 // IsAdmin is a shortcut to get admin attribute
 func (u *User) IsAdmin() bool {
 	return u.BoolAttr(adminAttr)
+}
+
+// SetPaidSub is a shortcut to set "paidSubscriberAttr" attribute
+func (u *User) SetPaidSub(val bool) {
+	u.SetBoolAttr(paidSubscriberAttr, val)
+}
+
+// IsPaidSub is a shortcut to get "paidSubscriberAttr" attribute
+func (u *User) IsPaidSub() bool {
+	return u.BoolAttr(paidSubscriberAttr)
 }
 
 // SliceAttr gets slice attribute

@@ -55,13 +55,14 @@ By default when no language information is written in the code block, this
 renderer will try to auto-detect the used language. This option disables
 this behavior and will fallback to a sane default when no language
 information is available.
+- `EmbedCSS()` 
+This option will embed CSS needed for chroma's `html.WithClasses()` at the beginning of blackfriday document. 
+CSS can also be extracted separately by calling `Renderer`'s.`ChromaCSS(w)` method, which will return styleshet for currently set style 
 - `Extend(bf.Renderer)`  
 This option allows to define the base blackfriday that will be extended.
 - `ChromaOptions(...html.Option)`  
 This option allows you to pass Chroma's html options in the renderer. Such
 options can be found [here](https://github.com/alecthomas/chroma#the-html-formatter).
-There is currently an issue with the `html.WithClasses()` option as it expects
-the CSS classes to be written separately. I'll come up with a fix later.
 
 ### Option examples
 
@@ -91,6 +92,8 @@ r := bfchroma.NewRenderer(bfchroma.Style("dracula"))
 // Or
 r = bfchroma.NewRenderer(bfchroma.ChromaStyle(styles.Dracula))
 ```
+
+
 
 ## Examples
 
@@ -194,7 +197,7 @@ r := bfchroma.NewRenderer(
 var css template.CSS
 
 b := new(bytes.Buffer)
-if err := r.Formatter.WriteCSS(b, r.Style); err != nil {
+if err := r.ChromaCSS(b); err != nil {
 	logrus.WithError(err).Warning("Couldn't write CSS")
 }
 css = template.CSS(b.String())

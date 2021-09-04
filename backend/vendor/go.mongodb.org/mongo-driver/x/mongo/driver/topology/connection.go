@@ -31,8 +31,9 @@ import (
 var globalConnectionID uint64 = 1
 
 var (
-	defaultMaxMessageSize uint32 = 48000000
-	errResponseTooLarge   error  = errors.New("length of read message too large")
+	defaultMaxMessageSize        uint32 = 48000000
+	errResponseTooLarge          error  = errors.New("length of read message too large")
+	errLoadBalancedStateMismatch        = errors.New("driver attempted to initialize in load balancing mode, but the server does not support this mode")
 )
 
 func nextConnectionID() uint64 { return atomic.AddUint64(&globalConnectionID, 1) }
@@ -90,12 +91,17 @@ func newConnection(addr address.Address, opts ...ConnectionOption) (*connection,
 		cancellationListener: internal.NewCancellationListener(),
 		poolMonitor:          cfg.poolMonitor,
 	}
+	// Connections to non-load balanced deployments should eagerly set the generation numbers so errors encountered
+	// at any point during connection establishment can be processed without the connection being considered stale.
+	if !c.config.loadBalanced {
+		c.setGenerationNumber()
+	}
 	atomic.StoreInt32(&c.connected, initialized)
 
 	return c, nil
 }
 
-func (c *connection) processInitializationError(err error) {
+func (c *connection) processInitializationError(opCtx context.Context, err error) {
 	atomic.StoreInt32(&c.connected, disconnected)
 	if c.nc != nil {
 		_ = c.nc.Close()
@@ -103,8 +109,29 @@ func (c *connection) processInitializationError(err error) {
 
 	c.connectErr = ConnectionError{Wrapped: err, init: true}
 	if c.config.errorHandlingCallback != nil {
-		c.config.errorHandlingCallback(c.connectErr, c.generation)
+		c.config.errorHandlingCallback(opCtx, c.connectErr, c.generation, c.desc.ServiceID)
 	}
+}
+
+// setGenerationNumber sets the connection's generation number if a callback has been provided to do so in connection
+// configuration.
+func (c *connection) setGenerationNumber() {
+	if c.config.getGenerationFn != nil {
+		c.generation = c.config.getGenerationFn(c.desc.ServiceID)
+	}
+}
+
+// hasGenerationNumber returns true if the connection has set its generation number. If so, this indicates that the
+// generationNumberFn provided via the connection options has been called exactly once.
+func (c *connection) hasGenerationNumber() bool {
+	if !c.config.loadBalanced {
+		// The generation is known for all non-LB clusters once the connection object has been created.
+		return true
+	}
+
+	// For LB clusters, we set the generation after the initial handshake, so we know it's set if the connection
+	// description has been updated to reflect that it's behind an LB.
+	return c.desc.LoadBalanced()
 }
 
 // connect handles the I/O for a connection. It will dial, configure TLS, and perform
@@ -157,7 +184,7 @@ func (c *connection) connect(ctx context.Context) {
 	var tempNc net.Conn
 	tempNc, err = c.config.dialer.DialContext(dialCtx, c.addr.Network(), c.addr.String())
 	if err != nil {
-		c.processInitializationError(err)
+		c.processInitializationError(ctx, err)
 		return
 	}
 	c.nc = tempNc
@@ -173,7 +200,7 @@ func (c *connection) connect(ctx context.Context) {
 		}
 		tlsNc, err := configureTLS(dialCtx, c.config.tlsConnectionSource, c.nc, c.addr, tlsConfig, ocspOpts)
 		if err != nil {
-			c.processInitializationError(err)
+			c.processInitializationError(ctx, err)
 			return
 		}
 		c.nc = tlsNc
@@ -203,12 +230,29 @@ func (c *connection) connect(ctx context.Context) {
 		// fields in handshakeInfo are tracked by the handshaker if necessary.
 		c.desc = handshakeInfo.Description
 		c.isMasterRTT = time.Since(handshakeStartTime)
+
+		// If the application has indicated that the cluster is load balanced, ensure the server has included serviceId
+		// in its handshake response to signal that it knows it's behind an LB as well.
+		if c.config.loadBalanced && c.desc.ServiceID == nil {
+			err = errLoadBalancedStateMismatch
+		}
+	}
+	if err == nil {
+		// For load-balanced connections, the generation number depends on the service ID, which isn't known until the
+		// initial MongoDB handshake is done. To account for this, we don't attempt to set the connection's generation
+		// number unless GetHandshakeInformation succeeds.
+		if c.config.loadBalanced {
+			c.setGenerationNumber()
+		}
+
+		// If we successfully finished the first part of the handshake and verified LB state, continue with the rest of
+		// the handshake.
 		err = handshaker.FinishHandshake(handshakeCtx, handshakeConn)
 	}
 
 	// We have a failed handshake here
 	if err != nil {
-		c.processInitializationError(err)
+		c.processInitializationError(ctx, err)
 		return
 	}
 
@@ -561,12 +605,15 @@ func (c initConnection) SupportsStreaming() bool {
 // messages and the driver.Expirable interface to allow expiring.
 type Connection struct {
 	*connection
+	refCount      int
+	cleanupPoolFn func()
 
 	mu sync.RWMutex
 }
 
 var _ driver.Connection = (*Connection)(nil)
 var _ driver.Expirable = (*Connection)(nil)
+var _ driver.PinnedConnection = (*Connection)(nil)
 
 // WriteWireMessage handles writing a wire message to the underlying connection.
 func (c *Connection) WriteWireMessage(ctx context.Context, wm []byte) error {
@@ -637,13 +684,11 @@ func (c *Connection) Description() description.Server {
 func (c *Connection) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.connection == nil {
+	if c.connection == nil || c.refCount > 0 {
 		return nil
 	}
 
-	err := c.pool.put(c.connection)
-	c.connection = nil
-	return err
+	return c.cleanupReferences()
 }
 
 // Expire closes this connection and will closeConnection the underlying socket.
@@ -655,7 +700,15 @@ func (c *Connection) Expire() error {
 	}
 
 	_ = c.close()
+	return c.cleanupReferences()
+}
+
+func (c *Connection) cleanupReferences() error {
 	err := c.pool.put(c.connection)
+	if c.cleanupPoolFn != nil {
+		c.cleanupPoolFn()
+		c.cleanupPoolFn = nil
+	}
 	c.connection = nil
 	return err
 }
@@ -700,6 +753,58 @@ func (c *Connection) LocalAddress() address.Address {
 		return address.Address("0.0.0.0")
 	}
 	return address.Address(c.nc.LocalAddr().String())
+}
+
+// PinToCursor updates this connection to reflect that it is pinned to a cursor.
+func (c *Connection) PinToCursor() error {
+	return c.pin("cursor", c.pool.pinConnectionToCursor, c.pool.unpinConnectionFromCursor)
+}
+
+// PinToTransaction updates this connection to reflect that it is pinned to a transaction.
+func (c *Connection) PinToTransaction() error {
+	return c.pin("transaction", c.pool.pinConnectionToTransaction, c.pool.unpinConnectionFromTransaction)
+}
+
+func (c *Connection) pin(reason string, updatePoolFn, cleanupPoolFn func()) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.connection == nil {
+		return fmt.Errorf("attempted to pin a connection for a %s, but the connection has already been returned to the pool", reason)
+	}
+
+	// Only use the provided callbacks for the first reference to avoid double-counting pinned connection statistics
+	// in the pool.
+	if c.refCount == 0 {
+		updatePoolFn()
+		c.cleanupPoolFn = cleanupPoolFn
+	}
+	c.refCount++
+	return nil
+}
+
+// UnpinFromCursor updates this connection to reflect that it is no longer pinned to a cursor.
+func (c *Connection) UnpinFromCursor() error {
+	return c.unpin("cursor")
+}
+
+// UnpinFromTransaction updates this connection to reflect that it is no longer pinned to a transaction.
+func (c *Connection) UnpinFromTransaction() error {
+	return c.unpin("transaction")
+}
+
+func (c *Connection) unpin(reason string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.connection == nil {
+		// We don't error here because the resource could have been forcefully closed via Expire.
+		return nil
+	}
+	if c.refCount == 0 {
+		return fmt.Errorf("attempted to unpin a connection from a %s, but the connection is not pinned by any resources", reason)
+	}
+
+	c.refCount--
+	return nil
 }
 
 var notMasterCodes = []int32{10107, 13435}

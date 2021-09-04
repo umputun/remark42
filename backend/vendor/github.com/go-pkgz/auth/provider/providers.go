@@ -5,18 +5,15 @@ import (
 	"crypto/sha1" //nolint
 	"encoding/json"
 	"fmt"
-
+	"github.com/dghubble/oauth1"
+	"github.com/dghubble/oauth1/twitter"
+	"github.com/go-pkgz/auth/token"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/microsoft"
 	"golang.org/x/oauth2/yandex"
-
-	"github.com/dghubble/oauth1"
-	"github.com/dghubble/oauth1/twitter"
-
-	"github.com/go-pkgz/auth/token"
 )
 
 // NewGoogle makes google oauth2 provider
@@ -187,6 +184,57 @@ func NewMicrosoft(p Params) Oauth2Handler {
 				Name:    data.Value("displayName"),
 				Picture: "https://graph.microsoft.com/beta/me/photo/$value",
 			}
+			return userInfo
+		},
+	})
+}
+
+// NewPatreon makes patreon oauth2 provider
+func NewPatreon(p Params) Oauth2Handler {
+	type uinfo struct {
+		Data struct {
+			Attributes struct {
+				FullName string `json:"full_name"`
+				ImageURL string `json:"image_url"`
+			} `json:"attributes"`
+			ID            string `json:"id"`
+			Relationships struct {
+				Pledges struct {
+					Data []struct {
+						ID   string `json:"id"`
+						Type string `json:"type"`
+					} `json:"data"`
+				} `json:"pledges"`
+			} `json:"relationships"`
+		} `json:"data"`
+	}
+
+	return initOauth2Handler(p, Oauth2Handler{
+		name: "patreon",
+		// see https://docs.patreon.com/?shell#oauth
+		endpoint: oauth2.Endpoint{
+			AuthURL:   "https://www.patreon.com/oauth2/authorize",
+			TokenURL:  "https://api.patreon.com/oauth2/token",
+			AuthStyle: oauth2.AuthStyleInParams,
+		},
+		scopes:  []string{},
+		infoURL: "https://www.patreon.com/api/oauth2/api/current_user",
+
+		mapUser: func(data UserData, bdata []byte) token.User {
+			userInfo := token.User{}
+
+			uinfoJSON := uinfo{}
+			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
+				userInfo.ID = "patreon_" + token.HashID(sha1.New(), userInfo.ID)
+				userInfo.Name = uinfoJSON.Data.Attributes.FullName
+				userInfo.Picture = uinfoJSON.Data.Attributes.ImageURL
+
+				// check if the user is your subscriber
+				if len(uinfoJSON.Data.Relationships.Pledges.Data) > 0 {
+					userInfo.SetPaidSub(true)
+				}
+			}
+
 			return userInfo
 		},
 	})

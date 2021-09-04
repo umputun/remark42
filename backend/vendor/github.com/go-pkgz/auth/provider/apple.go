@@ -122,15 +122,15 @@ func (lf LoadFromFileFunc) LoadPrivateKey() ([]byte, error) {
 		return nil, errors.New("empty private key path not allowed")
 	}
 
-	kFile, err := os.Open(lf.Path)
+	keyFile, err := os.Open(lf.Path)
 	if err != nil {
 		return nil, err
 	}
-	keyValue, err := ioutil.ReadAll(kFile)
+	keyValue, err := ioutil.ReadAll(keyFile)
 	if err != nil {
 		return nil, err
 	}
-	err = kFile.Close()
+	err = keyFile.Close()
 	return keyValue, err
 }
 
