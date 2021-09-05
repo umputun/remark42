@@ -1,4 +1,5 @@
 # Remark42 [![Build Status](https://github.com/umputun/remark42/workflows/build/badge.svg)](https://github.com/umputun/remark42/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark42)](https://goreportcard.com/report/github.com/umputun/remark42) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark42/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark42?branch=master) [![codecov](https://codecov.io/gh/umputun/remark42/branch/master/graph/badge.svg)](https://codecov.io/gh/umputun/remark42)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fumputun%2Fremark42.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fumputun%2Fremark42?ref=badge_shield)
 
 Remark42 is a self-hosted, lightweight and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles, or any other place where readers add comments.
 
@@ -903,3 +904,7 @@ _all admin calls require auth and admin privilege_
 
 * [A Helm chart for Remark42 on Kubernetes](https://github.com/groundhog2k/helm-charts/tree/master/charts/remark42)
 * [django-remark42](https://github.com/andrewp-as-is/django-remark42.py)
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fumputun%2Fremark42.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fumputun%2Fremark42?ref=badge_large)
