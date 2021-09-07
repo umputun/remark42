@@ -149,12 +149,11 @@
   }
 }
 
-.title {
+.titleWrapper {
   position: sticky;
   top: 0;
   left: 0;
   margin: 0 0 4px;
-  padding-top: 12px 0;
   background-color: rgb(var(--primary-background-color));
   z-index: 1;
 
@@ -171,6 +170,18 @@
       rgba(var(--primary-background-color), 1)
     );
   }
+}
+
+.title {
+  display: inline;
+  margin: 0;
+  padding-right: 6px;
+  vertical-align: middle;
+}
+
+.counterWrapper {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .preloader {

@@ -11,7 +11,7 @@ export const getPostComments = (sort: Sorting) => apiFetcher.get<Tree>('/find', 
 
 export const getComment = (id: Comment['id']): Promise<Comment> => apiFetcher.get(`/id/${id}`, { url });
 
-export const getUserComments = (userId: User['id']): Promise<{ comments: Comment[] }> =>
+export const getUserComments = (userId: User['id']): Promise<{ comments: Comment[]; count: number }> =>
   apiFetcher.get('/comments', { user: userId, limit: 10 });
 
 export const putCommentVote = ({ id, value }: { id: Comment['id']; value: number }): Promise<void> =>

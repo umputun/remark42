@@ -21,6 +21,7 @@ import { messages as authMessages } from 'components/auth/auth.messsages';
 import type { Comment as CommentType, Theme } from 'common/types';
 
 import styles from './profile.module.css';
+import { Counter } from './components/counter';
 
 async function signout() {
   postMessageToParent({ profile: null, signout: true });
@@ -35,17 +36,20 @@ export function Profile() {
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
+  const [commentsCounts, setCommentsCounts] = useState<number | null>(null);
   const [isSigningOut, setSigningOut] = useState(false);
 
   async function fetchUserComments(userId: string) {
     setIsCommentsLoading(true);
     setError(false);
     setComments(null);
+    setCommentsCounts(null);
 
     try {
-      const { comments } = await getUserComments(userId);
+      const { comments, count } = await getUserComments(userId);
 
       setComments(comments);
+      setCommentsCounts(count);
     } catch (err) {
       setError(true);
     } finally {
@@ -115,13 +119,18 @@ export function Profile() {
   const isCurrent = user.current === '1';
   const commentsJSX = comments?.length ? (
     <>
-      <h3 className={clsx('profile-title', styles.title)}>
-        {isCurrent ? (
-          <FormattedMessage id="user.my-comments" defaultMessage="My recent comments" />
-        ) : (
-          <FormattedMessage key="user.recent-comments" id="user.recent-comments" defaultMessage="Recent comments" />
-        )}
-      </h3>
+      <div className={styles.titleWrapper}>
+        <h3 className={clsx('profile-title', styles.title)}>
+          {isCurrent ? (
+            <FormattedMessage key="user.my-comments" id="user.my-comments" defaultMessage="My comments" />
+          ) : (
+            <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
+          )}
+        </h3>
+        <div className={styles.counterWrapper}>
+          <Counter>{commentsCounts}</Counter>
+        </div>
+      </div>
       {comments.map((comment) => (
         <Comment
           key={comment.id}
