@@ -1,0 +1,13 @@
+.container {
+  font-size: 14px;
+  line-height: 1;
+  background-color: var(--color29);
+  color: var(--color6);
+  font-weight: 700;
+  padding: 3px 4px 2px;
+  border-radius: 2px;
+}
+
+:global(.dark) .container {
+  background-color: rgba(var(--white-color), .12);
+}
