@@ -78,8 +78,8 @@ jobs:
               -t ghcr.io/${USERNAME}/remark42:${ref} -t ghcr.io/${USERNAME}/remark42:latest \
               -t ${USERNAME}/remark42:${ref} -t ${USERNAME}/remark42:latest .
 
-        - name: remote deployment to remark42.com from master
-          if: ${{ github.ref == 'refs/heads/master' }}
-          env:
-            UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
-          run: curl https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
+      - name: remote deployment to remark42.com from master
+        if: ${{ github.ref == 'refs/heads/master' }}
+        env:
+          UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
+        run: curl https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
