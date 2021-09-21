@@ -37,9 +37,11 @@ function getMarkdownLib() {
 		linkify: true,
 	})
 		.use(markdownItAnchor, {
-			permalink: true,
-			permalinkClass: '',
-			permalinkSymbol: '',
+			permalink: markdownItAnchor.permalink.linkInsideHeader({
+				placement: 'before',
+				class: '',
+				symbol: '',
+			}),
 		})
 		.use(markdownItContainer, 'note', noteContainer())
 }
