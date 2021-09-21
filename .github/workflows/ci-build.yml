@@ -23,7 +23,7 @@ on:
       - "!**.md"
 
 jobs:
-  build:
+  build-images:
     runs-on: ubuntu-latest
 
     steps:

@@ -16,7 +16,7 @@ on:
       - "!backend/scripts/**"
       - "!**.md"
 jobs:
-  backend:
+  test-backend:
     runs-on: ubuntu-latest
 
     steps:
