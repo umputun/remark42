@@ -29,5 +29,57 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: build docker image
-        run: docker build --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github .
+      - name: set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: build and deploy master image to ghcr.io and dockerhub
+        if: ${{ github.ref == 'refs/heads/master' }}
+        env:
+          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          USERNAME: ${{ github.actor }}
+          GITHUB_SHA: ${{ github.sha}}
+          GITHUB_REF: ${{ github.ref}}
+        run: |
+          ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
+          echo GITHUB_REF - $ref
+          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
+          echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
+          docker buildx build --push \
+              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github \
+              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
+              --platform linux/amd64,linux/arm/v7,linux/arm64 \
+              -t ghcr.io/${USERNAME}/remark42:${ref} -t ${USERNAME}/remark42:${ref} .
+
+      - name: deploy tagged (latest) to ghcr.io and dockerhub
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          USERNAME: ${{ github.actor }}
+          GITHUB_SHA: ${{ github.sha}}
+          GITHUB_REF: ${{ github.ref}}
+        run: |
+          ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
+          echo GITHUB_REF - $ref
+          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
+          echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
+          docker buildx build --push \
+              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
+              --build-arg CI=github --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
+              --platform linux/amd64,linux/arm/v7,linux/arm64 \
+              -t ghcr.io/${USERNAME}/remark42:${ref} -t ghcr.io/${USERNAME}/remark42:latest \
+              -t ${USERNAME}/remark42:${ref} -t ${USERNAME}/remark42:latest .
+
+        - name: remote deployment to remark42.com from master
+          if: ${{ github.ref == 'refs/heads/master' }}
+          env:
+            UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
+          run: curl https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
