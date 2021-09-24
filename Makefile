@@ -11,6 +11,11 @@ bin:
 docker:
 	docker build -t umputun/remark42 --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true .
 
+dockerx:
+	docker buildx build --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true \
+		  --progress=plain --platform linux/amd64,linux/arm/v7,linux/arm64 \
+		  -t ghcr.io/umputun/remark42:master -t umputun/remark42:master .
+
 release:
 	docker build -f Dockerfile.artifacts --no-cache --pull -t remark42.bin .
 	- @docker rm -f remark42.bin 2>/dev/null || exit 0
