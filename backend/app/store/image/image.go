@@ -215,6 +215,7 @@ func (s *Service) Close(ctx context.Context) {
 
 	waitForTerm := func(ctx context.Context) {
 		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():

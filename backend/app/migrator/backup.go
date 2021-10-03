@@ -27,6 +27,7 @@ type AutoBackup struct {
 func (ab AutoBackup) Do(ctx context.Context) {
 	log.Printf("[INFO] activate auto-backup for %s under %s, duration %s", ab.SiteID, ab.BackupLocation, ab.Duration)
 	tick := time.NewTicker(ab.Duration)
+	defer tick.Stop()
 	log.Printf("[DEBUG] first backup for %s at %s", ab.SiteID, time.Now().Add(ab.Duration))
 
 	for {
