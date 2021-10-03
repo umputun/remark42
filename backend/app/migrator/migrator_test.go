@@ -64,6 +64,27 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 	assert.Equal(t, 3, len(last), "3 comments imported")
 }
 
+func TestMigrator_ImportCommento(t *testing.T) {
+	defer os.Remove("/tmp/remark-test.db")
+
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	require.NoError(t, err, "create store")
+	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer dataStore.Close()
+	size, err := ImportComments(ImportParams{
+		DataStore: dataStore,
+		InputFile: "testdata/commento.json",
+		SiteID:    "test",
+		Provider:  "commento",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	last, err := dataStore.Last("test", 10, time.Time{}, store.User{})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(last), "2 comments imported")
+}
+
 func TestMigrator_ImportNative(t *testing.T) {
 	defer func() {
 		os.Remove("/tmp/remark-test.db")

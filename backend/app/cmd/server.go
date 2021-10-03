@@ -463,6 +463,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		NativeImporter:    &migrator.Native{DataStore: dataService},
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
+		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
 		URLMapperMaker:    migrator.NewURLMapper,
 		KeyStore:          adminStore,

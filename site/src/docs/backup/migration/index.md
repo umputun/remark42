@@ -15,3 +15,8 @@ Remark42 supports importing comments from Disqus, WordPress, or native backup fo
 1. Use [that instruction](https://wordpress.com/support/export/) to export comments to file using standard WordPress functionality
 2. Move this file to your Remark42 host within `./var`
 3. Run import command - `docker exec -it remark42 import -p wordpress -f /srv/var/{wordpress-export-name}.xml -s {your site ID}`
+
+### Import from Commento
+
+1. Move exported json file to your Remark42 host within `./var`
+2. Run import command - `docker exec -it remark42 import -p commento -f /srv/var/{commento-export-name}.json -s {your site ID}`

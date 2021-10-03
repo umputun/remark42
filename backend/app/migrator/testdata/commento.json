@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "comments": [
+	{
+	  "commentHex": "e7069a7dfcfaed43caf62300a9b0edb1c124ad79d0f5887c93649c15d7f69945",
+	  "domain": "example.com",
+	  "url": "https://example.com/blog/post/1",
+	  "commenterHex": "anonymous",
+	  "markdown": "Example comment created by user.",
+	  "html": "",
+	  "parentHex": "root",
+	  "score": 1,
+	  "state": "approved",
+	  "creationDate": "2021-03-12T11:21:56Z",
+	  "direction": 0,
+	  "deleted": false
+	},
+	{
+	  "commentHex": "7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
+	  "domain": "example.com",
+	  "url": "https://example.com/blog/post/1",
+	  "commenterHex": "a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+	  "markdown": "Example 2 comment created by user.",
+	  "html": "",
+	  "parentHex": "root",
+	  "score": 0,
+	  "state": "approved",
+	  "creationDate": "2021-03-17T12:09:47.722181Z",
+	  "direction": 0,
+	  "deleted": false
+	},
+	{
+	  "commentHex": "ea5f7bcd6ac9bb7b657f7d0569831104e1bcf9c253d03c1e16bf9654c49a5ce9",
+	  "domain": "example.com",
+	  "url": "https://example.com/blog/post/1",
+	  "commenterHex": "bd1290ab5c858cf2a05903c2a9a61fd63399c6635db38cc6597002195e22e061",
+	  "markdown": "Great reply!",
+	  "html": "",
+	  "parentHex": "7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
+	  "score": 0,
+	  "state": "approved",
+	  "creationDate": "2021-05-11T15:43:01.852651Z",
+	  "direction": 0,
+	  "deleted": false
+	}
+  ],
+  "commenters": [
+	{
+	  "commenterHex": "a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+	  "email": "somegreatmail@gmail.com",
+	  "name": "User5276",
+	  "link": "https://example.com/profile/257",
+	  "photo": "https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",
+	  "provider": "sso:example.com",
+	  "joinDate": "2021-03-19T19:27:25.954285Z",
+	  "isModerator": false
+	},
+	{
+	  "commenterHex": "bd1290ab5c858cf2a05903c2a9a61fd63399c6635db38cc6597002195e22e061",
+	  "email": "moregreatmail@gmail.com",
+	  "name": "Saturnin Uf",
+	  "link": "https://example.com/profile/259",
+	  "photo": "https://secure.gravatar.com/avatar/6481228d190f0286a42bee9041f9b1a1",
+	  "provider": "sso:example.com",
+	  "joinDate": "2021-03-21T12:15:37.536035Z",
+	  "isModerator": false
+	}
+  ]
+}
