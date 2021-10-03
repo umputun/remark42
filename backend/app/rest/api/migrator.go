@@ -27,6 +27,7 @@ type Migrator struct {
 	NativeImporter    migrator.Importer
 	DisqusImporter    migrator.Importer
 	WordPressImporter migrator.Importer
+	CommentoImporter  migrator.Importer
 	NativeExporter    migrator.Exporter
 	URLMapperMaker    migrator.MapperMaker
 	KeyStore          KeyStore
@@ -228,6 +229,8 @@ func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 		importer = m.DisqusImporter
 	case "wordpress":
 		importer = m.WordPressImporter
+	case "commento":
+		importer = m.CommentoImporter
 	default:
 		importer = m.NativeImporter
 	}

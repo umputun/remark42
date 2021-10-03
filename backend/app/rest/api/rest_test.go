@@ -430,6 +430,7 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		Migrator: &Migrator{
 			DisqusImporter:    &migrator.Disqus{DataStore: dataStore},
 			WordPressImporter: &migrator.WordPress{DataStore: dataStore},
+			CommentoImporter:  &migrator.Commento{DataStore: dataStore},
 			NativeImporter:    &migrator.Native{DataStore: dataStore},
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
 			URLMapperMaker:    migrator.NewURLMapper,

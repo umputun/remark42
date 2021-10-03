@@ -109,6 +109,34 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	waitForMigrationCompletion(t, ts)
 }
 
+func TestMigrator_ImportFromCommento(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	r := strings.NewReader(`{"version":1,"comments":[{"commentHex":"7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
+"domain":"example.com","url":"https://example.com/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+"markdown":"Example content","html":"","parentHex":"root","score":0,"state":"approved","creationDate":"2021-03-17T12:09:47.722181Z",
+"direction":0,"deleted":false}],"commenters":[{"commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+"email":"somegreatmail@gmail.com","name":"User5276","link":"https://example.com/profile/257","photo":"https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",
+"provider":"sso:example.com","joinDate":"2021-03-19T19:27:25.954285Z","isModerator":false}]}`)
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
+	assert.NoError(t, err)
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+
+	b, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+	assert.NoError(t, resp.Body.Close())
+
+	waitForMigrationCompletion(t, ts)
+}
+
 func TestMigrator_ImportRejected(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
