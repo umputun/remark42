@@ -80,19 +80,6 @@
 	]
   },
   {
-	"section": "API",
-	"children": [
-	  {
-		"title": "Authorization",
-		"href": "/api/authorization/"
-	  },
-	  {
-		"title": "Commenting",
-		"href": "/api/commenting/"
-	  }
-	]
-  },
-  {
 	"section": "Contributing",
 	"children": [
 	  {
