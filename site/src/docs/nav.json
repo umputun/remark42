@@ -1,59 +1,126 @@
 [
-	{
-		"section": "Getting Started",
+  {
+	"section": "Getting Started",
+	"children": [
+	  {
+		"title": "Installation",
+		"href": "/getting-started/installation/"
+	  },
+	  {
+		"title": "System Requirements",
+		"href": "/getting-started/system-requirements/"
+	  }
+	]
+  },
+  {
+	"section": "Configuration",
+	"children": [
+	  {
+		"title": "Frontend",
+		"href": "/configuration/frontend/"
+	  },
+	  {
+		"title": "Authorization",
+		"href": "/configuration/authorization/"
+	  },
+	  {
+		"title": "Email",
+		"href": "/configuration/email/"
+	  },
+	  {
+		"title": "Notifications",
+		"href": "/configuration/notifications/"
+	  }
+	]
+  },
+  {
+	"section": "Manuals",
+	"children": [
+	  {
+		"title": "Subdomain",
+		"href": "/manuals/subdomain/"
+	  },
+	  {
+		"title": "Reproxy",
+		"href": "/manuals/reproxy/"
+	  },
+	  {
+		"title": "Nginx",
+		"href": "/manuals/nginx/"
+	  },
+	  {
+		"title": "Kubernetes",
+		"href": "/manuals/kubernetes/"
+	  }
+	]
+  },
+  {
+	"section": "Backup",
+	"children": [
+	  {
+		"title": "Manual",
+		"href": "/backup/manual/"
+	  },
+	  {
+		"title": "Migration",
+		"href": "/backup/migration/"
+	  },
+	  {
+		"title": "Restore",
+		"href": "/backup/restore/"
+	  },
+	  {
+		"title": "Site URL migration",
+		"href": "/backup/url-migration/"
+	  },
+	  {
+		"title": "Automatic",
+		"href": "/backup/automatic/"
+	  }
+	]
+  },
+  {
+	"section": "API",
+	"children": [
+	  {
+		"title": "Authorization",
+		"href": "/api/authorization/"
+	  },
+	  {
+		"title": "Commenting",
+		"href": "/api/commenting/"
+	  }
+	]
+  },
+  {
+	"section": "Contributing",
+	"children": [
+	  {
+		"title": "Development",
+		"href": "/contributing/development/",
 		"children": [
-			{ "title": "Installation", "href": "/getting-started/installation/" },
-			{
-				"title": "System Requirements",
-				"href": "/getting-started/system-requirements/"
-			}
+		  {
+			"title": "Backend",
+			"href": "/contributing/development/backend/"
+		  },
+		  {
+			"title": "Frontend",
+			"href": "/contributing/development/frontend/"
+		  }
 		]
-	},
-	{
-		"section": "Configuration",
-		"children": [
-			{ "title": "Frontend", "href": "/configuration/frontend/" },
-			{ "title": "Authorization", "href": "/configuration/authorization/" },
-			{ "title": "Email", "href": "/configuration/email/" },
-			{ "title": "Notifications", "href": "/configuration/notifications/" }
-		]
-	},
-	{
-		"section": "Manuals",
-		"children": [
-			{ "title": "Subdomain", "href": "/manuals/subdomain/" },
-			{ "title": "Reproxy", "href": "/manuals/reproxy/" },
-			{ "title": "Nginx", "href": "/manuals/nginx/" },
-			{ "title": "Kubernetes", "href": "/manuals/kubernetes/" }
-		]
-	},
-	{
-		"section": "Backup",
-		"children": [
-			{ "title": "Manual", "href": "/backup/manual/" },
-			{ "title": "Migration", "href": "/backup/migration/" },
-			{ "title": "Restore", "href": "/backup/restore/" },
-			{ "title": "Site URL migration", "href": "/backup/url-migration/" },
-			{ "title": "Automatic", "href": "/backup/automatic/" }
-		]
-	},
-	{
-		"section": "Contrubuting",
-		"children": [
-			{
-				"title": "Development",
-				"href": "/contributing/development/",
-				"children": [
-					{ "title": "Backend", "href": "/contributing/development/backend/" },
-					{ "title": "Frontend", "href": "/contributing/development/frontend/" }
-				]
-			},
-			{ "title": "Translations", "href": "/contributing/translations/" },
-			{ "title": "API", "href": "/contributing/api/" },
-			{
-				"title": "Technical Details",
-				"href": "/contributing/technical-details/"
-			}
-		]
-	}
+	  },
+	  {
+		"title": "Translations",
+		"href": "/contributing/translations/"
+	  },
+	  {
+		"title": "API",
+		"href": "/contributing/api/"
+	  },
+	  {
+		"title": "Technical Details",
+		"href": "/contributing/technical-details/"
+	  }
+	]
+  }
 ]
