@@ -11,11 +11,11 @@
 		"yarn": ">=1.22"
 	},
 	"scripts": {
-		"dev": "npm run clean && npm run dev:css | npm run dev:11ty",
-		"dev:css": "postcss ./src/styles.css -o .tmp/style.css -w",
-		"dev:11ty": "eleventy --serve --watch",
+		"dev": "npm-run-all -l clean -p dev:css dev:11ty",
+		"dev:css": "tailwindcss -i ./src/styles.css -o .tmp/style.css -w",
+		"dev:11ty": "eleventy --serve --watch --quiet",
 		"build": "cross-env NODE_ENV=production run-s clean build:* --print-label",
-		"build:css": "postcss ./src/styles.css -o .tmp/style.css",
+		"build:css": "tailwindcss -i ./src/styles.css -o .tmp/style.css",
 		"build:11ty": "eleventy",
 		"clean": "rm -rf .tmp/* build/*"
 	},
