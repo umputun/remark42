@@ -49,6 +49,7 @@ function getMarkdownLib() {
 module.exports = function (eleventyConfig) {
 	// TODO: create version with commit sha and current version of Remark42
 	eleventyConfig.addShortcode('version', () => `${Date.now()}`)
+	eleventyConfig.addShortcode('year', () => `${new Date().getFullYear()}`)
 	eleventyConfig.setUseGitIgnore(false)
 	eleventyConfig.addWatchTarget('./.tmp/style.css')
 	eleventyConfig.addPassthroughCopy({ './.tmp/style.css': './style.css' })
