@@ -36,6 +36,7 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 		Verified: u.BoolAttr("verified"),
 		Blocked:  u.BoolAttr("blocked"),
 		SiteID:   u.Audience,
+		PaidSub:  u.IsPaidSub(),
 	}, nil
 }
 
@@ -62,6 +63,7 @@ func SetUserInfo(r *http.Request, user store.User) *http.Request {
 		},
 	}
 	u.SetAdmin(user.Admin)
+	u.SetPaidSub(user.PaidSub)
 
 	return token.SetUserInfo(r, u)
 }

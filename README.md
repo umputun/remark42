@@ -2,7 +2,7 @@
 
 Remark42 is a self-hosted, lightweight and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles, or any other place where readers add comments.
 
-* Social login via Google, Twitter, Facebook, Microsoft, GitHub, Yandex and Telegram
+* Social login via Google, Twitter, Facebook, Microsoft, GitHub, Yandex, Patreon and Telegram
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
@@ -53,6 +53,7 @@ For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wi
         - [Telegram Auth Provider](#telegram-auth-provider)
         - [Twitter Auth provider](#twitter-auth-provider)
         - [Yandex Auth provider](#yandex-auth-provider)
+        - [Patreon Auth provider](#patreon-auth-provider)
         - [Anonymous Auth provider](#anonymous-auth-provider)
       - [Initial import from Disqus](#initial-import-from-disqus)
       - [Initial import from WordPress](#initial-import-from-wordpress)
@@ -150,6 +151,8 @@ _this is the recommended way to run Remark42_
 | auth.github.csec        | AUTH_GITHUB_CSEC        |                          | GitHub OAuth client secret                      |
 | auth.twitter.cid        | AUTH_TWITTER_CID        |                          | Twitter Consumer API Key                        |
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
+| auth.patreon.cid        | AUTH_PATREON_CID        |                          | Patreon OAuth Client ID                         |
+| auth.patreon.csec       | AUTH_PATREON_CSEC       |                          | Patreon OAuth Client Secret                     |
 | auth.telegram           | AUTH_TELEGRAM           |                          | Enable Telegram auth (telegram.token must be present) |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
@@ -209,6 +212,7 @@ _this is the recommended way to run Remark42_
 | port                    | REMARK_PORT             | `8080`                   | web server port                                 |
 | web-root                | REMARK_WEB_ROOT         | `./web`                  | web server root directory                       |
 | update-limit            | UPDATE_LIMIT            | `0.5`                    | updates/sec limit                               |
+| subscribers-only        | SUBSCRIBERS_ONLY        | `false`                  | enable commenting only for Patreon subscribers  |
 | admin-passwd            | ADMIN_PASSWD            | none (disabled)          | password for `admin` basic auth                 |
 | dbg                     | DEBUG                   | `false`                  | debug mode                                      |
 
@@ -343,6 +347,12 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 6. Take note of the **ID** and **Password**
 
 For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/concepts/about.html) and [Yandex.Passport](https://yandex.com/dev/passport/doc/dg/index.html) API documentation.
+
+##### Patreon Auth provider
+1. Create a new Patreon client https://www.patreon.com/portal/registration/register-clients
+2. Fill **App Name**, **Description**
+3. In the field **Redirect URIs** enter the correct URI constructed as domain + `/auth/patreon/callback`, i.e. `https://example.mysite.com/auth/patreon/callback`
+4. Expand client details, take a note of the **Client ID** and **Client Secret**. Those will be used as `AUTH_PATREON_CID` and `AUTH_PATREON_CSEC`
 
 ##### Anonymous Auth provider
 
@@ -662,6 +672,7 @@ type User struct {
     Admin    bool   `json:"admin"`
     Blocked  bool   `json:"block"`
     Verified bool   `json:"verified"`
+    PaidSub  bool   `json:"paid_sub"` // is paid Patreon subscriber
 }
 ```
 
@@ -760,18 +771,19 @@ type PostInfo struct {
 
 ```go
 type Config struct {
-    Version        string   `json:"version"`
-    EditDuration   int      `json:"edit_duration"`
-    MaxCommentSize int      `json:"max_comment_size"`
-    Admins         []string `json:"admins"`
-    AdminEmail     string   `json:"admin_email"`
-    Auth           []string `json:"auth_providers"`
-    LowScore       int      `json:"low_score"`
-    CriticalScore  int      `json:"critical_score"`
-    PositiveScore  bool     `json:"positive_score"`
-    ReadOnlyAge    int      `json:"readonly_age"`
-    MaxImageSize   int      `json:"max_image_size"`
-    EmojiEnabled   bool     `json:"emoji_enabled"`
+    Version         string   `json:"version"`
+    EditDuration    int      `json:"edit_duration"`
+    MaxCommentSize  int      `json:"max_comment_size"`
+    Admins          []string `json:"admins"`
+    AdminEmail      string   `json:"admin_email"`
+    Auth            []string `json:"auth_providers"`
+    LowScore        int      `json:"low_score"`
+    CriticalScore   int      `json:"critical_score"`
+    PositiveScore   bool     `json:"positive_score"`
+    ReadOnlyAge     int      `json:"readonly_age"`
+    MaxImageSize    int      `json:"max_image_size"`
+    EmojiEnabled    bool     `json:"emoji_enabled"`
+    SubscribersOnly bool     `json:"subscribers_only"` // enable commenting only for Patreon subscribers
 }
 ```
 

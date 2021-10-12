@@ -63,6 +63,7 @@ type Rest struct {
 	ProxyCORS           bool
 	SendJWTHeader       bool
 	AllowedAncestors    []string // sets Content-Security-Policy "frame-ancestors ..."
+	SubscribersOnly     bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -312,7 +313,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
-			rauth.Use(authMiddleware.Auth, matchSiteID)
+			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 			rauth.Use(middleware.NoCache, logInfoWithBody)
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
@@ -429,6 +430,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EmojiEnabled        bool     `json:"emoji_enabled"`
 		SimpleView          bool     `json:"simple_view"`
 		SendJWTHeader       bool     `json:"send_jwt_header"`
+		SubscribersOnly     bool     `json:"subscribers_only"`
 	}{
 		Version:             s.Version,
 		EditDuration:        int(s.DataService.EditDuration.Seconds()),
@@ -447,6 +449,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		AnonVote:            s.AnonVote,
 		SimpleView:          s.SimpleView,
 		SendJWTHeader:       s.SendJWTHeader,
+		SubscribersOnly:     s.SubscribersOnly,
 	}
 
 	cnf.Auth = []string{}
@@ -622,6 +625,27 @@ func frameAncestors(hosts []string) func(http.Handler) http.Handler {
 				return
 			}
 			w.Header().Set("Content-Security-Policy", "frame-ancestors "+strings.Join(hosts, " ")+";")
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// subscribersOnly is a middleware rejecting non-paid_sub users
+func subscribersOnly(enable bool) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			if enable {
+				user, err := rest.GetUserInfo(r)
+				if err != nil {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+				if !user.PaidSub {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)

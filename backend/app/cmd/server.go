@@ -80,6 +80,7 @@ type ServerCommand struct {
 	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments"`
+	SubscribersOnly  bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
 
 	Auth struct {
 		TTL struct {
@@ -96,6 +97,7 @@ type ServerCommand struct {
 		Microsoft AuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Patreon   AuthGroup `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Telegram  bool      `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -291,6 +293,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_MICROSOFT_CSEC",
 		"AUTH_TWITTER_CSEC",
 		"AUTH_YANDEX_CSEC",
+		"AUTH_PATREON_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -531,6 +534,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		ProxyCORS:           s.ProxyCORS,
 		AllowedAncestors:    s.AllowedHosts,
 		SendJWTHeader:       s.Auth.SendJWTHeader,
+		SubscribersOnly:     s.SubscribersOnly,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -797,6 +801,10 @@ func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *aut
 	}
 	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
 		authenticator.AddProvider("twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC)
+		providers++
+	}
+	if s.Auth.Patreon.CID != "" && s.Auth.Patreon.CSEC != "" {
+		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
 		providers++
 	}
 	if s.Auth.Telegram {

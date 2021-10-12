@@ -1,6 +1,7 @@
 export const OAUTH_DATA = {
   facebook: require('./assets/facebook.svg').default as string,
   twitter: require('./assets/twitter.svg').default as string,
+  patreon: require('./assets/patreon.svg').default as string,
   google: require('./assets/google.svg').default as string,
   microsoft: require('./assets/microsoft.svg').default as string,
   yandex: require('./assets/yandex.svg').default as string,

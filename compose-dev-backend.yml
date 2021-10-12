@@ -67,5 +67,7 @@ services:
       - AUTH_FACEBOOK_CSEC=1111
       - AUTH_TWITTER_CID=1111
       - AUTH_TWITTER_CSEC=1111
+      - AUTH_PATREON_CID=1111
+      - AUTH_PATREON_CSEC=1111
     volumes:
       - ./var:/srv/var

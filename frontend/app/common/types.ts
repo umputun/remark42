@@ -95,7 +95,7 @@ export interface Tree {
   info: PostInfo;
 }
 
-export type OAuthProvider = 'facebook' | 'twitter' | 'google' | 'yandex' | 'github' | 'microsoft' | 'dev';
+export type OAuthProvider = 'facebook' | 'twitter' | 'google' | 'yandex' | 'github' | 'microsoft' | 'patreon' | 'dev';
 export type FormProvider = 'email' | 'anonymous';
 export type Provider = OAuthProvider | FormProvider;
 
