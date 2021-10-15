@@ -15,6 +15,7 @@ type User struct {
     Admin    bool   `json:"admin"`
     Blocked  bool   `json:"block"`
     Verified bool   `json:"verified"`
+    PaidSub  bool   `json:"paid_sub"` // is paid Patreon subscriber
 }
 ```
 
@@ -113,18 +114,19 @@ type PostInfo struct {
 
 ```go
 type Config struct {
-    Version        string   `json:"version"`
-    EditDuration   int      `json:"edit_duration"`
-    MaxCommentSize int      `json:"max_comment_size"`
-    Admins         []string `json:"admins"`
-    AdminEmail     string   `json:"admin_email"`
-    Auth           []string `json:"auth_providers"`
-    LowScore       int      `json:"low_score"`
-    CriticalScore  int      `json:"critical_score"`
-    PositiveScore  bool     `json:"positive_score"`
-    ReadOnlyAge    int      `json:"readonly_age"`
-    MaxImageSize   int      `json:"max_image_size"`
-    EmojiEnabled   bool     `json:"emoji_enabled"`
+    Version         string   `json:"version"`
+    EditDuration    int      `json:"edit_duration"`
+    MaxCommentSize  int      `json:"max_comment_size"`
+    Admins          []string `json:"admins"`
+    AdminEmail      string   `json:"admin_email"`
+    Auth            []string `json:"auth_providers"`
+    LowScore        int      `json:"low_score"`
+    CriticalScore   int      `json:"critical_score"`
+    PositiveScore   bool     `json:"positive_score"`
+    ReadOnlyAge     int      `json:"readonly_age"`
+    MaxImageSize    int      `json:"max_image_size"`
+    EmojiEnabled    bool     `json:"emoji_enabled"`
+    SubscribersOnly bool     `json:"subscribers_only"` // enable commenting only for Patreon subscribers
 }
 ```
 

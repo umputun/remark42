@@ -364,6 +364,41 @@ func TestRest_frameAncestors(t *testing.T) {
 
 }
 
+func TestRest_subscribersOnly(t *testing.T) {
+
+	paidSubUser := &token.User{}
+	paidSubUser.SetPaidSub(true)
+
+	tbl := []struct {
+		subsOnly bool
+		user     token.User
+		setUser  bool
+		status   int
+	}{
+		{true, token.User{}, false, http.StatusUnauthorized},
+		{true, token.User{}, true, http.StatusForbidden},
+		{false, token.User{}, false, http.StatusOK},
+		{false, token.User{}, true, http.StatusOK},
+		{true, *paidSubUser, true, http.StatusOK},
+	}
+
+	for i, tt := range tbl {
+		tt := tt
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com", nil)
+			if tt.setUser {
+				req = token.SetUserInfo(req, tt.user)
+			}
+			w := httptest.NewRecorder()
+			h := subscribersOnly(tt.subsOnly)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h.ServeHTTP(w, req)
+			resp := w.Result()
+			assert.Equal(t, tt.status, resp.StatusCode)
+			assert.NoError(t, resp.Body.Close())
+		})
+	}
+}
+
 // randomPath pick a file or folder name which is not in use for sure
 func randomPath(tempDir, basename, suffix string) (string, error) {
 	for i := 0; i < 10; i++ {
