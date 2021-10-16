@@ -254,7 +254,6 @@ func (s *Rest) routes() chi.Router {
 			ropen.Get("/count", s.pubRest.countCtrl)
 			ropen.Post("/counts", s.pubRest.countMultiCtrl)
 			ropen.Get("/list", s.pubRest.listCtrl)
-			ropen.Post("/preview", s.pubRest.previewCommentCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
 			ropen.Get("/img", s.ImageProxy.Handler)
 
@@ -317,6 +316,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.NoCache, logInfoWithBody)
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
+			rauth.Post("/preview", s.privRest.previewCommentCtrl)
 			rauth.Post("/comment", s.privRest.createCommentCtrl)
 			rauth.Put("/vote/{id}", s.privRest.voteCtrl)
 			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
