@@ -138,7 +138,7 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 		chatID = "@" + chatID // if chatID not a number enforce @ prefix
 	}
 
-	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&parse_mode=Markdown&disable_web_page_preview=true",
+	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&disable_web_page_preview=true",
 		t.apiPrefix, t.Token, chatID)
 	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
 	if err != nil {
@@ -194,10 +194,9 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  [%s](%s)", req.Comment.PostTitle, req.Comment.Locator.URL)
+		msg += fmt.Sprintf("\n\n↦  [%s](%s)", escapeText(req.Comment.PostTitle), req.Comment.Locator.URL)
 	}
 
-	msg = html.UnescapeString(msg)
 	body := telegramMsg{Text: msg, ParseMode: "MarkdownV2"}
 	b, err := json.Marshal(body)
 	if err != nil {
@@ -206,9 +205,9 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	return b, nil
 }
 
-func escapeText(title string) string {
-	escSymbols := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", "!"}
-	res := title
+func escapeText(text string) string {
+	escSymbols := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
+	res := html.UnescapeString(text)
 	for _, esc := range escSymbols {
 		res = strings.Replace(res, esc, "\\"+esc, -1)
 	}
