@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/microcosm-cc/bluemonday"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
@@ -110,7 +110,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 	log.Printf("[DEBUG] send telegram notification for comment ID %s", req.Comment.ID)
 	result := new(multierror.Error)
 
-	msg, err := buildTelegramMessage(req)
+	msg, err := buildMessage(req)
 	if err != nil {
 		return errors.Wrapf(err, "failed to make telegram message body for comment ID %s", req.Comment.ID)
 	}
@@ -178,26 +178,27 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 	return nil
 }
 
-func buildTelegramMessage(req Request) ([]byte, error) {
+// buildMessage generates message for generic notification about new comment
+func buildMessage(req Request) ([]byte, error) {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := fmt.Sprintf("[%s](%s)", escapeText(req.Comment.User.Name), commentURLPrefix+req.Comment.ID)
+	msg := fmt.Sprintf(`<a href="%s">%s</a>`, commentURLPrefix+req.Comment.ID, escapeTelegramText(req.Comment.User.Name))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(" -> [%s](%s)", escapeText(req.parent.User.Name), commentURLPrefix+req.parent.ID)
+		msg += fmt.Sprintf(" -> <a href=\"%s\">%s</a>", commentURLPrefix+req.parent.ID, escapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", escapeText(req.Comment.Orig))
+	msg += fmt.Sprintf("\n\n%s", telegramSupportedHTML(req.Comment.Text))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n> \"_%s_\"", escapeText(req.parent.Orig))
+		msg += fmt.Sprintf("\n\n \"_%s_\"", telegramSupportedHTML(req.parent.Text))
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  [%s](%s)", escapeText(req.Comment.PostTitle), req.Comment.Locator.URL)
+		msg += fmt.Sprintf("\n\n↦  <a href=\"%s\">%s</a>", req.Comment.Locator.URL, escapeTelegramText(req.Comment.PostTitle))
 	}
 
-	body := telegramMsg{Text: msg, ParseMode: "MarkdownV2"}
+	body := telegramMsg{Text: msg, ParseMode: "HTML"}
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -205,22 +206,24 @@ func buildTelegramMessage(req Request) ([]byte, error) {
 	return b, nil
 }
 
-func escapeText(text string) string {
-	escSymbols := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
-	res := html.UnescapeString(text)
-	for _, esc := range escSymbols {
-		res = strings.Replace(res, esc, "\\"+esc, -1)
-	}
-	return res
+// returns HTML with only tags allowed in Telegram HTML message payload
+// https://core.telegram.org/bots/api#html-style
+func telegramSupportedHTML(htmlText string) string {
+	p := bluemonday.NewPolicy()
+	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre")
+	p.AllowAttrs("href").OnElements("a")
+	p.AllowAttrs("class").OnElements("code")
+	return p.Sanitize(htmlText)
 }
 
-func escapeCode(text string) string {
-	escSymbols := []string{"`", `\`}
-	res := text
-	for _, esc := range escSymbols {
-		res = strings.Replace(res, esc, "\\"+esc, -1)
-	}
-	return res
+// returns text sanitized of symbols not allowed inside other HTML tags in Telegram HTML message payload
+// https://core.telegram.org/bots/api#html-style
+func escapeTelegramText(text string) string {
+	// order is important
+	text = strings.ReplaceAll(text, "&", "&amp;")
+	text = strings.ReplaceAll(text, "<", "&lt;")
+	text = strings.ReplaceAll(text, ">", "&gt;")
+	return text
 }
 
 // SendVerification sends user verification message to the specified user
@@ -246,11 +249,11 @@ func (t *Telegram) SendVerification(ctx context.Context, req VerificationRequest
 
 // buildVerificationMessage generates verification telegram message based on given input
 func (t *Telegram) buildVerificationMessage(user, token, site string) ([]byte, error) {
-	result := fmt.Sprintf("Confirmation for *%s* on site %s\n"+
+	result := fmt.Sprintf("Confirmation for <i>%s</i> on site %s\n"+
 		"Please copy and paste this text into “token” field on comments page to confirm subscription:\n\n\n"+
-		"```%s```",
-		escapeText(user), escapeText(site), escapeCode(token))
-	body := telegramMsg{Text: result, ParseMode: "MarkdownV2"}
+		"<pre>%s</pre>",
+		escapeTelegramText(user), escapeTelegramText(site), escapeTelegramText(token))
+	body := telegramMsg{Text: result, ParseMode: "HTML"}
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err

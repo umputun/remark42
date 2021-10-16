@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -102,9 +101,9 @@ func TestTelegram_Send(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
-	c := store.Comment{Text: "some text", ParentID: "1", ID: "999"}
+	c := store.Comment{Text: "some text", ParentID: "1", ID: "999", Locator: store.Locator{URL: "http://example.org/"}}
 	c.User.Name = "from"
-	cp := store.Comment{Text: "some parent text"}
+	cp := store.Comment{Text: `<p>some parent text with a <a href="http://example.org">link</a> and special text:<br>& < > &</p>`}
 	cp.User.Name = "to"
 
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
@@ -136,6 +135,15 @@ func TestTelegram_Send(t *testing.T) {
 	tb.apiPrefix = "http://non-existent"
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	assert.Error(t, err)
+
+	// test buildMessage separately for message text
+	res, err := buildMessage(Request{Comment: c, parent: cp})
+	assert.NoError(t, err)
+	assert.Equal(t, `{"text":"\u003ca href=\"http://example.org/#remark42__comment-999\"\u003efrom\u003c/a\u003e -\u003e \u003ca href=\"http://example.org/#remark42__comment-\"\u003eto\u003c/a\u003e\n\n`+
+		`some text\n\n`+
+		` \"_some parent text with a \u003ca href=\"http://example.org\"\u003elink\u003c/a\u003e and special text:\u0026amp; \u0026lt; \u0026gt; \u0026amp;_\"\n\n`+
+		`↦  \u003ca href=\"http://example.org/\"\u003e[test title]\u003c/a\u003e","parse_mode":"HTML"}`,
+		string(res))
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
@@ -170,7 +178,7 @@ func TestTelegram_SendVerification(t *testing.T) {
 	// test buildVerificationMessage separately for message text
 	res, err := tb.buildVerificationMessage(req.User, req.Token, req.SiteID)
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), `Confirmation for *test\\_username* on site remark`)
+	assert.Contains(t, string(res), `Confirmation for \u003ci\u003etest_username\u003c/i\u003e on site remark`)
 	assert.Contains(t, string(res), `secret_`)
 }
 
@@ -215,25 +223,4 @@ func mockTelegramServer() *httptest.Server {
 	})
 
 	return httptest.NewServer(router)
-}
-
-func Test_escapeTitle(t *testing.T) {
-	tbl := []struct {
-		inp string
-		out string
-	}{
-		{"", ""},
-		{"something 123", "something 123"},
-		{"something [123]", "something \\[123\\]"},
-		{"something (123)", "something \\(123\\)"},
-		{"something (123) [aaa]", "something \\(123\\) \\[aaa\\]"},
-	}
-
-	for i, tt := range tbl {
-		tt := tt
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, escapeText(tt.inp))
-		})
-	}
-
 }
