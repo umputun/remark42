@@ -47,7 +47,6 @@ services:
       - NOTIFY_TELEGRAM_CHAN
       - NOTIFY_EMAIL_FROM
       - ADMIN_SHARED_EMAIL
-      - NOTIFY_EMAIL_ADMIN
       - SMTP_HOST
       - SMTP_USERNAME
       - SMTP_PASSWORD
