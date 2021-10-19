@@ -39,7 +39,7 @@ below in order to have your translation start being available to all remark42 us
 1.  Commit all changes above in your fork
 1.  Test your changes in the interface:
 
-    1.  Uncomment `locale: "ru"` line in [frontend/index.ejs](https://github.com/umputun/remark42/blob/master/frontend/index.ejs#L133) and replace `ru` with your translation language code
+    1.  Uncomment `locale: "ru"` line in [frontend/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/templates/demo.ejs) and replace `ru` with your translation language code
     2.  [Run remark42 in Docker](https://github.com/umputun/remark42#development) by issuing following commands from the root directory of your remark42 fork:
         `shell docker-compose -f compose-dev-frontend.yml build docker-compose -f compose-dev-frontend.yml up `
 

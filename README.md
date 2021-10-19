@@ -525,7 +525,7 @@ window.REMARK42.changeTheme('light');
 
 ##### Locales
 
-Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua) and Vietnamese (vi) languages. You can pick one using [configuration object](#setup-on-your-website).
+Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua), Italian (it) and Vietnamese (vi) languages. You can pick one using [configuration object](#setup-on-your-website).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](site/src/docs/contributing/translations/index.md) for details.
 
