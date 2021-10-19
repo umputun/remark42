@@ -56,7 +56,7 @@ services:
       - STORE_BOLT_PATH=/srv/var
       - BACKUP_PATH=/srv/var/backup
       - CACHE_MAX_VALUE=10000000
-      - IMG_PROXY=true
+      - IMAGE_PROXY_HTTP2HTTPS=true
       - AVATAR_RESIZE=48
       - ADMIN_SHARED_ID=github_ef0f706a79cc24b112345
       - ADMIN_SHARED_NAME=myname,anothername
@@ -65,12 +65,12 @@ services:
       - AUTH_TWITTER_CSEC=asdfghjkl
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
-      - AUTH_EMAIL_HOST=smtp.mailgun.org
-      - AUTH_EMAIL_PORT=465
-      - AUTH_EMAIL_TLS=true
-      - AUTH_EMAIL_USER=postmaster@mg.example.com
-      - AUTH_EMAIL_PASSWD=thepassword
       - AUTH_EMAIL_FROM=confirmation@example.com
+      - SMTP_HOST=smtp.mailgun.org
+      - SMTP_PORT=465
+      - SMTP_TLS=true
+      - SMTP_USERNAME=postmaster@mg.example.com
+      - SMTP_PASSWORD=thepassword
       - IMAGE_MAX_SIZE=5000000
       - EMOJI=true
     ports:

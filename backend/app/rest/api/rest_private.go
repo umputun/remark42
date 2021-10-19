@@ -62,6 +62,38 @@ type privStore interface {
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 }
 
+// POST /preview, body is a comment, returns rendered html
+func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
+	user := rest.MustGetUserInfo(r)
+
+	comment := store.Comment{}
+	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
+		return
+	}
+
+	comment.User = user
+	comment.Orig = comment.Text
+	if err := s.dataService.ValidateComment(&comment); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+		return
+	}
+
+	comment = s.commentFormatter.Format(comment)
+	comment.Sanitize()
+
+	// check if images are valid
+	for _, id := range s.imageService.ExtractPictures(comment.Text) {
+		err := s.imageService.ResetCleanupTimer(id)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't renew staged picture cleanup timer", rest.ErrImgNotFound)
+			return
+		}
+	}
+
+	render.HTML(w, r, comment.Text)
+}
+
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 

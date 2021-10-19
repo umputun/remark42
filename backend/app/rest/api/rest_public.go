@@ -110,41 +110,6 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// POST /preview, body is a comment, returns rendered html
-func (s *public) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
-	comment := store.Comment{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
-		return
-	}
-
-	user, err := rest.GetUserInfo(r)
-	if err != nil { // this not suppose to happen (handled by Auth), just dbl-check
-		rest.SendErrorJSON(w, r, http.StatusUnauthorized, err, "can't get user info", rest.ErrNoAccess)
-		return
-	}
-	comment.User = user
-	comment.Orig = comment.Text
-	if err = s.dataService.ValidateComment(&comment); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
-		return
-	}
-
-	comment = s.commentFormatter.Format(comment)
-	comment.Sanitize()
-
-	// check if images are valid
-	for _, id := range s.imageService.ExtractPictures(comment.Text) {
-		err = s.imageService.ResetCleanupTimer(id)
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't renew staged picture cleanup timer", rest.ErrImgNotFound)
-			return
-		}
-	}
-
-	render.HTML(w, r, comment.Text)
-}
-
 // GET /info?site=siteID&url=post-url - get info about the post
 func (s *public) infoCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
