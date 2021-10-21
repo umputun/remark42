@@ -36,20 +36,20 @@ export function Profile() {
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
-  const [commentsCounts, setCommentsCounts] = useState<number | null>(null);
+  const [commentsAmount, setCommentsAmount] = useState<number | null>(null);
   const [isSigningOut, setSigningOut] = useState(false);
 
   async function fetchUserComments(userId: string) {
     setIsCommentsLoading(true);
     setError(false);
     setComments(null);
-    setCommentsCounts(null);
+    setCommentsAmount(null);
 
     try {
       const { comments, count } = await getUserComments(userId);
 
       setComments(comments);
-      setCommentsCounts(count);
+      setCommentsAmount(count);
     } catch (err) {
       setError(true);
     } finally {
@@ -127,9 +127,9 @@ export function Profile() {
             <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
           )}
         </h3>
-        {commentsCounts !== 0 && (
+        {!!commentsAmount && (
           <div className={styles.counterWrapper}>
-            <Counter>{commentsCounts}</Counter>
+            <Counter>{commentsAmount}</Counter>
           </div>
         )}
       </div>
