@@ -20,6 +20,10 @@
 		"href": "/configuration/frontend/"
 	  },
 	  {
+		"title": "CLI parameters",
+		"href": "/configuration/parameters/"
+	  },
+	  {
 		"title": "Authorization",
 		"href": "/configuration/authorization/"
 	  },
