@@ -127,9 +127,11 @@ export function Profile() {
             <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
           )}
         </h3>
-        <div className={styles.counterWrapper}>
-          <Counter>{commentsCounts}</Counter>
-        </div>
+        {commentsCounts !== 0 && (
+          <div className={styles.counterWrapper}>
+            <Counter>{commentsCounts}</Counter>
+          </div>
+        )}
       </div>
       {comments.map((comment) => (
         <Comment
