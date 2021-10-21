@@ -6,16 +6,16 @@ title: Installation
 
 ### Installation in Docker
 
-_This is the recommended way to run remark42_
+_This is the recommended way to run Remark42_
 
 - copy provided `docker-compose.yml` and customize for your needs
 - make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
-- pull prepared images from the DockerHub and start - `docker-compose pull && docker-compose up -d`
+- pull prepared images from the Docker Hub and start - `docker-compose pull && docker-compose up -d`
 - alternatively compile from the sources - `docker-compose build && docker-compose up -d`
 
 ### Installation with Binary
 
-- download archive for [stable release](https://github.com/umputun/remark42/releases) or [development version](https://remark42.com/downloads)
+- download [archive for stable release](https://github.com/umputun/remark42/releases)
 - unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 - alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
