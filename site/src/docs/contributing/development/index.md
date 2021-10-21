@@ -34,7 +34,7 @@ To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --u
 
 #### Developer guide
 
-Frontend guide can be found here: [./frontend/README.md](./frontend/README.md).
+Brief frontend guide can be found [here](https://github.com/umputun/remark42/tree/master/frontend#readme).
 
 #### Build
 
