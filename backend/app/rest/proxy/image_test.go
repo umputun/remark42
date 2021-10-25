@@ -182,7 +182,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	imageStore.On("Save", mock.Anything, mock.Anything).Once().Return(nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
@@ -213,7 +213,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	imageStore.On("Load", mock.Anything).Once().Return(testImage, nil)
 
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "256", resp.Header["Content-Length"][0])
