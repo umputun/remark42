@@ -1,4 +1,4 @@
-# Remark42 [![Build Status](https://github.com/umputun/remark42/workflows/build/badge.svg)](https://github.com/umputun/remark42/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark42)](https://goreportcard.com/report/github.com/umputun/remark42) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark42/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark42?branch=master) [![codecov](https://codecov.io/gh/umputun/remark42/branch/master/graph/badge.svg)](https://codecov.io/gh/umputun/remark42)
+# Remark42 [![Build Status](https://github.com/umputun/remark42/workflows/build/badge.svg)](https://github.com/umputun/remark42/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/umputun/remark42)](https://goreportcard.com/report/github.com/umputun/remark42) [![Coverage Status](https://coveralls.io/repos/github/umputun/remark42/badge.svg?branch=master)](https://coveralls.io/github/umputun/remark42?branch=master) [![codecov](https://codecov.io/gh/umputun/remark42/branch/master/graph/badge.svg)](https://app.codecov.io/gh/umputun/remark42)
 
 Remark42 is a self-hosted, lightweight and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles, or any other place where readers add comments.
 
@@ -22,7 +22,7 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 * Self-contained executable can be deployed directly to Linux, Windows and macOS
 * Clean, lightweight and customizable UI with white and dark themes
 * Multi-site mode from a single instance
-* Integration with automatic SSL (direct and via [nginx-le](https://github.com/umputun/nginx-le))
+* Integration with automatic SSL (direct and via [nginx-le](https://github.com/nginx-le/nginx-le))
 * [Privacy focused](#privacy)
 
 [Demo site](https://remark42.com/demo/) available with all authentication methods, including email auth and anonymous access.

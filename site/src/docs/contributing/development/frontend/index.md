@@ -32,7 +32,7 @@ title: Frontend Development Guidelines
 
 ### How to add new locale
 
-Please see [this documentation](/site/src/docs/contributing/translations/index.md).
+Please see [this documentation](https://remark42.com/docs/contributing/translations/).
 
 ### Notes
 
