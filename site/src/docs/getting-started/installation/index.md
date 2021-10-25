@@ -67,4 +67,4 @@ Put the next code snippet on a page of your site where you want to have comments
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://github.com/umputun/remark42/blob/master/site/src/docs/configuration/frontend/index.md).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/configuration/frontend/).

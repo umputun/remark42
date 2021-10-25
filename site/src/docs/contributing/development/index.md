@@ -32,9 +32,7 @@ To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --u
 
 ### Frontend development
 
-#### Developer guide
-
-Brief frontend guide can be found [here](https://github.com/umputun/remark42/tree/master/frontend#readme).
+Frontend development guide can be found [here](https://remark42.com/docs/contributing/development/frontend/).
 
 #### Build
 

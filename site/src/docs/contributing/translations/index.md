@@ -35,7 +35,7 @@ below in order to have your translation start being available to all remark42 us
 1.  Run `npm run translation:extract` in `frontend` folder
 1.  Run `npm run translation:generate` in `frontend` folder
 1.  Translate all values in the newly created json file in
-    [frontend/app/locales/](https://github.com/umputun/remark42/blob/master/frontend/app/locales/)
+    [frontend/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/app/locales)
 1.  Commit all changes above in your fork
 1.  Test your changes in the interface:
 

@@ -61,7 +61,7 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](site/src/docs/configuration/frontend/index.md).
+If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
 
 ##### Themes
 
@@ -75,7 +75,7 @@ window.REMARK42.changeTheme('light');
 
 Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua), Italian (it) and Vietnamese (vi) languages. You can pick one using [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
 
-Do you want to translate Remark42 to other locales? Please see [this documentation](site/src/docs/contributing/translations/index.md) for details.
+Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
 #### Last comments
 
