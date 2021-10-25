@@ -40,6 +40,14 @@ type telegramMsg struct {
 	ParseMode string `json:"parse_mode,omitempty"`
 }
 
+// TelegramBotInfo structure contains information about telegram bot
+type TelegramBotInfo struct {
+	ID        uint64 `json:"id"`
+	IsBot     bool   `json:"is_bot"`
+	FirstName string `json:"first_name"`
+	Username  string `json:"username"`
+}
+
 const telegramTimeOut = 5000 * time.Millisecond
 const telegramAPIPrefix = "https://api.telegram.org/bot"
 
@@ -82,12 +90,7 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 
 		tgResp := struct {
 			OK     bool `json:"ok"`
-			Result struct {
-				FirstName string `json:"first_name"`
-				ID        uint64 `json:"id"`
-				IsBot     bool   `json:"is_bot"`
-				UserName  string `json:"username"`
-			}
+			Result TelegramBotInfo
 		}{}
 
 		if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
@@ -98,7 +101,7 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 			return errors.Errorf("unexpected telegram response %+v", tgResp)
 		}
 
-		res.BotUsername = tgResp.Result.UserName
+		res.BotUsername = tgResp.Result.Username
 		return nil
 	})
 

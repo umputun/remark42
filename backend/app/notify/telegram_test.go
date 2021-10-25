@@ -35,7 +35,7 @@ func TestTelegram_New(t *testing.T) {
 		Token:          "bad-resp",
 		apiPrefix:      ts.URL + "/",
 	})
-	assert.EqualError(t, err, "unexpected telegram response {OK:false Result:{FirstName:comments_test ID:707381019 IsBot:false UserName:remark42_test_bot}}")
+	assert.EqualError(t, err, "unexpected telegram response {OK:false Result:{ID:707381019 IsBot:false FirstName:comments_test Username:remark42_test_bot}}")
 	assert.True(t, time.Since(st) >= 250*5*time.Millisecond)
 
 	_, err = NewTelegram(TelegramParams{
