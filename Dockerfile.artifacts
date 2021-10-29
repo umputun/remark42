@@ -62,6 +62,7 @@ RUN \
     GOOS=linux GOARCH=arm64 go build -o remark42.linux-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=windows GOARCH=amd64 go build -o remark42.windows-amd64.exe -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=darwin GOARCH=amd64 go build -o remark42.darwin-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
+    GOOS=darwin GOARCH=arm64 go build -o remark42.darwin-arm64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=freebsd GOARCH=amd64 go build -o remark42.freebsd-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
 
 RUN \
@@ -75,29 +76,10 @@ RUN \
     tar cvzf remark42${tag}.linux-arm.tar.gz remark42.linux-arm LICENSE README.md && \
     tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 LICENSE README.md && \
     tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 LICENSE README.md && \
+    tar cvzf remark42${tag}.darwin-arm64.tar.gz remark42.darwin-arm64 LICENSE README.md && \
     tar cvzf remark42${tag}.freebsd-amd64.tar.gz remark42.freebsd-amd64 LICENSE README.md && \
     zip remark42${tag}.windows-amd64.zip remark42.windows-amd64.exe LICENSE README.md
 
-# upload to github
-#RUN \
-#    if [ -z "$DRONE_TAG" ] ; then \
-#    echo "skip upload to github" ; \
-#    else \
-#    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
-#    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-amd64.tar.gz \
-#    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-amd64.tar.gz" && \
-#    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
-#    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-386.tar.gz \
-#    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-386.tar.gz" && \
-#    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
-#    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.linux-arm64.tar.gz \
-#    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.linux-arm64.tar.gz" && \
-#    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
-#    -H "Content-Type: application/gzip" --data-binary @remark42_${DRONE_TAG}.darwin-amd64.tar.gz \
-#    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.darwin-amd64.tar.gz" && \
-#    curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.manifold-preview" \
-#    -H "Content-Type: application/zip" --data-binary @remark42_${DRONE_TAG}.windows-amd64.zip \
-#    "https://uploads.github.com/repos/umputun/remark/releases/${DRONE_TAG}/assets?name=remark_${DRONE_TAG}.windows-amd64.zip"; fi
 
 FROM alpine
 COPY --from=build-backend /build/backend/remark42.* /artifacts/
