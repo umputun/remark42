@@ -4,11 +4,11 @@ go 1.16
 
 require (
 	github.com/Depado/bfchroma v1.3.0
-	github.com/PuerkitoBio/goquery v1.7.1
-	github.com/alecthomas/chroma v0.9.2
+	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/alecthomas/chroma v0.9.4
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21
-	github.com/go-chi/chi/v5 v5.0.4
+	github.com/go-chi/chi/v5 v5.0.5
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v1.18.0
@@ -28,12 +28,12 @@ require (
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.3.0
 	github.com/russross/blackfriday/v2 v2.1.0
-	github.com/slack-go/slack v0.9.4
+	github.com/slack-go/slack v0.9.5
 	github.com/stretchr/testify v1.7.0
 	github.com/umputun/go-flags v1.5.1
 	go.etcd.io/bbolt v1.3.6
-	go.uber.org/goleak v1.1.10
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+	go.uber.org/goleak v1.1.12
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
+	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8
 )
