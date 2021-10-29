@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,7 +24,6 @@ type TelegramParams struct {
 	AdminChannelID    string        // unique identifier for the target chat or username of the target channel (in the format @channelusername)
 	Token             string        // token for telegram bot API interactions
 	Timeout           time.Duration // http client timeout
-	BotUsername       string        // filled with bot username after Telegram creation, used in frontend
 	UserNotifications bool          // flag which enables user notifications
 
 	apiPrefix string // changed only in tests
@@ -32,6 +32,8 @@ type TelegramParams struct {
 // Telegram implements notify.Destination for telegram
 type Telegram struct {
 	TelegramParams
+
+	username string // bot username
 }
 
 // telegramMsg is used to send message trough Telegram bot API
@@ -40,12 +42,9 @@ type telegramMsg struct {
 	ParseMode string `json:"parse_mode,omitempty"`
 }
 
-// TelegramBotInfo structure contains information about telegram bot
+// TelegramBotInfo structure contains information about telegram bot, which is used from whole telegram API response
 type TelegramBotInfo struct {
-	ID        uint64 `json:"id"`
-	IsBot     bool   `json:"is_bot"`
-	FirstName string `json:"first_name"`
-	Username  string `json:"username"`
+	Username string `json:"username"`
 }
 
 const telegramTimeOut = 5000 * time.Millisecond
@@ -66,46 +65,13 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err := repeater.NewDefault(5, time.Millisecond*250).Do(ctx, func() error {
-		client := http.Client{Timeout: res.Timeout}
-		resp, err := client.Get(fmt.Sprintf("%s%s/getMe", res.apiPrefix, res.Token))
-		if err != nil {
-			return errors.Wrap(err, "can't initialize telegram notifications")
-		}
-		defer func() {
-			if err = resp.Body.Close(); err != nil {
-				log.Printf("[WARN] can't close request body, %s", err)
-			}
-		}()
+	botInfo, err := res.botInfo(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't retrieve bot info from Telegram API")
+	}
+	res.username = botInfo.Username
 
-		if resp.StatusCode != http.StatusOK {
-			tgErr := struct {
-				Description string `json:"description"`
-			}{}
-			if err = json.NewDecoder(resp.Body).Decode(&tgErr); err == nil {
-				return errors.Errorf("unexpected telegram API status code %d, error: %q", resp.StatusCode, tgErr.Description)
-			}
-			return errors.Errorf("unexpected telegram API status code %d", resp.StatusCode)
-		}
-
-		tgResp := struct {
-			OK     bool `json:"ok"`
-			Result TelegramBotInfo
-		}{}
-
-		if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
-			return errors.Wrap(err, "can't decode response")
-		}
-
-		if !tgResp.OK || !tgResp.Result.IsBot {
-			return errors.Errorf("unexpected telegram response %+v", tgResp)
-		}
-
-		res.BotUsername = tgResp.Result.Username
-		return nil
-	})
-
-	return &res, err
+	return &res, nil
 }
 
 // Send to telegram recipients
@@ -141,44 +107,8 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 		chatID = "@" + chatID // if chatID not a number enforce @ prefix
 	}
 
-	u := fmt.Sprintf("%s%s/sendMessage?chat_id=%s&disable_web_page_preview=true",
-		t.apiPrefix, t.Token, chatID)
-	r, err := http.NewRequest("POST", u, bytes.NewReader(b))
-	if err != nil {
-		return errors.Wrap(err, "failed to make telegram request")
-	}
-	r.Header.Set("Content-Type", "application/json; charset=utf-8")
-
-	client := http.Client{Timeout: t.Timeout}
-	r = r.WithContext(ctx)
-	resp, err := client.Do(r)
-	if err != nil {
-		return errors.Wrap(err, "failed to get telegram response")
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Printf("[WARN] can't close request body, %s", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		tgErr := struct {
-			Description string `json:"description"`
-		}{}
-		if err = json.NewDecoder(resp.Body).Decode(&tgErr); err == nil {
-			return errors.Errorf("unexpected telegram API status code %d, error: %q", resp.StatusCode, tgErr.Description)
-		}
-		return errors.Errorf("unexpected telegram API status code %d", resp.StatusCode)
-	}
-
-	tgResp := struct {
-		OK bool `json:"ok"`
-	}{}
-
-	if err = json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
-		return errors.Wrap(err, "can't decode telegram response")
-	}
-	return nil
+	url := fmt.Sprintf("sendMessage?chat_id=%s&disable_web_page_preview=true", chatID)
+	return t.request(ctx, url, b, &struct{}{})
 }
 
 // buildMessage generates message for generic notification about new comment
@@ -264,6 +194,11 @@ func (t *Telegram) buildVerificationMessage(user, token, site string) ([]byte, e
 	return b, nil
 }
 
+// GetBotUsername returns bot username
+func (t *Telegram) GetBotUsername() string {
+	return t.username
+}
+
 func (t *Telegram) String() string {
 	result := "telegram"
 	if t.AdminChannelID != "" {
@@ -273,4 +208,66 @@ func (t *Telegram) String() string {
 		result += " with user notifications enabled"
 	}
 	return result
+}
+
+// botInfo returns info about configured bot
+func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
+	var resp = struct {
+		Result *TelegramBotInfo `json:"result"`
+	}{}
+
+	err := t.request(ctx, "getMe", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Result == nil {
+		return nil, errors.New("received empty result")
+	}
+
+	return resp.Result, nil
+}
+
+func (t *Telegram) request(ctx context.Context, method string, b []byte, data interface{}) error {
+	return repeater.NewDefault(3, time.Millisecond*250).Do(ctx, func() error {
+		url := fmt.Sprintf("%s%s/%s", t.apiPrefix, t.Token, method)
+
+		var req *http.Request
+		var err error
+		if b == nil {
+			req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
+		} else {
+			req, err = http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(b))
+			req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		}
+		if err != nil {
+			return errors.Wrap(err, "failed to create request")
+		}
+
+		client := http.Client{Timeout: t.Timeout}
+		resp, err := client.Do(req)
+		if err != nil {
+			return errors.Wrap(err, "failed to send request")
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return t.parseError(resp.Body, resp.StatusCode)
+		}
+
+		if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
+			return errors.Wrap(err, "failed to decode json response")
+		}
+
+		return nil
+	})
+}
+
+func (t *Telegram) parseError(r io.Reader, statusCode int) error {
+	tgErr := struct {
+		Description string `json:"description"`
+	}{}
+	if err := json.NewDecoder(r).Decode(&tgErr); err != nil {
+		return errors.Errorf("unexpected telegram API status code %d", statusCode)
+	}
+	return errors.Errorf("unexpected telegram API status code %d, error: %q", statusCode, tgErr.Description)
 }

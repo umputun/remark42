@@ -15,8 +15,7 @@ import (
 )
 
 func TestTelegram_New(t *testing.T) {
-
-	ts := mockTelegramServer()
+	ts := mockTelegramServer(nil)
 	defer ts.Close()
 
 	tb, err := NewTelegram(TelegramParams{
@@ -29,15 +28,14 @@ func TestTelegram_New(t *testing.T) {
 	assert.Equal(t, tb.Timeout, time.Second*5)
 	assert.Equal(t, "remark_test", tb.AdminChannelID, "@ added")
 
-	st := time.Now()
 	_, err = NewTelegram(TelegramParams{
 		AdminChannelID: "remark_test",
-		Token:          "bad-resp",
+		Token:          "empty-json",
 		apiPrefix:      ts.URL + "/",
 	})
-	assert.EqualError(t, err, "unexpected telegram response {OK:false Result:{ID:707381019 IsBot:false FirstName:comments_test Username:remark42_test_bot}}")
-	assert.True(t, time.Since(st) >= 250*5*time.Millisecond)
+	assert.EqualError(t, err, "can't retrieve bot info from Telegram API: received empty result")
 
+	st := time.Now()
 	_, err = NewTelegram(TelegramParams{
 		AdminChannelID: "remark_test",
 		Token:          "non-json-resp",
@@ -45,7 +43,8 @@ func TestTelegram_New(t *testing.T) {
 		apiPrefix:      ts.URL + "/",
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "can't decode response:")
+	assert.Contains(t, err.Error(), "failed to decode json response:")
+	assert.True(t, time.Since(st) >= 250*3*time.Millisecond)
 
 	_, err = NewTelegram(TelegramParams{
 		AdminChannelID: "remark_test",
@@ -53,7 +52,7 @@ func TestTelegram_New(t *testing.T) {
 		Timeout:        2 * time.Second,
 		apiPrefix:      ts.URL + "/",
 	})
-	assert.EqualError(t, err, "unexpected telegram API status code 404")
+	assert.EqualError(t, err, "can't retrieve bot info from Telegram API: unexpected telegram API status code 404")
 
 	_, err = NewTelegram(TelegramParams{
 		AdminChannelID: "remark_test",
@@ -61,7 +60,7 @@ func TestTelegram_New(t *testing.T) {
 		apiPrefix:      "http://127.0.0.1:4321/",
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "can't initialize telegram notifications")
+	assert.Contains(t, err.Error(), "can't retrieve bot info from Telegram API")
 	assert.Contains(t, err.Error(), "dial tcp 127.0.0.1:4321: connect: connection refused")
 
 	_, err = NewTelegram(TelegramParams{
@@ -89,8 +88,22 @@ func TestTelegram_New(t *testing.T) {
 	assert.Equal(t, "1234567890", tb.AdminChannelID, "no @ prefix")
 }
 
+func TestTelegram_GetBotUsername(t *testing.T) {
+	ts := mockTelegramServer(nil)
+	defer ts.Close()
+
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID: "remark_test",
+		Token:          "good-token",
+		apiPrefix:      ts.URL + "/",
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, tb)
+	assert.Equal(t, "remark42_test_bot", tb.GetBotUsername())
+}
+
 func TestTelegram_Send(t *testing.T) {
-	ts := mockTelegramServer()
+	ts := mockTelegramServer(nil)
 	defer ts.Close()
 
 	tb, err := NewTelegram(TelegramParams{
@@ -124,7 +137,15 @@ func TestTelegram_Send(t *testing.T) {
 		UserNotifications: true,
 		apiPrefix:         ts.URL + "/",
 	})
+	assert.Nil(t, tb)
 	assert.Error(t, err, "should fail")
+	tb = &Telegram{
+		TelegramParams: TelegramParams{
+			AdminChannelID:    "remark_test",
+			Token:             "non-json-resp",
+			UserNotifications: true,
+			apiPrefix:         ts.URL + "/",
+		}}
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected telegram API status code 404", "send on broken tg")
@@ -147,7 +168,7 @@ func TestTelegram_Send(t *testing.T) {
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
-	ts := mockTelegramServer()
+	ts := mockTelegramServer(nil)
 	defer ts.Close()
 
 	tb, err := NewTelegram(TelegramParams{
@@ -182,37 +203,24 @@ func TestTelegram_SendVerification(t *testing.T) {
 	assert.Contains(t, string(res), `secret_`)
 }
 
-func mockTelegramServer() *httptest.Server {
-	router := chi.NewRouter()
-	router.Get("/good-token/getMe", func(w http.ResponseWriter, r *http.Request) {
-		s := `{"ok": true,
+const getMeResp = `{"ok": true,
 				"result": {
 					"first_name": "comments_test",
 					"id": 707381019,
 					"is_bot": true,
 					"username": "remark42_test_bot"
 				}}`
-		_, _ = w.Write([]byte(s))
+
+func mockTelegramServer(_ http.HandlerFunc) *httptest.Server {
+	router := chi.NewRouter()
+	router.Get("/good-token/getMe", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(getMeResp))
 	})
-	router.Get("/bad-resp/getMe", func(w http.ResponseWriter, r *http.Request) {
-		s := `{"ok": false,
-				"result": {
-					"first_name": "comments_test",
-					"id": 707381019,
-					"is_bot": false,
-					"username": "remark42_test_bot"
-				}}`
-		_, _ = w.Write([]byte(s))
+	router.Get("/empty-json/getMe", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
 	})
 	router.Get("/non-json-resp/getMe", func(w http.ResponseWriter, r *http.Request) {
-		s := `"ok": false,
-				"result": {
-					"first_name": "comments_test",
-					"id": 707381019,
-					"is_bot": false,
-					"username": "remark42_test_bot"
-				`
-		_, _ = w.Write([]byte(s))
+		_, _ = w.Write([]byte(`not-a-json`))
 	})
 	router.Get("/404/getMe", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
