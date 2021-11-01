@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -578,6 +579,7 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	defer teardown()
 
 	srv.privRest.templates = &MockFS{}
+	srv.privRest.telegramService = &mockTelegram{site: "remark42"}
 
 	// issue good token
 	claims := token.Claims{
@@ -620,14 +622,13 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		{description: "issue delete request without auth", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
 		{description: "issue delete request without site_id", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusBadRequest},
 		{description: "delete non-existent user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "set user telegram, token not set", url: "/api/v1/telegram/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send confirmation without address", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send confirmation", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user telegram, token is good", url: fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "send confirmation with same address", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusConflict},
+		{description: "send telegram confirmation, no siteID", url: "/api/v1/telegram/subscribe", method: http.MethodGet, responseCode: http.StatusBadRequest},
+		{description: "send telegram confirmation", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "set user telegram, token is good", url: "/api/v1/telegram/subscribe?site=remark42&tkn=good_token", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "send confirmation with same address", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusConflict},
 		{description: "delete user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "send another confirmation", url: "/api/v1/telegram/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user telegram, token is good", url: fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "send another confirmation", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
+		{description: "set user telegram, token is good", url: "/api/v1/telegram/subscribe?site=remark42&tkn=good_token", method: http.MethodGet, responseCode: http.StatusOK},
 	}
 	client := http.Client{}
 	for _, x := range testData {
@@ -852,8 +853,8 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.Equal(t, 2, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[1].Telegrams)
 
-	// send confirmation token for telegram
-	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/telegram/subscribe?site=remark42&address=good_telegram", nil)
+	// subscribe to telegram while the telegram destination is absent
+	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/telegram/subscribe?site=remark42", nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -861,15 +862,13 @@ func TestRest_TelegramNotification(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 1, len(mockDestination.GetVerify()))
-	assert.Equal(t, "good_telegram", mockDestination.GetVerify()[0].Telegram)
-	verificationToken := mockDestination.GetVerify()[0].Token
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode, string(body))
+	assert.Equal(t, `{"code":17,"details":"telegram notifications are not enabled","error":"not enabled"}`+"\n", string(body))
 
-	// verify telegram
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/telegram/confirm?site=remark42&tkn=%s", verificationToken), nil)
+	mockTlgrm := &mockTelegram{notVerified: true, site: "unknown_site"}
+	srv.privRest.telegramService = mockTlgrm
+	// send confirmation token for telegram
+	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/telegram/subscribe?site=remark42", nil)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -878,6 +877,58 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var subscribeRequest struct {
+		Bot   string `json:"bot"`
+		Token string `json:"token"`
+	}
+	err = json.Unmarshal(body, &subscribeRequest)
+	assert.NoError(t, err)
+	assert.Equal(t, "botUsername", subscribeRequest.Bot)
+
+	// verify telegram, unsuccessfully because of not verified
+	req, err = http.NewRequest(http.MethodGet, ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode, string(body))
+	require.Equal(t, `{"code":0,"details":"can't set telegram for user","error":"not verified"}`+"\n", string(body))
+
+	mockTlgrm.notVerified = false
+
+	// verify telegram, unsuccessfully because of unknown site
+	req, err = http.NewRequest(http.MethodGet, ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode, string(body))
+	require.Equal(t, `{"code":0,"details":"can't set telegram for user","error":"site \"unknown_site\" not found"}`+"\n", string(body))
+
+	mockTlgrm.site = "remark42"
+	// verify telegram, successfully
+	req, err = http.NewRequest(http.MethodGet, ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), nil)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var subscribeResult struct {
+		Address string `json:"address"`
+		Updated bool   `json:"updated"`
+	}
+	err = json.Unmarshal(body, &subscribeResult)
+	assert.NoError(t, err)
+	assert.True(t, subscribeResult.Updated)
 
 	// get user information to verify the subscription
 	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", nil)
@@ -1223,4 +1274,22 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
 		assert.NoError(t, err, "picture %d moved from staging and available in permanent location", i)
 	}
+}
+
+type mockTelegram struct {
+	notVerified bool
+	site        string
+}
+
+func (m *mockTelegram) AddToken(string, string, string, time.Time) {}
+
+func (m *mockTelegram) GetBotUsername() string {
+	return "botUsername"
+}
+
+func (m *mockTelegram) CheckToken(string, string) (telegram, site string, err error) {
+	if m.notVerified {
+		return "", "", errors.New("not verified")
+	}
+	return "good_telegram", m.site, nil
 }
