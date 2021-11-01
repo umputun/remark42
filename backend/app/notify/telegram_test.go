@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -179,28 +180,282 @@ func TestTelegram_SendVerification(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tb)
 
-	// proper VerificationRequest without telegram
-	req := VerificationRequest{
-		SiteID: "remark",
-		User:   "test_username",
-		Token:  "secret_",
-	}
-	assert.NoError(t, tb.SendVerification(context.TODO(), req))
+	// empty VerificationRequest should return no error and no nothing, as well as any other
+	assert.NoError(t, tb.SendVerification(context.TODO(), VerificationRequest{}))
+}
 
-	// proper VerificationRequest with telegram
-	req.Telegram = "test"
-	assert.NoError(t, tb.SendVerification(context.TODO(), req))
+const getUpdatesResp = `{
+  "ok": true,
+  "result": [
+     {
+        "update_id": 998,
+        "message": {
+           "chat": {
+              "type": "group"
+           }
+        }
+     },
+     {
+        "update_id": 999,
+        "message": {
+					 "text": "not starting with /start",
+           "chat": {
+              "type": "private"
+           }
+        }
+     },
+     {
+        "update_id": 1000,
+        "message": {
+           "message_id": 4,
+           "from": {
+              "id": 313131313,
+              "is_bot": false,
+              "first_name": "Joe",
+              "username": "joe123",
+              "language_code": "en"
+           },
+           "chat": {
+              "id": 313131313,
+              "first_name": "Joe",
+              "username": "joe123",
+              "type": "private"
+           },
+           "date": 1601665548,
+           "text": "/start token",
+           "entities": [
+              {
+                 "offset": 0,
+                 "length": 6,
+                 "type": "bot_command"
+              }
+           ]
+        }
+     }
+  ]
+}`
 
-	// VerificationRequest with canceled context
-	ctx, cancel := context.WithCancel(context.TODO())
-	cancel()
-	assert.EqualError(t, tb.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
-
-	// test buildVerificationMessage separately for message text
-	res, err := tb.buildVerificationMessage(req.User, req.Token, req.SiteID)
+func TestTelegram_GetUpdatesFlow(t *testing.T) {
+	first := true
+	ts := mockTelegramServer(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "sendMessage") {
+			// respond normally to processUpdates attempt to send message back to user
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		// responses to get updates calls to API
+		if first {
+			assert.Equal(t, "", r.URL.Query().Get("offset"))
+			first = false
+		} else {
+			assert.Equal(t, "1001", r.URL.Query().Get("offset"))
+		}
+		_, _ = w.Write([]byte(getUpdatesResp))
+	})
+	defer ts.Close()
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID:    "remark_test",
+		Token:             "xxxsupersecretxxx",
+		UserNotifications: true,
+		apiPrefix:         ts.URL + "/",
+	})
 	assert.NoError(t, err)
-	assert.Contains(t, string(res), `Confirmation for \u003ci\u003etest_username\u003c/i\u003e on site remark`)
-	assert.Contains(t, string(res), `secret_`)
+
+	// send request with no offset
+	upd, err := tb.getUpdates(context.Background())
+	assert.NoError(t, err)
+
+	assert.Len(t, upd.Result, 3)
+	assert.Equal(t, 1001, tb.updateOffset)
+	assert.Equal(t, "/start token", upd.Result[len(upd.Result)-1].Message.Text)
+
+	tb.AddToken("token", "user", "site", time.Now().Add(time.Minute))
+	_, _, err = tb.CheckToken("token", "user")
+	assert.Error(t, err)
+	tb.processUpdates(context.Background(), upd)
+	tgID, site, err := tb.CheckToken("token", "user")
+	assert.NoError(t, err)
+	assert.Equal(t, "313131313", tgID)
+	assert.Equal(t, "site", site)
+
+	// send request with offset
+	_, err = tb.getUpdates(context.Background())
+	assert.NoError(t, err)
+}
+
+func TestTelegram_ProcessUpdateFlow(t *testing.T) {
+	ts := mockTelegramServer(func(w http.ResponseWriter, r *http.Request) {
+		// respond normally to processUpdates attempt to send message back to user
+		_, _ = w.Write([]byte("{}"))
+	})
+	defer ts.Close()
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID:    "remark_test",
+		Token:             "xxxsupersecretxxx",
+		UserNotifications: true,
+		apiPrefix:         ts.URL + "/",
+	})
+	assert.NoError(t, err)
+
+	tb.AddToken("token", "user", "site", time.Now().Add(time.Minute))
+	tb.AddToken("expired token", "user", "site", time.Now().Add(-time.Minute))
+	assert.Len(t, tb.requests.data, 2)
+	_, _, err = tb.CheckToken("token", "user")
+	assert.Error(t, err)
+	assert.NoError(t, tb.ProcessUpdate(context.Background(), getUpdatesResp))
+	assert.Len(t, tb.requests.data, 1, "expired token was cleaned up")
+	tgID, site, err := tb.CheckToken("token", "user")
+	assert.NoError(t, err)
+	assert.Len(t, tb.requests.data, 0, "token is deleted after successful check")
+	assert.Equal(t, "313131313", tgID)
+	assert.Equal(t, "site", site)
+
+	tb.AddToken("expired token", "user", "site", time.Now().Add(-time.Minute))
+	assert.Len(t, tb.requests.data, 1)
+	assert.EqualError(t, tb.ProcessUpdate(context.Background(), ""), "failed to decode provided telegram update: unexpected end of JSON input")
+	assert.Len(t, tb.requests.data, 0, "expired token should be cleaned up despite the error")
+}
+
+const sendMessageResp = `{
+  "ok": true,
+  "result": {
+     "message_id": 100,
+     "from": {
+        "id": 666666666,
+        "is_bot": true,
+        "first_name": "Test auth bot",
+        "username": "TestAuthBot"
+     },
+     "chat": {
+        "id": 313131313,
+        "first_name": "Joe",
+        "username": "joe123",
+        "type": "private"
+     },
+     "date": 1602430546,
+     "text": "123"
+  }
+}`
+
+func TestTelegram_SendText(t *testing.T) {
+	ts := mockTelegramServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "123", r.URL.Query().Get("chat_id"))
+		assert.Equal(t, "hello there", r.URL.Query().Get("text"))
+		_, _ = w.Write([]byte(sendMessageResp))
+	})
+	defer ts.Close()
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID:    "remark_test",
+		Token:             "xxxsupersecretxxx",
+		UserNotifications: true,
+		apiPrefix:         ts.URL + "/",
+	})
+	assert.NoError(t, err)
+
+	err = tb.sendText(context.Background(), 123, "hello there")
+	assert.NoError(t, err)
+}
+
+const errorResp = `{"ok":false,"error_code":400,"description":"Very bad request"}`
+
+func TestTelegram_Error(t *testing.T) {
+	ts := mockTelegramServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(errorResp))
+	})
+	defer ts.Close()
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID:    "remark_test",
+		Token:             "xxxsupersecretxxx",
+		UserNotifications: true,
+		apiPrefix:         ts.URL + "/",
+	})
+	assert.NoError(t, err)
+
+	_, err = tb.getUpdates(context.Background())
+	assert.EqualError(t, err, "failed to fetch updates: unexpected telegram API status code 400, error: \"Very bad request\"")
+}
+
+func TestTelegram_TokenVerification(t *testing.T) {
+	ts := mockTelegramServer(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "sendMessage") {
+			// respond normally to processUpdates attempt to send message back to user
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		// responses to get updates calls to API
+		_, _ = w.Write([]byte(getUpdatesResp))
+	})
+	defer ts.Close()
+
+	tb, err := NewTelegram(TelegramParams{
+		AdminChannelID: "remark_test",
+		Token:          "good-token",
+		apiPrefix:      ts.URL + "/",
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, tb)
+	tb.AddToken("token", "user", "site", time.Now().Add(time.Minute))
+	assert.Len(t, tb.requests.data, 1)
+
+	// wrong token
+	tgID, site, err := tb.CheckToken("unknown token", "user")
+	assert.Empty(t, tgID)
+	assert.Empty(t, site)
+	assert.EqualError(t, err, "request is not found")
+
+	// right token and user, not verified yet
+	tgID, site, err = tb.CheckToken("token", "user")
+	assert.Empty(t, tgID)
+	assert.Empty(t, site)
+	assert.EqualError(t, err, "request is not verified yet")
+
+	// confirm request
+	authRequest, ok := tb.requests.data["token"]
+	assert.True(t, ok)
+	authRequest.confirmed = true
+	authRequest.telegramID = "telegramID"
+	tb.requests.data["token"] = authRequest
+
+	// wrong user
+	tgID, site, err = tb.CheckToken("token", "wrong user")
+	assert.Empty(t, tgID)
+	assert.Empty(t, site)
+	assert.EqualError(t, err, "user does not match original requester")
+
+	// successful check
+	tgID, site, err = tb.CheckToken("token", "user")
+	assert.NoError(t, err)
+	assert.Equal(t, "telegramID", tgID)
+	assert.Equal(t, "site", site)
+
+	// expired token
+	tb.AddToken("expired token", "user", "site", time.Now().Add(-time.Minute))
+	tgID, site, err = tb.CheckToken("expired token", "user")
+	assert.Empty(t, tgID)
+	assert.Empty(t, site)
+	assert.EqualError(t, err, "request expired")
+	assert.Len(t, tb.requests.data, 0)
+
+	// expired token, cleaned up by the cleanup
+	tb.apiPollInterval = time.Millisecond * 15
+	tb.expiredCleanupInterval = time.Millisecond * 10
+	ctx, cancel := context.WithCancel(context.Background())
+	go tb.Run(ctx)
+	assert.Eventually(t, func() bool {
+		return tb.ProcessUpdate(ctx, "").Error() == "Run goroutine should not be used with ProcessUpdate"
+	}, time.Millisecond*100, time.Millisecond*10, "ProcessUpdate should not work same time as Run")
+	tb.AddToken("expired token", "user", "site", time.Now().Add(-time.Minute))
+	tb.requests.RLock()
+	assert.Len(t, tb.requests.data, 1)
+	tb.requests.RUnlock()
+	time.Sleep(tb.expiredCleanupInterval * 2)
+	tb.requests.RLock()
+	assert.Len(t, tb.requests.data, 0)
+	tb.requests.RUnlock()
+	cancel()
+	// give enough time for Run() to finish
+	time.Sleep(tb.expiredCleanupInterval)
 }
 
 const getMeResp = `{"ok": true,
@@ -211,7 +466,16 @@ const getMeResp = `{"ok": true,
 					"username": "remark42_test_bot"
 				}}`
 
-func mockTelegramServer(_ http.HandlerFunc) *httptest.Server {
+func mockTelegramServer(h http.HandlerFunc) *httptest.Server {
+	if h != nil {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), "getMe") {
+				_, _ = w.Write([]byte(getMeResp))
+				return
+			}
+			h(w, r)
+		}))
+	}
 	router := chi.NewRouter()
 	router.Get("/good-token/getMe", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(getMeResp))

@@ -44,6 +44,7 @@ type Rest struct {
 	CommentFormatter *store.CommentFormatter
 	Migrator         *Migrator
 	NotifyService    *notify.Service
+	TelegramService  telegramService
 	ImageService     *image.Service
 
 	AnonVote        bool
@@ -324,8 +325,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
 			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
 			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
-			rauth.With(rejectAnonUser).Post("/telegram/subscribe", s.privRest.sendTelegramConfirmationCtrl)
-			rauth.With(rejectAnonUser).Post("/telegram/confirm", s.privRest.setConfirmedTelegramCtrl)
+			rauth.With(rejectAnonUser).Get("/telegram/subscribe", s.privRest.telegramSubscribeCtrl)
 			rauth.With(rejectAnonUser).Delete("/telegram", s.privRest.deleteTelegramCtrl)
 		})
 
@@ -374,6 +374,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		readOnlyAge:      s.ReadOnlyAge,
 		authenticator:    s.Authenticator,
 		notifyService:    s.NotifyService,
+		telegramService:  s.TelegramService,
 		remarkURL:        s.RemarkURL,
 		anonVote:         s.AnonVote,
 		templates:        templates.NewFS(),

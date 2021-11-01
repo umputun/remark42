@@ -3,8 +3,9 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rand"
+	"crypto/sha1" //nolint:gosec //not used for security
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -21,6 +22,7 @@ import (
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -39,9 +41,17 @@ type private struct {
 	imageService     *image.Service
 	notifyService    *notify.Service
 	authenticator    *auth.Service
+	telegramService  telegramService
 	remarkURL        string
 	anonVote         bool
 	templates        templates.FileReader
+}
+
+// telegramService is a subset of Telegram service used for setting up user telegram notifications
+type telegramService interface {
+	AddToken(token, user, site string, expires time.Time)
+	CheckToken(token, userID string) (telegram, site string, err error)
+	GetBotUsername() string
 }
 
 type privStore interface {
@@ -349,55 +359,64 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	render.JSON(w, r, R.JSON{"user": user, "address": address})
 }
 
-// sendTelegramConfirmationCtrl gets address and siteID from query, makes confirmation token and sends it to user.
-// GET /telegram/subscribe?site=siteID&address=@someone
-//nolint:dupl // too hard to deduplicate that logic, as then it's tricky to use SendErrorJSON
-func (s *private) sendTelegramConfirmationCtrl(w http.ResponseWriter, r *http.Request) {
+// telegramSubscribeCtrl generates and verifies telegram notification request
+// GET /telegram/subscribe?site=siteID<&tkn=token>
+func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
-	address := r.URL.Query().Get("address")
-	siteID := r.URL.Query().Get("site")
-	if address == "" {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest,
-			errors.New("missing parameter"), "address parameter is required", rest.ErrInternal)
+
+	if s.telegramService == nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError,
+			errors.New("not enabled"), "telegram notifications are not enabled", rest.ErrActionRejected)
 		return
 	}
-	existingAddress, err := s.dataService.GetUserTelegram(siteID, user.ID)
+
+	queryToken := r.URL.Query().Get("tkn")
+	if queryToken == "" {
+		// GET /telegram/subscribe?site=siteID (No token supplied)
+		siteID := r.URL.Query().Get("site")
+		if siteID == "" {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "site parameter is required", rest.ErrInternal)
+			return
+		}
+		// we don't care as much if we can't retrieve the current value of that field for the user, so ignore the error
+		if existingAddress, _ := s.dataService.GetUserTelegram(siteID, user.ID); existingAddress != "" {
+			rest.SendErrorJSON(w, r, http.StatusConflict,
+				errors.New("already subscribed"), "telegram subscription is already set for this user, delete if first to re-subscribe", rest.ErrActionRejected)
+			return
+		}
+		// Generate and send token
+		tkn, err := randToken()
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to generate verification token", rest.ErrInternal)
+			return
+		}
+		expires := time.Now().Add(10 * time.Minute)
+
+		s.telegramService.AddToken(tkn, user.ID, siteID, expires)
+
+		render.JSON(w, r, R.JSON{"token": tkn, "bot": s.telegramService.GetBotUsername()})
+
+		return
+	}
+
+	// GET /telegram/subscribe?tkn=token (verify token)
+	var address, siteID string
+	address, siteID, err := s.telegramService.CheckToken(queryToken, user.ID)
 	if err != nil {
-		// we don't care as much if we can't retrieve the current value of that field for the user,
-		// as it's only used to check if we're trying to set to the same value it's already set to
-		log.Printf("[WARN] can't read telegram for %s, %v", user.ID, err)
-	}
-	if address == existingAddress {
-		rest.SendErrorJSON(w, r, http.StatusConflict,
-			errors.New("already verified"), "telegram address is already verified for this user", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set telegram for user", rest.ErrInternal)
 		return
 	}
-	claims := token.Claims{
-		Handshake: &token.Handshake{ID: user.ID + "::" + address},
-		StandardClaims: jwt.StandardClaims{
-			Audience:  r.URL.Query().Get("site"),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			Issuer:    "remark42",
-		},
-	}
 
-	tkn, err := s.authenticator.TokenService().Token(claims)
+	log.Printf("[DEBUG] set telegram notifications for user %s", user.ID)
+
+	val, err := s.dataService.SetUserTelegram(siteID, user.ID, address)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to make verification token", rest.ErrInternal)
+		code := parseError(err, rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", code)
 		return
 	}
 
-	s.notifyService.SubmitVerification(
-		notify.VerificationRequest{
-			SiteID:   siteID,
-			User:     user.Name,
-			Telegram: address,
-			Token:    tkn,
-		},
-	)
-
-	render.JSON(w, r, R.JSON{"user": user, "address": address})
+	render.JSON(w, r, R.JSON{"updated": true, "address": val})
 }
 
 // setConfirmedEmailCtrl uses provided token parameter (generated by sendEmailConfirmationCtrl) to set email and add it to user token
@@ -448,47 +467,6 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 	claims.User.Email = address
 	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
-		return
-	}
-	render.JSON(w, r, R.JSON{"updated": true, "address": val})
-}
-
-// setConfirmedTelegramCtrl uses provided token parameter (generated by sendTelegramConfirmationCtrl) to set telegram and add it to user token
-// PUT /telegram/confirm?site=siteID&tkn=jwt
-func (s *private) setConfirmedTelegramCtrl(w http.ResponseWriter, r *http.Request) {
-	tkn := r.URL.Query().Get("tkn")
-	if tkn == "" {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "token parameter is required", rest.ErrInternal)
-		return
-	}
-	user := rest.MustGetUserInfo(r)
-	siteID := r.URL.Query().Get("site")
-
-	confClaims, err := s.authenticator.TokenService().Parse(tkn)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-
-	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("expired"), "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-
-	// Handshake.ID is user.ID + "::" + address
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 || elems[0] != user.ID {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New(confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
-		return
-	}
-	address := elems[1]
-
-	log.Printf("[DEBUG] set telegram for user %s", user.ID)
-
-	val, err := s.dataService.SetUserTelegram(siteID, user.ID, address)
-	if err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", code)
 		return
 	}
 	render.JSON(w, r, R.JSON{"updated": true, "address": val})
@@ -747,4 +725,16 @@ func (s *private) isReadOnly(locator store.Locator) bool {
 		}
 	}
 	return s.dataService.IsReadOnly(locator) // ro manually
+}
+
+func randToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", errors.Wrap(err, "can't get random")
+	}
+	s := sha1.New() //nolint:gosec // not used for security
+	if _, err := s.Write(b); err != nil {
+		return "", errors.Wrap(err, "can't write randoms to sha1")
+	}
+	return fmt.Sprintf("%x", s.Sum(nil)), nil
 }

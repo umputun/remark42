@@ -31,6 +31,7 @@ import (
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/providers"
 	"github.com/umputun/remark42/backend/app/rest/api"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
@@ -477,8 +478,9 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		log.Printf("[WARN] failed to prepare notify destinations, %s", err)
 	}
 
+	// telegramService is used for getting user replies for both notifications and authorization
 	var telegramService *notify.Telegram
-	if contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins) {
+	if contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins) || s.Auth.Telegram {
 		telegramService, err = s.makeTelegramNotify()
 		if err != nil {
 			log.Printf("[WARN] failed to make telegram notify service, %s", err)
@@ -487,8 +489,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 
 	var telegramBotUsername string
 	if telegramService != nil {
+		if contains("telegram", s.Notify.Users) {
+			telegramBotUsername = telegramService.GetBotUsername()
+		}
 		notifyDestinations = append(notifyDestinations, telegramService)
-		telegramBotUsername = telegramService.GetBotUsername()
+		// start generic update for both notify and auth services
+		go providers.DispatchTelegramUpdates(ctx, telegramService, []providers.TGUpdatesReceiver{telegramService}, time.Second*5)
 	}
 
 	notifyService := s.makeNotifyService(dataService, notifyDestinations)
@@ -525,6 +531,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Authenticator:       authenticator,
 		Cache:               loadingCache,
 		NotifyService:       notifyService,
+		TelegramService:     telegramService,
 		SSLConfig:           sslConfig,
 		UpdateLimiter:       s.UpdateLimit,
 		ImageService:        imageService,
@@ -780,34 +787,34 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 
 func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *auth.Service) error {
 
-	providers := 0
+	providersCount := 0
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
 		authenticator.AddProvider("google", s.Auth.Google.CID, s.Auth.Google.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Github.CID != "" && s.Auth.Github.CSEC != "" {
 		authenticator.AddProvider("github", s.Auth.Github.CID, s.Auth.Github.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
 		authenticator.AddProvider("facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
 		authenticator.AddProvider("microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
 		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
 		authenticator.AddProvider("twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Patreon.CID != "" && s.Auth.Patreon.CSEC != "" {
 		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
-		providers++
+		providersCount++
 	}
 	if s.Auth.Telegram {
 		telegram := &provider.TelegramHandler{
@@ -828,13 +835,13 @@ func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *aut
 		}()
 		authenticator.AddCustomHandler(telegram)
 
-		providers++
+		providersCount++
 	}
 
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		authenticator.AddProvider("dev", "", "")
-		providers++
+		providersCount++
 	}
 
 	if s.Auth.Email.Enable {
@@ -886,7 +893,7 @@ func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *aut
 		}))
 	}
 
-	if providers == 0 {
+	if providersCount == 0 {
 		log.Printf("[WARN] no auth providers defined")
 	}
 
@@ -1012,6 +1019,7 @@ func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 		UserNotifications: contains("telegram", s.Notify.Users),
 		Token:             s.Telegram.Token,
 		Timeout:           s.Telegram.Timeout,
+		SuccessMsg:        "✅ You have successfully subscribed for notifications, check the web!",
 	}
 	tg, err := notify.NewTelegram(telegramParams)
 	if err != nil {
