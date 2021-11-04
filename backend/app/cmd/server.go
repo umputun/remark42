@@ -472,27 +472,26 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		KeyStore:          adminStore,
 	}
 
-	var telegramService *notify.Telegram
-	var telegramBotUsername string
 	notifyDestinations, err := s.makeNotifyDestinations(authenticator)
 	if err != nil {
 		log.Printf("[WARN] failed to prepare notify destinations, %s", err)
 	}
 
+	var telegramService *notify.Telegram
 	if contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins) {
 		telegramService, err = s.makeTelegramNotify()
 		if err != nil {
 			log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		} else {
-			notifyDestinations = append(notifyDestinations, telegramService)
 		}
 	}
 
-	notifyService := s.makeNotifyService(dataService, notifyDestinations)
-
+	var telegramBotUsername string
 	if telegramService != nil {
+		notifyDestinations = append(notifyDestinations, telegramService)
 		telegramBotUsername = telegramService.GetBotUsername()
 	}
+
+	notifyService := s.makeNotifyService(dataService, notifyDestinations)
 
 	imgProxy := &proxy.Image{
 		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
@@ -813,8 +812,8 @@ func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *aut
 	if s.Auth.Telegram {
 		telegram := &provider.TelegramHandler{
 			ProviderName: "telegram",
-			ErrorMsg:     "❌ Invalid auth request. Please try clicking link again.",
-			SuccessMsg:   "✅ You have successfully authenticated!",
+			ErrorMsg:     "❌ Invalid auth request. Please try requesting the link again.",
+			SuccessMsg:   "✅ You have successfully authenticated, check the web!",
 			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
 			L:            log.Default(),
 			TokenService: authenticator.TokenService(),
