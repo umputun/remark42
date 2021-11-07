@@ -454,7 +454,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		return nil, errors.Wrap(err, "failed to make avatar store")
 	}
 	authRefreshCache := newAuthRefreshCache()
-	authenticator, err := s.makeAuthenticator(ctx, dataService, avatarStore, adminStore, authRefreshCache)
+	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
+
+	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
+	telegramService, telegramBotUsername := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+
+	err = s.addAuthProviders(authenticator)
 	if err != nil {
 		_ = dataService.Close()
 		return nil, errors.Wrap(err, "failed to make authenticator")
@@ -478,26 +483,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		log.Printf("[WARN] failed to prepare notify destinations, %s", err)
 	}
 
-	// telegramService is used for getting user replies for both notifications and authorization
-	var telegramService *notify.Telegram
-	if contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins) || s.Auth.Telegram {
-		telegramService, err = s.makeTelegramNotify()
-		if err != nil {
-			log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		}
-	}
-
-	var telegramBotUsername string
-	if telegramService != nil {
-		if contains("telegram", s.Notify.Users) {
-			telegramBotUsername = telegramService.GetBotUsername()
-		}
-		notifyDestinations = append(notifyDestinations, telegramService)
-		// start generic update for both notify and auth services
-		go providers.DispatchTelegramUpdates(ctx, telegramService, []providers.TGUpdatesReceiver{telegramService}, time.Second*5)
-	}
-
-	notifyService := s.makeNotifyService(dataService, notifyDestinations)
+	notifyService := s.makeNotifyService(dataService, notifyDestinations, telegramService)
 
 	imgProxy := &proxy.Image{
 		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
@@ -785,9 +771,12 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *auth.Service) error {
-
+func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	providersCount := 0
+	if s.Auth.Telegram {
+		providersCount++
+	}
+
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
 		authenticator.AddProvider("google", s.Auth.Google.CID, s.Auth.Google.CSEC)
 		providersCount++
@@ -814,27 +803,6 @@ func (s *ServerCommand) addAuthProviders(ctx context.Context, authenticator *aut
 	}
 	if s.Auth.Patreon.CID != "" && s.Auth.Patreon.CSEC != "" {
 		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
-		providersCount++
-	}
-	if s.Auth.Telegram {
-		telegram := &provider.TelegramHandler{
-			ProviderName: "telegram",
-			ErrorMsg:     "❌ Invalid auth request. Please try requesting the link again.",
-			SuccessMsg:   "✅ You have successfully authenticated, check the web!",
-			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
-			L:            log.Default(),
-			TokenService: authenticator.TokenService(),
-			AvatarSaver:  authenticator.AvatarProxy(),
-		}
-		// Run Telegram provider in the background
-		go func() {
-			err := telegram.Run(ctx)
-			if err != nil {
-				log.Printf("[ERROR] telegram auth error %+v", err)
-			}
-		}()
-		authenticator.AddCustomHandler(telegram)
-
 		providersCount++
 	}
 
@@ -921,7 +889,31 @@ func (s *ServerCommand) loadEmailTemplate() (string, error) {
 	return string(file), nil
 }
 
-func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinations []notify.Destination) *notify.Service {
+// creates and registers telegram auth, which we need separately from other auth providers
+func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) providers.TGUpdatesReceiver {
+	if s.Auth.Telegram {
+		telegram := &provider.TelegramHandler{
+			ProviderName: "telegram",
+			SuccessMsg:   "✅ You have successfully authenticated, check the web!",
+			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
+			L:            log.Default(),
+			TokenService: authenticator.TokenService(),
+			AvatarSaver:  authenticator.AvatarProxy(),
+		}
+		authenticator.AddCustomHandler(telegram)
+		return telegram
+	}
+	return nil
+}
+
+func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinations []notify.Destination, telegram *notify.Telegram) *notify.Service {
+	if destinations == nil {
+		destinations = []notify.Destination{}
+	}
+	if telegram != nil {
+		destinations = append(destinations, telegram)
+	}
+
 	if len(destinations) > 0 {
 		log.Printf("[INFO] make notify, for users: %s, for admins: %s", s.Notify.Users, s.Notify.Admins)
 		return notify.NewService(dataStore, s.Notify.QueueSize, destinations...)
@@ -1058,8 +1050,9 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
-func (s *ServerCommand) makeAuthenticator(ctx context.Context, ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) (*auth.Service, error) {
-	authenticator := auth.NewService(auth.Opts{
+// getAuthenticator creates new authenticator service, which doesn't have any auth providers enabled
+func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) *auth.Service {
+	return auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
 		TokenDuration:  s.Auth.TTL.JWT,
@@ -1114,12 +1107,6 @@ func (s *ServerCommand) makeAuthenticator(ctx context.Context, ds *service.DataS
 		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
 	})
-
-	if err := s.addAuthProviders(ctx, authenticator); err != nil {
-		return nil, err
-	}
-
-	return authenticator, nil
 }
 
 func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
@@ -1135,6 +1122,34 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 	default:
 		return http.SameSiteDefaultMode
 	}
+}
+
+// startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
+// Does nothing if telegram auth and notifications are disabled.
+// Doesn't return telegram bot username if user notifications are disabled, as that is the way frontend knows they are enabled.
+func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram, telegramBotUsername string) {
+	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
+		return nil, ""
+	}
+
+	var err error
+	if tg, err = s.makeTelegramNotify(); err != nil {
+		log.Printf("[WARN] failed to make telegram notify service, %s", err)
+		return nil, ""
+	}
+
+	if contains("telegram", s.Notify.Users) {
+		telegramBotUsername = tg.GetBotUsername()
+	}
+
+	telegramReceivers := []providers.TGUpdatesReceiver{tg}
+	if telegramAuth != nil {
+		telegramReceivers = append(telegramReceivers, telegramAuth)
+	}
+	// start bot messages receiver for both notify and auth services
+	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
+
+	return tg, telegramBotUsername
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.
