@@ -34,7 +34,7 @@ describe('<Select/>', () => {
     expect(selectedOption?.textContent).toBe(items[0].label);
   });
 
-  it('should highlight selet on focus', async () => {
+  it('should highlight select on focus', async () => {
     const { container } = render(<Select items={items} selected={items[0]} />);
     const select = container.querySelector('select');
 

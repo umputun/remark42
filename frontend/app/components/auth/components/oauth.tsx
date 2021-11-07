@@ -23,10 +23,10 @@ type Props = {
 
 export function OAuth({ providers }: Props) {
   const intl = useIntl();
-  const dispath = useDispatch();
+  const dispatch = useDispatch();
   const theme = useTheme();
   const buttonVariant = getButtonVariant(providers.length);
-  const handleOathClick: JSX.GenericEventHandler<HTMLAnchorElement> = async (evt) => {
+  const handleOauthClick: JSX.GenericEventHandler<HTMLAnchorElement> = async (evt) => {
     const { href } = evt.currentTarget as HTMLAnchorElement;
 
     evt.preventDefault();
@@ -36,7 +36,7 @@ export function OAuth({ providers }: Props) {
       return;
     }
 
-    dispath(setUser(user));
+    dispatch(setUser(user));
   };
 
   return (
@@ -50,7 +50,7 @@ export function OAuth({ providers }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               href={`${BASE_URL}/auth/${p}/login?from=${location}&site=${siteId}`}
-              onClick={handleOathClick}
+              onClick={handleOauthClick}
               className={clsx('oauth-button', styles.button, styles[buttonVariant], styles[p])}
               data-provider-name={name}
               title={intl.formatMessage(messages.oauthTitle, { provider: name })}

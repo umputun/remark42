@@ -4,7 +4,7 @@ import { QuerySettingsType, querySettings } from './settings';
 interface StaticStoreType {
   config: Config;
   query: QuerySettingsType;
-  /** used in fetcher, fer example to set comment edit temiout */
+  /** used in fetcher, fer example to set comment edit timeout */
   serverClientTimeDiff?: number;
 }
 

@@ -1,6 +1,6 @@
 /*
  * connected comment is not exported in index.ts to avoid leaking redux import into last-comments
- * and should be importded explicitly
+ * and should be imported explicitly
  */
 
 import './styles';

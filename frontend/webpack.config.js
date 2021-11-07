@@ -48,7 +48,7 @@ function getLocalIdent(loaderContext, _, localName, options) {
  * Generates excludes for babel-loader
  *
  * Exclude is a module that has >=es6 code and resides in node_modules.
- * By defaut babel-loader ignores everything from node_modules,
+ * By default babel-loader ignores everything from node_modules,
  * so we have to exclude from ignore these modules
  */
 const exclude = [
@@ -74,11 +74,11 @@ const htmlMinifyOptions = {
 module.exports = (_, { mode, analyze }) => {
   const isDev = mode === 'development';
   // Use REMARK_URL or predefined host in dev environment
-  // In development: We use `http://127.0.0.1:9000` for access to backend and backend is accessable via dev server proxy
+  // In development: We use `http://127.0.0.1:9000` for access to backend and backend is accessible via dev server proxy
   // In production: {% REMARK_URL %} will be replaced by `sed` on start of prod
   const REMARK_URL = isDev ? DEVSERVER_BASE_PATH : '{% REMARK_URL %}';
 
-  // Add debug lib only for developmet throw webpack chuncks and keep code clear
+  // Add debug lib only for development throw webpack chunks and keep code clear
   const preactDebug = isDev ? ['preact/debug'] : [];
 
   const entry = {

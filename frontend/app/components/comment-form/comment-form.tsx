@@ -45,7 +45,7 @@ export type CommentFormProps = {
 export type CommentFormState = {
   preview: string | null;
   isErrorShown: boolean;
-  /** error message, if contains newlines, it will be splitted to multiple errors */
+  /** error message, if contains newlines, it will be split to multiple errors */
   errorMessage: string | null;
   /** prevents error hiding on input event */
   errorLock: boolean;

@@ -61,7 +61,7 @@ export function Profile() {
     const rootElement = rootRef.current;
 
     rootElement.classList.remove(styles.rootAppear);
-    rootElement.classList.add(styles.rootDisapear);
+    rootElement.classList.add(styles.rootDisappear);
     // No need to unsubscribe because iframe will be destroyed
     rootElement.addEventListener('transitionend', () => {
       postMessageToParent({ profile: null });
@@ -202,7 +202,7 @@ export function Profile() {
               <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request my data removal" />
             </Button>
           </footer>
-        ) : // TODO: implement hidding user comments
+        ) : // TODO: implement hiding user comments
         null}
       </aside>
     </div>

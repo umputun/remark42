@@ -65,7 +65,7 @@ export interface Comment {
   /**
    * @ClientOnly defines whether comments was hidden (deleted)
    *
-   * Situatuon may occure for example if user decided to hide someone,
+   * Situation may occur for example if user decided to hide someone,
    * in this case we don't use `delete` field because comment with `delete`
    * still renders, and comment with `hidden` flag completely removed from DOM
    */

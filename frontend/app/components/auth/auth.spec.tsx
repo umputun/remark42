@@ -161,7 +161,7 @@ describe('<Auth/>', () => {
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(getByPlaceholderText('Token')).toHaveClass('auth-token-textatea');
+    expect(getByPlaceholderText('Token')).toHaveClass('auth-token-textarea');
 
     fireEvent.change(getByPlaceholderText('Token'), {
       target: { value: 'token' },
@@ -189,7 +189,7 @@ describe('<Auth/>', () => {
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(getByPlaceholderText('Token')).toHaveClass('auth-token-textatea');
+    expect(getByPlaceholderText('Token')).toHaveClass('auth-token-textarea');
 
     fireEvent.change(getByPlaceholderText('Token'), { target: { value: 'token' } });
     fireEvent.click(getByText('Submit'));
@@ -220,7 +220,7 @@ describe('<Auth/>', () => {
     ${'username '}  | ${'username'}
     ${' username'}  | ${'username'}
     ${' username '} | ${'username'}
-  `('should remove spaces in the first/last postion in username', async ({ value, expected }) => {
+  `('should remove spaces in the first/last position in username', async ({ value, expected }) => {
     StaticStore.config.auth_providers = ['email'];
 
     const { getByText, getByPlaceholderText } = render(<Auth />);

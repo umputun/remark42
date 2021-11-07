@@ -109,15 +109,15 @@ export function unsetCommentMode(mode: StoreState['comments']['activeComment'] =
 }
 
 export function updateSorting(sort: Sorting): StoreAction<void> {
-  return async (dispath, getState) => {
+  return async (dispatch, getState) => {
     const { sort: prevSort } = getState().comments;
-    dispath({ type: COMMENTS_SET_SORT, payload: sort });
+    dispatch({ type: COMMENTS_SET_SORT, payload: sort });
 
     try {
-      await dispath(fetchComments(sort));
+      await dispatch(fetchComments(sort));
       setItem(LS_SORT_KEY, sort);
     } catch (e) {
-      dispath({ type: COMMENTS_SET_SORT, payload: prevSort });
+      dispatch({ type: COMMENTS_SET_SORT, payload: prevSort });
     }
   };
 }
