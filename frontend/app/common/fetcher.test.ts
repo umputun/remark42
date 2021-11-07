@@ -6,7 +6,7 @@ import { RequestError } from 'utils/errorUtils';
 import { API_BASE, BASE_URL } from './constants.config';
 import { apiFetcher, authFetcher, adminFetcher, JWT_HEADER } from './fetcher';
 
-type FetchImplementaitonProps = {
+type FetchImplementationProps = {
   status?: number;
   headers?: Record<string, string>;
   json?: () => Promise<unknown>;
@@ -14,7 +14,7 @@ type FetchImplementaitonProps = {
   data?: unknown;
 };
 
-function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementaitonProps = {}) {
+function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementationProps = {}) {
   window.fetch = jest.fn().mockImplementation(() => {
     return {
       status: 200,
@@ -96,7 +96,7 @@ describe('fetcher', () => {
   });
 
   describe('headers', () => {
-    it('should set active token and than clean it on unauthorized respose', async () => {
+    it('should set active token and than clean it on unauthorized response', async () => {
       expect.assertions(4);
 
       const headersWithJwt = { [JWT_HEADER]: 'token', ...headers };
@@ -110,7 +110,7 @@ describe('fetcher', () => {
       mockFetch({ headers, status: 401 });
       await expect(
         apiFetcher.get(apiUri).then(() => {
-          throw Error('apiFether shoud throw error on 401 responce');
+          throw Error('apiFetcher should throw error on 401 response');
         })
       ).rejects.toEqual(new Error('Not authorized.'));
 

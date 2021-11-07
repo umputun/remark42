@@ -41,7 +41,7 @@ declare global {
 }
 
 /**
- * Veriable responsive for dynamic setting public path for
+ * Variable responsive for dynamic setting public path for
  * assets. Dynamic imports with relative url will be resolved over this path.
  *
  * https://webpack.js.org/guides/public-path/#on-the-fly

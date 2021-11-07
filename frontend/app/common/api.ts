@@ -84,7 +84,7 @@ export const unsubscribeFromEmailUpdates = () => apiFetcher.delete('/email');
 export const deleteMe = (): Promise<{ user_id: string; link: string }> => apiFetcher.post('/deleteme');
 
 /* Admin Methods */
-// TODO: move these methods to separate chunk as well as all admin inteface features
+// TODO: move these methods to separate chunk as well as all admin interface features
 export const approveDeleteMe = (token: string): Promise<void> => adminFetcher.get('/deleteme', { token });
 
 export const pinComment = (id: Comment['id']): Promise<void> => adminFetcher.put(`/pin/${id}`, { url, pin: 1 });

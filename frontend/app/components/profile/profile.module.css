@@ -15,7 +15,7 @@
   transform: translateX(0);
 }
 
-.rootDisapear {
+.rootDisappear {
   transition: transform 0.5s ease-in;
 }
 

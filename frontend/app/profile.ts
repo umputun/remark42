@@ -30,7 +30,7 @@ function createFragment(params: Profile & Record<string, string | unknown>) {
   }
 
   root.appendChild(iframe);
-  setStyles(root, styles.rootShowed);
+  setStyles(root, styles.rootShown);
   setTimeout(() => iframe?.focus());
 }
 
@@ -102,7 +102,7 @@ const styles = {
     opacity: 0,
     zIndex: 99999999,
   },
-  rootShowed: {
+  rootShown: {
     display: 'block',
   },
   rootHidden: {

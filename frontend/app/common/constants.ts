@@ -39,7 +39,7 @@ export const IS_STORAGE_AVAILABLE: boolean = (() => {
 
 /**
  * Defines whether iframe loaded in cross origin environment
- * Usefull for checking if some privacy restriction may be applied
+ * Useful for checking if some privacy restriction may be applied
  */
 export const IS_THIRD_PARTY: boolean = (() => {
   try {

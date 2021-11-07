@@ -276,7 +276,7 @@ describe('<Comment />', () => {
       );
     });
 
-    it('shoud not be editable', () => {
+    it('should not be editable', () => {
       StaticStore.config.edit_duration = 300;
 
       const component = mountComment({

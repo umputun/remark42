@@ -11,7 +11,7 @@ describe('getJsonItem', () => {
     expect(localStorage.getItem(LS_KEY)).toBe('{}');
   });
 
-  it('should update json in localStoeage', () => {
+  it('should update json in localStorage', () => {
     setJsonItem(LS_KEY, []);
     expect(localStorage.getItem(LS_KEY)).toBe('[]');
   });

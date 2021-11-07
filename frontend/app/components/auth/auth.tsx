@@ -22,13 +22,13 @@ import styles from './auth.module.css';
 
 export function Auth() {
   const intl = useIntl();
-  const dispath = useDispatch();
+  const dispatch = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
   // UI State
   const [isLoading, setLoading] = useState(false);
   const [view, setView] = useState<typeof formProviders[number] | 'token'>(formProviders[0]);
-  const [ref, isDropdownShowed, toggleDropdownState] = useDropdown(view === 'token');
+  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token');
 
   // Errors
   const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
@@ -64,7 +64,7 @@ export function Auth() {
           const username = data.get('username') as string;
           const user = await anonymousSignin(username);
 
-          dispath(setUser(user));
+          dispatch(setUser(user));
           break;
         }
         case 'email': {
@@ -83,7 +83,7 @@ export function Auth() {
             setInvalidReason(invalidReason);
           } else {
             const user = await verifyEmailSignin(token);
-            dispath(setUser(user));
+            dispatch(setUser(user));
           }
 
           break;
@@ -116,10 +116,10 @@ export function Auth() {
   );
   return (
     <div className={clsx('auth', styles.root)}>
-      <Button className="auth-button" selected={isDropdownShowed} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
+      <Button className="auth-button" selected={isDropdownShown} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
         {intl.formatMessage(messages.signin)}
       </Button>
-      {isDropdownShowed && (
+      {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
             {isTokenView ? (
@@ -157,7 +157,7 @@ export function Auth() {
                 <div className={clsx('auth-row', styles.row)}>
                   <TextareaAutosize
                     name="token"
-                    className={clsx('auth-token-textatea', styles.textarea)}
+                    className={clsx('auth-token-textarea', styles.textarea)}
                     placeholder={intl.formatMessage(messages.token)}
                     disabled={isLoading}
                   />
