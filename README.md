@@ -45,7 +45,6 @@ All remark42 documentation is available [by the link](https://remark42.com/docs/
       - [Admin users](#admin-users)
       - [Docker parameters](#docker-parameters)
   - [Build from the source](#build-from-the-source)
-  - [Privacy](#privacy)
 
 ## Install
 
@@ -104,20 +103,6 @@ services:
 * to build Docker container - `make docker`. This command will produce container `umputun/remark42`
 * to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable
   `remark42` file with everything embedded
-
-## Privacy
-
-* Remark42 is trying to be very sensitive to any private or semi-private information.
-* Authentication requesting the minimal possible scope from authentication providers. All extra information returned by them is immediately dropped and not stored in any form.
-* Generally, Remark42 keeps user ID, username and avatar link only. None of these fields exposed directly - ID and name hashed, avatar proxied.
-* There is no tracking of any sort.
-* Login mechanic uses JWT stored in a cookie (HttpOnly, secured). The second cookie (XSRF_TOKEN) is a random ID preventing CSRF.
-* There is no cross-site login, i.e. user's behavior can't be analyzed across independent sites running Remark42.
-* There are no third-party analytic services involved.
-* User can request all information Remark42 knows about and export to gz file.
-* Supported complete cleanup of all information related to user's activity.
-* Cookie lifespan can be restricted to session-only.
-* All potentially sensitive data stored by Remark42 hashed and encrypted.
 
 ## Related projects
 
