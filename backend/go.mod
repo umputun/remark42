@@ -6,12 +6,13 @@ require (
 	github.com/Depado/bfchroma v1.3.0
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/alecthomas/chroma v0.9.4
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21
 	github.com/go-chi/chi/v5 v5.0.5
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.18.0
+	github.com/go-pkgz/auth v1.18.1-0.20211107180414-66d9ca410559
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
@@ -35,5 +36,5 @@ require (
 	go.uber.org/goleak v1.1.12
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
-	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8
+	golang.org/x/net v0.0.0-20211105192438-b53810dc28af
 )
