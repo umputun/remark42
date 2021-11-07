@@ -167,3 +167,45 @@ The following list of command-line options is deprecated and might be removed in
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | | Telegram timeout | 1.9.0     |
 
 </details>
+
+### Admin users
+
+Admins/moderators should be defined in `docker-compose.yml` as a list of user IDs or passed in the command line.
+
+```yaml
+environment:
+  - ADMIN_SHARED_ID=github_ef0f706a79cc24b17bbbb374cd234a691a034128,github_dae9983158e9e5e127ef2b87a411ef13c891e9e5
+```
+
+To get a user ID just log in and click on your username or any other user you want to promote to admins. It will expand login info and show the full user ID.
+
+### Docker parameters
+
+Two parameters allow customizing Docker container on the system level:
+
+* `APP_UID` - sets UID to run Remark42 application in container (default=1001)
+* `TIME_ZONE` - sets time zone of Remark42 container (default=America/Chicago)
+
+_see [umputun/baseimage](https://github.com/umputun/baseimage) for more details_
+
+Example of `docker-compose.yml`:
+
+```yaml
+version: '2'
+
+services:
+  remark42:
+    image: umputun/remark42:latest
+    restart: always
+    container_name: "remark42"
+    environment:
+      - APP_UID=2000                          # runs Remark42 app with non-default UID
+      - TIME_ZONE=GTC                         # sets container time to UTC
+      - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
+      - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
+      - SECRET=abcd-123456-xyz-$%^&           # secret key
+      - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
+      - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
+    volumes:
+      - ./var:/srv/var                        # persistent volume to store all Remark42 data
+```
