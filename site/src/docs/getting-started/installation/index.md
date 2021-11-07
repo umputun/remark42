@@ -68,3 +68,12 @@ Put the next code snippet on a page of your site where you want to have comments
 After that widget will be rendered inside this node.
 
 If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
+
+#### Quick installation test
+
+To verify if Remark42 has been properly installed, check a demo page at `${REMARK_URL}/web` URL. Make sure to include `remark` site ID to `${SITE}` list.
+
+### Build from the source
+
+* to build Docker container - `make docker`. This command will produce container `umputun/remark42`
+* to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable `remark42` file with everything embedded
