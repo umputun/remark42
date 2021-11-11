@@ -76,7 +76,7 @@ func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, e
 	render.HTML(w, r, msg.String())
 }
 
-// SendErrorJSON makes {error: blah, details: blah} json body and responds with error code
+// SendErrorJSON makes {error: blah, details: blah, code: 42} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
 	render.Status(r, httpStatusCode)
