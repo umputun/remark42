@@ -159,6 +159,7 @@
   "toolbar.unordered-list": "記号付きリストの追加",
   "user.my-comments": "My comments",
   "user.comments": "Comments",
+  "user.load-more": "Load more",
   "vote.anonymous": "匿名ユーザーは投稿できません",
   "vote.deleted": "削除済みコメントには投票できません",
   "vote.guest": "投票するにはサインインしてください",

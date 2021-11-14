@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { h, Fragment } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useIntl, FormattedMessage } from 'react-intl';
 
 import { getUserComments } from 'common/api';
@@ -32,21 +32,32 @@ async function signout() {
 export function Profile() {
   const intl = useIntl();
   const rootRef = useRef<HTMLDivElement>(null);
+  const commentsLimit = useMemo(() => 10, []);
   const user = useMemo(() => parseQuery(), []);
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
   const [commentsAmount, setCommentsAmount] = useState<number | null>(null);
+  const [commentsSkipCounts, setCommentsSkipCounts] = useState<number>(0);
   const [isSigningOut, setSigningOut] = useState(false);
+  const isLoadMoreVisible = commentsAmount && commentsAmount > commentsSkipCounts + commentsLimit;
 
-  async function fetchUserComments(userId: string) {
+  const fetchUserComments = useCallback(
+    async (skip: number = 0) => {
+      const { comments, count } = await getUserComments(user.id, { skip, limit: commentsLimit });
+      return { comments, count };
+    },
+    [user.id, commentsLimit]
+  );
+
+  const fetchUserCommentsOnMount = useCallback(async () => {
     setIsCommentsLoading(true);
     setError(false);
     setComments(null);
     setCommentsAmount(null);
 
     try {
-      const { comments, count } = await getUserComments(userId);
+      const { comments, count } = await fetchUserComments();
 
       setComments(comments);
       setCommentsAmount(count);
@@ -55,7 +66,23 @@ export function Profile() {
     } finally {
       setIsCommentsLoading(false);
     }
-  }
+  }, [fetchUserComments]);
+
+  const fetchMoreUserComments = useCallback(
+    async (skipCounts: number) => {
+      setError(false);
+
+      try {
+        const { comments: nextComments, count } = await fetchUserComments(skipCounts);
+
+        setComments([...(comments || []), ...nextComments]);
+        setCommentsAmount(count);
+      } catch (err) {
+        setError(true);
+      }
+    },
+    [comments, fetchUserComments]
+  );
 
   function handleClickClose() {
     const rootElement = rootRef.current;
@@ -79,13 +106,20 @@ export function Profile() {
     await signout();
   }
 
+  function handleLoadMore() {
+    const nextSkipCounts = commentsSkipCounts + commentsLimit;
+
+    setCommentsSkipCounts(nextSkipCounts);
+    fetchMoreUserComments(nextSkipCounts);
+  }
+
   function handleClickRetryCommentsRequest() {
-    fetchUserComments(user.id);
+    fetchMoreUserComments(commentsSkipCounts);
   }
 
   useEffect(() => {
-    fetchUserComments(user.id);
-  }, [user.id]);
+    fetchUserCommentsOnMount();
+  }, [fetchUserCommentsOnMount]);
 
   useEffect(() => {
     const styles = { height: '100%', padding: 0 };
@@ -145,6 +179,11 @@ export function Profile() {
           theme={(user.theme as Theme) || 'light'}
         />
       ))}
+      {isLoadMoreVisible && (
+        <Button kind="link" size="sm" onClick={handleLoadMore}>
+          <FormattedMessage id="user.load-more" defaultMessage="Load more" />
+        </Button>
+      )}
     </>
   ) : (
     <p className={clsx('profile-emptyState', styles.emptyState)}>

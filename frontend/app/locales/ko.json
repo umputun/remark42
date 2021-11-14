@@ -159,6 +159,7 @@
   "toolbar.unordered-list": "글머리 기호가 지정된 목록 추가",
   "user.my-comments": "My comments",
   "user.comments": "Comments",
+  "user.load-more": "Load more",
   "vote.anonymous": "익명의 사용자는 투표할 수 없습니다",
   "vote.deleted": "삭제된 댓글에는 투표할 수 없습니다",
   "vote.guest": "투표하려면 로그인하세요",
