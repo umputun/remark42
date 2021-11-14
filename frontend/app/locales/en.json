@@ -159,6 +159,7 @@
   "toolbar.unordered-list": "Add a bulleted list",
   "user.my-comments": "My comments",
   "user.comments": "Comments",
+  "user.load-more": "Load more",
   "vote.anonymous": "Anonymous users can't vote",
   "vote.deleted": "Can't vote for deleted comment",
   "vote.guest": "Sign in to vote",
