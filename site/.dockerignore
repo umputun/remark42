@@ -3,4 +3,3 @@ node_modules
 .prettierrc
 .dockerignore
 Dockerfile
-public/about.txt
