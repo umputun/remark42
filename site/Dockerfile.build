@@ -1,0 +1,12 @@
+FROM node:16-alpine as build
+
+WORKDIR /site
+COPY ./package.json /site
+COPY ./yarn.lock /site
+RUN yarn --frozen-lockfile
+COPY . /site
+RUN yarn build
+RUN ls -la /site
+
+
+

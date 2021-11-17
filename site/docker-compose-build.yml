@@ -1,0 +1,32 @@
+version: '2'
+services:
+  build:
+    image: remark42-site-build
+    build: 
+      context: .
+      dockerfile: Dockerfile.build
+    command: yarn build
+
+    volumes:
+      - ./build:/site/build
+      
+  livereload:
+    image: remark42-site-build
+    build: 
+      context: .
+      dockerfile: Dockerfile.build
+    command: yarn dev:11ty
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    
+    ports:
+      - '3001:3001'
+      - '8080:8080'
+
+    volumes:
+      - ./src:/site/src
+      - ./build:/site/build

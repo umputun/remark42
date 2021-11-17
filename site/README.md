@@ -41,4 +41,11 @@ Then serve files from `./build` with your favorite server
 docker-compose up --build server
 ```
 
+### New docker compose file
+
+```shell
+docker-compose -f docker-compose-build.yml up --build build
+docker-compose -f docker-compose-build.yml up --build livereload
+```
+
 Then head to http://localhost:8080
