@@ -13,7 +13,7 @@ export const getComment = (id: Comment['id']): Promise<Comment> => apiFetcher.ge
 
 export const getUserComments = (
   userId: User['id'],
-  config: { skip?: number; limit?: number } = { skip: 0, limit: 10 }
+  config: { limit: number; skip?: number } = { limit: 10, skip: 0 }
 ): Promise<{ comments: Comment[]; count: number }> => apiFetcher.get('/comments', { user: userId, ...config });
 
 export const putCommentVote = ({ id, value }: { id: Comment['id']; value: number }): Promise<void> =>
