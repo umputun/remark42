@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -122,7 +121,7 @@ func TestService_Cleanup(t *testing.T) {
 
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	// cancel context after 2.1 cleanup TTLs
-	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration / 100 * 15 * 21)
+	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
 	defer cancel()
 	svc.Cleanup(ctx)
 	store.AssertNumberOfCalls(t, "Cleanup", 2)
@@ -209,7 +208,7 @@ func TestService_resize(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		img, err := ioutil.ReadFile(c.file)
+		img, err := os.ReadFile(c.file)
 		require.NoError(t, err, "can't open test file %s", c.file)
 
 		// no need for resize, image dimensions are smaller than resize limit

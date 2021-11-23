@@ -3,7 +3,6 @@ package migrator
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 )
 
@@ -30,7 +29,7 @@ func NewURLMapper(reader io.Reader) (Mapper, error) {
 // https://www.myblog.com/blog/1/ https://myblog.com/blog/1/
 // https://www.myblog.com/* https://myblog.com/*
 func (u *URLMapper) loadRules(reader io.Reader) error {
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"text/template"
@@ -90,7 +90,7 @@ func (t *Webhook) Send(ctx context.Context, req Request) error {
 
 	if resp.StatusCode != http.StatusOK {
 		errMsg := fmt.Sprintf("webhook request failed with non-OK status code: %d", resp.StatusCode)
-		respBody, e := ioutil.ReadAll(resp.Body)
+		respBody, e := io.ReadAll(resp.Body)
 		if e != nil {
 			return fmt.Errorf(errMsg)
 		}

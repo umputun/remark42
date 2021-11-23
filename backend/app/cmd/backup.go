@@ -41,7 +41,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
 	defer cancel()
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s", ec.RemarkURL, ec.Site)
-	req, err := http.NewRequest(http.MethodGet, exportURL, nil)
+	req, err := http.NewRequest(http.MethodGet, exportURL, http.NoBody)
 	if err != nil {
 		return errors.Wrapf(err, "can't make export request for %s", exportURL)
 	}
@@ -66,7 +66,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	if err != nil {
 		return errors.Wrapf(err, "can't create backup file %s", fname)
 	}
-	defer func() {
+	defer func() { //nolint:gosec // false positive on defer without error check when it's checked here
 		if err = fh.Close(); err != nil {
 			log.Printf("[WARN] failed to close file %s, %s", fh.Name(), err)
 		}

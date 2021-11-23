@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -54,7 +55,7 @@ func Test_Main(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 }
@@ -69,7 +70,7 @@ func TestMain_WithWebhook(t *testing.T) {
 		atomic.StoreInt32(&webhookSent, 1)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-		b, e := ioutil.ReadAll(r.Body)
+		b, e := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
 		assert.Nil(t, e)

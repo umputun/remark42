@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -43,7 +42,7 @@ func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, string
 
 func TestMemImage_LoadAfterSave(t *testing.T) {
 	svc := NewMemImageStore()
-	gopher, err := ioutil.ReadAll(gopherPNG())
+	gopher, err := io.ReadAll(gopherPNG())
 	assert.NoError(t, err)
 
 	img, err := svc.Load("test_id")
@@ -85,7 +84,7 @@ func TestMemImage_Cleanup(t *testing.T) {
 
 func TestMemImage_Info(t *testing.T) {
 	svc := NewMemImageStore()
-	gopher, err := ioutil.ReadAll(gopherPNG())
+	gopher, err := io.ReadAll(gopherPNG())
 	assert.NoError(t, err)
 
 	// get info on empty storage, should be zero

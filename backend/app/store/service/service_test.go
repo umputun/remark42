@@ -113,7 +113,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	postTitle := "Post Title 42"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == postPath {
-			_, err := w.Write([]byte(fmt.Sprintf("<html><title>%s</title><body>...</body></html>", postTitle)))
+			_, err := fmt.Fprintf(w, "<html><title>%s</title><body>...</body></html>", postTitle)
 			assert.NoError(t, err)
 			return
 		}

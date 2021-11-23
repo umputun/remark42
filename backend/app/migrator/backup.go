@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -69,15 +68,20 @@ func (ab AutoBackup) makeBackup() (string, error) {
 }
 
 func (ab AutoBackup) removeOldBackupFiles() {
-	files, err := ioutil.ReadDir(ab.BackupLocation)
+	files, err := os.ReadDir(ab.BackupLocation)
 	if err != nil {
 		log.Printf("[WARN] can't read files in backup directory %s, %s", ab.BackupLocation, err)
 		return
 	}
 	backFiles := []os.FileInfo{}
 	for _, file := range files {
+		info, e := file.Info()
+		if e != nil {
+			log.Printf("[WARN] can't read info for directory %s, %s", file.Name(), e)
+			return
+		}
 		if strings.HasPrefix(file.Name(), "backup-"+ab.SiteID) {
-			backFiles = append(backFiles, file)
+			backFiles = append(backFiles, info)
 		}
 	}
 	sort.Slice(backFiles, func(i int, j int) bool { return backFiles[i].Name() < backFiles[j].Name() })

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -23,7 +23,7 @@ func (c funcWebhookClient) Do(r *http.Request) (*http.Response, error) {
 var okWebhookClient = funcWebhookClient(func(*http.Request) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: http.StatusOK,
-		Body:       ioutil.NopCloser(bytes.NewBufferString("ok")),
+		Body:       io.NopCloser(bytes.NewBufferString("ok")),
 	}, nil
 })
 
@@ -75,7 +75,7 @@ func TestWebhook_Send(t *testing.T) {
 
 		return &http.Response{
 			StatusCode: http.StatusOK,
-			Body:       ioutil.NopCloser(bytes.NewBufferString("")),
+			Body:       io.NopCloser(bytes.NewBufferString("")),
 		}, nil
 	}), WebhookParams{
 		WebhookURL: "https://example.org/webhook",
@@ -116,7 +116,7 @@ func TestWebhook_Send(t *testing.T) {
 	wh, err = NewWebhook(funcWebhookClient(func(*http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusNotFound,
-			Body:       ioutil.NopCloser(bytes.NewBufferString("not found")),
+			Body:       io.NopCloser(bytes.NewBufferString("not found")),
 		}, nil
 	}), WebhookParams{
 		WebhookURL: "http:/example.org/invalid-url",
@@ -129,7 +129,7 @@ func TestWebhook_Send(t *testing.T) {
 	wh, err = NewWebhook(funcWebhookClient(func(*http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusNotFound,
-			Body:       ioutil.NopCloser(errReader{}),
+			Body:       io.NopCloser(errReader{}),
 		}, nil
 	}), WebhookParams{
 		WebhookURL: "http:/example.org/invalid-url",

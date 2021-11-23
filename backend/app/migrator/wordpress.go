@@ -107,8 +107,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 				break
 			}
 
-			switch el := t.(type) {
-			case xml.StartElement:
+			if el, ok := t.(xml.StartElement); ok {
 				if el.Name.Local == "item" {
 					stats.inpItems++
 					item := wpItem{}

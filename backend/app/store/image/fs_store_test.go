@@ -40,7 +40,7 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 func gopherPNGBytes() []byte {
-	img, _ := ioutil.ReadAll(gopherPNG())
+	img, _ := io.ReadAll(gopherPNG())
 	return img
 }
 
@@ -53,7 +53,7 @@ func TestFsStore_Save(t *testing.T) {
 	assert.NoError(t, err)
 
 	img := svc.location(svc.Staging, id)
-	data, err := ioutil.ReadFile(img)
+	data, err := os.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
 }
@@ -65,7 +65,7 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	fh, err := os.Open("testdata/circles.jpg")
 	defer func() { assert.NoError(t, fh.Close()) }()
 	assert.NoError(t, err)
-	img, err := ioutil.ReadAll(fh)
+	img, err := io.ReadAll(fh)
 	assert.NoError(t, err)
 	id := "test_img"
 	err = svc.Save(id, img)
@@ -73,7 +73,7 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 
 	imgPath := svc.location(svc.Staging, id)
 	t.Log(imgPath)
-	data, err := ioutil.ReadFile(imgPath)
+	data, err := os.ReadFile(imgPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 23983, len(data))
 }
@@ -94,7 +94,7 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 
 	img := svc.location(svc.Location, id)
 	t.Log(img)
-	data, err := ioutil.ReadFile(img)
+	data, err := os.ReadFile(img)
 	assert.NoError(t, err)
 	assert.Equal(t, 1462, len(data))
 }
@@ -188,7 +188,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 		err := svc.Save(id, gopherPNGBytes())
 		require.NoError(t, err)
 		img := svc.location(svc.Staging, id)
-		data, err := ioutil.ReadFile(img)
+		data, err := os.ReadFile(img)
 		require.NoError(t, err)
 		assert.Equal(t, 1462, len(data))
 		return img

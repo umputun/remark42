@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -34,7 +34,7 @@ func TestRest_Preview(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, "<p>test 123</p>\n", string(b))
@@ -47,7 +47,7 @@ func TestRest_Preview(t *testing.T) {
 	resp, err = post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
@@ -69,7 +69,7 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
@@ -98,13 +98,13 @@ srv, ts := prep(t)
 BKT
 `
 	text = strings.Replace(text, "BKT", "```", -1)
-	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.Replace(j, "\n", "\\n", -1)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t,
 		`<h1>h1</h1>
@@ -126,13 +126,13 @@ func main(aa string) int {return 0}
 BKT
 `
 	text = strings.Replace(text, "BKT", "```", -1)
-	j := fmt.Sprintf(`{"text": "%s", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
+	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.Replace(j, "\n", "\\n", -1)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, `<pre class="chroma"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
 </pre>`, string(b))
@@ -247,7 +247,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	// set post to read-only
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), nil)
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
@@ -517,7 +517,7 @@ func TestRest_Counts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 

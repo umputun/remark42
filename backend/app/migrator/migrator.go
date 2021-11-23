@@ -77,7 +77,7 @@ func ImportComments(p ImportParams) (int, error) {
 		return 0, errors.Wrapf(err, "can't open import file %s", p.InputFile)
 	}
 
-	defer func() {
+	defer func() { //nolint:gosec // false positive on defer without error check when it's checked here
 		if err = fh.Close(); err != nil {
 			log.Printf("[WARN] can't close %s, %s", p.InputFile, err)
 		}

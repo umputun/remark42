@@ -29,8 +29,6 @@ linters-settings:
 # TODO: feel free to remove these excludes and fix the code
       - hugeParam
       - rangeValCopy
-      - singleCaseSwitch
-      - ifElseChain
 
 linters:
   enable:
@@ -74,6 +72,3 @@ issues:
         - gosec
         - dupl
   exclude-use-default: false
-
-service:
-  golangci-lint-version: 1.41.x

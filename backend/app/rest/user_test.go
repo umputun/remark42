@@ -10,7 +10,7 @@ import (
 )
 
 func TestUser_GetUserInfo(t *testing.T) {
-	r, err := http.NewRequest("GET", "http://blah.com", nil)
+	r, err := http.NewRequest("GET", "http://blah.com", http.NoBody)
 	assert.NoError(t, err)
 	_, err = GetUserInfo(r)
 	assert.Error(t, err, "no user info")
@@ -28,7 +28,7 @@ func TestUser_MustGetUserInfo(t *testing.T) {
 		}
 	}()
 
-	r, err := http.NewRequest("GET", "http://blah.com", nil)
+	r, err := http.NewRequest("GET", "http://blah.com", http.NoBody)
 	assert.NoError(t, err)
 	_ = MustGetUserInfo(r)
 	assert.Fail(t, "should panic")

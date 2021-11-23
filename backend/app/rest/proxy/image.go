@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -149,7 +148,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	var resp *http.Response
 	err := repeater.NewDefault(5, time.Second).Do(ctx, func() error {
 		var e error
-		req, e := http.NewRequest("GET", imgURL, nil)
+		req, e := http.NewRequest("GET", imgURL, http.NoBody)
 		if e != nil {
 			return errors.Wrapf(e, "failed to make request for %s", imgURL)
 		}
@@ -165,7 +164,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		return nil, errors.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
 	}
 
-	imgData, err := ioutil.ReadAll(resp.Body)
+	imgData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Errorf("unable to read image body")
 	}

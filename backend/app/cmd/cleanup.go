@@ -193,7 +193,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 
 	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
-	req, err := http.NewRequest("DELETE", deleteURL, nil)
+	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
 	if err != nil {
 		return errors.Wrapf(err, "failed to make delete request for comment %s, %s", c.ID, c.Locator.URL)
 	}
@@ -215,7 +215,7 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 func (cc *CleanupCommand) setTitle(c store.Comment) error {
 
 	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
-	req, err := http.NewRequest("PUT", titleURL, nil)
+	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
 	if err != nil {
 		return errors.Wrapf(err, "failed to make title request for comment %s, %s", c.ID, c.Locator.URL)
 	}

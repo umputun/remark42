@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -74,7 +74,7 @@ func TestRemote_GetWithErrorRemote(t *testing.T) {
 
 func TestRemote_FailedStatus(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		t.Logf("req: %s", string(body))
 		w.WriteHeader(400)
@@ -190,7 +190,7 @@ func TestRemote_Close(t *testing.T) {
 
 func testServer(t *testing.T, req, resp string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		assert.Equal(t, req, string(body))
 		t.Logf("req: %s", string(body))

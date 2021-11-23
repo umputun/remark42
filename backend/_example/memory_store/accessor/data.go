@@ -25,7 +25,7 @@ type MemData struct {
 	posts     map[string][]store.Comment // key is siteID
 	metaUsers map[string]metaUser        // key is userID
 	metaPosts map[store.Locator]metaPost // key is post's locator
-	sync.RWMutex
+	mu        sync.RWMutex
 }
 
 type metaPost struct {
@@ -61,8 +61,8 @@ func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 		return "", errors.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 
-	m.Lock()
-	defer m.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	comments := m.posts[comment.Locator.SiteID]
 	for _, c := range comments { // don't allow duplicated IDs
 		if c.ID == comment.ID {
@@ -76,8 +76,8 @@ func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 
 // Find returns all comments for post and sorts results
 func (m *MemData) Find(req engine.FindRequest) (comments []store.Comment, err error) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	comments = []store.Comment{}
 
@@ -132,22 +132,22 @@ func (m *MemData) Find(req engine.FindRequest) (comments []store.Comment, err er
 
 // Get returns comment for locator.URL and commentID string
 func (m *MemData) Get(req engine.GetRequest) (comment store.Comment, err error) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.get(req.Locator, req.CommentID)
 }
 
 // Update updates comment for locator.URL with mutable part of comment
 func (m *MemData) Update(comment store.Comment) error {
-	m.Lock()
-	defer m.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.updateComment(comment)
 }
 
 // Count returns number of comments for post or user
 func (m *MemData) Count(req engine.FindRequest) (count int, err error) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	switch {
 	case req.Locator.URL != "": // comment's count for post
@@ -167,8 +167,8 @@ func (m *MemData) Count(req engine.FindRequest) (count int, err error) {
 
 // Info get post(s) meta info
 func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	res = []store.PostInfo{}
 
 	if req.Locator.URL != "" { // post info
@@ -240,8 +240,8 @@ func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error)
 
 // Flag sets and gets flag values
 func (m *MemData) Flag(req engine.FlagRequest) (val bool, err error) {
-	m.Lock()
-	defer m.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	if req.Update == engine.FlagNonSet { // read flag value, no update requested
 		return m.checkFlag(req), nil
@@ -253,8 +253,8 @@ func (m *MemData) Flag(req engine.FlagRequest) (val bool, err error) {
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
 func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err error) {
-	m.RLock()
-	defer m.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	res = []interface{}{}
 
@@ -290,8 +290,8 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 			return nil, errors.New("userid cannot be empty in request for single detail")
 		}
 
-		m.Lock()
-		defer m.Unlock()
+		m.mu.Lock()
+		defer m.mu.Unlock()
 
 		if req.Update == "" { // read detail value, no update requested
 			return m.getUserDetail(req)
@@ -302,8 +302,8 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 		// list of all details returned in case request is a read request
 		// (Update is not set) and does not have UserID or Detail set
 		if req.Update == "" && req.UserID == "" { // read list of all details
-			m.Lock()
-			defer m.Unlock()
+			m.mu.Lock()
+			defer m.mu.Unlock()
 			return m.listDetails(req.Locator)
 		}
 		return nil, errors.New("unsupported request with userdetail all")
@@ -315,8 +315,8 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 // Delete post(s), user, comment, user details, or everything
 func (m *MemData) Delete(req engine.DeleteRequest) error {
 
-	m.Lock()
-	defer m.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	switch {
 	case req.UserDetail != "": // delete user detail

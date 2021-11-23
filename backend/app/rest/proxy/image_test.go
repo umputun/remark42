@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -42,7 +41,7 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 func gopherPNGBytes() []byte {
-	img, _ := ioutil.ReadAll(gopherPNG())
+	img, _ := io.ReadAll(gopherPNG())
 	return img
 }
 
@@ -246,7 +245,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	t.Log(string(b))

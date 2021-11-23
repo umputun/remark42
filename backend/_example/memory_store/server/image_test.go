@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -46,7 +45,7 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 func gopherPNGBytes() []byte {
-	img, _ := ioutil.ReadAll(gopherPNG())
+	img, _ := io.ReadAll(gopherPNG())
 	return img
 }
 

@@ -3,7 +3,7 @@ package image
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestRemote_SaveWithID(t *testing.T) {
-	ts := testServer(t, fmt.Sprintf(`{"method":"image.save_with_id","params":["54321","%s"],"id":1}`, gopher),
+	ts := testServer(t, fmt.Sprintf(`{"method":"image.save_with_id","params":["54321",%q],"id":1}`, gopher),
 		`{"id":1}`)
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
@@ -93,7 +93,7 @@ func TestRemote_Info(t *testing.T) {
 
 func testServer(t *testing.T, req, resp string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		assert.Equal(t, req, string(body))
 		_, _ = fmt.Fprint(w, resp)

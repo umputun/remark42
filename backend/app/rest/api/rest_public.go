@@ -5,8 +5,8 @@ import (
 	"crypto/sha1" // nolint
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -346,7 +346,7 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /index.html - respond to /index.html with the content of getstarted.html under /web root
 func (s *public) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
-	data, err := ioutil.ReadFile(path.Join(s.webRoot, "getstarted.html"))
+	data, err := os.ReadFile(path.Join(s.webRoot, "getstarted.html"))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

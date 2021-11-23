@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"strings"
 	"time"
 
@@ -38,7 +38,7 @@ func (r *RPC) Load(id string) ([]byte, error) {
 	if err := json.Unmarshal(*resp.Result, &rawImg); err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawImg)))
+	return io.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawImg)))
 }
 
 // Commit file stored in staging location by moving it to permanent location

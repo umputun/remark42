@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/crc64"
-	"io/ioutil"
+	"io"
 	"math"
 	"os"
 	"path"
@@ -37,11 +37,11 @@ type FileSystem struct {
 func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
-	if err := os.MkdirAll(path.Dir(dst), 0700); err != nil {
+	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil {
 		return errors.Wrap(err, "can't make image directory")
 	}
 
-	if err := ioutil.WriteFile(dst, img, 0600); err != nil {
+	if err := os.WriteFile(dst, img, 0o600); err != nil {
 		return errors.Wrapf(err, "can't write image file with id %s", id)
 	}
 
@@ -54,7 +54,7 @@ func (f *FileSystem) Commit(id string) error {
 	log.Printf("[DEBUG] Commit image %s", id)
 	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
 
-	if err := os.MkdirAll(path.Dir(permImage), 0700); err != nil {
+	if err := os.MkdirAll(path.Dir(permImage), 0o700); err != nil {
 		return errors.Wrap(err, "can't make image directory")
 	}
 
@@ -99,7 +99,7 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't load image %s", id)
 	}
-	return ioutil.ReadAll(fh)
+	return io.ReadAll(fh)
 }
 
 // Cleanup runs scan of staging and removes old files based on ttl

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -17,20 +16,20 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
 
-	assert.NoError(t, os.MkdirAll(loc, 0700))
+	assert.NoError(t, os.MkdirAll(loc, 0o700))
 
 	for i := 1; i <= 10; i++ {
 		fname := fmt.Sprintf("%s/backup-site1-201712%02d.gz", loc, i)
-		err := ioutil.WriteFile(fname, []byte("blah"), 0600)
+		err := os.WriteFile(fname, []byte("blah"), 0o600)
 		assert.NoError(t, err)
 	}
 	fname := fmt.Sprintf("%s/backup-site2-20171210.gz", loc)
-	err := ioutil.WriteFile(fname, []byte("blah"), 0600)
+	err := os.WriteFile(fname, []byte("blah"), 0o600)
 	assert.NoError(t, err)
 
 	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3}
 	bk.removeOldBackupFiles()
-	ff, err := ioutil.ReadDir(loc)
+	ff, err := os.ReadDir(loc)
 	assert.NoError(t, err)
 	require.Equal(t, 4, len(ff), "should keep 4 files - 3 kept for sit1, and one for site2")
 	assert.Equal(t, "backup-site1-20171208.gz", ff[0].Name())
@@ -42,7 +41,7 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 func TestBackup_MakeBackup(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
-	assert.NoError(t, os.MkdirAll(loc, 0700))
+	assert.NoError(t, os.MkdirAll(loc, 0o700))
 
 	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}}
 	fname, err := bk.makeBackup()
@@ -58,7 +57,7 @@ func TestBackup_MakeBackup(t *testing.T) {
 func TestBackup_Do(t *testing.T) {
 	loc := "/tmp/remark-backups.test"
 	defer os.RemoveAll(loc)
-	assert.NoError(t, os.MkdirAll(loc, 0700))
+	assert.NoError(t, os.MkdirAll(loc, 0o700))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
