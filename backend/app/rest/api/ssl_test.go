@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -68,7 +68,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	assert.Equal(t, "https://localhost:443/blah?param=1", resp.Header.Get("Location"))
 
 	// check acme http challenge
-	req, err := http.NewRequest("GET", ts.URL+"/.well-known/acme-challenge/token123", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/.well-known/acme-challenge/token123", http.NoBody)
 	require.NoError(t, err)
 	req.Host = "localhost" // for passing hostPolicy check
 	resp, err = client.Do(req)
@@ -83,7 +83,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, "token", string(body))
 }

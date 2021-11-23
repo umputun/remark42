@@ -17,7 +17,6 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -341,7 +340,7 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 	}
 
 	lr := io.LimitReader(r, int64(maxSize)+1)
-	data, err := ioutil.ReadAll(lr)
+	data, err := io.ReadAll(lr)
 	if err != nil {
 		return nil, err
 	}

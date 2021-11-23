@@ -90,7 +90,7 @@ func getDump() string {
 // nolint:gochecknoinits // can't avoid it in this place
 func init() {
 	// catch SIGQUIT and print stack traces
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	go func() {
 		for range sigChan {
 			log.Printf("[INFO] SIGQUIT detected, dump:\n%s", getDump())

@@ -25,7 +25,7 @@ type Bolt struct {
 
 // NewBoltStorage create bolt image store
 func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
-	db, err := bolt.Open(fileName, 0600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
+	db, err := bolt.Open(fileName, 0o600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to make boltdb for %s", fileName)
 	}

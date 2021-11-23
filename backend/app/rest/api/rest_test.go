@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -52,7 +52,7 @@ func TestRest_FileServer(t *testing.T) {
 
 	testHTMLName := "test-remark.html"
 	testHTMLFile := os.TempDir() + "/" + testHTMLName
-	err := ioutil.WriteFile(testHTMLFile, []byte("some html"), 0700)
+	err := os.WriteFile(testHTMLFile, []byte("some html"), 0o700)
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/web/"+testHTMLName)
@@ -66,7 +66,7 @@ func TestRest_GetStarted(t *testing.T) {
 	defer teardown()
 
 	getStartedHTML := os.TempDir() + "/getstarted.html"
-	err := ioutil.WriteFile(getStartedHTML, []byte("some html blah"), 0700)
+	err := os.WriteFile(getStartedHTML, []byte("some html blah"), 0o700)
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/index.html")
@@ -159,7 +159,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
 
@@ -239,7 +239,7 @@ func Test_URLKey(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := http.NewRequest("GET", tt.url, nil)
+			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
 			if tt.user.ID != "" {
 				r = rest.SetUserInfo(r, tt.user)
@@ -265,7 +265,7 @@ func Test_URLKeyWithUser(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := http.NewRequest("GET", tt.url, nil)
+			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
 			if tt.user.ID != "" {
 				r = rest.SetUserInfo(r, tt.user)
@@ -507,7 +507,7 @@ func fakeAuth(next http.Handler) http.Handler {
 func get(t *testing.T, url string) (response string, statusCode int) {
 	r, err := http.Get(url)
 	require.NoError(t, err)
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	require.NoError(t, err)
 	require.NoError(t, r.Body.Close())
 	return string(body), r.StatusCode
@@ -523,12 +523,12 @@ func sendReq(_ *testing.T, r *http.Request, tkn string) (*http.Response, error) 
 
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	r, err := client.Do(req)
 	require.NoError(t, err)
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	assert.NoError(t, err)
 	require.NoError(t, r.Body.Close())
 	return string(b), r.StatusCode
@@ -536,12 +536,12 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 
 func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int) {
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	r, err := client.Do(req)
 	require.NoError(t, err)
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	assert.NoError(t, err)
 	require.NoError(t, r.Body.Close())
 	return string(body), r.StatusCode
@@ -565,7 +565,7 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 

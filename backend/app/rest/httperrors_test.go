@@ -3,7 +3,7 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +31,7 @@ func TestSendErrorJSON(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
@@ -61,7 +61,7 @@ func TestSendErrorHTML(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, 500, resp.StatusCode)
 
@@ -72,7 +72,7 @@ func TestSendErrorHTML(t *testing.T) {
 
 func TestErrorDetailsMsg(t *testing.T) {
 	callerFn := func() {
-		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
+		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", http.NoBody)
 		require.NoError(t, err)
 		req.RemoteAddr = "1.2.3.4"
 		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 123)
@@ -85,7 +85,7 @@ func TestErrorDetailsMsg(t *testing.T) {
 
 func TestErrorDetailsMsgWithUser(t *testing.T) {
 	callerFn := func() {
-		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", nil)
+		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", http.NoBody)
 		require.NoError(t, err)
 		req.RemoteAddr = "127.0.0.1:1234"
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})

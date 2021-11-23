@@ -101,9 +101,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				break
 			}
 
-			switch se := t.(type) {
-			case xml.StartElement:
-
+			if se, ok := t.(xml.StartElement); ok {
 				if se.Name.Local == "thread" {
 					stats.inpThreads++
 					thread := disqusThread{}

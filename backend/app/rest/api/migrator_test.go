@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +42,7 @@ func TestMigrator_Import(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -78,7 +77,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -101,7 +100,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -129,7 +128,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -219,7 +218,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 5 * time.Second}
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=5ms", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=5ms", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
@@ -256,7 +255,7 @@ func TestMigrator_Export(t *testing.T) {
 	waitForMigrationCompletion(t, ts)
 
 	// check file mode
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -266,7 +265,7 @@ func TestMigrator_Export(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
-	ungzBody, err := ioutil.ReadAll(ungzReader)
+	ungzBody, err := io.ReadAll(ungzReader)
 	assert.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 3, strings.Count(string(ungzBody), "\n"))
@@ -274,7 +273,7 @@ func TestMigrator_Export(t *testing.T) {
 	t.Logf("%s", string(ungzBody))
 
 	// check stream mode
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=stream&site=remark42", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=stream&site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
@@ -282,14 +281,14 @@ func TestMigrator_Export(t *testing.T) {
 	require.Equal(t, 200, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, 3, strings.Count(string(body), "\n"))
 	assert.Equal(t, 2, strings.Count(string(body), "\"text\""))
 	t.Logf("%s", string(body))
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42", nil)
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42", http.NoBody)
 	require.NoError(t, err)
 	resp, err = client.Do(req)
 	require.NoError(t, err)
@@ -399,13 +398,13 @@ func TestMigrator_RemapReject(t *testing.T) {
 
 func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42", nil)
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, "{\"site_id\":\"remark42\",\"status\":\"completed\"}\n", string(b))

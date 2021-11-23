@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -878,7 +877,7 @@ func (s *ServerCommand) loadEmailTemplate() (string, error) {
 		file, err = fs.ReadFile(s.Auth.Email.MsgTemplate)
 	} else {
 		// deprecated loading from an external file, should be removed before v1.9.0
-		file, err = ioutil.ReadFile(s.Auth.Email.MsgTemplate)
+		file, err = os.ReadFile(s.Auth.Email.MsgTemplate)
 		log.Printf("[INFO] template %s will be read from disk", s.Auth.Email.MsgTemplate)
 	}
 

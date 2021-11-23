@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,7 +30,7 @@ func TestBackup_Execute(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove("/tmp/remark-test.export")
 
-	data, err := ioutil.ReadFile("/tmp/remark-test.export")
+	data, err := os.ReadFile("/tmp/remark-test.export")
 	require.NoError(t, err)
 	assert.Equal(t, "blah\nblah2\n12345678\n", string(data))
 }

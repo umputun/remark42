@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +18,7 @@ func TestRemap_Execute(t *testing.T) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/remap")
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "remark", r.URL.Query().Get("site"))
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, "http://oldsite.com* https://newsite.com*\nhttp://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1", string(body))
 

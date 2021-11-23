@@ -1,7 +1,6 @@
 package migrator
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -43,7 +42,7 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 		os.Remove("/tmp/wordpress-test.xml")
 	}()
 
-	err := ioutil.WriteFile("/tmp/wordpress-test.xml", []byte(xmlTestWP), 0600)
+	err := os.WriteFile("/tmp/wordpress-test.xml", []byte(xmlTestWP), 0o600)
 	require.NoError(t, err)
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
@@ -94,7 +93,7 @@ func TestMigrator_ImportNative(t *testing.T) {
 	data := `{"version":1} {"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n" +
 		`{"id":"afbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","text":"some text2, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}` + "\n"
 
-	err := ioutil.WriteFile("/tmp/disqus-test.r42", []byte(data), 0600)
+	err := os.WriteFile("/tmp/disqus-test.r42", []byte(data), 0o600)
 	require.NoError(t, err)
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})

@@ -55,7 +55,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 	log.Printf("[INFO] bolt store for sites %+v, options %+v", sites, options)
 	result := BoltDB{dbs: make(map[string]*bolt.DB)}
 	for _, site := range sites {
-		db, err := bolt.Open(site.FileName, 0600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
+		db, err := bolt.Open(site.FileName, 0o600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
 		}

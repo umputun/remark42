@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -160,7 +160,7 @@ func TestTreeSortNodes(t *testing.T) {
 
 func BenchmarkTree(b *testing.B) {
 	comments := []store.Comment{}
-	data, err := ioutil.ReadFile("testdata/tree_bench.json")
+	data, err := os.ReadFile("testdata/tree_bench.json")
 	assert.NoError(b, err)
 	err = json.Unmarshal(data, &comments)
 	assert.NoError(b, err)
@@ -173,7 +173,7 @@ func BenchmarkTree(b *testing.B) {
 
 // loadJsonFile read fixtrue file and clear any custom json formatting
 func mustLoadJSONFile(t *testing.T, file string) []byte {
-	expJSON, err := ioutil.ReadFile(file)
+	expJSON, err := os.ReadFile(file)
 	require.NoError(t, err)
 	expTree := Tree{}
 	err = json.Unmarshal(expJSON, &expTree)

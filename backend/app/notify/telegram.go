@@ -144,10 +144,10 @@ func (t *Telegram) sendMessage(ctx context.Context, b []byte, chatID string) err
 func buildMessage(req Request) ([]byte, error) {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := fmt.Sprintf(`<a href="%s">%s</a>`, commentURLPrefix+req.Comment.ID, escapeTelegramText(req.Comment.User.Name))
+	msg := fmt.Sprintf(`<a href=%q>%s</a>`, commentURLPrefix+req.Comment.ID, escapeTelegramText(req.Comment.User.Name))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(" -> <a href=\"%s\">%s</a>", commentURLPrefix+req.parent.ID, escapeTelegramText(req.parent.User.Name))
+		msg += fmt.Sprintf(" -> <a href=%q>%s</a>", commentURLPrefix+req.parent.ID, escapeTelegramText(req.parent.User.Name))
 	}
 
 	msg += fmt.Sprintf("\n\n%s", telegramSupportedHTML(req.Comment.Text))
@@ -157,7 +157,7 @@ func buildMessage(req Request) ([]byte, error) {
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  <a href=\"%s\">%s</a>", req.Comment.Locator.URL, escapeTelegramText(req.Comment.PostTitle))
+		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", req.Comment.Locator.URL, escapeTelegramText(req.Comment.PostTitle))
 	}
 
 	body := telegramMsg{Text: msg, ParseMode: "HTML"}
@@ -421,7 +421,7 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data in
 		var req *http.Request
 		var err error
 		if b == nil {
-			req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
+			req, err = http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 		} else {
 			req, err = http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(b))
 			req.Header.Set("Content-Type", "application/json; charset=utf-8")

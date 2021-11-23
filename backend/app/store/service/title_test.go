@@ -82,7 +82,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.String(), "/good") {
 			atomic.AddInt32(&hits, 1)
-			_, err := w.Write([]byte(fmt.Sprintf("<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body)))
+			_, err := fmt.Fprintf(w, "<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body)
 			assert.NoError(t, err)
 			return
 		}
