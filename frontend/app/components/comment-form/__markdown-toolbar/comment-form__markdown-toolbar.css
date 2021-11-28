@@ -21,6 +21,7 @@
   width: 24px;
   justify-content: center;
   align-items: center;
+  cursor: pointer;
 
   &:hover {
     color: var(--color9);
