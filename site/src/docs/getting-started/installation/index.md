@@ -8,7 +8,7 @@ title: Installation
 
 _This is the recommended way to run Remark42_
 
-- copy provided `docker-compose.yml` and customize for your needs
+- copy provided [`docker-compose.yml`](https://github.com/umputun/remark42/blob/master/docker-compose.yml) and customize for your needs
 - make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
 - pull prepared images from the Docker Hub and start - `docker-compose pull && docker-compose up -d`
 - alternatively compile from the sources - `docker-compose build && docker-compose up -d`
