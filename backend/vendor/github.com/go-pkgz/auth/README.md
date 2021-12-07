@@ -101,6 +101,7 @@ For the example above authentication handlers wired as `/auth` and provides:
 - `/auth/<provider>/logout` and `/auth/logout` - invalidate "session" by removing JWT cookie
 - `/auth/list` - gives a json list of active providers
 - `/auth/user` - returns `token.User` (json)
+- `/auth/status` - returns status of logged in user (json)
 
 ### User info
 
@@ -382,6 +383,22 @@ Working with oauth2 providers can be a pain, especially during development phase
 It will run fake aouth2 "server" on port :8084 and user could login with any user name. See [example](https://github.com/go-pkgz/auth/blob/master/_example/main.go) for more details.
 
 _Warning: this is not the real oauth2 server but just a small fake thing for development and testing only. Don't use `dev` provider with any production code._
+
+By default, Dev provider doesn't return `email` claim from `/user` endpoint, to match behaviour of other providers which only request minimal scopes.
+However sometimes it is useful to have `email` included into user info. This can be done by configuring `devAuthServer.GetEmailFn` function:
+
+```go
+    go func() {
+		devAuthServer, err := service.DevAuth()
+		devOauth2Srv.GetEmailFn = func(username string) string {
+			return username + "@example.com"
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		devAuthServer.Run()
+	}()
+```
 
 ### Other ways to authenticate
 

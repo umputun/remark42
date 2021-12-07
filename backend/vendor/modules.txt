@@ -76,7 +76,7 @@ github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 ## explicit
 github.com/go-chi/render
-# github.com/go-pkgz/auth v1.18.1-0.20211107180414-66d9ca410559
+# github.com/go-pkgz/auth v1.18.1-0.20211207184750-78e5d290333d
 ## explicit
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar

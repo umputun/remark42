@@ -189,6 +189,17 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 			return
 		}
 
+		// status of logged in user
+		if elems[len(elems)-1] == "status" {
+			claims, _, err := s.jwtService.Get(r)
+			if err != nil {
+				rest.RenderJSON(w, rest.JSON{"status": "not logged in"})
+				return
+			}
+			rest.RenderJSON(w, rest.JSON{"status": "logged in", "user": claims.User.Name})
+			return
+		}
+
 		// regular auth handlers
 		provName := elems[len(elems)-2]
 		p, err := s.Provider(provName)

@@ -25,10 +25,11 @@ const defDevAuthPort = 8084
 // desired user name, this is the mode used for development. Non-interactive mode for tests only.
 type DevAuthServer struct {
 	logger.L
-	Provider  Oauth2Handler
-	Automatic bool
-	username  string // unsafe, but fine for dev
+	Provider   Oauth2Handler
+	Automatic  bool
+	GetEmailFn func(string) string
 
+	username   string // unsafe, but fine for dev
 	httpServer *http.Server
 	lock       sync.Mutex
 }
@@ -101,6 +102,16 @@ func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 					"picture":"%s"
 					}`, d.username, d.username, ava)
 
+				if d.GetEmailFn != nil {
+					email := d.GetEmailFn(d.username)
+					res = fmt.Sprintf(`{
+					"id": "%s",
+					"name":"%s",
+					"picture":"%s",
+					"email": "%s"
+					}`, d.username, d.username, ava, email)
+				}
+
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				if _, err = w.Write([]byte(res)); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -169,6 +180,7 @@ func NewDev(p Params) Oauth2Handler {
 				ID:      data.Value("id"),
 				Name:    data.Value("name"),
 				Picture: data.Value("picture"),
+				Email:   data.Value("email"),
 			}
 			return userInfo
 		},
