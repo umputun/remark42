@@ -23,6 +23,8 @@ import type { Comment as CommentType, Theme } from 'common/types';
 import styles from './profile.module.css';
 import { Counter } from './components/counter';
 
+const COMMENTS_LIMIT = 10;
+
 async function signout() {
   postMessageToParent({ profile: null, signout: true });
   await logout();
@@ -32,7 +34,6 @@ async function signout() {
 export function Profile() {
   const intl = useIntl();
   const rootRef = useRef<HTMLDivElement>(null);
-  const commentsLimit = useMemo(() => 10, []);
   const user = useMemo(() => parseQuery(), []);
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -40,14 +41,14 @@ export function Profile() {
   const [commentsAmount, setCommentsAmount] = useState<number | null>(null);
   const [commentsSkipCounts, setCommentsSkipCounts] = useState<number>(0);
   const [isSigningOut, setSigningOut] = useState(false);
-  const isLoadMoreVisible = commentsAmount && commentsAmount > commentsSkipCounts + commentsLimit;
+  const isLoadMoreVisible = commentsAmount && commentsAmount > commentsSkipCounts + COMMENTS_LIMIT;
 
   const fetchUserComments = useCallback(
     async (skip: number = 0) => {
-      const { comments, count } = await getUserComments(user.id, { skip, limit: commentsLimit });
+      const { comments, count } = await getUserComments(user.id, { skip, limit: COMMENTS_LIMIT });
       return { comments, count };
     },
-    [user.id, commentsLimit]
+    [user.id]
   );
 
   const fetchUserCommentsOnMount = useCallback(async () => {
@@ -107,7 +108,7 @@ export function Profile() {
   }
 
   function handleLoadMore() {
-    const nextSkipCounts = commentsSkipCounts + commentsLimit;
+    const nextSkipCounts = commentsSkipCounts + COMMENTS_LIMIT;
 
     setCommentsSkipCounts(nextSkipCounts);
     fetchMoreUserComments(nextSkipCounts);
