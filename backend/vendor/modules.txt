@@ -41,8 +41,6 @@ github.com/alecthomas/chroma/lexers/z
 github.com/alecthomas/chroma/styles
 # github.com/andybalholm/cascadia v1.3.1
 github.com/andybalholm/cascadia
-# github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
-## explicit
 # github.com/aymerick/douceur v0.2.0
 github.com/aymerick/douceur/css
 github.com/aymerick/douceur/parser

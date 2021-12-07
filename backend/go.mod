@@ -6,7 +6,6 @@ require (
 	github.com/Depado/bfchroma v1.3.0
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/alecthomas/chroma v0.9.4
-	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/didip/tollbooth/v6 v6.1.1
 	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21
 	github.com/go-chi/chi/v5 v5.0.5
