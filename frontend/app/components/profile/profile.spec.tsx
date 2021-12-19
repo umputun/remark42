@@ -1,5 +1,7 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
+import { waitFor } from '@testing-library/preact';
+import { fireEvent } from '@testing-library/dom';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -7,7 +9,6 @@ import * as pq from 'utils/parse-query';
 import type { Comment, User } from 'common/types';
 
 import { Profile } from './profile';
-import { fireEvent } from '@testing-library/dom';
 
 const userParamsStub = {
   id: '1',
@@ -90,25 +91,24 @@ describe('<Profile />', () => {
       .spyOn(api, 'getUserComments')
       .mockImplementation(async () => ({ comments: commentsStub, count: commentsStub.length }));
 
-    const { findByText, queryByLabelText, queryByRole, queryByTestId } = render(<Profile />);
+    const { findByText, queryByRole, queryByTestId } = render(<Profile />);
 
     expect(await findByText('Comments')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).toHaveTextContent(commentsStub.length.toString());
-    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
     expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
   });
 
   it('should render user with comments with load more button', async () => {
-    const comments = new Array(15).fill(commentStub);
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => userParamsStub);
-    jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments, count: comments.length }));
+    jest
+      .spyOn(api, 'getUserComments')
+      .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
 
-    const { findByText, queryByLabelText, queryByRole, queryByTestId } = render(<Profile />);
+    const { findByText, queryByRole, queryByTestId } = render(<Profile />);
 
     expect(await findByText('Comments')).toBeInTheDocument();
-    expect(queryByTestId('comments-counter')).toHaveTextContent(comments.length.toString());
-    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
+    expect(queryByTestId('comments-counter')).toHaveTextContent('15');
     expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).toBeInTheDocument();
   });
@@ -167,13 +167,16 @@ describe('<Profile />', () => {
   });
 
   it('load more button should dissapear if there no more comments to fetch', async () => {
-    const comments = Array(20).fill(commentStub);
-    jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments, count: comments.length }));
+    jest
+      .spyOn(api, 'getUserComments')
+      .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
 
-    const { findByRole, queryByRole } = render(<Profile />);
+    const { findByRole, getByRole, queryByRole } = render(<Profile />);
 
     expect(await findByRole('button', { name: /load more/i })).toBeInTheDocument();
-    fireEvent.click(await findByRole('button', { name: /load more/i }));
+    fireEvent.click(getByRole('button', { name: /load more/i }));
+    expect(getByRole('presentation')).toHaveClass('spinner');
+    await waitFor(() => expect(queryByRole('presentation')).not.toBeInTheDocument());
     expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
   });
 });

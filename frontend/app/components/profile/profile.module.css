@@ -193,3 +193,11 @@
   margin: auto;
   color: var(--color13);
 }
+
+.loadMoreWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 35px;
+  flex-shrink: 0;
+}
