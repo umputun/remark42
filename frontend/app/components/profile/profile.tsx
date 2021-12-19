@@ -62,6 +62,8 @@ export function Profile() {
     } finally {
       setIsCommentsLoading(false);
     }
+    // Disable the rule because we won't have any update in `user`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleClickClose() {
