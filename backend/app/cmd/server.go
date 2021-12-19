@@ -354,7 +354,9 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"})
 	}
-	if len(s.Notify.Type) != 0 && (len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) {
+	if len(s.Notify.Type) != 0 && // explicitly empty, would likely never happen due to "none" default
+		!(len(s.Notify.Type) == 1 && contains("none", s.Notify.Type)) && // ignore default, "none" notify type
+		(len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) { // new notify param(s) are used, safe to ignore the old one
 		s.handleDeprecatedNotifications()
 		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"})
 	}

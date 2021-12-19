@@ -410,6 +410,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
+		"--notify.type=telegram",
 		"--auth.email.host=smtp.example.org",
 		"--auth.email.port=666",
 		"--auth.email.tls",
