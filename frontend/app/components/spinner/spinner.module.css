@@ -7,6 +7,16 @@
   animation: spin 1s linear infinite;
 }
 
+.dark {
+  border: 2px solid var(--color46);
+  border-right-color: var(--color37);
+}
+
+:global(.dark) & {
+  border: 2px solid rgba(var(--white-color), 0.2);
+  border-right-color: rgb(var(--white-color));
+}
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);

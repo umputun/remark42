@@ -38,52 +38,31 @@ export function Profile() {
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
-  const [commentsAmount, setCommentsAmount] = useState<number | null>(null);
-  const [commentsSkipCounts, setCommentsSkipCounts] = useState<number>(0);
+  const [commentsAmount, setCommentsAmount] = useState(0);
+  // store skip count in ref because it don't affect the view
+  const commentsSkipCountsRef = useRef(0);
   const [isSigningOut, setSigningOut] = useState(false);
-  const isLoadMoreVisible = commentsAmount && commentsAmount > commentsSkipCounts + COMMENTS_LIMIT;
 
-  const fetchUserComments = useCallback(
-    async (skip: number = 0) => {
-      const { comments, count } = await getUserComments(user.id, { skip, limit: COMMENTS_LIMIT });
-      return { comments, count };
-    },
-    [user.id]
-  );
-
-  const fetchUserCommentsOnMount = useCallback(async () => {
+  const fetchComments = useCallback(async () => {
     setIsCommentsLoading(true);
     setError(false);
-    setComments(null);
-    setCommentsAmount(null);
 
     try {
-      const { comments, count } = await fetchUserComments();
+      const { comments, count } = await getUserComments(user.id, {
+        skip: commentsSkipCountsRef.current,
+        limit: COMMENTS_LIMIT,
+      });
 
-      setComments(comments);
+      // update skip count after successful fetch before rendering
+      commentsSkipCountsRef.current += COMMENTS_LIMIT;
+      setComments((c) => [...(c || []), ...comments]);
       setCommentsAmount(count);
     } catch (err) {
       setError(true);
     } finally {
       setIsCommentsLoading(false);
     }
-  }, [fetchUserComments]);
-
-  const fetchMoreUserComments = useCallback(
-    async (skipCounts: number) => {
-      setError(false);
-
-      try {
-        const { comments: nextComments, count } = await fetchUserComments(skipCounts);
-
-        setComments([...(comments || []), ...nextComments]);
-        setCommentsAmount(count);
-      } catch (err) {
-        setError(true);
-      }
-    },
-    [comments, fetchUserComments]
-  );
+  }, []);
 
   function handleClickClose() {
     const rootElement = rootRef.current;
@@ -107,20 +86,9 @@ export function Profile() {
     await signout();
   }
 
-  function handleLoadMore() {
-    const nextSkipCounts = commentsSkipCounts + COMMENTS_LIMIT;
-
-    setCommentsSkipCounts(nextSkipCounts);
-    fetchMoreUserComments(nextSkipCounts);
-  }
-
-  function handleClickRetryCommentsRequest() {
-    fetchMoreUserComments(commentsSkipCounts);
-  }
-
   useEffect(() => {
-    fetchUserCommentsOnMount();
-  }, [fetchUserCommentsOnMount]);
+    fetchComments();
+  }, [fetchComments]);
 
   useEffect(() => {
     const styles = { height: '100%', padding: 0 };
@@ -151,6 +119,7 @@ export function Profile() {
     return null;
   }
 
+  const isLoadMoreVisible = commentsAmount > commentsSkipCountsRef.current;
   const isCurrent = user.current === '1';
   const commentsJSX = comments?.length ? (
     <>
@@ -162,7 +131,7 @@ export function Profile() {
             <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
           )}
         </h3>
-        {!!commentsAmount && (
+        {commentsAmount > 0 && (
           <div className={styles.counterWrapper}>
             <Counter>{commentsAmount}</Counter>
           </div>
@@ -181,9 +150,15 @@ export function Profile() {
         />
       ))}
       {isLoadMoreVisible && (
-        <Button kind="link" size="sm" onClick={handleLoadMore}>
-          <FormattedMessage id="user.load-more" defaultMessage="Load more" />
-        </Button>
+        <div className={styles.loadMoreWrapper}>
+          {isCommentsLoading ? (
+            <Spinner color="gray" />
+          ) : (
+            <Button kind="link" size="sm" onClick={fetchComments}>
+              <FormattedMessage id="user.load-more" defaultMessage="Load more" />
+            </Button>
+          )}
+        </div>
       )}
     </>
   ) : (
@@ -228,7 +203,7 @@ export function Profile() {
               <p className={clsx('profile-error', styles.error)}>
                 <FormattedMessage id="errors.0" defaultMessage="Something went wrong. Please try again a bit later." />
               </p>
-              <Button kind="link" size="sm" onClick={handleClickRetryCommentsRequest}>
+              <Button kind="link" size="sm" onClick={fetchComments}>
                 <FormattedMessage id="retry" defaultMessage="Retry" />
               </Button>
             </div>

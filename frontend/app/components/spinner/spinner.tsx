@@ -5,12 +5,16 @@ import { useIntl } from 'react-intl';
 
 import styles from './spinner.module.css';
 
-export function Spinner() {
+type Props = {
+  color?: 'white' | 'gray';
+};
+
+export function Spinner({ color }: Props) {
   const intl = useIntl();
 
   return (
     <div
-      className={clsx('spinner', styles.root)}
+      className={clsx('spinner', styles.root, { [styles.dark]: color === 'gray' })}
       role="presentation"
       aria-label={intl.formatMessage(messages.loading)}
     />
