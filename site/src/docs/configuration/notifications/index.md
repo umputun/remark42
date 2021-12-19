@@ -47,7 +47,9 @@ If all goes fine, you should be able to see the following message on your Slack 
 In order to integrate notifications about any comment on your sites with remark42 with [telegram](https://telegram.org)
 
 1. Set `NOTIFY_ADMINS=telegram`
-1. Make [a channel](https://telegram.org/faq_channels) and add it to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
+1. Make [a channel](https://telegram.org/faq_channels) and add it's ID to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
+    * To obtain public channel ID, forward any message from it to [@JsonDumpBot](https://t.me/JsonDumpBot): look for `id` in `forward_from_chat`.
+    * If you want to use private channel or chat, use [these instructions](https://github.com/GabrielRF/telegram-id) to obtain the ID.
 1. Get a token according to the instruction below and add it to the configuration as well
 
 ### Getting token for Telegram

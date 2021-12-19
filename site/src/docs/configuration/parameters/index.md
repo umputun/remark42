@@ -91,7 +91,7 @@ services:
 | notify.users            | NOTIFY_USERS            | none                     | type of user notifications (Telegram, email)    |
 | notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (Telegram, Slack, webhook and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
-| notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | Telegram channel                                |
+| notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | ID of telegram channel for admin notifications  |
 | notify.slack.token      | NOTIFY_SLACK_TOKEN      |                          | Slack token                                     |
 | notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | Slack channel                                   |
 | notify.webhook.url      | NOTIFY_WEBHOOK_URL      |                          | Webhook notification URL                        |
