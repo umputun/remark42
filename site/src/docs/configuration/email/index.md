@@ -14,8 +14,7 @@ This documentation describes how to enable the email-related capabilities of Rem
 
 - email notifications for any users except anonymous:
 
-  GitHub or Google or Twitter or any other kind of user gets the ability to get
-  email notifications about new replies to their comments (and any of the replies down the tree):
+  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the replies down the tree):
 
   ![Email notifications subscription](images/email_notifications.png)
 
@@ -47,7 +46,6 @@ NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
 
 ### Admin notifications
 
-
 Here is the list of variables which affect admin notifications, which will be sent for each new comment on your site:
 
 ```yaml
@@ -73,8 +71,7 @@ This is an example of a configuration using [Mailgun](https://www.mailgun.com/) 
 #### API
 
 When you don't want to expose your IP (which is impossible with any SMTP provider)
-and for situations when connecting to external SMTP server is impossible due to firewall
-settings is setting up an SMTP-to-API bridge and sending messages through it.
+and for situations when connecting to external SMTP server is impossible due to firewall settings is setting up an SMTP-to-API bridge and sending messages through it.
 
 To use any of containers below with in remark42 environment set following two `SMTP` variables:
 
@@ -126,8 +123,7 @@ This is an example of a configuration using [SendGrid](https://sendgrid.com/) em
 #### API
 
 When you don't want to expose your IP (which is impossible with any SMTP provider)
-and for situations when connecting to external SMTP server is impossible due to firewall
-settings is setting up an SMTP-to-API bridge and sending messages through it.
+and for situations when connecting to external SMTP server is impossible due to firewall settings is setting up an SMTP-to-API bridge and sending messages through it.
 
 To use any of containers below with in remark42 environment set following two `SMTP` variables:
 
@@ -185,12 +181,9 @@ Configuration example for [Amazon SES](https://aws.amazon.com/ses/) (us-east-1 r
 - NOTIFY_EMAIL_FROM=notify@example.com
 ```
 
-A domain or an email that will be used in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM`
-must first be [verified](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html).
+A domain or an email that will be used in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM` must first be [verified](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html).
 
-[SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html)
-must first be obtained from
-[Amazon SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#smtp-settings:):
+[SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html) must first be obtained from [Amazon SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#smtp-settings:)
 
 ## Setup email authentication
 
@@ -211,10 +204,7 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 - AUTH_EMAIL_FROM=notify@example.com
 ```
 
-Usually, you don't need to change/set anything else. In case if you want to use a different
-email template set `AUTH_EMAIL_TEMPLATE`, for instance
-`- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`.
-See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
+Usually, you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
 
 ## Email messages templates
 
@@ -226,6 +216,6 @@ Now we have following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
-  – `email_reply.html.tmpl` – used for sending replies to user comments (when user subscribed to it) and for noticing admins about new comments on a site
-  – `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribe from replies
-  – `error_response.html.tmpl` – used for ...
+    - `email_reply.html.tmpl` – used for sending replies to user comments (when user subscribed to it) and for noticing admins about new comments on a site
+    - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribe from replies
+    - `error_response.html.tmpl` – used for ...
