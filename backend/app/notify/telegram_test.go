@@ -163,7 +163,7 @@ func TestTelegram_Send(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, `{"text":"\u003ca href=\"http://example.org/#remark42__comment-999\"\u003efrom\u003c/a\u003e -\u003e \u003ca href=\"http://example.org/#remark42__comment-\"\u003eto\u003c/a\u003e\n\n`+
 		`some text\n\n`+
-		` \"_some parent text with a \u003ca href=\"http://example.org\"\u003elink\u003c/a\u003e and special text:\u0026amp; \u0026lt; \u0026gt; \u0026amp;_\"\n\n`+
+		`\"\u003ci\u003esome parent text with a \u003ca href=\"http://example.org\"\u003elink\u003c/a\u003e and special text:\u0026amp; \u0026lt; \u0026gt; \u0026amp;\u003c/i\u003e\"\n\n`+
 		`↦  \u003ca href=\"http://example.org/\"\u003e[test title]\u003c/a\u003e","parse_mode":"HTML"}`,
 		string(res))
 }
