@@ -153,7 +153,7 @@ func buildMessage(req Request) ([]byte, error) {
 	msg += fmt.Sprintf("\n\n%s", telegramSupportedHTML(req.Comment.Text))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n \"_%s_\"", telegramSupportedHTML(req.parent.Text))
+		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", telegramSupportedHTML(req.parent.Text))
 	}
 
 	if req.Comment.PostTitle != "" {
@@ -168,14 +168,14 @@ func buildMessage(req Request) ([]byte, error) {
 	return b, nil
 }
 
-// returns HTML with only tags allowed in Telegram HTML message payload
+// returns HTML with only tags allowed in Telegram HTML message payload, also trims ending newlines
 // https://core.telegram.org/bots/api#html-style
 func telegramSupportedHTML(htmlText string) string {
 	p := bluemonday.NewPolicy()
 	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre")
 	p.AllowAttrs("href").OnElements("a")
 	p.AllowAttrs("class").OnElements("code")
-	return p.Sanitize(htmlText)
+	return strings.TrimRight(p.Sanitize(htmlText), "\n")
 }
 
 // returns text sanitized of symbols not allowed inside other HTML tags in Telegram HTML message payload
