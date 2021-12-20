@@ -61,11 +61,11 @@ And then add this node in the place where you want to see Remark42 widget:
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
+If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
 
 ##### Themes
 
-Right now Remark42 has two themes: light and dark. You can pick one using a configuration object, but there is also a possibility to switch between themes in runtime. For this purpose Remark42 adds to `window` object named `REMARK42`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
+Remark42 has two themes: light and dark. You can pick one using a configuration object, but there is also a possibility to switch between themes in runtime. For this purpose, Remark42 adds to the `window` object named `REMARK42`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
 
 ```js
 window.REMARK42.changeTheme('light');
@@ -73,7 +73,7 @@ window.REMARK42.changeTheme('light');
 
 ##### Locales
 
-Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua), Italian (it) and Vietnamese (vi) languages. You can pick one using [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
+Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua), Italian (it) and Vietnamese (vi) languages. You can pick one using a [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
@@ -126,9 +126,9 @@ And then add a node like this in the place where you want to see a number of com
 ></span>
 ```
 
-You can use as many nodes like this as you need to. The script will found all of them by the class `remark__counter`, and it will use `data-url` attribute to define the page with comments.
+You can use as many nodes like this as you need to. The script will find all of them by the class `remark__counter`, and it will use the `data-url` attribute to define the page with comments.
 
-Also script can use `url` property from `remark_config` object, or `window.location.origin + window.location.pathname` if nothing else is defined.
+Also, the script can use `url` property from `remark_config` object or `window.location.origin + window.location.pathname` if nothing else is defined.
 
 ## Widgets
 
@@ -138,7 +138,7 @@ Also script can use `url` property from `remark_config` object, or `window.locat
 
 ## API for Single-Page Applications
 
-Originally tested on [Nuxt.js](https://nuxtjs.org/), but it should be applicable to all SPAs.
+Tested initially on [Nuxt.js](https://nuxtjs.org/), but it should apply to all SPAs.
 
 - Add the following JavaScript to your `index.html`, which in this case, it is identical to `<script defer src="$HOST/web/embed.js"></script>`
 

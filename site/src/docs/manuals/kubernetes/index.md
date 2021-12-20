@@ -148,8 +148,8 @@ spec:
 
 Change `storageClassName` if you run on top of different cloud / bare metal.
 
-This example assumes there is nginx Ingress with cert-manager already set up.
-Adjust accordingly if you use different Ingress.
+This example assumes there is Nginx Ingress with a cert-manager already set up.
+Adjust if you use different Ingress.
 
 In addition you'd need to define secrets, e.g.
 

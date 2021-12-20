@@ -2,7 +2,7 @@
 title: Configure with Nginx
 ---
 
-## How to configure remark42 with nginx reverse proxy
+## How to configure remark42 with Nginx reverse proxy
 
 Example of nginx configuration (reverse proxy) running remark42 service on remark42.example.com
 
@@ -51,4 +51,4 @@ server {
 }
 ```
 
-note: `proxy_pass` points to internal DNS name `remark42` and expected to run from the same compose. If nginx runs outside compose the real IP (or docker's bridge IP) should be used
+Note: `proxy_pass` points to internal DNS name `remark42` and is expected to run from the same compose. If Nginx runs outside compose, the real IP (or docker's bridge IP) should be used

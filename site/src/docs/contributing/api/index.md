@@ -4,7 +4,7 @@ title: API
 
 ## Authorization
 
-- `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of [supported providers](#register-oauth2-providers) and redirect to `url`. Presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only
+- `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of [supported providers](https://remark42.com/docs/configuration/authorization/#oauth-providers) and redirect to `url`. The presence of `session` (any non-zero value) change the default cookie expiration and makes them session-only
 - `GET /auth/logout` - logout
 
 ```go
@@ -55,7 +55,7 @@ type Edit struct {
 - `POST /api/v1/preview` - preview comment in HTML. Body is `Comment` to render
 - `GET /api/v1/find?site=site-id&url=post-url&sort=fld&format=tree|plain` - find all comments for given post
 
-This is the primary call used by UI to show comments for the given post. It can return comments in two formats - `plain` and `tree`. In plain format result will be sorted list of `Comment`. In tree format this is going to be tree-like object with this structure:
+This is the primary call UI uses to show comments for the given post. It can return comments in two formats - `plain` and `tree`. In plain format, the result will be a sorted list of `Comment`. In tree format, this is going to be a tree-like object with this structure:
 
 ```go
 type Tree struct {
@@ -69,7 +69,7 @@ type Node struct {
 }
 ```
 
-Sort can be `time`, `active` or `score`. Supported sort order with prefix -/+, i.e. `-time`. For `tree` mode sort will be applied to top-level comments only and all replies are always sorted by time.
+Sort can be `time`, `active`, or `score`. Supported sort order with prefix -/+, i.e., `-time`. For `tree` mode, the sort will be applied to top-level comments only, and all replies are always sorted by time.
 
 - `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation. Body is `EditRequest` JSON
 
@@ -183,14 +183,14 @@ data: {"url":"https://radio-t.com/blah1","count":9,"first_time":"2019-06-18T12:5
 - `GET /api/v1/picture/{user}/{id}` - load stored image
 - `POST /api/v1/picture` - upload and store image, uses post form with `FormFile("file")`. Returns `{"id": user/imgid}`, _auth required_
 
-_returned ID should be appended to load image URL on caller side_
+_returned ID should be appended to load image URL on the caller side_
 
 ## Email Subscription
 
 - `GET /api/v1/email?site=site-id` - get user's email, _auth required_
-- `POST /api/v1/email/subscribe?site=site-id&address=user@example.org` - makes confirmation token and sends it to user over email, _auth required_
+- `POST /api/v1/email/subscribe?site=site-id&address=user@example.org` - makes confirmation token and sends it to the user over email, _auth required_
 
-  Trying to subscribe to the same email a second time will return response code `409 Conflict` and explaining error message
+  Trying to subscribe to the same email a second time will return response code `409 Conflict` with explaining error message
 
 - `POST /api/v1/email/confirm?site=site-id&tkn=token` - uses provided token parameter to set email for the user, _auth required_
 
@@ -215,7 +215,7 @@ type BlockedUser struct {
 - `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to JSON stream or gz file
 - `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body
 - `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form
-- `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect list of "from-url new-url" pairs separated by \n. From-url and new-url parts are separated by space. If URLs end with an asterisk (\*) it means matching by the prefix. Remap procedure based on export/import chain so make the backup first
+- `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect a list of "from-url new-url" pairs separated by \n. From-url and new-url parts are separated by space. If URLs end with an asterisk (\*), it means matching the prefix. Remap procedure based on export/import chain so make the backup first
 
 ```
 http://oldsite.com* https://newsite.com*

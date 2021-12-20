@@ -4,7 +4,7 @@ title: Configure Instance on Subdomain
 
 ## How to configure remark42 without a subdomain
 
-All README examples show configurations with remark42 on its own subdomain, i.e. `https://remark42.example.com`. However, it is possible and sometimes desirable to run remark42 without a subdomain, but just under some path, i.e. `https://example.com/remark42`.
+All README examples show configurations with remark42 on its own subdomain, i.e., `https://remark42.example.com`. However, it is possible and sometimes desirable to run remark42 without a subdomain, but just under some path, i.e., `https://example.com/remark42`.
 
 - The frontend URL looks like this: `s.src = 'https://example.com/remark42/web/embed.js;`
 
@@ -17,7 +17,7 @@ All README examples show configurations with remark42 on its own subdomain, i.e.
 
 ### docker-compose configuration
 
-Both Nginx and Caddy configuration below relies on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in docker-compose.
+Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in docker-compose.
 
 Example `docker-compose.yaml`:
 

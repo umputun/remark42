@@ -20,8 +20,7 @@ This documentation describes how to enable the email-related capabilities of Rem
 
 ## Setup email server connection
 
-To enable any of email functionality you need to set up email
-(SMTP) server connection using these variables:
+To enable any email functionality, you need to set up an email (SMTP) server connection using these variables:
 
 ```
 SMTP_HOST
@@ -36,7 +35,7 @@ SMTP_TIMEOUT
 
 ### User notifications
 
-Here is the list of variables which affect user email notifications:
+Here is the list of variables that affect user email notifications:
 
 ```yaml
 NOTIFY_USERS=email
@@ -46,7 +45,7 @@ NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
 
 ### Admin notifications
 
-Here is the list of variables which affect admin notifications, which will be sent for each new comment on your site:
+Here is the list of variables that affect admin notifications, which will be sent for each new comment on your site:
 
 ```yaml
 NOTIFY_ADMINS=email
@@ -68,12 +67,25 @@ This is an example of a configuration using [Mailgun](https://www.mailgun.com/) 
 - NOTIFY_EMAIL_FROM=notify@example.com
 ```
 
-#### API
+### SendGrid
 
-When you don't want to expose your IP (which is impossible with any SMTP provider)
-and for situations when connecting to external SMTP server is impossible due to firewall settings is setting up an SMTP-to-API bridge and sending messages through it.
+This is an example of a configuration using [SendGrid](https://sendgrid.com/) email service:
 
-To use any of containers below with in remark42 environment set following two `SMTP` variables:
+```yaml
+- SMTP_HOST=smtp.sendgrid.net
+- SMTP_PORT=465
+- SMTP_TLS=true
+- SMTP_USERNAME=apikey
+- SMTP_PASSWORD=key-123456789
+- AUTH_EMAIL_FROM=notify@example.com
+- NOTIFY_EMAIL_FROM=notify@example.com
+```
+
+### Mailgun or SendGrid without exposing your server's IP
+
+When you don't want to expose your IP (which is impossible with any SMTP provider) and when connecting to an external SMTP server is impossible due to firewall settings setting up an SMTP-to-API bridge and sending messages through it.
+
+To use any of the containers below within remark42 environment, set the following two `SMTP` variables:
 
 ```yaml
 - SMTP_HOST=mail
@@ -102,35 +114,8 @@ mailgun:
     - MG_DOMAIN=example.com
 ```
 
-Please note that before
-[stevenolen/mailgun-smtp-server#5](https://github.com/stevenolen/mailgun-smtp-server/issues/5)
-is fixed, Europe domain names are not supported by this tool.
+Please note that before [stevenolen/mailgun-smtp-server#5](https://github.com/stevenolen/mailgun-smtp-server/issues/5) is fixed, Europe domain names are not supported by this tool.
 
-### SendGrid
-
-This is an example of a configuration using [SendGrid](https://sendgrid.com/) email service:
-
-```yaml
-- SMTP_HOST=smtp.sendgrid.net
-- SMTP_PORT=465
-- SMTP_TLS=true
-- SMTP_USERNAME=apikey
-- SMTP_PASSWORD=key-123456789
-- AUTH_EMAIL_FROM=notify@example.com
-- NOTIFY_EMAIL_FROM=notify@example.com
-```
-
-#### API
-
-When you don't want to expose your IP (which is impossible with any SMTP provider)
-and for situations when connecting to external SMTP server is impossible due to firewall settings is setting up an SMTP-to-API bridge and sending messages through it.
-
-To use any of containers below with in remark42 environment set following two `SMTP` variables:
-
-```yaml
-- SMTP_HOST=mail
-- SMTP_PORT=25
-```
 
 #### fgribreau/smtp-to-sendgrid-gateway
 
@@ -187,7 +172,7 @@ A domain or an email that will be used in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FRO
 
 ## Setup email authentication
 
-Here is the list of variables which affect email authentication:
+Here is the list of variables that affect email authentication:
 
 ```
 AUTH_EMAIL_ENABLE
@@ -204,18 +189,18 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 - AUTH_EMAIL_FROM=notify@example.com
 ```
 
-Usually, you don't need to change/set anything else. In case if you want to use a different email template set `AUTH_EMAIL_TEMPLATE`, for instance `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
+Usually, you don't need to change/set anything else. In case if you want to use a different email template, set `AUTH_EMAIL_TEMPLATE`, for instance `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
 
 ## Email messages templates
 
 Remark42 uses golang templates for email templating. Templates are located in `backend/templates` and embedded into binary by statik
 
-For getting access to the files you can use package `templates` from `backend/app/templates`
+For getting access to the files, you can use package `templates` from `backend/app/templates`
 
-Now we have following templates:
+Now we have the following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
-    - `email_reply.html.tmpl` – used for sending replies to user comments (when user subscribed to it) and for noticing admins about new comments on a site
-    - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribe from replies
-    - `error_response.html.tmpl` – used for ...
+- `email_reply.html.tmpl` – used for sending replies to user comments (when the user subscribed to it) and for noticing admins about new comments on a site
+- `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribe from replies
+- `error_response.html.tmpl` – used for HTML errors
