@@ -2,11 +2,11 @@
 title: Site URL migration
 ---
 
-Here is an example on how to move your comments after your posts are moved, from `https://example.org/blog/<slug>` to `https://example.org/post/<slug>` in that example.
+Here is an example of how to move your comments after your posts are moved, from `https://example.org/blog/<slug>` to `https://example.org/post/<slug>` in that example.
 
 ### Rules file
 
-First you have to create a `rules` file in remark's `/var` folder.
+First, you must create a `rules` file in the remark's `/var` folder.
 
 Format is simply `old_url new_url` like following:
 

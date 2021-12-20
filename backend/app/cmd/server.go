@@ -84,7 +84,7 @@ type ServerCommand struct {
 
 	Auth struct {
 		TTL struct {
-			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"jwt TTL"`
+			JWT    time.Duration `long:"jwt" env:"JWT" default:"5m" description:"JWT TTL"`
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 
@@ -138,7 +138,7 @@ type AuthGroup struct {
 type StoreGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"` // nolint
 	Bolt struct {
-		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent dir for bolt files"`
+		Path    string        `long:"path" env:"PATH" default:"./var" description:"parent directory for the bolt files"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"30s" description:"bolt timeout"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
@@ -156,8 +156,8 @@ type ImageGroup struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
 	MaxSize      int      `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
-	ResizeWidth  int      `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of resized image"`
-	ResizeHeight int      `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of resized image"`
+	ResizeWidth  int      `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of a resized image"`
+	ResizeHeight int      `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of a resized image"`
 	RPC          RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
@@ -170,17 +170,17 @@ type AvatarGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
-	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatar's store URI"`
+	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
 	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
 // CacheGroup defines options group for cache params
 type CacheGroup struct {
 	Type      string `long:"type" env:"TYPE" description:"type of cache" choice:"redis_pub_sub" choice:"mem" choice:"none" default:"mem"` // nolint
-	RedisAddr string `long:"redis_addr" env:"REDIS_ADDR" default:"127.0.0.1:6379" description:"address of redis cache, turn redis cache on for distributed cache"`
+	RedisAddr string `long:"redis_addr" env:"REDIS_ADDR" default:"127.0.0.1:6379" description:"address of Redis PubSub instance, turn redis_pub_sub cache on for distributed cache"`
 	Max       struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
-		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of cached value"`
+		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of the cached value"`
 		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
@@ -218,7 +218,7 @@ type NotifyGroup struct {
 	Admins    []string `long:"admins" env:"ADMINS" description:"types of admin notifications" choice:"none" choice:"telegram" choice:"email" choice:"slack" choice:"webhook" default:"none" env-delim:","`                     //nolint
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
-		Channel string        `long:"chan" env:"CHAN" description:"ID of telegram channel for admin notifications"`
+		Channel string        `long:"chan" env:"CHAN" description:"the ID of telegram channel for admin notifications"`
 		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"[deprecated, not used] telegram api prefix"`
 		Token   string        `long:"token" env:"TOKEN" description:"[deprecated, use --telegram.token] telegram token"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"[deprecated, use --telegram.timeout] telegram timeout"`
@@ -244,8 +244,8 @@ type NotifyGroup struct {
 type SSLGroup struct {
 	Type         string `long:"type" env:"TYPE" description:"ssl (auto) support" choice:"none" choice:"static" choice:"auto" default:"none"` //nolint
 	Port         int    `long:"port" env:"PORT" description:"port number for https server" default:"8443"`
-	Cert         string `long:"cert" env:"CERT" description:"path to cert.pem file"`
-	Key          string `long:"key" env:"KEY" description:"path to key.pem file"`
+	Cert         string `long:"cert" env:"CERT" description:"path to the cert.pem file"`
+	Key          string `long:"key" env:"KEY" description:"path to the key.pem file"`
 	ACMELocation string `long:"acme-location" env:"ACME_LOCATION" description:"dir where certificates will be stored by autocert manager" default:"./var/acme"`
 	ACMEEmail    string `long:"acme-email" env:"ACME_EMAIL" description:"admin email for certificate notifications"`
 }

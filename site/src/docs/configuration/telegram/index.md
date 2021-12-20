@@ -37,9 +37,9 @@ Use this token to access the HTTP API:
 For a description of the Bot API, see this page: https://core.telegram.org/bots/api
 ```
 
-## Auth
+## Authentication
 
-To enable Telegram authorization for the users, set variable `AUTH_TELEGRAM=true`.
+To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
 
 ## Notifications
 

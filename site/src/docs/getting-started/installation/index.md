@@ -11,13 +11,13 @@ _This is the recommended way to run Remark42_
 - copy provided [`docker-compose.yml`](https://github.com/umputun/remark42/blob/master/docker-compose.yml) and customize for your needs
 - make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
 - pull prepared images from the Docker Hub and start - `docker-compose pull && docker-compose up -d`
-- alternatively compile from the sources - `docker-compose build && docker-compose up -d`
+- alternatively, compile from the sources - `docker-compose build && docker-compose up -d`
 
 ### Installation with Binary
 
-- download [archive for stable release](https://github.com/umputun/remark42/releases)
+- download [archive for the stable release](https://github.com/umputun/remark42/releases)
 - unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
-- run as `remark42.{os}-{arch} server {parameters...}`, i.e. `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
+- run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 - alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
 
 ## Setup on Your Website
@@ -67,13 +67,13 @@ Put the next code snippet on a page of your site where you want to have comments
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
+If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
 
 #### Quick installation test
 
-To verify if Remark42 has been properly installed, check a demo page at `${REMARK_URL}/web` URL. Make sure to include `remark` site ID to `${SITE}` list.
+To verify if Remark42 has been properly installed, check a demo page at `${REMARK_URL}/web` URL. Make sure to include `remark` site ID to the `${SITE}` list.
 
 ### Build from the source
 
 * to build Docker container - `make docker`. This command will produce container `umputun/remark42`
-* to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce executable `remark42` file with everything embedded
+* to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce an executable `remark42` file with everything embedded
