@@ -230,10 +230,10 @@ type NotifyGroup struct {
 	} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	Slack struct {
 		Token   string `long:"token" env:"TOKEN" description:"slack token"`
-		Channel string `long:"chan" env:"CHAN" description:"slack channel"`
+		Channel string `long:"chan" env:"CHAN" description:"slack channel for admin notifications"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 	Webhook struct {
-		WebhookURL string        `long:"url" env:"URL" description:"webhook notification URL"`
+		WebhookURL string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
 		Template   string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
 		Headers    []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,..."` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
 		Timeout    time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
