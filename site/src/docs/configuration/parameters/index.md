@@ -93,8 +93,8 @@ services:
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
 | notify.telegram.chan    | NOTIFY_TELEGRAM_CHAN    |                          | ID of telegram channel for admin notifications  |
 | notify.slack.token      | NOTIFY_SLACK_TOKEN      |                          | Slack token                                     |
-| notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | Slack channel                                   |
-| notify.webhook.url      | NOTIFY_WEBHOOK_URL      |                          | Webhook notification URL                        |
+| notify.slack.chan       | NOTIFY_SLACK_CHAN       | `general`                | Slack channel for admin notifications           |
+| notify.webhook.url      | NOTIFY_WEBHOOK_URL      |                          | Webhook notification URL for admin notifications |
 | notify.webhook.template | NOTIFY_WEBHOOK_TEMPLATE | `{"text": "{{.Text}}"}`  | Webhook payload template                        |
 | notify.webhook.headers  | NOTIFY_WEBHOOK_HEADERS  |                          | HTTP header in format Header1:Value1,Header2:Value2,...|
 | notify.webhook.timeout  | NOTIFY_WEBHOOK_TIMEOUT  | `5s`                     | Webhook connection timeout                      |

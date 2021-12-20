@@ -28,12 +28,16 @@
 		"href": "/configuration/authorization/"
 	  },
 	  {
+		"title": "Notifications",
+		"href": "/configuration/notifications/"
+	  },
+	  {
 		"title": "Email",
 		"href": "/configuration/email/"
 	  },
 	  {
-		"title": "Notifications",
-		"href": "/configuration/notifications/"
+		"title": "Telegram",
+		"href": "/configuration/telegram/"
 	  }
 	]
   },
