@@ -9,10 +9,6 @@ import { BASE_URL } from 'common/constants.config';
 import { OAuth } from './oauth';
 import * as api from './oauth.api';
 
-jest.mock('react-redux', () => ({
-  useDispatch: () => jest.fn(),
-}));
-
 jest.mock('hooks/useTheme', () => ({
   useTheme: () => 'light',
 }));

@@ -11,10 +11,6 @@ import * as utils from './auth.utils';
 import * as api from './auth.api';
 import { getProviderData } from './components/oauth.utils';
 
-jest.mock('react-redux', () => ({
-  useDispatch: () => jest.fn(),
-}));
-
 jest.mock('hooks/useTheme', () => ({
   useTheme: () => 'light',
 }));
@@ -243,6 +239,7 @@ describe('<Auth/>', () => {
     StaticStore.config.auth_providers = ['email'];
 
     const { getByText, getByPlaceholderText } = render(<Auth />);
+
     fireEvent.click(getByText('Sign In'));
 
     const input = getByPlaceholderText('Username');
