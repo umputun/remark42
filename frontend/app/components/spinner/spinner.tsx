@@ -17,6 +17,7 @@ export function Spinner({ color }: Props) {
       className={clsx('spinner', styles.root, { [styles.dark]: color === 'gray' })}
       role="presentation"
       aria-label={intl.formatMessage(messages.loading)}
+      data-testid="spinner"
     />
   );
 }

@@ -171,12 +171,25 @@ describe('<Profile />', () => {
       .spyOn(api, 'getUserComments')
       .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
 
-    const { findByRole, getByRole, queryByRole } = render(<Profile />);
+    const { findByRole, getByRole, queryByRole, queryByTestId } = render(<Profile />);
 
     expect(await findByRole('button', { name: /load more/i })).toBeInTheDocument();
     fireEvent.click(getByRole('button', { name: /load more/i }));
-    expect(getByRole('presentation')).toHaveClass('spinner');
-    await waitFor(() => expect(queryByRole('presentation')).not.toBeInTheDocument());
-    expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+    expect(queryByTestId('spinner')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('preloader should not be rendered after click on load more button', async () => {
+    jest
+      .spyOn(api, 'getUserComments')
+      .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
+
+    const { findByRole, queryByTestId } = render(<Profile />);
+
+    fireEvent.click(await findByRole('button', { name: /load more/i }));
+    expect(queryByTestId('preloader')).not.toBeInTheDocument();
   });
 });
