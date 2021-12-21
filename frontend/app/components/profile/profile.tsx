@@ -210,7 +210,7 @@ export function Profile() {
               </Button>
             </div>
           )}
-          {isCommentsLoading && <Preloader className={styles.preloader} />}
+          {comments === null && isCommentsLoading && <Preloader className={styles.preloader} />}
           {comments !== null && commentsJSX}
         </section>
         {isCurrent ? (
