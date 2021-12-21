@@ -6,5 +6,5 @@ type Props = {
 };
 
 export function Preloader({ className }: Props) {
-  return <div className={clsx('preloader', className)} aria-label="Loading..." />;
+  return <div className={clsx('preloader', className)} aria-label="Loading..." data-testid="preloader" />;
 }
