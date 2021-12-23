@@ -26,6 +26,15 @@ function noteContainer() {
 	}
 }
 
+function markdownTableWrapper(md) {
+	md.renderer.rules.table_open = function(tokens, idx, options, _, self) {
+		return `<div class='overflow-x-auto'>` + self.renderToken(tokens, idx, options)
+	}
+	md.renderer.rules.table_close = function(tokens, idx, options, _, self) {
+		return self.renderToken(tokens, idx, options) + `</div>`
+	}
+}
+
 function getMarkdownLib() {
 	const markdownIt = require('markdown-it')
 	const markdownItAnchor = require('markdown-it-anchor')
@@ -44,6 +53,7 @@ function getMarkdownLib() {
 			}),
 		})
 		.use(markdownItContainer, 'note', noteContainer())
+		.use(markdownTableWrapper)
 }
 
 module.exports = function (eleventyConfig) {
