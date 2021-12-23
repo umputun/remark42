@@ -3,7 +3,7 @@
 		<a class="py-1 px-2 -mx-2 block rounded text-gray-600 dark:text-gray-300 {% if page.url === '/docs' + entry.href %} bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 hover:text-brand-600{% else %} hover:text-gray-900 dark:hover:text-gray-400{% endif %}" href="/docs{{ entry.href | url }}">
 			{{ entry.title }}
 		</a>
-		{% if entry.children and page.url.startsWith('/docs' + entry.href) %}
+		{% if entry.children %}
 			<ul class="ml-4 font-normal">
 				{% for entry in entry.children %}
 					<li class="my-1">
