@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/html"
 	"io"
 	"net/http"
 	neturl "net/url"
@@ -171,11 +172,12 @@ func buildMessage(req Request) ([]byte, error) {
 // returns HTML with only tags allowed in Telegram HTML message payload, also trims ending newlines
 // https://core.telegram.org/bots/api#html-style
 func telegramSupportedHTML(htmlText string) string {
+	adjustedHTMLText := adjustHTMLTags(htmlText)
 	p := bluemonday.NewPolicy()
 	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre")
 	p.AllowAttrs("href").OnElements("a")
 	p.AllowAttrs("class").OnElements("code")
-	return strings.TrimRight(p.Sanitize(htmlText), "\n")
+	return strings.TrimRight(p.Sanitize(adjustedHTMLText), "\n")
 }
 
 // returns text sanitized of symbols not allowed inside other HTML tags in Telegram HTML message payload
@@ -186,6 +188,42 @@ func escapeTelegramText(text string) string {
 	text = strings.ReplaceAll(text, "<", "&lt;")
 	text = strings.ReplaceAll(text, ">", "&gt;")
 	return text
+}
+
+// telegram not allow h1-h6 tags
+// replace these tags with a combination of <b> and <i> for visual distinction
+func adjustHTMLTags(htmlText string) string {
+	buff := strings.Builder{}
+	tokenizer := html.NewTokenizer(strings.NewReader(htmlText))
+	for {
+		if tokenizer.Next() == html.ErrorToken {
+			return buff.String()
+		}
+		token := tokenizer.Token()
+		switch token.Type {
+		case html.StartTagToken, html.EndTagToken:
+			switch token.Data {
+			case "h1", "h2", "h3":
+				if token.Type == html.StartTagToken {
+					buff.WriteString("<b>")
+				}
+				if token.Type == html.EndTagToken {
+					buff.WriteString("</b>")
+				}
+			case "h4", "h5", "h6":
+				if token.Type == html.StartTagToken {
+					buff.WriteString("<i><b>")
+				}
+				if token.Type == html.EndTagToken {
+					buff.WriteString("</b></i>")
+				}
+			default:
+				buff.WriteString(token.String())
+			}
+		default:
+			buff.WriteString(token.String())
+		}
+	}
 }
 
 // SendVerification is not needed for telegram

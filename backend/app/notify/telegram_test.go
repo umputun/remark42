@@ -166,6 +166,16 @@ func TestTelegram_Send(t *testing.T) {
 		`\"\u003ci\u003esome parent text with a \u003ca href=\"http://example.org\"\u003elink\u003c/a\u003e and special text:\u0026amp; \u0026lt; \u0026gt; \u0026amp;\u003c/i\u003e\"\n\n`+
 		`↦  \u003ca href=\"http://example.org/\"\u003e[test title]\u003c/a\u003e","parse_mode":"HTML"}`,
 		string(res))
+
+	// special case for text with h1-h6 header
+	ch := store.Comment{Text: "<h1>Hello</h1><h6>World</h6>", ID: "555", Locator: store.Locator{URL: "http://example.org/"}}
+	ch.User.Name = "from"
+	res, err = buildMessage(Request{Comment: ch})
+	assert.NoError(t, err)
+	assert.Equal(t, `{"text":"\u003ca href=\"http://example.org/#remark42__comment-555\"\u003efrom\u003c/a\u003e\n\n`+
+		`\u003cb\u003eHello\u003c/b\u003e\u003ci\u003e\u003cb\u003eWorld\u003c/b\u003e\u003c/i\u003e`+
+		`","parse_mode":"HTML"}`,
+		string(res))
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
