@@ -12,21 +12,21 @@ const insertScript = (id, parentElement) => {
   script.type = "text/javascript";
   script.async = true;
   script.id = id;
-/* For Gatsby it's important to manually provide the URL
-and make sure it does not contain a trailing slash ("/").
-Because otherwise the comments for paths with/without 
-the trailing slash are stored separately in the BoltDB database.
-When following a Gatsby Link a page is loaded without the trailing slash,
-but when refreshing the page (F5) it is loaded with the trailing slash.
-So essentially every URL can become duplicated in the DB and you may not see
-your comments from the inverse URL at your present URL.
-Making sure url is provided without the trailing slash
-in the remark42 config solves this. */
+  /* For Gatsby it's important to manually provide the URL
+  and make sure it does not contain a trailing slash ("/").
+  Because otherwise the comments for paths with/without 
+  the trailing slash are stored separately in the BoltDB database.
+  When following a Gatsby Link a page is loaded without the trailing slash,
+  but when refreshing the page (F5) it is loaded with the trailing slash.
+  So essentially every URL can become duplicated in the DB and you may not see
+  your comments from the inverse URL at your present URL.
+  Making sure url is provided without the trailing slash
+  in the remark42 config solves this. */
   let url = window.location.origin + window.location.pathname;
   if(url.endsWith("/")) {
     url = url.slice(0, -1);
   }
-// Now the actual config and script-fetching function:
+  // Now the actual config and script-fetching function:
   script.innerHTML = `
     var remark_config = {
       host: "https://remark42.example.com",
@@ -42,7 +42,7 @@ in the remark42 config solves this. */
 /* This function removes the previously added script from the DOM.
 Might be necessary when page transitions happen, to make sure a new instance 
 s created, pointing to the current URL. Although this might actually 
-ot be necessary, please do your own testing.*/
+not be necessary, please do your own testing.*/
 const removeScript = (id, parentElement) => {
   const script = window.document.getElementById(id);
   if (script) {
@@ -80,7 +80,7 @@ const recreateRemark42Instance = () => {
 // The location prop is {props.location.pathname} from the parent component.
 // I.e. invoke the component like this in the parent: <Comments location={props.location.pathname} />
 const Comments = ({ location }) => {
-// Insert the two useEffect hooks. Maybe you can combine them into one? Feel free if you want to.
+  // Insert the two useEffect hooks. Maybe you can combine them into one? Feel free if you want to.
   React.useEffect(manageScript, [location]);
   React.useEffect(recreateRemark42Instance, [location]);
 
