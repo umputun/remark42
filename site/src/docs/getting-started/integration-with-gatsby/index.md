@@ -87,7 +87,7 @@ const Comments = ({ location }) => {
   return (
     <>
       <h2>Comments</h2>
-      { // This div is the target for actual comments insertion }
+      { /* This div is the target for actual comments insertion */ }
       <div id="remark42"></div>
     </>
   )
