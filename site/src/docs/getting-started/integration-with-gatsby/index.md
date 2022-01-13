@@ -41,7 +41,7 @@ const insertScript = (id, parentElement) => {
 
 /* This function removes the previously added script from the DOM.
 Might be necessary when page transitions happen, to make sure a new instance 
-s created, pointing to the current URL. Although this might actually 
+is created, pointing to the current URL. Although this might actually 
 not be necessary, please do your own testing.*/
 const removeScript = (id, parentElement) => {
   const script = window.document.getElementById(id)
