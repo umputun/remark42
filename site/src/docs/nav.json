@@ -9,6 +9,10 @@
 	  {
 		"title": "System Requirements",
 		"href": "/getting-started/system-requirements/"
+	  },
+	  {
+		"title": "Integration With Gatsby",
+		"href": "/getting-started/integration-with-gatsby/"
 	  }
 	]
   },
