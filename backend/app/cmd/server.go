@@ -887,7 +887,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
 		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
-		authenticator.AddDirectProvider("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
+		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
+
 			// don't allow anon with space prefix or suffix
 			if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
 				log.Printf("[WARN] name %q has space as a suffix or prefix", user)
@@ -909,7 +910,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 				return false, nil
 			}
 			return true, nil
-		}))
+		}),
+			func(user string, r *http.Request) string {
+				return user + r.RemoteAddr
+			})
 	}
 
 	if providersCount == 0 {
