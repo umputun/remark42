@@ -1,5 +1,3 @@
-const fetch = require('node-fetch')
-
 const DEFAULT_DATA = { latestVersion: '' }
 let currentData = null
 
@@ -8,6 +6,7 @@ module.exports = async function getLatestReleaseVersion() {
 		return currentData
 	}
 	try {
+		const fetch = await import('node-fetch')
 		const res = await fetch(
 			'https://api.github.com/repos/umputun/remark42/releases'
 		)
