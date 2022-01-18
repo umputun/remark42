@@ -21,9 +21,7 @@ declare global {
     REMARK42: {
       changeTheme?: (theme: Theme) => void;
       destroy?: () => void;
-      createInstance: (
-        remark_config: RemarkConfig
-      ) =>
+      createInstance: (remark_config: RemarkConfig) =>
         | {
             changeTheme(theme: Theme): void;
             destroy(): void;
