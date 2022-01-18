@@ -3,14 +3,16 @@ import { StaticStore } from 'common/static-store';
 
 import { StoreState } from '../index';
 
-export const getThreadIsCollapsed = (comment: Comment) => (state: StoreState): boolean => {
-  const collapsed = state.collapsedThreads[comment.id];
+export const getThreadIsCollapsed =
+  (comment: Comment) =>
+  (state: StoreState): boolean => {
+    const collapsed = state.collapsedThreads[comment.id];
 
-  if (collapsed !== null && collapsed !== undefined) {
-    return collapsed;
-  }
+    if (collapsed !== null && collapsed !== undefined) {
+      return collapsed;
+    }
 
-  const score = comment.score || 0;
+    const score = comment.score || 0;
 
-  return score <= StaticStore.config.critical_score;
-};
+    return score <= StaticStore.config.critical_score;
+  };

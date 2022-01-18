@@ -18,7 +18,7 @@ export const querySettings: Partial<QuerySettingsType> = parseQuery();
 
 if (querySettings.max_shown_comments) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  querySettings.max_shown_comments = parseInt((querySettings.max_shown_comments as any) as string, 10);
+  querySettings.max_shown_comments = parseInt(querySettings.max_shown_comments as any as string, 10);
 } else {
   querySettings.max_shown_comments = MAX_SHOWN_ROOT_COMMENTS;
 }

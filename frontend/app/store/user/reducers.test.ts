@@ -7,7 +7,7 @@ import { USER_ACTIONS, USER_SET } from './types';
 
 jest.mock('common/api');
 
-const getUserMock = (getUser as unknown) as jest.Mock<ReturnType<typeof getUser>>;
+const getUserMock = getUser as unknown as jest.Mock<ReturnType<typeof getUser>>;
 
 afterEach(() => {
   jest.resetModules();

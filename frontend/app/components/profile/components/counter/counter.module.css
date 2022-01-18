@@ -9,5 +9,5 @@
 }
 
 :global(.dark) .container {
-  background-color: rgba(var(--white-color), .12);
+  background-color: rgba(var(--white-color), 0.12);
 }
