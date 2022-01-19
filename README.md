@@ -35,7 +35,7 @@ Comments example:
 For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wiki/Admin-UI)
 </details>
 
-All remark42 documentation is available [by the link](https://remark42.com/docs/).
+All remark42 documentation is available [by the link](https://remark42.com/docs/getting-started/installation/).
 
 ## Related projects
 
