@@ -41,7 +41,7 @@ ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 RUN cd /srv/frontend && CI=true npm ci --loglevel warn
 
-FROM node:12.16-alpine as build-frontend
+FROM --platform=$BUILDPLATFORM node:12.16-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
