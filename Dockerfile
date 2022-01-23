@@ -31,7 +31,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM node:12.16-alpine as build-frontend-deps
+FROM --platform=$BUILDPLATFORM node:12.16-alpine as build-frontend-deps
 
 ARG CI
 ENV HUSKY_SKIP_INSTALL=true
