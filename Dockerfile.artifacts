@@ -1,10 +1,6 @@
 FROM node:12.16-alpine as build-frontend-deps
 
 ARG CI
-ARG DRONE
-ARG DRONE_TAG
-ARG DRONE_COMMIT
-ARG DRONE_BRANCH
 
 ENV SKIP_FRONTEND_TEST=true
 
@@ -49,12 +45,8 @@ RUN \
     ls -la /build/backend/app/rest/api/statik.go && \
     ls -la /build/backend/web/
 
-# if DRONE presented use DRONE_* git env to make version
 RUN \
-    if [ -z "$DRONE" ] ; then \
-    echo "runs outside of drone" && version=$("/script/version.sh"); \
-    else version=${DRONE_TAG}${DRONE_BRANCH}${DRONE_PULL_REQUEST}-${DRONE_COMMIT:0:7}-$(date +%Y%m%d-%H:%M:%S); fi && \
-    echo "version=$version" && \
+	version=$("/script/version.sh") && echo "version=${version}" && \
     export GOFLAGS="-mod=vendor" && \
     GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
@@ -66,19 +58,16 @@ RUN \
     GOOS=freebsd GOARCH=amd64 go build -o remark42.freebsd-amd64 -ldflags "-X main.revision=${version} -s -w" ./app
 
 RUN \
-    if [ -z "$DRONE_TAG" ] ; then \
-    echo "runs outside of drone" && tag=""; \
-    else tag=_${DRONE_TAG}; fi && \
     apk add --no-cache --update zip && \
     cp ../LICENSE ./LICENSE && cp ../README.md ./README.md && \
-    tar cvzf remark42${tag}.linux-amd64.tar.gz remark42.linux-amd64 LICENSE README.md && \
-    tar cvzf remark42${tag}.linux-386.tar.gz remark42.linux-386 LICENSE README.md && \
-    tar cvzf remark42${tag}.linux-arm.tar.gz remark42.linux-arm LICENSE README.md && \
-    tar cvzf remark42${tag}.linux-arm64.tar.gz remark42.linux-arm64 LICENSE README.md && \
-    tar cvzf remark42${tag}.darwin-amd64.tar.gz remark42.darwin-amd64 LICENSE README.md && \
-    tar cvzf remark42${tag}.darwin-arm64.tar.gz remark42.darwin-arm64 LICENSE README.md && \
-    tar cvzf remark42${tag}.freebsd-amd64.tar.gz remark42.freebsd-amd64 LICENSE README.md && \
-    zip remark42${tag}.windows-amd64.zip remark42.windows-amd64.exe LICENSE README.md
+    tar cvzf remark42.linux-amd64.tar.gz remark42.linux-amd64 LICENSE README.md && \
+    tar cvzf remark42.linux-386.tar.gz remark42.linux-386 LICENSE README.md && \
+    tar cvzf remark42.linux-arm.tar.gz remark42.linux-arm LICENSE README.md && \
+    tar cvzf remark42.linux-arm64.tar.gz remark42.linux-arm64 LICENSE README.md && \
+    tar cvzf remark42.darwin-amd64.tar.gz remark42.darwin-amd64 LICENSE README.md && \
+    tar cvzf remark42.darwin-arm64.tar.gz remark42.darwin-arm64 LICENSE README.md && \
+    tar cvzf remark42.freebsd-amd64.tar.gz remark42.freebsd-amd64 LICENSE README.md && \
+    zip remark42.windows-amd64.zip remark42.windows-amd64.exe LICENSE README.md
 
 
 FROM alpine

@@ -25,7 +25,6 @@ RUN \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else echo "skip backend tests and linter" ; fi
 
-# if DRONE presented use DRONE_* git env to make version
 RUN \
     version="$(/script/version.sh)" && \
     echo "version=$version" && \
