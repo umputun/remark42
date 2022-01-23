@@ -54,7 +54,7 @@ jobs:
           echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
           docker buildx build --push \
               --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github \
-              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
+              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} --build-arg GITHUB_REF=${GITHUB_REF} \
               --platform linux/amd64,linux/arm/v7,linux/arm64 \
               -t ghcr.io/${USERNAME}/remark42:${ref} -t ${USERNAME}/remark42:${ref} .
 
@@ -73,7 +73,7 @@ jobs:
           echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
           docker buildx build --push \
               --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github \
-              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} \
+              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} --build-arg GITHUB_REF=${GITHUB_REF} \
               --platform linux/amd64,linux/arm/v7,linux/arm64 \
               -t ghcr.io/umputun/remark42:${ref} -t ghcr.io/umputun/remark42:latest \
               -t umputun/remark42:${ref} -t umputun/remark42:latest .
