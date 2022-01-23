@@ -24,7 +24,7 @@ RUN \
 
 # if DRONE presented use DRONE_* git env to make version
 RUN \
-    version="$(/script/git-rev.sh)" && \
+    version="$(/script/version.sh)" && \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
