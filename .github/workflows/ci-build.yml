@@ -49,7 +49,7 @@ jobs:
           GITHUB_REF: ${{ github.ref}}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
-          echo GITHUB_REF - $ref
+          echo "GITHUB_REF=${GITHUB_REF}, GITHUB_SHA=${GITHUB_SHA}, GIT_BRANCH=${ref}"
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
           echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
           docker buildx build --push \
@@ -68,7 +68,7 @@ jobs:
           GITHUB_REF: ${{ github.ref}}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
-          echo "GITHUB_REF=$ref, GITHUB_SHA=${GITHUB_SHA}"
+          echo "GITHUB_REF=${GITHUB_REF}, GITHUB_SHA=${GITHUB_SHA}, GIT_BRANCH=${ref}"
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
           echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
           docker buildx build --push \

@@ -1,6 +1,9 @@
 FROM umputun/baseimage:buildgo-v1.8.0 as build-backend
 
 ARG CI
+ARG GITHUB_REF
+ARG GITHUB_SHA
+ARG GIT_BRANCH
 ARG SKIP_BACKEND_TEST
 ARG BACKEND_TEST_TIMEOUT
 
@@ -70,6 +73,7 @@ RUN ln -s /srv/remark42 /usr/bin/remark42
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
+
 
 RUN chmod +x /srv/init.sh
 CMD ["/srv/remark42", "server"]
