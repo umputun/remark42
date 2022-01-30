@@ -43,7 +43,7 @@ below to have your translation available to all remark42 users and included in t
     2.  [Run remark42 in Docker](https://github.com/umputun/remark42#development) by issuing the following commands from the root directory of your remark42 fork:
         `shell docker-compose -f compose-dev-frontend.yml build docker-compose -f compose-dev-frontend.yml up `
 
-    3.  open [http://127.0.0.1:8080/web](http://127.0.0.1:8080/web), log in, make a comment, make a reply to a comment, and make sure your translation looks as you expect it to look
-    4.  make a screenshot from [http://127.0.0.1:8080](http://127.0.0.1:8080) with your translation in place
+    3.  open <http://127.0.0.1:8080/web/>, log in, make a comment, make a reply to a comment, and make sure your translation looks as you expect it to look
+    4.  make a screenshot from <http://127.0.0.1:8080> with your translation in place
 
 1.  after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it

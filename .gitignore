@@ -4,6 +4,7 @@ target
 /logs/
 /target/
 /var/
+/web/
 debug
 debug.test
 .vscode
@@ -17,6 +18,7 @@ remark42
 /bin/
 /backend/var/
 /backend/app/var/
+/backend/web/
 compose-private-backend.yml
 compose-private-frontend.yml
 compose-private.yml

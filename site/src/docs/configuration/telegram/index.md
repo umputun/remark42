@@ -39,9 +39,9 @@ For a description of the Bot API, see this page: https://core.telegram.org/bots/
 
 ## Authentication
 
-To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
+**IMPORTANT: It doesn't work as of 30.01.2022, will be working after [this](https://github.com/umputun/remark42/issues/707) issue resolution** (waits for frontend support).
 
-_Note: this functionality is not fully available yet and still work in progress._
+To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
 
 ## Notifications
 
@@ -57,7 +57,7 @@ To integrate notifications about any comment on your sites with remark42 with [T
 
 ### Notifications for users
 
-**IMPORTANT: It doesn't work as of 20.12.2021, will be working after [this](https://github.com/umputun/remark42/issues/830) issue resolution** (waits for frontend support).
+**IMPORTANT: It doesn't work as of 30.01.2022, will be working after [this](https://github.com/umputun/remark42/issues/830) issue resolution** (waits for frontend support).
 
 Enabling Telegram user notifications allows users to sign up for notifications about replies to their messages. To do it, set the variable `NOTIFY_USERS=telegram`.
 
