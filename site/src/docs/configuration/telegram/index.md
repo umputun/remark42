@@ -41,6 +41,8 @@ For a description of the Bot API, see this page: https://core.telegram.org/bots/
 
 To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
 
+_Note: this functionality is not fully available yet and still work in progress._
+
 ## Notifications
 
 ### Notifications for administrators
