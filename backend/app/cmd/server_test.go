@@ -410,7 +410,10 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
+		"--notify.type=email",
 		"--notify.type=telegram",
+		"--img-proxy",
+		"--notify.email.notify_admin",
 		"--auth.email.host=smtp.example.org",
 		"--auth.email.port=666",
 		"--auth.email.tls",
@@ -420,6 +423,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--auth.email.template=file.tmpl",
 		"--notify.telegram.token=abcd",
 		"--notify.telegram.timeout=3m",
+		"--notify.telegram.api=http://example.org",
 	}
 	assert.Empty(t, s.SMTP.Host)
 	assert.Empty(t, s.SMTP.Port)
@@ -439,9 +443,12 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"},
 			{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"},
 			{Old: "auth.email.template", Version: "1.5"},
+			{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"},
+			{Old: "notify.email.notify_admin", New: "notify.admins=email", Version: "1.9"},
 			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
+			{Old: "notify.telegram.api", Version: "1.9"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
@@ -450,6 +457,61 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Equal(t, "test_user", s.SMTP.Username)
 	assert.Equal(t, "test_password", s.SMTP.Password)
 	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
+}
+
+func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+
+	p := flags.NewParser(&s, flags.Default)
+	args := []string{
+		"test",
+		"--auth.email.host=smtp-old.example.org",
+		"--smtp.host=smtp-new.example.org",
+		"--auth.email.port=666",
+		"--smtp.port=999",
+		"--auth.email.user=test_user",
+		"--smtp.username=new_test_user",
+		"--auth.email.passwd=test_password",
+		"--smtp.password=new_test_password",
+		"--auth.email.timeout=15s",
+		"--smtp.timeout=20s",
+		"--notify.type=telegram",
+		"--notify.users=telegram",
+		"--notify.telegram.token=abcd",
+		"--telegram.token=dcba",
+		"--notify.telegram.timeout=3m",
+		"--telegram.timeout=5m",
+	}
+	_, err := p.ParseArgs(args)
+	require.NoError(t, err)
+	deprecatedFlagsCollisions := s.FindDeprecatedFlagsCollisions()
+	assert.ElementsMatch(t,
+		[]DeprecatedFlag{
+			{Old: "notify.type", New: "notify.(users|admins)"},
+			{Old: "auth.email.host", New: "smtp.host"},
+			{Old: "auth.email.port", New: "smtp.port"},
+			{Old: "auth.email.user", New: "smtp.username"},
+			{Old: "auth.email.passwd", New: "smtp.password"},
+			{Old: "auth.email.timeout", New: "smtp.timeout"},
+			{Old: "notify.telegram.token", New: "telegram.token"},
+			{Old: "notify.telegram.timeout", New: "telegram.timeout"},
+		},
+		deprecatedFlagsCollisions)
+
+	// case which should return nothing
+	s = ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&s, flags.Default)
+	args = []string{
+		"test",
+		"--auth.email.host=smtp-old.example.org",
+		"--smtp.host=''",
+	}
+	_, err = p.ParseArgs(args)
+	require.NoError(t, err)
+	deprecatedFlagsCollisions = s.FindDeprecatedFlagsCollisions()
+	assert.Empty(t, []DeprecatedFlag{}, deprecatedFlagsCollisions)
 }
 
 func Test_ACMEEmail(t *testing.T) {

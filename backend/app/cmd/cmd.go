@@ -22,6 +22,7 @@ type CommonOptionsCommander interface {
 	SetCommon(commonOpts CommonOpts)
 	Execute(args []string) error
 	HandleDeprecatedFlags() []DeprecatedFlag
+	FindDeprecatedFlagsCollisions() []DeprecatedFlag
 }
 
 // CommonOpts sets externally from main, shared across all commands
@@ -48,6 +49,10 @@ func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
 
 // HandleDeprecatedFlags sets new flags from deprecated and returns their list
 func (c *CommonOpts) HandleDeprecatedFlags() []DeprecatedFlag { return nil }
+
+// FindDeprecatedFlagsCollisions returns list of flags collisions, e.g. when both deprecated
+// and new flags are set to non-default values, and different from each other.
+func (c *CommonOpts) FindDeprecatedFlagsCollisions() []DeprecatedFlag { return nil }
 
 // fileParser used to convert template strings like blah-{{.SITE}}-{{.YYYYMMDD}} the final format
 type fileParser struct {
