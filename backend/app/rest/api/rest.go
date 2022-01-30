@@ -272,6 +272,7 @@ func (s *Rest) routes() chi.Router {
 			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
 			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
+			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
 		})
 
 		// protected routes, require auth
