@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -613,6 +614,44 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 10000.0, j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
 	assert.Equal(t, false, j["admin_edit"].(bool))
+}
+
+func TestRest_QR(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// missing parameter
+	body, code := get(t, ts.URL+"/api/v1/qr/telegram")
+	assert.Equal(t, 400, code)
+	assert.Equal(t, "{\"code\":0,\"details\":\"text parameter is required\",\"error\":\"missing parameter\"}\n", body)
+
+	// too long request to build the qr
+	body, code = get(t, ts.URL+"/api/v1/qr/telegram?url=https://t.me/"+strings.Repeat("string", 1000))
+	assert.Equal(t, 500, code)
+	assert.Equal(t, "{\"code\":0,\"details\":\"can't generate QR\",\"error\":\"content too long to encode\"}\n", body)
+
+	// wrong request
+	body, code = get(t, ts.URL+"/api/v1/qr/telegram?url=nonsense")
+	assert.Equal(t, 400, code)
+	assert.Equal(t, "{\"code\":0,\"details\":\"text parameter should start with https://t.me/\",\"error\":\"wrong parameter\"}\n", body)
+
+	// correct request
+	r, err := http.Get(ts.URL + "/api/v1/qr/telegram?url=https://t.me/BotFather")
+	require.NoError(t, err)
+	bdy, err := io.ReadAll(r.Body)
+	require.NoError(t, err)
+	require.NoError(t, r.Body.Close())
+	require.NotEmpty(t, bdy)
+	assert.Equal(t, "image/png", r.Header.Get("Content-Type"))
+	assert.Equal(t, 200, r.StatusCode)
+
+	// compare the image
+	fh, err := os.Open("testdata/qr_test.png")
+	defer func() { assert.NoError(t, fh.Close()) }()
+	assert.NoError(t, err)
+	img, err := io.ReadAll(fh)
+	assert.NoError(t, err)
+	assert.Equal(t, img, bdy)
 }
 
 func TestRest_Info(t *testing.T) {
