@@ -45,16 +45,7 @@ func main() {
 			SharedSecret: opts.SharedSecret,
 			Revision:     revision,
 		})
-		for _, entry := range c.FindDeprecatedFlagsCollisions() {
-			log.Print(fmt.Sprintf("[ERROR] deprecated --%s and new --%s options are set to different values, old one is ignored: please remove it", entry.Old, entry.New))
-		}
-		for _, entry := range c.HandleDeprecatedFlags() {
-			deprecationNote := fmt.Sprintf("[WARN] --%s is deprecated since v%s and will be removed in the future", entry.Old, entry.Version)
-			if entry.New != "" {
-				deprecationNote += fmt.Sprintf(", please use --%s instead", entry.New)
-			}
-			log.Print(deprecationNote)
-		}
+		logDeprecatedParams(c.HandleDeprecatedFlags())
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)
@@ -77,6 +68,22 @@ func setupLog(dbg bool) {
 		return
 	}
 	log.Setup(log.Msec, log.LevelBraces)
+}
+
+// logs usual and "collision" deprecated parameters
+func logDeprecatedParams(params []cmd.DeprecatedFlag) {
+	for _, entry := range params {
+		var deprecationNote string
+		if entry.Collision {
+			deprecationNote = fmt.Sprintf("[ERROR] deprecated --%s and new --%s options are set to different values, old one is ignored: please remove it", entry.Old, entry.New)
+		} else {
+			deprecationNote = fmt.Sprintf("[WARN] --%s is deprecated since v%s and will be removed in the future", entry.Old, entry.Version)
+			if entry.New != "" {
+				deprecationNote += fmt.Sprintf(", please use --%s instead", entry.New)
+			}
+		}
+		log.Print(deprecationNote)
+	}
 }
 
 // getDump reads runtime stack and returns as a string
