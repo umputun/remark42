@@ -87,7 +87,6 @@ services:
 | auth.email.from         | AUTH_EMAIL_FROM         |                          | email from                                      |
 | auth.email.subj         | AUTH_EMAIL_SUBJ         | `remark42 confirmation`  | email subject                                   |
 | auth.email.content-type | AUTH_EMAIL_CONTENT_TYPE | `text/html`              | email content type                              |
-| auth.email.template     | AUTH_EMAIL_TEMPLATE     | none (predefined)        | custom email message template file              |
 | notify.users            | NOTIFY_USERS            | none                     | type of user notifications (Telegram, email)    |
 | notify.admins           | NOTIFY_ADMINS           | none                     | type of admin notifications (Telegram, Slack, webhook and/or email) |
 | notify.queue            | NOTIFY_QUEUE            | `100`                    | size of notification queue                      |
@@ -152,14 +151,15 @@ The following list of command-line options is deprecated and might be removed in
 <details>
 <summary>Deprecated options</summary>
 
-| Command line       | Replacement   | Environment        | Replacement   | Default | Description    | Deprecation version |
-| ------------------ | ------------- | ------------------ | ------------- | ------- | -------------- | ------------------- |
-| auth.email.host    | smtp.host     | AUTH_EMAIL_HOST    | SMTP_HOST     |         | smtp host      | 1.5.0               |
-| auth.email.port    | smtp.port     | AUTH_EMAIL_PORT    | SMTP_PORT     |         | smtp port      | 1.5.0               |
+| Command line       | Replacement  | Environment         | Replacement   | Default | Description    | Deprecation version |
+| ------------------ | ------------ | ------------------- | ------------- | ------- | -------------- | ------------------- |
+| auth.email.template| none         | AUTH_EMAIL_TEMPLATE | none          | `email_confirmation_login.html.tmpl` | custom email message template file | 1.5.0 |
+| auth.email.host    | smtp.host    | AUTH_EMAIL_HOST     | SMTP_HOST     |         | smtp host      | 1.5.0               |
+| auth.email.port    | smtp.port    | AUTH_EMAIL_PORT     | SMTP_PORT     |         | smtp port      | 1.5.0               |
 | auth.email.user    | smtp.username | AUTH_EMAIL_USER    | SMTP_USERNAME |         | smtp user name | 1.5.0               |
 | auth.email.passwd  | smtp.password | AUTH_EMAIL_PASSWD  | SMTP_PASSWORD |         | smtp password  | 1.5.0               |
-| auth.email.tls     | smtp.tls      | AUTH_EMAIL_TLS     | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
-| auth.email.timeout | smtp.timeout  | AUTH_EMAIL_TIMEOUT | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
+| auth.email.tls     | smtp.tls     | AUTH_EMAIL_TLS      | SMTP_TLS      | `false` | enable TLS     | 1.5.0               |
+| auth.email.timeout | smtp.timeout | AUTH_EMAIL_TIMEOUT  | SMTP_TIMEOUT  | `10s`   | smtp timeout   | 1.5.0               |
 | img-proxy          | image-proxy.http2https | IMG_PROXY | IMAGE_PROXY_HTTP2HTTPS | `false` | enable HTTP->HTTPS proxy for images | 1.5.0 |
 | notify.type        | notify.admins, notify.users | NOTIFY_TYPE | NOTIFY_ADMINS, NOTIFY_USERS | |   | 1.9.0               |
 | notify.email.notify_admin | notify.admins=email | NOTIFY_EMAIL_ADMIN | NOTIFY_ADMINS=email | |     | 1.9.0               |

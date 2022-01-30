@@ -29,17 +29,25 @@ Backend Docker Compose config (`compose-dev-backend.yml`) by default skips runni
 
 Run tests in your IDE, and re-run `make rundev` each time you want to see how your code changes behave to test them at <http://127.0.0.1:8080/web/>.
 
-#### Without docker
+#### Without Docker
 
 You have to [install](https://golang.org/doc/install) the latest stable `go` toolchain to run the backend locally.
 
-In order to have working Remark42 installation you need once to copy frontend static files to `./backend/web` directory from `master` docker image:
+In order to have working Remark42 installation you need once to copy frontend static files to `./backend/web` directory from `master` docker image, and also copy files from `./templates` to the `./backend` as they are expected to be where application starts:
 
 ```shell
+# frontend files
 docker pull umputun/remark42:master
 docker create -ti --name remark42files umputun/remark42:master sh
 docker cp remark42files:/srv/web/ ./backend/
 docker rm -f remark42files
+# template files
+cp ./backend/templates/* ./backend
+# fix frontend files to point to the right URL
+## Mac version
+find -E ./backend/web -regex '.*\.(html|js|mjs)$' -print -exec sed -i '' "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
+## Linux version
+find ./backend/web -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 ```
 
 To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`. It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
