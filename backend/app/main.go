@@ -45,6 +45,9 @@ func main() {
 			SharedSecret: opts.SharedSecret,
 			Revision:     revision,
 		})
+		for _, entry := range c.FindDeprecatedFlagsCollisions() {
+			log.Print(fmt.Sprintf("[ERROR] deprecated --%s and new --%s options are set to different values, old one is ignored: please remove it", entry.Old, entry.New))
+		}
 		for _, entry := range c.HandleDeprecatedFlags() {
 			deprecationNote := fmt.Sprintf("[WARN] --%s is deprecated since v%s and will be removed in the future", entry.Old, entry.Version)
 			if entry.New != "" {

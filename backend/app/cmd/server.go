@@ -321,7 +321,9 @@ func (s *ServerCommand) Execute(_ []string) error {
 	return nil
 }
 
-// HandleDeprecatedFlags sets new flags from deprecated returns their list
+// HandleDeprecatedFlags sets new flags from deprecated returns their list.
+// Returned list has DeprecatedFlag.Old and DeprecatedFlag.Version set, and DeprecatedFlag.New is optional
+// (as some entries are removed without substitute).
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
@@ -343,7 +345,8 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.SMTP.Password = s.Auth.Email.SMTPPassword
 		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"})
 	}
-	if s.Auth.Email.TimeOut != 10*time.Second && s.SMTP.TimeOut == 10*time.Second {
+	const emailDefaultTimout = 10 * time.Second
+	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut == emailDefaultTimout {
 		s.SMTP.TimeOut = s.Auth.Email.TimeOut
 		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"})
 	}
@@ -368,13 +371,47 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.Telegram.Token = s.Notify.Telegram.Token
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"})
 	}
-	const telegramDefaultDuration = time.Second * 5
-	if s.Notify.Telegram.Timeout != telegramDefaultDuration && s.Telegram.Timeout == telegramDefaultDuration {
+	const telegramDefaultTimeout = time.Second * 5
+	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout == telegramDefaultTimeout {
 		s.Telegram.Timeout = s.Notify.Telegram.Timeout
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	}
+	return result
+}
+
+// FindDeprecatedFlagsCollisions returns flags which are set both old (deprecated) and new way,
+// which means new ones are used and old ones are ignored by deprecated flag handler.
+// It returns DeprecatedFlag list which always has only DeprecatedFlag.Old and DeprecatedFlag.New set.
+func (s *ServerCommand) FindDeprecatedFlagsCollisions() (result []DeprecatedFlag) {
+	if stringsSetAndDifferent(s.Auth.Email.Host, s.SMTP.Host) {
+		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host"})
+	}
+	if s.Auth.Email.Port != 0 && s.SMTP.Port != 0 && s.Auth.Email.Port != s.SMTP.Port {
+		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port"})
+	}
+	if stringsSetAndDifferent(s.Auth.Email.SMTPUserName, s.SMTP.Username) {
+		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username"})
+	}
+	if stringsSetAndDifferent(s.Auth.Email.SMTPPassword, s.SMTP.Password) {
+		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password"})
+	}
+	const emailDefaultTimout = 10 * time.Second
+	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut != emailDefaultTimout && s.Auth.Email.TimeOut != s.SMTP.TimeOut {
+		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout"})
+	}
+	if !(len(s.Notify.Type) == 1 && contains("none", s.Notify.Type)) && // default, "none" notify type
+		(len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) { // new notify param(s) are used, old ones will be ignored
+		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)"})
+	}
+	if stringsSetAndDifferent(s.Notify.Telegram.Token, s.Telegram.Token) {
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token"})
+	}
+	const telegramDefaultTimeout = time.Second * 5
+	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout != telegramDefaultTimeout && s.Notify.Telegram.Timeout != s.Telegram.Timeout {
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout"})
 	}
 	return result
 }
@@ -388,6 +425,13 @@ func (s *ServerCommand) handleDeprecatedNotifications() {
 			s.Notify.Admins = append(s.Notify.Admins, t)
 		}
 	}
+}
+
+func stringsSetAndDifferent(s1, s2 string) bool {
+	if s1 != "" && s2 != "" && s1 != s2 {
+		return true
+	}
+	return false
 }
 
 func contains(s string, a []string) bool {
