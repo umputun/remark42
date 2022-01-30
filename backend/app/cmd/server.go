@@ -324,6 +324,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 // HandleDeprecatedFlags sets new flags from deprecated returns their list.
 // Returned list has DeprecatedFlag.Old and DeprecatedFlag.Version set, and DeprecatedFlag.New is optional
 // (as some entries are removed without substitute).
+// Also it returns flags found by findDeprecatedFlagsCollisions, with DeprecatedFlag.Collision flag set.
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
 		s.SMTP.Host = s.Auth.Email.Host
@@ -379,39 +380,40 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
 	}
-	return result
+	return append(result, s.findDeprecatedFlagsCollisions()...)
 }
 
-// FindDeprecatedFlagsCollisions returns flags which are set both old (deprecated) and new way,
+// findDeprecatedFlagsCollisions returns flags which are set both old (deprecated) and new way,
 // which means new ones are used and old ones are ignored by deprecated flag handler.
-// It returns DeprecatedFlag list which always has only DeprecatedFlag.Old and DeprecatedFlag.New set.
-func (s *ServerCommand) FindDeprecatedFlagsCollisions() (result []DeprecatedFlag) {
+// It returns DeprecatedFlag list which always has only DeprecatedFlag.Old and DeprecatedFlag.New set,
+// and DeprecatedFlag.Collision set to true.
+func (s *ServerCommand) findDeprecatedFlagsCollisions() (result []DeprecatedFlag) {
 	if stringsSetAndDifferent(s.Auth.Email.Host, s.SMTP.Host) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", Collision: true})
 	}
 	if s.Auth.Email.Port != 0 && s.SMTP.Port != 0 && s.Auth.Email.Port != s.SMTP.Port {
-		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", Collision: true})
 	}
 	if stringsSetAndDifferent(s.Auth.Email.SMTPUserName, s.SMTP.Username) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", Collision: true})
 	}
 	if stringsSetAndDifferent(s.Auth.Email.SMTPPassword, s.SMTP.Password) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", Collision: true})
 	}
 	const emailDefaultTimout = 10 * time.Second
 	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut != emailDefaultTimout && s.Auth.Email.TimeOut != s.SMTP.TimeOut {
-		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout"})
+		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true})
 	}
 	if !(len(s.Notify.Type) == 1 && contains("none", s.Notify.Type)) && // default, "none" notify type
 		(len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) { // new notify param(s) are used, old ones will be ignored
-		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)"})
+		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Collision: true})
 	}
 	if stringsSetAndDifferent(s.Notify.Telegram.Token, s.Telegram.Token) {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token"})
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Collision: true})
 	}
 	const telegramDefaultTimeout = time.Second * 5
 	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout != telegramDefaultTimeout && s.Notify.Telegram.Timeout != s.Telegram.Timeout {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout"})
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true})
 	}
 	return result
 }

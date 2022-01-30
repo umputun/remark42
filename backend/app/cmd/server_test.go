@@ -446,6 +446,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"},
 			{Old: "notify.email.notify_admin", New: "notify.admins=email", Version: "1.9"},
 			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
+			{Old: "notify.type", New: "notify.(users|admins)", Collision: true},
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
 			{Old: "notify.telegram.api", Version: "1.9"},
@@ -485,17 +486,17 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 	}
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
-	deprecatedFlagsCollisions := s.FindDeprecatedFlagsCollisions()
+	deprecatedFlagsCollisions := s.findDeprecatedFlagsCollisions()
 	assert.ElementsMatch(t,
 		[]DeprecatedFlag{
-			{Old: "notify.type", New: "notify.(users|admins)"},
-			{Old: "auth.email.host", New: "smtp.host"},
-			{Old: "auth.email.port", New: "smtp.port"},
-			{Old: "auth.email.user", New: "smtp.username"},
-			{Old: "auth.email.passwd", New: "smtp.password"},
-			{Old: "auth.email.timeout", New: "smtp.timeout"},
-			{Old: "notify.telegram.token", New: "telegram.token"},
-			{Old: "notify.telegram.timeout", New: "telegram.timeout"},
+			{Old: "notify.type", New: "notify.(users|admins)", Collision: true},
+			{Old: "auth.email.host", New: "smtp.host", Collision: true},
+			{Old: "auth.email.port", New: "smtp.port", Collision: true},
+			{Old: "auth.email.user", New: "smtp.username", Collision: true},
+			{Old: "auth.email.passwd", New: "smtp.password", Collision: true},
+			{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true},
+			{Old: "notify.telegram.token", New: "telegram.token", Collision: true},
+			{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true},
 		},
 		deprecatedFlagsCollisions)
 
@@ -510,7 +511,7 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 	}
 	_, err = p.ParseArgs(args)
 	require.NoError(t, err)
-	deprecatedFlagsCollisions = s.FindDeprecatedFlagsCollisions()
+	deprecatedFlagsCollisions = s.findDeprecatedFlagsCollisions()
 	assert.Empty(t, []DeprecatedFlag{}, deprecatedFlagsCollisions)
 }
 
