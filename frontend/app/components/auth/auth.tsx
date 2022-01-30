@@ -108,9 +108,9 @@ export function Auth() {
     if (telegramParams) {
       try {
         const user = await verifyTelegramSignin(telegramParams.token);
-        dispath(setUser(user));
+        dispatch(setUser(user));
         toggleTelegram(false);
-        dispath(setTelegramParams(null));
+        dispatch(setTelegramParams(null));
       } catch (e) {
         setInvalidReason(e.message || e.error);
       }

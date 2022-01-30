@@ -50,7 +50,7 @@ export function OAuth({ providers, toggleTelegram }: Props) {
       if (params === null) {
         return;
       }
-      dispath(setTelegramParams(params));
+      dispatch(setTelegramParams(params));
     }
     toggleTelegram && toggleTelegram(true);
   };
