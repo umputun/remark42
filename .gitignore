@@ -19,6 +19,7 @@ remark42
 /backend/var/
 /backend/app/var/
 /backend/web/
+/backend/*.html.tmpl
 compose-private-backend.yml
 compose-private-frontend.yml
 compose-private.yml
