@@ -30,9 +30,8 @@ export function Auth() {
 
   // UI State
   const [isLoading, setLoading] = useState(false);
-  const [view, setView] = useState<typeof formProviders[number] | 'token'>(formProviders[0]);
-  const [isTelegramShown, toggleTelegram] = useState(false);
-  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || isTelegramShown);
+  const [view, setView] = useState<typeof formProviders[number] | 'token' | 'telegram'>(formProviders[0]);
+  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
   const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
@@ -46,7 +45,6 @@ export function Auth() {
     evt.preventDefault();
     setView(formProviders[0]);
     toggleDropdownState();
-    toggleTelegram(false);
   }
 
   function handleProviderChange(evt: Event) {
@@ -109,7 +107,7 @@ export function Auth() {
       try {
         const user = await verifyTelegramSignin(telegramParams.token);
         dispatch(setUser(user));
-        toggleTelegram(false);
+        setView(formProviders[0]);
         dispatch(setTelegramParams(null));
       } catch (e) {
         setInvalidReason(e.message || e.error);
@@ -144,7 +142,7 @@ export function Auth() {
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
-            {isTelegramShown && telegramParams ? (
+            {view === 'telegram' && telegramParams ? (
               <>
                 <div className={clsx('auth-row', styles.row)}>
                   <div className={styles.backButton}>
@@ -152,7 +150,7 @@ export function Auth() {
                       className="auth-back-button"
                       size="xs"
                       kind="transparent"
-                      onClick={() => toggleTelegram(false)}
+                      onClick={() => setView(formProviders[0])}
                     >
                       <svg
                         className={styles.backButtonArrow}
@@ -254,7 +252,7 @@ export function Auth() {
                     <h5 className={clsx('auth-form-title', styles.title)}>
                       {intl.formatMessage(messages.oauthSource)}
                     </h5>
-                    <OAuth providers={oauthProviders} toggleTelegram={toggleTelegram} />
+                    <OAuth providers={oauthProviders} setView={setView} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import clsx from 'clsx';
 import { useIntl } from 'react-intl';
 
-import type { OAuthProvider } from 'common/types';
+import type { FormProvider, OAuthProvider } from 'common/types';
 import { siteId } from 'common/settings';
 import { useTheme } from 'hooks/useTheme';
 import { setUser, setTelegramParams } from 'store/user/actions';
@@ -16,15 +16,16 @@ import { BASE_URL } from 'common/constants.config';
 import { getButtonVariant, getProviderData } from './oauth.utils';
 import styles from './oauth.module.css';
 import { getTelegramSigninParams } from '../auth.api';
+import { StateUpdater } from 'preact/compat';
 
 const location = encodeURIComponent(`${window.location.origin}${window.location.pathname}?selfClose`);
 
 type Props = {
   providers: OAuthProvider[];
-  toggleTelegram?: (showTelegram: boolean) => void;
+  setView?: StateUpdater<'telegram' | FormProvider | 'token'>;
 };
 
-export function OAuth({ providers, toggleTelegram }: Props) {
+export function OAuth({ providers, setView }: Props) {
   const intl = useIntl();
   const dispatch = useDispatch();
   const telegramParams = useSelector((s: StoreState) => s.telegramParams);
@@ -52,7 +53,7 @@ export function OAuth({ providers, toggleTelegram }: Props) {
       }
       dispatch(setTelegramParams(params));
     }
-    toggleTelegram && toggleTelegram(true);
+    setView && setView('telegram');
   };
 
   return (
