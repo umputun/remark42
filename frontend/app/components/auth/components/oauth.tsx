@@ -1,13 +1,12 @@
 import { h, JSX } from 'preact';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import clsx from 'clsx';
 import { useIntl } from 'react-intl';
 
-import type { FormProvider, OAuthProvider } from 'common/types';
+import type { OAuthProvider } from 'common/types';
 import { siteId } from 'common/settings';
 import { useTheme } from 'hooks/useTheme';
-import { setUser, setTelegramParams } from 'store/user/actions';
-import { StoreState } from 'store';
+import { setUser } from 'store/user/actions';
 
 import { messages } from 'components/auth/auth.messsages';
 
@@ -15,20 +14,17 @@ import { oauthSignin } from './oauth.api';
 import { BASE_URL } from 'common/constants.config';
 import { getButtonVariant, getProviderData } from './oauth.utils';
 import styles from './oauth.module.css';
-import { getTelegramSigninParams } from '../auth.api';
-import { StateUpdater } from 'preact/compat';
 
 const location = encodeURIComponent(`${window.location.origin}${window.location.pathname}?selfClose`);
 
 type Props = {
   providers: OAuthProvider[];
-  setView?: StateUpdater<'telegram' | FormProvider | 'token'>;
+  handleTelegramClick?: () => Promise<void>;
 };
 
-export function OAuth({ providers, setView }: Props) {
+export function OAuth({ providers, handleTelegramClick }: Props) {
   const intl = useIntl();
   const dispatch = useDispatch();
-  const telegramParams = useSelector((s: StoreState) => s.telegramParams);
   const theme = useTheme();
   const buttonVariant = getButtonVariant(providers.length);
   const handleOauthClick: JSX.GenericEventHandler<HTMLAnchorElement> = async (evt) => {
@@ -44,16 +40,11 @@ export function OAuth({ providers, setView }: Props) {
     dispatch(setUser(user));
   };
 
-  const handleTelegramClick: JSX.EventHandler<JSX.TargetedMouseEvent<HTMLButtonElement>> = async (evt) => {
+  const onTelegramClick: JSX.EventHandler<JSX.TargetedMouseEvent<HTMLButtonElement>> = async (evt) => {
     evt.preventDefault();
-    if (!telegramParams) {
-      const params = await getTelegramSigninParams();
-      if (params === null) {
-        return;
-      }
-      dispatch(setTelegramParams(params));
+    if (handleTelegramClick) {
+      await handleTelegramClick();
     }
-    setView && setView('telegram');
   };
 
   return (
@@ -65,7 +56,7 @@ export function OAuth({ providers, setView }: Props) {
           <li key={name} className={clsx('oauth-item', styles.item)}>
             {name === 'Telegram' ? (
               <button
-                onClick={handleTelegramClick}
+                onClick={onTelegramClick}
                 className={clsx('oauth-button telegram-auth', styles.button, styles[buttonVariant], styles[p])}
                 data-provider-name={name}
                 title={intl.formatMessage(messages.oauthTitle, { provider: name })}

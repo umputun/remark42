@@ -3,7 +3,6 @@ import { h, Fragment } from 'preact';
 import { useState } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import { useSelector, useDispatch } from 'react-redux';
-import QRCode from 'qrcode.react';
 
 import { setTelegramParams, setUser } from 'store/user/actions';
 import { Input } from 'components/input';
@@ -17,10 +16,17 @@ import { OAuth } from './components/oauth';
 import { messages } from './auth.messsages';
 import { useDropdown } from './auth.hooks';
 import { getProviders, getTokenInvalidReason } from './auth.utils';
-import { emailSignin, verifyEmailSignin, anonymousSignin, verifyTelegramSignin } from './auth.api';
+import {
+  emailSignin,
+  verifyEmailSignin,
+  anonymousSignin,
+  verifyTelegramSignin,
+  getTelegramSigninParams,
+} from './auth.api';
 import { StoreState } from 'store';
 
 import styles from './auth.module.css';
+import { BASE_URL, API_BASE } from '../../common/constants.config';
 
 export function Auth() {
   const intl = useIntl();
@@ -97,6 +103,17 @@ export function Auth() {
     }
 
     setLoading(false);
+  }
+
+  async function handleTelegramClick() {
+    if (!telegramParams) {
+      const params = await getTelegramSigninParams();
+      if (params === null) {
+        return;
+      }
+      dispatch(setTelegramParams(params));
+    }
+    setView && setView('telegram');
   }
 
   async function handleTelegramSubmit(evt: Event) {
@@ -179,7 +196,7 @@ export function Auth() {
                     <CrossIcon />
                   </button>
                 </div>
-                <p>
+                <p className={clsx('telegram', styles.telegram)}>
                   {intl.formatMessage(messages.telegramMessage1)}{' '}
                   <a
                     href={`https://t.me/${telegramParams.bot}/?start=${telegramParams.token}`}
@@ -193,9 +210,10 @@ export function Auth() {
                   {intl.formatMessage(messages.telegramMessage3)}
                 </p>
                 {window.screen.width >= 768 && (
-                  <QRCode
-                    value={`https://t.me/${telegramParams.bot}/?start=${telegramParams.token}`}
-                    className={clsx('qr', styles.qr)}
+                  <img
+                    src={`${BASE_URL}${API_BASE}/qr/telegram?url=https://t.me/${telegramParams.bot}/?start=${telegramParams.token}`}
+                    className={clsx('telegram-qr', styles.telegramQR)}
+                    alt={'telegram QR-code'}
                   />
                 )}
                 <Button key="submit" className="auth-submit" type="submit" onClick={handleTelegramSubmit}>
@@ -252,7 +270,7 @@ export function Auth() {
                     <h5 className={clsx('auth-form-title', styles.title)}>
                       {intl.formatMessage(messages.oauthSource)}
                     </h5>
-                    <OAuth providers={oauthProviders} setView={setView} />
+                    <OAuth providers={oauthProviders} handleTelegramClick={handleTelegramClick} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (
