@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -220,7 +219,7 @@ func (l *Middleware) getBody(r *http.Request) string {
 	// Note that below assignment is not approved by the docs:
 	// "Except for reading the body, handlers should not modify the provided Request."
 	// https://golang.org/pkg/net/http/#Handler
-	r.Body = ioutil.NopCloser(reader)
+	r.Body = io.NopCloser(reader)
 
 	if len(body) > 0 {
 		body = strings.Replace(body, "\n", " ", -1)

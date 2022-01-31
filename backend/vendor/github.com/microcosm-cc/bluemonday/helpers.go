@@ -295,3 +295,9 @@ func (p *Policy) AllowTables() {
 		CellVerticalAlign,
 	).OnElements("tbody", "tfoot")
 }
+
+func (p *Policy) AllowIFrames(vals ...SandboxValue) {
+	p.AllowAttrs("sandbox").OnElements("iframe")
+
+	p.RequireSandboxOnIFrame(vals...)
+}

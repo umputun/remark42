@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/pkg/errors"
@@ -55,7 +54,7 @@ func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error)
 	}
 	buf := &bytes.Buffer{}
 	sz, e := bucket.DownloadToStreamByName(avatar, buf)
-	return ioutil.NopCloser(buf), int(sz), errors.Wrapf(e, "can't read avatar %s", avatar)
+	return io.NopCloser(buf), int(sz), errors.Wrapf(e, "can't read avatar %s", avatar)
 }
 
 //

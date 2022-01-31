@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
@@ -31,7 +32,7 @@ type BatchCursor struct {
 	firstBatch           bool
 	cmdMonitor           *event.CommandMonitor
 	postBatchResumeToken bsoncore.Document
-	crypt                *Crypt
+	crypt                Crypt
 	serverAPI            *ServerAPIOptions
 
 	// legacy server (< 3.2) fields
@@ -129,7 +130,7 @@ type CursorOptions struct {
 	MaxTimeMS      int64
 	Limit          int32
 	CommandMonitor *event.CommandMonitor
-	Crypt          *Crypt
+	Crypt          Crypt
 	ServerAPI      *ServerAPIOptions
 }
 
@@ -345,7 +346,7 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 				return nil
 			}
 
-			bc.postBatchResumeToken = bsoncore.Document(pbrtDoc)
+			bc.postBatchResumeToken = pbrtDoc
 
 			return nil
 		},
@@ -380,7 +381,6 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 			bc.err = err
 		}
 	}
-	return
 }
 
 // PostBatchResumeToken returns the latest seen post batch resume token.
@@ -425,6 +425,11 @@ func (lbcd *loadBalancedCursorDeployment) Kind() description.TopologyKind {
 
 func (lbcd *loadBalancedCursorDeployment) Connection(_ context.Context) (Connection, error) {
 	return lbcd.conn, nil
+}
+
+// MinRTT always returns 0. It implements the driver.Server interface.
+func (lbcd *loadBalancedCursorDeployment) MinRTT() time.Duration {
+	return 0
 }
 
 func (lbcd *loadBalancedCursorDeployment) ProcessError(err error, conn Connection) ProcessErrorResult {

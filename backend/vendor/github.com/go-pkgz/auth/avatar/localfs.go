@@ -35,16 +35,16 @@ func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err erro
 	id := encodeID(userID)
 	location := fs.location(id) // location adds partition to path
 
-	if e := os.MkdirAll(location, 0750); e != nil {
+	if e := os.MkdirAll(location, 0o750); e != nil {
 		return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
 	}
 
 	avFile := path.Join(location, id+imgSfx)
-	fh, err := os.Create(avFile)
+	fh, err := os.Create(avFile) //nolint
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create file %s", avFile)
 	}
-	defer func() {
+	defer func() { //nolint
 		if e := fh.Close(); e != nil {
 			err = errors.Wrapf(err, "can't close avatar file %s", avFile)
 		}

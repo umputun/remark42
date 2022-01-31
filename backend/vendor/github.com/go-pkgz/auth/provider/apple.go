@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -126,7 +126,7 @@ func (lf LoadFromFileFunc) LoadPrivateKey() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyValue, err := ioutil.ReadAll(keyFile)
+	keyValue, err := io.ReadAll(keyFile)
 	if err != nil {
 		return nil, err
 	}

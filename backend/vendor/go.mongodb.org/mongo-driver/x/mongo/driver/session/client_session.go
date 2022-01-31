@@ -95,6 +95,7 @@ type LoadBalancedTransactionConnection interface {
 	Description() description.Server
 	Close() error
 	ID() string
+	ServerConnectionID() *int32
 	Address() address.Address
 	Stale() bool
 
@@ -345,8 +346,6 @@ func (c *Client) EndSession() {
 
 	c.Terminated = true
 	c.pool.ReturnSession(c.Server)
-
-	return
 }
 
 // TransactionInProgress returns true if the client session is in an active transaction.

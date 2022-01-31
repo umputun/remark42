@@ -109,6 +109,7 @@ type ClientOptions struct {
 	MaxConnIdleTime          *time.Duration
 	MaxPoolSize              *uint64
 	MinPoolSize              *uint64
+	MaxConnecting            *uint64
 	PoolMonitor              *event.PoolMonitor
 	Monitor                  *event.CommandMonitor
 	ServerMonitor            *event.ServerMonitor
@@ -121,6 +122,8 @@ type ClientOptions struct {
 	ServerAPIOptions         *ServerAPIOptions
 	ServerSelectionTimeout   *time.Duration
 	SocketTimeout            *time.Duration
+	SRVMaxHosts              *int
+	SRVServiceName           *string
 	TLSConfig                *tls.Config
 	WriteConcern             *writeconcern.WriteConcern
 	ZlibLevel                *int
@@ -135,6 +138,13 @@ type ClientOptions struct {
 	// Deprecated: This option is for internal use only and should not be set. It may be changed or removed in any
 	// release.
 	AuthenticateToAnything *bool
+
+	// Crypt specifies a custom driver.Crypt to be used to encrypt and decrypt documents. The default is no
+	// encryption.
+	//
+	// Deprecated: This option is for internal use only and should not be set (see GODRIVER-2149). It may be
+	// changed or removed in any release.
+	Crypt driver.Crypt
 
 	// Deployment specifies a custom deployment to use for the new Client.
 	//
@@ -180,12 +190,25 @@ func (c *ClientOptions) validateAndSetError() {
 	if c.LoadBalanced != nil && *c.LoadBalanced {
 		if len(c.Hosts) > 1 {
 			c.err = internal.ErrLoadBalancedWithMultipleHosts
+			return
 		}
 		if c.ReplicaSet != nil {
 			c.err = internal.ErrLoadBalancedWithReplicaSet
+			return
 		}
 		if c.Direct != nil {
 			c.err = internal.ErrLoadBalancedWithDirectConnection
+			return
+		}
+	}
+
+	// Validation for srvMaxHosts.
+	if c.SRVMaxHosts != nil && *c.SRVMaxHosts > 0 {
+		if c.ReplicaSet != nil {
+			c.err = internal.ErrSRVMaxHostsWithReplicaSet
+		}
+		if c.LoadBalanced != nil && *c.LoadBalanced {
+			c.err = internal.ErrSRVMaxHostsWithLoadBalanced
 		}
 	}
 }
@@ -290,6 +313,10 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 		c.MinPoolSize = &cs.MinPoolSize
 	}
 
+	if cs.MaxConnectingSet {
+		c.MaxConnecting = &cs.MaxConnecting
+	}
+
 	if cs.ReadConcernLevel != "" {
 		c.ReadConcern = readconcern.New(readconcern.Level(cs.ReadConcernLevel))
 	}
@@ -336,6 +363,14 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 
 	if cs.SocketTimeoutSet {
 		c.SocketTimeout = &cs.SocketTimeout
+	}
+
+	if cs.SRVMaxHosts != 0 {
+		c.SRVMaxHosts = &cs.SRVMaxHosts
+	}
+
+	if cs.SRVServiceName != "" {
+		c.SRVServiceName = &cs.SRVServiceName
 	}
 
 	if cs.SSL {
@@ -553,6 +588,14 @@ func (c *ClientOptions) SetMinPoolSize(u uint64) *ClientOptions {
 	return c
 }
 
+// SetMaxConnecting specifies the maximum number of connections a connection pool may establish simultaneously. This can
+// also be set through the "maxConnecting" URI option (e.g. "maxConnecting=2"). If this is 0, the default is used. The
+// default is 2. Values greater than 100 are not recommended.
+func (c *ClientOptions) SetMaxConnecting(u uint64) *ClientOptions {
+	c.MaxConnecting = &u
+	return c
+}
+
 // SetPoolMonitor specifies a PoolMonitor to receive connection pool events. See the event.PoolMonitor documentation
 // for more information about the structure of the monitor and events that can be received.
 func (c *ClientOptions) SetPoolMonitor(m *event.PoolMonitor) *ClientOptions {
@@ -760,6 +803,22 @@ func (c *ClientOptions) SetServerAPIOptions(opts *ServerAPIOptions) *ClientOptio
 	return c
 }
 
+// SetSRVMaxHosts specifies the maximum number of SRV results to randomly select during polling. To limit the number
+// of hosts selected in SRV discovery, this function must be called before ApplyURI. This can also be set through
+// the "srvMaxHosts" URI option.
+func (c *ClientOptions) SetSRVMaxHosts(srvMaxHosts int) *ClientOptions {
+	c.SRVMaxHosts = &srvMaxHosts
+	return c
+}
+
+// SetSRVServiceName specifies a custom SRV service name to use in SRV polling. To use a custom SRV service name
+// in SRV discovery, this function must be called before ApplyURI. This can also be set through the "srvServiceName"
+// URI option.
+func (c *ClientOptions) SetSRVServiceName(srvName string) *ClientOptions {
+	c.SRVServiceName = &srvName
+	return c
+}
+
 // MergeClientOptions combines the given *ClientOptions into a single *ClientOptions in a last one wins fashion.
 // The specified options are merged with the existing options on the client, with the specified options taking
 // precedence.
@@ -789,6 +848,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		if opt.ConnectTimeout != nil {
 			c.ConnectTimeout = opt.ConnectTimeout
 		}
+		if opt.Crypt != nil {
+			c.Crypt = opt.Crypt
+		}
 		if opt.HeartbeatInterval != nil {
 			c.HeartbeatInterval = opt.HeartbeatInterval
 		}
@@ -809,6 +871,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		}
 		if opt.MinPoolSize != nil {
 			c.MinPoolSize = opt.MinPoolSize
+		}
+		if opt.MaxConnecting != nil {
+			c.MaxConnecting = opt.MaxConnecting
 		}
 		if opt.PoolMonitor != nil {
 			c.PoolMonitor = opt.PoolMonitor
@@ -848,6 +913,12 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		}
 		if opt.SocketTimeout != nil {
 			c.SocketTimeout = opt.SocketTimeout
+		}
+		if opt.SRVMaxHosts != nil {
+			c.SRVMaxHosts = opt.SRVMaxHosts
+		}
+		if opt.SRVServiceName != nil {
+			c.SRVServiceName = opt.SRVServiceName
 		}
 		if opt.TLSConfig != nil {
 			c.TLSConfig = opt.TLSConfig
@@ -966,7 +1037,7 @@ func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (str
 					if err != nil {
 						return "", err
 					}
-					keyBytes, err = x509MarshalPKCS8PrivateKey(decrypted)
+					keyBytes, err = x509.MarshalPKCS8PrivateKey(decrypted)
 					if err != nil {
 						return "", err
 					}
@@ -1002,7 +1073,7 @@ func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (str
 		return "", err
 	}
 
-	return x509CertSubject(crt), nil
+	return crt.Subject.String(), nil
 }
 
 func stringSliceContains(source []string, target string) bool {

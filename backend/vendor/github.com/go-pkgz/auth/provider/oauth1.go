@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -113,7 +113,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	data, err := ioutil.ReadAll(uinfo.Body)
+	data, err := io.ReadAll(uinfo.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to read user info")
 		return

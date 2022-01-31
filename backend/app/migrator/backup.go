@@ -48,7 +48,7 @@ func (ab AutoBackup) Do(ctx context.Context) {
 func (ab AutoBackup) makeBackup() (string, error) {
 	log.Printf("[DEBUG] make backup for %s", ab.SiteID)
 	backupFile := fmt.Sprintf("%s/backup-%s-%s.gz", ab.BackupLocation, ab.SiteID, time.Now().Format("20060102"))
-	fh, err := os.Create(backupFile)
+	fh, err := os.Create(backupFile) //nolint:gosec // harmless
 	if err != nil {
 		return "", errors.Wrapf(err, "can't create backup file %s", backupFile)
 	}

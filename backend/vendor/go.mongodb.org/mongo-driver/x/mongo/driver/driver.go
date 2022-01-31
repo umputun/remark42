@@ -2,6 +2,7 @@ package driver // import "go.mongodb.org/mongo-driver/x/mongo/driver"
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
@@ -43,6 +44,9 @@ type Subscriber interface {
 // retrieving and returning of connections.
 type Server interface {
 	Connection(context.Context) (Connection, error)
+
+	// MinRTT returns the minimum round-trip time to the server observed over the window period.
+	MinRTT() time.Duration
 }
 
 // Connection represents a connection to a MongoDB server.
@@ -52,6 +56,7 @@ type Connection interface {
 	Description() description.Server
 	Close() error
 	ID() string
+	ServerConnectionID() *int32
 	Address() address.Address
 	Stale() bool
 }
@@ -137,11 +142,14 @@ type ErrorProcessor interface {
 }
 
 // HandshakeInformation contains information extracted from a MongoDB connection handshake. This is a helper type that
-// augments description.Server by also tracking authentication-related fields. We use this type rather than adding
-// these fields to description.Server to avoid retaining sensitive information in a user-facing type.
+// augments description.Server by also tracking server connection ID and authentication-related fields. We use this type
+// rather than adding authentication-related fields to description.Server to avoid retaining sensitive information in a
+// user-facing type. The server connection ID is stored in this type because unlike description.Server, all handshakes are
+// correlated with a single network connection.
 type HandshakeInformation struct {
 	Description             description.Server
 	SpeculativeAuthenticate bsoncore.Document
+	ServerConnectionID      *int32
 	SaslSupportedMechs      []string
 }
 
@@ -188,6 +196,11 @@ func (ssd SingleConnectionDeployment) Kind() description.TopologyKind { return d
 // Connection implements the Server interface. It always returns the embedded connection.
 func (ssd SingleConnectionDeployment) Connection(context.Context) (Connection, error) {
 	return ssd.C, nil
+}
+
+// MinRTT always returns 0. It implements the driver.Server interface.
+func (ssd SingleConnectionDeployment) MinRTT() time.Duration {
+	return 0
 }
 
 // TODO(GODRIVER-617): We can likely use 1 type for both the Type and the RetryMode by using

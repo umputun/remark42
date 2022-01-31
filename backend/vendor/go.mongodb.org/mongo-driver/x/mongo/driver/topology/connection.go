@@ -18,7 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
@@ -32,7 +31,7 @@ var globalConnectionID uint64 = 1
 
 var (
 	defaultMaxMessageSize        uint32 = 48000000
-	errResponseTooLarge          error  = errors.New("length of read message too large")
+	errResponseTooLarge                 = errors.New("length of read message too large")
 	errLoadBalancedStateMismatch        = errors.New("driver attempted to initialize in load balancing mode, but the server does not support this mode")
 )
 
@@ -51,9 +50,8 @@ type connection struct {
 	idleDeadline         atomic.Value // Stores a time.Time
 	readTimeout          time.Duration
 	writeTimeout         time.Duration
-	descMu               sync.RWMutex // Guards desc. TODO: Remove with or after GODRIVER-2038.
 	desc                 description.Server
-	isMasterRTT          time.Duration
+	helloRTT             time.Duration
 	compressor           wiremessage.CompressorID
 	zliblevel            int
 	zstdLevel            int
@@ -66,13 +64,12 @@ type connection struct {
 	currentlyStreaming   bool
 	connectContextMutex  sync.Mutex
 	cancellationListener cancellationListener
+	serverConnectionID   *int32 // the server's ID for this client's connection
 
 	// pool related fields
-	pool         *pool
-	poolID       uint64
-	generation   uint64
-	expireReason string
-	poolMonitor  *event.PoolMonitor
+	pool       *pool
+	poolID     uint64
+	generation uint64
 }
 
 // newConnection handles the creation of a connection. It does not connect the connection.
@@ -94,7 +91,6 @@ func newConnection(addr address.Address, opts ...ConnectionOption) (*connection,
 		config:               cfg,
 		connectContextMade:   make(chan struct{}),
 		cancellationListener: internal.NewCancellationListener(),
-		poolMonitor:          cfg.poolMonitor,
 	}
 	// Connections to non-load balanced deployments should eagerly set the generation numbers so errors encountered
 	// at any point during connection establishment can be processed without the connection being considered stale.
@@ -106,7 +102,7 @@ func newConnection(addr address.Address, opts ...ConnectionOption) (*connection,
 	return c, nil
 }
 
-func (c *connection) processInitializationError(opCtx context.Context, err error) {
+func (c *connection) processInitializationError(err error) {
 	atomic.StoreInt64(&c.connected, disconnected)
 	if c.nc != nil {
 		_ = c.nc.Close()
@@ -114,7 +110,7 @@ func (c *connection) processInitializationError(opCtx context.Context, err error
 
 	c.connectErr = ConnectionError{Wrapped: err, init: true}
 	if c.config.errorHandlingCallback != nil {
-		c.config.errorHandlingCallback(opCtx, c.connectErr, c.generation, c.desc.ServiceID)
+		c.config.errorHandlingCallback(c.connectErr, c.generation, c.desc.ServiceID)
 	}
 }
 
@@ -189,7 +185,7 @@ func (c *connection) connect(ctx context.Context) {
 	var tempNc net.Conn
 	tempNc, err = c.config.dialer.DialContext(dialCtx, c.addr.Network(), c.addr.String())
 	if err != nil {
-		c.processInitializationError(ctx, err)
+		c.processInitializationError(err)
 		return
 	}
 	c.nc = tempNc
@@ -205,7 +201,7 @@ func (c *connection) connect(ctx context.Context) {
 		}
 		tlsNc, err := configureTLS(dialCtx, c.config.tlsConnectionSource, c.nc, c.addr, tlsConfig, ocspOpts)
 		if err != nil {
-			c.processInitializationError(ctx, err)
+			c.processInitializationError(err)
 			return
 		}
 		c.nc = tlsNc
@@ -213,16 +209,9 @@ func (c *connection) connect(ctx context.Context) {
 
 	c.bumpIdleDeadline()
 
-	// running isMaster and authentication is handled by a handshaker on the configuration instance.
+	// running hello and authentication is handled by a handshaker on the configuration instance.
 	handshaker := c.config.handshaker
 	if handshaker == nil {
-		if c.poolMonitor != nil {
-			c.poolMonitor.Event(&event.PoolEvent{
-				Type:         event.ConnectionReady,
-				Address:      c.addr.String(),
-				ConnectionID: c.poolID,
-			})
-		}
 		return
 	}
 
@@ -233,10 +222,9 @@ func (c *connection) connect(ctx context.Context) {
 	if err == nil {
 		// We only need to retain the Description field as the connection's description. The authentication-related
 		// fields in handshakeInfo are tracked by the handshaker if necessary.
-		c.descMu.Lock()
 		c.desc = handshakeInfo.Description
-		c.descMu.Unlock()
-		c.isMasterRTT = time.Since(handshakeStartTime)
+		c.serverConnectionID = handshakeInfo.ServerConnectionID
+		c.helloRTT = time.Since(handshakeStartTime)
 
 		// If the application has indicated that the cluster is load balanced, ensure the server has included serviceId
 		// in its handshake response to signal that it knows it's behind an LB as well.
@@ -259,7 +247,7 @@ func (c *connection) connect(ctx context.Context) {
 
 	// We have a failed handshake here
 	if err != nil {
-		c.processInitializationError(ctx, err)
+		c.processInitializationError(err)
 		return
 	}
 
@@ -290,13 +278,6 @@ func (c *connection) connect(ctx context.Context) {
 				break clientMethodLoop
 			}
 		}
-	}
-	if c.poolMonitor != nil {
-		c.poolMonitor.Event(&event.PoolEvent{
-			Type:         event.ConnectionReady,
-			Address:      c.addr.String(),
-			ConnectionID: c.poolID,
-		})
 	}
 }
 
@@ -480,7 +461,7 @@ func (c *connection) read(ctx context.Context, dst []byte) (bytesRead []byte, er
 	// read the length as an int32
 	size := (int32(sizeBuf[0])) | (int32(sizeBuf[1]) << 8) | (int32(sizeBuf[2]) << 16) | (int32(sizeBuf[3]) << 24)
 
-	// In the case of an isMaster response where MaxMessageSize has not yet been set, use the hard-coded
+	// In the case of a hello response where MaxMessageSize has not yet been set, use the hard-coded
 	// defaultMaxMessageSize instead.
 	maxMessageSize := c.desc.MaxMessageSize
 	if maxMessageSize == 0 {
@@ -566,6 +547,10 @@ func (c *connection) setSocketTimeout(timeout time.Duration) {
 
 func (c *connection) ID() string {
 	return c.id
+}
+
+func (c *connection) ServerConnectionID() *int32 {
+	return c.serverConnectionID
 }
 
 // initConnection is an adapter used during connection initialization. It has the minimum
@@ -711,7 +696,7 @@ func (c *Connection) Expire() error {
 }
 
 func (c *Connection) cleanupReferences() error {
-	err := c.pool.put(c.connection)
+	err := c.pool.checkIn(c.connection)
 	if c.cleanupPoolFn != nil {
 		c.cleanupPoolFn()
 		c.cleanupPoolFn = nil
@@ -813,9 +798,6 @@ func (c *Connection) unpin(reason string) error {
 	c.refCount--
 	return nil
 }
-
-var notMasterCodes = []int32{10107, 13435}
-var recoveringCodes = []int32{11600, 11602, 13436, 189, 91}
 
 func configureTLS(ctx context.Context,
 	tlsConnSource tlsConnectionSource,

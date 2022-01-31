@@ -62,7 +62,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 		return responseError(resp)
 	}
 
-	fh, err := os.Create(fname)
+	fh, err := os.Create(fname) //nolint:gosec // harmless
 	if err != nil {
 		return errors.Wrapf(err, "can't create backup file %s", fname)
 	}

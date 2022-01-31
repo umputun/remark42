@@ -3,7 +3,6 @@ package avatar
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 )
 
 // NoOp is an empty (no-op) implementation of Store interface
@@ -20,7 +19,7 @@ func (s *NoOp) Put(userID string, reader io.Reader) (avatarID string, err error)
 
 // Get is a NoOp implementation
 func (s *NoOp) Get(avatarID string) (reader io.ReadCloser, size int, err error) {
-	return ioutil.NopCloser(bytes.NewBuffer([]byte(""))), 0, nil
+	return io.NopCloser(bytes.NewBuffer([]byte(""))), 0, nil
 }
 
 // ID is a NoOp implementation

@@ -82,9 +82,14 @@ func connectionStateString(state int64) string {
 
 // Server is a single server within a topology.
 type Server struct {
-	cfg             *serverConfig
-	address         address.Address
+	// connectionstate must be accessed using the atomic package and should be at the beginning of
+	// the struct.
+	// - atomic bug: https://pkg.go.dev/sync/atomic#pkg-note-BUG
+	// - suggested layout: https://go101.org/article/memory-layout.html
 	connectionstate int64
+
+	cfg     *serverConfig
+	address address.Address
 
 	// connection related fields
 	pool *pool
@@ -166,27 +171,24 @@ func NewServer(addr address.Address, topologyID primitive.ObjectID, opts ...Serv
 	s.desc.Store(description.NewDefaultServer(addr))
 	rttCfg := &rttConfig{
 		interval:           cfg.heartbeatInterval,
+		minRTTWindow:       5 * time.Minute,
 		createConnectionFn: s.createConnection,
 		createOperationFn:  s.createBaseOperation,
 	}
-	s.rttMonitor = newRttMonitor(rttCfg)
+	s.rttMonitor = newRTTMonitor(rttCfg)
 
 	pc := poolConfig{
-		Address:     addr,
-		MinPoolSize: cfg.minConns,
-		MaxPoolSize: cfg.maxConns,
-		MaxIdleTime: cfg.connectionPoolMaxIdleTime,
-		PoolMonitor: cfg.poolMonitor,
+		Address:       addr,
+		MinPoolSize:   cfg.minConns,
+		MaxPoolSize:   cfg.maxConns,
+		MaxConnecting: cfg.maxConnecting,
+		MaxIdleTime:   cfg.connectionPoolMaxIdleTime,
+		PoolMonitor:   cfg.poolMonitor,
 	}
 
-	connectionOpts := make([]ConnectionOption, len(cfg.connectionOpts))
-	copy(connectionOpts, cfg.connectionOpts)
+	connectionOpts := copyConnectionOpts(cfg.connectionOpts)
 	connectionOpts = append(connectionOpts, withErrorHandlingCallback(s.ProcessHandshakeError))
-	s.pool, err = newPool(pc, connectionOpts...)
-	if err != nil {
-		return nil, err
-	}
-
+	s.pool = newPool(pc, connectionOpts...)
 	s.publishServerOpeningEvent(s.address)
 
 	return s, nil
@@ -265,7 +267,7 @@ func (s *Server) Connection(ctx context.Context) (driver.Connection, error) {
 		return nil, ErrServerClosed
 	}
 
-	connImpl, err := s.pool.get(ctx)
+	connImpl, err := s.pool.checkOut(ctx)
 	if err != nil {
 		// The error has already been handled by connection.connect, which calls Server.ProcessHandshakeError.
 		return nil, err
@@ -275,10 +277,8 @@ func (s *Server) Connection(ctx context.Context) (driver.Connection, error) {
 }
 
 // ProcessHandshakeError implements SDAM error handling for errors that occur before a connection
-// finishes handshaking. opCtx is the context passed to Server.Connection() and is used to determine
-// whether or not an operation-scoped context deadline or cancellation was the cause of the
-// handshake error; it is not used for timeout or cancellation of ProcessHandshakeError.
-func (s *Server) ProcessHandshakeError(opCtx context.Context, err error, startingGenerationNumber uint64, serviceID *primitive.ObjectID) {
+// finishes handshaking.
+func (s *Server) ProcessHandshakeError(err error, startingGenerationNumber uint64, serviceID *primitive.ObjectID) {
 	// Ignore the error if the server is behind a load balancer but the service ID is unknown. This indicates that the
 	// error happened when dialing the connection or during the MongoDB handshake, so we don't know the service ID to
 	// use for clearing the pool.
@@ -292,62 +292,6 @@ func (s *Server) ProcessHandshakeError(opCtx context.Context, err error, startin
 
 	wrappedConnErr := unwrapConnectionError(err)
 	if wrappedConnErr == nil {
-		return
-	}
-
-	isCtxTimeoutOrCanceled := func(ctx context.Context) bool {
-		if ctx == nil {
-			return false
-		}
-
-		if ctx.Err() != nil {
-			return true
-		}
-
-		// In some networking functions, the deadline from the context is used to determine timeouts
-		// instead of the ctx.Done() chan closure. In that case, there can be a race condition
-		// between the networking functing returning an error and ctx.Err() returning an an error
-		// (i.e. the networking function returns an error caused by the context deadline, but
-		// ctx.Err() returns nil). If the operation-scoped context deadline was exceeded, assume
-		// operation-scoped context timeout caused the error.
-		if deadline, ok := ctx.Deadline(); ok && time.Now().After(deadline) {
-			return true
-		}
-
-		return false
-	}
-
-	isErrTimeoutOrCanceled := func(err error) bool {
-		for err != nil {
-			// Check for errors that implement the "net.Error" interface and self-report as timeout
-			// errors. Includes some "*net.OpError" errors and "context.DeadlineExceeded".
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				return true
-			}
-			// Check for context cancellation. Also handle the case where the cancellation error has
-			// been replaced by "net.errCanceled" (which isn't exported and can't be compared
-			// directly) by checking the error message.
-			if err == context.Canceled || err.Error() == "operation was canceled" {
-				return true
-			}
-
-			wrapper, ok := err.(interface{ Unwrap() error })
-			if !ok {
-				break
-			}
-			err = wrapper.Unwrap()
-		}
-
-		return false
-	}
-
-	// Ignore errors that indicate a client-side timeout occurred when the context passed into an
-	// operation timed out or was canceled (i.e. errors caused by an operation-scoped timeout).
-	// Timeouts caused by reaching connectTimeoutMS or other non-operation-scoped timeouts should
-	// still clear the pool.
-	// TODO(GODRIVER-2038): Remove this condition when connections are no longer created with an
-	// operation-scoped timeout.
-	if isCtxTimeoutOrCanceled(opCtx) && isErrTimeoutOrCanceled(wrappedConnErr) {
 		return
 	}
 
@@ -422,7 +366,7 @@ func getWriteConcernErrorForProcessing(err error) (*driver.WriteConcernError, bo
 	}
 
 	wcerr := writeCmdErr.WriteConcernError
-	if wcerr != nil && (wcerr.NodeIsRecovering() || wcerr.NotMaster()) {
+	if wcerr != nil && (wcerr.NodeIsRecovering() || wcerr.NotPrimary()) {
 		return wcerr, true
 	}
 	return nil, false
@@ -442,10 +386,10 @@ func (s *Server) ProcessError(err error, conn driver.Connection) driver.ProcessE
 	if conn.Stale() {
 		return driver.NoChange
 	}
-	// Invalidate server description if not master or node recovering error occurs.
+	// Invalidate server description if not primary or node recovering error occurs.
 	// These errors can be reported as a command error or a write concern error.
 	desc := conn.Description()
-	if cerr, ok := err.(driver.Error); ok && (cerr.NodeIsRecovering() || cerr.NotMaster()) {
+	if cerr, ok := err.(driver.Error); ok && (cerr.NodeIsRecovering() || cerr.NotPrimary()) {
 		// ignore stale error
 		if desc.TopologyVersion.CompareToIncoming(cerr.TopologyVersion) >= 0 {
 			return driver.NoChange
@@ -651,8 +595,7 @@ func (s *Server) updateDescription(desc description.Server) {
 // createConnection creates a new connection instance but does not call connect on it. The caller must call connect
 // before the connection can be used for network operations.
 func (s *Server) createConnection() (*connection, error) {
-	opts := make([]ConnectionOption, len(s.cfg.connectionOpts))
-	copy(opts, s.cfg.connectionOpts)
+	opts := copyConnectionOpts(s.cfg.connectionOpts)
 	opts = append(opts,
 		WithConnectTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
 		WithReadTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
@@ -660,15 +603,20 @@ func (s *Server) createConnection() (*connection, error) {
 		// We override whatever handshaker is currently attached to the options with a basic
 		// one because need to make sure we don't do auth.
 		WithHandshaker(func(h Handshaker) Handshaker {
-			return operation.NewIsMaster().AppName(s.cfg.appname).Compressors(s.cfg.compressionOpts).
+			return operation.NewHello().AppName(s.cfg.appname).Compressors(s.cfg.compressionOpts).
 				ServerAPI(s.cfg.serverAPI)
 		}),
 		// Override any monitors specified in options with nil to avoid monitoring heartbeats.
 		WithMonitor(func(*event.CommandMonitor) *event.CommandMonitor { return nil }),
-		withPoolMonitor(func(*event.PoolMonitor) *event.PoolMonitor { return nil }),
 	)
 
 	return newConnection(s.address, opts...)
+}
+
+func copyConnectionOpts(opts []ConnectionOption) []ConnectionOption {
+	optsCopy := make([]ConnectionOption, len(opts))
+	copy(optsCopy, opts)
+	return optsCopy
 }
 
 func (s *Server) setupHeartbeatConnection() error {
@@ -719,9 +667,9 @@ func (s *Server) checkWasCancelled() bool {
 	return s.heartbeatCtx.Err() != nil
 }
 
-func (s *Server) createBaseOperation(conn driver.Connection) *operation.IsMaster {
+func (s *Server) createBaseOperation(conn driver.Connection) *operation.Hello {
 	return operation.
-		NewIsMaster().
+		NewHello().
 		ClusterClock(s.cfg.clock).
 		Deployment(driver.SingleConnectionDeployment{conn}).
 		ServerAPI(s.cfg.serverAPI)
@@ -739,9 +687,8 @@ func (s *Server) check() (description.Server, error) {
 		err = s.setupHeartbeatConnection()
 		if err == nil {
 			// Use the description from the connection handshake as the value for this check.
-			s.rttMonitor.addSample(s.conn.isMasterRTT)
+			s.rttMonitor.addSample(s.conn.helloRTT)
 			descPtr = &s.conn.desc
-			durationNanos = s.conn.isMasterRTT.Nanoseconds()
 		}
 	}
 
@@ -762,7 +709,7 @@ func (s *Server) check() (description.Server, error) {
 			err = baseOperation.StreamResponse(s.heartbeatCtx, heartbeatConn)
 		case streamable:
 			// The server supports the streamable protocol. Set the socket timeout to
-			// connectTimeoutMS+heartbeatFrequencyMS and execute an awaitable isMaster request. Set conn.canStream so
+			// connectTimeoutMS+heartbeatFrequencyMS and execute an awaitable hello request. Set conn.canStream so
 			// the wire message will advertise streaming support to the server.
 
 			// Calculation for maxAwaitTimeMS is taken from time.Duration.Milliseconds (added in Go 1.13).
@@ -840,6 +787,11 @@ func extractTopologyVersion(err error) *description.TopologyVersion {
 	return nil
 }
 
+// MinRTT returns the minimum round-trip time to the server observed over the last 5 minutes.
+func (s *Server) MinRTT() time.Duration {
+	return s.rttMonitor.getMinRTT()
+}
+
 // String implements the Stringer interface.
 func (s *Server) String() string {
 	desc := s.Description()
@@ -850,7 +802,7 @@ func (s *Server) String() string {
 		str += fmt.Sprintf(", Tag sets: %s", desc.Tags)
 	}
 	if connState == connected {
-		str += fmt.Sprintf(", Average RTT: %d", desc.AverageRTT)
+		str += fmt.Sprintf(", Average RTT: %s, Min RTT: %s", desc.AverageRTT, s.MinRTT())
 	}
 	if desc.LastError != nil {
 		str += fmt.Sprintf(", Last error: %s", desc.LastError)
@@ -889,17 +841,21 @@ func (ss *ServerSubscription) Unsubscribe() error {
 
 // publishes a ServerOpeningEvent to indicate the server is being initialized
 func (s *Server) publishServerOpeningEvent(addr address.Address) {
+	if s == nil {
+		return
+	}
+
 	serverOpening := &event.ServerOpeningEvent{
 		Address:    addr,
 		TopologyID: s.topologyID,
 	}
 
-	if s != nil && s.cfg.serverMonitor != nil && s.cfg.serverMonitor.ServerOpening != nil {
+	if s.cfg.serverMonitor != nil && s.cfg.serverMonitor.ServerOpening != nil {
 		s.cfg.serverMonitor.ServerOpening(serverOpening)
 	}
 }
 
-// publishes a ServerHeartbeatStartedEvent to indicate an ismaster command has started
+// publishes a ServerHeartbeatStartedEvent to indicate a hello command has started
 func (s *Server) publishServerHeartbeatStartedEvent(connectionID string, await bool) {
 	serverHeartbeatStarted := &event.ServerHeartbeatStartedEvent{
 		ConnectionID: connectionID,
@@ -911,7 +867,7 @@ func (s *Server) publishServerHeartbeatStartedEvent(connectionID string, await b
 	}
 }
 
-// publishes a ServerHeartbeatSucceededEvent to indicate ismaster has succeeded
+// publishes a ServerHeartbeatSucceededEvent to indicate hello has succeeded
 func (s *Server) publishServerHeartbeatSucceededEvent(connectionID string,
 	durationNanos int64,
 	desc description.Server,
@@ -928,7 +884,7 @@ func (s *Server) publishServerHeartbeatSucceededEvent(connectionID string,
 	}
 }
 
-// publishes a ServerHeartbeatFailedEvent to indicate ismaster has failed
+// publishes a ServerHeartbeatFailedEvent to indicate hello has failed
 func (s *Server) publishServerHeartbeatFailedEvent(connectionID string,
 	durationNanos int64,
 	err error,

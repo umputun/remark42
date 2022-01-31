@@ -25,7 +25,7 @@ type SelectedServer struct {
 	Kind TopologyKind
 }
 
-// Server contains information about a node in a cluster. This is created from isMaster command responses. If the value
+// Server contains information about a node in a cluster. This is created from hello command responses. If the value
 // of the Kind field is LoadBalancer, only the Addr and Kind fields will be set. All other fields will be set to the
 // zero value of the field's type.
 type Server struct {
@@ -38,6 +38,7 @@ type Server struct {
 	CanonicalAddr         address.Address
 	ElectionID            primitive.ObjectID
 	HeartbeatInterval     time.Duration
+	HelloOK               bool
 	Hosts                 []string
 	LastError             error
 	LastUpdateTime        time.Time
@@ -47,6 +48,7 @@ type Server struct {
 	MaxMessageSize        uint32
 	Members               []address.Address
 	Passives              []string
+	Passive               bool
 	Primary               address.Address
 	ReadOnly              bool
 	ServiceID             *primitive.ObjectID // Only set for servers that are deployed behind a load balancer.
@@ -59,7 +61,7 @@ type Server struct {
 	WireVersion           *VersionRange
 }
 
-// NewServer creates a new server description from the given isMaster command response.
+// NewServer creates a new server description from the given hello command response.
 func NewServer(addr address.Address, response bson.Raw) Server {
 	desc := Server{Addr: addr, CanonicalAddr: addr, LastUpdateTime: time.Now().UTC()}
 	elements, err := response.Elements()
@@ -99,6 +101,12 @@ func NewServer(addr address.Address, response bson.Raw) Server {
 				desc.LastError = fmt.Errorf("expected 'electionId' to be a objectID but it's a BSON %s", element.Value().Type)
 				return desc
 			}
+		case "helloOk":
+			desc.HelloOK, ok = element.Value().BooleanOK()
+			if !ok {
+				desc.LastError = fmt.Errorf("expected 'helloOk' to be a boolean but it's a BSON %s", element.Value().Type)
+				return desc
+			}
 		case "hidden":
 			hidden, ok = element.Value().BooleanOK()
 			if !ok {
@@ -118,10 +126,10 @@ func NewServer(addr address.Address, response bson.Raw) Server {
 				desc.LastError = fmt.Errorf("expected 'isWritablePrimary' to be a boolean but it's a BSON %s", element.Value().Type)
 				return desc
 			}
-		case "ismaster":
+		case internal.LegacyHelloLowercase:
 			isWritablePrimary, ok = element.Value().BooleanOK()
 			if !ok {
-				desc.LastError = fmt.Errorf("expected 'ismaster' to be a boolean but it's a BSON %s", element.Value().Type)
+				desc.LastError = fmt.Errorf("expected legacy hello to be a boolean but it's a BSON %s", element.Value().Type)
 				return desc
 			}
 		case "isreplicaset":
@@ -213,6 +221,12 @@ func NewServer(addr address.Address, response bson.Raw) Server {
 			desc.Passives, err = internal.StringSliceFromRawElement(element)
 			if err != nil {
 				desc.LastError = err
+				return desc
+			}
+		case "passive":
+			desc.Passive, ok = element.Value().BooleanOK()
+			if !ok {
+				desc.LastError = fmt.Errorf("expected 'passive' to be a boolean but it's a BSON %s", element.Value().Type)
 				return desc
 			}
 		case "primary":

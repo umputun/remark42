@@ -25,7 +25,6 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/auth"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/ocsp"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -52,7 +51,6 @@ type Client struct {
 	id              uuid.UUID
 	topologyOptions []topology.Option
 	deployment      driver.Deployment
-	connString      connstring.ConnString
 	localThreshold  time.Duration
 	retryWrites     bool
 	retryReads      bool
@@ -61,7 +59,6 @@ type Client struct {
 	readConcern     *readconcern.ReadConcern
 	writeConcern    *writeconcern.WriteConcern
 	registry        *bsoncodec.Registry
-	marshaller      BSONAppender
 	monitor         *event.CommandMonitor
 	serverAPI       *driver.ServerAPIOptions
 	serverMonitor   *event.ServerMonitor
@@ -71,7 +68,7 @@ type Client struct {
 	keyVaultClientFLE *Client
 	keyVaultCollFLE   *Collection
 	mongocryptdFLE    *mcryptClient
-	cryptFLE          *driver.Crypt
+	cryptFLE          driver.Crypt
 	metadataClientFLE *Client
 	internalClientFLE *Client
 }
@@ -375,10 +372,22 @@ func (c *Client) configure(opts *options.ClientOptions) error {
 	// ClusterClock
 	c.clock = new(session.ClusterClock)
 
-	// Pass down URI so topology can determine whether or not SRV polling is required
-	topologyOpts = append(topologyOpts, topology.WithURI(func(uri string) string {
-		return opts.GetURI()
-	}))
+	// Pass down URI, SRV service name, and SRV max hosts so topology can poll SRV records correctly.
+	topologyOpts = append(topologyOpts,
+		topology.WithURI(func(uri string) string { return opts.GetURI() }),
+		topology.WithSRVServiceName(func(srvName string) string {
+			if opts.SRVServiceName != nil {
+				return *opts.SRVServiceName
+			}
+			return ""
+		}),
+		topology.WithSRVMaxHosts(func(srvMaxHosts int) int {
+			if opts.SRVMaxHosts != nil {
+				return *opts.SRVMaxHosts
+			}
+			return 0
+		}),
+	)
 
 	// AppName
 	var appName string
@@ -425,7 +434,7 @@ func (c *Client) configure(opts *options.ClientOptions) error {
 
 	// Handshaker
 	var handshaker = func(driver.Handshaker) driver.Handshaker {
-		return operation.NewIsMaster().AppName(appName).Compressors(comps).ClusterClock(c.clock).
+		return operation.NewHello().AppName(appName).Compressors(comps).ClusterClock(c.clock).
 			ServerAPI(c.serverAPI).LoadBalanced(loadBalanced)
 	}
 	// Auth & Database & Password & Username
@@ -537,6 +546,13 @@ func (c *Client) configure(opts *options.ClientOptions) error {
 			topology.WithMinConnections(func(uint64) uint64 { return *opts.MinPoolSize }),
 		)
 	}
+	// MaxConnecting
+	if opts.MaxConnecting != nil {
+		serverOpts = append(
+			serverOpts,
+			topology.WithMaxConnecting(func(uint64) uint64 { return *opts.MaxConnecting }),
+		)
+	}
 	// PoolMonitor
 	if opts.PoolMonitor != nil {
 		serverOpts = append(
@@ -625,6 +641,8 @@ func (c *Client) configure(opts *options.ClientOptions) error {
 		if err := c.configureAutoEncryption(opts); err != nil {
 			return err
 		}
+	} else {
+		c.cryptFLE = opts.Crypt
 	}
 
 	// OCSP cache
@@ -669,9 +687,9 @@ func (c *Client) configure(opts *options.ClientOptions) error {
 
 	// Deployment
 	if opts.Deployment != nil {
-		// topology options: WithSeedlist and WithURI
+		// topology options: WithSeedlist, WithURI, WithSRVServiceName and WithSRVMaxHosts
 		// server options: WithClock and WithConnectionOptions
-		if len(serverOpts) > 2 || len(topologyOpts) > 2 {
+		if len(serverOpts) > 2 || len(topologyOpts) > 4 {
 			return errors.New("cannot specify topology or server options with a deployment")
 		}
 		c.deployment = opts.Deployment
@@ -779,11 +797,13 @@ func (c *Client) configureCryptFLE(opts *options.AutoEncryptionOptions) error {
 	if !bypass {
 		cir = collInfoRetriever{client: c.metadataClientFLE}
 	}
+
 	cryptOpts := &driver.CryptOptions{
 		CollInfoFn:           cir.cryptCollInfo,
 		KeyFn:                kr.cryptKeys,
 		MarkFn:               c.mongocryptdFLE.markCommand,
 		KmsProviders:         kmsProviders,
+		TLSConfig:            opts.TLSConfig,
 		BypassAutoEncryption: bypass,
 		SchemaMap:            cryptSchemaMap,
 	}
@@ -834,6 +854,9 @@ func (c *Client) ListDatabases(ctx context.Context, filter interface{}, opts ...
 	sess := sessionFromContext(ctx)
 
 	err := c.validSession(sess)
+	if err != nil {
+		return ListDatabasesResult{}, err
+	}
 	if sess == nil && c.sessionPool != nil {
 		sess, err = session.NewClientSession(c.sessionPool, c.id, session.Implicit)
 		if err != nil {

@@ -7,21 +7,27 @@
 package uuid // import "go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
 
 import (
-	"bytes"
-	"crypto/rand"
 	"io"
+	"math/rand"
+	"time"
+
+	"go.mongodb.org/mongo-driver/internal/randutil"
 )
 
 // UUID represents a UUID.
 type UUID [16]byte
 
-var rander = rand.Reader
+// random is a package-global pseudo-random number generator.
+var random = randutil.NewLockedRand(rand.NewSource(time.Now().UnixNano()))
 
-// New generates a new uuid.
+// New returns a random UUIDv4. It uses a "math/rand" pseudo-random number generator seeded with the
+// package initialization time.
+//
+// New should not be used to generate cryptographically-secure random UUIDs.
 func New() (UUID, error) {
 	var uuid [16]byte
 
-	_, err := io.ReadFull(rander, uuid[:])
+	_, err := io.ReadFull(random, uuid[:])
 	if err != nil {
 		return [16]byte{}, err
 	}
@@ -33,5 +39,5 @@ func New() (UUID, error) {
 
 // Equal returns true if two UUIDs are equal.
 func Equal(a, b UUID) bool {
-	return bytes.Equal([]byte(a[:]), []byte(b[:]))
+	return a == b
 }

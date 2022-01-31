@@ -74,6 +74,9 @@ type Policy struct {
 	// When true, add crossorigin="anonymous" to HTML audio, img, link, script, and video tags
 	requireCrossOriginAnonymous bool
 
+	// When true, add and filter sandbox attribute on iframe tags
+	requireSandboxOnIFrame map[string]bool
+
 	// When true add target="_blank" to fully qualified links
 	// Will add for href="http://foo"
 	// Will skip for href="/foo" or href="foo"
@@ -188,6 +191,25 @@ type stylePolicyBuilder struct {
 }
 
 type urlPolicy func(url *url.URL) (allowUrl bool)
+
+type SandboxValue int64
+
+const (
+	SandboxAllowDownloads SandboxValue = iota
+	SandboxAllowDownloadsWithoutUserActivation
+	SandboxAllowForms
+	SandboxAllowModals
+	SandboxAllowOrientationLock
+	SandboxAllowPointerLock
+	SandboxAllowPopups
+	SandboxAllowPopupsToEscapeSandbox
+	SandboxAllowPresentation
+	SandboxAllowSameOrigin
+	SandboxAllowScripts
+	SandboxAllowStorageAccessByUserActivation
+	SandboxAllowTopNavigation
+	SandboxAllowTopNavigationByUserActivation
+)
 
 // init initializes the maps if this has not been done already
 func (p *Policy) init() {
@@ -678,6 +700,58 @@ func (p *Policy) AllowURLSchemeWithCustomPolicy(
 	p.allowURLSchemes[scheme] = append(p.allowURLSchemes[scheme], urlPolicy)
 
 	return p
+}
+
+// RequireSandboxOnIFrame will result in all iframe tags having a sandbox="" tag
+// Any sandbox values not specified here will be filtered from the generated HTML
+func (p *Policy) RequireSandboxOnIFrame(vals ...SandboxValue) {
+	p.requireSandboxOnIFrame = make(map[string]bool)
+
+	for val := range vals {
+		switch SandboxValue(val) {
+		case SandboxAllowDownloads:
+			p.requireSandboxOnIFrame["allow-downloads"] = true
+
+		case SandboxAllowDownloadsWithoutUserActivation:
+			p.requireSandboxOnIFrame["allow-downloads-without-user-activation"] = true
+
+		case SandboxAllowForms:
+			p.requireSandboxOnIFrame["allow-forms"] = true
+
+		case SandboxAllowModals:
+			p.requireSandboxOnIFrame["allow-modals"] = true
+
+		case SandboxAllowOrientationLock:
+			p.requireSandboxOnIFrame["allow-orientation-lock"] = true
+
+		case SandboxAllowPointerLock:
+			p.requireSandboxOnIFrame["allow-pointer-lock"] = true
+
+		case SandboxAllowPopups:
+			p.requireSandboxOnIFrame["allow-popups"] = true
+
+		case SandboxAllowPopupsToEscapeSandbox:
+			p.requireSandboxOnIFrame["allow-popups-to-escape-sandbox"] = true
+
+		case SandboxAllowPresentation:
+			p.requireSandboxOnIFrame["allow-presentation"] = true
+
+		case SandboxAllowSameOrigin:
+			p.requireSandboxOnIFrame["allow-same-origin"] = true
+
+		case SandboxAllowScripts:
+			p.requireSandboxOnIFrame["allow-scripts"] = true
+
+		case SandboxAllowStorageAccessByUserActivation:
+			p.requireSandboxOnIFrame["allow-storage-access-by-user-activation"] = true
+
+		case SandboxAllowTopNavigation:
+			p.requireSandboxOnIFrame["allow-top-navigation"] = true
+
+		case SandboxAllowTopNavigationByUserActivation:
+			p.requireSandboxOnIFrame["allow-top-navigation-by-user-activation"] = true
+		}
+	}
 }
 
 // AddSpaceWhenStrippingTag states whether to add a single space " " when
