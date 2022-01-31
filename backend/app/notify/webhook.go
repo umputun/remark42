@@ -92,7 +92,7 @@ func (t *Webhook) Send(ctx context.Context, req Request) error {
 		errMsg := fmt.Sprintf("webhook request failed with non-OK status code: %d", resp.StatusCode)
 		respBody, e := io.ReadAll(resp.Body)
 		if e != nil {
-			return fmt.Errorf(errMsg)
+			return errors.New(errMsg)
 		}
 		return fmt.Errorf("%s, body: %s", errMsg, respBody)
 	}

@@ -36,6 +36,8 @@ type config struct {
 	uri                    string
 	serverSelectionTimeout time.Duration
 	serverMonitor          *event.ServerMonitor
+	srvMaxHosts            int
+	srvServiceName         string
 	loadBalanced           bool
 }
 
@@ -198,7 +200,7 @@ func WithConnString(fn func(connstring.ConnString) connstring.ConnString) Option
 		} else {
 			// We need to add a non-auth Handshaker to the connection options
 			connOpts = append(connOpts, WithHandshaker(func(h driver.Handshaker) driver.Handshaker {
-				return operation.NewIsMaster().AppName(cs.AppName).Compressors(cs.Compressors)
+				return operation.NewHello().AppName(cs.AppName).Compressors(cs.Compressors)
 			}))
 		}
 
@@ -304,6 +306,30 @@ func WithURI(fn func(string) string) Option {
 	}
 }
 
+// WithLoadBalanced specifies whether or not the cluster is behind a load balancer.
+func WithLoadBalanced(fn func(bool) bool) Option {
+	return func(cfg *config) error {
+		cfg.loadBalanced = fn(cfg.loadBalanced)
+		return nil
+	}
+}
+
+// WithSRVMaxHosts specifies the SRV host limit that was used to create the topology.
+func WithSRVMaxHosts(fn func(int) int) Option {
+	return func(cfg *config) error {
+		cfg.srvMaxHosts = fn(cfg.srvMaxHosts)
+		return nil
+	}
+}
+
+// WithSRVServiceName specifies the SRV service name that was used to create the topology.
+func WithSRVServiceName(fn func(string) string) Option {
+	return func(cfg *config) error {
+		cfg.srvServiceName = fn(cfg.srvServiceName)
+		return nil
+	}
+}
+
 // addCACertFromFile adds a root CA certificate to the configuration given a path
 // to the containing file.
 func addCACertFromFile(cfg *tls.Config, file string) error {
@@ -335,7 +361,7 @@ func loadCert(data []byte) ([]byte, error) {
 	var certBlock *pem.Block
 
 	for certBlock == nil {
-		if data == nil || len(data) == 0 {
+		if len(data) == 0 {
 			return nil, errors.New(".pem file must have both a CERTIFICATE and an RSA PRIVATE KEY section")
 		}
 
@@ -420,13 +446,5 @@ func addClientCertFromFile(cfg *tls.Config, clientFile, keyPasswd string) (strin
 		return "", err
 	}
 
-	return x509CertSubject(crt), nil
-}
-
-// WithLoadBalanced specifies whether or not the cluster is behind a load balancer.
-func WithLoadBalanced(fn func(bool) bool) Option {
-	return func(cfg *config) error {
-		cfg.loadBalanced = fn(cfg.loadBalanced)
-		return nil
-	}
+	return crt.Subject.String(), nil
 }

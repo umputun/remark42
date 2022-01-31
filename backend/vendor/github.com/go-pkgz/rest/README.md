@@ -119,3 +119,19 @@ Compresses response with gzip.
 - `rest.SendErrorJSON` - makes `{error: blah, details: blah}` json body and responds with given error code. Also, adds context to the logged message
 - `rest.NewErrorLogger` - creates a struct providing shorter form of logger call
 - `rest.FileServer` - creates a file server for static assets with directory listing disabled
+
+## Profiler
+
+Profiler is a convenient subrouter used for mounting net/http/pprof, i.e.
+
+```go
+ func MyService() http.Handler {
+   r := chi.NewRouter()
+   // ..middlewares
+   r.Mount("/debug", middleware.Profiler())
+   // ..routes
+   return r
+ }
+```
+It exposes a whole bunch of `/pprof/*` endpoints as well as `/vars`. Builtin support for `onlyIps` allows to restrict access, which is important if it runs on a publicly exposed port. However, counting on IP check only is not that reliable way to limit request and for production use it would be better to add some sort of auth (for example provided `BasicAuth` middleware) or run with a separate http server, exposed to internal ip/port only.
+

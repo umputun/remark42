@@ -18,7 +18,7 @@ var Kotlin = internal.Register(MustNewLazyLexer(
 ))
 
 func kotlinRules() Rules {
-	const kotlinIdentifier = "(?:[_\\p{L}][\\p{L}\\p{N}]*|`@?[_\\p{L}][\\p{L}\\p{N}]+)"
+	const kotlinIdentifier = "(?:[_\\p{L}][\\p{L}\\p{N}]*|`@?[_\\p{L}][\\p{L}\\p{N}]+`)"
 
 	return Rules{
 		"root": {

@@ -23,6 +23,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/randutil"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -47,6 +48,9 @@ var ErrServerSelectionTimeout = errors.New("server selection timeout")
 
 // MonitorMode represents the way in which a server is monitored.
 type MonitorMode uint8
+
+// random is a package-global pseudo-random number generator.
+var random = randutil.NewLockedRand(rand.NewSource(time.Now().UnixNano()))
 
 // These constants are the available monitoring modes.
 const (
@@ -395,7 +399,7 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 			continue
 		}
 
-		selected := suitable[rand.Intn(len(suitable))]
+		selected := suitable[random.Intn(len(suitable))]
 		selectedS, err := t.FindServer(selected)
 		switch {
 		case err != nil:
@@ -527,7 +531,7 @@ func (t *Topology) pollSRVRecords() {
 			break
 		}
 
-		parsedHosts, err := t.dnsResolver.ParseHosts(hosts, false)
+		parsedHosts, err := t.dnsResolver.ParseHosts(hosts, t.cfg.srvServiceName, false)
 		// DNS problem or no verified hosts returned
 		if err != nil || len(parsedHosts) == 0 {
 			if !t.pollHeartbeatTime.Load().(bool) {
@@ -581,11 +585,25 @@ func (t *Topology) processSRVResults(parsedHosts []string) bool {
 		t.fsm.removeServerByAddr(addr)
 		t.publishServerClosedEvent(s.address)
 	}
+
+	// Now that we've removed all the hosts that disappeared from the SRV record, we need to add any
+	// new hosts added to the SRV record. If adding all of the new hosts would increase the number
+	// of servers past srvMaxHosts, shuffle the list of added hosts.
+	if t.cfg.srvMaxHosts > 0 && len(t.servers)+len(diff.Added) > t.cfg.srvMaxHosts {
+		random.Shuffle(len(diff.Added), func(i, j int) {
+			diff.Added[i], diff.Added[j] = diff.Added[j], diff.Added[i]
+		})
+	}
+	// Add all added hosts until the number of servers reaches srvMaxHosts.
 	for _, a := range diff.Added {
+		if t.cfg.srvMaxHosts > 0 && len(t.servers) >= t.cfg.srvMaxHosts {
+			break
+		}
 		addr := address.Address(a).Canonicalize()
 		_ = t.addServer(addr)
 		t.fsm.addServer(addr)
 	}
+
 	//store new description
 	newDesc := description.Topology{
 		Kind:                  t.fsm.Kind,

@@ -180,7 +180,7 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		// show user info
 		if elems[len(elems)-1] == "user" {
 			claims, _, err := s.jwtService.Get(r)
-			if err != nil {
+			if err != nil || claims.User == nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				rest.RenderJSON(w, rest.JSON{"error": err.Error()})
 				return
@@ -189,10 +189,10 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 			return
 		}
 
-		// status of logged in user
+		// status of logged-in user
 		if elems[len(elems)-1] == "status" {
 			claims, _, err := s.jwtService.Get(r)
-			if err != nil {
+			if err != nil || claims.User == nil {
 				rest.RenderJSON(w, rest.JSON{"status": "not logged in"})
 				return
 			}

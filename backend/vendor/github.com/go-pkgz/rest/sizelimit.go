@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -21,7 +20,7 @@ func SizeLimit(size int64) func(http.Handler) http.Handler {
 			}
 
 			// check size of the actual body
-			content, err := ioutil.ReadAll(io.LimitReader(r.Body, size+1))
+			content, err := io.ReadAll(io.LimitReader(r.Body, size+1))
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
@@ -32,7 +31,7 @@ func SizeLimit(size int64) func(http.Handler) http.Handler {
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
 				return
 			}
-			r.Body = ioutil.NopCloser(bytes.NewReader(content))
+			r.Body = io.NopCloser(bytes.NewReader(content))
 			h.ServeHTTP(w, r)
 		}
 

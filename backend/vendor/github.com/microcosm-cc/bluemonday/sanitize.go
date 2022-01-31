@@ -240,7 +240,7 @@ func (p *Policy) sanitize(r io.Reader, w io.Writer) error {
 	// rather than:
 	//   p := bluemonday.NewPolicy()
 	// If this is the case, and if they haven't yet triggered an action that
-	// would initiliaze the maps, then we need to do that.
+	// would initialize the maps, then we need to do that.
 	p.init()
 
 	buff, ok := w.(stringWriterWriter)
@@ -806,6 +806,33 @@ attrsLoop:
 				crossOrigin.Val = "anonymous"
 				cleanAttrs = append(cleanAttrs, crossOrigin)
 			}
+		}
+	}
+
+	if p.requireSandboxOnIFrame != nil && elementName == "iframe" {
+		var sandboxFound bool
+		for i, htmlAttr := range cleanAttrs {
+			if htmlAttr.Key == "sandbox" {
+				sandboxFound = true
+				var cleanVals []string
+				cleanValsSet := make(map[string]bool)
+				for _, val := range strings.Fields(htmlAttr.Val) {
+					if p.requireSandboxOnIFrame[val] {
+						if !cleanValsSet[val] {
+							cleanVals = append(cleanVals, val)
+							cleanValsSet[val] = true
+						}
+					}
+				}
+				cleanAttrs[i].Val = strings.Join(cleanVals, " ")
+			}
+		}
+
+		if !sandboxFound {
+			sandbox := html.Attribute{}
+			sandbox.Key = "sandbox"
+			sandbox.Val = ""
+			cleanAttrs = append(cleanAttrs, sandbox)
 		}
 	}
 

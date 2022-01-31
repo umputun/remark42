@@ -11,7 +11,7 @@ import (
 func Deprecation(version string, date time.Time) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			headerVal := fmt.Sprintf("version=\"%s\", date=\"%s\"", version, date.Format(time.RFC3339))
+			headerVal := fmt.Sprintf("version=%q, date=%q", version, date.Format(time.RFC3339))
 			w.Header().Set("Deprecation", headerVal)
 			h.ServeHTTP(w, r)
 		}

@@ -40,13 +40,11 @@ type Handshaker = driver.Handshaker
 type generationNumberFn func(serviceID *primitive.ObjectID) uint64
 
 type connectionConfig struct {
-	appName                  string
 	connectTimeout           time.Duration
 	dialer                   Dialer
 	handshaker               Handshaker
 	idleTimeout              time.Duration
 	cmdMonitor               *event.CommandMonitor
-	poolMonitor              *event.PoolMonitor
 	readTimeout              time.Duration
 	writeTimeout             time.Duration
 	tlsConfig                *tls.Config
@@ -55,7 +53,7 @@ type connectionConfig struct {
 	zstdLevel                *int
 	ocspCache                ocsp.Cache
 	disableOCSPEndpointCheck bool
-	errorHandlingCallback    func(opCtx context.Context, err error, startGenNum uint64, svcID *primitive.ObjectID)
+	errorHandlingCallback    func(err error, startGenNum uint64, svcID *primitive.ObjectID)
 	tlsConnectionSource      tlsConnectionSource
 	loadBalanced             bool
 	getGenerationFn          generationNumberFn
@@ -92,7 +90,7 @@ func withTLSConnectionSource(fn func(tlsConnectionSource) tlsConnectionSource) C
 	}
 }
 
-func withErrorHandlingCallback(fn func(opCtx context.Context, err error, startGenNum uint64, svcID *primitive.ObjectID)) ConnectionOption {
+func withErrorHandlingCallback(fn func(err error, startGenNum uint64, svcID *primitive.ObjectID)) ConnectionOption {
 	return func(c *connectionConfig) error {
 		c.errorHandlingCallback = fn
 		return nil
@@ -169,14 +167,6 @@ func WithTLSConfig(fn func(*tls.Config) *tls.Config) ConnectionOption {
 func WithMonitor(fn func(*event.CommandMonitor) *event.CommandMonitor) ConnectionOption {
 	return func(c *connectionConfig) error {
 		c.cmdMonitor = fn(c.cmdMonitor)
-		return nil
-	}
-}
-
-// withPoolMonitor configures a event for connection monitoring.
-func withPoolMonitor(fn func(*event.PoolMonitor) *event.PoolMonitor) ConnectionOption {
-	return func(c *connectionConfig) error {
-		c.poolMonitor = fn(c.poolMonitor)
 		return nil
 	}
 }

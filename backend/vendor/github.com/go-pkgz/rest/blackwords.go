@@ -2,7 +2,7 @@ package rest
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -13,9 +13,9 @@ func BlackWords(words ...string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if content, err := ioutil.ReadAll(r.Body); err == nil {
+			if content, err := io.ReadAll(r.Body); err == nil {
 				body := strings.ToLower(string(content))
-				r.Body = ioutil.NopCloser(bytes.NewReader(content))
+				r.Body = io.NopCloser(bytes.NewReader(content))
 
 				if len(body) > 0 {
 					for _, word := range words {

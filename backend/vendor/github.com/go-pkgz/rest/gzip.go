@@ -3,7 +3,6 @@ package rest
 import (
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,7 +20,7 @@ var gzDefaultContentTypes = []string{
 }
 
 var gzPool = sync.Pool{
-	New: func() interface{} { return gzip.NewWriter(ioutil.Discard) },
+	New: func() interface{} { return gzip.NewWriter(io.Discard) },
 }
 
 type gzipResponseWriter struct {

@@ -17,7 +17,7 @@ import (
 
 	"github.com/go-pkgz/auth/token"
 	"github.com/golang-jwt/jwt"
-	"github.com/umputun/go-flags"
+	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
 
 	"github.com/stretchr/testify/assert"

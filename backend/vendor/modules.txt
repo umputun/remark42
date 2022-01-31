@@ -1,4 +1,4 @@
-# cloud.google.com/go v0.97.0
+# cloud.google.com/go/compute v1.1.0
 cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma v1.3.0
 ## explicit
@@ -6,7 +6,7 @@ github.com/Depado/bfchroma
 # github.com/PuerkitoBio/goquery v1.8.0
 ## explicit
 github.com/PuerkitoBio/goquery
-# github.com/alecthomas/chroma v0.9.4
+# github.com/alecthomas/chroma v0.10.0
 ## explicit
 github.com/alecthomas/chroma
 github.com/alecthomas/chroma/formatters/html
@@ -46,7 +46,7 @@ github.com/aymerick/douceur/css
 github.com/aymerick/douceur/parser
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/dghubble/oauth1 v0.7.0
+# github.com/dghubble/oauth1 v0.7.1
 github.com/dghubble/oauth1
 github.com/dghubble/oauth1/twitter
 # github.com/didip/tollbooth/v6 v6.1.1
@@ -64,7 +64,7 @@ github.com/dlclark/regexp2/syntax
 # github.com/go-chi/chi v4.1.1+incompatible
 github.com/go-chi/chi
 github.com/go-chi/chi/middleware
-# github.com/go-chi/chi/v5 v5.0.5
+# github.com/go-chi/chi/v5 v5.0.7
 ## explicit
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
@@ -74,7 +74,7 @@ github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 ## explicit
 github.com/go-chi/render
-# github.com/go-pkgz/auth v1.18.1-0.20211207184750-78e5d290333d
+# github.com/go-pkgz/auth v1.18.1-0.20220131194604-2eb160b3c90c
 ## explicit
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
@@ -100,14 +100,15 @@ github.com/go-pkgz/lgr
 ## explicit
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
-# github.com/go-pkgz/rest v1.11.0
+# github.com/go-pkgz/rest v1.12.2
 ## explicit
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
-# github.com/go-pkgz/syncs v1.1.1
+# github.com/go-pkgz/syncs v1.2.0
 ## explicit
 github.com/go-pkgz/syncs
-# github.com/go-redis/redis/v7 v7.4.0
+# github.com/go-redis/redis/v7 v7.4.1
+## explicit
 github.com/go-redis/redis/v7
 github.com/go-redis/redis/v7/internal
 github.com/go-redis/redis/v7/internal/consistenthash
@@ -134,7 +135,8 @@ github.com/gorilla/css/scanner
 github.com/gorilla/feeds
 # github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
-# github.com/hashicorp/errwrap v1.0.0
+# github.com/hashicorp/errwrap v1.1.0
+## explicit
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit
@@ -142,7 +144,10 @@ github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.4
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
-# github.com/klauspost/compress v1.13.6
+# github.com/jessevdk/go-flags v1.5.0
+## explicit
+github.com/jessevdk/go-flags
+# github.com/klauspost/compress v1.14.2
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
@@ -152,7 +157,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kyokomi/emoji/v2 v2.2.8
 ## explicit
 github.com/kyokomi/emoji/v2
-# github.com/microcosm-cc/bluemonday v1.0.16
+# github.com/microcosm-cc/bluemonday v1.0.17
 ## explicit
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
@@ -172,7 +177,7 @@ github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
-# github.com/slack-go/slack v0.9.5
+# github.com/slack-go/slack v0.10.1
 ## explicit
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -180,19 +185,19 @@ github.com/slack-go/slack/internal/errorsx
 github.com/slack-go/slack/internal/misc
 github.com/slack-go/slack/internal/timex
 github.com/slack-go/slack/slackutilsx
-# github.com/stretchr/objx v0.1.1
+# github.com/stretchr/objx v0.3.0
+## explicit
 github.com/stretchr/objx
 # github.com/stretchr/testify v1.7.0
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# github.com/umputun/go-flags v1.5.1
+# github.com/tidwall/gjson v1.11.0
 ## explicit
-github.com/umputun/go-flags
 # github.com/xdg-go/pbkdf2 v1.0.0
 github.com/xdg-go/pbkdf2
-# github.com/xdg-go/scram v1.0.2
+# github.com/xdg-go/scram v1.1.0
 github.com/xdg-go/scram
 # github.com/xdg-go/stringprep v1.0.2
 github.com/xdg-go/stringprep
@@ -201,7 +206,7 @@ github.com/youmark/pkcs8
 # go.etcd.io/bbolt v1.3.6
 ## explicit
 go.etcd.io/bbolt
-# go.mongodb.org/mongo-driver v1.7.4
+# go.mongodb.org/mongo-driver v1.8.2
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
 go.mongodb.org/mongo-driver/bson/bsonoptions
@@ -210,6 +215,7 @@ go.mongodb.org/mongo-driver/bson/bsontype
 go.mongodb.org/mongo-driver/bson/primitive
 go.mongodb.org/mongo-driver/event
 go.mongodb.org/mongo-driver/internal
+go.mongodb.org/mongo-driver/internal/randutil
 go.mongodb.org/mongo-driver/mongo
 go.mongodb.org/mongo-driver/mongo/address
 go.mongodb.org/mongo-driver/mongo/description
@@ -240,7 +246,7 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+# golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
 ## explicit
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -251,7 +257,7 @@ golang.org/x/crypto/scrypt
 ## explicit
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20211105192438-b53810dc28af
+# golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -272,8 +278,7 @@ golang.org/x/oauth2/microsoft
 golang.org/x/oauth2/yandex
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/errgroup
-golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20211105183446-c75c47738b0c
+# golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.7
@@ -281,7 +286,8 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
+# golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11
+## explicit
 golang.org/x/time/rate
 # google.golang.org/appengine v1.6.7
 google.golang.org/appengine
@@ -326,5 +332,8 @@ google.golang.org/protobuf/types/descriptorpb
 gopkg.in/oauth2.v3
 gopkg.in/oauth2.v3/errors
 gopkg.in/oauth2.v3/server
-# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+# gopkg.in/yaml.v2 v2.2.8
+## explicit
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+## explicit
 gopkg.in/yaml.v3

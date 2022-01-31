@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"time"
@@ -53,7 +53,7 @@ func fetchAppleJWK(ctx context.Context, keyURL string) (set appleKeySet, err err
 		keyURL = appleKeysURL
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", keyURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", keyURL, http.NoBody)
 
 	if err != nil {
 		return set, errors.Wrap(err, "failed to prepare new request for fetch Apple public keys")
@@ -67,7 +67,7 @@ func fetchAppleJWK(ctx context.Context, keyURL string) (set appleKeySet, err err
 		return set, errors.Wrap(err, "failed to fetch Apple public keys")
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return set, errors.Wrap(err, "failed read data after Apple public key fetched")
 	}

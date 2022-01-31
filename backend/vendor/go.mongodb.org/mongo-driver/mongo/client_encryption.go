@@ -22,7 +22,7 @@ import (
 
 // ClientEncryption is used to create data keys and explicitly encrypt and decrypt BSON values.
 type ClientEncryption struct {
-	crypt          *driver.Crypt
+	crypt          driver.Crypt
 	keyVaultClient *Client
 	keyVaultColl   *Collection
 }
@@ -54,6 +54,7 @@ func NewClientEncryption(keyVaultClient *Client, opts ...*options.ClientEncrypti
 		KeyFn:        kr.cryptKeys,
 		CollInfoFn:   cir.cryptCollInfo,
 		KmsProviders: kmsProviders,
+		TLSConfig:    ceo.TLSConfig,
 	})
 	if err != nil {
 		return nil, err
