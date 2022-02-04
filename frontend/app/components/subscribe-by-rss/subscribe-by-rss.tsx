@@ -36,9 +36,9 @@ export function SubscribeByRSS({ userId }: Props) {
       position="bottom-left"
       button={
         <IconButton>
-          <Tooltip text="Subscribe on RSS feed" position="bottom-left">
             <RssIcon size={20} />
-          </Tooltip>
+          {/* <Tooltip text="Subscribe on RSS feed" position="bottom-left">
+          </Tooltip> */}
         </IconButton>
       }
     >

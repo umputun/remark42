@@ -19,7 +19,6 @@ import styles from './auth-panel.module.css';
 import { SubscribeByRSS } from 'components/subscribe-by-rss';
 import { StaticStore } from 'common/static-store';
 import { SubscribeByEmail } from 'components/subscribe-by-email';
-import { Tooltip } from 'components/ui/tooltip';
 
 interface OwnProps {
   user: User | null;
@@ -157,21 +156,19 @@ class AuthPanelComponent extends Component<Props, State> {
 
     return (
       <div className={clsx('top-panel', styles.root, { 'top-panel_loggedin': isAuthorized })}>
-        <div className={styles.col}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
+        {user ? this.renderAuthorized(user) : read_only && <Auth />}
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
-        <div className={styles.col}>
-          {read_only && (
-            <div>
-              <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
-            </div>
-          )}
-          {isSettingsLabelVisible && <div>{this.renderSettingsLabel()}</div>}
-          {isAdmin && <div>{this.renderReadOnlySwitch()}</div>}
-          <span className={styles.rss}>
-            <SubscribeByRSS userId={user?.id} />
-          </span>
-        </div>
+				{read_only && (
+					<div>
+						<FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
+					</div>
+				)}
+				{isSettingsLabelVisible && <div>{this.renderSettingsLabel()}</div>}
+				{isAdmin && <div>{this.renderReadOnlySwitch()}</div>}
+				<span className={styles.rss}>
+					<SubscribeByRSS userId={user?.id} />
+				</span>
       </div>
     );
   }

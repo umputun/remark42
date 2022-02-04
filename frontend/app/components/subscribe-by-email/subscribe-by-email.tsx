@@ -268,11 +268,11 @@ export function SubscribeByEmail() {
   return (
     <Dropdown
       button={
-        <Tooltip text="Email notifications">
-          <IconButton title={buttonTitle}>
+				<IconButton title={buttonTitle}>
+						{/* <Tooltip text="Email notifications">
+        </Tooltip> */}
             <BellIcon />
           </IconButton>
-        </Tooltip>
       }
     >
       <SubscribeByEmailForm />

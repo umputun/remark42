@@ -4,7 +4,7 @@ import { h, ComponentChildren } from 'preact';
 import styles from './tooltip.module.css';
 
 type Props = {
-  children: ComponentChildren;
+  children?: ComponentChildren;
   text: string;
   position?: 'bottom-left';
 };
