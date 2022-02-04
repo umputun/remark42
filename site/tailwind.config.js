@@ -7,6 +7,10 @@ module.exports = {
 	darkMode: 'class',
 	theme: {
 		extend: {
+			animation: {
+				'from-right-36': 'from-right-36 300ms forwards',
+				'to-right-36': 'to-right-36 300ms forwards',
+			},
 			colors: {
 				trueGray: colors.trueGray,
 				brand: {
@@ -104,6 +108,24 @@ module.exports = {
 					],
 				},
 			}),
+			keyframes: {
+				'from-right-36': {
+					'0%': {
+						right: '-9rem',
+					},
+					'100%': {
+						right: '0.5rem',
+					},
+				},
+				'to-right-36': {
+					'0%': {
+						right: '0.5rem',
+					},
+					'100%': {
+						right: '-9rem',
+					},
+				},
+			},
 		},
 	},
 	variants: {},
