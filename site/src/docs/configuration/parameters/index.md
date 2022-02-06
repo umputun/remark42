@@ -78,7 +78,7 @@ services:
 | auth.twitter.csec       | AUTH_TWITTER_CSEC       |                          | Twitter Consumer API Secret key                 |
 | auth.patreon.cid        | AUTH_PATREON_CID        |                          | Patreon OAuth Client ID                         |
 | auth.patreon.csec       | AUTH_PATREON_CSEC       |                          | Patreon OAuth Client Secret                     |
-| auth.telegram           | AUTH_TELEGRAM           |                          | Enable Telegram auth (telegram.token must be present) |
+| auth.telegram           | AUTH_TELEGRAM           | `false`                  | Enable Telegram auth (telegram.token must be present) |
 | auth.yandex.cid         | AUTH_YANDEX_CID         |                          | Yandex OAuth client ID                          |
 | auth.yandex.csec        | AUTH_YANDEX_CSEC        |                          | Yandex OAuth client secret                      |
 | auth.dev                | AUTH_DEV                | `false`                  | local OAuth2 server, development mode only      |
@@ -105,7 +105,7 @@ services:
 | smtp.port               | SMTP_PORT               |                          | SMTP port                                       |
 | smtp.username           | SMTP_USERNAME           |                          | SMTP user name                                  |
 | smtp.password           | SMTP_PASSWORD           |                          | SMTP password                                   |
-| smtp.tls                | SMTP_TLS                |                          | enable TLS for SMTP                             |
+| smtp.tls                | SMTP_TLS                | `false`                  | enable TLS for SMTP                             |
 | smtp.timeout            | SMTP_TIMEOUT            | `10s`                    | SMTP TCP connection timeout                     |
 | ssl.type                | SSL_TYPE                | none                     | `none`-HTTP, `static`-HTTPS, `auto`-HTTPS + le  |
 | ssl.port                | SSL_PORT                | `8443`                   | port for HTTPS server                           |
