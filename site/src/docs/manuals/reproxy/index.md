@@ -53,8 +53,6 @@ services:
       - SECRET=some-secret-thing
       - USER=app
       - REMARK_URL=https://remark42.example.com
-      - STORE_BOLT_PATH=/srv/var
-      - BACKUP_PATH=/srv/var/backup
       - CACHE_MAX_VALUE=10000000
       - IMAGE_PROXY_HTTP2HTTPS=true
       - AVATAR_RESIZE=48

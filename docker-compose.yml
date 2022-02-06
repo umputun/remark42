@@ -21,8 +21,6 @@ services:
     environment:
       - REMARK_URL
       - SECRET
-      - STORE_BOLT_PATH=/srv/var/db
-      - BACKUP_PATH=/srv/var/backup
       - DEBUG=true
       - AUTH_GOOGLE_CID
       - AUTH_GOOGLE_CSEC
