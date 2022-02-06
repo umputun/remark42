@@ -29,3 +29,19 @@ If running in a docker container, the command becomes:
 docker ps # to find the container name
 docker exec -it <container> remark42 remap --admin-passwd <password> -f var/rules
 ```
+
+#### Tips
+
+1. The command above sends a *request* to start the remap job. You can see the job execution logs by running:
+
+```shell
+docker logs <container>
+```
+
+2. If you see in logs an entry similar to `export failed with site "site1.com,site2" not found`, please run the command again and specify desired site with command line arguments. For example:
+
+```shell
+docker exec -it <container> remark42 remap --admin-passwd <password> -f var/rules --site site1.com
+``` 
+
+
