@@ -37,7 +37,7 @@ This variant of running Remark42 frontend code is preferred when you need extens
 To bring the backend up, run:
 
 ```shell
-cp compose-dev-frontend.yml compose-private-frontend.yml
+cp compose-dev-frontend.yml compose-private.yml
 # now, edit / debug `compose-private.yml` to your heart's content
 
 # build and run
