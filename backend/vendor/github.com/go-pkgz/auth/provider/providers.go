@@ -5,6 +5,7 @@ import (
 	"crypto/sha1" //nolint
 	"encoding/json"
 	"fmt"
+
 	"github.com/dghubble/oauth1"
 	"github.com/dghubble/oauth1/twitter"
 	"github.com/go-pkgz/auth/token"
@@ -173,7 +174,7 @@ func NewBattlenet(p Params) Oauth2Handler {
 func NewMicrosoft(p Params) Oauth2Handler {
 	return initOauth2Handler(p, Oauth2Handler{
 		name:     "microsoft",
-		endpoint: microsoft.AzureADEndpoint("consumers"),
+		endpoint: microsoft.AzureADEndpoint("common"),
 		scopes:   []string{"User.Read"},
 		infoURL:  "https://graph.microsoft.com/v1.0/me",
 		// non-beta doesn't provide photo for consumers yet
