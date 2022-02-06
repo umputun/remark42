@@ -17,7 +17,7 @@ const NODE_ID = 'remark42';
 const PUBLIC_PATH = '/web/';
 const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
-const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || 'http://127.0.0.1:9000';
+const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || `http://127.0.0.1:${PORT}`;
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
@@ -204,13 +204,25 @@ module.exports = (_, { mode, analyze }) => {
 
   const devServer = {
     port: PORT,
-    contentBase: PUBLIC_FOLDER_PATH,
-    disableHostCheck: true,
-    hot: true,
-    stats: 'minimal',
-    watchOptions: {
-      ignored: [PUBLIC_FOLDER_PATH, path.resolve(__dirname, 'node_modules')],
+    devMiddleware: {
+      stats: 'minimal',
     },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+    },
+    static: {
+      staticOptions: {
+        contentBase: PUBLIC_FOLDER_PATH,
+        watchOptions: {
+          ignored: [PUBLIC_FOLDER_PATH, path.resolve(__dirname, 'node_modules')],
+        },
+      },
+      watch: true,
+    },
+    allowedHosts: 'all',
+    hot: true,
     proxy: [
       { path: '/api', target: REMARK_API_BASE_URL, changeOrigin: true },
       { path: '/auth', target: REMARK_API_BASE_URL, changeOrigin: true },
@@ -218,7 +230,7 @@ module.exports = (_, { mode, analyze }) => {
   };
 
   const plugins = [
-    ...(isDev ? [new CleanWebpackPlugin(), new webpack.HotModuleReplacementPlugin(), new RefreshPlugin()] : []),
+    ...(isDev ? [new CleanWebpackPlugin(), new RefreshPlugin()] : []),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),

@@ -30,7 +30,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM --platform=$BUILDPLATFORM node:12.16-alpine as build-frontend-deps
+FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend-deps
 
 ARG CI
 ENV HUSKY_SKIP_INSTALL=true
@@ -40,7 +40,7 @@ ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 RUN cd /srv/frontend && CI=true npm ci --loglevel warn
 
-FROM --platform=$BUILDPLATFORM node:12.16-alpine as build-frontend
+FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
@@ -49,7 +49,7 @@ ARG NODE_ENV=production
 COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
 ADD frontend /srv/frontend
 RUN cd /srv/frontend && \
-    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npx run-p lint test check; \
+    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npm run lint test check; \
     else echo "skip frontend tests and lint" ; npm run build ; fi && \
     rm -rf ./node_modules
 

@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [14.15]
+        node: [16.13.2]
 
     steps:
       - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [14.15]
+        node: [16.13.2]
 
     steps:
       - uses: actions/checkout@v2
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [14.15]
+        node: [16.13.2]
 
     steps:
       - uses: actions/checkout@v2
@@ -80,14 +80,14 @@ jobs:
       - run: npm ci --loglevel warn
         working-directory: ./frontend
 
-      - run: npx run-p lint
+      - run: npm run lint
         working-directory: ./frontend
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [14.15]
+        node: [16.13.2]
 
     steps:
       - uses: actions/checkout@v2
