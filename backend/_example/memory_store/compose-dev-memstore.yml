@@ -29,7 +29,6 @@ services:
     environment:
       - REMARK_URL=http://127.0.0.1:8080
       - SECRET=123456
-      - BACKUP_PATH=/srv/var/backup
       - DEBUG=true
       - EMOJI=true
       - AUTH_ANON=true

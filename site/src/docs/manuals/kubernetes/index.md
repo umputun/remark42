@@ -47,10 +47,6 @@ spec:
                 secretKeyRef:
                   name: remark42
                   key: SECRET
-            - name: STORE_BOLT_PATH
-              value: "/srv/var/db"
-            - name: BACKUP_PATH
-              value: "/srv/var/backup"
             - name: AUTH_GOOGLE_CID
               valueFrom:
                 secretKeyRef:
