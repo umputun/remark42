@@ -4,7 +4,7 @@ title: Development
 
 ### Backend development
 
-The frontend development guide can be found [here](https://remark42.com/docs/contributing/development/backend/).
+The backend development guide can be found [here](https://remark42.com/docs/contributing/development/backend/).
 
 ### Frontend development
 
