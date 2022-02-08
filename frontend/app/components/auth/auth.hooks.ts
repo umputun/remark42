@@ -14,6 +14,7 @@ function handleChangeIframeSize(element: HTMLElement) {
 
 export function useDropdown(disableClosing?: boolean) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const clickInsideRef = useRef<boolean>(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const toggleDropdownState = () => {
     setShowDropdown((s) => !s);
@@ -36,24 +37,29 @@ export function useDropdown(disableClosing?: boolean) {
       setShowDropdown(false);
     }
 
-    function handleClickOutside(evt: MouseEvent) {
-      if (
-        disableClosing ||
-        dropdownElement?.contains(evt.target as HTMLDivElement) ||
-        (evt.target as Element).classList?.contains('telegram-auth')
-        // telegram button is gone from dropdown render by the time of this check
-        // without that condition click on telegram button considered as outside click
-      ) {
+    function handleClickOutside() {
+      const isClickInside = clickInsideRef.current;
+
+      clickInsideRef.current = false;
+
+      if (disableClosing || isClickInside) {
         return;
       }
 
       setShowDropdown(false);
     }
 
+    function handleClickInside() {
+      clickInsideRef.current = true;
+    }
+
+    // check if click is inside dropdown on capture phase
+    dropdownElement.addEventListener('click', handleClickInside, { capture: true });
     document.addEventListener('click', handleClickOutside);
     window.addEventListener('message', handleMessageFromParent);
 
     return () => {
+      dropdownElement.removeEventListener('click', handleClickInside);
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('message', handleMessageFromParent);
     };
