@@ -210,8 +210,8 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	limit, skip := getNumWithDef("limit"), getNumWithDef("skip")
 
 	resp := struct {
-		Comments []store.Comment `json:"comments,omitempty"`
-		Count    int             `json:"count,omitempty"`
+		Comments []store.Comment `json:"comments"`
+		Count    int             `json:"count"`
 	}{}
 
 	log.Printf("[DEBUG] get comments for userID %s, %s", userID, siteID)
@@ -220,6 +220,10 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	data, err := s.cache.Get(key, func() ([]byte, error) {
 		comments, e := s.dataService.User(siteID, userID, limit, skip, rest.GetUserOrEmpty(r))
 		if e != nil {
+			if strings.Contains(e.Error(), "no comments for user") { // store returns this error when no comments found
+				resp.Comments, resp.Count = []store.Comment{}, 0
+				return encodeJSONWithHTML(resp)
+			}
 			return nil, e
 		}
 		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
@@ -235,7 +239,6 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by user id", rest.ErrCommentNotFound)
 		return
 	}
-
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
 		log.Printf("[WARN] can't render found comments for user %s", userID)
 	}
