@@ -413,9 +413,9 @@ func TestRest_FindUserComments(t *testing.T) {
 	err := srv.DataService.Delete(c2.Locator, id, store.SoftDelete)
 	assert.NoError(t, err)
 
-	_, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=blah")
-	assert.Equal(t, 400, code, "noting for user blah")
-
+	comments, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=blah")
+	assert.Equal(t, 200, code, "noting for user blah")
+	assert.Equal(t, `{"comments":[],"count":0}`+"\n", comments)
 	{
 		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
 		assert.Equal(t, 200, code)
