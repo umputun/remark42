@@ -167,8 +167,3 @@ export interface ApiError {
   /** in-depth explanation */
   error: string;
 }
-
-export interface TelegramParams {
-  bot: string;
-  token: string;
-}

@@ -1,17 +1,8 @@
 import { h } from 'preact';
-import { fireEvent, waitFor } from '@testing-library/preact';
 import { render } from 'tests/utils';
-
-import type { User } from 'common/types';
-import * as userActions from 'store/user/actions';
 import { BASE_URL } from 'common/constants.config';
 
 import { OAuth } from './oauth';
-import * as api from './oauth.api';
-
-jest.mock('hooks/useTheme', () => ({
-  useTheme: () => 'light',
-}));
 
 describe('<OAuth />', () => {
   it('should have permanent class name', () => {
@@ -29,35 +20,5 @@ describe('<OAuth />', () => {
     expect(container.querySelector('a')?.getAttribute('href')).toBe(
       `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
     );
-  });
-
-  it('should not set user if unauthorized', async () => {
-    const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
-    const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
-    const { container } = render(<OAuth providers={['google']} />);
-
-    fireEvent.click(container.querySelector('a')!);
-
-    await waitFor(() =>
-      expect(oauthSignin).toBeCalledWith(
-        `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
-      )
-    );
-    expect(setUser).toBeCalledTimes(0);
-  });
-
-  it('should set user if authorized', async () => {
-    const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
-    const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => ({} as User));
-    const { container } = render(<OAuth providers={['google']} />);
-
-    fireEvent.click(container.querySelector('a')!);
-
-    await waitFor(() =>
-      expect(oauthSignin).toBeCalledWith(
-        `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
-      )
-    );
-    expect(setUser).toBeCalledWith({});
   });
 });
