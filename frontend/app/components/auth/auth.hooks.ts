@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState, useMemo } from 'preact/hooks';
+import { useIntl } from 'react-intl';
+
+import { errorMessages, RequestError } from 'utils/errorUtils';
 import { parseMessage, postMessageToParent } from 'utils/post-message';
+import { messages } from './auth.messsages';
 
 function handleChangeIframeSize(element: HTMLElement) {
   const { top } = element.getBoundingClientRect();
@@ -79,4 +83,39 @@ export function useDropdown(disableClosing?: boolean) {
   }, [showDropdown]);
 
   return [rootRef, showDropdown, toggleDropdownState] as const;
+}
+
+export function useErrorMessage(): [string | null, (e: unknown) => void] {
+  const intl = useIntl();
+  const [invalidReason, setInvalidReason] = useState<string | null>(null);
+
+  return useMemo(() => {
+    let errorMessage = invalidReason;
+
+    if (invalidReason && messages[invalidReason]) {
+      errorMessage = intl.formatMessage(messages[invalidReason]);
+    }
+
+    if (invalidReason && errorMessages[invalidReason]) {
+      errorMessage = intl.formatMessage(errorMessages[invalidReason]);
+    }
+
+    function setError(err: unknown): void {
+      if (err === null) {
+        setInvalidReason(null);
+        return;
+      }
+
+      if (typeof err === 'string') {
+        setInvalidReason(err);
+        return;
+      }
+
+      const errorReason = err instanceof RequestError ? err.error : err instanceof Error ? err.message : 'error.0';
+
+      setInvalidReason(errorReason);
+    }
+
+    return [errorMessage, setError];
+  }, [intl, invalidReason]);
 }
