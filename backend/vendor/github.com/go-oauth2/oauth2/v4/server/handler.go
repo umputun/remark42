@@ -1,11 +1,12 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	"gopkg.in/oauth2.v3"
-	"gopkg.in/oauth2.v3/errors"
+	"github.com/go-oauth2/oauth2/v4"
+	"github.com/go-oauth2/oauth2/v4/errors"
 )
 
 type (
@@ -16,22 +17,28 @@ type (
 	ClientAuthorizedHandler func(clientID string, grant oauth2.GrantType) (allowed bool, err error)
 
 	// ClientScopeHandler check the client allows to use scope
-	ClientScopeHandler func(clientID, scope string) (allowed bool, err error)
+	ClientScopeHandler func(tgr *oauth2.TokenGenerateRequest) (allowed bool, err error)
 
 	// UserAuthorizationHandler get user id from request authorization
 	UserAuthorizationHandler func(w http.ResponseWriter, r *http.Request) (userID string, err error)
 
 	// PasswordAuthorizationHandler get user id from username and password
-	PasswordAuthorizationHandler func(username, password string) (userID string, err error)
+	PasswordAuthorizationHandler func(ctx context.Context, username, password string) (userID string, err error)
 
 	// RefreshingScopeHandler check the scope of the refreshing token
-	RefreshingScopeHandler func(newScope, oldScope string) (allowed bool, err error)
+	RefreshingScopeHandler func(tgr *oauth2.TokenGenerateRequest, oldScope string) (allowed bool, err error)
+
+	// RefreshingValidationHandler check if refresh_token is still valid. eg no revocation or other
+	RefreshingValidationHandler func(ti oauth2.TokenInfo) (allowed bool, err error)
 
 	// ResponseErrorHandler response error handing
 	ResponseErrorHandler func(re *errors.Response)
 
 	// InternalErrorHandler internal error handing
 	InternalErrorHandler func(err error) (re *errors.Response)
+
+	// PreRedirectErrorHandler is used to override "redirect-on-error" behavior
+	PreRedirectErrorHandler func(w http.ResponseWriter, req *AuthorizeRequest, err error) error
 
 	// AuthorizeScopeHandler set the authorized scope
 	AuthorizeScopeHandler func(w http.ResponseWriter, r *http.Request) (scope string, err error)
@@ -41,15 +48,18 @@ type (
 
 	// ExtensionFieldsHandler in response to the access token with the extension of the field
 	ExtensionFieldsHandler func(ti oauth2.TokenInfo) (fieldsValue map[string]interface{})
+
+	// ResponseTokenHandler response token handing
+	ResponseTokenHandler func(w http.ResponseWriter, data map[string]interface{}, header http.Header, statusCode ...int) error
 )
 
 // ClientFormHandler get client data from form
 func ClientFormHandler(r *http.Request) (string, string, error) {
 	clientID := r.Form.Get("client_id")
-	clientSecret := r.Form.Get("client_secret")
-	if clientID == "" || clientSecret == "" {
+	if clientID == "" {
 		return "", "", errors.ErrInvalidClient
 	}
+	clientSecret := r.Form.Get("client_secret")
 	return clientID, clientSecret, nil
 }
 
