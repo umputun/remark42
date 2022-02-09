@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.18.1-0.20220202181615-0642f8d25ee6
+	github.com/go-pkgz/auth v1.18.1-0.20220208222503-c7d63480b38f
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kyokomi/emoji/v2 v2.2.8
-	github.com/microcosm-cc/bluemonday v1.0.17
+	github.com/microcosm-cc/bluemonday v1.0.18
 	github.com/pkg/errors v0.9.1
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.3.0
@@ -35,13 +35,11 @@ require (
 	github.com/slack-go/slack v0.10.1
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.11.0 // indirect
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/goleak v1.1.12
-	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed
+	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

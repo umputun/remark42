@@ -707,7 +707,7 @@ func (p *Policy) AllowURLSchemeWithCustomPolicy(
 func (p *Policy) RequireSandboxOnIFrame(vals ...SandboxValue) {
 	p.requireSandboxOnIFrame = make(map[string]bool)
 
-	for val := range vals {
+	for _, val := range vals {
 		switch SandboxValue(val) {
 		case SandboxAllowDownloads:
 			p.requireSandboxOnIFrame["allow-downloads"] = true
