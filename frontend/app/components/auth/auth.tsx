@@ -1,9 +1,10 @@
 import clsx from 'clsx';
-import { h, Fragment } from 'preact';
-import { useState } from 'preact/hooks';
+import { h, Fragment, JSX } from 'preact';
+import { useState, useRef } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
 
+import { BASE_URL, API_BASE } from 'common/constants.config';
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { CrossIcon } from 'components/icons/cross';
@@ -14,41 +15,82 @@ import { ArrowIcon } from 'components/icons/arrow';
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
 import { messages } from './auth.messsages';
-import { useDropdown } from './auth.hooks';
+import { useDropdown, useErrorMessage } from './auth.hooks';
 import { getProviders, getTokenInvalidReason } from './auth.utils';
-import { emailSignin, verifyEmailSignin, anonymousSignin } from './auth.api';
+import {
+  oauthSignin,
+  emailSignin,
+  verifyEmailSignin,
+  anonymousSignin,
+  verifyTelegramSignin,
+  getTelegramSigninParams,
+} from './auth.api';
 
 import styles from './auth.module.css';
 
 export function Auth() {
   const intl = useIntl();
+  const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
   const dispatch = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
   // UI State
   const [isLoading, setLoading] = useState(false);
-  const [view, setView] = useState<typeof formProviders[number] | 'token'>(formProviders[0]);
-  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token');
+  const [view, setView] = useState<typeof formProviders[number] | 'token' | 'telegram'>(formProviders[0]);
+  const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
-  const [invalidReason, setInvalidReason] = useState<keyof typeof messages | null>(null);
+  const [errorMessage, setError] = useErrorMessage();
 
   function handleClickSingIn(evt: Event) {
     evt.preventDefault();
     toggleDropdownState();
   }
 
+  function resetView() {
+    setView(formProviders[0]);
+    setError(null);
+  }
+
   function handleDropdownClose(evt: Event) {
     evt.preventDefault();
-    setView(formProviders[0]);
+    resetView();
     toggleDropdownState();
+  }
+
+  function handleClickBack(evt: JSX.TargetedMouseEvent<HTMLButtonElement>) {
+    evt.preventDefault();
+    resetView();
+  }
+
+  async function handleOauthClick(evt: JSX.TargetedMouseEvent<HTMLAnchorElement>) {
+    evt.preventDefault();
+
+    const { href, dataset } = evt.currentTarget;
+
+    if (dataset.providerName?.toLowerCase() === 'telegram') {
+      telegramParamsRef.current = await getTelegramSigninParams();
+      window.open(`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`);
+      setView('telegram');
+      setError(null);
+      return;
+    }
+
+    const user = await oauthSignin(href);
+
+    if (user === null) {
+      // TODO: add error message when user is null
+      return;
+    }
+
+    dispatch(setUser(user));
   }
 
   function handleProviderChange(evt: Event) {
     const { value } = evt.currentTarget as HTMLInputElement;
 
-    setInvalidReason(null);
     setView(value as typeof formProviders[number]);
+    setError(null);
   }
 
   async function handleSubmit(evt: Event) {
@@ -56,7 +98,7 @@ export function Auth() {
 
     evt.preventDefault();
     setLoading(true);
-    setInvalidReason(null);
+    setError(null);
 
     try {
       switch (view) {
@@ -80,7 +122,7 @@ export function Auth() {
           const invalidReason = getTokenInvalidReason(token);
 
           if (invalidReason) {
-            setInvalidReason(invalidReason);
+            setError(invalidReason);
           } else {
             const user = await verifyEmailSignin(token);
             dispatch(setUser(user));
@@ -90,7 +132,27 @@ export function Auth() {
         }
       }
     } catch (e) {
-      setInvalidReason(e.message || e.error);
+      setError(e);
+    }
+
+    setLoading(false);
+  }
+
+  async function handleTelegramSubmit(evt: Event) {
+    evt.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (telegramParamsRef.current === null) {
+      telegramParamsRef.current = await getTelegramSigninParams();
+    }
+
+    try {
+      const user = await verifyTelegramSignin(telegramParamsRef.current.token);
+
+      dispatch(setUser(user));
+    } catch (e) {
+      setError(e);
     }
 
     setLoading(false);
@@ -99,13 +161,12 @@ export function Auth() {
   function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
     setView('email');
+    setError(null);
   }
 
   const hasOAuthProviders = oauthProviders.length > 0;
   const hasFormProviders = formProviders.length > 0;
-  const errorMessage =
-    invalidReason !== null && messages[invalidReason] ? intl.formatMessage(messages[invalidReason]) : invalidReason;
-  const isTokenView = view === 'token';
+
   const formFooterJSX = (
     <>
       {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
@@ -114,6 +175,7 @@ export function Auth() {
       </Button>
     </>
   );
+
   return (
     <div className={clsx('auth', styles.root)}>
       <Button className="auth-button" selected={isDropdownShown} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
@@ -122,7 +184,61 @@ export function Auth() {
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
-            {isTokenView ? (
+            {view === 'telegram' && telegramParamsRef.current !== null ? (
+              <>
+                <div className={clsx('auth-row', styles.row)}>
+                  <div className={styles.backButton}>
+                    <Button className="auth-back-button" size="xs" kind="transparent" onClick={handleClickBack}>
+                      <svg
+                        className={styles.backButtonArrow}
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M8.75 3L5 7.25L9 11"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      {intl.formatMessage(messages.back)}
+                    </Button>
+                  </div>
+                  <button
+                    className={clsx('auth-close-button', styles.closeButton)}
+                    title="Close sign-in dropdown"
+                    onClick={handleDropdownClose}
+                  >
+                    <CrossIcon />
+                  </button>
+                </div>
+                <p className={clsx('telegram', styles.telegram)}>
+                  {intl.formatMessage(messages.telegramMessage1)}{' '}
+                  <a href={`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}>
+                    {intl.formatMessage(messages.telegramLink)}
+                  </a>
+                  {window.screen.width >= 768 && ` ${intl.formatMessage(messages.telegramOptionalQR)}`}{' '}
+                  {intl.formatMessage(messages.telegramMessage2)}
+                  <br />
+                  {intl.formatMessage(messages.telegramMessage3)}
+                </p>
+                {window.screen.width >= 768 && (
+                  <img
+                    src={`${BASE_URL}${API_BASE}/qr/telegram?url=https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
+                    className={clsx('telegram-qr', styles.telegramQR)}
+                    alt={'telegram QR-code'}
+                  />
+                )}
+                <Button key="submit" className="auth-submit" type="submit" onClick={handleTelegramSubmit}>
+                  {intl.formatMessage(messages.telegramCheck)}
+                </Button>
+                {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
+              </>
+            ) : view === 'token' ? (
               <>
                 <div className={clsx('auth-row', styles.row)}>
                   <div className={styles.backButton}>
@@ -171,7 +287,7 @@ export function Auth() {
                     <h5 className={clsx('auth-form-title', styles.title)}>
                       {intl.formatMessage(messages.oauthSource)}
                     </h5>
-                    <OAuth providers={oauthProviders} />
+                    <OAuth providers={oauthProviders} onOauthClick={handleOauthClick} />
                   </>
                 )}
                 {hasOAuthProviders && hasFormProviders && (

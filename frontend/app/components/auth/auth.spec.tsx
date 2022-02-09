@@ -1,23 +1,19 @@
 import '@testing-library/jest-dom';
 import { h } from 'preact';
-import { fireEvent, waitFor } from '@testing-library/preact';
+import { fireEvent, waitFor, screen } from '@testing-library/preact';
 import { render } from 'tests/utils';
 
 import { OAuthProvider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
+import { BASE_URL } from 'common/constants.config';
+import * as userActions from 'store/user/actions';
 
 import { Auth } from './auth';
 import * as utils from './auth.utils';
 import * as api from './auth.api';
 import { getProviderData } from './components/oauth.utils';
 
-jest.mock('react-redux', () => ({
-  useDispatch: () => jest.fn(),
-}));
-
-jest.mock('hooks/useTheme', () => ({
-  useTheme: () => 'light',
-}));
+window.open = jest.fn();
 
 describe('<Auth/>', () => {
   let defaultProviders = StaticStore.config.auth_providers;
@@ -35,23 +31,23 @@ describe('<Auth/>', () => {
     });
 
     it('should close dropdown by click on button', () => {
-      const { container, getByText } = render(<Auth />);
+      const { container } = render(<Auth />);
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-      fireEvent.click(getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
-      fireEvent.click(getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
     it('should close dropdown by click outside of it', () => {
-      const { container, getByText } = render(<Auth />);
+      const { container } = render(<Auth />);
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-      fireEvent.click(getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       fireEvent.click(document);
@@ -59,11 +55,11 @@ describe('<Auth/>', () => {
     });
 
     it('should close dropdown by message from parent', async () => {
-      const { container, getByText } = render(<Auth />);
+      const { container } = render(<Auth />);
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-      fireEvent.click(getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       window.postMessage('{"clickOutside": true}', '*');
@@ -81,63 +77,63 @@ describe('<Auth/>', () => {
   ] as [OAuthProvider[]][])('should renders with %j providers', async (providers) => {
     StaticStore.config.auth_providers = providers;
 
-    const { container, getByText, getByTitle, queryByPlaceholderText, queryByText } = render(<Auth />);
+    const { container } = render(<Auth />);
 
     expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-    expect(getByText('Sign In')).toHaveClass('auth-button');
-    fireEvent.click(getByText('Sign In'));
+    expect(screen.getByText('Sign In')).toHaveClass('auth-button');
+    fireEvent.click(screen.getByText('Sign In'));
     expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     providers.forEach((p) => {
       const { name } = getProviderData(p, 'light');
-      expect(getByTitle(`Sign In with ${name}`)).toBeInTheDocument();
+      expect(screen.getByTitle(`Sign In with ${name}`)).toBeInTheDocument();
     });
-    expect(queryByPlaceholderText('Username')).not.toBeInTheDocument();
-    expect(queryByText('Submit')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Username')).not.toBeInTheDocument();
+    expect(screen.queryByText('Submit')).not.toBeInTheDocument();
   });
 
   it('should render email provider', () => {
     StaticStore.config.auth_providers = ['email'];
 
-    const { getByText, getByPlaceholderText } = render(<Auth />);
+    render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    expect(getByText('email')).toHaveClass('auth-form-title');
-    expect(getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
-    expect(getByText('Submit')).toHaveClass('auth-submit');
+    fireEvent.click(screen.getByText('Sign In'));
+    expect(screen.getByText('email')).toHaveClass('auth-form-title');
+    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
+    expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
+    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
 
   it('should render anonymous provider', () => {
     StaticStore.config.auth_providers = ['anonymous'];
 
-    const { getByText, getByPlaceholderText } = render(<Auth />);
+    render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    expect(getByText('anonymous')).toHaveClass('auth-form-title');
-    expect(getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(getByText('Submit')).toHaveClass('auth-submit');
+    fireEvent.click(screen.getByText('Sign In'));
+    expect(screen.getByText('anonymous')).toHaveClass('auth-form-title');
+    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
+    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
 
   it('should render tabs with two form providers', () => {
     StaticStore.config.auth_providers = ['email', 'anonymous'];
 
-    const { getByText, getByLabelText, getByPlaceholderText, getByDisplayValue } = render(<Auth />);
+    render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    expect(getByDisplayValue('email')).toHaveAttribute('id', 'form-provider-email');
-    expect(getByText('email')).toHaveAttribute('for', 'form-provider-email');
-    expect(getByText('email')).toHaveClass('auth-tabs-item');
-    expect(getByDisplayValue('anonymous')).toHaveAttribute('id', 'form-provider-anonymous');
-    expect(getByText('anonym')).toHaveAttribute('for', 'form-provider-anonymous');
-    expect(getByText('anonym')).toHaveClass('auth-tabs-item');
-    expect(getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(getByText('Submit')).toHaveClass('auth-submit');
+    fireEvent.click(screen.getByText('Sign In'));
+    expect(screen.getByDisplayValue('email')).toHaveAttribute('id', 'form-provider-email');
+    expect(screen.getByText('email')).toHaveAttribute('for', 'form-provider-email');
+    expect(screen.getByText('email')).toHaveClass('auth-tabs-item');
+    expect(screen.getByDisplayValue('anonymous')).toHaveAttribute('id', 'form-provider-anonymous');
+    expect(screen.getByText('anonym')).toHaveAttribute('for', 'form-provider-anonymous');
+    expect(screen.getByText('anonym')).toHaveClass('auth-tabs-item');
+    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
+    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
 
-    fireEvent.click(getByLabelText('email'));
-    expect(getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
-    expect(getByText('Submit')).toHaveClass('auth-submit');
+    fireEvent.click(screen.getByLabelText('email'));
+    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
+    expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
+    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
 
   it('should send email and then verify forms', async () => {
@@ -146,28 +142,28 @@ describe('<Auth/>', () => {
     jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({} as User));
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
 
-    const { getByText, getByPlaceholderText, getByTitle, getByRole } = render(<Auth />);
+    render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    fireEvent.change(getByPlaceholderText('Username'), { target: { value: 'username' } });
-    fireEvent.change(getByPlaceholderText('Email Address'), {
+    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
+    fireEvent.change(screen.getByPlaceholderText('Email Address'), {
       target: { value: 'email@email.com' },
     });
-    fireEvent.click(getByText('Submit'));
+    fireEvent.click(screen.getByText('Submit'));
 
-    expect(getByRole('presentation')).toHaveClass('spinner');
+    expect(screen.getByRole('presentation')).toHaveClass('spinner');
     await waitFor(() => expect(api.emailSignin).toBeCalled());
     expect(api.emailSignin).toBeCalledWith('email@email.com', 'username');
 
-    expect(getByText('Back')).toHaveClass('auth-back-button');
-    expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(getByPlaceholderText('Token')).toHaveClass('auth-token-textarea');
+    expect(screen.getByText('Back')).toHaveClass('auth-back-button');
+    expect(screen.getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
+    expect(screen.getByPlaceholderText('Token')).toHaveClass('auth-token-textarea');
 
-    fireEvent.change(getByPlaceholderText('Token'), {
+    fireEvent.change(screen.getByPlaceholderText('Token'), {
       target: { value: 'token' },
     });
 
-    fireEvent.click(getByText('Submit'));
+    fireEvent.click(screen.getByText('Submit'));
 
     await waitFor(() => expect(api.verifyEmailSignin).toBeCalled());
     expect(api.verifyEmailSignin).toBeCalledWith('token');
@@ -205,13 +201,13 @@ describe('<Auth/>', () => {
     StaticStore.config.auth_providers = ['anonymous'];
     jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({} as User));
 
-    const { getByText, getByPlaceholderText, getByRole } = render(<Auth />);
+    render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    fireEvent.change(getByPlaceholderText('Username'), { target: { value: 'username' } });
-    fireEvent.click(getByText('Submit'));
-    expect(getByRole('presentation')).toHaveClass('spinner');
-    expect(getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
+    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
+    fireEvent.click(screen.getByText('Submit'));
+    expect(screen.getByRole('presentation')).toHaveClass('spinner');
+    expect(screen.getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
     await waitFor(() => expect(api.anonymousSignin).toBeCalled());
   });
 
@@ -223,10 +219,10 @@ describe('<Auth/>', () => {
   `('should remove spaces in the first/last position in username', async ({ value, expected }) => {
     StaticStore.config.auth_providers = ['email'];
 
-    const { getByText, getByPlaceholderText } = render(<Auth />);
-    fireEvent.click(getByText('Sign In'));
+    render(<Auth />);
+    fireEvent.click(screen.getByText('Sign In'));
 
-    const input = getByPlaceholderText('Username');
+    const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
     fireEvent.blur(input);
@@ -242,14 +238,82 @@ describe('<Auth/>', () => {
   `('should leave spaces in the middle of username', ({ value, expected }) => {
     StaticStore.config.auth_providers = ['email'];
 
-    const { getByText, getByPlaceholderText } = render(<Auth />);
-    fireEvent.click(getByText('Sign In'));
+    render(<Auth />);
 
-    const input = getByPlaceholderText('Username');
+    fireEvent.click(screen.getByText('Sign In'));
+
+    const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
     fireEvent.blur(input);
 
     expect(input).toHaveValue(expected);
+  });
+
+  describe('OAuth providers', () => {
+    it('should not set user if unauthorized', async () => {
+      StaticStore.config.auth_providers = ['google'];
+
+      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
+
+      render(<Auth />);
+      fireEvent.click(screen.getByText('Sign In'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
+      await waitFor(() =>
+        expect(oauthSignin).toBeCalledWith(
+          `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
+        )
+      );
+      expect(setUser).toBeCalledTimes(0);
+      expect(screen.getByText('Sign In')).toBeInTheDocument();
+    });
+
+    it('should set user if authorized', async () => {
+      StaticStore.config.auth_providers = ['google'];
+
+      const user = { name: 'UserName1' } as User;
+      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => user);
+
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
+
+      await waitFor(() =>
+        expect(oauthSignin).toBeCalledWith(
+          `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
+        )
+      );
+      expect(setUser).toBeCalledWith(user);
+    });
+  });
+
+  describe('Telegram auth', () => {
+    it('should go through the auth flow', async () => {
+      StaticStore.config.auth_providers = ['telegram'];
+
+      const user = { name: 'UserName1' } as User;
+      const getTelegramSigninParams = jest
+        .spyOn(api, 'getTelegramSigninParams')
+        .mockImplementationOnce(async () => ({ bot: 'botid', token: 'tokentokentoken' }));
+      const verifyTelegramSignin = jest.spyOn(api, 'verifyTelegramSignin').mockImplementationOnce(async () => user);
+      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByTitle('Sign In with Telegram'));
+      await waitFor(() => expect(getTelegramSigninParams).toBeCalledTimes(1));
+      const telegramLink = screen.getByText('by the link').getAttribute('href');
+      expect(typeof telegramLink === 'string').toBe(true);
+      const telegramUrl = new URL(telegramLink as string);
+      expect(telegramUrl.origin).toBe('https://t.me');
+      expect(telegramUrl.searchParams.get('start')).toBe('tokentokentoken');
+      expect(telegramUrl.pathname.startsWith(`/botid`)).toBeTruthy();
+      fireEvent.click(screen.getByText('Check'));
+      await waitFor(() => expect(verifyTelegramSignin).toBeCalledTimes(1));
+      await waitFor(() => expect(setUser).toHaveBeenCalledWith(user));
+    });
   });
 });
