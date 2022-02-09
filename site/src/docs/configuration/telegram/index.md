@@ -39,8 +39,6 @@ For a description of the Bot API, see this page: https://core.telegram.org/bots/
 
 ## Authentication
 
-**IMPORTANT: It doesn't work as of 30.01.2022, will be working after [this](https://github.com/umputun/remark42/issues/707) issue resolution** (waits for frontend support).
-
 To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
 
 ## Notifications
