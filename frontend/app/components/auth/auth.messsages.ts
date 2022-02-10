@@ -65,9 +65,13 @@ export const messages = defineMessages<string>({
     id: 'auth.telegram-check',
     defaultMessage: 'Check',
   },
+  telegramQR: {
+    id: 'auth.telegram-qr',
+    defaultMessage: 'Telegram QR-code',
+  },
   telegramMessage1: {
     id: 'auth.telegram-message-1',
-    defaultMessage: 'Open the Telegram',
+    defaultMessage: 'Open Telegram',
   },
   telegramOptionalQR: {
     id: 'auth.telegram-optional-qr',

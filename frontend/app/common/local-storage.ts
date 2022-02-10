@@ -1,3 +1,4 @@
+import { isObject } from 'utils/is-object';
 import { IS_STORAGE_AVAILABLE } from './constants';
 
 const failMessage = 'remark42: localStorage access denied, check browser preferences';
@@ -57,7 +58,7 @@ export function updateJsonItem<T>(key: string, value: T) {
     return;
   }
 
-  if (value !== null && typeof value === 'object') {
+  if (isObject(value)) {
     setJsonItem(key, { ...savedData, ...value });
     return;
   }
