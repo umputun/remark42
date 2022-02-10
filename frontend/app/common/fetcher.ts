@@ -106,7 +106,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
 
       return res.text();
     } catch (e) {
-      if (e?.message === 'Failed to fetch') {
+      if (e instanceof Error && e.message === 'Failed to fetch') {
         throw new RequestError(e.message, 'fetch-error');
       }
 

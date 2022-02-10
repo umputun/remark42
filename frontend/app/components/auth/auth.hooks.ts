@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 
 import { errorMessages, RequestError } from 'utils/errorUtils';
+import { isObject } from 'utils/is-object';
 import { parseMessage, postMessageToParent } from 'utils/post-message';
 import { messages } from './auth.messsages';
 
@@ -16,9 +17,10 @@ export function useDropdown(disableClosing?: boolean) {
   const rootRef = useRef<HTMLDivElement>(null);
   const clickInsideRef = useRef<boolean>(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const toggleDropdownState = () => {
+
+  function toggleDropdownState() {
     setShowDropdown((s) => !s);
-  };
+  }
 
   useEffect(() => {
     const dropdownElement = rootRef.current;
@@ -93,17 +95,22 @@ export function useDropdown(disableClosing?: boolean) {
 
 export function useErrorMessage(): [string | null, (e: unknown) => void] {
   const intl = useIntl();
-  const [invalidReason, setInvalidReason] = useState<string | null>(null);
+  const [invalidReason, setInvalidReason] = useState<string | number | null>(null);
 
   return useMemo(() => {
     let errorMessage = invalidReason;
 
-    if (invalidReason && messages[invalidReason]) {
+    if (invalidReason !== null && typeof invalidReason === 'string' && messages[invalidReason]) {
       errorMessage = intl.formatMessage(messages[invalidReason]);
     }
 
-    if (invalidReason && errorMessages[invalidReason]) {
+    if (invalidReason !== null && errorMessages[invalidReason]) {
       errorMessage = intl.formatMessage(errorMessages[invalidReason]);
+    }
+
+    if (typeof errorMessage === 'number') {
+      console.error('Wrong error message', errorMessage);
+      errorMessage = null;
     }
 
     function setError(err: unknown): void {
@@ -117,7 +124,12 @@ export function useErrorMessage(): [string | null, (e: unknown) => void] {
         return;
       }
 
-      const errorReason = err instanceof RequestError ? err.error : err instanceof Error ? err.message : 'error.0';
+      const errorReason =
+        err instanceof RequestError || (isObject(err) && typeof (err as Record<string, string>).error === 'string')
+          ? (err as Record<'error', string>).error
+          : err instanceof Error
+          ? err.message
+          : 0;
 
       setInvalidReason(errorReason);
     }

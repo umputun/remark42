@@ -69,21 +69,29 @@ export function Auth() {
     const { href, dataset } = evt.currentTarget;
 
     if (dataset.providerName?.toLowerCase() === 'telegram') {
-      telegramParamsRef.current = await getTelegramSigninParams();
-      window.open(`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`);
+      try {
+        telegramParamsRef.current = await getTelegramSigninParams();
+      } catch (e) {
+        setError(e);
+        return;
+      }
+
       setView('telegram');
       setError(null);
       return;
     }
 
-    const user = await oauthSignin(href);
+    try {
+      const user = await oauthSignin(href);
 
-    if (user === null) {
-      // TODO: add error message when user is null
-      return;
+      if (user === null) {
+        // TODO: add error message when user is null
+        return;
+      }
+      dispatch(setUser(user));
+    } catch (e) {
+      setError(e);
     }
-
-    dispatch(setUser(user));
   }
 
   function handleProviderChange(evt: Event) {
@@ -144,7 +152,12 @@ export function Auth() {
     setError(null);
 
     if (telegramParamsRef.current === null) {
-      telegramParamsRef.current = await getTelegramSigninParams();
+      try {
+        telegramParamsRef.current = await getTelegramSigninParams();
+      } catch (e) {
+        setError(e);
+        return;
+      }
     }
 
     try {
@@ -218,7 +231,11 @@ export function Auth() {
                 </div>
                 <p className={clsx('telegram', styles.telegram)}>
                   {intl.formatMessage(messages.telegramMessage1)}{' '}
-                  <a href={`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}>
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
+                  >
                     {intl.formatMessage(messages.telegramLink)}
                   </a>
                   {window.screen.width >= 768 && ` ${intl.formatMessage(messages.telegramOptionalQR)}`}{' '}
@@ -229,14 +246,16 @@ export function Auth() {
                 {window.screen.width >= 768 && (
                   <img
                     src={`${BASE_URL}${API_BASE}/qr/telegram?url=https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
+                    height="180"
+                    width="200"
                     className={clsx('telegram-qr', styles.telegramQR)}
-                    alt={'telegram QR-code'}
+                    alt={intl.formatMessage(messages.telegramQR)}
                   />
                 )}
+                {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
                 <Button key="submit" className="auth-submit" type="submit" onClick={handleTelegramSubmit}>
                   {intl.formatMessage(messages.telegramCheck)}
                 </Button>
-                {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
               </>
             ) : view === 'token' ? (
               <>
