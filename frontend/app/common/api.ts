@@ -47,7 +47,9 @@ export const removeMyComment = (id: Comment['id']): Promise<void> =>
 
 export const getPreview = (text: string): Promise<string> => apiFetcher.post('/preview', {}, { text });
 
-export const getUser = (): Promise<User | null> => apiFetcher.get<User | null>('/user').catch(() => null);
+export function getUser(): Promise<User | null> {
+  return apiFetcher.get<User | null>('/user').catch(() => null);
+}
 
 export const uploadImage = (image: File): Promise<Image> => {
   const data = new FormData();

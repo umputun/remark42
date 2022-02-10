@@ -13,6 +13,7 @@ export const OAUTH_DATA = {
       dark: require('./assets/github-dark.svg').default as string,
     },
   },
+  telegram: require('./assets/telegram.svg').default as string,
 } as const;
 
 export const OAUTH_PROVIDERS = Object.keys(OAUTH_DATA);

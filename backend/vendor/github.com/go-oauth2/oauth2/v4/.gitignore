@@ -23,6 +23,8 @@ _testmain.go
 *.test
 *.prof
 
+coverage.txt
+
 # OSX
 *.DS_Store
 *.db
