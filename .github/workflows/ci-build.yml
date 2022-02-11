@@ -82,4 +82,4 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' }}
         env:
           UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
-        run: curl https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
+        run: curl -s https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
