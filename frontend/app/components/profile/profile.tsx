@@ -186,7 +186,7 @@ export function Profile() {
       <aside className={clsx('profile-sidebar', isCurrent && 'profile_current', styles.sidebar)}>
         <header className={clsx('profile-header', styles.header)}>
           <div className={clsx('profile-avatar', styles.avatar)}>
-            <Avatar data-testid="avatar" url={user.picture} />
+            <Avatar data-testid="avatar" src={user.picture} />
           </div>
           <div className={clsx('profile-content', styles.info)}>
             <div className={clsx('profile-title', styles.name)}>{user.name}</div>

@@ -58,6 +58,7 @@
 }
 
 .rss {
+  align-self: flex-end;
   margin-left: 16px;
 
   &::before {

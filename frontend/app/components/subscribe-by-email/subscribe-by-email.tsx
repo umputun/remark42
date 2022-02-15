@@ -262,17 +262,17 @@ export function SubscribeByEmailForm() {
 export function SubscribeByEmail() {
   const intl = useIntl();
   const user = useSelector<StoreState, User | null>(({ user }) => user);
-  const isAnonymous = isUserAnonymous(user);
+  const isAnonymous = user?.id.startsWith('anonymous_');
   const buttonTitle = intl.formatMessage(isAnonymous ? messages.onlyRegisteredUsers : messages.subscribeByEmail);
 
   return (
     <Dropdown
       button={
-				<IconButton title={buttonTitle}>
-						{/* <Tooltip text="Email notifications">
+        <IconButton title={buttonTitle}>
+          {/* <Tooltip text="Email notifications">
         </Tooltip> */}
-            <BellIcon />
-          </IconButton>
+          <BellIcon />
+        </IconButton>
       }
     >
       <SubscribeByEmailForm />

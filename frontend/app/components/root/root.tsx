@@ -214,16 +214,7 @@ export class Root extends Component<Props, State> {
 
     return (
       <Fragment>
-        <AuthPanel
-          user={this.props.user}
-          hiddenUsers={this.props.hiddenUsers}
-          isCommentsDisabled={isCommentsDisabled}
-          postInfo={this.props.info}
-          signout={this.props.signout}
-          onBlockedUsersShow={this.onBlockedUsersShow}
-          onBlockedUsersHide={this.onBlockedUsersHide}
-          onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
-        />
+        <AuthPanel />
         <div className="root__main">
           {isSettingsVisible ? (
             <Settings

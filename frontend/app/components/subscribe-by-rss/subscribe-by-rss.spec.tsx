@@ -1,35 +1,39 @@
+import { screen } from '@testing-library/preact';
+import { User } from 'common/types';
 import { h } from 'preact';
-import { shallow } from 'enzyme';
+import { render } from 'tests/utils';
 
-import { SubscribeByRSS, createSubscribeUrl } from '.';
+import { SubscribeByRSS, createSubscribeUrl } from './subscribe-by-rss';
 
 jest.mock('react-redux', () => ({
   useSelector: jest.fn((fn) => fn({ theme: 'light' })),
 }));
 
-jest.mock('react-intl', () => {
-  const messages = require('locales/en.json');
-  const reactIntl = jest.requireActual('react-intl');
-  const intlProvider = new reactIntl.IntlProvider({ locale: 'en', messages }, {});
-
-  return {
-    ...reactIntl,
-    useIntl: () => intlProvider.state.intl,
-  };
-});
-
 describe('<SubscribeByRSS/>', () => {
-  it('should be render links in dropdown', () => {
-    const wrapper = shallow(<SubscribeByRSS userId="user-1" />);
+  describe('for unauthorized', () => {
+    it('should render links in dropdown', () => {
+      render(<SubscribeByRSS />);
 
-    expect(wrapper.find('.comment-form__rss-dropdown__link')).toHaveLength(3);
+      expect(screen.getByText('Thread')).toBeInTheDocument();
+      expect(screen.getByText('Site')).toBeInTheDocument();
+      expect(screen.getByText('Replies')).not.toBeInTheDocument();
+    });
   });
 
-  it('should have userId in replies link', () => {
-    const wrapper = shallow(<SubscribeByRSS userId="user-1" />);
+  describe('for authorized', () => {
+    const user = { id: 'user-1' } as User;
+    it('should render links in dropdown', () => {
+      render(<SubscribeByRSS />, { user });
 
-    expect(wrapper.find('.comment-form__rss-dropdown__link').at(2).prop('href')).toBe(
-      createSubscribeUrl('reply', '&user=user-1')
-    );
+      expect(screen.getByText('Thread')).toBeInTheDocument();
+      expect(screen.getByText('Site')).toBeInTheDocument();
+      expect(screen.getByText('Replies')).toBeInTheDocument();
+    });
+
+    it('should have userId in replies link', () => {
+      render(<SubscribeByRSS />, { user });
+
+      expect(screen.getByText('Replies').getAttribute('href')).toBe(createSubscribeUrl('reply', '&user=user-1'));
+    });
   });
 });

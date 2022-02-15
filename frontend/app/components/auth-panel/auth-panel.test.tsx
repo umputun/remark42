@@ -1,115 +1,73 @@
 import { h } from 'preact';
-import { mount } from 'enzyme';
-import createMockStore from 'redux-mock-store';
-import { Middleware } from 'redux';
-import { Provider } from 'react-redux';
-import { IntlProvider } from 'react-intl';
+import '@testing-library/jest-dom/extend-expect';
 
-import type { User } from 'common/types';
-import enMessages from 'locales/en.json';
+import { render } from 'tests/utils';
+import { screen } from '@testing-library/preact';
 
-import { AuthPanel, Props } from './auth-panel';
+import { AuthPanel } from './auth-panel';
+import { User } from 'common/types';
+import { StaticStore } from 'common/static-store';
 
-const DefaultProps = {
-  postInfo: {
-    read_only: false,
-    url: 'https://example.com',
-    count: 3,
-  },
-  hiddenUsers: {},
-} as Props;
-
-const initialStore = {
-  user: null,
-  theme: 'light',
-  comments: {
-    sort: '-score',
-  },
-  provider: { name: 'google' },
-} as const;
-
-const mockStore = createMockStore([] as Middleware[]);
-const createWrapper = (props: Props = DefaultProps, store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
-  mount(
-    <IntlProvider locale="en" messages={enMessages}>
-      <Provider store={store}>
-        <AuthPanel {...props} />
-      </Provider>
-    </IntlProvider>
-  );
+const user = {
+  name: 'User Name',
+  picture: 'http://localhost/picture.png',
+} as User;
 
 describe('<AuthPanel />', () => {
-  // it('should be shallowed with email subscription button', () => {
-  //   StaticStore.config.email_notifications = true;
+  describe('Unauthorised user', () => {
+    it('should render as unauthorized', () => {
+      render(<AuthPanel />, { user: null });
 
-  //   const props = { ...DEFAULT_PROPS, user, intl };
-  //   const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
-
-  //   expect(wrapper.exists(SubscribeByEmail)).toEqual(true);
-  // });
-
-  // it('should be rendered without email subscription button when email_notifications disabled', () => {
-  //   StaticStore.config.email_notifications = false;
-
-  //   const props = { ...DEFAULT_PROPS, user, intl };
-  //   const wrapper = shallow<CommentForm, CommentFormProps>(<CommentForm {...props} />);
-
-  //   expect(wrapper.exists(SubscribeByEmail)).toEqual(false);
-  // });
-
-  describe('For not authorized : null', () => {
-    it('should not render settings if there is no hidden users', () => {
-      const element = createWrapper({
-        ...DefaultProps,
-        user: null,
-        postInfo: { ...DefaultProps.postInfo, read_only: true },
-      } as Props);
-
-      const adminAction = element.find('.auth-panel__admin-action');
-
-      expect(adminAction.exists()).toBe(false);
+      expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
     });
 
-    it('should render settings if there is some hidden users', () => {
-      const element = createWrapper({
-        ...DefaultProps,
+    it('should NOT render settings if there IS NO hidden users', () => {
+      render(<AuthPanel />, { user: null, info: { url: '', count: 10, read_only: true } });
+
+      expect(screen.queryByTestId('settings-button')).not.toBeInTheDocument();
+    });
+
+    it('should render settings if there IS some hidden users', () => {
+      render(<AuthPanel />, {
         user: null,
-        postInfo: { ...DefaultProps.postInfo, read_only: true },
-        hiddenUsers: { hidden_joe: {} as User },
-      } as Props);
-
-      const adminAction = element.find('.auth-panel__admin-action');
-
-      expect(adminAction.text()).toEqual('Show settings');
+        info: { url: '', count: 10, read_only: true },
+        hiddenUsers: { hiddenUser: user },
+      });
+      expect(screen.getByTestId('settings-button')).not.toBeInTheDocument();
     });
   });
 
-  describe('For authorized user', () => {
-    it('should render info about current user', () => {
-      const element = createWrapper({
-        ...DefaultProps,
-        user: { id: 'john', name: 'John' },
-      } as Props);
+  describe('Authorized user', () => {
+    it('should render as authorized', () => {
+      render(<AuthPanel />, { user });
 
-      const authPanelColumn = element.find('.auth-panel__column');
+      expect(screen.getByTestId('user-button')).toBeInTheDocument();
+      expect(screen.getByText('User Name')).toBeInTheDocument();
+      expect(screen.getByTitle('User Name')).toBeInTheDocument();
+      expect(screen.getByTitle('User Name').nodeName).toBe('IMG');
+      expect(screen.getByTitle('Sign Out').nodeName).toBe('BUTTON');
+    });
 
-      expect(authPanelColumn.length).toEqual(2);
+    it('should be rendered WITH email subscription button', () => {
+      StaticStore.config.email_notifications = true;
 
-      const userInfo = authPanelColumn.first();
+      render(<AuthPanel />, { user });
+      expect(screen.getByTestId('user-notifications')).toBeInTheDocument();
+    });
 
-      expect(userInfo.text()).toEqual(expect.stringContaining('John'));
+    it('should be rendered WITHOUT email subscription button', () => {
+      StaticStore.config.email_notifications = false;
+
+      render(<AuthPanel />, { user });
+      expect(screen.getByTestId('user-notifications')).not.toBeInTheDocument();
     });
   });
-  describe('For admin user', () => {
-    it('should render admin action', () => {
-      const element = createWrapper({
-        ...DefaultProps,
-        user: { id: 'test', admin: true, name: 'John' },
-      } as Props);
 
-      const adminAction = element.find('.auth-panel__admin-action').first();
+  describe('Authorized administrator', () => {
+    it('should render administrator action', () => {
+      render(<AuthPanel />, { user: { ...user, admin: true } });
 
-      expect(adminAction.text()).toEqual('Show settings');
+      expect(screen.getByTestId('disable-comments')).toBeInTheDocument();
     });
   });
 });
