@@ -69,6 +69,10 @@ export function Profile() {
   function handleClickClose() {
     const rootElement = rootRef.current;
 
+    if (rootElement === null) {
+      return;
+    }
+
     rootElement.classList.remove(styles.rootAppear);
     rootElement.classList.add(styles.rootDisappear);
     // No need to unsubscribe because iframe will be destroyed
@@ -114,7 +118,7 @@ export function Profile() {
   }, []);
 
   useEffect(() => {
-    rootRef.current.classList.add(styles.rootAppear);
+    rootRef.current?.classList.add(styles.rootAppear);
   }, []);
 
   if (!user.id) {

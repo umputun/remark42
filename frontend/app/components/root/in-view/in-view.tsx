@@ -1,5 +1,5 @@
 import { Component, VNode } from 'preact';
-import { useState, useEffect, useRef, PropRef } from 'preact/hooks';
+import { useState, useEffect, useRef, Ref } from 'preact/hooks';
 
 let instanceMap: WeakMap<Element, (inView: boolean) => void>;
 let observer: IntersectionObserver;
@@ -25,7 +25,7 @@ function getObserver(): { observer: IntersectionObserver; instanceMap: WeakMap<E
 }
 
 type Props = {
-  children: <T>(props: { inView: boolean; ref: PropRef<T> }) => VNode;
+  children: <T>(props: { inView: boolean; ref: Ref<T> }) => VNode;
 };
 
 export function InView({ children }: Props) {
@@ -33,22 +33,19 @@ export function InView({ children }: Props) {
   const ref = useRef<Component<unknown, unknown>>(null);
 
   useEffect(() => {
-    const element = ref.current;
+    const componentBase = ref.current?.base;
     const { observer, instanceMap } = getObserver();
 
-    if (!(element.base instanceof Element)) {
+    if (!(componentBase instanceof Element)) {
       return;
     }
 
-    observer.observe(element.base);
-    instanceMap.set(element.base, setInView);
+    observer.observe(componentBase);
+    instanceMap.set(componentBase, setInView);
 
     return () => {
-      if (!(element.base instanceof Element)) {
-        return;
-      }
-      observer.unobserve(element.base);
-      instanceMap.delete(element.base);
+      observer.unobserve(componentBase);
+      instanceMap.delete(componentBase);
     };
   }, []);
 

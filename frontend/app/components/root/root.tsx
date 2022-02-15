@@ -325,12 +325,22 @@ export function ConnectedRoot() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // TODO: throttle updates
+    const rootElement = rootRef.current;
+
+    if (!rootElement) {
+      return;
+    }
+
+    let animationFrameId: number;
+
     const observer = new MutationObserver(() => {
-      postMessageToParent({ height: document.body.offsetHeight });
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = window.requestAnimationFrame(() => {
+        postMessageToParent({ height: document.body.offsetHeight });
+      });
     });
 
-    observer.observe(rootRef.current, { attributes: true, childList: true, subtree: true });
+    observer.observe(rootElement, { attributes: true, childList: true, subtree: true });
 
     return () => observer.disconnect();
   }, []);

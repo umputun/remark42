@@ -1,4 +1,5 @@
 import { IntlShape, defineMessages } from 'react-intl';
+import { isObject } from './is-object';
 
 export const errorMessages = defineMessages<string | number>({
   'fetch-error': {
@@ -107,26 +108,29 @@ export const errorMessages = defineMessages<string | number>({
   },
 });
 
-export type FetcherError =
-  | string
-  | {
-      /**
-       * Error code, that is part of server error response.
-       *
-       * Note that -1 is reserved for error where `error` field shall be used directly
-       */
-      code?: number;
-      details?: string;
-      error: string;
-    };
+export type FetcherError = {
+  /**
+   * Error code, that is part of server error response.
+   *
+   * Note that -1 is reserved for error where `error` field shall be used directly
+   */
+  code?: number;
+  details?: string;
+  error: string;
+};
 
-export function extractErrorMessageFromResponse(response: FetcherError, intl: IntlShape): string {
+export function extractErrorMessageFromResponse(response: unknown, intl: IntlShape): string {
   if (typeof response === 'string') {
     return response;
   }
 
-  if (typeof response.code === 'number' && errorMessages[response.code]) {
-    return intl.formatMessage(errorMessages[response.code]);
+  if (isObject(response)) {
+    const resp = response as FetcherError;
+    const code = resp.code || 0;
+
+    if (typeof resp.code === 'number' && errorMessages[code]) {
+      return intl.formatMessage(errorMessages[code]);
+    }
   }
 
   return intl.formatMessage(errorMessages[0]);
