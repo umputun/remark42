@@ -11,10 +11,7 @@ cp compose-dev-backend.yml compose-private.yml
 # now, edit / debug `compose-private.yml` to your heart's content
 
 # build and run
-make rundev
-# this is an equivalent of these two commands:
-# docker-compose -f compose-private.yml build
-# docker-compose -f compose-private.yml up
+docker-compose -f compose-private.yml up --build
 ```
 
 It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To access the UI demo page go to <http://127.0.0.1:8080/web/>. By default, you would be logged in as `dev_user`, defined as admin. You can tweak any of the [supported parameters](https://remark42.com/docs/configuration/parameters/) in corresponded yml file.

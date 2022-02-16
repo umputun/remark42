@@ -23,7 +23,9 @@ RUN \
         CGO_ENABLED=1 go test -race -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=atomic -coverprofile=/profile.cov_tmp ./... && \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
         golangci-lint run --config ../.golangci.yml ./... ; \
-    else echo "skip backend tests and linter" ; fi
+    else \
+    	echo "skip backend tests and linter" \
+    ; fi
 
 RUN \
     version="$(/script/version.sh)" && \
@@ -33,25 +35,41 @@ RUN \
 FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend-deps
 
 ARG CI
+ARG SKIP_FRONTEND_BUILD
 ENV HUSKY_SKIP_INSTALL=true
 
-RUN apk add --no-cache --update git
+RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
+    	apk add --no-cache --update git \
+    ; fi
 ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
-RUN cd /srv/frontend && CI=true npm ci --loglevel warn
+WORKDIR /srv/frontend
+RUN mkdir node_modules
+RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
+    	CI=true npm ci --loglevel warn \
+    else \
+    	echo "skip frontend build" \
+    ; fi
 
 FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
+ARG SKIP_FRONTEND_BUILD
 ARG NODE_ENV=production
 
 COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
 ADD frontend /srv/frontend
-RUN cd /srv/frontend && \
-    if [ -z "$SKIP_FRONTEND_TEST" ] ; then npm run lint test check; \
-    else echo "skip frontend tests and lint" ; npm run build ; fi && \
-    rm -rf ./node_modules
+WORKDIR /srv/frontend
+RUN mkdir public
+RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
+		if [ -z "$SKIP_FRONTEND_TEST" ] ; then \
+			npm run lint test check; \
+			else \
+    			echo "skip frontend tests and lint" ; npm run build \
+    	; fi \
+    ; fi
+RUN rm -rf ./node_modules
 
 FROM umputun/baseimage:app-v1.8.0
 

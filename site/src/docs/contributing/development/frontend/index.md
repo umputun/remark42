@@ -41,10 +41,7 @@ cp compose-dev-frontend.yml compose-private.yml
 # now, edit / debug `compose-private.yml` to your heart's content
 
 # build and run
-make rundev
-# this is an equivalent of these two commands:
-# docker-compose -f compose-private.yml build
-# docker-compose -f compose-private.yml up
+docker-compose -f compose-private.yml up --build
 ```
 
 Then in the new terminal tab or window, run the following to start the frontend with Hot Reloading:
@@ -60,7 +57,7 @@ It starts Remark42 backend on `127.0.0.1:8080` and adds local OAuth2 provider "D
 
 Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
 
-**Important**: Before submitting your changes as a Pull Request, re-run the backend using the `make rundev` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
+**Important**: Before submitting your changes as a Pull Request, run the backend using the `docker-compose -f compose-dev-frontend.yml build --build-arg SKIP_FRONTEND_BUILD=""; docker-compose -f compose-private.yml up` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
 
 #### Static build
 
