@@ -384,7 +384,13 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	png, err := qrcode.Encode(text, qrcode.Medium, 256)
+	q, err := qrcode.New(text, qrcode.Medium)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't generate QR", rest.ErrInternal)
+		return
+	}
+	q.DisableBorder = true
+	png, err := q.PNG(256)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't generate QR", rest.ErrInternal)
 		return
