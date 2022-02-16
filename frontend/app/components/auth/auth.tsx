@@ -246,7 +246,7 @@ export function Auth() {
                 {window.screen.width >= 768 && (
                   <img
                     src={`${BASE_URL}${API_BASE}/qr/telegram?url=https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
-                    height="180"
+                    height="200"
                     width="200"
                     className={clsx('telegram-qr', styles.telegramQR)}
                     alt={intl.formatMessage(messages.telegramQR)}
