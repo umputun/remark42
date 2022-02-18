@@ -358,9 +358,9 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
 		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"})
 	}
-	if len(s.Notify.Type) != 0 && // explicitly empty, would likely never happen due to "none" default
-		!(len(s.Notify.Type) == 1 && contains("none", s.Notify.Type)) && // ignore default, "none" notify type
-		(len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) { // new notify param(s) are used, safe to ignore the old one
+	if !contains("none", s.Notify.Type) &&
+		contains("none", s.Notify.Users) &&
+		contains("none", s.Notify.Admins) { // if new notify param(s) are used, safe to ignore the old one
 		s.handleDeprecatedNotifications()
 		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"})
 	}
@@ -404,8 +404,8 @@ func (s *ServerCommand) findDeprecatedFlagsCollisions() (result []DeprecatedFlag
 	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut != emailDefaultTimout && s.Auth.Email.TimeOut != s.SMTP.TimeOut {
 		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true})
 	}
-	if !(len(s.Notify.Type) == 1 && contains("none", s.Notify.Type)) && // default, "none" notify type
-		(len(s.Notify.Users) != 0 || len(s.Notify.Admins) != 0) { // new notify param(s) are used, old ones will be ignored
+	if !contains("none", s.Notify.Type) &&
+		(!contains("none", s.Notify.Users) || !contains("none", s.Notify.Admins)) {
 		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Collision: true})
 	}
 	if stringsSetAndDifferent(s.Notify.Telegram.Token, s.Telegram.Token) {
