@@ -1,7 +1,5 @@
 FROM node:12.16-alpine as build-frontend-deps
 
-ARG CI
-
 ENV SKIP_FRONTEND_TEST=true
 
 RUN apk add --no-cache --update git
@@ -11,7 +9,6 @@ RUN cd /srv/frontend && CI=true npm ci
 
 FROM node:12.16-alpine as build-frontend
 
-ARG CI
 ARG NODE_ENV=production
 ENV SKIP_FRONTEND_TEST=true
 ENV HUSKY_SKIP_INSTALL=true

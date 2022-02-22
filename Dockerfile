@@ -1,6 +1,5 @@
 FROM umputun/baseimage:buildgo-v1.8.0 as build-backend
 
-ARG CI
 ARG GITHUB_REF
 ARG GITHUB_SHA
 ARG GIT_BRANCH
@@ -34,7 +33,6 @@ RUN \
 
 FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend-deps
 
-ARG CI
 ARG SKIP_FRONTEND_BUILD
 ENV HUSKY_SKIP_INSTALL=true
 
@@ -53,7 +51,6 @@ RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
 
 FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend
 
-ARG CI
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
 ARG NODE_ENV=production
