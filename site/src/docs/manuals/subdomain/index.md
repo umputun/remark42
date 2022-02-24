@@ -1,5 +1,5 @@
 ---
-title: Configure Instance on Subdomain
+title: Configure Instance without Subdomain
 ---
 
 ## How to configure remark42 without a subdomain
@@ -45,7 +45,7 @@ services:
 
 The `nginx.conf` would then look something like:
 
-```
+```nginx
   location /remark42/ {
     rewrite /remark42/(.*) /$1 break;
     proxy_pass http://remark42:8080/; // use internal docker name of remark42 container for proxy

@@ -23,7 +23,7 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 * Clean, lightweight and customizable UI with white and dark themes
 * Multi-site mode from a single instance
 * Integration with automatic SSL (direct and via [nginx-le](https://github.com/nginx-le/nginx-le))
-* [Privacy focused](#privacy)
+* [Privacy focused](https://remark42.com/#privacy)
 
 [Demo site](https://remark42.com/demo/) available with all authentication methods, including email auth and anonymous access.
 
@@ -32,7 +32,7 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 Comments example:
 ![](screenshots/comments.png)
 
-For admin screenshots see [Admin UI wiki](https://github.com/umputun/remark42/wiki/Admin-UI)
+For admin screenshots see [Admin UI documentation](https://remark42.com/docs/manuals/admin-interface/)
 </details>
 
 All remark42 documentation is available [by the link](https://remark42.com/docs/getting-started/installation/).

@@ -5,10 +5,6 @@
       {
         "title": "Installation",
         "href": "/getting-started/installation/"
-      },
-      {
-        "title": "System Requirements",
-        "href": "/getting-started/system-requirements/"
       }
     ]
   },
@@ -45,7 +41,11 @@
     "section": "Manuals",
     "children": [
       {
-        "title": "Subdomain",
+        "title": "Admin UI",
+        "href": "/manuals/admin-interface/"
+      },
+      {
+        "title": "Without subdomain",
         "href": "/manuals/subdomain/"
       },
       {
