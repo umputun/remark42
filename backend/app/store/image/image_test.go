@@ -48,7 +48,7 @@ func TestService_ResizeJpeg(t *testing.T) {
 
 	img, err := readAndValidateImage(fh, 32000)
 	assert.NoError(t, err)
-	assert.Equal(t, 23983, len(img))
+	assert.Equal(t, 16756, len(img))
 
 	img = resize(img, 400, 300)
 	assert.Equal(t, 10918, len(img))
