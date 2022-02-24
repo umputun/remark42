@@ -75,7 +75,7 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	t.Log(imgPath)
 	data, err := os.ReadFile(imgPath)
 	assert.NoError(t, err)
-	assert.Equal(t, 23983, len(data))
+	assert.Equal(t, 16756, len(data))
 }
 
 func TestFsStore_SaveAndCommit(t *testing.T) {
