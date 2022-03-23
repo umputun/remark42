@@ -18,7 +18,7 @@ type BackupCommand struct {
 	ExportPath  string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
 	ExportFile  string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
 	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Timeout     time.Duration `long:"timeout" default:"15m" description:"export (backup) timeout"`
+	Timeout     time.Duration `long:"timeout" default:"60m" description:"export (backup) timeout"`
 	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
 	CommonOpts
 }

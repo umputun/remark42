@@ -19,7 +19,7 @@ type ImportCommand struct {
 	InputFile   string        `short:"f" long:"file" description:"input file name" required:"true"`
 	Provider    string        `short:"p" long:"provider" default:"disqus" choice:"disqus" choice:"wordpress" choice:"commento" description:"import format"` //nolint
 	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Timeout     time.Duration `long:"timeout" default:"15m" description:"import timeout"`
+	Timeout     time.Duration `long:"timeout" default:"60m" description:"import timeout"`
 	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
 	CommonOpts
 }
