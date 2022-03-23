@@ -53,7 +53,7 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 
 ### Twitter
 
-> ⚠️ **Important**: Twitter developer accounts created after _November 15th 2021_ need "Elevated access" to use the Standard v1.1 API routes required to work properly. Apply for this access from within the Twitter developer portal.
+> **Important**: Twitter developer accounts created after _November 15th 2021_ need "Elevated access" to use the Standard v1.1 API routes required to work properly. Apply for this access from within the Twitter developer portal.
 
 1. Create a new Twitter application https://developer.twitter.com/en/apps
 2. Fill **App name**, **Description** and **URL** of your site
