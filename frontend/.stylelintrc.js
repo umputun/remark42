@@ -16,7 +16,7 @@ module.exports = {
       'always',
       { except: ['first-nested'], ignore: ['after-comment', 'stylelint-commands'] },
     ],
-    'value-keyword-case': ['lower', { ignoreProperties: ['composes'] }],
+    'value-keyword-case': ['lower', { ignoreProperties: ['composes'], camelCaseSvgKeywords: true }],
     'selector-pseudo-class-no-unknown': [true, { ignorePseudoClasses: ['global'] }],
     'property-no-unknown': [true, { ignoreProperties: ['composes'] }],
     'mavrin/stylelint-declaration-use-css-custom-properties': {
@@ -30,5 +30,16 @@ module.exports = {
         importFrom: CUSTOM_PROPERTIES_PATH,
       },
     ],
+    'selector-class-pattern': null,
+    'color-function-notation': null,
+    'shorthand-property-no-redundant-values': null,
+    'alpha-value-notation': null,
+    'declaration-block-no-redundant-longhand-properties': null,
   },
+  overrides: [
+    {
+      files: ['*.html', '**/*.html', '*.ejs', '**/*.ejs'],
+      customSyntax: 'postcss-html',
+    },
+  ],
 };
