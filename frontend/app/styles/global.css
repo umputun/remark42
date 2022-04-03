@@ -3,7 +3,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 6px;
-  font-family: PT Sans, Helvetica, Arial, sans-serif;
+  font-family: "PT Sans", Helvetica, Arial, sans-serif;
   color: rgb(var(--primary-text-color));
   box-sizing: border-box;
 }
