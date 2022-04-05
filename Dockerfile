@@ -16,6 +16,8 @@ ENV GOFLAGS="-mod=vendor"
 # install gcc in order to be able to go test package with -race
 RUN apk --no-cache add gcc libc-dev
 
+RUN echo go version: `go version`
+
 # run tests
 RUN \
     cd app && \
