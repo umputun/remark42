@@ -23,15 +23,15 @@ require (
 	github.com/gorilla/feeds v1.1.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/kyokomi/emoji/v2 v2.2.8
+	github.com/kyokomi/emoji/v2 v2.2.9
 	github.com/microcosm-cc/bluemonday v1.0.18
 	github.com/pkg/errors v0.9.1
 	github.com/rakyll/statik v0.1.7
-	github.com/rs/xid v1.3.0
+	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/slack-go/slack v0.10.1
-	github.com/stretchr/testify v1.7.0
+	github.com/slack-go/slack v0.10.2
+	github.com/stretchr/testify v1.7.1
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/goleak v1.1.12
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
@@ -54,7 +54,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/klauspost/compress v1.15.1 // indirect
