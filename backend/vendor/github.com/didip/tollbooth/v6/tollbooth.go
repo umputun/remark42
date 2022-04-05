@@ -49,6 +49,7 @@ func ShouldSkipLimiter(lmt *limiter.Limiter, r *http.Request) bool {
 	// Filter by remote ip
 	// If we are unable to find remoteIP, skip limiter
 	remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
+	remoteIP = libstring.CanonicalizeIP(remoteIP)
 	if remoteIP == "" {
 		return true
 	}
@@ -176,6 +177,7 @@ func ShouldSkipLimiter(lmt *limiter.Limiter, r *http.Request) bool {
 // BuildKeys generates a slice of keys to rate-limit by given limiter and request structs.
 func BuildKeys(lmt *limiter.Limiter, r *http.Request) [][]string {
 	remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
+	remoteIP = libstring.CanonicalizeIP(remoteIP)
 	path := r.URL.Path
 	sliceKeys := make([][]string, 0)
 

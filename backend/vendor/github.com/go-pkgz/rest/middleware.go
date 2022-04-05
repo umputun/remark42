@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-pkgz/rest/logger"
+	"github.com/go-pkgz/rest/realip"
 )
 
 // Wrap converts a list of middlewares to nested calls (in reverse order)
@@ -93,7 +94,7 @@ func Headers(headers ...string) func(http.Handler) http.Handler {
 
 // Maybe middleware will allow you to change the flow of the middleware stack execution depending on return
 // value of maybeFn(request). This is useful for example if you'd like to skip a middleware handler if
-// a request does not satisfied the maybeFn logic.
+// a request does not satisfy the maybeFn logic.
 // borrowed from https://github.com/go-chi/chi/blob/master/middleware/maybe.go
 func Maybe(mw func(http.Handler) http.Handler, maybeFn func(r *http.Request) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -105,4 +106,22 @@ func Maybe(mw func(http.Handler) http.Handler, maybeFn func(r *http.Request) boo
 			}
 		})
 	}
+}
+
+// RealIP is a middleware that sets a http.Request's RemoteAddr to the results
+// of parsing either the X-Forwarded-For or X-Real-IP headers.
+//
+// This middleware should only be used if user can trust the headers sent with request.
+// If reverse proxies are configured to pass along arbitrary header values from the client,
+// or if this middleware used without a reverse proxy, malicious clients could set anything
+// as X-Forwarded-For header and attack the server in various ways.
+func RealIP(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if rip, err := realip.Get(r); err == nil {
+			r.RemoteAddr = rip
+		}
+		h.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
 }
