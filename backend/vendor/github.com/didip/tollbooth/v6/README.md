@@ -9,7 +9,6 @@ This is a generic middleware to rate-limit HTTP requests.
 
 **NOTE 2:** Major version changes are backward-incompatible. `v2.0.0` streamlines the ugliness of the old API.
 
-
 ## Versions
 
 **v1.0.0:** This version maintains the old API but all the thirdparty modules are moved to their own repo.
@@ -24,14 +23,15 @@ This is a generic middleware to rate-limit HTTP requests.
 
 **v6.x.x:** Replaced `go-cache` with `github.com/go-pkgz/expirable-cache` because `go-cache` leaks goroutines.
 
-
 ## Five Minute Tutorial
+
 ```go
 package main
 
 import (
-    "github.com/didip/tollbooth"
     "net/http"
+
+    "github.com/didip/tollbooth/v6"
 )
 
 func HelloHandler(w http.ResponseWriter, req *http.Request) {
@@ -51,7 +51,9 @@ func main() {
     ```go
     import (
         "time"
-        "github.com/didip/tollbooth/limiter"
+    
+        "github.com/didip/tollbooth/v6"
+        "github.com/didip/tollbooth/v6/limiter"
     )
 
     lmt := tollbooth.NewLimiter(1, nil)
@@ -138,7 +140,6 @@ func main() {
 
 6. Tollbooth does not require external storage since it uses an algorithm called [Token Bucket](http://en.wikipedia.org/wiki/Token_bucket) [(Go library: golang.org/x/time/rate)](https://godoc.org/golang.org/x/time/rate).
 
-
 ## Other Web Frameworks
 
 Sometimes, other frameworks require a little bit of shim to use Tollbooth. These shims below are contributed by the community, so I make no promises on how well they work. The one I am familiar with are: Chi, Gin, and Negroni.
@@ -158,7 +159,6 @@ Sometimes, other frameworks require a little bit of shim to use Tollbooth. These
 * [Iris](https://github.com/didip/tollbooth_iris)
 
 * [Negroni](https://github.com/didip/tollbooth_negroni)
-
 
 ## My other Go libraries
 

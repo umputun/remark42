@@ -374,6 +374,11 @@ func (l *Limiter) RemoveBasicAuthUsers(basicAuthUsers []string) *Limiter {
 	return l
 }
 
+// DeleteExpiredTokenBuckets is thread-safe way of deleting expired token buckets
+func (l *Limiter) DeleteExpiredTokenBuckets() {
+	l.tokenBuckets.DeleteExpired()
+}
+
 // SetHeaders is thread-safe way of setting map of HTTP headers to limit.
 func (l *Limiter) SetHeaders(headers map[string][]string) *Limiter {
 	if l.headers == nil {

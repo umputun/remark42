@@ -109,6 +109,21 @@ Sets headers (passed as key:value) to requests. I.e. `rest.Headers("Server:MySer
 
 Compresses response with gzip.
 
+## RealIP middleware
+
+RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing either the X-Forwarded-For or X-Real-IP headers.
+
+## Maybe middleware
+
+Maybe middleware will allow you to change the flow of the middleware stack execution depending on return
+value of maybeFn(request). This is useful for example if you'd like to skip a middleware handler if
+a request does not satisfy the maybeFn logic.
+
+## Headers middleware
+
+Headers middleware adds headers to request
+
+
 ## Helpers
 
 - `rest.Wrap` - converts a list of middlewares to nested handlers calls (in reverse order)
@@ -133,5 +148,6 @@ Profiler is a convenient subrouter used for mounting net/http/pprof, i.e.
    return r
  }
 ```
-It exposes a whole bunch of `/pprof/*` endpoints as well as `/vars`. Builtin support for `onlyIps` allows to restrict access, which is important if it runs on a publicly exposed port. However, counting on IP check only is not that reliable way to limit request and for production use it would be better to add some sort of auth (for example provided `BasicAuth` middleware) or run with a separate http server, exposed to internal ip/port only.
+
+It exposes a bunch of `/pprof/*` endpoints as well as `/vars`. Builtin support for `onlyIps` allows restricting access, which is important if it runs on a publicly exposed port. However, counting on IP check only is not that reliable way to limit request and for production use it would be better to add some sort of auth (for example provided `BasicAuth` middleware) or run with a separate http server, exposed to internal ip/port only.
 
