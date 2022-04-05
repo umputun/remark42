@@ -81,6 +81,7 @@ type ServerCommand struct {
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments"`
 	SubscribersOnly  bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
+	DisableSignature bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
 
 	Auth struct {
 		TTL struct {
@@ -577,6 +578,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		AllowedAncestors:    s.AllowedHosts,
 		SendJWTHeader:       s.Auth.SendJWTHeader,
 		SubscribersOnly:     s.SubscribersOnly,
+		DisableSignature:    s.DisableSignature,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

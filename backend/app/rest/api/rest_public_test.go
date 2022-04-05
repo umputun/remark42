@@ -23,9 +23,32 @@ func TestRest_Ping(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	res, code := get(t, ts.URL+"/api/v1/ping")
-	assert.Equal(t, "pong", res)
-	assert.Equal(t, 200, code)
+	resp, err := http.Get(ts.URL + "/api/v1/ping")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, "pong", string(body))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "remark42", resp.Header.Get("App-Name"))
+}
+
+func TestRest_PingNoSignature(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.DisableSignature = true
+	})
+	defer teardown()
+
+	resp, err := http.Get(ts.URL + "/api/v1/ping")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, "pong", string(body))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "", resp.Header.Get("App-Name"))
 }
 
 func TestRest_Preview(t *testing.T) {

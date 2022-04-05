@@ -412,7 +412,9 @@ func randomPath(tempDir, basename, suffix string) (string, error) {
 	return "", errors.New("cannot create temp file")
 }
 
-func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
+// startupT runs fully configured testing server
+// srvHook is an optional func to set some Rest param after the creation but prior to Run
+func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest, teardown func()) {
 	tmp := os.TempDir()
 	testDB, err := randomPath(tmp, "test-remark", ".db")
 	require.NoError(t, err)
@@ -476,6 +478,10 @@ func startupT(t *testing.T) (ts *httptest.Server, srv *Rest, teardown func()) {
 		EmojiEnabled:  true,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
+
+	for _, h := range srvHook {
+		h(srv)
+	}
 
 	ts = httptest.NewServer(srv.routes())
 

@@ -65,6 +65,7 @@ type Rest struct {
 	SendJWTHeader       bool
 	AllowedAncestors    []string // sets Content-Security-Policy "frame-ancestors ..."
 	SubscribersOnly     bool
+	DisableSignature    bool // prevent signature from being added to headers
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -191,7 +192,10 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 func (s *Rest) routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
-	router.Use(R.AppInfo("remark42", "umputun", s.Version), R.Ping)
+	if !s.DisableSignature {
+		router.Use(R.AppInfo("remark42", "umputun", s.Version))
+	}
+	router.Use(R.Ping)
 
 	s.pubRest, s.privRest, s.adminRest, s.rssRest = s.controllerGroups() // assign controllers for groups
 
