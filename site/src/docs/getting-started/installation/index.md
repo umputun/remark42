@@ -22,7 +22,7 @@ _This is the recommended way to run Remark42_
 
 ## Setup on Your Website
 
-Add config for Remark on a page of your site:
+Add config for Remark on a page of your site ([here](/docs/configuration/frontend/) is the full reference):
 
 ```html
 <script>
@@ -33,8 +33,8 @@ Add config for Remark on a page of your site:
 </script>
 ```
 
-- `REMARK_URL` – the URL where is Remark42 instance is served.
-- `YOUR_SITE_ID` - the ID that you passed to Remark42 instance on start.
+- `REMARK_URL` – the URL where is Remark42 instance is served, passed as `REMARK_URL` to backend
+- `YOUR_SITE_ID` - the `SITE` that you passed to Remark42 instance on start, `remark` by default.
 
 For example:
 
