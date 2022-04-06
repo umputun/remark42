@@ -88,7 +88,7 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
   var remark_config = {
     host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
-    components: ['last-comments'],
+    components: ['embed', 'last-comments'],
   };
 </script>
 ```
@@ -112,7 +112,7 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
   var remark_config = {
     host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
-    components: ['counter'],
+    components: ['embed', 'counter'],
   };
 </script>
 ```
