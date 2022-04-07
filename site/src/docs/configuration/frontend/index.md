@@ -18,7 +18,8 @@ Add this snippet to the bottom of web page:
                            // available component are:
                            //   - 'embed': basic comments widget
                            //   - 'last-comments': last comments widget, see `Last Comments` section below
-                           //   - 'counter': counter widget, see `Counter` section below
+                           //   - '
+  ': counter widget, see `Counter` section below
     url: 'PAGE_URL', // optional param; if it isn't defined
                      // `window.location.origin + window.location.pathname` will be used
                      //
@@ -88,7 +89,7 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
   var remark_config = {
     host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
-    components: ['embed', 'last-comments'],
+    components: ['last-comments'], // add 'embed' to see comments form as well
   };
 </script>
 ```
@@ -112,7 +113,7 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
   var remark_config = {
     host: 'REMARK_URL', // hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
     site_id: 'YOUR_SITE_ID',
-    components: ['embed', 'counter'],
+    components: ['counter'], // add 'embed' to see comments form as well
   };
 </script>
 ```
