@@ -39,7 +39,7 @@ spec:
             - containerPort: 8080
           env:
             - name: REMARK_URL
-              value: "https://comments.mysite.com/"
+              value: "https://remark42.mysite.com/"
             - name: "SITE"
               value: "mysite.com"
             - name: SECRET
@@ -129,10 +129,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - comments.mysite.com
+        - remark42.mysite.com
       secretName: comments-tls
   rules:
-    - host: "comments.mysite.com"
+    - host: "remark42.mysite.com"
       http:
         paths:
           - path: /
