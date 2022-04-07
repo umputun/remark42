@@ -14,13 +14,14 @@ Authentication handled by external providers. You should set up OAuth2 for at le
 4. Set **"Site URL"** to your domain, e.g., `https://remark42.mysite.com`
 5. Under **"Facebook login"**/**"Settings"** fill "Valid OAuth redirect URIs" with your callback URL constructed as domain plus `/auth/facebook/callback`, e.g `https://remark42.mysite.com/auth/facebook/callback`
 6. Select **"App Review"** and turn the public flag on. This step may ask you to provide a link to your privacy policy
+7. Write down the client ID and secret as `AUTH_FACEBOOK_CID` and `AUTH_FACEBOOK_CSEC`
 
 ### GitHub
 
 1. Create a new **"OAuth App"**: https://github.com/settings/developers
 2. Fill **"Application Name"** and **"Homepage URL"** for your site
 3. Under **"Authorization callback URL"** enter the correct URL constructed as domain + `/auth/github/callback`, i.e., `https://remark42.mysite.com/auth/github/callback`
-4. Take note of the **Client ID** and **Client Secret**
+4. Take note of the **Client ID** (as `AUTH_GITHUB_CID`) and **Client Secret** (`AUTH_GITHUB_CSEC`)
 
 ### Google
 
@@ -39,7 +40,7 @@ Authentication handled by external providers. You should set up OAuth2 for at le
 - Authorized redirect URIs is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
 - Choose **"Create"**
 
-7. Take note of the **Client ID** and **Client Secret**
+7. Take note of the **Client ID** (`AUTH_GOOGLE_CID`) and **Client Secret** (`AUTH_GOOGLE_CSEC`)
 
 _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://github.com/bitly/oauth2_proxy)_
 
@@ -47,9 +48,9 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 
 1. Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2)
 2. Under **"Authentication/Platform configurations/Web"** enter the correct URL constructed as domain + `/auth/microsoft/callback`, i.e., `https://example.mysite.com/auth/microsoft/callback`
-3. In **"Overview"** take note of the **Application (client) ID**
+3. In **"Overview"** take note of the **Application (client) ID** (`AUTH_MICROSOFT_CID`)
 4. Choose the new project from the top right project dropdown (only if another project is selected)
-5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"**
+5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"** (`AUTH_MICROSOFT_CSEC`)
 
 ### Twitter
 
@@ -71,7 +72,7 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 - Access to username, first name and surname, gender
 
 5. Fill out the rest of the fields if needed
-6. Take note of the **ID** and **Password**
+6. Take note of the **ID** (`AUTH_YANDEX_CID`) and **Password** (`AUTH_YANDEX_CSEC`)
 
 For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/concepts/about.html) and [Yandex.Passport](https://yandex.com/dev/passport/doc/dg/index.html) API documentation.
 
