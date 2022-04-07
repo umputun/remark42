@@ -87,8 +87,8 @@ services:
 | auth.email.from                | AUTH_EMAIL_FROM                |                          | email from                                                |
 | auth.email.subj                | AUTH_EMAIL_SUBJ                | `remark42 confirmation`  | email subject                                             |
 | auth.email.content-type        | AUTH_EMAIL_CONTENT_TYPE        | `text/html`              | email content type                                        |
-| notify.users                   | NOTIFY_USERS                   | none                     | type of user notifications (Telegram, email)              |
-| notify.admins                  | NOTIFY_ADMINS                  | none                     | type of admin notifications (Telegram, Slack, webhook and/or email) |
+| notify.users                   | NOTIFY_USERS                   | none                     | type of user notifications (`telegram`, `email`), _multi_ |
+| notify.admins                  | NOTIFY_ADMINS                  | none                     | type of admin notifications (`telegram`, `slack`, `webhook` and/or `email`), _multi_ |
 | notify.queue                   | NOTIFY_QUEUE                   | `100`                    | size of notification queue                                |
 | notify.telegram.chan           | NOTIFY_TELEGRAM_CHAN           |                          | the ID of telegram channel for admin notifications        |
 | notify.slack.token             | NOTIFY_SLACK_TOKEN             |                          | Slack token                                               |
