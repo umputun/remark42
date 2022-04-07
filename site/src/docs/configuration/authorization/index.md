@@ -27,18 +27,18 @@ Authentication handled by external providers. You should set up OAuth2 for at le
 
 1. Create a new project: https://console.cloud.google.com/projectcreate
 2. Choose the new project from the top right project dropdown (only if another project is selected)
-3. In the project Dashboard center pane, choose **"API Manager"**
+3. In the project Dashboard center pane, choose **"APIs & Services"**
 4. In the left Nav pane, choose **"Credentials"**
 5. In the center pane, choose the **"OAuth consent screen"** tab. Fill in **"Product name shown to users"** and hit save
 6. In the center pane, choose the **"Credentials"** tab
 
-- Open the **"New credentials"** drop-down
-- Choose **"OAuth client ID"**
-- Choose **"Web application"**
-- Application name is freeform; choose something appropriate
-- Authorized origins should be your domain, e.g., `https://remark42.mysite.com`
-- Authorized redirect URIs is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
-- Choose **"Create"**
+   - Open the **"Create credentials"** drop-down
+   - Choose **"OAuth client ID"**
+   - Choose **"Web application"**
+   - Application name is freeform; choose something appropriate
+   - Authorized origins should be your domain, e.g., `https://remark42.mysite.com`
+   - Authorized redirect URIs is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
+   - Choose **"Create"**
 
 7. Take note of the **Client ID** (`AUTH_GOOGLE_CID`) and **Client Secret** (`AUTH_GOOGLE_CSEC`)
 
