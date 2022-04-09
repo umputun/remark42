@@ -2,7 +2,7 @@ import 'jest-fetch-mock';
 import type { Theme } from 'common/types';
 
 type RemarkConfig = {
-  host: string;
+  host?: string;
   site_id: string;
   url?: string;
   max_shown_comments?: number;
