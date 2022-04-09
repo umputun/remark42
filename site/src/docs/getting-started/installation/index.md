@@ -24,6 +24,9 @@ _This is the recommended way to run Remark42_
 
 Add config for Remark on a page of your site ([here](/docs/configuration/frontend/) is the full reference):
 
+- `REMARK_URL` – the URL where is Remark42 instance is served, passed as `REMARK_URL` to backend
+- `YOUR_SITE_ID` - the `SITE` that you passed to Remark42 instance on start, `remark` by default.
+
 ```html
 <script>
   var remark_config = {
@@ -32,9 +35,6 @@ Add config for Remark on a page of your site ([here](/docs/configuration/fronten
   }
 </script>
 ```
-
-- `REMARK_URL` – the URL where is Remark42 instance is served, passed as `REMARK_URL` to backend
-- `YOUR_SITE_ID` - the `SITE` that you passed to Remark42 instance on start, `remark` by default.
 
 For example:
 
@@ -56,7 +56,7 @@ After that place the code snippet right after config.
 <!-- prettier-ignore-end -->
 
 ::: note 💡
-**Note that:** You can place the config with the snippet in any place of the HTML code of your site. If it is closer to start of the HTML (for example in `<head>`) it will start loading sooner and show comments faster.
+**Note:** You can place the config with the snippet in any place of the HTML code of your site. If it is closer to start of the HTML (for example in `<head>`) it will start loading sooner and show comments faster.
 :::
 
 Put the next code snippet on a page of your site where you want to have comments:
@@ -67,7 +67,8 @@ Put the next code snippet on a page of your site where you want to have comments
 
 After that widget will be rendered inside this node.
 
-If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/).
+For more information about frontend configuration please [learn about other parameters here](https://remark42.com/docs/configuration/frontend/)
+If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/spa/).
 
 #### Quick installation test
 
