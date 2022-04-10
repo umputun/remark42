@@ -25,6 +25,6 @@ module.exports = [
   },
   {
     path: 'public/counter.mjs',
-    limit: '0.7 KB',
+    limit: '0.8 KB',
   },
 ];
