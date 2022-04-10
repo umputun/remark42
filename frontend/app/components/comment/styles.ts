@@ -26,10 +26,6 @@ import './__time/comment__time.css';
 import './__user-id/comment__user-id.css';
 import './__username/comment__username.css';
 
-import './__verification/comment__verification.css';
-import './__verification/_active/comment__verification_active.css';
-import './__verification/_clickable/comment__verification_clickable.css';
-
 import './__vote/comment__vote.css';
 import './__vote/_disabled/comment__vote_disabled.css';
 import './__vote/_selected/comment__vote_selected.css';
