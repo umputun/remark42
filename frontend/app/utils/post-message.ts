@@ -56,7 +56,7 @@ export function postMessageToIframe(target: HTMLIFrameElement, data: ChildMessag
  */
 export function parseMessage({ data }: MessageEvent): AllMessages {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    return {} as AllMessages;
+    return {};
   }
 
   return data as AllMessages;

@@ -19,13 +19,16 @@
           return window.CSS && window.CSS.supports && window.CSS.supports('color', 'var(--fake-var)');
         }
         if (isCSSVariablesSupported()) {
-          var name;
           try {
-            name = JSON.parse(window.name);
-            if (name.__colors__) {
-              const colors = name.__colors__;
+            var name = JSON.parse(window.name);
+            var colors = name.__colors__;
+            var root = document.documentElement;
+            if (colors) {
               for (var color in colors) {
-                var root = document.documentElement;
+                if (!color.startsWith('--')) {
+                  console.info('Key ' + color + ' must start with `--`');
+                  continue;
+                }
                 root.style.setProperty(color, colors[color]);
               }
             }
