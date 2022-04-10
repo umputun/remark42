@@ -16,10 +16,6 @@ module.exports = [
     limit: '32 KB',
   },
   {
-    path: 'public/last-comments.css',
-    limit: '6 KB',
-  },
-  {
     path: 'public/deleteme.mjs',
     limit: '11 KB',
   },

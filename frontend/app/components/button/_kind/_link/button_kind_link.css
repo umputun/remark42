@@ -1,6 +1,6 @@
 .button_kind_link {
   background: transparent;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--color9);
 
   &:hover {
