@@ -217,6 +217,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       this.setState({
         isDisabled: false,
         isErrorShown: true,
+        // @ts-ignore
         errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
       });
       return;

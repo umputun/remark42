@@ -1,4 +1,10 @@
-export function copy(content: string): boolean {
+export async function copy(content: string): Promise<void> {
+  // Use new API for modern browsers
+  if ('clipboard' in window.navigator) {
+    const blob = new Blob([content], { type: 'text/plain' });
+    return navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+  }
+
   // We use `div` instead of `input` or `textarea` because we want to copy styles
   const container = document.createElement('div');
   const previouslyFocusedElement = document.activeElement as HTMLElement;
@@ -14,7 +20,7 @@ export function copy(content: string): boolean {
 
   document.body.appendChild(container);
 
-  let selection = window.getSelection();
+  const selection = window.getSelection();
   // save original selection
   const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
   const range = document.createRange();
@@ -25,8 +31,6 @@ export function copy(content: string): boolean {
     selection.removeAllRanges();
     selection.addRange(range);
   }
-
-  document.execCommand('copy');
 
   let success = false;
   try {
@@ -49,5 +53,5 @@ export function copy(content: string): boolean {
     previouslyFocusedElement.focus();
   }
 
-  return success;
+  return success ? Promise.resolve() : Promise.reject();
 }

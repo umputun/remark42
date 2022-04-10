@@ -311,12 +311,16 @@ export class Comment extends Component<CommentProps, State> {
     parentCommentNode.scrollIntoView();
   };
 
-  copyComment = () => {
-    const username = this.props.data.user.name;
+  copyComment = async () => {
+    const { name } = this.props.data.user;
     const time = getLocalDatetime(this.props.intl, new Date(this.props.data.time));
-    const text = this.textNode.current?.textContent || '';
+    const text = this.textNode.current?.textContent ?? '';
 
-    copy(`<b>${username}</b>&nbsp;${time}<br>${text.replace(/\n+/g, '<br>')}`);
+    try {
+      await copy(`${name} ${time}\n${text}`);
+    } catch (e) {
+      console.log(e);
+    }
 
     this.setState({ isCopied: true }, () => {
       setTimeout(() => this.setState({ isCopied: false }), 3000);
