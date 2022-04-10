@@ -1,16 +1,8 @@
 import { h } from 'preact';
 import { mount } from 'enzyme';
-
-jest.mock('react-intl', () => {
-  const messages = require('locales/en.json');
-  const reactIntl = jest.requireActual('react-intl');
-  const intlProvider = new reactIntl.IntlProvider({ locale: 'en', messages }, {});
-
-  return {
-    ...reactIntl,
-    useIntl: () => intlProvider.state.intl,
-  };
-});
+import '@testing-library/jest-dom';
+import { screen } from '@testing-library/preact';
+import { render } from 'tests/utils';
 
 import { useIntl, IntlProvider } from 'react-intl';
 
@@ -21,46 +13,58 @@ import { sleep } from 'utils/sleep';
 
 import { Comment, CommentProps } from './comment';
 
-function mountComment(props: CommentProps) {
-  function Wrapper(updateProps: Partial<CommentProps> = {}) {
-    const intl = useIntl();
-
-    return (
-      <IntlProvider locale="en" messages={enMessages}>
-        <Comment {...props} {...updateProps} intl={intl} />
-      </IntlProvider>
-    );
-  }
-
-  return mount(<Wrapper />);
+function CommentWithIntl(props: CommentProps) {
+  return <Comment {...props} intl={useIntl()} />;
 }
 
-const DefaultProps: Partial<CommentProps> = {
-  post_info: {
-    read_only: false,
-  } as PostInfo,
-  view: 'main',
-  data: {
-    text: 'test comment',
-    vote: 0,
-    user: {
-      id: 'someone',
-      picture: 'somepicture-url',
-    },
-    time: new Date().toString(),
-    locator: {
-      url: 'somelocatorurl',
-      site: 'remark',
-    },
-  } as CommentType,
-  user: {
-    admin: false,
-    id: 'testuser',
-    picture: 'somepicture-url',
-  } as User,
-} as CommentProps;
+// @depricated
+function mountComment(props: CommentProps) {
+  return mount(
+    <IntlProvider locale="en" messages={enMessages}>
+      <CommentWithIntl {...props} />
+    </IntlProvider>
+  );
+}
 
+function getDefaultProps() {
+  return {
+    post_info: {
+      read_only: false,
+    } as PostInfo,
+    view: 'main',
+    data: {
+      text: 'test comment',
+      vote: 0,
+      user: {
+        id: 'someone',
+        picture: 'somepicture-url',
+      } as User,
+      time: new Date().toString(),
+      locator: {
+        url: 'somelocatorurl',
+        site: 'remark',
+      },
+    } as CommentType,
+    user: {
+      admin: false,
+      id: 'testuser',
+      picture: 'somepicture-url',
+    } as User,
+  } as CommentProps;
+}
+
+const DefaultProps = getDefaultProps();
 describe('<Comment />', () => {
+  it('should render patreon subscriber icon', async () => {
+    const props = getDefaultProps() as CommentProps;
+    props.data.user.paid_sub = true;
+
+    render(<CommentWithIntl {...props} />);
+    const patreonSubscriberIcon = await screen.findByAltText('Patreon Paid Subscriber');
+    expect(patreonSubscriberIcon).toBeVisible();
+    expect(patreonSubscriberIcon.tagName).toBe('IMG');
+  });
+
   describe('voting', () => {
     it('should be disabled for an anonymous user', () => {
       const wrapper = mountComment({ ...DefaultProps, user: { id: 'anonymous_1' } } as CommentProps);
@@ -243,37 +247,24 @@ describe('<Comment />', () => {
       expect(controls.hasClass('comment__verification_clickable')).toEqual(false);
     });
 
-    it('should be editable', () => {
+    it('should be editable', async () => {
       StaticStore.config.edit_duration = 300;
 
-      const initTime = new Date().toString();
-      const changedTime = new Date(Date.now() + 10 * 1000).toString();
-      const props = {
-        ...DefaultProps,
-        user: DefaultProps.user as User,
-        data: {
-          ...DefaultProps.data,
-          id: '100',
-          user: DefaultProps.user as User,
-          vote: 1,
-          time: initTime,
-          delete: false,
-          orig: 'test',
-        } as CommentType,
-        repliesCount: 0,
-      } as CommentProps;
-      const component = mountComment(props);
-      const comment = component.find(Comment);
+      const props = getDefaultProps();
+      props.repliesCount = 0;
+      props.user!.id = '100';
+      props.data.user.id = '100';
+      Object.assign(props.data, {
+        id: '101',
+        vote: 1,
+        time: new Date().toString(),
+        delete: false,
+        orig: 'test',
+      });
 
-      expect((comment.state('editDeadline') as Date).getTime()).toBe(
-        new Date(new Date(initTime).getTime() + 300 * 1000).getTime()
-      );
-
-      component.setProps({ data: { ...props.data, time: changedTime } });
-
-      expect((comment.state('editDeadline') as Date).getTime()).toBe(
-        new Date(new Date(changedTime).getTime() + 300 * 1000).getTime()
-      );
+      render(<CommentWithIntl {...props} />);
+      // it can be less than 300 due to test checks time
+      expect(['299', '300']).toContain(screen.getByRole('timer').innerText);
     });
 
     it('should not be editable', () => {

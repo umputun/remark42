@@ -56,6 +56,6 @@ export class Countdown extends Component<Props, State> {
     }, 1000);
   }
   render(props: Props) {
-    return <span {...exclude(props, 'time', 'onTimePassed')} ref={this.elemRef} />;
+    return <span role="timer" {...exclude(props, 'time', 'onTimePassed')} ref={this.elemRef} />;
   }
 }
