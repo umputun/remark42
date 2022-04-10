@@ -37,8 +37,9 @@ function getDefaultProps() {
       vote: 0,
       user: {
         id: 'someone',
+        name: 'username',
         picture: 'somepicture-url',
-      } as User,
+      },
       time: new Date().toString(),
       locator: {
         url: 'somelocatorurl',
@@ -50,7 +51,7 @@ function getDefaultProps() {
       id: 'testuser',
       picture: 'somepicture-url',
     } as User,
-  } as CommentProps;
+  } as CommentProps & { user: User };
 }
 
 const DefaultProps = getDefaultProps();
@@ -63,6 +64,36 @@ describe('<Comment />', () => {
     const patreonSubscriberIcon = await screen.findByAltText('Patreon Paid Subscriber');
     expect(patreonSubscriberIcon).toBeVisible();
     expect(patreonSubscriberIcon.tagName).toBe('IMG');
+  });
+
+  describe('verification', () => {
+    it('should render active verification icon', () => {
+      const props = getDefaultProps();
+      props.data.user.verified = true;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.getByTitle('Verified user')).toBeVisible();
+    });
+
+    it('should not render verification icon', () => {
+      const props = getDefaultProps();
+      render(<CommentWithIntl {...props} />);
+      expect(screen.queryByTitle('Verified user')).not.toBeInTheDocument();
+    });
+
+    it('should render verification button for admin', () => {
+      const props = getDefaultProps();
+      props.user.admin = true;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.getByTitle('Toggle verification')).toBeVisible();
+    });
+
+    it('should render active verification icon for admin', () => {
+      const props = getDefaultProps();
+      props.user.admin = true;
+      props.data.user.verified = true;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.queryByTitle('Verified user')).toBeVisible();
+    });
   });
 
   describe('voting', () => {
@@ -228,23 +259,6 @@ describe('<Comment />', () => {
       const controls = element.find('.comment__controls').children();
       expect(controls.length).toBe(1);
       expect(controls.at(0).text()).toEqual('Hide');
-    });
-
-    it('verification badge clickable for admin', () => {
-      const element = mountComment({ ...DefaultProps, user: { ...DefaultProps.user, admin: true } } as CommentProps);
-
-      const controls = element.find('.comment__verification').first();
-      expect(controls.hasClass('comment__verification_clickable')).toEqual(true);
-    });
-
-    it('verification badge not clickable for regular user', () => {
-      const element = mountComment({
-        ...DefaultProps,
-        data: { ...DefaultProps.data, user: { ...DefaultProps.data!.user, verified: true } },
-      } as CommentProps);
-
-      const controls = element.find('.comment__verification').first();
-      expect(controls.hasClass('comment__verification_clickable')).toEqual(false);
     });
 
     it('should be editable', async () => {

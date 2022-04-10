@@ -1,5 +1,7 @@
 import { h, JSX, Component, createRef, ComponentType } from 'preact';
+import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { getHandleClickProps } from 'common/accessibility';
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
@@ -15,14 +17,14 @@ import { CommentFormProps } from 'components/comment-form';
 import { Avatar } from 'components/avatar';
 import { Button } from 'components/button';
 import { Countdown } from 'components/countdown';
+import { VerificationIcon } from 'components/icons/verification';
 import { getPreview, uploadImage } from 'common/api';
 import { postMessageToParent } from 'utils/post-message';
-import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
 
-import style from './comment.module.css';
+import styles from './comment.module.css';
 import './styles';
 
 export type CommentProps = {
@@ -596,11 +598,27 @@ export class Comment extends Component<CommentProps, State> {
               <Avatar url={o.user.picture} />
             </div>
           )}
-          <div className={style.user}>
+
+          <div className={styles.user}>
             {props.view !== 'user' && (
               <button onClick={() => this.toggleUserInfoVisibility()} className="comment__username">
                 {o.user.name}
               </button>
+            )}
+            {isAdmin && props.view !== 'user' && (
+              <button
+                className={styles.verificationButton}
+                onClick={this.toggleVerify}
+                title={intl.formatMessage(messages.toggleVerification)}
+              >
+                <VerificationIcon
+                  title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
+                  className={clsx(styles.verificationIcon, !o.user.verified && styles.verificationIconInactive)}
+                />
+              </button>
+            )}
+            {!isAdmin && !!o.user.verified && props.view !== 'user' && (
+              <VerificationIcon className={styles.verificationIcon} title={intl.formatMessage(messages.verifiedUser)} />
             )}
             {o.user.paid_sub && (
               <img
@@ -608,20 +626,6 @@ export class Comment extends Component<CommentProps, State> {
                 height={12}
                 src={require('assets/social/patreon.svg').default}
                 alt={intl.formatMessage(messages.paidPatreon)}
-              />
-            )}
-            {isAdmin && props.view !== 'user' && (
-              <span
-                {...getHandleClickProps(this.toggleVerify)}
-                aria-label={intl.formatMessage(messages.toggleVerification)}
-                title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
-                className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-              />
-            )}
-            {!isAdmin && !!o.user.verified && props.view !== 'user' && (
-              <span
-                title={intl.formatMessage(messages.verifiedUser)}
-                className={b('comment__verification', {}, { active: true })}
               />
             )}
           </div>

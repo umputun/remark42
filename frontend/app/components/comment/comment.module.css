@@ -6,3 +6,24 @@
 .user > * + * {
 	margin-left: 4px;
 }
+
+.verificationButton {
+	display:flex;
+	align-items: center;
+	padding: 2px;
+	width: 16px;
+	height: 16px;
+}
+
+.verificationIcon {
+	color: var(--color29);
+}
+
+.verificationIconInactive {
+	color: var(--color1);
+	transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}
