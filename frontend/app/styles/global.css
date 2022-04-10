@@ -27,6 +27,7 @@ button {
   transition-timing-function: linear;
   transition-duration: 150ms;
   appearance: none;
+	cursor: pointer;
 }
 
 #remark42 {
