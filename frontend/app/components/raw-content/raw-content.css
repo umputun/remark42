@@ -14,7 +14,7 @@
 
   & p,
   & blockquote {
-    margin: 1rem 0;
+    margin: 0.5rem 0;
 
     &:first-child {
       margin-top: 0;
@@ -22,13 +22,6 @@
 
     &:last-child {
       margin-bottom: 0;
-    }
-
-    /* imported comments have br instead of p */
-    & br {
-      content: '';
-      display: block;
-      margin-top: 1rem;
     }
   }
 

@@ -3,10 +3,10 @@
   vertical-align: middle;
   user-select: none;
   font-size: 14px;
-  font-weight: 700;
 
   @media (hover: hover) {
     opacity: 0;
+    transition: opacity 0.15s;
 
     &:hover,
     &:focus-within {

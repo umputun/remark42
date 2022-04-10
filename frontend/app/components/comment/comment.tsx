@@ -398,18 +398,15 @@ export class Comment extends Component<CommentProps, State> {
     if (isAdmin) {
       controls.push(
         this.state.isCopied ? (
-          <span className="comment__control comment__control_view_inactive">
+          <span className="comment__control comment__control_view_inactive comment__action">
             <FormattedMessage id="comment.copied" defaultMessage="Copied!" />
           </span>
         ) : (
-          <Button kind="link" onClick={this.copyComment} mix="comment__control">
+          <Button kind="link" onClick={this.copyComment} mix={['comment__control', 'comment__action']}>
             <FormattedMessage id="comment.copy" defaultMessage="Copy" />
           </Button>
-        )
-      );
-
-      controls.push(
-        <Button kind="link" onClick={this.togglePin} mix="comment__control">
+        ),
+        <Button kind="link" onClick={this.togglePin} mix={['comment__control', 'comment__action']}>
           {this.props.data.pin ? (
             <FormattedMessage id="comment.unpin" defaultMessage="Unpin" />
           ) : (
@@ -421,7 +418,7 @@ export class Comment extends Component<CommentProps, State> {
 
     if (!isCurrentUser) {
       controls.push(
-        <Button kind="link" onClick={this.hideUser} mix="comment__control">
+        <Button kind="link" onClick={this.hideUser} mix={['comment__control', 'comment__action']}>
           <FormattedMessage id="comment.hide" defaultMessage="Hide" />
         </Button>
       );
@@ -430,7 +427,7 @@ export class Comment extends Component<CommentProps, State> {
     if (isAdmin) {
       if (this.props.isUserBanned) {
         controls.push(
-          <Button kind="link" onClick={this.onUnblockUserClick} mix="comment__control">
+          <Button kind="link" onClick={this.onUnblockUserClick} mix={['comment__control', 'comment__action']}>
             <FormattedMessage id="comment.unblock" defaultMessage="Unblock" />
           </Button>
         );
@@ -456,7 +453,7 @@ export class Comment extends Component<CommentProps, State> {
 
       if (!this.props.data.delete) {
         controls.push(
-          <Button kind="link" onClick={this.deleteComment} mix="comment__control">
+          <Button kind="link" onClick={this.deleteComment} mix={['comment__control', 'comment__action']}>
             <FormattedMessage id="comment.delete" defaultMessage="Delete" />
           </Button>
         );
