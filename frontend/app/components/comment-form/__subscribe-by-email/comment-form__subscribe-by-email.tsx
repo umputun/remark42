@@ -153,6 +153,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
             break;
         }
       } catch (e) {
+        // @ts-ignore
         setError(extractErrorMessageFromResponse(e, intl));
       } finally {
         setLoading(false);
@@ -213,6 +214,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       previousStep.current = Step.Subscribed;
       setStep(Step.Unsubscribed);
     } catch (e) {
+      // @ts-ignore
       setError(extractErrorMessageFromResponse(e, intl));
     } finally {
       setLoading(false);
