@@ -22,6 +22,7 @@ import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
 
+import style from './comment.module.css';
 import './styles';
 
 export type CommentProps = {
@@ -79,7 +80,7 @@ export class Comment extends Component<CommentProps, State> {
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
 
-  updateState = (props: CommentProps) => {
+  updateState(props: CommentProps) {
     const newState: Partial<State> = {
       scoreDelta: props.data.vote,
       cachedScore: props.data.score,
@@ -103,7 +104,7 @@ export class Comment extends Component<CommentProps, State> {
     }
 
     return newState;
-  };
+  }
 
   state = {
     renderDummy: typeof this.props.inView === 'boolean' ? !this.props.inView : false,
@@ -595,26 +596,35 @@ export class Comment extends Component<CommentProps, State> {
               <Avatar url={o.user.picture} />
             </div>
           )}
-          {props.view !== 'user' && (
-            <button onClick={() => this.toggleUserInfoVisibility()} className="comment__username">
-              {o.user.name}
-            </button>
-          )}
-
-          {isAdmin && props.view !== 'user' && (
-            <span
-              {...getHandleClickProps(this.toggleVerify)}
-              aria-label={intl.formatMessage(messages.toggleVerification)}
-              title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
-              className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
-            />
-          )}
-          {!isAdmin && !!o.user.verified && props.view !== 'user' && (
-            <span
-              title={intl.formatMessage(messages.verifiedUser)}
-              className={b('comment__verification', {}, { active: true })}
-            />
-          )}
+          <div className={style.user}>
+            {props.view !== 'user' && (
+              <button onClick={() => this.toggleUserInfoVisibility()} className="comment__username">
+                {o.user.name}
+              </button>
+            )}
+            {o.user.paid_sub && (
+              <img
+                width={12}
+                height={12}
+                src={require('assets/social/patreon.svg').default}
+                alt={intl.formatMessage(messages.paidPatreon)}
+              />
+            )}
+            {isAdmin && props.view !== 'user' && (
+              <span
+                {...getHandleClickProps(this.toggleVerify)}
+                aria-label={intl.formatMessage(messages.toggleVerification)}
+                title={intl.formatMessage(o.user.verified ? messages.verifiedUser : messages.unverifiedUser)}
+                className={b('comment__verification', {}, { active: o.user.verified, clickable: true })}
+              />
+            )}
+            {!isAdmin && !!o.user.verified && props.view !== 'user' && (
+              <span
+                title={intl.formatMessage(messages.verifiedUser)}
+                className={b('comment__verification', {}, { active: true })}
+              />
+            )}
+          </div>
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
             {getLocalDatetime(this.props.intl, o.time)}
@@ -877,5 +887,9 @@ const messages = defineMessages({
   commentTime: {
     id: 'comment.time',
     defaultMessage: '{day} at {time}',
+  },
+  paidPatreon: {
+    id: 'comment.paid-patreon',
+    defaultMessage: 'Patreon Paid Subscriber',
   },
 });

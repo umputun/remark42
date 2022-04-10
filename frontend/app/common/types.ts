@@ -7,6 +7,7 @@ export type User = {
   block: boolean;
   verified: boolean;
   email_subscription?: boolean;
+  paid_sub?: boolean;
 };
 
 /** data which is used on user-info page */

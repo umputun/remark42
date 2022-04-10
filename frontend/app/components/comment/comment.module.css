@@ -1,0 +1,8 @@
+.user  {
+	display: flex;
+	align-items: center;
+}
+
+.user > * + * {
+	margin-left: 4px;
+}

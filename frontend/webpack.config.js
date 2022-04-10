@@ -195,7 +195,7 @@ module.exports = (_, { mode, analyze }) => {
       options: {
         name: '[name].[ext]',
         publicPath: PUBLIC_PATH,
-        limit: 1200,
+        limit: false,
       },
     },
   };
