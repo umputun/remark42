@@ -11,7 +11,7 @@ const RefreshPlugin = require('@prefresh/webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
-const babelConfig = require('./.babelrc.js');
+// const babelConfig = require('./.babelrc.js');
 
 const NODE_ID = 'remark42';
 const PUBLIC_PATH = '/web/';
@@ -103,23 +103,39 @@ module.exports = (_, { mode, analyze }) => {
     publicPath: PUBLIC_PATH,
   };
 
-  const getTsRule = (babelConfig = {}) => {
+  const getTsRule = (modern = false) => {
+    // const babelOptions = {
+    //   exclude,
+    //   cacheDirectory: true,
+    //   ...babelConfig,
+    // };
+
+    // if (isDev) {
+    //   babelOptions.plugins.push('@prefresh/babel-plugin');
+    // }
+
+    // if (modern) {
+    //   Object.assign(babelOptions, {
+    //     ...babelConfig.env.modern,
+    //     plugins: [...babelConfig.plugins, ...babelConfig.env.modern.plugins],
+    //   });
+    // }
+
     return {
       test: /\.tsx?$/,
       exclude: /node_modules/,
       use: [
+        // {
+        //   loader: 'babel-loader',
+        //   options: babelOptions,
+        // },
         {
-          loader: 'babel-loader',
+          loader: 'swc-loader',
           options: {
-            exclude,
-            cacheDirectory: true,
-            ...babelConfig,
-          },
-        },
-        {
-          loader: 'ts-loader',
-          options: {
-            transpileOnly: true,
+            // parseMap: true,
+            jsc: {
+              target: modern ? 'es2016' : 'es5',
+            },
           },
         },
       ],
@@ -285,13 +301,7 @@ module.exports = (_, { mode, analyze }) => {
       chunkFilename: '[name].mjs',
     },
     module: {
-      rules: [
-        getTsRule({
-          ...babelConfig.env.modern,
-          plugins: [...babelConfig.env.modern.plugins, ...(isDev ? ['@prefresh/babel-plugin'] : [])],
-        }),
-        ...rules,
-      ],
+      rules: [getTsRule(true), ...rules],
     },
     plugins: [
       ...plugins,

@@ -108,6 +108,7 @@
     "stylelint-config-prettier": "^9.0.3",
     "stylelint-config-standard": "^25.0.0",
     "stylelint-value-no-unknown-custom-properties": "^4.0.0",
+    "swc-loader": "^0.1.16",
     "ts-loader": "^9.1.2",
     "tsconfig-paths-webpack-plugin": "^3.5.1",
     "typescript": "^4.2.4",

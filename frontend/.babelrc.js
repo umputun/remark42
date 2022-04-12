@@ -1,11 +1,4 @@
 const getPresetEnv = (options) => ['@babel/preset-env', options];
-const preactPreset = [
-  '@babel/preset-react',
-  {
-    pragma: 'h',
-    pragmaFrag: 'Fragment',
-  },
-];
 
 const plugins = ['module:fast-async'];
 
@@ -18,16 +11,15 @@ module.exports = {
       bugfixes: true,
       loose: true,
     }),
-    preactPreset,
   ],
   plugins,
   env: {
     modern: {
-      presets: [getPresetEnv({ targets: { esmodules: true }, loose: true, bugfixes: true }), preactPreset],
+      presets: [getPresetEnv({ targets: { esmodules: true }, loose: true, bugfixes: true })],
       plugins,
     },
     test: {
-      presets: [getPresetEnv({ targets: { node: 'current' } }), preactPreset],
+      presets: [getPresetEnv({ targets: { node: 'current' } })],
       plugins,
     },
   },

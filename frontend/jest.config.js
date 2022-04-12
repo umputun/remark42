@@ -1,24 +1,6 @@
 module.exports = {
   transform: {
-    '^.+\\.(t|j)sx?$': [
-      '@swc/jest',
-      {
-        jsc: {
-          parser: {
-            syntax: 'typescript',
-            tsx: true,
-            decorators: false,
-          },
-          target: 'es2016',
-          transform: {
-            react: {
-              runtime: 'automatic',
-              importSource: 'preact',
-            },
-          },
-        },
-      },
-    ],
+    '^.+\\.(t|j)sx?$': ['@swc/jest'],
   },
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
