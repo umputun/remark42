@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { shallow } from 'enzyme';
 
 import { SubscribeByRSS, createSubscribeUrl } from '.';

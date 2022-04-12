@@ -462,7 +462,7 @@ export class Comment extends Component<CommentProps, State> {
     return controls;
   };
 
-  render(props: CommentProps, state: State) {
+  render(props: CommentProps, state: State): JSX.Element {
     const isAdmin = this.isAdmin();
     const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();

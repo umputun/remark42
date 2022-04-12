@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { mount } from 'enzyme';
 import { act } from 'preact/test-utils';
 import { Provider } from 'react-redux';

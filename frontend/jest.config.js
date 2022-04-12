@@ -1,7 +1,24 @@
 module.exports = {
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
-    '^.+\\.jsx?$': 'babel-jest',
+    '^.+\\.(t|j)sx?$': [
+      '@swc/jest',
+      {
+        jsc: {
+          parser: {
+            syntax: 'typescript',
+            tsx: true,
+            decorators: false,
+          },
+          target: 'es2016',
+          transform: {
+            react: {
+              runtime: 'automatic',
+              importSource: 'preact',
+            },
+          },
+        },
+      },
+    ],
   },
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
@@ -32,9 +49,4 @@ module.exports = {
     '!app/utils/loadLocale.ts',
     '!app/tests',
   ],
-  globals: {
-    'ts-jest': {
-      babelConfig: true,
-    },
-  },
 };
