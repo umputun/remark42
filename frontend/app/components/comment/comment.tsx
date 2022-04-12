@@ -10,7 +10,6 @@ import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
 import { copy } from 'common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Profile } from 'common/types';
-import { extractErrorMessageFromResponse, FetcherError } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
 import { CommentFormProps } from 'components/comment-form';
@@ -20,9 +19,9 @@ import { Countdown } from 'components/countdown';
 import { VerificationIcon } from 'components/icons/verification';
 import { getPreview, uploadImage } from 'common/api';
 import { postMessageToParent } from 'utils/post-message';
-import { getVoteMessage, VoteMessagesTypes } from './getVoteMessage';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
+import { CommentVotes } from './comment-votes';
 
 import styles from './comment.module.css';
 import './styles';
@@ -61,19 +60,6 @@ export interface State {
   renderDummy: boolean;
   isCopied: boolean;
   editDeadline: Date | null;
-  voteErrorMessage: string | null;
-  /**
-   * delta of the score:
-   * default is 0.
-   * if user upvoted delta will be incremented
-   * if downvoted delta will be decremented
-   */
-  scoreDelta: number;
-  /**
-   * score copied from props, that updates instantly,
-   * without server response
-   */
-  cachedScore: number;
   initial: boolean;
 }
 
@@ -82,11 +68,8 @@ export class Comment extends Component<CommentProps, State> {
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
 
-  updateState(props: CommentProps) {
-    const newState: Partial<State> = {
-      scoreDelta: props.data.vote,
-      cachedScore: props.data.score,
-    };
+  updateState = (props: CommentProps) => {
+    const newState: Partial<State> = {};
 
     if (props.inView) {
       newState.renderDummy = false;
@@ -106,15 +89,13 @@ export class Comment extends Component<CommentProps, State> {
     }
 
     return newState;
-  }
+  };
 
   state = {
     renderDummy: typeof this.props.inView === 'boolean' ? !this.props.inView : false,
     isCopied: false,
     editDeadline: null,
     voteErrorMessage: null,
-    scoreDelta: 0,
-    cachedScore: this.props.data.score,
     initial: true,
     ...this.updateState(this.props),
   };
@@ -238,48 +219,6 @@ export class Comment extends Component<CommentProps, State> {
     this.props.hideUser!(this.props.data.user);
   };
 
-  handleVoteError = (e: FetcherError, originalScore: number, originalDelta: number) => {
-    this.setState({
-      scoreDelta: originalDelta,
-      cachedScore: originalScore,
-      voteErrorMessage: extractErrorMessageFromResponse(e, this.props.intl),
-    });
-  };
-
-  sendVotingRequest = (votingValue: number, originalScore: number, originalDelta: number) => {
-    this.votingPromise = this.votingPromise
-      .then(() => this.props.putCommentVote!(this.props.data.id, votingValue))
-      .catch((e) => this.handleVoteError(e, originalScore, originalDelta));
-  };
-
-  increaseScore = () => {
-    const { cachedScore, scoreDelta } = this.state;
-
-    if (scoreDelta === 1) return;
-
-    this.setState({
-      scoreDelta: scoreDelta + 1,
-      cachedScore: cachedScore + 1,
-      voteErrorMessage: null,
-    });
-
-    this.sendVotingRequest(1, cachedScore, scoreDelta);
-  };
-
-  decreaseScore = () => {
-    const { cachedScore, scoreDelta } = this.state;
-
-    if (scoreDelta === -1) return;
-
-    this.setState({
-      scoreDelta: scoreDelta - 1,
-      cachedScore: cachedScore - 1,
-      voteErrorMessage: null,
-    });
-
-    this.sendVotingRequest(-1, cachedScore, scoreDelta);
-  };
-
   addComment = async (text: string, title: string, pid?: CommentType['id']) => {
     await this.props.addComment!(text, title, pid);
 
@@ -310,6 +249,17 @@ export class Comment extends Component<CommentProps, State> {
 
     parentCommentNode.scrollIntoView();
   };
+
+  get isVotesDisabled(): boolean {
+    return (
+      this.props.view !== 'main' ||
+      this.props.post_info?.read_only ||
+      this.props.data.delete ||
+      this.isCurrentUser() ||
+      this.isGuest() ||
+      (!StaticStore.config.anon_vote && this.isAnonymous())
+    );
+  }
 
   copyComment = async () => {
     const { name } = this.props.data.user;
@@ -355,38 +305,6 @@ export class Comment extends Component<CommentProps, State> {
     if (this.isGuest()) return false;
 
     return this.props.data.user.id === this.props.user!.id;
-  };
-
-  /**
-   * returns reason for disabled downvoting
-   */
-  getDownvoteDisabledReason = (): string | null => {
-    const intl = this.props.intl;
-    if (!(this.props.view === 'main' || this.props.view === 'pinned'))
-      return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
-    if (this.props.post_info?.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
-    if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
-    if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
-    if (StaticStore.config.positive_score && this.props.data.score < 1)
-      return getVoteMessage(VoteMessagesTypes.ONLY_POSITIVE, intl);
-    if (this.isGuest()) return getVoteMessage(VoteMessagesTypes.GUEST, intl);
-    if (this.isAnonymous() && !StaticStore.config.anon_vote) return getVoteMessage(VoteMessagesTypes.ANONYMOUS, intl);
-    return null;
-  };
-
-  /**
-   * returns reason for disabled upvoting
-   */
-  getUpvoteDisabledReason = (): string | null => {
-    const intl = this.props.intl;
-    if (!(this.props.view === 'main' || this.props.view === 'pinned'))
-      return getVoteMessage(VoteMessagesTypes.ONLY_POST_PAGE, intl);
-    if (this.props.post_info?.read_only) return getVoteMessage(VoteMessagesTypes.READONLY, intl);
-    if (this.props.data.delete) return getVoteMessage(VoteMessagesTypes.DELETED, intl);
-    if (this.isCurrentUser()) return getVoteMessage(VoteMessagesTypes.OWN_COMMENT, intl);
-    if (this.isGuest()) return getVoteMessage(VoteMessagesTypes.GUEST, intl);
-    if (this.isAnonymous() && !StaticStore.config.anon_vote) return getVoteMessage(VoteMessagesTypes.ANONYMOUS, intl);
-    return null;
   };
 
   getCommentControls = (): JSX.Element[] => {
@@ -476,13 +394,7 @@ export class Comment extends Component<CommentProps, State> {
 
     const isReplying = props.editMode === CommentMode.Reply;
     const isEditing = props.editMode === CommentMode.Edit;
-    const lowCommentScore = StaticStore.config.low_score;
-    const downvotingDisabledReason = this.getDownvoteDisabledReason();
-    const isDownvotingDisabled = downvotingDisabledReason !== null;
-    const upvotingDisabledReason = this.getUpvoteDisabledReason();
-    const isUpvotingDisabled = upvotingDisabledReason !== null;
     const editable = props.repliesCount === 0 && state.editDeadline;
-    const scoreSignEnabled = !StaticStore.config.positive_score;
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
     const commentControls = this.getCommentControls();
     const intl = props.intl;
@@ -494,9 +406,6 @@ export class Comment extends Component<CommentProps, State> {
 
     const o = {
       ...props.data,
-      controversyText: intl.formatMessage(messages.controversy, {
-        value: (props.data.controversy || 0).toFixed(2),
-      }),
       text:
         props.view === 'preview'
           ? getTextSnippet(props.data.text)
@@ -512,22 +421,12 @@ export class Comment extends Component<CommentProps, State> {
             return span.innerText;
           })
         : props.data.orig,
-      score: {
-        value: Math.abs(state.cachedScore),
-        sign: !scoreSignEnabled ? '' : state.cachedScore > 0 ? '+' : state.cachedScore < 0 ? '−' : null,
-        view: state.cachedScore > 0 ? 'positive' : state.cachedScore < 0 ? 'negative' : undefined,
-      },
       user: props.data.user,
     };
 
     const defaultMods = {
       disabled: props.disabled,
       pinned: props.data.pin,
-      // TODO: we also have critical_score, so we need to collapse comments with it in future
-      useless:
-        !!props.isUserBanned ||
-        !!props.data.delete ||
-        (props.view !== 'preview' && props.data.score < lowCommentScore && !props.data.pin && !props.disabled),
       // TODO: add default view mod or don't?
       guest: isGuest,
       view: props.view === 'main' || props.view === 'pinned' ? props.data.user.admin && 'admin' : props.view,
@@ -661,51 +560,17 @@ export class Comment extends Component<CommentProps, State> {
               <FormattedMessage id="comment.deleted-user" defaultMessage="Deleted" />
             </span>
           )}
-
-          <span className={b('comment__score', {}, { view: o.score.view })}>
-            <span
-              className={b(
-                'comment__vote',
-                {},
-                { type: 'up', selected: state.scoreDelta === 1, disabled: isUpvotingDisabled }
-              )}
-              aria-disabled={state.scoreDelta === 1 || isUpvotingDisabled ? 'true' : 'false'}
-              {...getHandleClickProps(isUpvotingDisabled ? undefined : this.increaseScore)}
-              title={upvotingDisabledReason || undefined}
-            >
-              Vote up
-            </span>
-
-            <span className="comment__score-value" title={o.controversyText}>
-              {o.score.sign}
-              {o.score.value}
-            </span>
-
-            <span
-              className={b(
-                'comment__vote',
-                {},
-                { type: 'down', selected: state.scoreDelta === -1, disabled: isDownvotingDisabled }
-              )}
-              aria-disabled={state.scoreDelta === -1 || isUpvotingDisabled ? 'true' : 'false'}
-              {...getHandleClickProps(isDownvotingDisabled ? undefined : this.decreaseScore)}
-              title={downvotingDisabledReason || undefined}
-            >
-              Vote down
-            </span>
-          </span>
+          {this.props.view !== 'pinned' && (
+            <CommentVotes
+              id={this.props.data.id}
+              vote={props.data.vote}
+              votes={props.data.score}
+              controversy={props.data.controversy}
+              disabled={this.isVotesDisabled}
+            />
+          )}
         </div>
         <div className="comment__body">
-          {!!state.voteErrorMessage && (
-            <div className="voting__error" role="alert">
-              <FormattedMessage
-                id="comment.vote-error"
-                defaultMessage="Voting error: {voteErrorMessage}"
-                values={{ voteErrorMessage: state.voteErrorMessage }}
-              />
-            </div>
-          )}
-
           {(!props.collapsed || props.view === 'pinned') && (
             <div
               className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
@@ -868,10 +733,7 @@ const messages = defineMessages({
     id: 'comment.deleted-comment',
     defaultMessage: 'This comment was deleted',
   },
-  controversy: {
-    id: 'comment.controversy',
-    defaultMessage: 'Controversy: {value}',
-  },
+
   toggleVerification: {
     id: 'comment.toggle-verification',
     defaultMessage: 'Toggle verification',

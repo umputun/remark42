@@ -36,7 +36,6 @@
   "comment.blocked-user": "차단됨",
   "comment.blocking-period": "차단 기간",
   "comment.cancel": "취소",
-  "comment.controversy": "논쟁: {value}",
   "comment.copied": "복사됨!",
   "comment.copy": "복사",
   "comment.delete": "삭제",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "{userName} 님을 미확인 처리하시겠어요?",
   "comment.verified-user": "확인된 사용자",
   "comment.verify-user": "{userName} 님을 확인 처리하시겠어요?",
-  "comment.vote-error": "투표 오류: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "익명의 사용자는 이미지를 업로드할 수 없습니다. 이미지를 첨부하려면 익명이 아닌 사용자로 로그인하세요.",
   "commentForm.exceeded-size": "{fileName}의 크기가 {maxImageSize} 한도를 초과합니다",
   "commentForm.input-placeholder": "코멘트를 입력하세요",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "익명의 사용자는 투표할 수 없습니다",
-  "vote.deleted": "삭제된 댓글에는 투표할 수 없습니다",
-  "vote.guest": "투표하려면 로그인하세요",
-  "vote.only-positive": "점수는 양수로만 입력할 수 있습니다",
-  "vote.only-post-page": "게시물의 페이지에서만 투표할 수 있습니다",
-  "vote.own-comment": "자신의 댓글에는 투표할 수 없습니다",
-  "vote.readonly": "읽기 전용 항목에는 투표할 수 없습니다"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

@@ -36,7 +36,6 @@
   "comment.blocked-user": "Заблокирован",
   "comment.blocking-period": "Период блокировки",
   "comment.cancel": "Отменить",
-  "comment.controversy": "Спорность: {value}",
   "comment.copied": "Скопировано!",
   "comment.copy": "Копировать",
   "comment.delete": "Удалить",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Отменить подтверждение учетной записи для {userName}?",
   "comment.verified-user": "Подтвержденная учетная запись",
   "comment.verify-user": "Подтвердить учетную запись для {userName}?",
-  "comment.vote-error": "Ошибка голосования: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Анонимные пользователи не могут загружать изображения. Для загрузки изображений войдите под своим именем.",
   "commentForm.exceeded-size": "Размер файла {fileName} не должен превышать {maxImageSize}",
   "commentForm.input-placeholder": "Оставьте здесь свой комментарий",
@@ -167,11 +165,8 @@
   "user.comments": "Комментарии",
   "user.load-more": "Загрузить ещё",
   "user.my-comments": "Мои комментарии",
-  "vote.anonymous": "Анонимные пользователи не могут голосовать",
-  "vote.deleted": "Нельзя голосовать за удаленный комментарий",
-  "vote.guest": "Войдите, чтобы проголосовать",
-  "vote.only-positive": "Разрешены только положительные оценки",
-  "vote.only-post-page": "Голосовать можно только на странице поста",
-  "vote.own-comment": "Вы не можете голосовать за свои комментарии",
-  "vote.readonly": "Вы не можете голосовать за комментарии, которые доступны только для чтения"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

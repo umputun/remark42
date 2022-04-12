@@ -36,7 +36,6 @@
   "comment.blocked-user": "ブロックされました",
   "comment.blocking-period": "ブロック期間",
   "comment.cancel": "取り消す",
-  "comment.controversy": "論争: {value}",
   "comment.copied": "コピーされました！",
   "comment.copy": "コピー",
   "comment.delete": "削除",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "{userName}を未検証にしますか？",
   "comment.verified-user": "検証済みユーザー",
   "comment.verify-user": "{userName}を検証済みにしますか？",
-  "comment.vote-error": "投票エラー: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "匿名ユーザーは画像をアップロードできません。画像を添付するには、匿名ではないユーザーでログインしてください。",
   "commentForm.exceeded-size": "{fileName} のサイズが上限値の {maxImageSize} を超えています",
   "commentForm.input-placeholder": "コメントをここに入力してください",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "匿名ユーザーは投稿できません",
-  "vote.deleted": "削除済みコメントには投票できません",
-  "vote.guest": "投票するにはサインインしてください",
-  "vote.only-positive": "正のスコアのみが許可されています",
-  "vote.only-post-page": "記事ページでのみ投票できます",
-  "vote.own-comment": "自分のコメントには投票できません",
-  "vote.readonly": "読み取り専用のトピックには投票できません"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

@@ -36,7 +36,6 @@
   "comment.blocked-user": "Блокиран",
   "comment.blocking-period": "Период за блокиране",
   "comment.cancel": "Отказ",
-  "comment.controversy": "Полемика: {value}",
   "comment.copied": "Копирано!",
   "comment.copy": "Копирай",
   "comment.delete": "Изтрий",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Искате ли да маркирате {userName} като непроверен?",
   "comment.verified-user": "Проверен потребител",
   "comment.verify-user": "Искате ли да маркирате {userName} като проверен?",
-  "comment.vote-error": "Грешка при гласуване: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Анонимни потребители не могат да качват картинки. Моля влезте като потребител за да добавите картини.",
   "commentForm.exceeded-size": "{fileName} е по-голям от лимита от {maxImageSize}",
   "commentForm.input-placeholder": "Вашият коментар тук",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Анонимни потребители не могат да гласуват",
-  "vote.deleted": "Не може да гласъвате за изтрит коментарт",
-  "vote.guest": "Влезте за да гласувате",
-  "vote.only-positive": "Само положителна оценка е позволена",
-  "vote.only-post-page": "Гласуването е разрешено само на страницата на бележката",
-  "vote.own-comment": "Не може да гласувате за ваш коментар",
-  "vote.readonly": "Не може да гласувате за нишки маркирани само за четене"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

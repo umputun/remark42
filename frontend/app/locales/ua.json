@@ -36,7 +36,6 @@
   "comment.blocked-user": "Заблокованний",
   "comment.blocking-period": "Період блокування",
   "comment.cancel": "Відмінити",
-  "comment.controversy": "Суперечливість: {value}",
   "comment.copied": "Скопійовано!",
   "comment.copy": "Скопіювати",
   "comment.delete": "Видалити",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Прибрати статус справжності облікового запису для{userName}?",
   "comment.verified-user": "Справжність облікового запису",
   "comment.verify-user": "Підтвердити справжність облікового запису для{userName}?",
-  "comment.vote-error": "Помилка голосування: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Завантаження зображень анонімними користувачами заборонено. Будь ласка, увійдіть як не анонімний користувач.",
   "commentForm.exceeded-size": "Розмір файлу {fileName} повинен бути менший ніж {maxImageSize}",
   "commentForm.input-placeholder": "Написати коментар",
@@ -167,11 +165,8 @@
   "user.comments": "Коментарі",
   "user.load-more": "Load more",
   "user.my-comments": "Мої коментарі",
-  "vote.anonymous": "Не можна голосувати анонімному користувачу",
-  "vote.deleted": "Не можна голосувати за видалений коментар",
-  "vote.guest": "Увійдіть в систему для голосування",
-  "vote.only-positive": "Дозволені тільки позитивні оцінки",
-  "vote.only-post-page": "Голосування можливо тільки для статей",
-  "vote.own-comment": "Ви не можете голосувати за свої коментарі",
-  "vote.readonly": "Не можна голосувати за коментарі, які в режимі тільки для читання"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

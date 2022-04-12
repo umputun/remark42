@@ -36,7 +36,6 @@
   "comment.blocked-user": "Engellendi",
   "comment.blocking-period": "Engelleme süresi",
   "comment.cancel": "İptal",
-  "comment.controversy": "Tartışma: {value}",
   "comment.copied": "Kopyalandı!",
   "comment.copy": "Kopyala",
   "comment.delete": "Sil",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "{userName} kullanıcısının onayı kaldırılsın mı?",
   "comment.verified-user": "Onaylanmış kullanıcı",
   "comment.verify-user": "{userName} kullanıcısı onaylansın mı?",
-  "comment.vote-error": "Oylama hatası: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Anonim kullanıcılar resim yükleme özelliğini kullanamazlar, lütfen resim ekleyebilmek için giriş yapın.",
   "commentForm.exceeded-size": "{fileName} dosyası boyut limitini ({maxImageSize}) aşıyor",
   "commentForm.input-placeholder": "Bir yorum yazın",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Anonim kullanıcılar oy kullanamaz",
-  "vote.deleted": "Silinmiş yorum oylanamaz",
-  "vote.guest": "Oy vermek için giriş yapın",
-  "vote.only-positive": "Sadece pozitif oy verilebilir",
-  "vote.only-post-page": "Yalnızca gönderinin sayfasında oylama yapılabilir",
-  "vote.own-comment": "Kendi yorumunuza oy veremezsiniz",
-  "vote.readonly": "Yazmaya kapalı başlıklarda oy veremezsiniz"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

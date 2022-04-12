@@ -36,7 +36,6 @@
   "comment.blocked-user": "Gesperrt",
   "comment.blocking-period": "Sperrdauer",
   "comment.cancel": "Abbrechen",
-  "comment.controversy": "Strittigkeit: {value}",
   "comment.copied": "Kopiert!",
   "comment.copy": "Kopieren",
   "comment.delete": "Löschen",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Möchten Sie den Benutzer {userName} wirklich als unbestätigt speichern?",
   "comment.verified-user": "Bestätigter Benutzer",
   "comment.verify-user": "Möchten Sie den Benutzer {userName} wirklich bestätigen?",
-  "comment.vote-error": "Fehler beim Abstimmen: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Das Hochladen von Bildern ist für anonyme Benutzer deaktiviert. Bitte melden Sie sich an, um Bilder hochladen zu können.",
   "commentForm.exceeded-size": "Die Datei {fileName} überschreitet das Größenlimit von {maxImageSize}",
   "commentForm.input-placeholder": "Geben Sie hier Ihren Kommentar ein",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Anonyme Benutzer können leider nicht abstimmen",
-  "vote.deleted": "Sie können nicht für einen gelöschten Kommentar abstimmen",
-  "vote.guest": "Melden Sie sich an, um abzustimmen",
-  "vote.only-positive": "Nur positive Punktzahl erlaubt",
-  "vote.only-post-page": "Die Abstimmung ist nur auf der Artikelseite erlaubt",
-  "vote.own-comment": "Sie können nicht für Ihren eigenen Kommentar abstimmen",
-  "vote.readonly": "Sie können nicht bei schreibgeschützten Themen abstimmen"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

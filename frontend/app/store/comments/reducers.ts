@@ -18,6 +18,8 @@ import {
   COMMENTS_REQUEST_SUCCESS,
   COMMENTS_REQUEST_FAILURE,
   COMMENTS_REQUEST_ACTIONS,
+  COMMENT_PATCH,
+  COMMENT_PATCH_ACTION,
 } from './types';
 import { getPinnedComments, getInitialSort } from './utils';
 import { cmpRef } from 'utils/cmpRef';
@@ -96,7 +98,12 @@ const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comm
 
 export const allComments = (
   state: Record<Comment['id'], Comment> = {},
-  action: COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION
+  action:
+    | COMMENTS_SET_ACTION
+    | COMMENTS_APPEND_ACTION
+    | COMMENTS_EDIT_ACTION
+    | COMMENTS_PATCH_ACTION
+    | COMMENT_PATCH_ACTION
 ): Record<Comment['id'], Comment> => {
   switch (action.type) {
     case COMMENTS_SET: {
@@ -105,6 +112,9 @@ export const allComments = (
     case COMMENTS_APPEND:
     case COMMENTS_EDIT: {
       return { ...state, [action.comment.id]: action.comment };
+    }
+    case COMMENT_PATCH: {
+      return { ...state, [action.patch.id]: { ...state[action.patch.id], ...action.patch } };
     }
     case COMMENTS_PATCH: {
       let newState = state;
@@ -142,7 +152,7 @@ export const activeComment = (
 
 export const pinnedComments = (
   state: Comment['id'][] = [],
-  action: COMMENTS_SET_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION
+  action: COMMENTS_SET_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION | COMMENT_PATCH_ACTION
 ): Comment['id'][] => {
   switch (action.type) {
     case COMMENTS_SET: {

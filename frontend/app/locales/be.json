@@ -36,7 +36,6 @@
   "comment.blocked-user": "Заблакаваны",
   "comment.blocking-period": "Перыяд блакавання",
   "comment.cancel": "Скасаваць",
-  "comment.controversy": "Спрэчнасць: {value}",
   "comment.copied": "Скапіявана!",
   "comment.copy": "Капіяваць",
   "comment.delete": "Выдаліць",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Прыбраць статус сапраўднасці ўліковага запісу {userName}?",
   "comment.verified-user": "Спраўджаны ўліковы запіс",
   "comment.verify-user": "Пацвердзіць сапраўднасць уліковага запісу {userName}?",
-  "comment.vote-error": "Памылка галасавання: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Загрузка выяў забароненая для ананімных карыстальнікаў. Калі ласка, увайдзіце як не ананімны карыстальнік, каб прымацоўваць выявы.",
   "commentForm.exceeded-size": "Памер файла {fileName} мусіць быць меншым за {maxImageSize}",
   "commentForm.input-placeholder": "Напісаць каментар",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Ананімныя карыстальнікі не могуць галасаваць",
-  "vote.deleted": "Нельга галасаваць за выдалены каментар",
-  "vote.guest": "Увайдзіце ў сістэму, каб галасаваць",
-  "vote.only-positive": "Дазволеныя толькі станоўчыя адзнакі",
-  "vote.only-post-page": "Галасаваць можна толькі за артыкулы",
-  "vote.own-comment": "Вы не можаце галасаваць за свае каментары",
-  "vote.readonly": "Нельга галасаваць за каментары, што ў рэжыме толькі для чытання"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

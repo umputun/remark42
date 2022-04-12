@@ -24,8 +24,4 @@
   & .comment__time {
     font-style: italic;
   }
-
-  & .comment__score {
-    top: 3px;
-  }
 }

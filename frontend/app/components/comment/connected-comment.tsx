@@ -12,7 +12,7 @@ import { Comment as CommentType } from 'common/types';
 import { useStore } from 'react-redux';
 
 import { StoreState } from 'store';
-import { addComment, removeComment, updateComment, setPinState, putVote, setCommentMode } from 'store/comments/actions';
+import { addComment, removeComment, updateComment, setPinState, setCommentMode } from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
 import { Comment, CommentProps } from './comment';
@@ -57,7 +57,6 @@ export const boundActions = bindActions({
   removeComment,
   setReplyEditState: setCommentMode,
   setPinState,
-  putCommentVote: putVote,
   blockUser,
   unblockUser,
   hideUser,

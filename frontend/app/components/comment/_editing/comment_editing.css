@@ -3,11 +3,6 @@
     display: none;
   }
 
-  & .comment__score {
-    top: 4px;
-    right: 0;
-  }
-
   /* it isn't mobile first, but it's fine here */
   @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
     border: 8px solid;
@@ -22,11 +17,6 @@
       border-right-width: 0;
       border-bottom-width: 0;
       border-top-width: 8px;
-    }
-
-    & .comment__score {
-      top: 12px;
-      right: 8px;
     }
   }
 }

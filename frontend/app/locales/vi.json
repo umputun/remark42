@@ -36,7 +36,6 @@
   "comment.blocked-user": "Đã chặn",
   "comment.blocking-period": "Thời gian chặn",
   "comment.cancel": "Huỷ",
-  "comment.controversy": "Tranh luận: {value}",
   "comment.copied": "Đã sao chép!",
   "comment.copy": "Sao chép",
   "comment.delete": "Xoá",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Bạn có muốn bỏ xác thực {userName}?",
   "comment.verified-user": "Người dùng đã xác thực",
   "comment.verify-user": "Bạn có muốn xác thực {userName}?",
-  "comment.vote-error": "Vote bị lỗi: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Upload ảnh bị tắt đối với người dùng ẩn danh. Vui lòng đăng nhập không phải ẩn danh để có thể đính kèm hình ảnh.",
   "commentForm.exceeded-size": "{fileName} vượt kích thước giới hạn {maxImageSize}",
   "commentForm.input-placeholder": "Nhập bình luận của bạn tại đây",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Người dùng ẩn danh không thể vote",
-  "vote.deleted": "Không thể vote bình luận đã xoá",
-  "vote.guest": "Đăng nhập để vote",
-  "vote.only-positive": "Chỉ cho phép điểm số dương",
-  "vote.only-post-page": "Chỉ được phép vote trên trang của bài đăng",
-  "vote.own-comment": "Bạn không thể vote bình luận của bạn",
-  "vote.readonly": "Không thể Vote chủ đề chỉ đọc"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }
