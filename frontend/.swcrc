@@ -1,4 +1,5 @@
 {
+  "minify": true,
   "jsc": {
     "parser": {
       "syntax": "typescript",
