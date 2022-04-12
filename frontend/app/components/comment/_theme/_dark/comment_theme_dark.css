@@ -40,18 +40,6 @@
     }
   }
 
-  & .comment__score {
-    color: var(--color31);
-  }
-
-  & .comment__score_view_negative {
-    color: var(--color30);
-  }
-
-  & .comment__score_view_positive {
-    color: var(--color12);
-  }
-
   & .comment__status {
     color: var(--color11);
   }

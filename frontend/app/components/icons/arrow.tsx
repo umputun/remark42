@@ -1,6 +1,6 @@
 import { h, JSX } from 'preact';
 
-type Props = { size?: number } & JSX.HTMLAttributes<SVGSVGElement>;
+type Props = JSX.HTMLAttributes<SVGSVGElement> & { size?: number };
 
 export function ArrowIcon({ size = 14, ...props }: Props) {
   return (

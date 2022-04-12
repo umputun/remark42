@@ -36,7 +36,6 @@
   "comment.blocked-user": "Zablokowany",
   "comment.blocking-period": "Okres zablokowania",
   "comment.cancel": "Anuluj",
-  "comment.controversy": "Spór: {value}",
   "comment.copied": "Skopiowano!",
   "comment.copy": "Skopiuj",
   "comment.delete": "Usuń",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Czy chcesz cofnąć weryfikację użytkownika {userName}?",
   "comment.verified-user": "Zweryfikowany użytkownik",
   "comment.verify-user": "Czy chcesz zweryfikować użytkownika {userName}?",
-  "comment.vote-error": "Błąd głosowania: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Dodawanie zdjęć jest wyłączone dla anonimowych użytkowników. Zaloguj się by mieć możliwość dodawania zdjęć.",
   "commentForm.exceeded-size": "{fileName} przekracza maksymalny limit {maxImageSize}",
   "commentForm.input-placeholder": "Twój komentarz tutaj",
@@ -167,11 +165,8 @@
   "user.comments": "Komentarze",
   "user.load-more": "Load more",
   "user.my-comments": "Moje komentarze",
-  "vote.anonymous": "Anonimowi użytkownicy nie mogą głosować",
-  "vote.deleted": "Nie można głosować na usunięte komentarze",
-  "vote.guest": "Zaloguj się żeby głosować",
-  "vote.only-positive": "Dozwolony tylko wynik pozytywny",
-  "vote.only-post-page": "Głosowanie możliwe tylko na stronie posta",
-  "vote.own-comment": "Nie można głosować na swoje własne komentarze",
-  "vote.readonly": "Nie można głosować na wątki tylko do odczytu"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

@@ -36,7 +36,6 @@
   "comment.blocked-user": "已封锁用户",
   "comment.blocking-period": "封锁期限",
   "comment.cancel": "取消",
-  "comment.controversy": "争议：{value}",
   "comment.copied": "已复制!",
   "comment.copy": "复制",
   "comment.delete": "删除",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "您是否要为 {userName} 取消验证?",
   "comment.verified-user": "已验证的用户",
   "comment.verify-user": "您是否要验证 {userName}?",
-  "comment.vote-error": "投票失败: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "匿名用户无法上传图片。上传之前，您应该先以非匿名用户登录。",
   "commentForm.exceeded-size": "{fileName} 超出了 {maxImageSize} 大小的限制",
   "commentForm.input-placeholder": "在此填写评论",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "匿名用户无法投票",
-  "vote.deleted": "无法为已删除的评论投票",
-  "vote.guest": "登录以投票",
-  "vote.only-positive": "只允许正面分数",
-  "vote.only-post-page": "只能在文章页面上投票",
-  "vote.own-comment": "无法为自己的评论投票",
-  "vote.readonly": "无法为只读主题投票"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

@@ -1,6 +1,13 @@
 import { Node, Comment, Sorting } from 'common/types';
 import { StoreState } from '../index';
 
+export const COMMENT_PATCH = 'COMMENT/PATCH';
+
+export interface COMMENT_PATCH_ACTION {
+  type: typeof COMMENT_PATCH;
+  patch: Pick<Comment, 'id'> & Partial<Comment>;
+}
+
 export const COMMENTS_SET = 'COMMENTS/SET';
 
 export interface COMMENTS_SET_ACTION {
@@ -58,6 +65,7 @@ export interface COMMENTS_SET_SORT_ACTION {
 }
 
 export type COMMENTS_ACTIONS =
+  | COMMENT_PATCH_ACTION
   | COMMENTS_SET_ACTION
   | COMMENTS_APPEND_ACTION
   | COMMENTS_EDIT_ACTION

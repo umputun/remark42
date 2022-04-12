@@ -18,19 +18,11 @@ import './__controls/comment__controls.css';
 import './__info/comment__info.css';
 import './__input/comment__input.css';
 import './__link-to-parent/comment__link-to-parent.css';
-import './__score/comment__score.css';
-import './__score-value/comment__score-value.css';
 import './__status/comment__status.css';
 import './__text/comment__text.css';
 import './__time/comment__time.css';
 import './__user-id/comment__user-id.css';
 import './__username/comment__username.css';
-
-import './__vote/comment__vote.css';
-import './__vote/_disabled/comment__vote_disabled.css';
-import './__vote/_selected/comment__vote_selected.css';
-import './__vote/_type/_down/comment__vote_type_down.css';
-import './__vote/_type/_up/comment__vote_type_up.css';
 
 import './_collapsed/comment_collapsed.css';
 import './_editing/comment_editing.css';

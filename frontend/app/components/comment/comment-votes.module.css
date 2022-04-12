@@ -1,0 +1,70 @@
+.root {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 5px;
+  right: 0;
+  min-width: 72px;
+  font-weight: 700;
+  text-align: right;
+  line-height: 16px;
+  user-select: none;
+}
+
+.rootDisabled {
+  justify-content: center;
+}
+
+.voteButton {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  opacity: 0.4;
+  color: var(--color13);
+  transition: opacity 0.15s color 0.15s;
+}
+
+.root:hover .voteButton {
+  opacity: 1;
+}
+
+.upVoteButton:hover,
+.upVoteButtonActive {
+  color: rgb(var(--color12));
+  opacity: 1;
+}
+
+.downVoteButton:hover,
+.downVoteButtonActive {
+  color: rgb(var(--color30));
+  opacity: 1;
+}
+
+.votes {
+  margin: 0 4px;
+  padding: 2px 6px;
+  font-weight: 700;
+  border-radius: 3px;
+  min-width: 16px;
+  text-align: center;
+  color: rgb(var(--secondary-darker-text-color));
+}
+
+.votesNegative {
+  color: rgb(var(--color30));
+  background-color: rgba(var(--color30), 0.1);
+}
+
+.votesPositive {
+  color: rgb(var(--color12));
+  background-color: rgba(var(--color12), 0.1);
+}
+
+.upVoteIcon {
+  transform: rotate(180deg);
+}
+
+.errorMessage {
+  white-space: nowrap;
+  font-weight: 500;
+}

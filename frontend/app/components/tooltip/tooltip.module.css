@@ -1,0 +1,53 @@
+.root {
+  position: relative;
+}
+
+.tooltip {
+  position: absolute;
+  visibility: hidden;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background-color: rgb(var(--black-color));
+  color: rgb(var(--white-color));
+}
+
+.tooltip::after {
+  position: absolute;
+  content: '';
+  border: 6px solid var(--transparent);
+}
+
+.root:hover .tooltip {
+  visibility: visible;
+}
+
+.tooltipPermanent {
+  visibility: visible;
+}
+
+.rootVisible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.permanent {
+  display: block;
+}
+
+.top-left {
+  margin-bottom: 10px;
+  bottom: 100%;
+  right: 0;
+
+  &::after {
+    top: 100%;
+    right: 10px;
+    border-top-color: rgb(var(--black-color));
+    border-bottom-width: 0;
+  }
+}
+
+.top-right {
+  bottom: 100%;
+  left: 0;
+}

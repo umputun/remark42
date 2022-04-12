@@ -36,7 +36,6 @@
   "comment.blocked-user": "Estetty",
   "comment.blocking-period": "Eston pituus",
   "comment.cancel": "Peruuta",
-  "comment.controversy": "Kiistely: {value}",
   "comment.copied": "Kopioitu!",
   "comment.copy": "Kopioi",
   "comment.delete": "Poista",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Do you want to unverify {userName}?",
   "comment.verified-user": "Vahvistettu käyttäjä",
   "comment.verify-user": "Haluatko vahvistaa käyttäjän {userName}?",
-  "comment.vote-error": "Äänestysvirhe: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.",
   "commentForm.exceeded-size": "{fileName} ylittää {maxImageSize}",
   "commentForm.input-placeholder": "Kirjoita kommenttisi tähän",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Anonyymit käyttäjät eivät voi äänestää",
-  "vote.deleted": "Poistettua kommenttia ei voi äänestää",
-  "vote.guest": "Kirjaudu sisään äänestääksesi",
-  "vote.only-positive": "Vain positiivinen arvostelu on sallittu",
-  "vote.only-post-page": "Äänestys on sallittu vain artikkelisivulla",
-  "vote.own-comment": "Et voi äänestää oman kommenttisi puolesta",
-  "vote.readonly": "Et voi äänestää vain luku -tilassa olevien kommenttien puolesta"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

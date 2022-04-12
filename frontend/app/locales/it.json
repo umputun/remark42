@@ -36,7 +36,6 @@
   "comment.blocked-user": "Bloccato",
   "comment.blocking-period": "Periodo di blocco",
   "comment.cancel": "Cancella",
-  "comment.controversy": "Controverso: {value}",
   "comment.copied": "Copiato!",
   "comment.copy": "Copia",
   "comment.delete": "Elimina",
@@ -61,7 +60,6 @@
   "comment.unverify-user": "Vuoi togliere la verifica a {userName}?",
   "comment.verified-user": "Utente verificato",
   "comment.verify-user": "Vuoi verificare {userName}?",
-  "comment.vote-error": "Errore nel voto: {voteErrorMessage}",
   "commentForm.anonymous-uploading-disabled": "Il caricamento delle immagini è disabilitato per gli utenti anonimi. Perfavore accedi come utente non anonimo per poter allegare delle immagini",
   "commentForm.exceeded-size": "{fileName} ha superato il limite massimo di {maxImageSize}",
   "commentForm.input-placeholder": "Qui il tuo commento",
@@ -167,11 +165,8 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.anonymous": "Gli utenti anonimi non possono votare",
-  "vote.deleted": "Non puoi votare per un commento eliminato",
-  "vote.guest": "Accedi per votare",
-  "vote.only-positive": "Solo punteggi positivi consentiti",
-  "vote.only-post-page": "Voto consentito solo sulla pagina del post",
-  "vote.own-comment": "Non puoi votare per il tuo commento",
-  "vote.readonly": "Non puoi votare sugli argomenti in sola lettura"
+  "vote.controversy": "Controversy: {value}",
+  "vote.downvote": "Vote down",
+  "vote.score": "Votes score",
+  "vote.upvote": "Vote up"
 }

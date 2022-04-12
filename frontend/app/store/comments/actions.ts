@@ -13,6 +13,9 @@ import {
   COMMENTS_SET_SORT,
   COMMENTS_REQUEST_FETCHING,
   COMMENTS_REQUEST_SUCCESS,
+  COMMENT_PATCH,
+  COMMENT_PATCH_ACTION,
+  COMMENTS_EDIT_ACTION,
 } from './types';
 import { setItem } from 'common/local-storage';
 import { LS_SORT_KEY } from 'common/constants';
@@ -35,21 +38,20 @@ export const addComment =
     dispatch({ type: COMMENTS_APPEND, pid: pid || null, comment });
   };
 
+function editComments(comment: Comment): COMMENTS_EDIT_ACTION {
+  return { type: COMMENTS_EDIT, comment };
+}
+
+export function patchComment(patch: Pick<Comment, 'id'> & Partial<Comment>): COMMENT_PATCH_ACTION {
+  return { type: COMMENT_PATCH, patch };
+}
+
 /** edits comment in tree */
 export const updateComment =
   (id: Comment['id'], text: string): StoreAction<Promise<void>> =>
   async (dispatch) => {
     const comment = await api.updateComment({ id, text });
-    dispatch({ type: COMMENTS_EDIT, comment });
-  };
-
-/** edits comment in tree */
-export const putVote =
-  (id: Comment['id'], value: number): StoreAction<Promise<void>> =>
-  async (dispatch) => {
-    await api.putCommentVote({ id, value });
-    const comment = await api.getComment(id);
-    dispatch({ type: COMMENTS_EDIT, comment });
+    dispatch(editComments(comment));
   };
 
 /** edits comment in tree */
@@ -63,7 +65,7 @@ export const setPinState =
     }
     let comment = getState().comments.allComments[id];
     comment = { ...comment, pin: value, edit: { summary: '', time: new Date().toISOString() } };
-    dispatch({ type: COMMENTS_EDIT, comment });
+    dispatch(editComments(comment));
   };
 
 /** edits comment in tree */
@@ -79,7 +81,7 @@ export const removeComment =
     }
     let comment = getState().comments.allComments[id];
     comment = { ...comment, delete: true, edit: { summary: '', time: new Date().toISOString() } };
-    dispatch({ type: COMMENTS_EDIT, comment });
+    dispatch(editComments(comment));
   };
 
 /** fetches comments from server */
