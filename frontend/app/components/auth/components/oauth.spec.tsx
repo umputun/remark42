@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { render } from 'tests/utils';
 import { BASE_URL } from 'common/constants.config';
 

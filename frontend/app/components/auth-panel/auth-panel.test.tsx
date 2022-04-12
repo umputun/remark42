@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { mount } from 'enzyme';
 import createMockStore from 'redux-mock-store';
 import { Middleware } from 'redux';

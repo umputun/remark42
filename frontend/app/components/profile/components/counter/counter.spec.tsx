@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import '@testing-library/jest-dom';
 import { render } from 'tests/utils';
 import { Counter } from '.';
