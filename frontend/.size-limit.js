@@ -13,7 +13,7 @@ module.exports = [
   },
   {
     path: 'public/last-comments.mjs',
-    limit: '32 KB',
+    limit: '33 KB',
   },
   {
     path: 'public/deleteme.mjs',
