@@ -165,7 +165,7 @@
   "user.comments": "Comments",
   "user.load-more": "Load more",
   "user.my-comments": "My comments",
-  "vote.controversy": "Controversy: {value}",
+  "vote.controversy": "Kiistely: {value}",
   "vote.downvote": "Vote down",
   "vote.score": "Votes score",
   "vote.upvote": "Vote up"
