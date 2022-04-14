@@ -1,20 +1,8 @@
 import 'components/raw-content';
 
 import './comment.css';
-
-import './__action/comment__action.css';
-import './__action/_type/_collapse/comment__action_type_collapse.css';
-
-import './__edit-timer/comment__edit-timer.css';
-
 import './__body/comment__body.css';
 
-import './__control/comment__control.css';
-import './__control/_select/comment__control_select.css';
-import './__control/_select-label/comment__control_select-label.css';
-import './__control/_view/_inactive/comment__control_view_inactive.css';
-
-import './__controls/comment__controls.css';
 import './__info/comment__info.css';
 import './__input/comment__input.css';
 import './__link-to-parent/comment__link-to-parent.css';

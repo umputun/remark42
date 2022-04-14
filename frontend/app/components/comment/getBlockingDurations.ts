@@ -1,7 +1,16 @@
-import { BlockingDuration } from 'common/types';
-import { IntlShape, defineMessages } from 'react-intl';
+import { defineMessages, IntlShape } from 'react-intl';
+import { BlockTTL } from 'common/types';
+
+export interface BlockingDuration {
+  label: string;
+  value: BlockTTL | undefined;
+}
 
 const blockingMessages = defineMessages({
+  block: {
+    id: 'comment.block',
+    defaultMessage: 'Block',
+  },
   permanently: {
     id: 'blockingDuration.permanently',
     defaultMessage: 'Permanently',
@@ -22,6 +31,10 @@ const blockingMessages = defineMessages({
 
 export function getBlockingDurations(intl: IntlShape): BlockingDuration[] {
   return [
+    {
+      label: intl.formatMessage(blockingMessages.block),
+      value: undefined,
+    },
     {
       label: intl.formatMessage(blockingMessages.permanently),
       value: 'permanently',

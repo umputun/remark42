@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent, waitFor } from '@testing-library/preact';
+import { screen, fireEvent, waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as commentsActions from 'store/comments/actions';
@@ -8,7 +8,6 @@ import type { StoreState } from 'store';
 import { SortPicker } from './sort-picker';
 
 const defaultState = { comments: {} as StoreState['comments'], hiddenUsers: {} };
-const stateWithSort = { comments: { sort: '-active' } as StoreState['comments'] };
 
 describe('<SortPicker />', () => {
   it('should render sort picker with options', () => {
@@ -26,10 +25,9 @@ describe('<SortPicker />', () => {
   });
 
   it('should render selected element', () => {
-    const { container, queryAllByText } = render(<SortPicker />, stateWithSort);
-
-    expect(queryAllByText('Recently updated')).toHaveLength(2);
-    expect(container.querySelector<HTMLOptionElement>('[value="-active"]')?.selected).toBeTruthy();
+    render(<SortPicker />, { comments: { sort: '-active' } as StoreState['comments'] });
+    expect(screen.getAllByText('Recently updated')).toHaveLength(2);
+    expect(screen.getAllByRole('option')[0].parentElement).toHaveAttribute('selected', '-active');
   });
 
   it('should change selected store', async () => {

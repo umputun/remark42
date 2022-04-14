@@ -4,7 +4,11 @@
   align-items: center;
   padding: 2px;
   border-radius: 2px;
-  font-weight: bold;
+  font-weight: 600;
+}
+
+.sm {
+  font-size: 14px;
 }
 
 .rootFocused {

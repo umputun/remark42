@@ -1,7 +1,0 @@
-.comment__control_view_inactive {
-  &,
-  &:hover,
-  &:focus {
-    pointer-events: none;
-  }
-}
