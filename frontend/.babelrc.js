@@ -20,11 +20,11 @@ module.exports = {
     }),
     preactPreset,
   ],
-  plugins,
+  plugins: [...plugins, 'babel-plugin-jsx-remove-data-test-id'],
   env: {
     modern: {
       presets: [getPresetEnv({ targets: { esmodules: true }, loose: true, bugfixes: true }), preactPreset],
-      plugins,
+      plugins: [...plugins, 'babel-plugin-jsx-remove-data-test-id'],
     },
     test: {
       presets: [getPresetEnv({ targets: { node: 'current' } }), preactPreset],
