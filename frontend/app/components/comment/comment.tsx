@@ -3,7 +3,6 @@ import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b from 'bem-react-helper';
 import clsx from 'clsx';
 
-import { getHandleClickProps } from 'common/accessibility';
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 import { StaticStore } from 'common/static-store';
@@ -14,14 +13,13 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 
 import { CommentFormProps } from 'components/comment-form';
 import { Avatar } from 'components/avatar';
-import { Button } from 'components/button';
-import { Countdown } from 'components/countdown';
 import { VerificationIcon } from 'components/icons/verification';
 import { getPreview, uploadImage } from 'common/api';
 import { postMessageToParent } from 'utils/post-message';
 import { getBlockingDurations } from './getBlockingDurations';
 import { boundActions } from './connected-comment';
 import { CommentVotes } from './comment-votes';
+import { CommentActions } from './comment-actions';
 
 import styles from './comment.module.css';
 import './styles';
@@ -59,7 +57,7 @@ export type CommentProps = {
 export interface State {
   renderDummy: boolean;
   isCopied: boolean;
-  editDeadline: Date | null;
+  editDeadline?: number;
   initial: boolean;
 }
 
@@ -67,6 +65,34 @@ export class Comment extends Component<CommentProps, State> {
   votingPromise: Promise<unknown> = Promise.resolve();
   /** comment text node. Used in comment text copying */
   textNode = createRef<HTMLDivElement>();
+
+  /**
+   * Defines whether current client is admin
+   */
+  isAdmin = (): boolean => {
+    return Boolean(this.props.user?.admin);
+  };
+
+  /**
+   * Defines whether current client is not logged in
+   */
+  isGuest = (): boolean => {
+    return this.props.user === null;
+  };
+
+  /**
+   * Defines whether current client is logged in via `Anonymous provider`
+   */
+  isAnonymous = (): boolean => {
+    return isUserAnonymous(this.props.user);
+  };
+
+  /**
+   * Defines whether comment made by logged in user
+   */
+  isCurrentUser = (): boolean => {
+    return !this.isGuest() && this.props.data.user.id === this.props.user?.id;
+  };
 
   updateState = (props: CommentProps) => {
     const newState: Partial<State> = {};
@@ -76,16 +102,12 @@ export class Comment extends Component<CommentProps, State> {
     }
 
     // set comment edit timer
-    if (props.user && props.user.id === props.data.user.id) {
+    if (this.isCurrentUser()) {
       const editDuration = StaticStore.config.edit_duration;
       const timeDiff = StaticStore.serverClientTimeDiff || 0;
-      const editDeadline = new Date(new Date(props.data.time).getTime() + timeDiff + editDuration * 1000);
+      const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
 
-      if (editDeadline < new Date()) {
-        newState.editDeadline = null;
-      } else {
-        newState.editDeadline = editDeadline;
-      }
+      newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
     }
 
     return newState;
@@ -94,17 +116,11 @@ export class Comment extends Component<CommentProps, State> {
   state = {
     renderDummy: typeof this.props.inView === 'boolean' ? !this.props.inView : false,
     isCopied: false,
-    editDeadline: null,
+    editDeadline: undefined,
     voteErrorMessage: null,
     initial: true,
     ...this.updateState(this.props),
   };
-
-  // getHandleClickProps = (handler?: (e: KeyboardEvent | MouseEvent) => void) => {
-  //   if (this.state.initial) return null;
-  //   if (this.props.inView === false) return null;
-  //   return getHandleClickProps(handler);
-  // };
 
   componentWillReceiveProps(nextProps: CommentProps) {
     this.setState(this.updateState(nextProps));
@@ -152,26 +168,21 @@ export class Comment extends Component<CommentProps, State> {
     const userId = this.props.data.user.id;
     const intl = this.props.intl;
     const userName = this.props.data.user.name;
-    const promptMessage = value
-      ? intl.formatMessage(messages.verifyUser, { userName })
-      : intl.formatMessage(messages.unverifyUser, { userName });
+    const promptMessage = intl.formatMessage(value ? messages.verifyUser : messages.unverifyUser, { userName });
 
     if (window.confirm(promptMessage)) {
       this.props.setVerifiedStatus!(userId, value);
     }
   };
 
-  onBlockUserClick = (e: Event) => {
-    const target = e.target as HTMLOptionElement;
-    // blur event will be triggered by the confirm pop-up which will start
-    // infinite loop of blur -> confirm -> blur -> ...
-    // so we trigger the blur event manually and have debounce mechanism to prevent it
-    if (e.type === 'change') {
-      target.blur();
+  onBlockUserClick = (evt: Event) => {
+    const target = evt.currentTarget;
+
+    if (target instanceof HTMLOptionElement) {
+      // we have to debounce the blockUser function calls otherwise it will be
+      // called 2 times (by change event and by blur event)
+      this.blockUser(target.value as BlockTTL);
     }
-    // we have to debounce the blockUser function calls otherwise it will be
-    // called 2 times (by change event and by blur event)
-    this.blockUser(target.value as BlockTTL);
   };
 
   blockUser = debounce((ttl: BlockTTL): void => {
@@ -192,7 +203,7 @@ export class Comment extends Component<CommentProps, State> {
     }
   }, 100);
 
-  onUnblockUserClick = () => {
+  unblockUser = () => {
     const { user } = this.props.data;
     const unblockUser = this.props.intl.formatMessage(messages.unblockUser);
 
@@ -277,116 +288,6 @@ export class Comment extends Component<CommentProps, State> {
     });
   };
 
-  /**
-   * Defines whether current client is admin
-   */
-  isAdmin = (): boolean => {
-    return !!this.props.user && this.props.user.admin;
-  };
-
-  /**
-   * Defines whether current client is not logged in
-   */
-  isGuest = (): boolean => {
-    return !this.props.user;
-  };
-
-  /**
-   * Defines whether current client is logged in via `Anonymous provider`
-   */
-  isAnonymous = (): boolean => {
-    return isUserAnonymous(this.props.user);
-  };
-
-  /**
-   * Defines whether comment made by logged in user
-   */
-  isCurrentUser = (): boolean => {
-    if (this.isGuest()) return false;
-
-    return this.props.data.user.id === this.props.user!.id;
-  };
-
-  getCommentControls = (): JSX.Element[] => {
-    const isAdmin = this.isAdmin();
-    const isCurrentUser = this.isCurrentUser();
-    const controls: JSX.Element[] = [];
-
-    if (this.props.data.delete) {
-      return controls;
-    }
-
-    if (!(this.props.view === 'main' || this.props.view === 'pinned')) {
-      return controls;
-    }
-
-    if (isAdmin) {
-      controls.push(
-        this.state.isCopied ? (
-          <span className="comment__control comment__control_view_inactive comment__action">
-            <FormattedMessage id="comment.copied" defaultMessage="Copied!" />
-          </span>
-        ) : (
-          <Button kind="link" onClick={this.copyComment} mix={['comment__control', 'comment__action']}>
-            <FormattedMessage id="comment.copy" defaultMessage="Copy" />
-          </Button>
-        ),
-        <Button kind="link" onClick={this.togglePin} mix={['comment__control', 'comment__action']}>
-          {this.props.data.pin ? (
-            <FormattedMessage id="comment.unpin" defaultMessage="Unpin" />
-          ) : (
-            <FormattedMessage id="comment.pin" defaultMessage="Pin" />
-          )}
-        </Button>
-      );
-    }
-
-    if (!isCurrentUser) {
-      controls.push(
-        <Button kind="link" onClick={this.hideUser} mix={['comment__control', 'comment__action']}>
-          <FormattedMessage id="comment.hide" defaultMessage="Hide" />
-        </Button>
-      );
-    }
-
-    if (isAdmin) {
-      if (this.props.isUserBanned) {
-        controls.push(
-          <Button kind="link" onClick={this.onUnblockUserClick} mix={['comment__control', 'comment__action']}>
-            <FormattedMessage id="comment.unblock" defaultMessage="Unblock" />
-          </Button>
-        );
-      }
-      const blockingDurations = getBlockingDurations(this.props.intl);
-      if (this.props.user!.id !== this.props.data.user.id && !this.props.isUserBanned) {
-        controls.push(
-          <span className="comment__control comment__control_select-label">
-            <FormattedMessage id="comment.block" defaultMessage="Block" />
-            <select className="comment__control_select" onBlur={this.onBlockUserClick} onChange={this.onBlockUserClick}>
-              <option disabled selected value={undefined}>
-                <FormattedMessage id="comment.blocking-period" defaultMessage="Blocking period" />
-              </option>
-              {blockingDurations.map((block) => (
-                <option key={block.value} value={block.value}>
-                  {block.label}
-                </option>
-              ))}
-            </select>
-          </span>
-        );
-      }
-
-      if (!this.props.data.delete) {
-        controls.push(
-          <Button kind="link" onClick={this.deleteComment} mix={['comment__control', 'comment__action']}>
-            <FormattedMessage id="comment.delete" defaultMessage="Delete" />
-          </Button>
-        );
-      }
-    }
-    return controls;
-  };
-
   render(props: CommentProps, state: State): JSX.Element {
     const isAdmin = this.isAdmin();
     const isGuest = this.isGuest();
@@ -394,9 +295,7 @@ export class Comment extends Component<CommentProps, State> {
 
     const isReplying = props.editMode === CommentMode.Reply;
     const isEditing = props.editMode === CommentMode.Edit;
-    const editable = props.repliesCount === 0 && state.editDeadline;
     const uploadImageHandler = this.isAnonymous() ? undefined : this.props.uploadImage;
-    const commentControls = this.getCommentControls();
     const intl = props.intl;
     const CommentForm = this.props.CommentForm || null;
 
@@ -580,61 +479,27 @@ export class Comment extends Component<CommentProps, State> {
             />
           )}
 
-          {(!props.collapsed || props.view === 'pinned') && (
-            <div className="comment__actions">
-              {!props.data.delete && !props.isCommentsDisabled && !props.disabled && props.view === 'main' && (
-                <Button kind="link" onClick={this.toggleReplying} mix="comment__action">
-                  {isReplying ? (
-                    <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
-                  ) : (
-                    <FormattedMessage id="comment.reply" defaultMessage="Reply" />
-                  )}
-                </Button>
-              )}
-              {!props.data.delete &&
-                !props.disabled &&
-                !!o.orig &&
-                isCurrentUser &&
-                (editable || isEditing) &&
-                props.view === 'main' && [
-                  <Button
-                    key="edit-button"
-                    kind="link"
-                    {...getHandleClickProps(this.toggleEditing)}
-                    mix={['comment__action', 'comment__action_type_edit']}
-                  >
-                    {isEditing ? (
-                      <FormattedMessage id="comment.cancel" defaultMessage="Cancel" />
-                    ) : (
-                      <FormattedMessage id="comment.edit" defaultMessage="Edit" />
-                    )}
-                  </Button>,
-                  !isAdmin && (
-                    <Button
-                      key="delete-button"
-                      kind="link"
-                      {...getHandleClickProps(this.deleteComment)}
-                      mix={['comment__action', 'comment__action_type_delete']}
-                    >
-                      <FormattedMessage id="comment.delete" defaultMessage="Delete" />
-                    </Button>
-                  ),
-                  state.editDeadline && (
-                    <Countdown
-                      key="countdown"
-                      className="comment__edit-timer"
-                      time={state.editDeadline}
-                      onTimePassed={() =>
-                        this.setState({
-                          editDeadline: null,
-                        })
-                      }
-                    />
-                  ),
-                ]}
-
-              {commentControls.length > 0 && <span className="comment__controls">{commentControls}</span>}
-            </div>
+          {(!props.collapsed || !this.props.data.delete) && props.view !== 'pinned' && (
+            <CommentActions
+              admin={isAdmin}
+              pinned={props.data.pin}
+              copied={state.isCopied}
+              editing={isEditing}
+              replying={isReplying}
+              editable={props.repliesCount === 0 && state.editDeadline !== undefined}
+              editDeadline={state.editDeadline}
+              readOnly={props.post_info?.read_only}
+              onToggleReplying={this.toggleReplying}
+              onDisableEditing={() => this.setState({ editDeadline: undefined })}
+              currentUser={isCurrentUser}
+              bannedUser={props.isUserBanned}
+              onCopy={this.copyComment}
+              onTogglePin={this.togglePin}
+              onDelete={this.deleteComment}
+              onHideUser={this.hideUser}
+              onBlockUser={this.blockUser}
+              onUnblockUser={this.unblockUser}
+            />
           )}
         </div>
 
@@ -667,7 +532,7 @@ export class Comment extends Component<CommentProps, State> {
             onSubmit={(text: string) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}
-            errorMessage={state.editDeadline === null ? intl.formatMessage(messages.expiredTime) : undefined}
+            errorMessage={state.editDeadline === undefined ? intl.formatMessage(messages.expiredTime) : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
             simpleView={StaticStore.config.simple_view}

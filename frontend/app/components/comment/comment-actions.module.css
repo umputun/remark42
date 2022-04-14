@@ -1,0 +1,32 @@
+.root {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: rgb(var(--primary-color));
+}
+
+.root > * + *,
+.additionalActions > * + * {
+  margin-left: 0.5em;
+}
+
+.countdown {
+  color: rgb(var(--secondary-darker-text-color));
+}
+
+@media (hover: hover) {
+  .additionalActions {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .root:hover .additionalActions {
+    opacity: 1;
+  }
+}
+
+.additionalActions::before {
+  content: '•';
+  color: rgb(var(--secondary-text-color));
+  margin-right: 0.5em;
+}

@@ -76,7 +76,7 @@
   }
 }
 
-.link {
+.hollow {
   color: rgb(var(--primary-color));
   background-color: unset;
   text-transform: initial;
@@ -85,6 +85,23 @@
   &:hover {
     background-color: rgba(var(--primary-color), 0.1);
   }
+}
+
+.link {
+  composes: hollow;
+  border: 0;
+  padding: 2px;
+  font-weight: 600;
+
+  &:hover {
+    background-color: unset;
+    color: rgb(var(--primary-brighter-color));
+  }
+}
+
+.link[disabled] {
+  background-color: unset;
+  color: rgba(var(--primary-color), 0.9);
 }
 
 :global(.dark) {

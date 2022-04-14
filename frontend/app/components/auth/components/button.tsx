@@ -5,7 +5,7 @@ import styles from './button.module.css';
 
 type Props = Omit<JSX.HTMLAttributes<HTMLButtonElement>, 'size'> & {
   size?: 'xs' | 'sm';
-  kind?: 'transparent' | 'link';
+  kind?: 'transparent' | 'link' | 'hollow';
   suffix?: VNode;
   loading?: boolean;
   selected?: boolean;

@@ -215,7 +215,7 @@ export function Profile() {
         </section>
         {isCurrent ? (
           <footer className={clsx('profile-footer', styles.footer)}>
-            <Button kind="link" size="sm" onClick={handleClickRequestRemoveData}>
+            <Button kind="hollow" size="sm" onClick={handleClickRequestRemoveData}>
               <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request my data removal" />
             </Button>
           </footer>
