@@ -46,10 +46,12 @@ type FindAndModify struct {
 	crypt                    driver.Crypt
 	hint                     bsoncore.Value
 	serverAPI                *driver.ServerAPIOptions
+	let                      bsoncore.Document
 
 	result FindAndModifyResult
 }
 
+// LastErrorObject represents information about updates and upserts returned by the server.
 type LastErrorObject struct {
 	// True if an update modified an existing document
 	UpdatedExisting bool
@@ -57,6 +59,7 @@ type LastErrorObject struct {
 	Upserted interface{}
 }
 
+// FindAndModifyResult represents a findAndModify result returned by the server.
 type FindAndModifyResult struct {
 	// Either the old or modified document, depending on the value of the new parameter.
 	Value bsoncore.Document
@@ -64,7 +67,7 @@ type FindAndModifyResult struct {
 	LastErrorObject LastErrorObject
 }
 
-func buildFindAndModifyResult(response bsoncore.Document, srvr driver.Server) (FindAndModifyResult, error) {
+func buildFindAndModifyResult(response bsoncore.Document) (FindAndModifyResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return FindAndModifyResult{}, err
@@ -109,12 +112,12 @@ func (fam *FindAndModify) Result() FindAndModifyResult { return fam.result }
 func (fam *FindAndModify) processResponse(info driver.ResponseInfo) error {
 	var err error
 
-	fam.result, err = buildFindAndModifyResult(info.ServerResponse, info.Server)
+	fam.result, err = buildFindAndModifyResult(info.ServerResponse)
 	return err
 
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (fam *FindAndModify) Execute(ctx context.Context) error {
 	if fam.deployment == nil {
 		return errors.New("the FindAndModify operation must have a Deployment set before Execute can be called")
@@ -199,6 +202,9 @@ func (fam *FindAndModify) command(dst []byte, desc description.SelectedServer) (
 			return nil, errUnacknowledgedHint
 		}
 		dst = bsoncore.AppendValueElement(dst, "hint", fam.hint)
+	}
+	if fam.let != nil {
+		dst = bsoncore.AppendDocumentElement(dst, "let", fam.let)
 	}
 
 	return dst, nil
@@ -434,5 +440,15 @@ func (fam *FindAndModify) ServerAPI(serverAPI *driver.ServerAPIOptions) *FindAnd
 	}
 
 	fam.serverAPI = serverAPI
+	return fam
+}
+
+// Let specifies the let document to use. This option is only valid for server versions 5.0 and above.
+func (fam *FindAndModify) Let(let bsoncore.Document) *FindAndModify {
+	if fam == nil {
+		fam = new(FindAndModify)
+	}
+
+	fam.let = let
 	return fam
 }

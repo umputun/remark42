@@ -296,6 +296,21 @@ func (l *Middleware) sanitizeQuery(rawQuery string) string {
 	return query.Encode()
 }
 
+// AnonymizeIP is a function to reset the last part of IPv4 to 0.
+// from 123.212.12.78 it will make 123.212.12.0
+func AnonymizeIP(ip string) string {
+	if ip == "" {
+		return ""
+	}
+
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return ip
+	}
+
+	return strings.Join(parts[:3], ".") + ".0"
+}
+
 // customResponseWriter is an HTTP response logger that keeps HTTP status code and
 // the number of bytes written.
 // It implements http.ResponseWriter, http.Flusher and http.Hijacker.

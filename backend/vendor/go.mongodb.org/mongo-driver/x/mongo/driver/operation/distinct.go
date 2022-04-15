@@ -40,12 +40,13 @@ type Distinct struct {
 	serverAPI      *driver.ServerAPIOptions
 }
 
+// DistinctResult represents a distinct result returned by the server.
 type DistinctResult struct {
 	// The distinct values for the field.
 	Values bsoncore.Value
 }
 
-func buildDistinctResult(response bsoncore.Document, srvr driver.Server) (DistinctResult, error) {
+func buildDistinctResult(response bsoncore.Document) (DistinctResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return DistinctResult{}, err
@@ -73,11 +74,11 @@ func (d *Distinct) Result() DistinctResult { return d.result }
 
 func (d *Distinct) processResponse(info driver.ResponseInfo) error {
 	var err error
-	d.result, err = buildDistinctResult(info.ServerResponse, info.Server)
+	d.result, err = buildDistinctResult(info.ServerResponse)
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (d *Distinct) Execute(ctx context.Context) error {
 	if d.deployment == nil {
 		return errors.New("the Distinct operation must have a Deployment set before Execute can be called")

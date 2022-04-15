@@ -30,6 +30,7 @@ type Find struct {
 	comment             *string
 	filter              bsoncore.Document
 	hint                bsoncore.Value
+	let                 bsoncore.Document
 	limit               *int64
 	max                 bsoncore.Document
 	maxTimeMS           *int64
@@ -78,7 +79,7 @@ func (f *Find) processResponse(info driver.ResponseInfo) error {
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (f *Find) Execute(ctx context.Context) error {
 	if f.deployment == nil {
 		return errors.New("the Find operation must have a Deployment set before Execute can be called")
@@ -135,6 +136,9 @@ func (f *Find) command(dst []byte, desc description.SelectedServer) ([]byte, err
 	}
 	if f.hint.Type != bsontype.Type(0) {
 		dst = bsoncore.AppendValueElement(dst, "hint", f.hint)
+	}
+	if f.let != nil {
+		dst = bsoncore.AppendDocumentElement(dst, "let", f.let)
 	}
 	if f.limit != nil {
 		dst = bsoncore.AppendInt64Element(dst, "limit", *f.limit)
@@ -261,6 +265,16 @@ func (f *Find) Hint(hint bsoncore.Value) *Find {
 	return f
 }
 
+// Let specifies the let document to use. This option is only valid for server versions 5.0 and above.
+func (f *Find) Let(let bsoncore.Document) *Find {
+	if f == nil {
+		f = new(Find)
+	}
+
+	f.let = let
+	return f
+}
+
 // Limit sets a limit on the number of documents to return.
 func (f *Find) Limit(limit int64) *Find {
 	if f == nil {
@@ -321,7 +335,7 @@ func (f *Find) OplogReplay(oplogReplay bool) *Find {
 	return f
 }
 
-// Project limits the fields returned for all documents.
+// Projection limits the fields returned for all documents.
 func (f *Find) Projection(projection bsoncore.Document) *Find {
 	if f == nil {
 		f = new(Find)

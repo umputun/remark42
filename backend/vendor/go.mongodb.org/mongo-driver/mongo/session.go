@@ -100,13 +100,16 @@ func SessionFromContext(ctx context.Context) Session {
 // resources are properly cleaned up, context deadlines and cancellations will not be respected during this call. For a
 // usage example, see the Client.StartSession method documentation.
 //
-// ClusterTime, OperationTime, Client, and ID return the session's current operation time, the session's current cluster
+// ClusterTime, OperationTime, Client, and ID return the session's current cluster time, the session's current operation
 // time, the Client associated with the session, and the ID document associated with the session, respectively. The ID
 // document for a session is in the form {"id": <BSON binary value>}.
 //
 // EndSession method should abort any existing transactions and close the session.
 //
-// AdvanceClusterTime and AdvanceOperationTime are for internal use only and must not be called.
+// AdvanceClusterTime advances the cluster time for a session. This method will return an error if the session has ended.
+//
+// AdvanceOperationTime advances the operation time for a session. This method will return an error if the session has
+// ended.
 type Session interface {
 	// Functions to modify session state.
 	StartTransaction(...*options.TransactionOptions) error

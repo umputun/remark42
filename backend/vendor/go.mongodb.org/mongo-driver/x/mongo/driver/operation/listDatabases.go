@@ -39,6 +39,7 @@ type ListDatabases struct {
 	result ListDatabasesResult
 }
 
+// ListDatabasesResult represents a listDatabases result returned by the server.
 type ListDatabasesResult struct {
 	// An array of documents, one document for each database
 	Databases []databaseRecord
@@ -52,7 +53,7 @@ type databaseRecord struct {
 	Empty      bool
 }
 
-func buildListDatabasesResult(response bsoncore.Document, srvr driver.Server) (ListDatabasesResult, error) {
+func buildListDatabasesResult(response bsoncore.Document) (ListDatabasesResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return ListDatabasesResult{}, err
@@ -133,12 +134,12 @@ func (ld *ListDatabases) Result() ListDatabasesResult { return ld.result }
 func (ld *ListDatabases) processResponse(info driver.ResponseInfo) error {
 	var err error
 
-	ld.result, err = buildListDatabasesResult(info.ServerResponse, info.Server)
+	ld.result, err = buildListDatabasesResult(info.ServerResponse)
 	return err
 
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (ld *ListDatabases) Execute(ctx context.Context) error {
 	if ld.deployment == nil {
 		return errors.New("the ListDatabases operation must have a Deployment set before Execute can be called")

@@ -36,12 +36,13 @@ type DropIndexes struct {
 	serverAPI    *driver.ServerAPIOptions
 }
 
+// DropIndexesResult represents a dropIndexes result returned by the server.
 type DropIndexesResult struct {
 	// Number of indexes that existed before the drop was executed.
 	NIndexesWas int32
 }
 
-func buildDropIndexesResult(response bsoncore.Document, srvr driver.Server) (DropIndexesResult, error) {
+func buildDropIndexesResult(response bsoncore.Document) (DropIndexesResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return DropIndexesResult{}, err
@@ -72,11 +73,11 @@ func (di *DropIndexes) Result() DropIndexesResult { return di.result }
 
 func (di *DropIndexes) processResponse(info driver.ResponseInfo) error {
 	var err error
-	di.result, err = buildDropIndexesResult(info.ServerResponse, info.Server)
+	di.result, err = buildDropIndexesResult(info.ServerResponse)
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (di *DropIndexes) Execute(ctx context.Context) error {
 	if di.deployment == nil {
 		return errors.New("the DropIndexes operation must have a Deployment set before Execute can be called")

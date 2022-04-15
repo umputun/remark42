@@ -25,7 +25,7 @@ const (
 type rttConfig struct {
 	interval           time.Duration
 	minRTTWindow       time.Duration // Window size to calculate minimum RTT over.
-	createConnectionFn func() (*connection, error)
+	createConnectionFn func() *connection
 	createOperationFn  func(driver.Connection) *operation.Hello
 }
 
@@ -80,11 +80,12 @@ func (r *rttMonitor) start() {
 	var conn *connection
 	defer func() {
 		if conn != nil {
-			// If the connection exists, we need to wait for it to be connected. We can ignore the
-			// error from conn.wait(). If the connection wasn't successfully opened, its state was
-			// set back to disconnected, so calling conn.close() will be a noop.
+			// If the connection exists, we need to wait for it to be connected because
+			// conn.connect() and conn.close() cannot be called concurrently. If the connection
+			// wasn't successfully opened, its state was set back to disconnected, so calling
+			// conn.close() will be a no-op.
 			conn.closeConnectContext()
-			_ = conn.wait()
+			conn.wait()
 			_ = conn.close()
 		}
 	}()
@@ -106,15 +107,10 @@ func (r *rttMonitor) start() {
 // error, runHello closes the connection.
 func (r *rttMonitor) runHello(conn *connection) *connection {
 	if conn == nil || conn.closed() {
-		conn, err := r.cfg.createConnectionFn()
-		if err != nil {
-			return nil
-		}
+		conn := r.cfg.createConnectionFn()
 
-		conn.connect(r.ctx)
-		err = conn.wait()
+		err := conn.connect(r.ctx)
 		if err != nil {
-			_ = conn.close()
 			return nil
 		}
 

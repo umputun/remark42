@@ -39,6 +39,7 @@ type Update struct {
 	result                   UpdateResult
 	crypt                    driver.Crypt
 	serverAPI                *driver.ServerAPIOptions
+	let                      bsoncore.Document
 }
 
 // Upsert contains the information for an upsert in an Update operation.
@@ -57,7 +58,7 @@ type UpdateResult struct {
 	Upserted []Upsert
 }
 
-func buildUpdateResult(response bsoncore.Document, srvr driver.Server) (UpdateResult, error) {
+func buildUpdateResult(response bsoncore.Document) (UpdateResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return UpdateResult{}, err
@@ -116,7 +117,7 @@ func NewUpdate(updates ...bsoncore.Document) *Update {
 func (u *Update) Result() UpdateResult { return u.result }
 
 func (u *Update) processResponse(info driver.ResponseInfo) error {
-	ur, err := buildUpdateResult(info.ServerResponse, info.Server)
+	ur, err := buildUpdateResult(info.ServerResponse)
 
 	u.result.N += ur.N
 	u.result.NModified += ur.NModified
@@ -130,7 +131,7 @@ func (u *Update) processResponse(info driver.ResponseInfo) error {
 
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (u *Update) Execute(ctx context.Context) error {
 	if u.deployment == nil {
 		return errors.New("the Update operation must have a Deployment set before Execute can be called")
@@ -184,6 +185,9 @@ func (u *Update) command(dst []byte, desc description.SelectedServer) ([]byte, e
 		if desc.WireVersion == nil || !desc.WireVersion.Includes(6) {
 			return nil, errors.New("the 'arrayFilters' command parameter requires a minimum server wire version of 6")
 		}
+	}
+	if u.let != nil {
+		dst = bsoncore.AppendDocumentElement(dst, "let", u.let)
 	}
 
 	return dst, nil
@@ -355,5 +359,15 @@ func (u *Update) ServerAPI(serverAPI *driver.ServerAPIOptions) *Update {
 	}
 
 	u.serverAPI = serverAPI
+	return u
+}
+
+// Let specifies the let document to use. This option is only valid for server versions 5.0 and above.
+func (u *Update) Let(let bsoncore.Document) *Update {
+	if u == nil {
+		u = new(Update)
+	}
+
+	u.let = let
 	return u
 }

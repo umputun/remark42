@@ -27,6 +27,13 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
 
+// Connection state constants.
+const (
+	connDisconnected int64 = iota
+	connConnected
+	connInitialized
+)
+
 var globalConnectionID uint64 = 1
 
 var (
@@ -38,10 +45,10 @@ var (
 func nextConnectionID() uint64 { return atomic.AddUint64(&globalConnectionID, 1) }
 
 type connection struct {
-	// connected must be accessed using the atomic package and should be at the beginning of the struct.
+	// state must be accessed using the atomic package and should be at the beginning of the struct.
 	// - atomic bug: https://pkg.go.dev/sync/atomic#pkg-note-BUG
 	// - suggested layout: https://go101.org/article/memory-layout.html
-	connected int64
+	state int64
 
 	id                   string
 	nc                   net.Conn // When nil, the connection is closed.
@@ -56,7 +63,6 @@ type connection struct {
 	zliblevel            int
 	zstdLevel            int
 	connectDone          chan struct{}
-	connectErr           error
 	config               *connectionConfig
 	cancelConnectContext context.CancelFunc
 	connectContextMade   chan struct{}
@@ -73,11 +79,8 @@ type connection struct {
 }
 
 // newConnection handles the creation of a connection. It does not connect the connection.
-func newConnection(addr address.Address, opts ...ConnectionOption) (*connection, error) {
-	cfg, err := newConnectionConfig(opts...)
-	if err != nil {
-		return nil, err
-	}
+func newConnection(addr address.Address, opts ...ConnectionOption) *connection {
+	cfg := newConnectionConfig(opts...)
 
 	id := fmt.Sprintf("%s[-%d]", addr, nextConnectionID())
 
@@ -97,21 +100,9 @@ func newConnection(addr address.Address, opts ...ConnectionOption) (*connection,
 	if !c.config.loadBalanced {
 		c.setGenerationNumber()
 	}
-	atomic.StoreInt64(&c.connected, initialized)
+	atomic.StoreInt64(&c.state, connInitialized)
 
-	return c, nil
-}
-
-func (c *connection) processInitializationError(err error) {
-	atomic.StoreInt64(&c.connected, disconnected)
-	if c.nc != nil {
-		_ = c.nc.Close()
-	}
-
-	c.connectErr = ConnectionError{Wrapped: err, init: true}
-	if c.config.errorHandlingCallback != nil {
-		c.config.errorHandlingCallback(c.connectErr, c.generation, c.desc.ServiceID)
-	}
+	return c
 }
 
 // setGenerationNumber sets the connection's generation number if a callback has been provided to do so in connection
@@ -135,13 +126,27 @@ func (c *connection) hasGenerationNumber() bool {
 	return c.desc.LoadBalanced()
 }
 
-// connect handles the I/O for a connection. It will dial, configure TLS, and perform
-// initialization handshakes.
-func (c *connection) connect(ctx context.Context) {
-	if !atomic.CompareAndSwapInt64(&c.connected, initialized, connected) {
-		return
+// connect handles the I/O for a connection. It will dial, configure TLS, and perform initialization
+// handshakes. All errors returned by connect are considered "before the handshake completes" and
+// must be handled by calling the appropriate SDAM handshake error handler.
+func (c *connection) connect(ctx context.Context) (err error) {
+	if !atomic.CompareAndSwapInt64(&c.state, connInitialized, connConnected) {
+		return nil
 	}
+
 	defer close(c.connectDone)
+
+	// If connect returns an error, set the connection status as disconnected and close the
+	// underlying net.Conn if it was created.
+	defer func() {
+		if err != nil {
+			atomic.StoreInt64(&c.state, connDisconnected)
+
+			if c.nc != nil {
+				_ = c.nc.Close()
+			}
+		}
+	}()
 
 	// Create separate contexts for dialing a connection and doing the MongoDB/auth handshakes.
 	//
@@ -181,12 +186,9 @@ func (c *connection) connect(ctx context.Context) {
 	close(c.connectContextMade)
 
 	// Assign the result of DialContext to a temporary net.Conn to ensure that c.nc is not set in an error case.
-	var err error
-	var tempNc net.Conn
-	tempNc, err = c.config.dialer.DialContext(dialCtx, c.addr.Network(), c.addr.String())
+	tempNc, err := c.config.dialer.DialContext(dialCtx, c.addr.Network(), c.addr.String())
 	if err != nil {
-		c.processInitializationError(err)
-		return
+		return ConnectionError{Wrapped: err, init: true}
 	}
 	c.nc = tempNc
 
@@ -201,18 +203,15 @@ func (c *connection) connect(ctx context.Context) {
 		}
 		tlsNc, err := configureTLS(dialCtx, c.config.tlsConnectionSource, c.nc, c.addr, tlsConfig, ocspOpts)
 		if err != nil {
-			c.processInitializationError(err)
-			return
+			return ConnectionError{Wrapped: err, init: true}
 		}
 		c.nc = tlsNc
 	}
 
-	c.bumpIdleDeadline()
-
 	// running hello and authentication is handled by a handshaker on the configuration instance.
 	handshaker := c.config.handshaker
 	if handshaker == nil {
-		return
+		return nil
 	}
 
 	var handshakeInfo driver.HandshakeInformation
@@ -247,8 +246,7 @@ func (c *connection) connect(ctx context.Context) {
 
 	// We have a failed handshake here
 	if err != nil {
-		c.processInitializationError(err)
-		return
+		return ConnectionError{Wrapped: err, init: true}
 	}
 
 	if len(c.desc.Compression) > 0 {
@@ -279,13 +277,13 @@ func (c *connection) connect(ctx context.Context) {
 			}
 		}
 	}
+	return nil
 }
 
-func (c *connection) wait() error {
+func (c *connection) wait() {
 	if c.connectDone != nil {
 		<-c.connectDone
 	}
-	return c.connectErr
 }
 
 func (c *connection) closeConnectContext() {
@@ -330,7 +328,7 @@ func (c *connection) cancellationListenerCallback() {
 
 func (c *connection) writeWireMessage(ctx context.Context, wm []byte) error {
 	var err error
-	if atomic.LoadInt64(&c.connected) != connected {
+	if atomic.LoadInt64(&c.state) != connConnected {
 		return ConnectionError{ConnectionID: c.id, message: "connection is closed"}
 	}
 	select {
@@ -364,7 +362,6 @@ func (c *connection) writeWireMessage(ctx context.Context, wm []byte) error {
 		}
 	}
 
-	c.bumpIdleDeadline()
 	return nil
 }
 
@@ -387,7 +384,7 @@ func (c *connection) write(ctx context.Context, wm []byte) (err error) {
 
 // readWireMessage reads a wiremessage from the connection. The dst parameter will be overwritten.
 func (c *connection) readWireMessage(ctx context.Context, dst []byte) ([]byte, error) {
-	if atomic.LoadInt64(&c.connected) != connected {
+	if atomic.LoadInt64(&c.state) != connConnected {
 		return dst, ConnectionError{ConnectionID: c.id, message: "connection is closed"}
 	}
 
@@ -429,7 +426,6 @@ func (c *connection) readWireMessage(ctx context.Context, dst []byte) ([]byte, e
 		}
 	}
 
-	c.bumpIdleDeadline()
 	return dst, nil
 }
 
@@ -490,7 +486,7 @@ func (c *connection) read(ctx context.Context, dst []byte) (bytesRead []byte, er
 
 func (c *connection) close() error {
 	// Overwrite the connection state as the first step so only the first close call will execute.
-	if !atomic.CompareAndSwapInt64(&c.connected, connected, disconnected) {
+	if !atomic.CompareAndSwapInt64(&c.state, connConnected, connDisconnected) {
 		return nil
 	}
 
@@ -503,7 +499,7 @@ func (c *connection) close() error {
 }
 
 func (c *connection) closed() bool {
-	return atomic.LoadInt64(&c.connected) == disconnected
+	return atomic.LoadInt64(&c.state) == connDisconnected
 }
 
 func (c *connection) idleTimeoutExpired() bool {
@@ -599,6 +595,10 @@ type Connection struct {
 	*connection
 	refCount      int
 	cleanupPoolFn func()
+
+	// cleanupServerFn resets the server state when a connection is returned to the connection pool
+	// via Close() or expired via Expire().
+	cleanupServerFn func()
 
 	mu sync.RWMutex
 }
@@ -700,6 +700,10 @@ func (c *Connection) cleanupReferences() error {
 	if c.cleanupPoolFn != nil {
 		c.cleanupPoolFn()
 		c.cleanupPoolFn = nil
+	}
+	if c.cleanupServerFn != nil {
+		c.cleanupServerFn()
+		c.cleanupServerFn = nil
 	}
 	c.connection = nil
 	return err
@@ -806,7 +810,6 @@ func configureTLS(ctx context.Context,
 	config *tls.Config,
 	ocspOpts *ocsp.VerifyOptions,
 ) (net.Conn, error) {
-
 	// Ensure config.ServerName is always set for SNI.
 	if config.ServerName == "" {
 		hostname := addr.String()
@@ -820,27 +823,15 @@ func configureTLS(ctx context.Context,
 	}
 
 	client := tlsConnSource.Client(nc, config)
-	errChan := make(chan error, 1)
-	go func() {
-		errChan <- client.Handshake()
-	}()
+	if err := clientHandshake(ctx, client); err != nil {
+		return nil, err
+	}
 
-	select {
-	case err := <-errChan:
-		if err != nil {
-			return nil, err
-		}
-
-		// Only do OCSP verification if TLS verification is requested.
-		if config.InsecureSkipVerify {
-			break
-		}
-
+	// Only do OCSP verification if TLS verification is requested.
+	if !config.InsecureSkipVerify {
 		if ocspErr := ocsp.Verify(ctx, client.ConnectionState(), ocspOpts); ocspErr != nil {
 			return nil, ocspErr
 		}
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
 	return client, nil
 }

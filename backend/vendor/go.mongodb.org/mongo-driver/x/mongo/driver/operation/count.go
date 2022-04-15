@@ -20,7 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
-// Performs a count operation
+// Count represents a count operation.
 type Count struct {
 	maxTimeMS      *int64
 	query          bsoncore.Document
@@ -39,12 +39,13 @@ type Count struct {
 	serverAPI      *driver.ServerAPIOptions
 }
 
+// CountResult represents a count result returned by the server.
 type CountResult struct {
 	// The number of documents found
 	N int64
 }
 
-func buildCountResult(response bsoncore.Document, srvr driver.Server) (CountResult, error) {
+func buildCountResult(response bsoncore.Document) (CountResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return CountResult{}, err
@@ -94,11 +95,11 @@ func (c *Count) Result() CountResult { return c.result }
 
 func (c *Count) processResponse(info driver.ResponseInfo) error {
 	var err error
-	c.result, err = buildCountResult(info.ServerResponse, info.Server)
+	c.result, err = buildCountResult(info.ServerResponse)
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (c *Count) Execute(ctx context.Context) error {
 	if c.deployment == nil {
 		return errors.New("the Count operation must have a Deployment set before Execute can be called")

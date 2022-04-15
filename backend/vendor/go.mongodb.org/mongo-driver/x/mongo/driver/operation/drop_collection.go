@@ -34,6 +34,7 @@ type DropCollection struct {
 	serverAPI    *driver.ServerAPIOptions
 }
 
+// DropCollectionResult represents a dropCollection result returned by the server.
 type DropCollectionResult struct {
 	// The number of indexes in the dropped collection.
 	NIndexesWas int32
@@ -41,7 +42,7 @@ type DropCollectionResult struct {
 	Ns string
 }
 
-func buildDropCollectionResult(response bsoncore.Document, srvr driver.Server) (DropCollectionResult, error) {
+func buildDropCollectionResult(response bsoncore.Document) (DropCollectionResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return DropCollectionResult{}, err
@@ -76,11 +77,11 @@ func (dc *DropCollection) Result() DropCollectionResult { return dc.result }
 
 func (dc *DropCollection) processResponse(info driver.ResponseInfo) error {
 	var err error
-	dc.result, err = buildDropCollectionResult(info.ServerResponse, info.Server)
+	dc.result, err = buildDropCollectionResult(info.ServerResponse)
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (dc *DropCollection) Execute(ctx context.Context) error {
 	if dc.deployment == nil {
 		return errors.New("the DropCollection operation must have a Deployment set before Execute can be called")

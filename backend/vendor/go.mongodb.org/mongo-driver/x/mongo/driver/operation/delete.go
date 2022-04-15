@@ -36,14 +36,16 @@ type Delete struct {
 	hint         *bool
 	result       DeleteResult
 	serverAPI    *driver.ServerAPIOptions
+	let          bsoncore.Document
 }
 
+// DeleteResult represents a delete result returned by the server.
 type DeleteResult struct {
 	// Number of documents successfully deleted.
 	N int32
 }
 
-func buildDeleteResult(response bsoncore.Document, srvr driver.Server) (DeleteResult, error) {
+func buildDeleteResult(response bsoncore.Document) (DeleteResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return DeleteResult{}, err
@@ -73,12 +75,12 @@ func NewDelete(deletes ...bsoncore.Document) *Delete {
 func (d *Delete) Result() DeleteResult { return d.result }
 
 func (d *Delete) processResponse(info driver.ResponseInfo) error {
-	dr, err := buildDeleteResult(info.ServerResponse, info.Server)
+	dr, err := buildDeleteResult(info.ServerResponse)
 	d.result.N += dr.N
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (d *Delete) Execute(ctx context.Context) error {
 	if d.deployment == nil {
 		return errors.New("the Delete operation must have a Deployment set before Execute can be called")
@@ -120,6 +122,9 @@ func (d *Delete) command(dst []byte, desc description.SelectedServer) ([]byte, e
 		if !d.writeConcern.Acknowledged() {
 			return nil, errUnacknowledgedHint
 		}
+	}
+	if d.let != nil {
+		dst = bsoncore.AppendDocumentElement(dst, "let", d.let)
 	}
 	return dst, nil
 }
@@ -267,5 +272,15 @@ func (d *Delete) ServerAPI(serverAPI *driver.ServerAPIOptions) *Delete {
 	}
 
 	d.serverAPI = serverAPI
+	return d
+}
+
+// Let specifies the let document to use. This option is only valid for server versions 5.0 and above.
+func (d *Delete) Let(let bsoncore.Document) *Delete {
+	if d == nil {
+		d = new(Delete)
+	}
+
+	d.let = let
 	return d
 }

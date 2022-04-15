@@ -38,6 +38,7 @@ type CreateIndexes struct {
 	serverAPI    *driver.ServerAPIOptions
 }
 
+// CreateIndexesResult represents a createIndexes result returned by the server.
 type CreateIndexesResult struct {
 	// If the collection was created automatically.
 	CreatedCollectionAutomatically bool
@@ -47,7 +48,7 @@ type CreateIndexesResult struct {
 	IndexesBefore int32
 }
 
-func buildCreateIndexesResult(response bsoncore.Document, srvr driver.Server) (CreateIndexesResult, error) {
+func buildCreateIndexesResult(response bsoncore.Document) (CreateIndexesResult, error) {
 	elements, err := response.Elements()
 	if err != nil {
 		return CreateIndexesResult{}, err
@@ -90,11 +91,11 @@ func (ci *CreateIndexes) Result() CreateIndexesResult { return ci.result }
 
 func (ci *CreateIndexes) processResponse(info driver.ResponseInfo) error {
 	var err error
-	ci.result, err = buildCreateIndexesResult(info.ServerResponse, info.Server)
+	ci.result, err = buildCreateIndexesResult(info.ServerResponse)
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (ci *CreateIndexes) Execute(ctx context.Context) error {
 	if ci.deployment == nil {
 		return errors.New("the CreateIndexes operation must have a Deployment set before Execute can be called")
@@ -133,9 +134,9 @@ func (ci *CreateIndexes) command(dst []byte, desc description.SelectedServer) ([
 	return dst, nil
 }
 
-// The number of data-bearing members of a replica set, including the primary, that must complete the index builds
-// successfully before the primary marks the indexes as ready. This should either be a string or int32 value.
-//
+// CommitQuorum specifies the number of data-bearing members of a replica set, including the primary, that must
+// complete the index builds successfully before the primary marks the indexes as ready. This should either be a
+// string or int32 value.
 func (ci *CreateIndexes) CommitQuorum(commitQuorum bsoncore.Value) *CreateIndexes {
 	if ci == nil {
 		ci = new(CreateIndexes)
@@ -145,7 +146,7 @@ func (ci *CreateIndexes) CommitQuorum(commitQuorum bsoncore.Value) *CreateIndexe
 	return ci
 }
 
-// An array containing index specification documents for the indexes being created.
+// Indexes specifies an array containing index specification documents for the indexes being created.
 func (ci *CreateIndexes) Indexes(indexes bsoncore.Document) *CreateIndexes {
 	if ci == nil {
 		ci = new(CreateIndexes)

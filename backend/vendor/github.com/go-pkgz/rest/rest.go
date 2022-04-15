@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -66,4 +67,34 @@ func renderJSONWithStatus(w http.ResponseWriter, data interface{}, code int) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	_, _ = w.Write(buf.Bytes())
+}
+
+// ParseFromTo parses from and to query params of the request
+func ParseFromTo(r *http.Request) (from, to time.Time, err error) {
+	parseTimeStamp := func(ts string) (time.Time, error) {
+		formats := []string{
+			"2006-01-02T15:04:05.000000000",
+			"2006-01-02T15:04:05",
+			"2006-01-02T15:04",
+			"20060102",
+			time.RFC3339,
+			time.RFC3339Nano,
+		}
+
+		for _, f := range formats {
+			if t, e := time.Parse(f, ts); e == nil {
+				return t, nil
+			}
+		}
+		return time.Time{}, errors.Errorf("can't parse date %q", ts)
+	}
+
+	if from, err = parseTimeStamp(r.URL.Query().Get("from")); err != nil {
+		return from, to, errors.Wrap(err, "incorrect from time")
+	}
+
+	if to, err = parseTimeStamp(r.URL.Query().Get("to")); err != nil {
+		return from, to, errors.Wrap(err, "incorrect to time")
+	}
+	return from, to, nil
 }

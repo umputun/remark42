@@ -196,7 +196,7 @@ func (b *Bucket) OpenDownloadStream(fileID interface{}) (*DownloadStream, error)
 }
 
 // DownloadToStream downloads the file with the specified fileID and writes it to the provided io.Writer.
-// Returns the number of bytes written to the steam and an error, or nil if there was no error.
+// Returns the number of bytes written to the stream and an error, or nil if there was no error.
 //
 // If this download requires a custom read deadline to be set on the bucket, it cannot be done concurrently with other
 // read operations operations on this bucket that also require a custom deadline.
@@ -554,7 +554,7 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 
 	_, err = docRes.DecodeBytes()
 	if err != mongo.ErrNoDocuments {
-		// nil, or error that occured during the FindOne operation
+		// nil, or error that occurred during the FindOne operation
 		return err
 	}
 

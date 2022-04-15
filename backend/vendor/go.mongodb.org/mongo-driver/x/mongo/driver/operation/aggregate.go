@@ -21,7 +21,7 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
-// Performs an aggregate operation
+// Aggregate represents an aggregate operation.
 type Aggregate struct {
 	allowDiskUse             *bool
 	batchSize                *int32
@@ -46,6 +46,7 @@ type Aggregate struct {
 	serverAPI                *driver.ServerAPIOptions
 	let                      bsoncore.Document
 	hasOutputStage           bool
+	customOptions            map[string]bsoncore.Value
 
 	result driver.CursorResponse
 }
@@ -67,6 +68,8 @@ func (a *Aggregate) Result(opts driver.CursorOptions) (*driver.BatchCursor, erro
 	return driver.NewBatchCursor(a.result, clientSession, clock, opts)
 }
 
+// ResultCursorResponse returns the underlying CursorResponse result of executing this
+// operation.
 func (a *Aggregate) ResultCursorResponse() driver.CursorResponse {
 	return a.result
 }
@@ -79,7 +82,7 @@ func (a *Aggregate) processResponse(info driver.ResponseInfo) error {
 
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (a *Aggregate) Execute(ctx context.Context) error {
 	if a.deployment == nil {
 		return errors.New("the Aggregate operation must have a Deployment set before Execute can be called")
@@ -152,6 +155,9 @@ func (a *Aggregate) command(dst []byte, desc description.SelectedServer) ([]byte
 	}
 	if a.let != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "let", a.let)
+	}
+	for optionName, optionValue := range a.customOptions {
+		dst = bsoncore.AppendValueElement(dst, optionName, optionValue)
 	}
 	cursorDoc, _ = bsoncore.AppendDocumentEnd(cursorDoc, cursorIdx)
 	dst = bsoncore.AppendDocumentElement(dst, "cursor", cursorDoc)
@@ -389,5 +395,15 @@ func (a *Aggregate) HasOutputStage(hos bool) *Aggregate {
 	}
 
 	a.hasOutputStage = hos
+	return a
+}
+
+// CustomOptions specifies extra options to use in the aggregate command.
+func (a *Aggregate) CustomOptions(co map[string]bsoncore.Value) *Aggregate {
+	if a == nil {
+		a = new(Aggregate)
+	}
+
+	a.customOptions = co
 	return a
 }

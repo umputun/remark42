@@ -69,21 +69,22 @@ type ChangeStream struct {
 	// TryNext. If continued access is required, a copy must be made.
 	Current bson.Raw
 
-	aggregate     *operation.Aggregate
-	pipelineSlice []bsoncore.Document
-	cursor        changeStreamCursor
-	cursorOptions driver.CursorOptions
-	batch         []bsoncore.Document
-	resumeToken   bson.Raw
-	err           error
-	sess          *session.Client
-	client        *Client
-	registry      *bsoncodec.Registry
-	streamType    StreamType
-	options       *options.ChangeStreamOptions
-	selector      description.ServerSelector
-	operationTime *primitive.Timestamp
-	wireVersion   *description.VersionRange
+	aggregate       *operation.Aggregate
+	pipelineSlice   []bsoncore.Document
+	pipelineOptions map[string]bsoncore.Value
+	cursor          changeStreamCursor
+	cursorOptions   driver.CursorOptions
+	batch           []bsoncore.Document
+	resumeToken     bson.Raw
+	err             error
+	sess            *session.Client
+	client          *Client
+	registry        *bsoncodec.Registry
+	streamType      StreamType
+	options         *options.ChangeStreamOptions
+	selector        description.ServerSelector
+	operationTime   *primitive.Timestamp
+	wireVersion     *description.VersionRange
 }
 
 type changeStreamConfig struct {
@@ -142,6 +143,37 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 	}
 	if cs.options.MaxAwaitTime != nil {
 		cs.cursorOptions.MaxTimeMS = int64(*cs.options.MaxAwaitTime / time.Millisecond)
+	}
+	if cs.options.Custom != nil {
+		// Marshal all custom options before passing to the initial aggregate. Return
+		// any errors from Marshaling.
+		customOptions := make(map[string]bsoncore.Value)
+		for optionName, optionValue := range cs.options.Custom {
+			bsonType, bsonData, err := bson.MarshalValueWithRegistry(cs.registry, optionValue)
+			if err != nil {
+				cs.err = err
+				closeImplicitSession(cs.sess)
+				return nil, cs.Err()
+			}
+			optionValueBSON := bsoncore.Value{Type: bsonType, Data: bsonData}
+			customOptions[optionName] = optionValueBSON
+		}
+		cs.aggregate.CustomOptions(customOptions)
+	}
+	if cs.options.CustomPipeline != nil {
+		// Marshal all custom pipeline options before building pipeline slice. Return
+		// any errors from Marshaling.
+		cs.pipelineOptions = make(map[string]bsoncore.Value)
+		for optionName, optionValue := range cs.options.CustomPipeline {
+			bsonType, bsonData, err := bson.MarshalValueWithRegistry(cs.registry, optionValue)
+			if err != nil {
+				cs.err = err
+				closeImplicitSession(cs.sess)
+				return nil, cs.Err()
+			}
+			optionValueBSON := bsoncore.Value{Type: bsonType, Data: bsonData}
+			cs.pipelineOptions[optionName] = optionValueBSON
+		}
 	}
 
 	switch cs.streamType {
@@ -212,7 +244,7 @@ func (cs *ChangeStream) executeOperation(ctx context.Context, resuming bool) err
 	cs.aggregate.Deployment(cs.createOperationDeployment(server, conn))
 
 	if resuming {
-		cs.replaceOptions(ctx, cs.wireVersion)
+		cs.replaceOptions(cs.wireVersion)
 
 		csOptDoc := cs.createPipelineOptionsDoc()
 		pipIdx, pipDoc := bsoncore.AppendDocumentStart(nil)
@@ -390,6 +422,11 @@ func (cs *ChangeStream) createPipelineOptionsDoc() bsoncore.Document {
 		plDoc = bsoncore.AppendTimestampElement(plDoc, "startAtOperationTime", cs.options.StartAtOperationTime.T, cs.options.StartAtOperationTime.I)
 	}
 
+	// Append custom pipeline options.
+	for optionName, optionValue := range cs.pipelineOptions {
+		plDoc = bsoncore.AppendValueElement(plDoc, optionName, optionValue)
+	}
+
 	if plDoc, cs.err = bsoncore.AppendDocumentEnd(plDoc, plDocIdx); cs.err != nil {
 		return nil
 	}
@@ -408,7 +445,7 @@ func (cs *ChangeStream) pipelineToBSON() (bsoncore.Document, error) {
 	return pipelineArr, cs.err
 }
 
-func (cs *ChangeStream) replaceOptions(ctx context.Context, wireVersion *description.VersionRange) {
+func (cs *ChangeStream) replaceOptions(wireVersion *description.VersionRange) {
 	// Cached resume token: use the resume token as the resumeAfter option and set no other resume options
 	if cs.resumeToken != nil {
 		cs.options.SetResumeAfter(cs.resumeToken)

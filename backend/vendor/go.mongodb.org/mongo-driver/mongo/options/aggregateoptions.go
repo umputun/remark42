@@ -6,7 +6,11 @@
 
 package options
 
-import "time"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+)
 
 // AggregateOptions represents options that can be used to configure an Aggregate operation.
 type AggregateOptions struct {
@@ -50,6 +54,11 @@ type AggregateOptions struct {
 	// Values must be constant or closed expressions that do not reference document fields. Parameters can then be
 	// accessed as variables in an aggregate expression context (e.g. "$$var").
 	Let interface{}
+
+	// Custom options to be added to aggregate expression. Key-value pairs of the BSON map should correlate with desired
+	// option names and values. Values must be Marshalable. Custom options may conflict with non-custom options, and custom
+	// options bypass client-side validation. Prefer using non-custom options where possible.
+	Custom bson.M
 }
 
 // Aggregate creates a new AggregateOptions instance.
@@ -111,6 +120,15 @@ func (ao *AggregateOptions) SetLet(let interface{}) *AggregateOptions {
 	return ao
 }
 
+// SetCustom sets the value for the Custom field. Key-value pairs of the BSON map should correlate
+// with desired option names and values. Values must be Marshalable. Custom options may conflict
+// with non-custom options, and custom options bypass client-side validation. Prefer using non-custom
+// options where possible.
+func (ao *AggregateOptions) SetCustom(c bson.M) *AggregateOptions {
+	ao.Custom = c
+	return ao
+}
+
 // MergeAggregateOptions combines the given AggregateOptions instances into a single AggregateOptions in a last-one-wins
 // fashion.
 func MergeAggregateOptions(opts ...*AggregateOptions) *AggregateOptions {
@@ -145,6 +163,9 @@ func MergeAggregateOptions(opts ...*AggregateOptions) *AggregateOptions {
 		}
 		if ao.Let != nil {
 			aggOpts.Let = ao.Let
+		}
+		if ao.Custom != nil {
+			aggOpts.Custom = ao.Custom
 		}
 	}
 
