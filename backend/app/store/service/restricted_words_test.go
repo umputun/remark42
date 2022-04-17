@@ -7,7 +7,6 @@ import (
 )
 
 func TestMatcher_Tokenize(t *testing.T) {
-
 	matcher := NewRestrictedWordsMatcher(StaticRestrictedWordsLister{})
 
 	tbl := []struct {
@@ -32,7 +31,6 @@ func TestMatcher_Tokenize(t *testing.T) {
 }
 
 func TestWildcardTrie_Check(t *testing.T) {
-
 	tbl := []struct {
 		input   []string
 		match   []string

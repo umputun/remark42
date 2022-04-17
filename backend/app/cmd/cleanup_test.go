@@ -59,7 +59,6 @@ func TestCleanup_IsSpam(t *testing.T) {
 }
 
 func TestCleanup_postsInRange(t *testing.T) {
-
 	r := chi.NewRouter()
 	cleanupRoutes(t, r, nil)
 	ts := httptest.NewServer(r)
@@ -211,5 +210,4 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 		c.ids = append(c.ids, r.URL.Path)
 		c.lock.Unlock()
 	})
-
 }

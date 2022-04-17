@@ -15,7 +15,6 @@ type RPC struct {
 
 // Create comment and return ID
 func (r *RPC) Create(comment store.Comment) (commentID string, err error) {
-
 	resp, err := r.Call("store.create", comment)
 	if err != nil {
 		return "", err

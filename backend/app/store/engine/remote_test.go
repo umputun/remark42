@@ -95,7 +95,6 @@ func TestRemote_Update(t *testing.T) {
 	err := c.Update(store.Comment{ID: "123", Locator: store.Locator{URL: "http://example.com/url", SiteID: "site123"},
 		Text: "msg"})
 	assert.NoError(t, err)
-
 }
 
 func TestRemote_Find(t *testing.T) {

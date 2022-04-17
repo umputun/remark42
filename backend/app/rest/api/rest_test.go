@@ -56,7 +56,7 @@ func TestRest_FileServer(t *testing.T) {
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/web/"+testHTMLName)
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "some html", body)
 	_ = os.Remove(testHTMLFile)
 }
@@ -70,13 +70,12 @@ func TestRest_GetStarted(t *testing.T) {
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/index.html")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "some html blah", body)
 
 	_ = os.Remove(getStartedHTML)
 	_, code = get(t, ts.URL+"/index.html")
-	assert.Equal(t, 404, code)
-
+	assert.Equal(t, http.StatusNotFound, code)
 }
 
 func TestRest_Shutdown(t *testing.T) {
@@ -152,13 +151,13 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -196,14 +195,13 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	srv.Shutdown()
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {
-
 	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello")
 	}))))
@@ -247,7 +245,6 @@ func Test_URLKey(t *testing.T) {
 			assert.Equal(t, tt.key, URLKey(r))
 		})
 	}
-
 }
 
 func Test_URLKeyWithUser(t *testing.T) {
@@ -273,7 +270,6 @@ func Test_URLKeyWithUser(t *testing.T) {
 			assert.Equal(t, tt.key, URLKeyWithUser(r))
 		})
 	}
-
 }
 
 func TestRest_parseError(t *testing.T) {
@@ -300,7 +296,6 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func TestRest_cacheControl(t *testing.T) {
-
 	tbl := []struct {
 		url     string
 		version string
@@ -328,14 +323,11 @@ func TestRest_cacheControl(t *testing.T) {
 			t.Logf("%+v", resp.Header)
 			assert.Equal(t, `"`+tt.etag+`"`, resp.Header.Get("Etag"))
 			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds()))+", no-cache", resp.Header.Get("Cache-Control"))
-
 		})
 	}
-
 }
 
 func TestRest_frameAncestors(t *testing.T) {
-
 	tbl := []struct {
 		hosts  []string
 		header string
@@ -358,14 +350,11 @@ func TestRest_frameAncestors(t *testing.T) {
 			assert.NoError(t, resp.Body.Close())
 			t.Logf("%+v", resp.Header)
 			assert.Equal(t, tt.header, resp.Header.Get("Content-Security-Policy"))
-
 		})
 	}
-
 }
 
 func TestRest_subscribersOnly(t *testing.T) {
-
 	paidSubUser := &token.User{}
 	paidSubUser.SetPaidSub(true)
 
@@ -586,12 +575,12 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 	resp, err := sendReq(t, req, "") // no-auth user
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 401, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	resp, err = sendReq(t, req, devToken) // non-admin user
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 403, resp.StatusCode)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 func chooseRandomUnusedPort() (port int) {

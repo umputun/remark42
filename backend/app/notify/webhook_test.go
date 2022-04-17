@@ -35,7 +35,6 @@ func (errReader) Read(p []byte) (n int, err error) {
 }
 
 func TestWebhook_NewWebhook(t *testing.T) {
-
 	wh, err := NewWebhook(okWebhookClient, WebhookParams{
 		WebhookURL: "https://example.org/webhook",
 		Headers:    []string{"Authorization:Basic AXVubzpwQDU1dzByYM=="},
@@ -68,7 +67,6 @@ func TestWebhook_NewWebhook(t *testing.T) {
 }
 
 func TestWebhook_Send(t *testing.T) {
-
 	wh, err := NewWebhook(funcWebhookClient(func(r *http.Request) (*http.Response, error) {
 		assert.Len(t, r.Header, 1)
 		assert.Equal(t, r.Header.Get("Content-Type"), "application/json,text/plain")

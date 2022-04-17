@@ -17,7 +17,6 @@ type Slack struct {
 
 // NewSlack makes Slack bot for notifications
 func NewSlack(token, channelName string, opts ...slack.Option) (*Slack, error) {
-
 	if channelName == "" {
 		channelName = "general"
 	}
@@ -38,7 +37,6 @@ func NewSlack(token, channelName string, opts ...slack.Option) (*Slack, error) {
 
 // Send to Slack channel
 func (t *Slack) Send(ctx context.Context, req Request) error {
-
 	log.Printf("[DEBUG] send slack notification, comment id %s", req.Comment.ID)
 
 	user := req.Comment.User.Name
@@ -63,7 +61,6 @@ func (t *Slack) Send(ctx context.Context, req Request) error {
 	)
 
 	return err
-
 }
 
 // SendVerification is not implemented for Slack
@@ -76,10 +73,8 @@ func (t *Slack) String() string {
 }
 
 func (t *Slack) findChannelIDByName(name string) (string, error) {
-
 	params := slack.GetConversationsParameters{}
 	for {
-
 		chans, next, err := t.client.GetConversations(&params)
 		if err != nil {
 			return "", err
@@ -95,7 +90,6 @@ func (t *Slack) findChannelIDByName(name string) (string, error) {
 			break
 		}
 		params.Cursor = next
-
 	}
 	return "", errors.New("no such channel")
 }

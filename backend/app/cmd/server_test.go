@@ -38,7 +38,7 @@ func TestServerApp(t *testing.T) {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -83,7 +83,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
@@ -251,14 +251,14 @@ func TestServerApp_WithSSL(t *testing.T) {
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, fmt.Sprintf("https://localhost:%d/blah?param=1", sslPort), resp.Header.Get("Location"))
 
 	// check https server
 	resp, err = client.Get(fmt.Sprintf("https://localhost:%d/ping", sslPort))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -268,7 +268,6 @@ func TestServerApp_WithSSL(t *testing.T) {
 }
 
 func TestServerApp_WithRemote(t *testing.T) {
-
 	opts := ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
@@ -294,7 +293,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -377,7 +376,6 @@ func TestServerApp_Shutdown(t *testing.T) {
 }
 
 func TestServerApp_MainSignal(t *testing.T) {
-
 	done := make(chan struct{})
 	go func() {
 		<-done
@@ -663,7 +661,6 @@ func TestServer_loadEmailTemplate(t *testing.T) {
 }
 
 func TestServerCommand_parseSameSite(t *testing.T) {
-
 	tbl := []struct {
 		inp string
 		res http.SameSite
@@ -686,7 +683,6 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 }
 
 func Test_splitAtCommas(t *testing.T) {
-
 	tbl := []struct {
 		inp string
 		res []string

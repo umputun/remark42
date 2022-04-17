@@ -15,7 +15,6 @@ import (
 )
 
 func TestSendErrorJSON(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
@@ -33,7 +32,7 @@ func TestSendErrorJSON(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, 500, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
 }
@@ -63,7 +62,7 @@ func TestSendErrorHTML(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, 500, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	assert.NotContains(t, string(body), `987`, "user html should not contain internal error code")
 	assert.Contains(t, string(body), `error details 123456`)

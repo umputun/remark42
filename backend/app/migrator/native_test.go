@@ -153,7 +153,6 @@ func TestNative_ImportWrongVersion(t *testing.T) {
 	size, err := r.Import(strings.NewReader(inp), "radio-t")
 	assert.EqualError(t, err, "unexpected import file version 2")
 	assert.Equal(t, 0, size)
-
 }
 func TestNative_ImportManyWithError(t *testing.T) {
 	b, teardown := prep(t) // write 2 comments
@@ -181,7 +180,6 @@ func TestNative_ImportManyWithError(t *testing.T) {
 
 // makes new boltdb, put two records
 func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
-
 	testDB := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDB})

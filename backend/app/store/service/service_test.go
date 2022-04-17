@@ -29,7 +29,6 @@ import (
 )
 
 func TestService_CreateFromEmpty(t *testing.T) {
-
 	ks := admin.NewStaticKeyStore("secret 123")
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -56,7 +55,6 @@ func TestService_CreateFromEmpty(t *testing.T) {
 }
 
 func TestService_CreateSiteDisabled(t *testing.T) {
-
 	ks := admin.NewStaticStore("secret 123", []string{"xxx"}, nil, "email")
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -71,7 +69,6 @@ func TestService_CreateSiteDisabled(t *testing.T) {
 }
 
 func TestService_CreateFromPartial(t *testing.T) {
-
 	ks := admin.NewStaticKeyStore("secret 123")
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -147,7 +144,6 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 }
 
 func TestService_SetTitle(t *testing.T) {
-
 	var titleEnable int32
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if atomic.LoadInt32(&titleEnable) == 0 {
@@ -204,7 +200,6 @@ func TestService_SetTitle(t *testing.T) {
 }
 
 func TestService_Vote(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
@@ -311,7 +306,6 @@ func TestService_Vote(t *testing.T) {
 }
 
 func TestService_VoteLimit(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 2}
@@ -335,7 +329,6 @@ func TestService_VoteLimit(t *testing.T) {
 }
 
 func TestService_VotesDisabled(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: 0}
@@ -346,7 +339,6 @@ func TestService_VotesDisabled(t *testing.T) {
 }
 
 func TestService_VoteAggressive(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
@@ -412,7 +404,6 @@ func TestService_VoteAggressive(t *testing.T) {
 }
 
 func TestService_VoteConcurrent(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
@@ -448,7 +439,6 @@ func TestService_VoteConcurrent(t *testing.T) {
 }
 
 func TestService_VotePositive(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
@@ -496,11 +486,9 @@ func TestService_VotePositive(t *testing.T) {
 		UserID: "user4", Val: false})
 	assert.NoError(t, err, "minimal score ignored")
 	assert.Equal(t, -1, c.Score)
-
 }
 
 func TestService_VoteControversy(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
@@ -531,7 +519,6 @@ func TestService_VoteControversy(t *testing.T) {
 }
 
 func TestService_VoteSameIP(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
@@ -559,7 +546,6 @@ func TestService_VoteSameIP(t *testing.T) {
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
@@ -616,7 +602,6 @@ func TestService_Controversy(t *testing.T) {
 }
 
 func TestService_Pin(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -642,7 +627,6 @@ func TestService_Pin(t *testing.T) {
 }
 
 func TestService_EditComment(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -672,7 +656,6 @@ func TestService_EditComment(t *testing.T) {
 }
 
 func TestService_DeleteComment(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -694,7 +677,6 @@ func TestService_DeleteComment(t *testing.T) {
 }
 
 func TestService_EditCommentDurationFailed(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
@@ -714,7 +696,6 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 }
 
 func TestService_EditCommentReplyFailed(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -766,7 +747,6 @@ func TestService_EditCommentAdmin(t *testing.T) {
 }
 
 func TestService_ValidateComment(t *testing.T) {
-
 	b := DataStore{MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")
 
@@ -792,7 +772,6 @@ func TestService_ValidateComment(t *testing.T) {
 }
 
 func TestService_Counts(t *testing.T) {
-
 	b, teardown := prepStoreEngine(t) // two comments for https://radio-t.com
 	defer teardown()
 
@@ -822,7 +801,6 @@ func TestService_Counts(t *testing.T) {
 }
 
 func TestService_GetMetas(t *testing.T) {
-
 	// two comments for https://radio-t.com
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -869,7 +847,6 @@ func TestService_GetMetas(t *testing.T) {
 }
 
 func TestService_SetMetas(t *testing.T) {
-
 	// two comments for https://radio-t.com
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -898,7 +875,6 @@ func TestService_SetMetas(t *testing.T) {
 }
 
 func TestService_UserDetailsOperations(t *testing.T) {
-
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
@@ -952,7 +928,6 @@ func TestService_UserDetailsOperations(t *testing.T) {
 }
 
 func TestService_IsAdmin(t *testing.T) {
-
 	// two comments for https://radio-t.com
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -965,7 +940,6 @@ func TestService_IsAdmin(t *testing.T) {
 }
 
 func TestService_HasReplies(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -997,7 +971,6 @@ func TestService_HasReplies(t *testing.T) {
 }
 
 func TestService_UserReplies(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1079,11 +1052,9 @@ func TestService_UserReplies(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(cc), "0 replies to uxxx")
 	assert.Equal(t, "", u)
-
 }
 
 func TestService_Find(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1141,7 +1112,6 @@ func TestService_FindSince(t *testing.T) {
 }
 
 func TestService_Info(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1163,7 +1133,6 @@ func TestService_Info(t *testing.T) {
 }
 
 func TestService_Delete(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1184,7 +1153,6 @@ func TestService_Delete(t *testing.T) {
 
 // DeleteUser removes all comments from user
 func TestService_DeleteUser(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1216,7 +1184,6 @@ func TestService_DeleteUser(t *testing.T) {
 }
 
 func TestService_List(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1249,7 +1216,6 @@ func TestService_List(t *testing.T) {
 }
 
 func TestService_Count(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1281,7 +1247,6 @@ func TestService_Count(t *testing.T) {
 }
 
 func TestService_UserComments(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1307,7 +1272,6 @@ func TestService_UserComments(t *testing.T) {
 }
 
 func TestService_UserCount(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1338,7 +1302,6 @@ func TestService_UserCount(t *testing.T) {
 }
 
 func TestService_DeleteAll(t *testing.T) {
-
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1365,7 +1328,6 @@ func TestService_DeleteAll(t *testing.T) {
 }
 
 func TestService_submitImages(t *testing.T) {
-
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.MockStore{}
@@ -1510,7 +1472,6 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 }
 
 func TestService_alterComment(t *testing.T) {
-
 	engineMock := engine.MockInterface{}
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
 	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)

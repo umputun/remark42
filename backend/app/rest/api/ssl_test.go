@@ -35,7 +35,7 @@ func TestSSL_Redirect(t *testing.T) {
 	resp, err := client.Get(ts.URL + "/blah?param=1")
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, "https://localhost:443/blah?param=1", resp.Header.Get("Location"))
 }
 
@@ -64,7 +64,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	resp, err := client.Get(ts.URL + "/blah?param=1")
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 307, resp.StatusCode)
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, "https://localhost:443/blah?param=1", resp.Header.Get("Location"))
 
 	// check acme http challenge
@@ -74,7 +74,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 404, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 	err = m.Cache.Put(context.Background(), "token123+http-01", []byte("token"))
 	assert.NoError(t, err)
@@ -82,7 +82,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, "token", string(body))

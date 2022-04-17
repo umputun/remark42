@@ -78,7 +78,6 @@ func (f *FileSystem) ResetCleanupTimer(id string) error {
 
 // Load image from FS. Uses id to get partition subdirectory.
 func (f *FileSystem) Load(id string) ([]byte, error) {
-
 	// get image file by id. first try permanent location and if not found - staging
 	img := func(id string) (file string, err error) {
 		file = f.location(f.Location, id)
@@ -104,7 +103,6 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 
 // Cleanup runs scan of staging and removes old files based on ttl
 func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
-
 	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
 		return nil
 	}
@@ -161,7 +159,6 @@ func (f *FileSystem) Info() (StoreInfo, error) {
 // the end result is a full path like this - /tmp/images/user1/92/xxx-yyy.png.
 // Number of partitions defined by FileSystem.Partitions
 func (f *FileSystem) location(base, id string) string {
-
 	partition := func(id string) string {
 		f.crc.Do(func() {
 			f.crc.Table = crc64.MakeTable(crc64.ECMA)

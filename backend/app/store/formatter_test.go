@@ -122,7 +122,6 @@ func TestFormatter_ShortenAutoLinks(t *testing.T) {
 }
 
 func TestCommentFormatter_lazyImage(t *testing.T) {
-
 	tbl := []struct {
 		inp, out string
 	}{
@@ -139,5 +138,4 @@ func TestCommentFormatter_lazyImage(t *testing.T) {
 			assert.Equal(t, tt.out, f.lazyImage(tt.inp))
 		})
 	}
-
 }

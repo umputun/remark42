@@ -96,7 +96,6 @@ type commentsWithInfo struct {
 
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(address string, port int) {
-
 	if address == "*" {
 		address = ""
 	}
@@ -239,7 +238,6 @@ func (s *Rest) routes() chi.Router {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
-
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(middleware.Timeout(5 * time.Second))
 			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
@@ -267,7 +265,6 @@ func (s *Rest) routes() chi.Router {
 				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
 				rrss.Get("/reply", s.rssRest.repliesCtrl)
 			})
-
 		})
 
 		// open routes, cached
@@ -342,7 +339,6 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/picture", s.privRest.savePictureCtrl)
 		})
-
 	})
 
 	// open routes on root level
@@ -361,7 +357,6 @@ func (s *Rest) routes() chi.Router {
 }
 
 func (s *Rest) controllerGroups() (public, private, admin, rss) {
-
 	pubGrp := public{
 		dataService:      s.DataService,
 		cache:            s.Cache,
@@ -472,7 +467,6 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 
 // serves static files from /web or embedded by statik
 func addFileServer(r chi.Router, path string, root http.FileSystem, version string) {
-
 	var webFS http.Handler
 
 	statikFS, err := fs.New()
@@ -597,7 +591,6 @@ func matchSiteID(next http.Handler) http.Handler {
 
 // cacheControl is a middleware setting cache expiration. Using url+version as etag
 func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
-
 	etag := func(r *http.Request, version string) string {
 		s := version + ":" + r.URL.String()
 		return store.EncodeID(s)
@@ -677,7 +670,6 @@ func parseError(err error, defaultCode int) (code int) {
 		code = rest.ErrCommentEditExpired
 	case strings.HasPrefix(err.Error(), "parent comment with reply can't be edited"):
 		code = rest.ErrCommentEditChanged
-
 	}
 
 	return code

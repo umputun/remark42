@@ -449,7 +449,6 @@ func contains(s string, a []string) bool {
 // newServerApp prepares application and return it with all active parts
 // doesn't start anything
 func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
-
 	if err := makeDirs(s.BackupLocation); err != nil {
 		return nil, errors.Wrap(err, "failed to create backup store")
 	}
@@ -885,7 +884,6 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		log.Print("[INFO] anonymous access enabled")
 		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
 		authenticator.AddDirectProvider("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
-
 			// don't allow anon with space prefix or suffix
 			if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
 				log.Printf("[WARN] name %q has space as a suffix or prefix", user)
@@ -1205,7 +1203,6 @@ func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegram
 // Eliminate leading and trailing dbl quotes in each element only if both presented
 // based on https://stackoverflow.com/a/59318708
 func splitAtCommas(s string) []string {
-
 	cleanup := func(s string) string {
 		if s == "" {
 			return s

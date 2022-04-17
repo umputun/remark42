@@ -144,7 +144,6 @@ func (s *Service) Submit(idsFn func() []string) {
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
 func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
-
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
 		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
@@ -313,7 +312,6 @@ func resize(data []byte, limitW, limitH int) []byte {
 
 // getProportionalSizes returns width and height resized by both dimensions proportionally
 func getProportionalSizes(srcW, srcH, limitW, limitH int) (resW, resH int) {
-
 	if srcW <= limitW && srcH <= limitH {
 		return srcW, srcH
 	}
@@ -333,7 +331,6 @@ func getProportionalSizes(srcW, srcH, limitW, limitH int) (resW, resH int) {
 
 // check if file f is a valid image format, i.e. gif, png, jpeg or webp and reads up to maxSize.
 func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
-
 	isValidImage := func(b []byte) bool {
 		ct := http.DetectContentType(b)
 		return ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" || ct == "image/webp"

@@ -44,7 +44,6 @@ type KeyStore interface {
 // POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
-
 	siteID := r.URL.Query().Get("site")
 
 	if m.isBusy(siteID) {
@@ -132,7 +131,6 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /export?site=site-id&secret=12345&?mode=file|stream
 // exports all comments for siteID as gz file
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
-
 	siteID := r.URL.Query().Get("site")
 
 	var writer io.Writer = w

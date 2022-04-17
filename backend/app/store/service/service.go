@@ -81,7 +81,6 @@ var ErrRestrictedWordsFound = errors.New("comment contains restricted words")
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
-
 	if comment, err = s.prepareNewComment(comment); err != nil {
 		return "", errors.Wrap(err, "failed to prepare comment")
 	}
@@ -338,7 +337,6 @@ type VoteReq struct {
 
 // Vote for comment by id and locator
 func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
-
 	cLock := s.getScopedLocks(req.Locator.URL) // get lock for URL scope
 	cLock.Lock()                               // prevents race on voting
 	defer cLock.Unlock()
@@ -444,7 +442,6 @@ func (s *DataStore) isSameIPVote(req VoteReq, userIPHash string, comment store.C
 // controversy calculates controversial index of votes
 // source - https://github.com/reddit-archive/reddit/blob/master/r2/r2/lib/db/_sorts.pyx#L60
 func (s *DataStore) controversy(ups, downs int) float64 {
-
 	if downs <= 0 || ups <= 0 {
 		return 0
 	}
@@ -468,7 +465,6 @@ type EditRequest struct {
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
-
 	editAllowed := func(comment store.Comment) error {
 		if req.Admin && s.AdminEdits {
 			return nil
@@ -525,7 +521,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 // Loads last maxLastCommentsReply comments and compare parent id to the comment's id
 // Comments with replies cached for 5 minutes
 func (s *DataStore) HasReplies(comment store.Comment) bool {
-
 	s.repliesCache.once.Do(func() {
 		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
 		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache(lcw.TTL(5 * time.Minute))
@@ -558,7 +553,6 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 
 // UserReplies returns list of all comments replied to given user
 func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error) {
-
 	comments, e := s.Last(siteID, maxLastCommentsReply, time.Time{}, nonAdminUser)
 	if e != nil {
 		return nil, "", errors.Wrap(e, "can't get last comments")
@@ -573,7 +567,6 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 
 	// collect replies
 	for _, c := range comments {
-
 		if len(replies) > limit || time.Since(c.Timestamp) > duration {
 			break
 		}
@@ -671,7 +664,6 @@ func (s *DataStore) SetReadOnly(locator store.Locator, status bool) error {
 	roStatus := engine.FlagFalse
 	if status {
 		roStatus = engine.FlagTrue
-
 	}
 	req := engine.FlagRequest{Locator: locator, Flag: engine.ReadOnly, Update: roStatus}
 	_, err := s.Engine.Flag(req)
@@ -944,7 +936,6 @@ func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []st
 }
 
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
-
 	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
 	blocked, bErr := s.Engine.Flag(blocReq)
 
@@ -972,7 +963,6 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 
 // prepare vote info for client view
 func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
-
 	c.Vote = 0 // default is "none" (not voted)
 
 	if v, ok := c.Votes[user.ID]; ok {
@@ -991,7 +981,6 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 // get secret for given siteID
 // Note: secret shared across sites, but some sites can be disabled.
 func (s *DataStore) getSecret(siteID string) (secret string, err error) {
-
 	if secret, err = s.AdminStore.Key("any"); err != nil {
 		return "", errors.Wrapf(err, "can't get secret for site %s", siteID)
 	}

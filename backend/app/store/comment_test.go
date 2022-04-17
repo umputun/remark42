@@ -9,7 +9,6 @@ import (
 )
 
 func TestComment_Sanitize(t *testing.T) {
-
 	tbl := []struct {
 		inp Comment
 		out Comment
@@ -114,7 +113,6 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, User{ID: "username"}, comment.User)
 	assert.Equal(t, 0., comment.Controversy)
 	assert.Equal(t, false, comment.Imported)
-
 }
 
 func TestComment_SetDeleted(t *testing.T) {
@@ -195,7 +193,6 @@ func TestComment_Snippet(t *testing.T) {
 }
 
 func TestComment_sanitizeAsURL(t *testing.T) {
-
 	tbl := []struct {
 		inp, out string
 	}{
@@ -231,7 +228,6 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 }
 
 func TestComment_sanitizeText(t *testing.T) {
-
 	tbl := []struct {
 		inp, out string
 	}{
@@ -260,5 +256,4 @@ func TestComment_sanitizeText(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))
 		})
 	}
-
 }

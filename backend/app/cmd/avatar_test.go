@@ -12,7 +12,6 @@ import (
 )
 
 func TestAvatar_Execute(t *testing.T) {
-
 	defer os.RemoveAll("/tmp/ava-test")
 
 	// from fs to bolt
