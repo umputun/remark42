@@ -40,7 +40,6 @@ func TestBoltStore_SaveCommit(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-
 }
 
 func TestBoltStore_LoadAfterSave(t *testing.T) {

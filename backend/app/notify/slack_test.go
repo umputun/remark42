@@ -16,7 +16,6 @@ import (
 )
 
 func TestSlack_New(t *testing.T) {
-
 	ts := newMockSlackServer()
 	defer ts.Close()
 
@@ -28,11 +27,9 @@ func TestSlack_New(t *testing.T) {
 	_, err = ts.newClient("unknown-channel")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no such channel")
-
 }
 
 func TestSlack_Send(t *testing.T) {
-
 	ts := newMockSlackServer()
 	defer ts.Close()
 
@@ -63,7 +60,6 @@ func TestSlack_Send(t *testing.T) {
 	err = tb.Send(context.TODO(), Request{Comment: c, parent: cp})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "slack server error", "send on broken client")
-
 }
 
 func TestSlack_Name(t *testing.T) {
@@ -98,7 +94,6 @@ func (ts *mockSlackServer) newClient(channelName string) (*Slack, error) {
 }
 
 func newMockSlackServer() *mockSlackServer {
-
 	mockServer := mockSlackServer{}
 	router := chi.NewRouter()
 	router.Post("/conversations.list", func(w http.ResponseWriter, r *http.Request) {
@@ -139,10 +134,8 @@ func newMockSlackServer() *mockSlackServer {
 	})
 
 	router.Post("/chat.postMessage", func(w http.ResponseWriter, r *http.Request) {
-
 		if mockServer.isServerDown {
 			w.WriteHeader(500)
-
 		} else {
 			s := `{
 			    "ok": true,

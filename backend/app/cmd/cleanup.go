@@ -55,7 +55,6 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 			cc.procTitles(comments)
 		} else {
 			spamComments += cc.procSpam(comments)
-
 		}
 	}
 
@@ -151,7 +150,6 @@ func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 
 // get all comments for post url via /find?site=siteID&url=post-url&format=[tree|plain]
 func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) {
-
 	commentsURL := fmt.Sprintf("%s/api/v1/find?site=%s&url=%s&format=plain", cc.RemarkURL, cc.Site, postURL)
 
 	var r *http.Response
@@ -191,7 +189,6 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) deleteComment(c store.Comment) error {
-
 	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
 	if err != nil {
@@ -213,7 +210,6 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) setTitle(c store.Comment) error {
-
 	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
 	if err != nil {
@@ -235,7 +231,6 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error {
 
 // isSpam calculates spam's probability as a score
 func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore float64) {
-
 	badWord := func(txt string) float64 {
 		res := 0.0
 		for _, w := range cc.BadWords {

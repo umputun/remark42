@@ -416,7 +416,6 @@ func TestBoltDB_InfoList(t *testing.T) {
 }
 
 func TestBolt_FlagBlockedUser(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -461,7 +460,6 @@ func TestBolt_FlagBlockedUser(t *testing.T) {
 }
 
 func TestBolt_FlagReadOnlyPost(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -503,7 +501,6 @@ func TestBolt_FlagReadOnlyPost(t *testing.T) {
 }
 
 func TestBolt_FlagVerified(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -540,7 +537,6 @@ func TestBolt_FlagVerified(t *testing.T) {
 }
 
 func TestBolt_FlagListVerified(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -575,7 +571,6 @@ func TestBolt_FlagListVerified(t *testing.T) {
 }
 
 func TestBolt_FlagListBlocked(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -617,11 +612,9 @@ func TestBolt_FlagListBlocked(t *testing.T) {
 
 	_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
 	assert.EqualError(t, err, `site "bad" not found`)
-
 }
 
 func TestBoltDB_UserDetail(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -672,7 +665,6 @@ func TestBoltDB_UserDetail(t *testing.T) {
 }
 
 func TestBolt_DeleteComment(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -728,7 +720,6 @@ func TestBolt_DeleteComment(t *testing.T) {
 }
 
 func TestBolt_DeleteHard(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -751,7 +742,6 @@ func TestBolt_DeleteHard(t *testing.T) {
 }
 
 func TestBolt_DeleteAll(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -811,7 +801,6 @@ func TestBolt_DeleteUserDetail(t *testing.T) {
 }
 
 func TestBoltAdmin_DeleteUserHard(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 
@@ -852,7 +841,6 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 }
 
 func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
-
 	b, teardown := prep(t)
 	defer teardown()
 

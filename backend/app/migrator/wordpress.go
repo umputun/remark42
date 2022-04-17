@@ -60,7 +60,6 @@ func (w *WordPress) Convert(text string) string {
 
 // Import comments from WP and save to store
 func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
-
 	if e := w.DataStore.DeleteAll(siteID); e != nil {
 		return 0, e
 	}
@@ -88,7 +87,6 @@ func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 }
 
 func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
-
 	decoder := xml.NewDecoder(r)
 	commentsCh := make(chan store.Comment)
 

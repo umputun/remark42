@@ -102,7 +102,6 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
 	data, err := s.cache.Get(key, func() (res []byte, e error) {
-
 		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {
 			return nil, errors.Wrap(e, "can't get last comments")
@@ -128,7 +127,6 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *rss) toRssFeed(url string, comments []store.Comment, description string) (string, error) {
-
 	if description == "" {
 		description = "comment updates"
 	}

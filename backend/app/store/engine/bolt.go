@@ -139,7 +139,6 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 
 // Get returns comment for locator.URL and commentID string
 func (b *BoltDB) Get(req GetRequest) (comment store.Comment, err error) {
-
 	bdb, err := b.db(req.Locator.SiteID)
 	if err != nil {
 		return comment, err
@@ -167,7 +166,6 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 	switch {
 	case req.Locator.SiteID != "" && req.Locator.URL != "": // find post comments, i.e. for site and url
 		err = bdb.View(func(tx *bolt.Tx) error {
-
 			bucket, e := b.getPostBucket(tx, req.Locator.URL)
 			if e != nil {
 				return e
@@ -235,7 +233,6 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 
 // Update for locator.URL with mutable part of comment
 func (b *BoltDB) Update(comment store.Comment) error {
-
 	getReq := GetRequest{Locator: comment.Locator, CommentID: comment.ID}
 	if curComment, err := b.Get(getReq); err == nil {
 		// preserve immutable fields
@@ -261,7 +258,6 @@ func (b *BoltDB) Update(comment store.Comment) error {
 
 // Count returns number of comments for post or user
 func (b *BoltDB) Count(req FindRequest) (count int, err error) {
-
 	bdb, err := b.db(req.Locator.SiteID)
 	if err != nil {
 		return 0, err
@@ -295,7 +291,6 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 
 // Info get post(s) meta info
 func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
-
 	bdb, err := b.db(req.Locator.SiteID)
 	if err != nil {
 		return []store.PostInfo{}, err
@@ -354,7 +349,6 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
 func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
-
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
 		return nil, e
@@ -400,7 +394,6 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 
 // Delete post(s), user, comment, user details, or everything
 func (b *BoltDB) Delete(req DeleteRequest) error {
-
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
 		return e
@@ -432,7 +425,6 @@ func (b *BoltDB) Close() error {
 
 // Last returns up to max last comments for given siteID
 func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments []store.Comment, err error) {
-
 	comments = []store.Comment{}
 
 	if max > lastLimit || max == 0 {
@@ -449,7 +441,6 @@ func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments
 		c := lastBkt.Cursor()
 
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-
 			if !since.IsZero() {
 				// stop if reached "since" ts
 				tsSince := []byte(since.Format(tsNano))
@@ -488,7 +479,6 @@ func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments
 // userComments extracts all comments for given site and given userID
 // "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
 func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
-
 	comments = []store.Comment{}
 	commentRefs := []string{}
 
@@ -544,7 +534,6 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 }
 
 func (b *BoltDB) checkFlag(req FlagRequest) (val bool) {
-
 	bdb, err := b.db(req.Locator.SiteID)
 	if err != nil {
 		return false
@@ -791,9 +780,7 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 }
 
 func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID string, mode store.DeleteMode) error {
-
 	return bdb.Update(func(tx *bolt.Tx) error {
-
 		postBkt, e := b.getPostBucket(tx, locator.URL)
 		if e != nil {
 			return e
@@ -830,14 +817,12 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 
 // deleteAll removes all top-level buckets for given siteID
 func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
-
 	// delete all buckets except blocked users
 	toDelete := []string{postsBucketName, lastBucketName, userBucketName, userDetailsBucketName, infoBucketName}
 
 	// delete top-level buckets
 	err := bdb.Update(func(tx *bolt.Tx) error {
 		for _, bktName := range toDelete {
-
 			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
 				return errors.Wrapf(e, "failed to delete top level bucket %s", bktName)
 			}
@@ -854,7 +839,6 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 // deleteUser removes all comments and details for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
 func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.DeleteMode) error {
-
 	// get list of all comments outside of transaction loop
 	posts, err := b.Info(InfoRequest{Locator: store.Locator{SiteID: siteID}})
 	if err != nil {
@@ -989,7 +973,6 @@ func (b *BoltDB) load(bkt *bolt.Bucket, key string, res interface{}) error {
 // count adds val to counts key postURL. val can be negative to subtract. if val 0 can be used as accessor
 // it uses separate counts bucket because boltdb Stat call is very slow
 func (b *BoltDB) count(tx *bolt.Tx, postURL string, val int) (int, error) {
-
 	infoBkt := tx.Bucket([]byte(infoBucketName))
 
 	info := store.PostInfo{}

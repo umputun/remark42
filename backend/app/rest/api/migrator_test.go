@@ -260,7 +260,7 @@ func TestMigrator_Export(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
 	ungzReader, err := gzip.NewReader(resp.Body)
@@ -278,7 +278,7 @@ func TestMigrator_Export(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := io.ReadAll(resp.Body)
@@ -325,7 +325,7 @@ func TestMigrator_Remap(t *testing.T) {
 
 	// check that comments created as expected
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
@@ -333,7 +333,7 @@ func TestMigrator_Remap(t *testing.T) {
 	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
@@ -350,7 +350,7 @@ func TestMigrator_Remap(t *testing.T) {
 
 	// after remap finished we should find comments from new urls
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
@@ -358,7 +358,7 @@ func TestMigrator_Remap(t *testing.T) {
 	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo-another/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
@@ -367,14 +367,14 @@ func TestMigrator_Remap(t *testing.T) {
 
 	// should find nothing from previous url
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
-	require.Equal(t, 200, code)
+	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
@@ -403,7 +403,7 @@ func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
 	req.SetBasicAuth("admin", "password")
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	defer resp.Body.Close()

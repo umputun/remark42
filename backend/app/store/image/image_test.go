@@ -226,7 +226,6 @@ func TestService_resize(t *testing.T) {
 		assert.Equal(t, c.wr, bounds.Dx(), "file %s", c.file)
 		assert.Equal(t, c.hr, bounds.Dy(), "file %s", c.file)
 	}
-
 }
 
 func TestGetProportionalSizes(t *testing.T) {

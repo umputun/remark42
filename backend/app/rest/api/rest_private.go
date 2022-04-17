@@ -106,7 +106,6 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
-
 	comment := store.Comment{}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
@@ -183,7 +182,6 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
 func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
-
 	edit := struct {
 		Text    string
 		Summary string
@@ -657,7 +655,6 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info", rest.ErrInternal)
 		return
 	}
-
 }
 
 // POST /deleteme?site_id=site - requesting delete of all user info

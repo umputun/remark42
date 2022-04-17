@@ -13,7 +13,6 @@ import (
 )
 
 func TestRestore_Execute(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)

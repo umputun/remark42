@@ -35,7 +35,6 @@ type meta struct {
 // Export all comments to writer as json strings. Each comment is one string, separated by "\n"
 // The final file is a valid json
 func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
-
 	if err = n.exportMeta(siteID, w); err != nil {
 		return 0, errors.Wrapf(err, "failed to export meta for site %s", siteID)
 	}
@@ -55,7 +54,6 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 		}
 
 		for _, comment := range comments {
-
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
@@ -180,7 +178,6 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 				log.Printf("[DEBUG] imported %d comments", num)
 			}
 		})
-
 	}
 
 	grp.Wait()
