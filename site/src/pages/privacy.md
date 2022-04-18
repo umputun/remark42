@@ -13,6 +13,10 @@ The terms used in this Privacy Policy have the same meanings as in our Terms and
 
 For a better experience while using our Service, we may require you to provide us with certain personally identifiable information, including but not limited to your name and email address. We can also obtain some basic information from third-party services used to perform login to our Service. The information that we collect will be used to contact or identify you.
 
+### How users may request deletion of that data
+
+The user can request deletion of the data by clicking "Request my data removal" on the profile page and follow the link sent in the confirmation email.
+
 ### Log Data
 
 We want to inform you that whenever you visit our Service, we collect information that your browser sends to us that is called Log Data. This Log Data may include information such as your computer’s Internet Protocol (“IP”) address, browser version, pages of our Service that you visit, the time and date of your visit, the time spent on those pages, and other statistics.
