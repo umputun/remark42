@@ -17,7 +17,6 @@ import (
 )
 
 func TestTitle_GetTitle(t *testing.T) {
-
 	tbl := []struct {
 		page  string
 		ok    bool

@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"testing"
@@ -31,7 +32,7 @@ func TestServer_RssPost(t *testing.T) {
 	pubDate := time.Now().Format(time.RFC1123Z)
 
 	res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	t.Log(res)
 
 	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -55,7 +56,7 @@ func TestServer_RssPost(t *testing.T) {
 	assert.Equal(t, expected, res)
 
 	_, code = get(t, ts.URL+"/api/v1/rss/post?site=remark42-bad&url=https://radio-t.com/blah1")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestServer_RssSite(t *testing.T) {
@@ -86,7 +87,7 @@ func TestServer_RssSite(t *testing.T) {
 
 	require.NoError(t, err)
 	res, code := get(t, ts.URL+"/api/v1/rss/site?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	t.Log(res)
 
 	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -118,7 +119,7 @@ func TestServer_RssSite(t *testing.T) {
 	assert.Equal(t, expected, res)
 
 	_, code = get(t, ts.URL+"/api/v1/rss/site?site=bad-radio-t")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestServer_RssWithReply(t *testing.T) {
@@ -149,7 +150,7 @@ func TestServer_RssWithReply(t *testing.T) {
 	require.NoError(t, err)
 
 	res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah10")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	t.Log(res)
 
 	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -236,7 +237,7 @@ func TestServer_RssReplies(t *testing.T) {
 
 	// replies to c1 (user1). Must be [c3, c2]
 	res, code := get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	t.Log(res)
 	expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 	    <channel>
@@ -266,7 +267,7 @@ func TestServer_RssReplies(t *testing.T) {
 	assert.Equal(t, expected, res)
 
 	_, code = get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42-bad")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func waitOnSecChange() {

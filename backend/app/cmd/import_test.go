@@ -15,7 +15,6 @@ import (
 )
 
 func TestImport_Execute(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)
@@ -48,7 +47,6 @@ func TestImport_Execute(t *testing.T) {
 }
 
 func TestImport_ExecuteFailed(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)
@@ -102,7 +100,6 @@ func TestImport_ExecuteTimeout(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 		fmt.Fprintln(w, "some response")
 		fmt.Fprintln(w, string(body))
-
 	}))
 	defer ts.Close()
 

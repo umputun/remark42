@@ -55,7 +55,6 @@ func TestUser_HashFailed(t *testing.T) {
 
 	r = hashWithFallback(sha1.New(), "123456789")
 	assert.Equal(t, "f7c3bc1d808e04732adf679965ccc34ca7ae3441", r)
-
 }
 
 type mockHash struct{}

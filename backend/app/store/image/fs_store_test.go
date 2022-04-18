@@ -100,7 +100,6 @@ func TestFsStore_SaveAndCommit(t *testing.T) {
 }
 
 func TestFsStore_LoadAfterSave(t *testing.T) {
-
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
@@ -117,7 +116,6 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 }
 
 func TestFsStore_LoadAfterCommit(t *testing.T) {
-
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 

@@ -22,7 +22,6 @@ import (
 )
 
 func Test_Main(t *testing.T) {
-
 	dir, err := ioutil.TempDir(os.TempDir(), "remark42")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
@@ -54,7 +53,7 @@ func Test_Main(t *testing.T) {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, "pong", string(body))
@@ -118,7 +117,7 @@ func TestMain_WithWebhook(t *testing.T) {
 		strings.NewReader(`{"text": "env test", "locator":{"url": "https://radio-t.com", "site": "remark"}}`))
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, 201, resp.StatusCode)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
 func TestGetDump(t *testing.T) {

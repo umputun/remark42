@@ -85,7 +85,6 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	decoder := json.NewDecoder(r)
 
 	go func() {
-
 		var exportedData commentoExport
 		err := decoder.Decode(&exportedData)
 		if err != nil {

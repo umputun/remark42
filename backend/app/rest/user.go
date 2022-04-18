@@ -21,7 +21,6 @@ func MustGetUserInfo(r *http.Request) store.User {
 
 // GetUserInfo returns user from request context
 func GetUserInfo(r *http.Request) (user store.User, err error) {
-
 	u, err := token.GetUserInfo(r)
 	if err != nil {
 		return store.User{}, errors.Wrap(err, "can't extract user info from the token")

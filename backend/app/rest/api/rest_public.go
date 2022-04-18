@@ -174,7 +174,6 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
 func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
-
 	id := chi.URLParam(r, "id")
 	siteID := r.URL.Query().Get("site")
 	url := r.URL.Query().Get("url")
@@ -195,7 +194,6 @@ func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /comments?site=siteID&user=id&limit=123&skip=10 - returns comments for given userID
 func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
-
 	userID := r.URL.Query().Get("user")
 	siteID := r.URL.Query().Get("site")
 
@@ -291,7 +289,6 @@ func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /list?site=siteID&limit=50&skip=10 - list posts with comments
 func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
-
 	siteID := r.URL.Query().Get("site")
 	limit, skip := 0, 0
 

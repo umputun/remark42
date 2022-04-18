@@ -143,7 +143,6 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 }
 
 func TestRest_CreateRejected(t *testing.T) {
-
 	ts, _, teardown := startupT(t)
 	defer teardown()
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
@@ -152,7 +151,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 401, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	// try with wrong aud
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -224,7 +223,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 
 	// get created comment by id as admin
 	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.NoError(t, err)
@@ -236,7 +235,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 
 	// get created comment by id as non-admin
 	res, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comment = store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.NoError(t, err)
@@ -260,7 +259,7 @@ func TestRest_Update(t *testing.T) {
 	assert.NoError(t, err)
 	body, err := io.ReadAll(b.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, b.StatusCode, string(body))
+	assert.Equal(t, http.StatusOK, b.StatusCode, string(body))
 	assert.NoError(t, b.Body.Close())
 
 	// comments returned by update
@@ -275,7 +274,7 @@ func TestRest_Update(t *testing.T) {
 
 	// read updated comment
 	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
 	assert.NoError(t, err)
@@ -313,7 +312,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	require.NoError(t, err)
 	body, err := io.ReadAll(b.Body)
 	require.NoError(t, err)
-	assert.Equal(t, 200, b.StatusCode, string(body))
+	assert.Equal(t, http.StatusOK, b.StatusCode, string(body))
 	assert.NoError(t, b.Body.Close())
 
 	// comments returned by update
@@ -325,7 +324,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 
 	// read updated comment
 	res, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
 	assert.NoError(t, err)
@@ -366,7 +365,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	body, err := io.ReadAll(b.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, b.Body.Close())
-	assert.Equal(t, 403, b.StatusCode, string(body), "update from non-owner")
+	assert.Equal(t, http.StatusForbidden, b.StatusCode, string(body), "update from non-owner")
 	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
 	client = http.Client{}
@@ -377,7 +376,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	b, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.NoError(t, b.Body.Close())
-	assert.Equal(t, 400, b.StatusCode, string(body), "update is not json")
+	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body), "update is not json")
 }
 
 func TestRest_UpdateWrongAud(t *testing.T) {
@@ -420,7 +419,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	c := R.JSON{}
 	err = json.Unmarshal(body, &c)
 	assert.NoError(t, err)
-	assert.Equal(t, 400, b.StatusCode, string(body))
+	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body))
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 }
@@ -449,10 +448,10 @@ func TestRest_Vote(t *testing.T) {
 		return resp.StatusCode
 	}
 
-	assert.Equal(t, 200, vote(1), "first vote allowed")
-	assert.Equal(t, 400, vote(1), "second vote rejected")
+	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
+	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
 	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
@@ -461,27 +460,27 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]bool(nil), cr.Votes, "hidden")
 	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs, "hidden")
 
-	assert.Equal(t, 200, vote(-1), "opposite vote allowed")
+	assert.Equal(t, http.StatusOK, vote(-1), "opposite vote allowed")
 	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, cr.Score)
 	assert.Equal(t, 0, cr.Vote)
 
-	assert.Equal(t, 200, vote(-1), "opposite vote allowed one more time")
+	assert.Equal(t, http.StatusOK, vote(-1), "opposite vote allowed one more time")
 	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
 	assert.Equal(t, -1, cr.Score)
 	assert.Equal(t, -1, cr.Vote)
 
-	assert.Equal(t, 400, vote(-1), "dbl vote not allowed")
+	assert.Equal(t, http.StatusBadRequest, vote(-1), "dbl vote not allowed")
 	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
@@ -489,7 +488,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Vote)
 
 	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
@@ -503,7 +502,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err := sendReq(t, req, adminUmputunToken)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	cr = store.Comment{}
 	err = json.NewDecoder(resp.Body).Decode(&cr)
 	assert.NoError(t, err)
@@ -551,13 +550,13 @@ func TestRest_AnonVote(t *testing.T) {
 		return string(b), r.StatusCode
 	}
 
-	assert.Equal(t, 403, vote(1), "vote is disallowed with anonVote false")
+	assert.Equal(t, http.StatusForbidden, vote(1), "vote is disallowed with anonVote false")
 	srv.privRest.anonVote = true
-	assert.Equal(t, 200, vote(1), "first vote allowed")
-	assert.Equal(t, 400, vote(1), "second vote rejected")
+	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
+	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
 	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
@@ -1021,7 +1020,7 @@ func TestRest_UserAllData(t *testing.T) {
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
 	ungzReader, err := gzip.NewReader(resp.Body)
@@ -1050,7 +1049,7 @@ func TestRest_UserAllData(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, 401, resp.StatusCode)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestRest_UserAllDataManyComments(t *testing.T) {
@@ -1073,7 +1072,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
 	ungzReader, err := gzip.NewReader(resp.Body)
@@ -1097,7 +1096,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, resp.Body.Close())
 	assert.NoError(t, err)
@@ -1118,7 +1117,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	assert.NoError(t, err)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 401, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	assert.NoError(t, resp.Body.Close())
 }
 
@@ -1144,7 +1143,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NoError(t, resp.Body.Close())
@@ -1159,7 +1158,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	id := savePic("picture.png")
 	resp, err := http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
@@ -1170,34 +1169,34 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.jpg")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	id = savePic("picture.blah")
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, id))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
 
 	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/blah/pic.blah", ts.URL))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
 	ts, svc, teardown := startupT(t)
 	defer func() {
 		teardown()
-		os.RemoveAll("/tmp/remark42")
+		assert.NoError(t, os.RemoveAll("/tmp/remark42"))
 	}()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
@@ -1235,7 +1234,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		req.Header.Add("X-JWT", devToken)
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)

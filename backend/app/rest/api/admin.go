@@ -44,7 +44,6 @@ type adminStore interface {
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
-
 	id := chi.URLParam(r, "id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
@@ -61,7 +60,6 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
 func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
-
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
@@ -77,7 +75,6 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
 func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
-
 	userID := chi.URLParam(r, "userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
@@ -94,7 +91,6 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // GET /deleteme?token=jwt - delete all user comments and details by user's request. Gets info about deleted used from provided token
 // request made GET to allow direct click from the email sent by user
 func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
-
 	token := r.URL.Query().Get("token")
 
 	claims, err := a.authenticator.TokenService().Parse(token)

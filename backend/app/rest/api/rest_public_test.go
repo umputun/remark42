@@ -66,7 +66,7 @@ func TestRest_Preview(t *testing.T) {
 	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	resp, err = post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
 	assert.NoError(t, err)
@@ -83,7 +83,6 @@ func TestRest_Preview(t *testing.T) {
 		string(b),
 		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
 	)
-
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {
@@ -168,7 +167,7 @@ func TestRest_Find(t *testing.T) {
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -186,7 +185,7 @@ func TestRest_Find(t *testing.T) {
 
 	// get sorted by +time
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -202,7 +201,7 @@ func TestRest_Find(t *testing.T) {
 
 	// get sorted by -time
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
@@ -212,7 +211,7 @@ func TestRest_Find(t *testing.T) {
 	// get in tree mode
 	tree := service.Tree{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(tree.Nodes))
@@ -239,14 +238,14 @@ func TestRest_FindAge(t *testing.T) {
 	tree := service.Tree{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
@@ -280,7 +279,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 
 	tree := service.Tree{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
@@ -288,7 +287,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 
 	tree = service.Tree{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
@@ -300,7 +299,7 @@ func TestRest_FindUserView(t *testing.T) {
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments := commentsWithInfo{}
 	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -318,7 +317,7 @@ func TestRest_FindUserView(t *testing.T) {
 
 	// get sorted by +time with view=user
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -335,7 +334,7 @@ func TestRest_FindUserView(t *testing.T) {
 	srv.Cache.Flush(cache.FlusherRequest{})
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -348,7 +347,7 @@ func TestRest_Last(t *testing.T) {
 	defer teardown()
 
 	res, code := get(t, ts.URL+"/api/v1/last/2?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "[]\n", res, "empty last should return empty list")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
@@ -365,7 +364,7 @@ func TestRest_Last(t *testing.T) {
 	id2 := addComment(t, c2, ts)
 
 	res, code = get(t, ts.URL+"/api/v1/last/2?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments := []store.Comment{}
 	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -374,7 +373,7 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts1))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -383,7 +382,7 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts2))
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	comments = []store.Comment{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
@@ -391,13 +390,13 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
 	res, code = get(t, ts.URL+"/api/v1/last/X?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
@@ -406,13 +405,13 @@ func TestRest_Last(t *testing.T) {
 	assert.NoError(t, err)
 	srv.Cache.Flush(cache.FlusherRequest{})
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 
 	_, code = get(t, ts.URL+"/api/v1/last/2?site=remark42-BLAH")
-	assert.Equal(t, 500, code)
+	assert.Equal(t, http.StatusInternalServerError, code)
 }
 
 func TestRest_FindUserComments(t *testing.T) {
@@ -437,11 +436,11 @@ func TestRest_FindUserComments(t *testing.T) {
 	assert.NoError(t, err)
 
 	comments, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=blah")
-	assert.Equal(t, 200, code, "noting for user blah")
+	assert.Equal(t, http.StatusOK, code, "noting for user blah")
 	assert.Equal(t, `{"comments":[],"count":0}`+"\n", comments)
 	{
 		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
-		assert.Equal(t, 200, code)
+		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
 			Comments []store.Comment
@@ -460,7 +459,7 @@ func TestRest_FindUserComments(t *testing.T) {
 
 	{
 		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev&skip=1&limit=2")
-		assert.Equal(t, 200, code)
+		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
 			Comments []store.Comment
@@ -482,7 +481,7 @@ func TestRest_UserInfo(t *testing.T) {
 	defer teardown()
 
 	body, code := getWithDevAuth(t, ts.URL+"/api/v1/user?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
 	assert.NoError(t, err)
@@ -506,20 +505,20 @@ func TestRest_Count(t *testing.T) {
 	addComment(t, c2, ts)
 
 	body, code := get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 3.0, j["count"])
 
 	body, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 2.0, j["count"])
 
 	_, code = get(t, ts.URL+"/api/v1/count?site=remark42-BLAH&url=https://radio-t.com/blah1XXX")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestRest_Counts(t *testing.T) {
@@ -553,7 +552,7 @@ func TestRest_Counts(t *testing.T) {
 
 	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-XXX", `{}`)
 	require.NoError(t, err)
-	assert.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.NoError(t, resp.Body.Close())
 }
 
@@ -573,7 +572,7 @@ func TestRest_List(t *testing.T) {
 	addComment(t, c2, ts)
 
 	body, code := get(t, ts.URL+"/api/v1/list?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
 	assert.NoError(t, err)
@@ -583,7 +582,7 @@ func TestRest_List(t *testing.T) {
 	assert.Equal(t, 3, pi[1].Count)
 
 	_, code = get(t, ts.URL+"/api/v1/list?site=remark42-BLAH")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestRest_ListWithSkipAndLimit(t *testing.T) {
@@ -606,7 +605,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 	addComment(t, c3, ts)
 
 	body, code := get(t, ts.URL+"/api/v1/list?site=remark42&skip=1&limit=2")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	pi := []store.PostInfo{}
 	err := json.Unmarshal([]byte(body), &pi)
 	assert.NoError(t, err)
@@ -622,7 +621,7 @@ func TestRest_Config(t *testing.T) {
 	defer teardown()
 
 	body, code := get(t, ts.URL+"/api/v1/config?site=remark42")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	j := R.JSON{}
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
@@ -645,17 +644,17 @@ func TestRest_QR(t *testing.T) {
 
 	// missing parameter
 	body, code := get(t, ts.URL+"/api/v1/qr/telegram")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 	assert.Equal(t, "{\"code\":0,\"details\":\"text parameter is required\",\"error\":\"missing parameter\"}\n", body)
 
 	// too long request to build the qr
 	body, code = get(t, ts.URL+"/api/v1/qr/telegram?url=https://t.me/"+strings.Repeat("string", 1000))
-	assert.Equal(t, 500, code)
+	assert.Equal(t, http.StatusInternalServerError, code)
 	assert.Equal(t, "{\"code\":0,\"details\":\"can't generate QR\",\"error\":\"content too long to encode\"}\n", body)
 
 	// wrong request
 	body, code = get(t, ts.URL+"/api/v1/qr/telegram?url=nonsense")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 	assert.Equal(t, "{\"code\":0,\"details\":\"text parameter should start with https://t.me/\",\"error\":\"wrong parameter\"}\n", body)
 
 	// correct request
@@ -666,7 +665,7 @@ func TestRest_QR(t *testing.T) {
 	require.NoError(t, r.Body.Close())
 	require.NotEmpty(t, bdy)
 	assert.Equal(t, "image/png", r.Header.Get("Content-Type"))
-	assert.Equal(t, 200, r.StatusCode)
+	assert.Equal(t, http.StatusOK, r.StatusCode)
 
 	// compare the image
 	fh, err := os.Open("testdata/qr_test.png")
@@ -699,7 +698,7 @@ func TestRest_Info(t *testing.T) {
 	require.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 
 	info := store.PostInfo{}
 	err = json.Unmarshal([]byte(body), &info)
@@ -709,9 +708,9 @@ func TestRest_Info(t *testing.T) {
 	assert.Equal(t, exp, info)
 
 	_, code = get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah-no")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 	_, code = get(t, ts.URL+"/api/v1/info?site=remark42-no&url=https://radio-t.com/blah-no")
-	assert.Equal(t, 400, code)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestRest_Robots(t *testing.T) {
@@ -719,7 +718,7 @@ func TestRest_Robots(t *testing.T) {
 	defer teardown()
 
 	body, code := get(t, ts.URL+"/robots.txt")
-	assert.Equal(t, 200, code)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\nAllow: /api/v1/find\n"+
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/user\nAllow: /api/v1/img\n"+

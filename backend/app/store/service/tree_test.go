@@ -13,7 +13,6 @@ import (
 )
 
 func TestMakeTree(t *testing.T) {
-
 	loc := store.Locator{URL: "url", SiteID: "site"}
 	ts := func(min int, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
 
@@ -87,7 +86,6 @@ func TestMakeEmptySubtree(t *testing.T) {
 
 	expJSON := mustLoadJSONFile(t, "testdata/tree_del.json")
 	assert.Equal(t, string(expJSON), string(resJSON))
-
 }
 
 func TestTreeSortNodes(t *testing.T) {
