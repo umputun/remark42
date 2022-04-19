@@ -3,6 +3,7 @@
 package service
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/admin"
@@ -77,12 +77,12 @@ const UnlimitedVotes = -1
 var nonAdminUser = store.User{}
 
 // ErrRestrictedWordsFound returned in case comment text contains restricted words
-var ErrRestrictedWordsFound = errors.New("comment contains restricted words")
+var ErrRestrictedWordsFound = fmt.Errorf("comment contains restricted words")
 
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 	if comment, err = s.prepareNewComment(comment); err != nil {
-		return "", errors.Wrap(err, "failed to prepare comment")
+		return "", fmt.Errorf("failed to prepare comment: %w", err)
 	}
 
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
@@ -250,7 +250,9 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	for _, site := range sites {
 		locator := store.Locator{SiteID: site}
 		comments, err := s.FindSince(locator, "time", store.User{}, ts)
-		result = multierror.Append(result, errors.Wrapf(err, "problem finding comments for site %s", site))
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("problem finding comments for site %s: %w", site, err))
+		}
 		for _, c := range comments {
 			s.submitImages(c)
 		}
@@ -303,7 +305,7 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 
 	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
-		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+		return store.Comment{}, fmt.Errorf("can't get secret for site %s: %w", comment.Locator.SiteID, err)
 	}
 	comment.User.HashIP(secret) // replace ip by hash
 	return comment, nil
@@ -347,7 +349,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	}
 
 	if comment.User.ID == req.UserID && req.UserID != "dev" {
-		return comment, errors.Errorf("user %s can not vote for his own comment %s", req.UserID, req.CommentID)
+		return comment, fmt.Errorf("user %s can not vote for his own comment %s", req.UserID, req.CommentID)
 	}
 
 	if comment.Votes == nil {
@@ -356,16 +358,16 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 
 	v, voted := comment.Votes[req.UserID]
 	if voted && v == req.Val { // voted before and same vote (+/-) again. Change allowed, i.e. +, - or -, + is fine
-		return comment, errors.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
+		return comment, fmt.Errorf("user %s already voted for %s", req.UserID, req.CommentID)
 	}
 
 	secret, err := s.getSecret(comment.Locator.SiteID)
 	if err != nil {
-		return store.Comment{}, errors.Wrapf(err, "can't get secret for site %s", comment.Locator.SiteID)
+		return store.Comment{}, fmt.Errorf("can't get secret for site %s: %w", comment.Locator.SiteID, err)
 	}
 	userIPHash := store.HashValue(req.UserIP, secret)
 	if s.isSameIPVote(req, userIPHash, comment) {
-		return comment, errors.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
+		return comment, fmt.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
 	}
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
@@ -374,11 +376,11 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	}
 
 	if maxVotes >= 0 && len(comment.Votes) >= maxVotes {
-		return comment, errors.Errorf("maximum number of votes exceeded for comment %s", req.CommentID)
+		return comment, fmt.Errorf("maximum number of votes exceeded for comment %s", req.CommentID)
 	}
 
 	if s.PositiveScore && comment.Score <= 0 && !req.Val {
-		return comment, errors.Errorf("minimal score reached for comment %s", req.CommentID)
+		return comment, fmt.Errorf("minimal score reached for comment %s", req.CommentID)
 	}
 
 	// add ip hash to voted ip map
@@ -472,12 +474,12 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 
 		// edit allowed in editDuration window only
 		if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
-			return errors.Errorf("too late to edit %s", commentID)
+			return fmt.Errorf("too late to edit %s", commentID)
 		}
 
 		// edit rejected on replayed threads
 		if s.HasReplies(comment) {
-			return errors.Errorf("parent comment with reply can't be edited, %s", commentID)
+			return fmt.Errorf("parent comment with reply can't be edited, %s", commentID)
 		}
 		return nil
 	}
@@ -555,7 +557,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error) {
 	comments, e := s.Last(siteID, maxLastCommentsReply, time.Time{}, nonAdminUser)
 	if e != nil {
-		return nil, "", errors.Wrap(e, "can't get last comments")
+		return nil, "", fmt.Errorf("can't get last comments: %w", e)
 	}
 	replies := []store.Comment{}
 
@@ -574,7 +576,7 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 		if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 			var pc store.Comment
 			if pc, e = s.Get(c.Locator, c.ParentID, nonAdminUser); e != nil {
-				return nil, "", errors.Wrap(e, "can't get parent comment")
+				return nil, "", fmt.Errorf("can't get parent comment: %w", e)
 			}
 			if pc.User.ID == userID {
 				replies = append(replies, c)
@@ -588,7 +590,7 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 // SetTitle puts title from the locator.URL page and overwrites any existing title
 func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error) {
 	if s.TitleExtractor == nil {
-		return comment, errors.New("no title extractor")
+		return comment, fmt.Errorf("no title extractor")
 	}
 
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
@@ -626,13 +628,13 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 		maxSize = defaultCommentMaxSize
 	}
 	if c.Orig == "" {
-		return errors.New("empty comment text")
+		return fmt.Errorf("empty comment text")
 	}
 	if len([]rune(c.Orig)) > maxSize {
-		return errors.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
+		return fmt.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
 	}
 	if c.User.ID == "" || c.User.Name == "" {
-		return errors.Errorf("empty user info")
+		return fmt.Errorf("empty user info")
 	}
 	return nil
 }
@@ -711,7 +713,7 @@ func (s *DataStore) SetBlock(siteID, userID string, status bool, ttl time.Durati
 func (s *DataStore) BlockedUsers(siteID string) (res []store.BlockedUser, err error) {
 	blocked, e := s.Engine.ListFlags(engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, Flag: engine.Blocked})
 	if e != nil {
-		return nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
+		return nil, fmt.Errorf("can't get list of blocked users for %s: %w", siteID, err)
 	}
 	for _, v := range blocked {
 		res = append(res, v.(store.BlockedUser))
@@ -727,7 +729,7 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 		return store.PostInfo{}, err
 	}
 	if len(res) == 0 {
-		return store.PostInfo{}, errors.Errorf("post %+v not found", locator)
+		return store.PostInfo{}, fmt.Errorf("post %+v not found", locator)
 	}
 	return res[0], nil
 }
@@ -767,7 +769,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	// set posts meta
 	posts, err := s.Engine.Info(engine.InfoRequest{Locator: store.Locator{SiteID: siteID}})
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "can't get list of posts for %s", siteID)
+		return nil, nil, fmt.Errorf("can't get list of posts for %s: %w", siteID, err)
 	}
 
 	for _, p := range posts {
@@ -782,7 +784,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	// process blocked users
 	blocked, err := s.BlockedUsers(siteID)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "can't get list of blocked users for %s", siteID)
+		return nil, nil, fmt.Errorf("can't get list of blocked users for %s: %w", siteID, err)
 	}
 	for _, b := range blocked {
 		val, ok := m[b.ID]
@@ -797,7 +799,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	// process verified users
 	verified, err := s.Engine.ListFlags(engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, Flag: engine.Verified})
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "can't get list of verified users for %s", siteID)
+		return nil, nil, fmt.Errorf("can't get list of verified users for %s: %w", siteID, err)
 	}
 	for _, vi := range verified {
 		v := vi.(string)
@@ -812,7 +814,7 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 	// process users details
 	usersDetails, err := s.Engine.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, Detail: engine.AllUserDetails})
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "can't get user details for %s", siteID)
+		return nil, nil, fmt.Errorf("can't get user details for %s: %w", siteID, err)
 	}
 	for _, entry := range usersDetails {
 		val, ok := m[entry.UserID]
@@ -982,15 +984,15 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 // Note: secret shared across sites, but some sites can be disabled.
 func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 	if secret, err = s.AdminStore.Key("any"); err != nil {
-		return "", errors.Wrapf(err, "can't get secret for site %s", siteID)
+		return "", fmt.Errorf("can't get secret for site %s: %w", siteID, err)
 	}
 
 	ok, err := s.AdminStore.Enabled(siteID)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't check secret enabled for site %s", siteID)
+		return "", fmt.Errorf("can't check secret enabled for site %s: %w", siteID, err)
 	}
 	if !ok {
-		return "", errors.Errorf("site %s disabled", siteID)
+		return "", fmt.Errorf("site %s disabled", siteID)
 	}
 	return secret, nil
 }

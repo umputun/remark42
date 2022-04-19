@@ -453,7 +453,7 @@ func TestTelegram_TokenVerification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go tb.Run(ctx)
 	assert.Eventually(t, func() bool {
-		return tb.ProcessUpdate(ctx, "").Error() == "Run goroutine should not be used with ProcessUpdate"
+		return tb.ProcessUpdate(ctx, "").Error() == "the Run goroutine should not be used with ProcessUpdate"
 	}, time.Millisecond*100, time.Millisecond*10, "ProcessUpdate should not work same time as Run")
 	tb.AddToken("expired token", "user", "site", time.Now().Add(-time.Minute))
 	tb.requests.RLock()

@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // CommonOptionsCommander extends flags.Commander with SetCommon
@@ -87,7 +87,7 @@ func (p *fileParser) parse(now time.Time) (string, error) {
 	}
 
 	if err := template.Must(template.New("bb").Parse(fname)).Execute(&bb, fileTemplate); err != nil {
-		return "", errors.Wrapf(err, "failed to parse %q", fname)
+		return "", fmt.Errorf("failed to parse %q: %w", fname, err)
 	}
 	return bb.String(), nil
 }
@@ -107,14 +107,14 @@ func responseError(resp *http.Response) error {
 	if e != nil {
 		body = []byte("")
 	}
-	return errors.Errorf("error response %q, %s", resp.Status, body)
+	return fmt.Errorf("error response %q, %s", resp.Status, body)
 }
 
 // mkdir -p for all dirs
 func makeDirs(dirs ...string) error {
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0o700); err != nil { // If path is already a directory, MkdirAll does nothing
-			return errors.Wrapf(err, "can't make directory %s", dir)
+			return fmt.Errorf("can't make directory %s: %w", dir, err)
 		}
 	}
 	return nil

@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +17,7 @@ func TestSendErrorJSON(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
-			SendErrorJSON(w, r, 500, errors.New("error 500"), "error details 123456", 123)
+			SendErrorJSON(w, r, 500, fmt.Errorf("error 500"), "error details 123456", 123)
 			return
 		}
 		w.WriteHeader(404)
@@ -48,7 +47,7 @@ func TestSendErrorHTML(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/error" {
 			t.Log("http err request", r.URL)
-			SendErrorHTML(w, r, 500, errors.New("error 500"), "error details 123456", 987, fs)
+			SendErrorHTML(w, r, 500, fmt.Errorf("error 500"), "error details 123456", 987, fs)
 			return
 		}
 		w.WriteHeader(404)
@@ -74,7 +73,7 @@ func TestErrorDetailsMsg(t *testing.T) {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", http.NoBody)
 		require.NoError(t, err)
 		req.RemoteAddr = "1.2.3.4"
-		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 123)
+		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 123)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (123) - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
 		// error line in the middle of the message is not checked
 		assert.Contains(t, msg, " rest.TestErrorDetailsMsg]")
@@ -89,7 +88,7 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req.RemoteAddr = "127.0.0.1:1234"
 		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
 		require.NoError(t, err)
-		msg := errDetailsMsg(req, 500, errors.New("error 500"), "error details 123456", 34567)
+		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 34567)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (34567) - test/id - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
 		// error line in the middle of the message is not checked
 		assert.Contains(t, msg, " rest.TestErrorDetailsMsgWithUser]")

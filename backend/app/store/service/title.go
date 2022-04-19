@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
 
@@ -43,7 +43,7 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 	b, err := t.cache.Get(url, func() (interface{}, error) {
 		resp, err := client.Get(url)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load page %s", url)
+			return nil, fmt.Errorf("failed to load page %s: %w", url, err)
 		}
 		defer func() {
 			if err = resp.Body.Close(); err != nil {
@@ -51,12 +51,12 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 			}
 		}()
 		if resp.StatusCode != 200 {
-			return nil, errors.Errorf("can't load page %s, code %d", url, resp.StatusCode)
+			return nil, fmt.Errorf("can't load page %s, code %d", url, resp.StatusCode)
 		}
 
 		title, ok := t.getTitle(resp.Body)
 		if !ok {
-			return nil, errors.Errorf("can't get title for %s", url)
+			return nil, fmt.Errorf("can't get title for %s", url)
 		}
 		return title, nil
 	})

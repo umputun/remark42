@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -1287,7 +1286,7 @@ func (m *mockTelegram) GetBotUsername() string {
 
 func (m *mockTelegram) CheckToken(string, string) (telegram, site string, err error) {
 	if m.notVerified {
-		return "", "", errors.New("not verified")
+		return "", "", fmt.Errorf("not verified")
 	}
 	return "good_telegram", m.site, nil
 }

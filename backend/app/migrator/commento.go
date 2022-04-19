@@ -2,10 +2,10 @@ package migrator
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/umputun/remark42/backend/app/store"
 
 	log "github.com/go-pkgz/lgr"
@@ -68,9 +68,9 @@ func (d *Commento) Import(r io.Reader, siteID string) (size int, err error) {
 	}
 
 	if failed > 0 {
-		err = errors.Errorf("failed to save %d comments", failed)
+		err = fmt.Errorf("failed to save %d comments", failed)
 		if passed == 0 {
-			err = errors.New("import failed")
+			err = fmt.Errorf("import failed")
 		}
 	}
 

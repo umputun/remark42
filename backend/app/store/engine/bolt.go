@@ -9,7 +9,6 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -57,7 +56,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 	for _, site := range sites {
 		db, err := bolt.Open(site.FileName, 0o600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to make boltdb for %s", site.FileName)
+			return nil, fmt.Errorf("failed to make boltdb for %s: %w", site.FileName, err)
 		}
 
 		// make top-level buckets
@@ -66,14 +65,14 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 		err = db.Update(func(tx *bolt.Tx) error {
 			for _, bktName := range topBuckets {
 				if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
-					return errors.Wrapf(e, "failed to create top level bucket %s", bktName)
+					return fmt.Errorf("failed to create top level bucket %s: %w", bktName, e)
 				}
 			}
 			return nil
 		})
 
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create top level bucket)")
+			return nil, fmt.Errorf("failed to create top level bucket): %w", err)
 		}
 
 		result.dbs[site.SiteID] = db
@@ -90,7 +89,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 	}
 
 	if b.checkFlag(FlagRequest{Locator: comment.Locator, Flag: ReadOnly}) {
-		return "", errors.Errorf("post %s is read-only", comment.Locator.URL)
+		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 
 	err = bdb.Update(func(tx *bolt.Tx) (err error) {
@@ -101,12 +100,12 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 		}
 		// check if key already in store, reject doubles
 		if postBkt.Get([]byte(comment.ID)) != nil {
-			return errors.Errorf("key %s already in store", comment.ID)
+			return fmt.Errorf("key %s already in store", comment.ID)
 		}
 
 		// serialize comment to json []byte for bolt and save
 		if err = b.save(postBkt, comment.ID, comment); err != nil {
-			return errors.Wrapf(err, "failed to put key %s to bucket %s", comment.ID, comment.Locator.URL)
+			return fmt.Errorf("failed to put key %s to bucket %s: %w", comment.ID, comment.Locator.URL, err)
 		}
 
 		ref := b.makeRef(comment) // reference combines url and comment id
@@ -115,21 +114,21 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 		lastBkt = tx.Bucket([]byte(lastBucketName))
 		commentTS := []byte(comment.Timestamp.Format(tsNano))
 		if err = lastBkt.Put(commentTS, ref); err != nil {
-			return errors.Wrapf(err, "can't put reference %s to %s", ref, lastBucketName)
+			return fmt.Errorf("can't put reference %s to %s: %w", ref, lastBucketName, err)
 		}
 
 		// add reference to commentID to "users" bucket
 		if userBkt, err = b.getUserBucket(tx, comment.User.ID); err != nil {
-			return errors.Wrapf(err, "can't get bucket %s", comment.User.ID)
+			return fmt.Errorf("can't get bucket %s: %w", comment.User.ID, err)
 		}
 		// put into individual user's bucket with ts as a key
 		if err = userBkt.Put(commentTS, ref); err != nil {
-			return errors.Wrapf(err, "failed to put user comment %s for %s", comment.ID, comment.User.ID)
+			return fmt.Errorf("failed to put user comment %s for %s: %w", comment.ID, comment.User.ID, err)
 		}
 
 		// set info with the count for post url
 		if _, err = b.setInfo(tx, comment); err != nil {
-			return errors.Wrapf(err, "failed to set info for %s", comment.Locator)
+			return fmt.Errorf("failed to set info for %s: %w", comment.Locator, err)
 		}
 		return nil
 	})
@@ -174,7 +173,7 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 			return bucket.ForEach(func(k, v []byte) error {
 				comment := store.Comment{}
 				if e = json.Unmarshal(v, &comment); e != nil {
-					return errors.Wrap(e, "failed to unmarshal")
+					return fmt.Errorf("failed to unmarshal: %w", e)
 				}
 				if req.Since.IsZero() || comment.Timestamp.After(req.Since) {
 					comments = append(comments, comment)
@@ -211,7 +210,7 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	switch req.Detail {
 	case UserEmail, UserTelegram:
 		if req.UserID == "" {
-			return nil, errors.New("userid cannot be empty in request for single detail")
+			return nil, fmt.Errorf("userid cannot be empty in request for single detail")
 		}
 
 		if req.Update == "" { // read detail value, no update requested
@@ -225,9 +224,9 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 		if req.Update == "" && req.UserID == "" { // read list of all details
 			return b.listDetails(req.Locator)
 		}
-		return nil, errors.New("unsupported request with userdetail all")
+		return nil, fmt.Errorf("unsupported request with userdetail all")
 	default:
-		return nil, errors.Errorf("unsupported detail %q", req.Detail)
+		return nil, fmt.Errorf("unsupported detail %q", req.Detail)
 	}
 }
 
@@ -277,7 +276,7 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 			usersBkt := tx.Bucket([]byte(userBucketName))
 			userIDBkt := usersBkt.Bucket([]byte(req.UserID))
 			if userIDBkt == nil {
-				return errors.Errorf("no comments for user %s in store for %s site", req.UserID, req.Locator.SiteID)
+				return fmt.Errorf("no comments for user %s in store for %s site", req.UserID, req.Locator.SiteID)
 			}
 			stats := userIDBkt.Stats()
 			count = stats.KeyN
@@ -286,7 +285,7 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 		return count, err
 	}
 
-	return 0, errors.Errorf("invalid count request %+v", req)
+	return 0, fmt.Errorf("invalid count request %+v", req)
 }
 
 // Info get post(s) meta info
@@ -301,7 +300,7 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 		err = bdb.View(func(tx *bolt.Tx) error {
 			infoBkt := tx.Bucket([]byte(infoBucketName))
 			if e := b.load(infoBkt, req.Locator.URL, &info); e != nil {
-				return errors.Wrapf(e, "can't load info for %s", req.Locator.URL)
+				return fmt.Errorf("can't load info for %s: %w", req.Locator.URL, e)
 			}
 			return nil
 		})
@@ -331,7 +330,7 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 				infoBkt := tx.Bucket([]byte(infoBucketName))
 				info := store.PostInfo{}
 				if e := b.load(infoBkt, postURL, &info); e != nil {
-					return errors.Wrapf(e, "can't load info for %s", postURL)
+					return fmt.Errorf("can't load info for %s: %w", postURL, e)
 				}
 				list = append(list, info)
 				if req.Limit > 0 && len(list) >= req.Limit {
@@ -343,7 +342,7 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 		return list, err
 	}
 
-	return nil, errors.Errorf("invalid info request %+v", req)
+	return nil, fmt.Errorf("invalid info request %+v", req)
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
@@ -372,7 +371,7 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 			return bucket.ForEach(func(k []byte, v []byte) error {
 				ts, errParse := time.ParseInLocation(tsNano, string(v), time.Local)
 				if errParse != nil {
-					return errors.Wrap(errParse, "can't parse block ts")
+					return fmt.Errorf("can't parse block ts: %w", errParse)
 				}
 				if time.Now().Before(ts) {
 					// get user name from comment user section
@@ -389,7 +388,7 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
 		})
 		return res, err
 	}
-	return nil, errors.Errorf("flag %s not listable", req.Flag)
+	return nil, fmt.Errorf("flag %s not listable", req.Flag)
 }
 
 // Delete post(s), user, comment, user details, or everything
@@ -410,15 +409,17 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 		return b.deleteAll(bdb, req.Locator.SiteID)
 	}
 
-	return errors.Errorf("invalid delete request %+v", req)
+	return fmt.Errorf("invalid delete request %+v", req)
 }
 
 // Close boltdb store
 func (b *BoltDB) Close() error {
 	errs := new(multierror.Error)
 	for site, db := range b.dbs {
-		err := errors.Wrapf(db.Close(), "can't close site %s", site)
-		errs = multierror.Append(errs, err)
+		err := db.Close()
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("can't close site %s: %w", site, err))
+		}
 	}
 	return errs.ErrorOrNil()
 }
@@ -496,7 +497,7 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
 		if userIDBkt == nil {
-			return errors.Errorf("no comments for user %s in store", userID)
+			return fmt.Errorf("no comments for user %s in store", userID)
 		}
 
 		c := userIDBkt.Cursor()
@@ -522,7 +523,7 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 	for _, v := range commentRefs {
 		url, commentID, errParse := b.parseRef([]byte(v))
 		if errParse != nil {
-			return comments, errors.Wrapf(errParse, "can't parse reference %s", v)
+			return comments, fmt.Errorf("can't parse reference %s: %w", v, errParse)
 		}
 		getReq := GetRequest{Locator: store.Locator{SiteID: siteID, URL: url}, CommentID: commentID}
 		if c, errRef := b.Get(getReq); errRef == nil {
@@ -600,20 +601,20 @@ func (b *BoltDB) setFlag(req FlagRequest) (res bool, err error) {
 					val = time.Now().Add(req.TTL).Format(tsNano)
 				}
 				if e = bucket.Put([]byte(key), []byte(val)); e != nil {
-					return errors.Wrapf(e, "failed to put blocked to %s", key)
+					return fmt.Errorf("failed to put blocked to %s: %w", key, e)
 				}
 				res = true
 				return nil
 			}
 
 			if e = bucket.Put([]byte(key), []byte(time.Now().Format(tsNano))); e != nil {
-				return errors.Wrapf(e, "failed to set flag %s for %s", req.Flag, req.Locator.URL)
+				return fmt.Errorf("failed to set flag %s for %s: %w", req.Flag, req.Locator.URL, e)
 			}
 			res = true
 			return nil
 		case FlagFalse:
 			if e = bucket.Delete([]byte(key)); e != nil {
-				return errors.Wrapf(e, "failed to clean flag %s for %s", req.Flag, req.Locator.URL)
+				return fmt.Errorf("failed to clean flag %s for %s: %w", req.Flag, req.Locator.URL, e)
 			}
 			res = false
 		}
@@ -632,7 +633,7 @@ func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error
 	case Verified:
 		bkt = tx.Bucket([]byte(verifiedBucketName))
 	default:
-		return nil, errors.Errorf("unsupported flag %v", flag)
+		return nil, fmt.Errorf("unsupported flag %v", flag)
 	}
 	return bkt, nil
 }
@@ -652,7 +653,7 @@ func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		// return no error in case of absent entry
 		if value != nil {
 			if err = json.Unmarshal(value, &entry); err != nil {
-				return errors.Wrap(e, "failed to unmarshal entry")
+				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
 			switch req.Detail {
 			case UserEmail:
@@ -682,7 +683,7 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 		// return no error in case of absent entry
 		if value != nil {
 			if err = json.Unmarshal(value, &entry); err != nil {
-				return errors.Wrap(e, "failed to unmarshal entry")
+				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
 		}
 		return nil
@@ -705,7 +706,10 @@ func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry,
 
 	err = bdb.Update(func(tx *bolt.Tx) error {
 		err = b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
-		return errors.Wrapf(err, "failed to update detail %s for %s in %s", req.Detail, req.UserID, req.Locator.SiteID)
+		if err != nil {
+			return fmt.Errorf("failed to update detail %s for %s in %s: %w", req.Detail, req.UserID, req.Locator.SiteID, err)
+		}
+		return nil
 	})
 
 	return []UserDetailEntry{entry}, err
@@ -723,7 +727,7 @@ func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err e
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
 		return bucket.ForEach(func(userID, value []byte) error {
 			if err = json.Unmarshal(value, &entry); err != nil {
-				return errors.Wrap(e, "failed to unmarshal entry")
+				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
 			result = append(result, entry)
 			return nil
@@ -741,7 +745,7 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 		// return no error in case of absent entry
 		if value != nil {
 			if err := json.Unmarshal(value, &entry); err != nil {
-				return errors.Wrap(err, "failed to unmarshal entry")
+				return fmt.Errorf("failed to unmarshal entry: %w", err)
 			}
 		}
 		return nil
@@ -768,14 +772,20 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 		// if entry doesn't have non-empty details, we should delete it
 		return bdb.Update(func(tx *bolt.Tx) error {
 			err := tx.Bucket([]byte(userDetailsBucketName)).Delete([]byte(userID))
-			return errors.Wrapf(err, "failed to delete user detail %s for %s", userDetail, userID)
+			if err != nil {
+				return fmt.Errorf("failed to delete user detail %s for %s: %w", userDetail, userID, err)
+			}
+			return nil
 		})
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
 		// updated entry is not empty and we need to store it's updated copy
 		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), userID, entry)
-		return errors.Wrapf(err, "failed to update detail %s for %s", userDetail, userID)
+		if err != nil {
+			return fmt.Errorf("failed to update detail %s for %s: %w", userDetail, userID, err)
+		}
+		return nil
 	})
 }
 
@@ -788,13 +798,13 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 
 		comment := store.Comment{}
 		if e = b.load(postBkt, commentID, &comment); e != nil {
-			return errors.Wrapf(e, "can't load key %s from bucket %s", commentID, locator.URL)
+			return fmt.Errorf("can't load key %s from bucket %s: %w", commentID, locator.URL, e)
 		}
 
 		if !comment.Deleted {
 			// decrement comments count for post url
 			if _, e = b.count(tx, comment.Locator.URL, -1); e != nil {
-				return errors.Wrapf(e, "failed to decrement count for %s", comment.Locator)
+				return fmt.Errorf("failed to decrement count for %s: %w", comment.Locator, e)
 			}
 		}
 
@@ -802,13 +812,13 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 		comment.SetDeleted(mode)
 
 		if e = b.save(postBkt, commentID, comment); e != nil {
-			return errors.Wrapf(e, "can't save deleted comment for key %s from bucket %s", commentID, locator.URL)
+			return fmt.Errorf("can't save deleted comment for key %s from bucket %s: %w", commentID, locator.URL, e)
 		}
 
 		// delete from "last" bucket
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		if e = lastBkt.Delete([]byte(commentID)); e != nil {
-			return errors.Wrapf(e, "can't delete key %s from bucket %s", commentID, lastBucketName)
+			return fmt.Errorf("can't delete key %s from bucket %s: %w", commentID, lastBucketName, e)
 		}
 
 		return nil
@@ -824,16 +834,19 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 	err := bdb.Update(func(tx *bolt.Tx) error {
 		for _, bktName := range toDelete {
 			if e := tx.DeleteBucket([]byte(bktName)); e != nil {
-				return errors.Wrapf(e, "failed to delete top level bucket %s", bktName)
+				return fmt.Errorf("failed to delete top level bucket %s: %w", bktName, e)
 			}
 			if _, e := tx.CreateBucketIfNotExists([]byte(bktName)); e != nil {
-				return errors.Wrapf(e, "failed to create top level bucket %s", bktName)
+				return fmt.Errorf("failed to create top level bucket %s: %w", bktName, e)
 			}
 		}
 		return nil
 	})
 
-	return errors.Wrapf(err, "failed to delete top level buckets from site %s", siteID)
+	if err != nil {
+		return fmt.Errorf("failed to delete top level buckets from site %s: %w", siteID, err)
+	}
+	return nil
 }
 
 // deleteUser removes all comments and details for given user. Everything will be market as deleted
@@ -860,14 +873,17 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 			err = postBkt.ForEach(func(postURL []byte, commentVal []byte) error {
 				comment := store.Comment{}
 				if err = json.Unmarshal(commentVal, &comment); err != nil {
-					return errors.Wrap(err, "failed to unmarshal")
+					return fmt.Errorf("failed to unmarshal: %w", err)
 				}
 				if comment.User.ID == userID {
 					comments = append(comments, commentInfo{locator: comment.Locator, commentID: comment.ID})
 				}
 				return nil
 			})
-			return errors.Wrapf(err, "failed to collect list of comments for deletion from %s", postInfo.URL)
+			if err != nil {
+				return fmt.Errorf("failed to collect list of comments for deletion from %s: %w", postInfo.URL, err)
+			}
+			return nil
 		})
 		if err != nil {
 			return err
@@ -879,7 +895,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 	// delete collected comments
 	for _, ci := range comments {
 		if e := b.deleteComment(bdb, ci.locator, ci.commentID, mode); e != nil {
-			return errors.Wrapf(err, "failed to delete comment %+v", ci)
+			return fmt.Errorf("failed to delete comment %+v: %w", ci, err)
 		}
 	}
 
@@ -889,19 +905,19 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 			usersBkt := tx.Bucket([]byte(userBucketName))
 			if usersBkt != nil {
 				if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-					return errors.Wrapf(err, "failed to delete user bucket for %s", userID)
+					return fmt.Errorf("failed to delete user bucket for %s: %w", userID, err)
 				}
 			}
 			return nil
 		})
 
 		if err != nil {
-			return errors.Wrap(err, "can't delete user meta")
+			return fmt.Errorf("can't delete user meta: %w", err)
 		}
 	}
 
 	if len(comments) == 0 {
-		return errors.Errorf("unknown user %s", userID)
+		return fmt.Errorf("unknown user %s", userID)
 	}
 
 	return b.deleteUserDetail(bdb, userID, AllUserDetails)
@@ -911,11 +927,11 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
 	if postsBkt == nil {
-		return nil, errors.Errorf("no bucket %s", postsBucketName)
+		return nil, fmt.Errorf("no bucket %s", postsBucketName)
 	}
 	res := postsBkt.Bucket([]byte(postURL))
 	if res == nil {
-		return nil, errors.Errorf("no bucket %s in store", postURL)
+		return nil, fmt.Errorf("no bucket %s in store", postURL)
 	}
 	return res, nil
 }
@@ -924,11 +940,11 @@ func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error
 func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error) {
 	postsBkt := tx.Bucket([]byte(postsBucketName))
 	if postsBkt == nil {
-		return nil, errors.Errorf("no bucket %s", postsBucketName)
+		return nil, fmt.Errorf("no bucket %s", postsBucketName)
 	}
 	res, err := postsBkt.CreateBucketIfNotExists([]byte(postURL))
 	if err != nil {
-		return nil, errors.Wrapf(err, "no bucket %s in store", postURL)
+		return nil, fmt.Errorf("no bucket %s in store: %w", postURL, err)
 	}
 	return res, nil
 }
@@ -937,7 +953,7 @@ func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error)
 	usersBkt := tx.Bucket([]byte(userBucketName))
 	userIDBkt, e := usersBkt.CreateBucketIfNotExists([]byte(userID)) // get bucket for userID
 	if e != nil {
-		return nil, errors.Wrapf(e, "can't get bucket %s", userID)
+		return nil, fmt.Errorf("can't get bucket %s: %w", userID, e)
 	}
 	return userIDBkt, nil
 }
@@ -945,14 +961,14 @@ func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error)
 // save marshaled value to key for bucket. Should run in update tx
 func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err error) {
 	if value == nil {
-		return errors.Errorf("can't save nil value for %s", key)
+		return fmt.Errorf("can't save nil value for %s", key)
 	}
 	jdata, jerr := json.Marshal(value)
 	if jerr != nil {
-		return errors.Wrap(jerr, "can't marshal comment")
+		return fmt.Errorf("can't marshal comment: %w", jerr)
 	}
 	if err = bkt.Put([]byte(key), jdata); err != nil {
-		return errors.Wrapf(err, "failed to save key %s", key)
+		return fmt.Errorf("failed to save key %s: %w", key, err)
 	}
 	return nil
 }
@@ -961,11 +977,11 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err erro
 func (b *BoltDB) load(bkt *bolt.Bucket, key string, res interface{}) error {
 	value := bkt.Get([]byte(key))
 	if value == nil {
-		return errors.Errorf("no value for %s", key)
+		return fmt.Errorf("no value for %s", key)
 	}
 
 	if err := json.Unmarshal(value, &res); err != nil {
-		return errors.Wrap(err, "failed to unmarshal")
+		return fmt.Errorf("failed to unmarshal: %w", err)
 	}
 	return nil
 }
@@ -1008,7 +1024,7 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	if res, ok := b.dbs[siteID]; ok {
 		return res, nil
 	}
-	return nil, errors.Errorf("site %q not found", siteID)
+	return nil, fmt.Errorf("site %q not found", siteID)
 }
 
 // makeRef creates reference combining url and comment id
@@ -1020,7 +1036,7 @@ func (b *BoltDB) makeRef(comment store.Comment) []byte {
 func (b *BoltDB) parseRef(val []byte) (url, id string, err error) {
 	elems := strings.Split(string(val), "!!")
 	if len(elems) != 2 {
-		return "", "", errors.Errorf("invalid reference value %s", string(val))
+		return "", "", fmt.Errorf("invalid reference value %s", string(val))
 	}
 	return elems[0], elems[1], nil
 }

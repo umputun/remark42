@@ -21,7 +21,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
-	"github.com/pkg/errors"
 	"github.com/rakyll/statik/fs"
 
 	"github.com/umputun/remark42/backend/app/notify"
@@ -505,7 +504,7 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(v); err != nil {
-		return nil, errors.Wrap(err, "json encoding failed")
+		return nil, fmt.Errorf("json encoding failed: %w", err)
 	}
 	return buf.Bytes(), nil
 }

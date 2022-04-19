@@ -3,7 +3,7 @@ package notify
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net/smtp"
 	"sync"
@@ -361,7 +361,7 @@ type fakeTestSMTP struct {
 
 func (f *fakeTestSMTP) Create(SMTPParams) (smtpClient, error) {
 	if f.fail["create"] {
-		return nil, errors.New("failed to create client")
+		return nil, fmt.Errorf("failed to create client")
 	}
 	return f, nil
 }
@@ -373,7 +373,7 @@ func (f *fakeTestSMTP) Mail(m string) error {
 	f.mail = m
 	f.lock.Unlock()
 	if f.fail["mail"] {
-		return errors.New("failed to verify sender")
+		return fmt.Errorf("failed to verify sender")
 	}
 	return nil
 }
@@ -383,7 +383,7 @@ func (f *fakeTestSMTP) Rcpt(r string) error {
 	f.rcpt = r
 	f.lock.Unlock()
 	if f.fail["rcpt"] {
-		return errors.New("failed to verify receiver")
+		return fmt.Errorf("failed to verify receiver")
 	}
 	return nil
 }
@@ -393,7 +393,7 @@ func (f *fakeTestSMTP) Quit() error {
 	f.quitCount++
 	f.lock.Unlock()
 	if f.fail["quit"] {
-		return errors.New("failed to quit")
+		return fmt.Errorf("failed to quit")
 	}
 	return nil
 }
@@ -401,14 +401,14 @@ func (f *fakeTestSMTP) Quit() error {
 func (f *fakeTestSMTP) Close() error {
 	f.close = true
 	if f.fail["close"] {
-		return errors.New("failed to close")
+		return fmt.Errorf("failed to close")
 	}
 	return nil
 }
 
 func (f *fakeTestSMTP) Data() (io.WriteCloser, error) {
 	if f.fail["data"] {
-		return nil, errors.New("failed to send")
+		return nil, fmt.Errorf("failed to send")
 	}
 	return nopCloser{&f.buff}, nil
 }
@@ -433,7 +433,7 @@ func (f *fakeTestSMTP) readQuitCount() int {
 
 func TokenGenFn(user, _, _ string) (string, error) {
 	if user == "error" {
-		return "", errors.New("token generation error")
+		return "", fmt.Errorf("token generation error")
 	}
 	return "token", nil
 }

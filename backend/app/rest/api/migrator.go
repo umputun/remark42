@@ -15,7 +15,6 @@ import (
 	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -47,7 +46,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	if m.isBusy(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+		rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"),
 			"import rejected", rest.ErrActionRejected)
 		return
 	}
@@ -70,7 +69,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	if m.isBusy(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, errors.New("already running"),
+		rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"),
 			"import rejected", rest.ErrActionRejected)
 		return
 	}
@@ -253,15 +252,15 @@ func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 func (m *Migrator) saveTemp(r io.Reader) (string, error) {
 	tmpfile, err := ioutil.TempFile("", "remark42_import")
 	if err != nil {
-		return "", errors.Wrap(err, "can't make temp file")
+		return "", fmt.Errorf("can't make temp file: %w", err)
 	}
 
 	if _, err = io.Copy(tmpfile, r); err != nil {
-		return "", errors.Wrap(err, "can't copy to temp file")
+		return "", fmt.Errorf("can't copy to temp file: %w", err)
 	}
 
 	if err = tmpfile.Close(); err != nil {
-		return "", errors.Wrap(err, "can't close temp file")
+		return "", fmt.Errorf("can't close temp file: %w", err)
 	}
 
 	return tmpfile.Name(), nil

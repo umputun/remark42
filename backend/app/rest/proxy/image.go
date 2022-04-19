@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store/image"
@@ -54,7 +54,7 @@ func (p Image) Convert(commentHTML string) string {
 func (p Image) extract(commentHTML string, imgSrcPred func(string) bool) ([]string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't create document")
+		return nil, fmt.Errorf("can't create document: %w", err)
 	}
 	result := []string{}
 	doc.Find("img").Each(func(i int, s *goquery.Selection) {
@@ -150,23 +150,23 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		var e error
 		req, e := http.NewRequest("GET", imgURL, http.NoBody)
 		if e != nil {
-			return errors.Wrapf(e, "failed to make request for %s", imgURL)
+			return fmt.Errorf("failed to make request for %s: %w", imgURL, e)
 		}
 		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose // need a refactor to fix that
 		return e
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't download image %s", imgURL)
+		return nil, fmt.Errorf("can't download image %s: %w", imgURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
+		return nil, fmt.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
 	}
 
 	imgData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Errorf("unable to read image body")
+		return nil, fmt.Errorf("unable to read image body")
 	}
 	return imgData, nil
 }

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -754,10 +753,10 @@ func TestService_ValidateComment(t *testing.T) {
 		inp store.Comment
 		err error
 	}{
-		{inp: store.Comment{}, err: errors.New("empty comment text")},
+		{inp: store.Comment{}, err: fmt.Errorf("empty comment text")},
 		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: nil},
-		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: errors.New("empty user info")},
-		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: errors.New("comment text exceeded max allowed size 2000 (4000)")},
+		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: fmt.Errorf("empty user info")},
+		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: fmt.Errorf("comment text exceeded max allowed size 2000 (4000)")},
 	}
 
 	for n, tt := range tbl {
@@ -1439,7 +1438,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	bError := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcError}
 
 	// resubmit will receive error from image storage and should return it
-	mockStoreError.On("Info").Once().Return(image.StoreInfo{}, errors.New("mock_err"))
+	mockStoreError.On("Info").Once().Return(image.StoreInfo{}, fmt.Errorf("mock_err"))
 	err = bError.ResubmitStagingImages([]string{"radio-t"})
 	assert.EqualError(t, err, "mock_err")
 
@@ -1459,7 +1458,7 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
 	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
 	engineMock.On("Find", site1Req).Return(nil, nil)
-	engineMock.On("Find", site2Req).Return(nil, errors.New("mockError"))
+	engineMock.On("Find", site2Req).Return(nil, fmt.Errorf("mockError"))
 	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
 	// One call without error and one with error
