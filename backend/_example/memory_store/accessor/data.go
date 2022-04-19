@@ -7,12 +7,11 @@
 package accessor
 
 import (
+	"fmt"
 	"log"
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -58,7 +57,7 @@ func NewMemData() *MemData {
 func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 
 	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro {
-		return "", errors.Errorf("post %s is read-only", comment.Locator.URL)
+		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 
 	m.mu.Lock()
@@ -66,7 +65,7 @@ func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 	comments := m.posts[comment.Locator.SiteID]
 	for _, c := range comments { // don't allow duplicated IDs
 		if c.ID == comment.ID {
-			return "", errors.New("dup key")
+			return "", fmt.Errorf("dup key")
 		}
 	}
 	comments = append(comments, comment)
@@ -161,7 +160,7 @@ func (m *MemData) Count(req engine.FindRequest) (count int, err error) {
 		})
 		return len(comments), nil
 	default:
-		return 0, errors.Errorf("invalid count request %+v", req)
+		return 0, fmt.Errorf("invalid count request %+v", req)
 	}
 }
 
@@ -176,7 +175,7 @@ func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error)
 			return c.Locator == req.Locator
 		})
 		if len(comments) == 0 {
-			return nil, errors.New("not found")
+			return nil, fmt.Errorf("not found")
 		}
 		info := store.PostInfo{
 			URL:      req.Locator.URL,
@@ -235,7 +234,7 @@ func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error)
 		return res, nil
 	}
 
-	return nil, errors.Errorf("invalid info request %+v", req)
+	return nil, fmt.Errorf("invalid info request %+v", req)
 }
 
 // Flag sets and gets flag values
@@ -277,7 +276,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 		return res, nil
 	}
 
-	return nil, errors.Errorf("flag %s not listable", req.Flag)
+	return nil, fmt.Errorf("flag %s not listable", req.Flag)
 }
 
 // UserDetail sets or gets single detail value, or gets all details fo§r requested site.
@@ -287,7 +286,7 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 	switch req.Detail {
 	case engine.UserEmail, engine.UserTelegram:
 		if req.UserID == "" {
-			return nil, errors.New("userid cannot be empty in request for single detail")
+			return nil, fmt.Errorf("userid cannot be empty in request for single detail")
 		}
 
 		m.mu.Lock()
@@ -306,9 +305,9 @@ func (m *MemData) UserDetail(req engine.UserDetailRequest) ([]engine.UserDetailE
 			defer m.mu.Unlock()
 			return m.listDetails(req.Locator)
 		}
-		return nil, errors.New("unsupported request with userdetail all")
+		return nil, fmt.Errorf("unsupported request with userdetail all")
 	default:
-		return nil, errors.Errorf("unsupported detail %q", req.Detail)
+		return nil, fmt.Errorf("unsupported detail %q", req.Detail)
 	}
 }
 
@@ -337,13 +336,13 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		if _, ok := m.posts[req.Locator.SiteID]; !ok {
-			return errors.New("not found")
+			return fmt.Errorf("not found")
 		}
 		m.posts[req.Locator.SiteID] = []store.Comment{}
 		return nil
 	}
 
-	return errors.Errorf("invalid delete request %+v", req)
+	return fmt.Errorf("invalid delete request %+v", req)
 }
 
 func (m *MemData) deleteComment(loc store.Locator, id string, mode store.DeleteMode) error {
@@ -352,7 +351,7 @@ func (m *MemData) deleteComment(loc store.Locator, id string, mode store.DeleteM
 		return c.Locator == loc && c.ID == id
 	})
 	if len(comments) == 0 {
-		return errors.New("not found")
+		return fmt.Errorf("not found")
 	}
 
 	comments[0].SetDeleted(mode)
@@ -430,7 +429,10 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 		info.ReadOnly = status
 		m.metaPosts[req.Locator] = info
 	}
-	return status, errors.Wrapf(err, "failed to set flag %+v", req)
+	if err != nil {
+		return false, fmt.Errorf("failed to set flag %+v: %w", req, err)
+	}
+	return status, nil
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
@@ -535,7 +537,7 @@ func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error
 		return c.Locator == loc && c.ID == commentID
 	})
 	if len(comments) == 0 {
-		return store.Comment{}, errors.New("not found")
+		return store.Comment{}, fmt.Errorf("not found")
 	}
 	return comments[0], nil
 }
@@ -557,7 +559,7 @@ func (m *MemData) updateComment(comment store.Comment) error {
 		m.posts[comment.Locator.SiteID] = comments
 		return nil
 	}
-	return errors.New("not found")
+	return fmt.Errorf("not found")
 }
 
 func (m *MemData) match(comments []store.Comment, fn func(c store.Comment) bool) (res []store.Comment) {

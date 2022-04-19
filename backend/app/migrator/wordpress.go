@@ -2,12 +2,12 @@ package migrator
 
 import (
 	"encoding/xml"
+	"fmt"
 	"html"
 	"io"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
@@ -75,9 +75,9 @@ func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 	}
 
 	if failed > 0 {
-		err = errors.Errorf("failed to save %d comments", failed)
+		err = fmt.Errorf("failed to save %d comments", failed)
 		if passed == 0 {
-			err = errors.New("import failed")
+			err = fmt.Errorf("import failed")
 		}
 	}
 

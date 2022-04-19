@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -27,23 +27,23 @@ type Bolt struct {
 func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 	db, err := bolt.Open(fileName, 0o600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to make boltdb for %s", fileName)
+		return nil, fmt.Errorf("failed to make boltdb for %s: %w", fileName, err)
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		if _, e := tx.CreateBucketIfNotExists([]byte(imagesBktName)); e != nil {
-			return errors.Wrapf(e, "failed to create top level bucket %s", imagesBktName)
+			return fmt.Errorf("failed to create top level bucket %s: %w", imagesBktName, e)
 		}
 		if _, e := tx.CreateBucketIfNotExists([]byte(imagesStagedBktName)); e != nil {
-			return errors.Wrapf(e, "failed to create top level bucket %s", imagesStagedBktName)
+			return fmt.Errorf("failed to create top level bucket %s: %w", imagesStagedBktName, e)
 		}
 		if _, e := tx.CreateBucketIfNotExists([]byte(insertTimeBktName)); e != nil {
-			return errors.Wrapf(e, "failed to create top level bucket %s", insertTimeBktName)
+			return fmt.Errorf("failed to create top level bucket %s: %w", insertTimeBktName, e)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to initialize boltdb db %q buckets", fileName)
+		return nil, fmt.Errorf("failed to initialize boltdb db %q buckets: %w", fileName, err)
 	}
 	return &Bolt{
 		db:       db,
@@ -55,14 +55,14 @@ func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 func (b *Bolt) Save(id string, img []byte) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		if err := tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), img); err != nil {
-			return errors.Wrapf(err, "can't put to bucket with %s", id)
+			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
 		}
 		tsBuf := &bytes.Buffer{}
 		if err := binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
-			return errors.Wrapf(err, "can't serialize timestamp for %s", id)
+			return fmt.Errorf("can't serialize timestamp for %s: %w", id, err)
 		}
 		if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
-			return errors.Wrapf(err, "can't put to bucket with %s", id)
+			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
 		}
 		return nil
 	})
@@ -74,10 +74,13 @@ func (b *Bolt) Commit(id string) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
-			return errors.Errorf("failed to commit %s, not found in staging", id)
+			return fmt.Errorf("failed to commit %s, not found in staging", id)
 		}
 		err := tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data)
-		return errors.Wrapf(err, "can't put to bucket with %s", id)
+		if err != nil {
+			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
+		}
+		return nil
 	})
 }
 
@@ -86,10 +89,10 @@ func (b *Bolt) ResetCleanupTimer(id string) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		tsBuf := &bytes.Buffer{}
 		if err := binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
-			return errors.Wrapf(err, "can't serialize timestamp for %s", id)
+			return fmt.Errorf("can't serialize timestamp for %s: %w", id, err)
 		}
 		if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
-			return errors.Wrapf(err, "can't put to bucket with %s", id)
+			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
 		}
 		return nil
 	})
@@ -104,7 +107,7 @@ func (b *Bolt) Load(id string) ([]byte, error) {
 			data = tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		}
 		if data == nil {
-			return errors.Errorf("can't load image %s", id)
+			return fmt.Errorf("can't load image %s", id)
 		}
 		return nil
 	})
@@ -126,7 +129,7 @@ func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 			var ts int64
 			err := binary.Read(bytes.NewReader(tsData), binary.LittleEndian, &ts)
 			if err != nil {
-				return errors.Wrapf(err, "failed to deserialize timestamp for %s", id)
+				return fmt.Errorf("failed to deserialize timestamp for %s: %w", id, err)
 			}
 
 			age := time.Since(time.Unix(0, ts))
@@ -136,7 +139,7 @@ func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 				idsToRemove = append(idsToRemove, id)
 				err := c.Delete()
 				if err != nil {
-					return errors.Wrapf(err, "failed to remove timestamp for %s", id)
+					return fmt.Errorf("failed to remove timestamp for %s: %w", id, err)
 				}
 			}
 		}
@@ -144,7 +147,7 @@ func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 		for _, id := range idsToRemove {
 			err := imgBkt.Delete(id)
 			if err != nil {
-				return errors.Wrapf(err, "failed to remove image for %s", id)
+				return fmt.Errorf("failed to remove image for %s: %w", id, err)
 			}
 		}
 		return nil
@@ -161,7 +164,7 @@ func (b *Bolt) Info() (StoreInfo, error) {
 			var createdRaw int64
 			err := binary.Read(bytes.NewReader(tsData), binary.LittleEndian, &createdRaw)
 			if err != nil {
-				return errors.Wrapf(err, "failed to deserialize timestamp for %s", id)
+				return fmt.Errorf("failed to deserialize timestamp for %s: %w", id, err)
 			}
 
 			created := time.Unix(0, createdRaw)
@@ -171,5 +174,8 @@ func (b *Bolt) Info() (StoreInfo, error) {
 		}
 		return nil
 	})
-	return StoreInfo{FirstStagingImageTS: ts}, errors.Wrapf(err, "problem retrieving first timestamp from staging images")
+	if err != nil {
+		return StoreInfo{}, fmt.Errorf("problem retrieving first timestamp from staging images: %w", err)
+	}
+	return StoreInfo{FirstStagingImageTS: ts}, nil
 }

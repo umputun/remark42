@@ -2,9 +2,9 @@ package notify
 
 import (
 	"context"
+	"fmt"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 )
 
@@ -26,7 +26,7 @@ func NewSlack(token, channelName string, opts ...slack.Option) (*Slack, error) {
 
 	channelID, err := res.findChannelIDByName(channelName)
 	if err != nil {
-		return nil, errors.Wrap(err, "can not find slack channel '"+channelName+"'")
+		return nil, fmt.Errorf("can not find slack channel '"+channelName+"': %w", err)
 	}
 
 	res.channelID = channelID
@@ -91,5 +91,5 @@ func (t *Slack) findChannelIDByName(name string) (string, error) {
 		}
 		params.Cursor = next
 	}
-	return "", errors.New("no such channel")
+	return "", fmt.Errorf("no such channel")
 }

@@ -18,7 +18,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/golang-jwt/jwt"
 	"github.com/kyokomi/emoji/v2"
-	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/go-pkgz/auth"
@@ -450,27 +449,27 @@ func contains(s string, a []string) bool {
 // doesn't start anything
 func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	if err := makeDirs(s.BackupLocation); err != nil {
-		return nil, errors.Wrap(err, "failed to create backup store")
+		return nil, fmt.Errorf("failed to create backup store: %w", err)
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
-		return nil, errors.Errorf("invalid remark42 url %s", s.RemarkURL)
+		return nil, fmt.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
 	log.Printf("[INFO] root url=%s", s.RemarkURL)
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to make data store engine")
+		return nil, fmt.Errorf("failed to make data store engine: %w", err)
 	}
 
 	adminStore, err := s.makeAdminStore()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to make admin store")
+		return nil, fmt.Errorf("failed to make admin store: %w", err)
 	}
 
 	imageService, err := s.makePicturesStore()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to make pictures store")
+		return nil, fmt.Errorf("failed to make pictures store: %w", err)
 	}
 	log.Printf("[DEBUG] image service for url=%s, EditDuration=%v", imageService.ImageAPI, imageService.EditDuration)
 
@@ -492,13 +491,13 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	loadingCache, err := s.makeCache()
 	if err != nil {
 		_ = dataService.Close()
-		return nil, errors.Wrap(err, "failed to make cache")
+		return nil, fmt.Errorf("failed to make cache: %w", err)
 	}
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
 		_ = dataService.Close()
-		return nil, errors.Wrap(err, "failed to make avatar store")
+		return nil, fmt.Errorf("failed to make avatar store: %w", err)
 	}
 	authRefreshCache := newAuthRefreshCache()
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
@@ -509,7 +508,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
 		_ = dataService.Close()
-		return nil, errors.Wrap(err, "failed to make authenticator")
+		return nil, fmt.Errorf("failed to make authenticator: %w", err)
 	}
 
 	exporter := &migrator.Native{DataStore: dataService}
@@ -548,7 +547,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
 		_ = dataService.Close()
-		return nil, errors.Wrap(err, "failed to make config of ssl server params")
+		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
 
 	srv := &api.Rest{
@@ -587,7 +586,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
 			_ = dataService.Close()
-			return nil, errors.Wrap(errDevAuth, "can't make dev oauth2 server")
+			return nil, fmt.Errorf("can't make dev oauth2 server: %w", errDevAuth)
 		}
 		devAuth = da
 	}
@@ -687,7 +686,7 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 	switch s.Store.Type {
 	case "bolt":
 		if err = makeDirs(s.Store.Bolt.Path); err != nil {
-			return nil, errors.Wrap(err, "failed to create bolt store")
+			return nil, fmt.Errorf("failed to create bolt store: %w", err)
 		}
 		sites := []engine.BoltSite{}
 		for _, site := range s.Sites {
@@ -703,9 +702,12 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 		}}
 		return r, nil
 	default:
-		return nil, errors.Errorf("unsupported store type %s", s.Store.Type)
+		return nil, fmt.Errorf("unsupported store type %s", s.Store.Type)
 	}
-	return result, errors.Wrap(err, "can't initialize data store")
+	if err != nil {
+		return nil, fmt.Errorf("can't initialize data store: %w", err)
+	}
+	return result, nil
 }
 
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
@@ -714,18 +716,18 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, errors.Wrap(err, "failed to create avatar store")
+			return nil, fmt.Errorf("failed to create avatar store: %w", err)
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, errors.Wrap(err, "failed to create avatar store")
+			return nil, fmt.Errorf("failed to create avatar store: %w", err)
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	case "uri":
 		return avatar.NewStore(s.Avatar.URI)
 	}
-	return nil, errors.Errorf("unsupported avatar store type %s", s.Avatar.Type)
+	return nil, fmt.Errorf("unsupported avatar store type %s", s.Avatar.Type)
 }
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
@@ -746,7 +748,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
-			return nil, errors.Wrap(err, "failed to create pictures store")
+			return nil, fmt.Errorf("failed to create pictures store: %w", err)
 		}
 		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
@@ -762,7 +764,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				AuthPasswd: s.Image.RPC.AuthPassword,
 			}}, imageServiceParams), nil
 	}
-	return nil, errors.Errorf("unsupported pictures store type %s", s.Image.Type)
+	return nil, fmt.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
@@ -788,7 +790,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		}}
 		return r, nil
 	default:
-		return nil, errors.Errorf("unsupported admin store type %s", s.Admin.Type)
+		return nil, fmt.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
 }
 
@@ -798,25 +800,25 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	case "redis_pub_sub":
 		redisPubSub, err := eventbus.NewRedisPubSub(s.Cache.RedisAddr, "remark42-cache")
 		if err != nil {
-			return nil, errors.Wrap(err, "cache backend initialization, redis PubSub initialisation")
+			return nil, fmt.Errorf("cache backend initialization, redis PubSub initialisation: %w", err)
 		}
 		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items), cache.EventBus(redisPubSub))
 		if err != nil {
-			return nil, errors.Wrap(err, "cache backend initialization")
+			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
 		return cache.NewScache(backend), nil
 	case "mem":
 		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
 			cache.MaxKeys(s.Cache.Max.Items))
 		if err != nil {
-			return nil, errors.Wrap(err, "cache backend initialization")
+			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
 		return cache.NewScache(backend), nil
 	case "none":
 		return cache.NewScache(&cache.Nop{}), nil
 	}
-	return nil, errors.Errorf("unsupported cache type %s", s.Cache.Type)
+	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
@@ -930,7 +932,7 @@ func (s *ServerCommand) loadEmailTemplate() (string, error) {
 	}
 
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to read file %s", s.Auth.Email.MsgTemplate)
+		return "", fmt.Errorf("failed to read file %s: %w", s.Auth.Email.MsgTemplate, err)
 	}
 
 	return string(file), nil
@@ -986,7 +988,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 		}
 		webhook, err := notify.NewWebhook(client, whParams)
 		if err != nil {
-			return destinations, errors.Wrap(err, "failed to create webhook notification destination")
+			return destinations, fmt.Errorf("failed to create webhook notification destination: %w", err)
 		}
 		destinations = append(destinations, webhook)
 	}
@@ -994,7 +996,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 	if contains("slack", s.Notify.Admins) {
 		slack, err := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
 		if err != nil {
-			return destinations, errors.Wrap(err, "failed to create slack notification destination")
+			return destinations, fmt.Errorf("failed to create slack notification destination: %w", err)
 		}
 		destinations = append(destinations, slack)
 	}
@@ -1022,7 +1024,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 				}
 				tkn, err := authenticator.TokenService().Token(claims)
 				if err != nil {
-					return "", errors.Wrapf(err, "failed to make unsubscription token")
+					return "", fmt.Errorf("failed to make unsubscription token: %w", err)
 				}
 				return tkn, nil
 			},
@@ -1040,7 +1042,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 		}
 		emailService, err := notify.NewEmail(emailParams, smtpParams)
 		if err != nil {
-			return destinations, errors.Wrap(err, "failed to create email notification destination")
+			return destinations, fmt.Errorf("failed to create email notification destination: %w", err)
 		}
 		destinations = append(destinations, emailService)
 	}
@@ -1051,7 +1053,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 // constructs Telegram notify service
 func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 	if contains("telegram", s.Notify.Admins) && s.Notify.Telegram.Channel == "" {
-		return nil, errors.New("--notify.telegram.channel must be set for admin notifications to work")
+		return nil, fmt.Errorf("--notify.telegram.channel must be set for admin notifications to work")
 	}
 	telegramParams := notify.TelegramParams{
 		AdminChannelID:    s.Notify.Telegram.Channel,
@@ -1062,7 +1064,7 @@ func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 	}
 	tg, err := notify.NewTelegram(telegramParams)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create telegram notification destination")
+		return nil, fmt.Errorf("failed to create telegram notification destination: %w", err)
 	}
 	return tg, nil
 }
@@ -1073,10 +1075,10 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 		config.SSLMode = api.None
 	case "static":
 		if s.SSL.Cert == "" {
-			return config, errors.New("path to cert.pem is required")
+			return config, fmt.Errorf("path to cert.pem is required")
 		}
 		if s.SSL.Key == "" {
-			return config, errors.New("path to key.pem is required")
+			return config, fmt.Errorf("path to key.pem is required")
 		}
 		config.SSLMode = api.Static
 		config.Port = s.SSL.Port

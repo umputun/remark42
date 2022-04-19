@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -277,13 +276,13 @@ func TestRest_parseError(t *testing.T) {
 		err error
 		res int
 	}{
-		{errors.New("can not vote for his own comment"), rest.ErrVoteSelf},
-		{errors.New("already voted for"), rest.ErrVoteDbl},
-		{errors.New("maximum number of votes exceeded for comment"), rest.ErrVoteMax},
-		{errors.New("minimal score reached for comment"), rest.ErrVoteMinScore},
-		{errors.New("too late to edit"), rest.ErrCommentEditExpired},
-		{errors.New("parent comment with reply can't be edited"), rest.ErrCommentEditChanged},
-		{errors.New("blah blah"), rest.ErrInternal},
+		{fmt.Errorf("can not vote for his own comment"), rest.ErrVoteSelf},
+		{fmt.Errorf("already voted for"), rest.ErrVoteDbl},
+		{fmt.Errorf("maximum number of votes exceeded for comment"), rest.ErrVoteMax},
+		{fmt.Errorf("minimal score reached for comment"), rest.ErrVoteMinScore},
+		{fmt.Errorf("too late to edit"), rest.ErrCommentEditExpired},
+		{fmt.Errorf("parent comment with reply can't be edited"), rest.ErrCommentEditChanged},
+		{fmt.Errorf("blah blah"), rest.ErrInternal},
 	}
 
 	for n, tt := range tbl {
@@ -398,7 +397,7 @@ func randomPath(tempDir, basename, suffix string) (string, error) {
 			return fname, nil
 		}
 	}
-	return "", errors.New("cannot create temp file")
+	return "", fmt.Errorf("cannot create temp file in %s", tempDir)
 }
 
 // startupT runs fully configured testing server

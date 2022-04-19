@@ -1,7 +1,7 @@
 package api
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"path"
 	"time"
@@ -103,7 +103,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token
 	if !claims.User.BoolAttr("delete_me") {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("forbidden"), "can't use provided token", rest.ErrNoAccess)
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("forbidden"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 	// don't allow to reset ro for posts turned to ro by ReadOnlyAge
 	if !roStatus {
 		if info, e := a.dataService.Info(locator, a.readOnlyAge); e == nil && isRoByAge(info) {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("rejected"),
+			rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"),
 				"read-only due the age", rest.ErrActionRejected)
 			return
 		}

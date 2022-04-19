@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1" // nolint
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -17,7 +18,6 @@ import (
 	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 
 	"github.com/umputun/remark42/backend/app/rest"
@@ -372,12 +372,12 @@ func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	text := r.URL.Query().Get("url")
 	if text == "" {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("missing parameter"), "text parameter is required", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "text parameter is required", rest.ErrInternal)
 		return
 	}
 
 	if !strings.HasPrefix(text, "https://t.me/") {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, errors.New("wrong parameter"), "text parameter should start with https://t.me/", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("wrong parameter"), "text parameter should start with https://t.me/", rest.ErrInternal)
 		return
 	}
 
@@ -423,7 +423,7 @@ func (s *public) parseSince(r *http.Request) (time.Time, error) {
 	if since := r.URL.Query().Get("since"); since != "" {
 		unixTS, e := strconv.ParseInt(since, 10, 64)
 		if e != nil {
-			return time.Time{}, errors.Wrap(e, "can't translate since parameter")
+			return time.Time{}, fmt.Errorf("can't translate since parameter: %w", e)
 		}
 		sinceTS = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
 	}

@@ -8,11 +8,11 @@ package accessor
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store/image"
 )
@@ -53,7 +53,7 @@ func (m *MemImage) ResetCleanupTimer(id string) error {
 		m.insertTime[id] = time.Now()
 		return nil
 	}
-	return errors.Errorf("image %s not found", id)
+	return fmt.Errorf("image %s not found", id)
 }
 
 // Load image by ID
@@ -65,7 +65,7 @@ func (m *MemImage) Load(id string) ([]byte, error) {
 	}
 	m.mu.RUnlock()
 	if !ok {
-		return nil, errors.Errorf("image %s not found", id)
+		return nil, fmt.Errorf("image %s not found", id)
 	}
 	return img, nil
 }
@@ -76,7 +76,7 @@ func (m *MemImage) Commit(id string) error {
 	img, ok := m.imagesStaging[id]
 	m.mu.RUnlock()
 	if !ok {
-		return errors.Errorf("failed to commit %s, not found in staging", id)
+		return fmt.Errorf("failed to commit %s, not found in staging", id)
 	}
 
 	m.mu.Lock()

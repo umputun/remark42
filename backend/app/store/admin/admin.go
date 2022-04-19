@@ -2,7 +2,7 @@
 package admin
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 
 	log "github.com/go-pkgz/lgr"
@@ -50,7 +50,7 @@ func NewStaticKeyStore(key string) *StaticStore {
 // Key returns static key, same for all sites
 func (s *StaticStore) Key(_ string) (key string, err error) {
 	if s.key == "" {
-		return "", errors.New("empty key for static key store")
+		return "", fmt.Errorf("empty key for static key store")
 	}
 	return s.key, nil
 }

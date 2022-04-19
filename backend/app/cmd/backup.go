@@ -9,7 +9,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // BackupCommand set of flags and command for export
@@ -43,14 +42,14 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s", ec.RemarkURL, ec.Site)
 	req, err := http.NewRequest(http.MethodGet, exportURL, http.NoBody)
 	if err != nil {
-		return errors.Wrapf(err, "can't make export request for %s", exportURL)
+		return fmt.Errorf("can't make export request for %s: %w", exportURL, err)
 	}
 	req.SetBasicAuth("admin", ec.AdminPasswd)
 
 	// get with timeout
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		return errors.Wrapf(err, "request failed for %s", exportURL)
+		return fmt.Errorf("request failed for %s: %w", exportURL, err)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
@@ -64,7 +63,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 
 	fh, err := os.Create(fname) //nolint:gosec // harmless
 	if err != nil {
-		return errors.Wrapf(err, "can't create backup file %s", fname)
+		return fmt.Errorf("can't create backup file %s: %w", fname, err)
 	}
 	defer func() { //nolint:gosec // false positive on defer without error check when it's checked here
 		if err = fh.Close(); err != nil {
@@ -73,7 +72,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	}()
 
 	if _, err = io.Copy(fh, resp.Body); err != nil {
-		return errors.Wrapf(err, "failed to write backup file %s", fname)
+		return fmt.Errorf("failed to write backup file %s: %w", fname, err)
 	}
 
 	log.Printf("[INFO] export completed, file %s", fname)

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"sync/atomic"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/syncs"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/service"
@@ -36,7 +36,7 @@ type meta struct {
 // The final file is a valid json
 func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	if err = n.exportMeta(siteID, w); err != nil {
-		return 0, errors.Wrapf(err, "failed to export meta for site %s", siteID)
+		return 0, fmt.Errorf("failed to export meta for site %s: %w", siteID, err)
 	}
 
 	topics, err := n.DataStore.List(siteID, 0, 0)
@@ -59,10 +59,10 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 			enc.SetEscapeHTML(false)
 
 			if err = enc.Encode(comment); err != nil {
-				return commentsCount, errors.Wrapf(err, "can't marshal %v", comments)
+				return commentsCount, fmt.Errorf("can't marshal %v: %w", comments, err)
 			}
 			if _, err = w.Write(buf.Bytes()); err != nil {
-				return commentsCount, errors.Wrap(err, "can't write comment data")
+				return commentsCount, fmt.Errorf("can't write comment data: %w", err)
 			}
 			commentsCount++
 		}
@@ -76,11 +76,11 @@ func (n *Native) exportMeta(siteID string, w io.Writer) (err error) {
 	m := meta{Version: nativeVersion}
 	m.Users, m.Posts, err = n.DataStore.Metas(siteID)
 	if err != nil {
-		return errors.Wrap(err, "can't get meta")
+		return fmt.Errorf("can't get meta: %w", err)
 	}
 
 	if err = json.NewEncoder(w).Encode(m); err != nil {
-		return errors.Wrap(err, "can't encode meta")
+		return fmt.Errorf("can't encode meta: %w", err)
 	}
 	return nil
 }
@@ -131,11 +131,11 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	m := meta{}
 	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&m); err != nil {
-		return 0, errors.Wrapf(err, "failed to import meta for site %s", siteID)
+		return 0, fmt.Errorf("failed to import meta for site %s: %w", siteID, err)
 	}
 
 	if m.Version != nativeVersion && m.Version != 0 { // this version allows back compatibility with 0 version
-		return 0, errors.Errorf("unexpected import file version %d", m.Version)
+		return 0, fmt.Errorf("unexpected import file version %d", m.Version)
 	}
 
 	if e := n.DataStore.DeleteAll(siteID); e != nil {
@@ -183,7 +183,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	grp.Wait()
 
 	if failed > 0 {
-		return int(comments), errors.Errorf("failed to save %d comments", failed)
+		return int(comments), fmt.Errorf("failed to save %d comments", failed)
 	}
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
 

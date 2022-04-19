@@ -3,7 +3,7 @@ package notify
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -31,7 +31,7 @@ type errReader struct {
 }
 
 func (errReader) Read(p []byte) (n int, err error) {
-	return 0, errors.New("test error")
+	return 0, fmt.Errorf("test error")
 }
 
 func TestWebhook_NewWebhook(t *testing.T) {
@@ -104,7 +104,7 @@ func TestWebhook_Send(t *testing.T) {
 	assert.Contains(t, err.Error(), "unable to create webhook request")
 
 	wh, err = NewWebhook(funcWebhookClient(func(*http.Request) (*http.Response, error) {
-		return nil, errors.New("request failed")
+		return nil, fmt.Errorf("request failed")
 	}), WebhookParams{WebhookURL: "https://not-existing-url.net"})
 	assert.NoError(t, err)
 	err = wh.Send(context.TODO(), Request{Comment: c})

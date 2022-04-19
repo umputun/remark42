@@ -4,11 +4,11 @@
 package migrator
 
 import (
+	"fmt"
 	"io"
 	"os"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/service"
@@ -69,12 +69,12 @@ func ImportComments(p ImportParams) (int, error) {
 	case "native":
 		importer = &Native{DataStore: p.DataStore}
 	default:
-		return 0, errors.Errorf("unsupported import provider %s", p.Provider)
+		return 0, fmt.Errorf("unsupported import provider %s", p.Provider)
 	}
 
 	fh, err := os.Open(p.InputFile)
 	if err != nil {
-		return 0, errors.Wrapf(err, "can't open import file %s", p.InputFile)
+		return 0, fmt.Errorf("can't open import file %s: %w", p.InputFile, err)
 	}
 
 	defer func() { //nolint:gosec // false positive on defer without error check when it's checked here

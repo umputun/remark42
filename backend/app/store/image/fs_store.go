@@ -15,7 +15,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // FileSystem provides image Store for local files. Saves and loads files from Location, restricts max size.
@@ -38,11 +37,11 @@ func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
 	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil {
-		return errors.Wrap(err, "can't make image directory")
+		return fmt.Errorf("can't make image directory: %w", err)
 	}
 
 	if err := os.WriteFile(dst, img, 0o600); err != nil {
-		return errors.Wrapf(err, "can't write image file with id %s", id)
+		return fmt.Errorf("can't write image file with id %s: %w", id, err)
 	}
 
 	log.Printf("[DEBUG] file %s saved for image %s, size=%d", dst, id, len(img))
@@ -55,11 +54,13 @@ func (f *FileSystem) Commit(id string) error {
 	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
 
 	if err := os.MkdirAll(path.Dir(permImage), 0o700); err != nil {
-		return errors.Wrap(err, "can't make image directory")
+		return fmt.Errorf("can't make image directory: %w", err)
 	}
 
-	err := os.Rename(stagingImage, permImage)
-	return errors.Wrapf(err, "failed to commit image %s", id)
+	if err := os.Rename(stagingImage, permImage); err != nil {
+		return fmt.Errorf("failed to commit image %s: %w", id, err)
+	}
+	return nil
 }
 
 // ResetCleanupTimer resets cleanup timer for the image
@@ -67,13 +68,15 @@ func (f *FileSystem) ResetCleanupTimer(id string) error {
 	file := f.location(f.Staging, id)
 	_, err := os.Stat(file)
 	if err != nil {
-		return errors.Wrapf(err, "can't get image stats for %s", id)
+		return fmt.Errorf("can't get image stats for %s: %w", id, err)
 	}
 	// we don't need to update access time (second arg),
 	// but reading it is platform-dependent and looks different on darwin and linux,
 	// so it's easier to update it as well
-	err = os.Chtimes(file, time.Now(), time.Now())
-	return errors.Wrapf(err, "problem updating %s modification time", file)
+	if err = os.Chtimes(file, time.Now(), time.Now()); err != nil {
+		return fmt.Errorf("problem updating %s modification time: %w", file, err)
+	}
+	return nil
 }
 
 // Load image from FS. Uses id to get partition subdirectory.
@@ -86,17 +89,20 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 			file = f.location(f.Staging, id)
 			_, err = os.Stat(file)
 		}
-		return file, errors.Wrapf(err, "can't get image stats for %s", id)
+		if err != nil {
+			return file, fmt.Errorf("can't get image stats for %s: %w", id, err)
+		}
+		return file, nil
 	}
 
 	imgFile, err := img(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get image file for %s", id)
+		return nil, fmt.Errorf("can't get image file for %s: %w", id, err)
 	}
 
 	fh, err := os.Open(imgFile) //nolint:gosec // we open file from known location
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't load image %s", id)
+		return nil, fmt.Errorf("can't load image %s: %w", id, err)
 	}
 	return io.ReadAll(fh)
 }
@@ -124,7 +130,10 @@ func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 		}
 		return nil
 	})
-	return errors.Wrap(err, "failed to cleanup images")
+	if err != nil {
+		return fmt.Errorf("failed to cleanup images: %w", err)
+	}
+	return nil
 }
 
 // Info returns meta information about storage
@@ -149,7 +158,7 @@ func (f *FileSystem) Info() (StoreInfo, error) {
 		return nil
 	})
 	if err != nil {
-		return StoreInfo{}, errors.Wrapf(err, "problem retrieving first timestamp from staging images on fs")
+		return StoreInfo{}, fmt.Errorf("problem retrieving first timestamp from staging images on fs: %w", err)
 	}
 	return StoreInfo{FirstStagingImageTS: ts}, nil
 }

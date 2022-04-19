@@ -40,7 +40,7 @@ type Webhook struct {
 func NewWebhook(client WebhookClient, params WebhookParams) (*Webhook, error) {
 	res := &Webhook{WebhookParams: params}
 	if res.WebhookURL == "" {
-		return nil, errors.New("webhook URL is required for webhook notifications")
+		return nil, fmt.Errorf("webhook URL is required for webhook notifications")
 	}
 
 	if res.Template == "" {
@@ -49,7 +49,7 @@ func NewWebhook(client WebhookClient, params WebhookParams) (*Webhook, error) {
 
 	payloadTmpl, err := template.New("webhook").Parse(res.Template)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse webhook template")
+		return nil, fmt.Errorf("unable to parse webhook template: %w", err)
 	}
 
 	res.webhookClient = client
@@ -65,12 +65,12 @@ func (t *Webhook) Send(ctx context.Context, req Request) error {
 	var payload bytes.Buffer
 	err := t.webhookTemplate.Execute(&payload, req.Comment)
 	if err != nil {
-		return errors.Wrap(err, "unable to compile webhook template")
+		return fmt.Errorf("unable to compile webhook template: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", t.WebhookURL, &payload)
 	if err != nil {
-		return errors.Wrap(err, "unable to create webhook request")
+		return fmt.Errorf("unable to create webhook request: %w", err)
 	}
 
 	for _, h := range t.Headers {
@@ -83,7 +83,7 @@ func (t *Webhook) Send(ctx context.Context, req Request) error {
 
 	resp, err := t.webhookClient.Do(httpReq)
 	if err != nil {
-		return errors.Wrap(err, "webhook request failed")
+		return fmt.Errorf("webhook request failed: %w", err)
 	}
 
 	defer resp.Body.Close()

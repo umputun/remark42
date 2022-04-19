@@ -1,7 +1,6 @@
 package notify
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"sync/atomic"
@@ -284,7 +283,7 @@ type mockStore struct {
 func (m mockStore) getUserDetail(userID string) (string, error) {
 	detail, ok := m.userDetails[userID]
 	if !ok {
-		return "", errors.New("no such user")
+		return "", fmt.Errorf("no such user")
 	}
 	return detail, nil
 }
@@ -292,7 +291,7 @@ func (m mockStore) getUserDetail(userID string) (string, error) {
 func (m mockStore) Get(_ store.Locator, id string, _ store.User) (store.Comment, error) {
 	res, ok := m.data[id]
 	if !ok {
-		return store.Comment{}, errors.New("no such id")
+		return store.Comment{}, fmt.Errorf("no such id")
 	}
 	return res, nil
 }

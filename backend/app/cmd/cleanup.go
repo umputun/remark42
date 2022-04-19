@@ -9,7 +9,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
@@ -39,7 +38,7 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 
 	posts, err := cc.postsInRange(cc.From, cc.To)
 	if err != nil {
-		return errors.Wrap(err, "can't get posts")
+		return fmt.Errorf("can't get posts: %w", err)
 	}
 	log.Printf("[DEBUG] got %d posts", len(posts))
 
@@ -99,7 +98,7 @@ func (cc *CleanupCommand) procTitles(comments []store.Comment) {
 func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, error) {
 	posts, err := cc.listPosts()
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't list posts for %s", cc.Site)
+		return nil, fmt.Errorf("can't list posts for %s: %w", cc.Site, err)
 	}
 
 	from, to := defaultFrom, defaultTo
@@ -107,14 +106,14 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 	if fromS != "" {
 		from, err = time.ParseInLocation("20060102", fromS, time.Local)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't parse --from")
+			return nil, fmt.Errorf("can't parse --from: %w", err)
 		}
 	}
 
 	if toS != "" {
 		to, err = time.ParseInLocation("20060102", toS, time.Local)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't parse --to")
+			return nil, fmt.Errorf("can't parse --to: %w", err)
 		}
 	}
 
@@ -133,17 +132,17 @@ func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 	client := http.Client{Timeout: 30 * time.Second}
 	r, err := client.Get(listURL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "get request failed for list of posts, site %s", cc.Site)
+		return nil, fmt.Errorf("get request failed for list of posts, site %s: %w", cc.Site, err)
 	}
 	defer func() { _ = r.Body.Close() }()
 
 	if r.StatusCode != 200 {
-		return nil, errors.Errorf("request %s failed with status %d", listURL, r.StatusCode)
+		return nil, fmt.Errorf("request %s failed with status %d", listURL, r.StatusCode)
 	}
 
 	list := []store.PostInfo{}
 	if err = json.NewDecoder(r.Body).Decode(&list); err != nil {
-		return nil, errors.Wrapf(err, "can't decode list of posts for site %s", cc.Site)
+		return nil, fmt.Errorf("can't decode list of posts for site %s: %w", cc.Site, err)
 	}
 	return list, nil
 }
@@ -160,7 +159,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 		client := http.Client{Timeout: 30 * time.Second}
 		r, err = client.Get(commentsURL)
 		if err != nil {
-			return nil, errors.Wrapf(err, "get request failed for comments, %s", postURL)
+			return nil, fmt.Errorf("get request failed for comments, %s: %w", postURL, err)
 		}
 		if r.StatusCode == http.StatusTooManyRequests {
 			_ = r.Body.Close()
@@ -173,7 +172,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 	defer func() { _ = r.Body.Close() }()
 
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("request %s failed with status %d", commentsURL, r.StatusCode)
+		return nil, fmt.Errorf("request %s failed with status %d", commentsURL, r.StatusCode)
 	}
 
 	commentsWithInfo := struct {
@@ -182,7 +181,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 	}{}
 
 	if err = json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {
-		return nil, errors.Wrapf(err, "can't decode list of comments for %s", postURL)
+		return nil, fmt.Errorf("can't decode list of comments for %s: %w", postURL, err)
 	}
 	return commentsWithInfo.Comments, nil
 }
@@ -192,18 +191,18 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
 	if err != nil {
-		return errors.Wrapf(err, "failed to make delete request for comment %s, %s", c.ID, c.Locator.URL)
+		return fmt.Errorf("failed to make delete request for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}
 	req.SetBasicAuth("admin", cc.AdminPasswd)
 
 	client := http.Client{}
 	r, err := client.Do(req)
 	if err != nil {
-		return errors.Wrapf(err, "delete request failed for comment %s, %s", c.ID, c.Locator.URL)
+		return fmt.Errorf("delete request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}
 	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusOK {
-		return errors.Errorf("delete request failed with status %s", r.Status)
+		return fmt.Errorf("delete request failed with status %s", r.Status)
 	}
 	return nil
 }
@@ -213,18 +212,18 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error {
 	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
 	if err != nil {
-		return errors.Wrapf(err, "failed to make title request for comment %s, %s", c.ID, c.Locator.URL)
+		return fmt.Errorf("failed to make title request for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}
 	req.SetBasicAuth("admin", cc.AdminPasswd)
 
 	client := http.Client{}
 	r, err := client.Do(req)
 	if err != nil {
-		return errors.Wrapf(err, "title request failed for comment %s, %s", c.ID, c.Locator.URL)
+		return fmt.Errorf("title request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}
 	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusOK {
-		return errors.Errorf("title request failed with status %s", r.Status)
+		return fmt.Errorf("title request failed with status %s", r.Status)
 	}
 	return nil
 }

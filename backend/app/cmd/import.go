@@ -11,7 +11,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // ImportCommand set of flags and command for import
@@ -31,7 +30,7 @@ func (ic *ImportCommand) Execute(_ []string) error {
 
 	reader, err := ic.reader(ic.InputFile)
 	if err != nil {
-		return errors.Wrapf(err, "can't open import file %s", ic.InputFile)
+		return fmt.Errorf("can't open import file %s: %w", ic.InputFile, err)
 	}
 
 	client := http.Client{}
@@ -40,13 +39,13 @@ func (ic *ImportCommand) Execute(_ []string) error {
 	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s", ic.RemarkURL, ic.Site, ic.Provider)
 	req, err := http.NewRequest(http.MethodPost, importURL, reader)
 	if err != nil {
-		return errors.Wrapf(err, "can't make import request for %s", importURL)
+		return fmt.Errorf("can't make import request for %s: %w", importURL, err)
 	}
 	req.SetBasicAuth("admin", ic.AdminPasswd)
 
 	resp, err := client.Do(req.WithContext(ctx)) // closes request's reader
 	if err != nil {
-		return errors.Wrapf(err, "request failed for %s", importURL)
+		return fmt.Errorf("request failed for %s: %w", importURL, err)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
@@ -59,7 +58,7 @@ func (ic *ImportCommand) Execute(_ []string) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrap(err, "can't get response from importer")
+		return fmt.Errorf("can't get response from importer: %w", err)
 	}
 
 	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
@@ -70,13 +69,13 @@ func (ic *ImportCommand) Execute(_ []string) error {
 func (ic *ImportCommand) reader(inp string) (reader io.Reader, err error) {
 	inpFile, err := os.Open(inp) // nolint
 	if err != nil {
-		return nil, errors.Wrapf(err, "import failed, can't open %s", inp)
+		return nil, fmt.Errorf("import failed, can't open %s: %w", inp, err)
 	}
 
 	reader = inpFile
 	if strings.HasSuffix(ic.InputFile, ".gz") {
 		if reader, err = gzip.NewReader(inpFile); err != nil {
-			return nil, errors.Wrap(err, "can't make gz reader")
+			return nil, fmt.Errorf("can't make gz reader: %w", err)
 		}
 	}
 	return reader, nil

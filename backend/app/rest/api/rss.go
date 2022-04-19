@@ -8,7 +8,6 @@ import (
 	cache "github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
 	"github.com/gorilla/feeds"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
@@ -104,7 +103,7 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	data, err := s.cache.Get(key, func() (res []byte, e error) {
 		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {
-			return nil, errors.Wrap(e, "can't get last comments")
+			return nil, fmt.Errorf("can't get last comments: %w", e)
 		}
 
 		feed, e := s.toRssFeed(siteID, replies, "replies to "+userName)

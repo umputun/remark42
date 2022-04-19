@@ -9,7 +9,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // RemapCommand set of flags and command for change linkage between comments to
@@ -29,7 +28,7 @@ func (rc *RemapCommand) Execute(_ []string) error {
 
 	rulesReader, err := os.Open(rc.InputFile)
 	if err != nil {
-		return errors.Wrapf(err, "cant open file %s", rc.InputFile)
+		return fmt.Errorf("cant open file %s: %w", rc.InputFile, err)
 	}
 
 	client := http.Client{}
@@ -38,13 +37,13 @@ func (rc *RemapCommand) Execute(_ []string) error {
 	remapURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)
 	req, err := http.NewRequest(http.MethodPost, remapURL, rulesReader)
 	if err != nil {
-		return errors.Wrapf(err, "can't make remap request for %s", remapURL)
+		return fmt.Errorf("can't make remap request for %s: %w", remapURL, err)
 	}
 	req.SetBasicAuth("admin", rc.AdminPasswd)
 
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		return errors.Wrapf(err, "request failed for %s", remapURL)
+		return fmt.Errorf("request failed for %s: %w", remapURL, err)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
@@ -57,7 +56,7 @@ func (rc *RemapCommand) Execute(_ []string) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrap(err, "can't get response")
+		return fmt.Errorf("can't get response: %w", err)
 	}
 
 	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))

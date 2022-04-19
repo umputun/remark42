@@ -10,7 +10,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
 )
 
 // AutoBackup struct handles daily backups params for siteID
@@ -50,18 +49,18 @@ func (ab AutoBackup) makeBackup() (string, error) {
 	backupFile := fmt.Sprintf("%s/backup-%s-%s.gz", ab.BackupLocation, ab.SiteID, time.Now().Format("20060102"))
 	fh, err := os.Create(backupFile) //nolint:gosec // harmless
 	if err != nil {
-		return "", errors.Wrapf(err, "can't create backup file %s", backupFile)
+		return "", fmt.Errorf("can't create backup file %s: %w", backupFile, err)
 	}
 	gz := gzip.NewWriter(fh)
 
 	if _, err = ab.Exporter.Export(gz, ab.SiteID); err != nil {
-		return "", errors.Wrapf(err, "export failed for %s", ab.SiteID)
+		return "", fmt.Errorf("export failed for %s: %w", ab.SiteID, err)
 	}
 	if err = gz.Close(); err != nil {
-		return "", errors.Wrapf(err, "can't close gz for %s", backupFile)
+		return "", fmt.Errorf("can't close gz for %s: %w", backupFile, err)
 	}
 	if err = fh.Close(); err != nil {
-		return "", errors.Wrapf(err, "can't close file handler for %s", backupFile)
+		return "", fmt.Errorf("can't close file handler for %s: %w", backupFile, err)
 	}
 	log.Printf("[DEBUG] created backup file %s", backupFile)
 	return backupFile, nil

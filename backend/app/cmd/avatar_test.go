@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -25,7 +25,7 @@ func TestAvatar_Execute(t *testing.T) {
 	assert.NoError(t, err)
 
 	// failed
-	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 0, retError: errors.New("failed blah")}}
+	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 0, retError: fmt.Errorf("failed blah")}}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p = flags.NewParser(&cmd, flags.Default)
 	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",

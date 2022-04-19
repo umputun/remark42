@@ -1,10 +1,10 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-pkgz/auth/token"
-	"github.com/pkg/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
@@ -23,7 +23,7 @@ func MustGetUserInfo(r *http.Request) store.User {
 func GetUserInfo(r *http.Request) (user store.User, err error) {
 	u, err := token.GetUserInfo(r)
 	if err != nil {
-		return store.User{}, errors.Wrap(err, "can't extract user info from the token")
+		return store.User{}, fmt.Errorf("can't extract user info from the token: %w", err)
 	}
 
 	return store.User{

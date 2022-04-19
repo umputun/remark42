@@ -3,7 +3,7 @@ package providers
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -46,7 +46,7 @@ func (m *mockTGRequester) Request(_ context.Context, _ string, _ []byte, data in
 		assert.NoError(m.t, json.Unmarshal([]byte(getUpdatesResp), data))
 		return nil
 	}
-	return errors.New("test error")
+	return fmt.Errorf("test error")
 }
 
 type mockTGUpdatesReceiver struct {
@@ -68,5 +68,5 @@ func (m *mockTGUpdatesReceiver) ProcessUpdate(_ context.Context, textUpdate stri
 		return nil
 	}
 	assert.Nil(m.t, result.Result)
-	return errors.New("test error")
+	return fmt.Errorf("test error")
 }

@@ -2,7 +2,7 @@ package store
 
 import (
 	"crypto/sha1"
-	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +63,4 @@ func (mock mockHash) Sum(_ []byte) []byte               { return nil }
 func (mock mockHash) Reset()                            {}
 func (mock mockHash) Size() int                         { return 0 }
 func (mock mockHash) BlockSize() int                    { return 0 }
-func (mock mockHash) Write(_ []byte) (n int, err error) { return 0, errors.New("error") }
+func (mock mockHash) Write(_ []byte) (n int, err error) { return 0, fmt.Errorf("error") }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/html"
 	"io"
 	"net/http"
 	neturl "net/url"
@@ -15,12 +14,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/microcosm-cc/bluemonday"
-
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/repeater"
+	"github.com/hashicorp/go-multierror"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/pkg/errors"
+	"golang.org/x/net/html"
 )
 
 // TelegramParams contain settings for telegram notifications
@@ -111,7 +110,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 
 	msg, err := buildMessage(req)
 	if err != nil {
-		return errors.Wrapf(err, "failed to make telegram message body for comment ID %s", req.Comment.ID)
+		return fmt.Errorf("failed to make telegram message body for comment ID %s: %w", req.Comment.ID, err)
 	}
 
 	if t.AdminChannelID != "" {
@@ -269,22 +268,22 @@ func (t *Telegram) CheckToken(token, user string) (telegram, site string, err er
 	t.requests.RUnlock()
 
 	if !ok {
-		return "", "", errors.New("request is not found")
+		return "", "", fmt.Errorf("request is not found")
 	}
 
 	if time.Now().After(authRequest.expires) {
 		t.requests.Lock()
 		delete(t.requests.data, token)
 		t.requests.Unlock()
-		return "", "", errors.New("request expired")
+		return "", "", fmt.Errorf("request expired")
 	}
 
 	if !authRequest.confirmed {
-		return "", "", errors.New("request is not verified yet")
+		return "", "", fmt.Errorf("request is not verified yet")
 	}
 
 	if authRequest.user != user {
-		return "", "", errors.New("user does not match original requester")
+		return "", "", fmt.Errorf("user does not match original requester")
 	}
 
 	// Delete request
@@ -333,7 +332,7 @@ func (t *Telegram) Run(ctx context.Context) {
 // so that caller could get updates and send it not only there but to multiple sources
 func (t *Telegram) ProcessUpdate(ctx context.Context, textUpdate string) error {
 	if atomic.LoadInt32(&t.run) != 0 {
-		return errors.New("Run goroutine should not be used with ProcessUpdate")
+		return fmt.Errorf("the Run goroutine should not be used with ProcessUpdate")
 	}
 	defer func() {
 		// as Run goroutine is not running, clean up old requests on each update
@@ -349,7 +348,7 @@ func (t *Telegram) ProcessUpdate(ctx context.Context, textUpdate string) error {
 	}()
 	var updates TelegramUpdate
 	if err := json.Unmarshal([]byte(textUpdate), &updates); err != nil {
-		return errors.Wrap(err, "failed to decode provided telegram update")
+		return fmt.Errorf("failed to decode provided telegram update: %w", err)
 	}
 	t.processUpdates(ctx, &updates)
 	return nil
@@ -377,7 +376,7 @@ func (t *Telegram) getUpdates(ctx context.Context) (*TelegramUpdate, error) {
 
 	err := t.Request(ctx, url, nil, &result)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch updates")
+		return nil, fmt.Errorf("failed to fetch updates: %w", err)
 	}
 
 	for _, u := range result.Result {
@@ -445,7 +444,7 @@ func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
 		return nil, err
 	}
 	if resp.Result == nil {
-		return nil, errors.New("received empty result")
+		return nil, fmt.Errorf("received empty result")
 	}
 
 	return resp.Result, nil
@@ -465,13 +464,13 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data in
 			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		}
 		if err != nil {
-			return errors.Wrap(err, "failed to create request")
+			return fmt.Errorf("failed to create request: %w", err)
 		}
 
 		client := http.Client{Timeout: t.Timeout}
 		resp, err := client.Do(req)
 		if err != nil {
-			return errors.Wrap(err, "failed to send request")
+			return fmt.Errorf("failed to send request: %w", err)
 		}
 		defer resp.Body.Close()
 
@@ -480,7 +479,7 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data in
 		}
 
 		if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
-			return errors.Wrap(err, "failed to decode json response")
+			return fmt.Errorf("failed to decode json response: %w", err)
 		}
 
 		return nil
@@ -492,7 +491,7 @@ func (t *Telegram) parseError(r io.Reader, statusCode int) error {
 		Description string `json:"description"`
 	}{}
 	if err := json.NewDecoder(r).Decode(&tgErr); err != nil {
-		return errors.Errorf("unexpected telegram API status code %d", statusCode)
+		return fmt.Errorf("unexpected telegram API status code %d", statusCode)
 	}
-	return errors.Errorf("unexpected telegram API status code %d, error: %q", statusCode, tgErr.Description)
+	return fmt.Errorf("unexpected telegram API status code %d, error: %q", statusCode, tgErr.Description)
 }

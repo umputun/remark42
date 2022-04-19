@@ -129,7 +129,7 @@ func NewEmail(emailParams EmailParams, smtpParams SMTPParams) (*Email, error) {
 	// initialize templates
 	err := res.setTemplates()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't set templates")
+		return nil, fmt.Errorf("can't set templates: %w", err)
 	}
 
 	log.Printf("[DEBUG] Create new email notifier for server %s with user %s, timeout=%s",
@@ -173,7 +173,7 @@ func (e *Email) setTemplates() error {
 func (e *Email) Send(ctx context.Context, req Request) error {
 	select {
 	case <-ctx.Done():
-		return errors.Errorf("sending email messages about comment %q aborted due to canceled context", req.Comment.ID)
+		return fmt.Errorf("sending email messages about comment %q aborted due to canceled context", req.Comment.ID)
 	default:
 	}
 
@@ -181,12 +181,16 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 
 	for _, email := range req.Emails {
 		err := e.buildAndSendMessage(ctx, req, email, false)
-		result = multierror.Append(errors.Wrapf(err, "problem sending user email notification to %q", email))
+		if err != nil {
+			result = multierror.Append(fmt.Errorf("problem sending user email notification to %q: %w", email, err))
+		}
 	}
 
 	for _, email := range e.AdminEmails {
 		err := e.buildAndSendMessage(ctx, req, email, true)
-		result = multierror.Append(errors.Wrapf(err, "problem sending admin email notification to %q", email))
+		if err != nil {
+			result = multierror.Append(fmt.Errorf("problem sending admin email notification to %q: %w", email, err))
+		}
 	}
 
 	return result.ErrorOrNil()
@@ -215,7 +219,7 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 	}
 	select {
 	case <-ctx.Done():
-		return errors.Errorf("sending message to %q aborted due to canceled context", req.User)
+		return fmt.Errorf("sending message to %q aborted due to canceled context", req.User)
 	default:
 	}
 
@@ -338,11 +342,11 @@ func (e *Email) buildMessage(subject, body, to, contentType, unsubscribeLink str
 // Thread safe.
 func (e *Email) sendMessage(m emailMessage) error {
 	if e.smtp == nil {
-		return errors.New("sendMessage called without client set")
+		return fmt.Errorf("sendMessage called without client set")
 	}
 	client, err := e.smtp.Create(e.SMTPParams)
 	if err != nil {
-		return errors.Wrap(err, "failed to make smtp Create")
+		return fmt.Errorf("failed to make smtp Create: %w", err)
 	}
 
 	defer func() {
@@ -355,15 +359,15 @@ func (e *Email) sendMessage(m emailMessage) error {
 	}()
 
 	if err = client.Mail(m.from); err != nil {
-		return errors.Wrapf(err, "bad from address %q", m.from)
+		return fmt.Errorf("bad from address %q: %w", m.from, err)
 	}
 	if err = client.Rcpt(m.to); err != nil {
-		return errors.Wrapf(err, "bad to address %q", m.to)
+		return fmt.Errorf("bad to address %q: %w", m.to, err)
 	}
 
 	writer, err := client.Data()
 	if err != nil {
-		return errors.Wrap(err, "can't make email writer")
+		return fmt.Errorf("can't make email writer: %w", err)
 	}
 
 	defer func() {
@@ -374,7 +378,7 @@ func (e *Email) sendMessage(m emailMessage) error {
 
 	buf := bytes.NewBufferString(m.message)
 	if _, err = buf.WriteTo(writer); err != nil {
-		return errors.Wrapf(err, "failed to send email body to %q", m.to)
+		return fmt.Errorf("failed to send email body to %q: %w", m.to, err)
 	}
 
 	return nil
@@ -394,7 +398,7 @@ func (s *emailClient) Create(params SMTPParams) (smtpClient, error) {
 		}
 		auth := smtp.PlainAuth("", params.Username, params.Password, params.Host)
 		if err := c.Auth(auth); err != nil {
-			return errors.Wrapf(err, "failed to auth to smtp %s:%d", params.Host, params.Port)
+			return fmt.Errorf("failed to auth to smtp %s:%d: %w", params.Host, params.Port, err)
 		}
 		return nil
 	}
@@ -409,22 +413,22 @@ func (s *emailClient) Create(params SMTPParams) (smtpClient, error) {
 		}
 		conn, err := tls.Dial("tcp", srvAddress, tlsConf)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to dial smtp tls to %s", srvAddress)
+			return nil, fmt.Errorf("failed to dial smtp tls to %s: %w", srvAddress, err)
 		}
 		if c, err = smtp.NewClient(conn, params.Host); err != nil {
-			return nil, errors.Wrapf(err, "failed to make smtp client for %s", srvAddress)
+			return nil, fmt.Errorf("failed to make smtp client for %s: %w", srvAddress, err)
 		}
 		return c, authenticate(c)
 	}
 
 	conn, err := net.DialTimeout("tcp", srvAddress, params.TimeOut)
 	if err != nil {
-		return nil, errors.Wrapf(err, "timeout connecting to %s", srvAddress)
+		return nil, fmt.Errorf("timeout connecting to %s: %w", srvAddress, err)
 	}
 
 	c, err = smtp.NewClient(conn, params.Host)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to dial")
+		return nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
 	return c, authenticate(c)
