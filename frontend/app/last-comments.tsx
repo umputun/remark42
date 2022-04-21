@@ -7,8 +7,6 @@ import { loadLocale } from 'utils/loadLocale';
 import { getLocale } from 'utils/getLocale';
 import { ListComments } from 'components/list-comments';
 
-import 'styles/global.css';
-
 const LAST_COMMENTS_NODE_CLASSNAME = 'remark42__last-comments';
 const DEFAULT_LAST_COMMENTS_MAX = 15;
 
