@@ -99,8 +99,10 @@ describe('<CommentVote />', () => {
   it('should allow only upvote ability', () => {
     StaticStore.config.positive_score = true;
     render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
-    expect(screen.queryByTitle('Vote down')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Vote down')).toBeVisible();
+    expect(screen.queryByTitle('Vote down')).toBeDisabled();
     expect(screen.getByTitle('Vote up')).toBeVisible();
+    expect(screen.getByTitle('Vote up')).not.toBeDisabled();
   });
 
   it('should disable downvote ability when `low_score` is reached', async () => {
@@ -111,6 +113,7 @@ describe('<CommentVote />', () => {
     fireEvent(screen.getByTitle('Vote down'), new Event('click'));
     await waitFor(() => {
       expect(screen.getByTitle('Vote down')).toBeDisabled();
+      expect(screen.getByTitle('Vote up')).toBeDisabled();
     });
   });
 });
