@@ -326,6 +326,14 @@ export class Comment extends Component<CommentProps, State> {
     const defaultMods = {
       disabled: props.disabled,
       pinned: props.data.pin,
+      // TODO: we also have critical_score, so we need to collapse comments with it in future
+      useless:
+        !!props.isUserBanned ||
+        !!props.data.delete ||
+        (props.view !== 'preview' &&
+          props.data.score < StaticStore.config.low_score &&
+          !props.data.pin &&
+          !props.disabled),
       // TODO: add default view mod or don't?
       guest: isGuest,
       view: props.view === 'main' || props.view === 'pinned' ? props.data.user.admin && 'admin' : props.view,
