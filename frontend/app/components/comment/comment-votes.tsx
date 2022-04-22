@@ -44,11 +44,10 @@ export function CommentVotes({ id, votes, vote, disabled, controversy = 0 }: Pro
     }
   }
 
-  const lowScore = StaticStore.config.low_score === votes;
-  const positiveScore = StaticStore.config.positive_score;
   const isUpvoted = vote === 1;
   const isDownvoted = vote === -1;
   const value = loadingState?.votes ?? votes;
+  const isPositiveScore = StaticStore.config.positive_score && value > -1;
 
   return (
     <span className={clsx(styles.root, disabled && styles.rootDisabled)}>
@@ -58,7 +57,7 @@ export function CommentVotes({ id, votes, vote, disabled, controversy = 0 }: Pro
           onClick={handleClick}
           data-value={-1}
           title={intl.formatMessage(messages.downvote)}
-          disabled={lowScore || loadingState !== null || isDownvoted || (positiveScore && value > -1)}
+          disabled={loadingState !== null || isDownvoted || isPositiveScore}
         >
           <ArrowIcon className={styles.downVoteIcon} />
         </button>

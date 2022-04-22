@@ -104,16 +104,4 @@ describe('<CommentVote />', () => {
     expect(screen.getByTitle('Vote up')).toBeVisible();
     expect(screen.getByTitle('Vote up')).not.toBeDisabled();
   });
-
-  it('should disable downvote ability when `low_score` is reached', async () => {
-    StaticStore.config.low_score = -4;
-    jest.spyOn(api, 'putCommentVote').mockImplementation(jest.fn(async () => ({ id: '1', score: -4 })));
-    render(<CommentVotes id="1" vote={0} votes={-3} controversy={0} />);
-    expect(screen.getByTitle('Vote down')).not.toBeDisabled();
-    fireEvent(screen.getByTitle('Vote down'), new Event('click'));
-    await waitFor(() => {
-      expect(screen.getByTitle('Vote down')).toBeDisabled();
-      expect(screen.getByTitle('Vote up')).toBeDisabled();
-    });
-  });
 });
