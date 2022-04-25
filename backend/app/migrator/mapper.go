@@ -1,7 +1,7 @@
 package migrator
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -42,7 +42,7 @@ func (u *URLMapper) loadRules(reader io.Reader) error {
 		row = strings.TrimSpace(row)
 		urls := strings.Split(row, " ")
 		if len(urls) != 2 {
-			return errors.New("bad row " + row)
+			return fmt.Errorf("bad row %s", row)
 		}
 
 		from, to := strings.TrimSpace(urls[0]), strings.TrimSpace(urls[1])
