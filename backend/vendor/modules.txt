@@ -95,6 +95,9 @@ github.com/go-pkgz/auth/middleware
 github.com/go-pkgz/auth/provider
 github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
+# github.com/go-pkgz/email v0.2.1-0.20220428155644-a7e5d837d02f
+## explicit; go 1.17
+github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache v0.0.3
 ## explicit; go 1.14
 github.com/go-pkgz/expirable-cache
@@ -109,6 +112,9 @@ github.com/go-pkgz/lcw/internal/cache
 # github.com/go-pkgz/lgr v0.10.4
 ## explicit; go 1.15
 github.com/go-pkgz/lgr
+# github.com/go-pkgz/notify v0.0.0-20220429105545-bc5c80a54199
+## explicit; go 1.17
+github.com/go-pkgz/notify
 # github.com/go-pkgz/repeater v1.1.3
 ## explicit; go 1.12
 github.com/go-pkgz/repeater
@@ -205,7 +211,7 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.10.2
+# github.com/slack-go/slack v0.10.3
 ## explicit; go 1.16
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -290,7 +296,7 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.12
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20220412020605-290c469a71a5
+# golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
