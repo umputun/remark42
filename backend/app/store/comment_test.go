@@ -36,6 +36,10 @@ func TestComment_Sanitize(t *testing.T) {
 			},
 		},
 		{
+			inp: Comment{Text: "blah `123`"},
+			out: Comment{Text: "blah `123`"},
+		},
+		{
 			inp: Comment{Text: "blah & & 123 &mdash; &mdash;"},
 			out: Comment{Text: `blah &amp; &amp; 123 — —`},
 		},
@@ -44,8 +48,16 @@ func TestComment_Sanitize(t *testing.T) {
 			out: Comment{Text: `blah &amp; &amp; 123 — —`},
 		},
 		{
+			inp: Comment{Text: "blah `123`", User: User{Name: "name \"xxx\" `yyy`"}},
+			out: Comment{Text: "blah `123`", User: User{Name: "name \"xxx\" `yyy`"}},
+		},
+		{
 			inp: Comment{Text: "blah & & 123", User: User{Name: "name <> & ' ` \""}},
-			out: Comment{Text: `blah &amp; &amp; 123`, User: User{Name: "name &lt;&gt; & ' ` \""}},
+			out: Comment{Text: `blah &amp; &amp; 123`, User: User{Name: "name &lt;&gt; &amp; ' ` \""}},
+		},
+		{
+			inp: Comment{Text: "blah & & 123", User: User{Name: `name <a href="javascript:alert('XSS1')" onmouseover="alert('XSS2')">XSS</a>`}},
+			out: Comment{Text: `blah &amp; &amp; 123`, User: User{Name: "name XSS"}},
 		},
 
 		{
@@ -79,8 +91,10 @@ func TestComment_Sanitize(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt.inp.Sanitize()
-		assert.Equal(t, tt.out, tt.inp, "check #%d", n)
+		t.Run(strconv.Itoa(n), func(t *testing.T) {
+			tt.inp.Sanitize()
+			assert.Equal(t, tt.out, tt.inp, "check #%d", n)
+		})
 	}
 }
 

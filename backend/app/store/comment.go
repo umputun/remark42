@@ -127,10 +127,10 @@ func (c *Comment) Sanitize() {
 	c.Text = p.Sanitize(c.Text)
 	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
-	c.User.Name = c.escapeHTMLWithSome(c.User.Name)
+	c.User.Name = c.SanitizeText(c.User.Name)
 	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
-	c.PostTitle = p.Sanitize(c.PostTitle)
+	c.PostTitle = c.SanitizeText(c.PostTitle)
 }
 
 // Snippet from comment's text
@@ -169,13 +169,14 @@ func (c *Comment) SanitizeAsURL(inp string) string {
 
 func (c *Comment) escapeHTMLWithSome(inp string) string {
 	res := template.HTMLEscapeString(inp)
+	res = strings.Replace(res, "&amp;", "&", -1)
 	res = strings.Replace(res, "&#34;", "\"", -1)
 	res = strings.Replace(res, "&#39;", "'", -1)
-	res = strings.Replace(res, "&amp;", "&", -1)
 	return res
 }
 
 // SanitizeText used to sanitize any input string
 func (c *Comment) SanitizeText(inp string) string {
-	return c.escapeHTMLWithSome(bluemonday.UGCPolicy().Sanitize(inp))
+	clean := bluemonday.UGCPolicy().Sanitize(inp)
+	return c.escapeHTMLWithSome(clean)
 }
