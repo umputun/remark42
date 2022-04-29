@@ -16,6 +16,7 @@ import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/go-pkgz/lcw/eventbus"
 	log "github.com/go-pkgz/lgr"
+	ntf "github.com/go-pkgz/notify"
 	"github.com/golang-jwt/jwt"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
@@ -233,10 +234,10 @@ type NotifyGroup struct {
 		Channel string `long:"chan" env:"CHAN" description:"slack channel for admin notifications"`
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 	Webhook struct {
-		WebhookURL string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
-		Template   string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
-		Headers    []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,..."` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
-		Timeout    time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
+		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
+		Template string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
+		Headers  []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,..."` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
+		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
 
@@ -975,18 +976,18 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 	destinations := make([]notify.Destination, 0)
 
 	if contains("webhook", s.Notify.Admins) {
-		client := &http.Client{Timeout: 5 * time.Second}
 		webhookHeaders := s.Notify.Webhook.Headers
 		if len(webhookHeaders) == 0 {
 			webhookHeaders = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside "", parsed separately
 		}
 
 		whParams := notify.WebhookParams{
-			WebhookURL: s.Notify.Webhook.WebhookURL,
-			Template:   s.Notify.Webhook.Template,
-			Headers:    webhookHeaders,
+			URL:      s.Notify.Webhook.URL,
+			Template: s.Notify.Webhook.Template,
+			Headers:  webhookHeaders,
+			Timeout:  time.Second * 5,
 		}
-		webhook, err := notify.NewWebhook(client, whParams)
+		webhook, err := notify.NewWebhook(whParams)
 		if err != nil {
 			return destinations, fmt.Errorf("failed to create webhook notification destination: %w", err)
 		}
