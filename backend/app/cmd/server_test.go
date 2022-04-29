@@ -36,6 +36,7 @@ func TestServerApp(t *testing.T) {
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
+	defer http.DefaultClient.CloseIdleConnections()
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -82,6 +83,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
+	defer http.DefaultClient.CloseIdleConnections()
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
@@ -108,8 +110,11 @@ func TestServerApp_AnonMode(t *testing.T) {
 	require.Equal(t, 9+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
 	// send ping
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -118,14 +123,12 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as good anonymous
-	client := http.Client{Timeout: 10 * time.Second}
-	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
@@ -140,50 +143,49 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// try to login with non-latin name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to login with bad name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in prefix
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in suffix
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with long name
 	ln := strings.Repeat("x", 65)
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with admin name
-	resp, err = http.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
+	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as anonymous with admin name
-	client = http.Client{Timeout: 10 * time.Second}
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
@@ -226,6 +228,9 @@ func TestServerApp_WithSSL(t *testing.T) {
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
 		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=/tmp"})
 	require.NoError(t, err)
+	defer os.Remove("/tmp/xyz")
+	defer os.Remove("/tmp/xyz/remark.db")
+	defer os.Remove("/tmp/ava-test.db")
 
 	// create app
 	app, err := opts.newServerApp(context.Background())
@@ -246,6 +251,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
+	defer client.CloseIdleConnections()
 
 	// check http to https redirect response
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
@@ -291,6 +297,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
+	defer http.DefaultClient.CloseIdleConnections()
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -321,6 +328,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.NoError(t, err)
+	defer os.Remove("/tmp/remark.db")
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
@@ -391,6 +399,8 @@ func TestServerApp_MainSignal(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
+	defer os.Remove("/tmp/xyz")
+	defer os.Remove("/tmp/xyz/remark.db")
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
@@ -587,8 +597,10 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	t.Log(tk)
 
-	// add comment
 	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	// add comment
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
@@ -718,6 +730,7 @@ func chooseRandomUnusedPort() (port int) {
 func waitForHTTPServerStart(port int) {
 	// wait for up to 3 seconds for server to start before returning it
 	client := http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
 	for i := 0; i < 300; i++ {
 		time.Sleep(time.Millisecond * 10)
 		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
@@ -747,7 +760,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.NoError(t, err)
-	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp", "fs", "/tmp", "/tmp"
+	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp/remark42_test", "fs", "/tmp/remark42_test", "/tmp/remark42_test"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 	cmd.Store.Bolt.Timeout = 10 * time.Second
 	cmd.Auth.Github.CSEC, cmd.Auth.Github.CID = "csec", "cid"
@@ -779,16 +792,24 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.emailVerificationTemplatePath = "../../templates/email_confirmation_subscription.html.tmpl"
 	cmd = fn(cmd)
 
-	os.Remove(cmd.Store.Bolt.Path + "/remark.db")
+	app, ctx, cancel := createAppFromCmd(t, cmd)
 
-	return createAppFromCmd(t, cmd)
+	// cleanup the remark.db file after context is canceled
+	go func() {
+		<-ctx.Done()
+		os.RemoveAll(cmd.Store.Bolt.Path)
+		os.RemoveAll(cmd.Avatar.FS.Path)
+
+	}()
+
+	return app, ctx, cancel
 }
 
 func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
-	app, err := cmd.newServerApp(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
 	rand.Seed(time.Now().UnixNano())
 	return app, ctx, cancel
 }
