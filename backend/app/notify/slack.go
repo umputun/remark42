@@ -3,40 +3,31 @@ package notify
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/slack-go/slack"
+	ntf "github.com/go-pkgz/notify"
 )
 
 // Slack implements notify.Destination for Slack
 type Slack struct {
-	channelID   string
+	*ntf.Slack
+
 	channelName string
-	client      *slack.Client
 }
 
 // NewSlack makes Slack bot for notifications
-func NewSlack(token, channelName string, opts ...slack.Option) (*Slack, error) {
+func NewSlack(token, channelName string) *Slack {
+	log.Printf("[DEBUG] create new slack notifier for chan %s", channelName)
 	if channelName == "" {
 		channelName = "general"
 	}
 
-	client := slack.New(token, opts...)
-	res := &Slack{client: client, channelName: channelName}
-
-	channelID, err := res.findChannelIDByName(channelName)
-	if err != nil {
-		return nil, fmt.Errorf("can not find slack channel '"+channelName+"': %w", err)
-	}
-
-	res.channelID = channelID
-	log.Printf("[DEBUG] create new slack notifier for chan %s", channelID)
-
-	return res, nil
+	return &Slack{Slack: ntf.NewSlack(token), channelName: channelName}
 }
 
 // Send to Slack channel
-func (t *Slack) Send(ctx context.Context, req Request) error {
+func (s *Slack) Send(ctx context.Context, req Request) error {
 	log.Printf("[DEBUG] send slack notification, comment id %s", req.Comment.ID)
 
 	user := req.Comment.User.Name
@@ -49,47 +40,22 @@ func (t *Slack) Send(ctx context.Context, req Request) error {
 		title = "↦ " + req.Comment.PostTitle
 	}
 
-	_, _, err := t.client.PostMessageContext(ctx, t.channelID,
-		slack.MsgOptionText("New comment from "+user, false),
-		slack.MsgOptionAttachments(
-			slack.Attachment{
-				TitleLink: req.Comment.Locator.URL + uiNav + req.Comment.ID,
-				Title:     title,
-				Text:      req.Comment.Orig,
-			},
-		),
+	destination := fmt.Sprintf(
+		"slack:%s?title=%s&attachmentText=%s&titleLink=%s",
+		s.channelName,
+		url.QueryEscape(title),
+		url.QueryEscape(req.Comment.Orig),
+		url.QueryEscape(req.Comment.Locator.URL+uiNav+req.Comment.ID),
 	)
 
-	return err
+	return s.Slack.Send(ctx, destination, "New comment from "+user)
 }
 
 // SendVerification is not implemented for Slack
-func (t *Slack) SendVerification(_ context.Context, _ VerificationRequest) error {
+func (s *Slack) SendVerification(_ context.Context, _ VerificationRequest) error {
 	return nil
 }
 
-func (t *Slack) String() string {
-	return "slack: " + t.channelName + " (" + t.channelID + ")"
-}
-
-func (t *Slack) findChannelIDByName(name string) (string, error) {
-	params := slack.GetConversationsParameters{}
-	for {
-		chans, next, err := t.client.GetConversations(&params)
-		if err != nil {
-			return "", err
-		}
-
-		for _, channel := range chans {
-			if channel.Name == name {
-				return channel.ID, nil
-			}
-		}
-
-		if next == "" {
-			break
-		}
-		params.Cursor = next
-	}
-	return "", fmt.Errorf("no such channel")
+func (s *Slack) String() string {
+	return s.Slack.String() + " for channel " + s.channelName + ""
 }
