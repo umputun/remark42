@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
+	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/umputun/remark42/backend/app/notify"
 )
 
 func TestDispatchTelegramUpdates(t *testing.T) {
@@ -59,7 +58,7 @@ func (m *mockTGUpdatesReceiver) String() string {
 }
 
 func (m *mockTGUpdatesReceiver) ProcessUpdate(_ context.Context, textUpdate string) error {
-	var result notify.TelegramUpdate
+	var result ntf.TelegramUpdate
 	err := json.Unmarshal([]byte(textUpdate), &result)
 	assert.NoError(m.t, err)
 	if m.hit < 2 {
