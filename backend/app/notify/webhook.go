@@ -4,110 +4,81 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
 	"text/template"
+	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/pkg/errors"
+	ntf "github.com/go-pkgz/notify"
 )
 
 const (
 	webhookDefaultTemplate = `{"text": "{{.Text}}"}`
 )
 
-// WebhookClient defines an interface of client for webhook
-type WebhookClient interface {
-	Do(*http.Request) (*http.Response, error)
-}
-
 // WebhookParams contain settings for webhook notifications
 type WebhookParams struct {
-	WebhookURL string
-	Template   string
-	Headers    []string
+	URL      string
+	Template string
+	Headers  []string
+	Timeout  time.Duration
 }
 
 // Webhook implements notify.Destination for Webhook notifications
 type Webhook struct {
-	WebhookParams
-	webhookClient   WebhookClient
-	webhookTemplate *template.Template
+	*ntf.Webhook
+
+	url      string
+	template *template.Template
 }
 
 // NewWebhook makes Webhook
-func NewWebhook(client WebhookClient, params WebhookParams) (*Webhook, error) {
-	res := &Webhook{WebhookParams: params}
-	if res.WebhookURL == "" {
+func NewWebhook(params WebhookParams) (*Webhook, error) {
+	res := &Webhook{
+		Webhook: ntf.NewWebhook(ntf.WebhookParams{
+			Timeout: params.Timeout,
+			Headers: params.Headers,
+		}),
+		url: params.URL,
+	}
+
+	if res.url == "" {
 		return nil, fmt.Errorf("webhook URL is required for webhook notifications")
 	}
 
-	if res.Template == "" {
-		res.Template = webhookDefaultTemplate
+	if params.Template == "" {
+		params.Template = webhookDefaultTemplate
 	}
 
-	payloadTmpl, err := template.New("webhook").Parse(res.Template)
+	payloadTmpl, err := template.New("webhook").Parse(params.Template)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse webhook template: %w", err)
 	}
 
-	res.webhookClient = client
-	res.webhookTemplate = payloadTmpl
+	res.template = payloadTmpl
 
-	log.Printf("[DEBUG] create new webhook notifier for %s", res.WebhookURL)
+	log.Printf("[DEBUG] create new webhook notifier for %s", res.url)
 
 	return res, nil
 }
 
 // Send sends Webhook notification
-func (t *Webhook) Send(ctx context.Context, req Request) error {
+func (w *Webhook) Send(ctx context.Context, req Request) error {
+	log.Printf("[DEBUG] send webhook notification, comment id %s", req.Comment.ID)
 	var payload bytes.Buffer
-	err := t.webhookTemplate.Execute(&payload, req.Comment)
+	err := w.template.Execute(&payload, req.Comment)
 	if err != nil {
 		return fmt.Errorf("unable to compile webhook template: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", t.WebhookURL, &payload)
-	if err != nil {
-		return fmt.Errorf("unable to create webhook request: %w", err)
-	}
-
-	for _, h := range t.Headers {
-		elems := strings.Split(h, ":")
-		if len(elems) != 2 {
-			continue
-		}
-		httpReq.Header.Set(strings.TrimSpace(elems[0]), strings.TrimSpace(elems[1]))
-	}
-
-	resp, err := t.webhookClient.Do(httpReq)
-	if err != nil {
-		return fmt.Errorf("webhook request failed: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		errMsg := fmt.Sprintf("webhook request failed with non-OK status code: %d", resp.StatusCode)
-		respBody, e := io.ReadAll(resp.Body)
-		if e != nil {
-			return errors.New(errMsg)
-		}
-		return fmt.Errorf("%s, body: %s", errMsg, respBody)
-	}
-
-	log.Printf("[DEBUG] send webhook notification, comment id %s", req.Comment.ID)
-
-	return nil
+	return w.Webhook.Send(ctx, w.url, payload.String())
 }
 
 // SendVerification is not implemented for Webhook
-func (t *Webhook) SendVerification(_ context.Context, _ VerificationRequest) error {
+func (w *Webhook) SendVerification(_ context.Context, _ VerificationRequest) error {
 	return nil
 }
 
 // String describes the webhook instance
-func (t *Webhook) String() string {
-	return fmt.Sprintf("webhook notification to %s", t.WebhookURL)
+func (w *Webhook) String() string {
+	return fmt.Sprintf("%s to %s", w.Webhook.String(), w.url)
 }
