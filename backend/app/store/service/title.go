@@ -40,6 +40,7 @@ func NewTitleExtractor(client http.Client) *TitleExtractor {
 // Get page for url and return title
 func (t *TitleExtractor) Get(url string) (string, error) {
 	client := http.Client{Timeout: t.client.Timeout, Transport: t.client.Transport}
+	defer client.CloseIdleConnections()
 	b, err := t.cache.Get(url, func() (interface{}, error) {
 		resp, err := client.Get(url)
 		if err != nil {
@@ -72,6 +73,7 @@ func (t *TitleExtractor) Get(url string) (string, error) {
 
 // Close title extractor
 func (t *TitleExtractor) Close() error {
+	t.client.CloseIdleConnections()
 	return t.cache.Close()
 }
 

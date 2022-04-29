@@ -219,6 +219,7 @@ func TestAdmin_Pin(t *testing.T) {
 
 	pin := func(val int) int {
 		client := http.Client{}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=remark42&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), http.NoBody)
 		assert.NoError(t, err)
@@ -719,6 +720,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
 	assert.NoError(t, err)
 
@@ -752,6 +754,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try with bad token
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, "bad token"), http.NoBody)
 	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")

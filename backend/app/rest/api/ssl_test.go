@@ -30,6 +30,7 @@ func TestSSL_Redirect(t *testing.T) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
+	defer client.CloseIdleConnections()
 
 	// check http to https redirect response
 	resp, err := client.Get(ts.URL + "/blah?param=1")
@@ -59,6 +60,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 			return http.ErrUseLastResponse
 		},
 	}
+	defer client.CloseIdleConnections()
 
 	// check http to https redirect response
 	resp, err := client.Get(ts.URL + "/blah?param=1")
