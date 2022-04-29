@@ -34,6 +34,7 @@ func TestMigrator_Import(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -92,6 +93,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
 
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=wordpress", r)
 	assert.NoError(t, err)
 	req.Header.Add("Content-Type", "application/xml; charset=utf-8")
@@ -120,6 +122,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 "provider":"sso:example.com","joinDate":"2021-03-19T19:27:25.954285Z","isModerator":false}]}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
 	assert.NoError(t, err)
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
@@ -150,6 +153,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native&secret=XYZ", r)
 	assert.NoError(t, err)
 	resp, err := client.Do(req)
@@ -172,6 +176,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -182,6 +187,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -208,6 +214,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with `nRecs` records
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -218,6 +225,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 	client = &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42&timeout=5ms", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -245,6 +253,7 @@ func TestMigrator_Export(t *testing.T) {
 
 	// import comments first
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -387,6 +396,7 @@ func TestMigrator_RemapReject(t *testing.T) {
 
 	// without admin credentials
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*`)
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
 	require.NoError(t, err)
@@ -398,6 +408,7 @@ func TestMigrator_RemapReject(t *testing.T) {
 
 func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
 	client := &http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/wait?site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")

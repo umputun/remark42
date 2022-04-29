@@ -269,6 +269,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 
 	// set post to read-only
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)

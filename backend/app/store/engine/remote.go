@@ -112,5 +112,6 @@ func (r *RPC) Delete(req DeleteRequest) error {
 // Close storage engine
 func (r *RPC) Close() error {
 	_, err := r.Call("store.close")
+	r.Client.Client.CloseIdleConnections()
 	return err
 }

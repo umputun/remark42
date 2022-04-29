@@ -145,6 +145,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	defer cancel()
 
 	client := http.Client{Timeout: 30 * time.Second}
+	defer client.CloseIdleConnections()
 	var resp *http.Response
 	err := repeater.NewDefault(5, time.Second).Do(ctx, func() error {
 		var e error

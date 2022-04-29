@@ -154,6 +154,7 @@ func TestRest_CreateRejected(t *testing.T) {
 
 	// try with wrong aud
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devTokenBadAud)
@@ -250,6 +251,7 @@ func TestRest_Update(t *testing.T) {
 	id := addComment(t, c1, ts)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.NoError(t, err)
@@ -303,6 +305,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 
 	// delete a comment
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
 	require.NoError(t, err)
@@ -355,6 +358,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	assert.NoError(t, err)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.NoError(t, err)
@@ -368,6 +372,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
 	client = http.Client{}
+	defer client.CloseIdleConnections()
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
 	assert.NoError(t, err)
@@ -387,6 +392,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 	id := addComment(t, c1, ts)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.NoError(t, err)
@@ -406,6 +412,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	id := addComment(t, c1, ts)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
 		strings.NewReader(`{"text":"What the duck is that?", "summary":"my edit"}`))
 	assert.NoError(t, err)
@@ -437,6 +444,7 @@ func TestRest_Vote(t *testing.T) {
 
 	vote := func(val int) int {
 		client := http.Client{}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
 		assert.NoError(t, err)
@@ -526,6 +534,7 @@ func TestRest_AnonVote(t *testing.T) {
 
 	vote := func(val int) int {
 		client := http.Client{}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
 		assert.NoError(t, err)
@@ -538,6 +547,7 @@ func TestRest_AnonVote(t *testing.T) {
 
 	getWithAnonAuth := func(url string) (body string, code int) {
 		client := &http.Client{Timeout: 5 * time.Second}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest("GET", url, http.NoBody)
 		require.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
@@ -628,6 +638,7 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		{description: "set user telegram, token is good", url: "/api/v1/telegram/subscribe?site=remark42&tkn=good_token", method: http.MethodGet, responseCode: http.StatusOK},
 	}
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	for _, x := range testData {
 		x := x
 		t.Run(x.description, func(t *testing.T) {
@@ -663,6 +674,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	defer srv.privRest.notifyService.Close()
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
@@ -808,6 +820,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	defer srv.privRest.notifyService.Close()
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
@@ -1014,6 +1027,7 @@ func TestRest_UserAllData(t *testing.T) {
 	require.NoError(t, err)
 
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -1066,6 +1080,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 		require.NoError(t, err)
 	}
 	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -1090,6 +1105,7 @@ func TestRest_DeleteMe(t *testing.T) {
 	defer teardown()
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), http.NoBody)
 	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -1136,6 +1152,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 		require.NoError(t, bodyWriter.Close())
 
 		client := http.Client{}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", contentType)
@@ -1227,6 +1244,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		contentType := bodyWriter.FormDataContentType()
 		require.NoError(t, bodyWriter.Close())
 		client := http.Client{}
+		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", contentType)

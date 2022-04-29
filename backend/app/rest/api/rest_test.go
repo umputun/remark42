@@ -146,6 +146,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
+	defer client.CloseIdleConnections()
 
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
@@ -190,6 +191,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 			return http.ErrUseLastResponse
 		},
 	}
+	defer client.CloseIdleConnections()
 
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/blah?param=1", port))
 	require.NoError(t, err)
@@ -509,6 +511,7 @@ func get(t *testing.T, url string) (response string, statusCode int) {
 
 func sendReq(_ *testing.T, r *http.Request, tkn string) (*http.Response, error) {
 	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	if tkn != "" {
 		r.Header.Set("X-JWT", tkn)
 	}
@@ -517,6 +520,7 @@ func sendReq(_ *testing.T, r *http.Request, tkn string) (*http.Response, error) 
 
 func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", url, http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
@@ -530,6 +534,7 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 
 func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int) {
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", url, http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -542,6 +547,7 @@ func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int
 }
 func post(t *testing.T, url, body string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
 	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -553,6 +559,7 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	require.NoError(t, err, "can't marshal comment %+v", c)
 
 	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)

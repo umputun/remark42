@@ -37,6 +37,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 
 	// prepare http client and request
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), ec.Timeout)
 	defer cancel()
 	exportURL := fmt.Sprintf("%s/api/v1/admin/export?mode=file&site=%s", ec.RemarkURL, ec.Site)

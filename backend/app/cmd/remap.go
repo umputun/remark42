@@ -32,6 +32,7 @@ func (rc *RemapCommand) Execute(_ []string) error {
 	}
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), rc.Timeout)
 	defer cancel()
 	remapURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)

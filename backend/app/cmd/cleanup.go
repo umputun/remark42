@@ -130,6 +130,7 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 	listURL := fmt.Sprintf("%s/api/v1/list?site=%s&limit=10000", cc.RemarkURL, cc.Site)
 	client := http.Client{Timeout: 30 * time.Second}
+	defer client.CloseIdleConnections()
 	r, err := client.Get(listURL)
 	if err != nil {
 		return nil, fmt.Errorf("get request failed for list of posts, site %s: %w", cc.Site, err)
@@ -155,8 +156,9 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 	var err error
 
 	// handle 429 error from limiter
+	client := http.Client{Timeout: 30 * time.Second}
+	defer client.CloseIdleConnections()
 	for {
-		client := http.Client{Timeout: 30 * time.Second}
 		r, err = client.Get(commentsURL)
 		if err != nil {
 			return nil, fmt.Errorf("get request failed for comments, %s: %w", postURL, err)
@@ -187,7 +189,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 }
 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) deleteComment(c store.Comment) error {
+func (cc *CleanupCommand) deleteComment(c store.Comment) error { //nolint:dupl // not worth combining
 	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
 	if err != nil {
@@ -196,6 +198,7 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 	req.SetBasicAuth("admin", cc.AdminPasswd)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	r, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("delete request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
@@ -208,7 +211,7 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error {
 }
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) setTitle(c store.Comment) error {
+func (cc *CleanupCommand) setTitle(c store.Comment) error { //nolint:dupl // not worth combining
 	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
 	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
 	if err != nil {
@@ -217,6 +220,7 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error {
 	req.SetBasicAuth("admin", cc.AdminPasswd)
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	r, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("title request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)

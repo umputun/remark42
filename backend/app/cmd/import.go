@@ -34,6 +34,7 @@ func (ic *ImportCommand) Execute(_ []string) error {
 	}
 
 	client := http.Client{}
+	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
 	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s", ic.RemarkURL, ic.Site, ic.Provider)

@@ -21,6 +21,7 @@ func TestAvatar_Execute(t *testing.T) {
 	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
 		"--dst.bolt.file=/tmp/ava-test.db"})
 	require.NoError(t, err)
+	defer os.Remove("/tmp/ava-test.db")
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 
@@ -31,6 +32,7 @@ func TestAvatar_Execute(t *testing.T) {
 	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
 		"--dst.bolt.file=/tmp/ava-test2.db"})
 	require.NoError(t, err)
+	defer os.Remove("/tmp/ava-test2.db")
 	err = cmd.Execute(nil)
 	assert.Error(t, err, "failed blah")
 }
