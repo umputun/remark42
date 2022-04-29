@@ -995,10 +995,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 	}
 
 	if contains("slack", s.Notify.Admins) {
-		slack, err := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
-		if err != nil {
-			return destinations, fmt.Errorf("failed to create slack notification destination: %w", err)
-		}
+		slack := notify.NewSlack(s.Notify.Slack.Token, s.Notify.Slack.Channel)
 		destinations = append(destinations, slack)
 	}
 
