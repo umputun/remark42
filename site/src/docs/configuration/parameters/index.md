@@ -106,6 +106,7 @@ services:
 | smtp.username                  | SMTP_USERNAME                  |                          | SMTP user name                                            |
 | smtp.password                  | SMTP_PASSWORD                  |                          | SMTP password                                             |
 | smtp.tls                       | SMTP_TLS                       | `false`                  | enable TLS for SMTP                                       |
+| smtp.starttls                  | SMTP_STARTTLS                  | `false`                  | enable StartTLS for SMTP                                                                           |
 | smtp.timeout                   | SMTP_TIMEOUT                   | `10s`                    | SMTP TCP connection timeout                               |
 | ssl.type                       | SSL_TYPE                       | none                     | `none`-HTTP, `static`-HTTPS, `auto`-HTTPS + le            |
 | ssl.port                       | SSL_PORT                       | `8443`                   | port for HTTPS server                                     |

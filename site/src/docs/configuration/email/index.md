@@ -26,6 +26,7 @@ To enable any email functionality, you need to set up an email (SMTP) server con
 SMTP_HOST
 SMTP_PORT
 SMTP_TLS
+SMTP_STARTTLS
 SMTP_USERNAME
 SMTP_PASSWORD
 SMTP_TIMEOUT

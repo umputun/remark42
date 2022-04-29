@@ -1,16 +1,12 @@
 package notify
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/smtp"
-	"sync"
 	"testing"
 	"text/template"
-	"time"
 
+	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,13 +19,13 @@ func TestEmailNew(t *testing.T) {
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
 		MsgTemplatePath:          "testdata/msg.html.tmpl",
 	}
-	smtpParams := SMTPParams{
+	smtpParams := ntf.SMTPParams{
 		Host:     "test@host",
 		Port:     1000,
 		TLS:      true,
+		StartTLS: true,
 		Username: "test@username",
 		Password: "test@password",
-		TimeOut:  time.Second,
 	}
 
 	email, err := NewEmail(emailParams, smtpParams)
@@ -49,6 +45,8 @@ func TestEmailNew(t *testing.T) {
 	assert.Equal(t, smtpParams.Password, email.Password, "emailParams.Password unchanged after creation")
 	assert.Equal(t, smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
 	assert.Equal(t, smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
+	assert.Equal(t, smtpParams.StartTLS, email.StartTLS, "emailParams.TLS unchanged after creation")
+	assert.Equal(t, "email: with username 'test@username' at server test@host:1000 with TLS", email.String())
 }
 
 func Test_initTemplatesErr(t *testing.T) {
@@ -58,19 +56,31 @@ func Test_initTemplatesErr(t *testing.T) {
 		emailParams EmailParams
 	}{
 		{
-			name:    "with wrong path to verification template",
-			errText: "can't read verification template: open notfount.tmpl: no such file or directory",
+			name:        "with wrong (default, working in prod) path to reply template",
+			errText:     "can't read message template: open email_reply.html.tmpl: no such file or directory",
+			emailParams: EmailParams{},
+		},
+		{
+			name:    "with wrong (default, working in prod) path to verification template",
+			errText: "can't read verification template: open email_confirmation_subscription.html.tmpl: no such file or directory",
 			emailParams: EmailParams{
-				VerificationTemplatePath: "notfount.tmpl",
+				MsgTemplatePath: "testdata/msg.html.tmpl",
+			},
+		},
+		{
+			name:    "with wrong path to verification template",
+			errText: "can't read verification template: open notfound.tmpl: no such file or directory",
+			emailParams: EmailParams{
+				VerificationTemplatePath: "notfound.tmpl",
 				MsgTemplatePath:          "testdata/msg.html.tmpl",
 			},
 		},
 		{
 			name:    "with wrong path to message template",
-			errText: "can't read message template: open notfount.tmpl: no such file or directory",
+			errText: "can't read message template: open notfound.tmpl: no such file or directory",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "testdata/verification.html.tmpl",
-				MsgTemplatePath:          "notfount.tmpl",
+				MsgTemplatePath:          "notfound.tmpl",
 			},
 		},
 		{
@@ -94,9 +104,9 @@ func Test_initTemplatesErr(t *testing.T) {
 	for _, d := range testSet {
 		d := d
 		t.Run(d.name, func(t *testing.T) {
-			e := Email{EmailParams: d.emailParams}
-			err := e.setTemplates()
+			e, err := NewEmail(d.emailParams, ntf.SMTPParams{})
 			require.Error(t, err)
+			require.Nil(t, e)
 			assert.Contains(t, err.Error(), d.errText)
 		})
 	}
@@ -125,7 +135,6 @@ func TestEmailSendErrors(t *testing.T) {
 	assert.EqualError(t, e.Send(ctx, Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
 		"sending email messages about comment \"999\" aborted due to canceled context")
 
-	e.smtp = &fakeTestSMTP{}
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad@example.org"}}),
 		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\":"+
 			" error creating token for unsubscribe link: token generation error\n\n")
@@ -135,7 +144,7 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 	email, err := NewEmail(EmailParams{
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
 		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, SMTPParams{})
+	}, ntf.SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email, "expecting email returned")
 	// prevent triggering e.autoFlush creation
@@ -144,67 +153,14 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 		"Message without Emails and AdminEmails is not sent and returns nil")
 }
 
-func TestEmailSendClientError(t *testing.T) {
-	var testSet = []struct {
-		name string
-		smtp *fakeTestSMTP
-		err  string
-	}{
-		{name: "failed to verify receiver", smtp: &fakeTestSMTP{fail: map[string]bool{"mail": true}},
-			err: "bad from address \"\": failed to verify sender"},
-		{name: "failed to verify sender", smtp: &fakeTestSMTP{fail: map[string]bool{"rcpt": true}},
-			err: "bad to address \"\": failed to verify receiver"},
-		{name: "failed to close connection", smtp: &fakeTestSMTP{fail: map[string]bool{"quit": true, "close": true}}},
-		{name: "failed to make email writer", smtp: &fakeTestSMTP{fail: map[string]bool{"data": true}},
-			err: "can't make email writer: failed to send"},
-	}
-	for _, d := range testSet {
-		d := d
-		t.Run(d.name, func(t *testing.T) {
-			e := Email{smtp: d.smtp}
-			if d.err != "" {
-				assert.EqualError(t, e.sendMessage(emailMessage{}), d.err,
-					"expected error for e.sendMessage")
-			} else {
-				assert.NoError(t, e.sendMessage(emailMessage{}),
-					"expected no error for e.sendMessage")
-			}
-		})
-	}
-	e := Email{}
-	e.smtp = nil
-	assert.Error(t, e.sendMessage(emailMessage{}),
-		"nil e.smtp should return error")
-	e.smtp = &fakeTestSMTP{}
-	assert.NoError(t, e.sendMessage(emailMessage{}), "",
-		"no error expected for e.sendMessage in normal flow")
-	e.smtp = &fakeTestSMTP{fail: map[string]bool{"quit": true}}
-	assert.NoError(t, e.sendMessage(emailMessage{}), "",
-		"no error expected for e.sendMessage with failed smtpClient.Quit but successful smtpClient.Close")
-	e.smtp = &fakeTestSMTP{fail: map[string]bool{"create": true}}
-	assert.EqualError(t, e.sendMessage(emailMessage{}), "failed to make smtp Create: failed to create client",
-		"e.send called without smtpClient set returns error")
-}
-
-func TestEmail_DefaultTemplates(t *testing.T) {
-	email, err := NewEmail(EmailParams{}, SMTPParams{})
-	assert.Error(t, err)
-	assert.Nil(t, email)
-	email, err = NewEmail(EmailParams{VerificationTemplatePath: "testdata/verification.html.tmpl"}, SMTPParams{})
-	assert.Error(t, err)
-	assert.Nil(t, email)
-}
-
 func TestEmail_Send(t *testing.T) {
 	email, err := NewEmail(EmailParams{
 		From:                     "from@example.org",
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
 		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, SMTPParams{})
+	}, ntf.SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSMTP := fakeTestSMTP{}
-	email.smtp = &fakeSMTP
 	email.TokenGenFn = TokenGenFn
 	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
 	req := Request{
@@ -212,22 +168,21 @@ func TestEmail_Send(t *testing.T) {
 		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
 		Emails:  []string{"test@example.org"},
 	}
-	assert.NoError(t, email.Send(context.TODO(), req))
-	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
-	assert.Equal(t, 1, fakeSMTP.readQuitCount())
-	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
+	assert.Contains(t, email.Send(context.Background(), req).Error(), "problem sending user email notification to \"test@example.org\"")
 	// test buildMessageFromRequest separately for message text
-	res, err := email.buildMessageFromRequest(req, req.Emails[0], false)
+	msg, err := email.buildMessageFromRequest(req, req.Emails[0], false)
 	assert.NoError(t, err)
-	assert.Contains(t, res, `From: from@example.org
-To: test@example.org
-Subject: New reply to your comment for "test_title"
-Content-Transfer-Encoding: quoted-printable
-MIME-version: 1.0
-Content-Type: text/html; charset="UTF-8"
-List-Unsubscribe-Post: List-Unsubscribe=One-Click
-List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
-Date: `)
+	assert.Equal(t, `
+	New reply from test_user on your comment to «test_title»
+
+User: test_user
+01.01.0001 at 00:00
+Comment: 
+test@example.org  for parent_user
+Unsubscribe link: https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token
+`, msg.body)
+	assert.Equal(t, "https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token", msg.unsubscribeLink)
+	assert.Equal(t, `New reply to your comment for "test_title"`, msg.subject)
 
 	// send email to both user and admin, without parent set
 	email.AdminEmails = []string{"admin@example.org"}
@@ -235,51 +190,19 @@ Date: `)
 		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
 		Emails:  []string{"test@example.org"},
 	}
-	assert.NoError(t, email.Send(context.TODO(), req))
-	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
-	assert.Equal(t, 3, fakeSMTP.readQuitCount(), "plus two emails: one for user and one for admin")
-	assert.Equal(t, "admin@example.org", fakeSMTP.readRcpt())
-	res, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
+	assert.Error(t, email.Send(context.Background(), req))
+	msg, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
 	assert.NoError(t, err)
-	assert.Contains(t, res, `From: from@example.org
-To: admin@example.org
-Subject: New comment to your site for "test_title"
-Content-Transfer-Encoding: quoted-printable
-MIME-version: 1.0
-Content-Type: text/html; charset="UTF-8"
-Date: `)
-}
+	assert.Equal(t, `
+New comment from test_user on your site  to «test_title»
 
-func TestEmail_SendWithUnicodeInSubject(t *testing.T) {
-	email, err := NewEmail(EmailParams{
-		From:                     "from@example.org",
-		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, SMTPParams{})
-	assert.NoError(t, err)
-	assert.NotNil(t, email)
-	fakeSMTP := fakeTestSMTP{}
-	email.smtp = &fakeSMTP
-	email.TokenGenFn = TokenGenFn
-	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
-	req := Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "Привет"},
-		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
-		Emails:  []string{"test@example.org"},
-	}
-	// test buildMessageFromRequest separately for message text
-	res, err := email.buildMessageFromRequest(req, req.Emails[0], false)
-	assert.NoError(t, err)
-	// `=?utf-8?b?TmV3IHJlcGx5IHRvIHlvdXIgY29tbWVudCBmb3IgItCf0YDQuNCy0LXRgiI=?=` -> `New reply to your comment for "Привет"` in base64 + required prefix and suffix
-	assert.Contains(t, res, `From: from@example.org
-To: test@example.org
-Subject: =?utf-8?b?TmV3IHJlcGx5IHRvIHlvdXIgY29tbWVudCBmb3IgItCf0YDQuNCy0LXRgiI=?=
-Content-Transfer-Encoding: quoted-printable
-MIME-version: 1.0
-Content-Type: text/html; charset="UTF-8"
-List-Unsubscribe-Post: List-Unsubscribe=One-Click
-List-Unsubscribe: <https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token>
-Date: `)
+User: test_user
+01.01.0001 at 00:00
+Comment: 
+admin@example.org 
+`, msg.body)
+	assert.Equal(t, `New comment to your site for "test_title"`, msg.subject)
+	assert.Empty(t, msg.unsubscribeLink)
 }
 
 func TestEmail_SendVerification(t *testing.T) {
@@ -287,11 +210,9 @@ func TestEmail_SendVerification(t *testing.T) {
 		From:                     "from@example.org",
 		VerificationTemplatePath: "testdata/verification.html.tmpl",
 		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, SMTPParams{})
+	}, ntf.SMTPParams{})
 	assert.NoError(t, err)
 	assert.NotNil(t, email)
-	fakeSMTP := fakeTestSMTP{}
-	email.smtp = &fakeSMTP
 	email.TokenGenFn = TokenGenFn
 	// proper VerificationRequest without email
 	req := VerificationRequest{
@@ -299,136 +220,36 @@ func TestEmail_SendVerification(t *testing.T) {
 		User:   "test_username",
 		Token:  "secret_",
 	}
-	assert.NoError(t, email.SendVerification(context.TODO(), req))
-	assert.Equal(t, "", fakeSMTP.readMail())
-	assert.Equal(t, 0, fakeSMTP.readQuitCount())
-	assert.Equal(t, "", fakeSMTP.readRcpt())
+	assert.NoError(t, email.SendVerification(context.Background(), req))
 
 	// proper VerificationRequest with email
 	req.Email = "test@example.org"
-	assert.NoError(t, email.SendVerification(context.TODO(), req))
-	assert.Equal(t, "from@example.org", fakeSMTP.readMail())
-	assert.Equal(t, 1, fakeSMTP.readQuitCount())
-	assert.Equal(t, "test@example.org", fakeSMTP.readRcpt())
+	assert.Error(t, email.SendVerification(context.Background(), req), "failed to make smtp client")
 
 	// VerificationRequest with canceled context
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
 
 	// test buildVerificationMessage separately for message text
 	res, err := email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
 	assert.NoError(t, err)
-	assert.Contains(t, res, `From: from@example.org
-To: test@example.org
-Subject: Email verification
-Content-Transfer-Encoding: quoted-printable
-MIME-version: 1.0
-Content-Type: text/html; charset="UTF-8"
-Date: `)
+	assert.Equal(t, res, `Confirmation for test_username on site remark
+Token:secret_
+Sent to test@example.org
+
+`)
 	assert.Contains(t, res, `secret_`)
 	assert.NotContains(t, res, `https://example.org/`)
 	email.SubscribeURL = "https://example.org/subscribe.html?token="
 	res, err = email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
 	assert.NoError(t, err)
-	assert.Contains(t, res, `From: from@example.org
-To: test@example.org
-Subject: Email verification
-Content-Transfer-Encoding: quoted-printable
-MIME-version: 1.0
-Content-Type: text/html; charset="UTF-8"
-Date: `)
-	assert.Contains(t, res, `https://example.org/subscribe.html?token=3Dsecret_`)
-}
+	assert.Equal(t, res, `Confirmation for test_username on site remark
+Subscribe url: https://example.org/subscribe.html?token=secret_
+Token:secret_
+Sent to test@example.org
 
-func Test_emailClient_Create(t *testing.T) {
-	creator := emailClient{}
-	client, err := creator.Create(SMTPParams{})
-	assert.Error(t, err, "absence of address to connect results in error")
-	assert.Nil(t, client, "no client returned in case of error")
-}
-
-type fakeTestSMTP struct {
-	fail map[string]bool
-
-	buff       bytes.Buffer
-	mail, rcpt string
-	auth       bool
-	close      bool
-	quitCount  int
-	lock       sync.RWMutex
-}
-
-func (f *fakeTestSMTP) Create(SMTPParams) (smtpClient, error) {
-	if f.fail["create"] {
-		return nil, fmt.Errorf("failed to create client")
-	}
-	return f, nil
-}
-
-func (f *fakeTestSMTP) Auth(smtp.Auth) error { f.auth = true; return nil }
-
-func (f *fakeTestSMTP) Mail(m string) error {
-	f.lock.Lock()
-	f.mail = m
-	f.lock.Unlock()
-	if f.fail["mail"] {
-		return fmt.Errorf("failed to verify sender")
-	}
-	return nil
-}
-
-func (f *fakeTestSMTP) Rcpt(r string) error {
-	f.lock.Lock()
-	f.rcpt = r
-	f.lock.Unlock()
-	if f.fail["rcpt"] {
-		return fmt.Errorf("failed to verify receiver")
-	}
-	return nil
-}
-
-func (f *fakeTestSMTP) Quit() error {
-	f.lock.Lock()
-	f.quitCount++
-	f.lock.Unlock()
-	if f.fail["quit"] {
-		return fmt.Errorf("failed to quit")
-	}
-	return nil
-}
-
-func (f *fakeTestSMTP) Close() error {
-	f.close = true
-	if f.fail["close"] {
-		return fmt.Errorf("failed to close")
-	}
-	return nil
-}
-
-func (f *fakeTestSMTP) Data() (io.WriteCloser, error) {
-	if f.fail["data"] {
-		return nil, fmt.Errorf("failed to send")
-	}
-	return nopCloser{&f.buff}, nil
-}
-
-func (f *fakeTestSMTP) readRcpt() string {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-	return f.rcpt
-}
-
-func (f *fakeTestSMTP) readMail() string {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-	return f.mail
-}
-
-func (f *fakeTestSMTP) readQuitCount() int {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-	return f.quitCount
+`)
 }
 
 func TokenGenFn(user, _, _ string) (string, error) {
@@ -436,12 +257,4 @@ func TokenGenFn(user, _, _ string) (string, error) {
 		return "", fmt.Errorf("token generation error")
 	}
 	return "token", nil
-}
-
-type nopCloser struct {
-	io.Writer
-}
-
-func (nopCloser) Close() error {
-	return nil
 }
