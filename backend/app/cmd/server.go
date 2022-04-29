@@ -209,6 +209,7 @@ type SMTPGroup struct {
 	Username string        `long:"username" env:"USERNAME" description:"SMTP user name"`
 	Password string        `long:"password" env:"PASSWORD" description:"SMTP password"`
 	TLS      bool          `long:"tls" env:"TLS" description:"enable TLS"`
+	StartTLS bool          `long:"starttls" env:"STARTTLS" description:"enable StartTLS"`
 	TimeOut  time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
 }
 
@@ -1030,13 +1031,16 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 		if contains("email", s.Notify.Admins) {
 			emailParams.AdminEmails = s.Admin.Shared.Email
 		}
-		smtpParams := notify.SMTPParams{
-			Host:     s.SMTP.Host,
-			Port:     s.SMTP.Port,
-			TLS:      s.SMTP.TLS,
-			Username: s.SMTP.Username,
-			Password: s.SMTP.Password,
-			TimeOut:  s.SMTP.TimeOut,
+		smtpParams := ntf.SMTPParams{
+			Host:        s.SMTP.Host,
+			Port:        s.SMTP.Port,
+			TLS:         s.SMTP.TLS,
+			StartTLS:    s.SMTP.StartTLS,
+			Username:    s.SMTP.Username,
+			Password:    s.SMTP.Password,
+			TimeOut:     s.SMTP.TimeOut,
+			ContentType: "text/html",
+			Charset:     "UTF-8",
 		}
 		emailService, err := notify.NewEmail(emailParams, smtpParams)
 		if err != nil {
