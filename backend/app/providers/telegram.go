@@ -11,8 +11,7 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-
-	"github.com/umputun/remark42/backend/app/notify"
+	ntf "github.com/go-pkgz/notify"
 )
 
 type tgRequester interface {
@@ -45,7 +44,7 @@ func DispatchTelegramUpdates(ctx context.Context, requester tgRequester, receive
 				url += fmt.Sprintf("&offset=%d", updateOffset)
 			}
 
-			var update notify.TelegramUpdate
+			var update ntf.TelegramUpdate
 
 			err := requester.Request(ctx, url, nil, &update)
 			if err != nil {
