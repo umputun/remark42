@@ -83,7 +83,8 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 			if host == "" {
 				return
 			}
-			short := href[:max-3]
+
+			short := string([]rune(href)[:max-3])
 			if len(short) < len(host) {
 				short = host
 			}
