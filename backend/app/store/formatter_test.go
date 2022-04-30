@@ -26,6 +26,10 @@ func TestFormatter_FormatText(t *testing.T) {
 				"1/some-long-link/12345/6789012...</a></p>\n!converted", "links",
 		},
 		{
+			"something https://amp.dw.com/ru/илон-маск-купил-twitter/a-61590911",
+			"<p>something <a href=\"https://amp.dw.com/ru/илон-маск-купил-twitter/a-61590911\">https://amp.dw.com/ru/илон-маск-купил-twitter...</a></p>\n!converted", "links",
+		},
+		{
 			"something <img src=\"some.png\"/>  _aaa_",
 			"<p>something <img src=\"some.png\" loading=\"lazy\"/>  <em>aaa</em></p>\n!converted",
 			"lazy image",
