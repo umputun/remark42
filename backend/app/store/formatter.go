@@ -88,7 +88,7 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 			if len(short) < len(host) {
 				short = host
 			}
-			s.SetText(string(short) + "...")
+			s.SetText(short + "...")
 		}
 	})
 	resHTML, err = doc.Find("body").Html()
