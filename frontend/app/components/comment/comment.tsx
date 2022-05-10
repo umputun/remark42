@@ -503,6 +503,7 @@ export class Comment extends Component<CommentProps, State> {
               bannedUser={props.isUserBanned}
               onCopy={this.copyComment}
               onTogglePin={this.togglePin}
+              onToggleEditing={this.toggleEditing}
               onDelete={this.deleteComment}
               onHideUser={this.hideUser}
               onBlockUser={this.blockUser}
