@@ -911,6 +911,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			}
 			return true, nil
 		}),
+			// Custom user ID generator, used to distinguish anonymous users with the same login
+			// coming from different IPs
 			func(user string, r *http.Request) string {
 				return user + r.RemoteAddr
 			})
