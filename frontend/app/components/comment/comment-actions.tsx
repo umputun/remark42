@@ -22,6 +22,7 @@ export type Props = {
   editable: boolean;
   editDeadline: number | undefined;
   onCopy(): void;
+  onToggleEditing(): void;
   onDelete(): void;
   onTogglePin(): void;
   onToggleReplying(): void;
@@ -43,6 +44,7 @@ export function CommentActions({
   bannedUser,
   editDeadline,
   onCopy,
+  onToggleEditing,
   onDelete,
   onTogglePin,
   onToggleReplying,
@@ -68,7 +70,7 @@ export function CommentActions({
       )}
       {editable && editDeadline && (
         <>
-          <Button kind="link" size="sm">
+          <Button kind="link" size="sm" onClick={onToggleEditing}>
             {intl.formatMessage(editing ? messages.cancel : messages.edit)}
           </Button>
           <span

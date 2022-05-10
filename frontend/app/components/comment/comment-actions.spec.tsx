@@ -2,7 +2,7 @@ import { h } from 'preact';
 import '@testing-library/jest-dom';
 import { CommentActions, Props } from './comment-actions';
 import { render } from 'tests/utils';
-import { screen, waitFor } from '@testing-library/preact';
+import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
 function getProps(): Props {
   return {
@@ -14,14 +14,15 @@ function getProps(): Props {
     readOnly: false,
     editing: false,
     replying: false,
-    onCopy() {},
-    onDelete() {},
-    onTogglePin() {},
-    onToggleReplying() {},
-    onHideUser() {},
-    onBlockUser() {},
-    onUnblockUser() {},
-    onDisableEditing() {},
+    onCopy: jest.fn(),
+    onDelete: jest.fn(),
+    onToggleEditing: jest.fn(),
+    onTogglePin: jest.fn(),
+    onToggleReplying: jest.fn(),
+    onHideUser: jest.fn(),
+    onBlockUser: jest.fn(),
+    onUnblockUser: jest.fn(),
+    onDisableEditing: jest.fn(),
     editable: false,
     editDeadline: undefined,
   };
@@ -32,6 +33,9 @@ describe('<CommentActions/>', () => {
   beforeEach(() => {
     props = getProps();
   });
+  afterEach(() => {
+    jest.resetAllMocks();
+  })
 
   it('should render "Reply"', () => {
     render(<CommentActions {...props} />);
@@ -139,5 +143,13 @@ describe('<CommentActions/>', () => {
       expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Block');
       expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Delete');
     });
+
+    it('calls `onToggleEditing` when edit button is pressed', () => {
+      render(<CommentActions {...props} />);
+      fireEvent(screen.getByText('Edit'), new MouseEvent('click', { bubbles: true }));
+      expect(props.onToggleEditing).toHaveBeenCalledTimes(1);
+      fireEvent(screen.getByText('Cancel'), new MouseEvent('click', { bubbles: true }));
+      expect(props.onToggleEditing).toHaveBeenCalledTimes(2);
+    })
   });
 });
