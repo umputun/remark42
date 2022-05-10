@@ -1,15 +1,18 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
-import { screen } from '@testing-library/preact';
+import { fireEvent, screen, waitFor } from '@testing-library/preact';
 import { useIntl, IntlShape } from 'react-intl';
 
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 
 import { Comment, CommentProps } from './comment';
+import { CommentMode } from 'common/types';
 
 function CommentWithIntl(props: CommentProps) {
-  return <Comment {...props} intl={useIntl()} />;
+  const intl = useIntl();
+
+  return <Comment {...props} intl={intl} />;
 }
 
 function getProps(): CommentProps {
@@ -229,5 +232,27 @@ describe('<Comment />', () => {
 
     render(<CommentWithIntl {...props} />);
     expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+  });
+
+  it('toggles edit mode', async () => {
+    props = getProps();
+    props.repliesCount = 0;
+    props.data.user = props.user!;
+    props.data.time = new Date().toString();
+    props.setReplyEditState = jest.fn().mockImplementation(() => {
+      props.editMode = props.editMode === undefined ? CommentMode.Edit : CommentMode.None;
+    });
+    StaticStore.config.edit_duration = 300;
+    const { rerender } = render(<CommentWithIntl {...props} />);
+    fireEvent(screen.getByText('Edit'), new MouseEvent('click', { bubbles: true }));
+    rerender(<CommentWithIntl {...props} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cancel')).toBeVisible();
+    });
+    fireEvent(screen.getByText('Cancel'), new MouseEvent('click', { bubbles: true }));
+    rerender(<CommentWithIntl {...props} />);
+    await waitFor(() => {
+      expect(screen.getByText('Edit')).toBeVisible();
+    });
   });
 });

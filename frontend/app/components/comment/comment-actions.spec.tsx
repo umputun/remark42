@@ -35,7 +35,7 @@ describe('<CommentActions/>', () => {
   });
   afterEach(() => {
     jest.resetAllMocks();
-  })
+  });
 
   it('should render "Reply"', () => {
     render(<CommentActions {...props} />);
@@ -145,11 +145,11 @@ describe('<CommentActions/>', () => {
     });
 
     it('calls `onToggleEditing` when edit button is pressed', () => {
+      props.editable = true;
+      props.editDeadline = Date.now() + 300 * 1000;
       render(<CommentActions {...props} />);
       fireEvent(screen.getByText('Edit'), new MouseEvent('click', { bubbles: true }));
       expect(props.onToggleEditing).toHaveBeenCalledTimes(1);
-      fireEvent(screen.getByText('Cancel'), new MouseEvent('click', { bubbles: true }));
-      expect(props.onToggleEditing).toHaveBeenCalledTimes(2);
-    })
+    });
   });
 });
