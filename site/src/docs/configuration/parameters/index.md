@@ -40,6 +40,15 @@ services:
 | store.type                     | STORE_TYPE                     | `bolt`                   | type of storage, `bolt` or `rpc`                          |
 | store.bolt.path                | STORE_BOLT_PATH                | `./var`                  | parent directory for the bolt files                       |
 | store.bolt.timeout             | STORE_BOLT_TIMEOUT             | `30s`                    | boltdb access timeout                                     |
+| store.rpc.api                  | STORE_RPC_API                  |                          | rpc extension api url                                     |
+| store.rpc.timeout              | STORE_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
+| store.rpc.auth_user            | STORE_RPC_AUTH_USER            |                          | basic auth user name                                      |
+| store.rpc.auth_passwd          | STORE_RPC_AUTH_PASSWD          |                          | basic auth user password                                  |
+| admin.type                     | ADMIN_TYPE                     | `shared`                 | type of admin store, `shared` or `rpc`                    |
+| admin.rpc.api                  | ADMIN_RPC_API                  |                          | rpc extension api url                                     |
+| admin.rpc.timeout              | ADMIN_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
+| admin.rpc.auth_user            | ADMIN_RPC_AUTH_USER            |                          | basic auth user name                                      |
+| admin.rpc.auth_passwd          | ADMIN_RPC_AUTH_PASSWD          |                          | basic auth user password                                  |
 | admin.shared.id                | ADMIN_SHARED_ID                |                          | admin IDs (list of user IDs), _multi_                     |
 | admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@${REMARK_URL}`    | admin emails, _multi_                                     |
 | backup                         | BACKUP_PATH                    | `./var/backup`           | backups location                                          |
@@ -53,13 +62,17 @@ services:
 | avatar.fs.path                 | AVATAR_FS_PATH                 | `./var/avatars`          | avatars location for `fs` store                           |
 | avatar.bolt.file               | AVATAR_BOLT_FILE               | `./var/avatars.db`       | avatars `bolt` file location                              |
 | avatar.uri                     | AVATAR_URI                     | `./var/avatars`          | avatars store URI                                         |
-| avatar.rsz-lmt                 | AVATAR_RSZ_LMT                 | `0` (disabled)           | max image size for resizing avatars on save               |
+| avatar.rsz-lmt                 | AVATAR_RESIZE                  | `0` (disabled)           | max image size for resizing avatars on save               |
 | image.type                     | IMAGE_TYPE                     | `fs`                     | type of image storage, `fs`, `bolt`                       |
-| image.max-size                 | IMAGE_MAX_SIZE                 | `5000000`                | max size of image file                                    |
 | image.fs.path                  | IMAGE_FS_PATH                  | `./var/pictures`         | permanent location of images                              |
 | image.fs.staging               | IMAGE_FS_STAGING               | `./var/pictures.staging` | staging location of images                                |
 | image.fs.partitions            | IMAGE_FS_PARTITIONS            | `100`                    | number of image partitions                                |
 | image.bolt.file                | IMAGE_BOLT_FILE                | `/var/pictures.db`       | images bolt file location                                 |
+| image.rpc.api                  | IMAGE_RPC_API                  |                          | rpc extension api url                                     |
+| image.rpc.timeout              | IMAGE_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
+| image.rpc.auth_user            | IMAGE_RPC_AUTH_USER            |                          | basic auth user name                                      |
+| image.rpc.auth_passwd          | IMAGE_RPC_AUTH_PASSWD          |                          | basic auth user password                                  |
+| image.max-size                 | IMAGE_MAX_SIZE                 | `5000000`                | max size of image file                                    |
 | image.resize-width             | IMAGE_RESIZE_WIDTH             | `2400`                   | width of a resized image                                  |
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                    | height of a resized image                                 |
 | auth.ttl.jwt                   | AUTH_TTL_JWT                   | `5m`                     | JWT TTL                                                   |
@@ -97,7 +110,7 @@ services:
 | notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": "{{.Text}}"}`  | Webhook payload template                                  |
 | notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                          | HTTP header in format Header1:Value1,Header2:Value2,...   |
 | notify.webhook.timeout         | NOTIFY_WEBHOOK_TIMEOUT         | `5s`                     | Webhook connection timeout                                |
-| notify.email.fromAddress       | NOTIFY_EMAIL_FROM              |                          | from email address                                        |
+| notify.email.from_address      | NOTIFY_EMAIL_FROM              |                          | from email address                                        |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification`     | verification message subject                              |
 | telegram.token                 | TELEGRAM_TOKEN                 |                          | Telegram token (used for auth and Telegram notifications) |
 | telegram.timeout               | TELEGRAM_TIMEOUT               | `5s`                     | Telegram connection timeout                               |
@@ -106,7 +119,7 @@ services:
 | smtp.username                  | SMTP_USERNAME                  |                          | SMTP user name                                            |
 | smtp.password                  | SMTP_PASSWORD                  |                          | SMTP password                                             |
 | smtp.tls                       | SMTP_TLS                       | `false`                  | enable TLS for SMTP                                       |
-| smtp.starttls                  | SMTP_STARTTLS                  | `false`                  | enable StartTLS for SMTP                                                                           |
+| smtp.starttls                  | SMTP_STARTTLS                  | `false`                  | enable StartTLS for SMTP                                  |
 | smtp.timeout                   | SMTP_TIMEOUT                   | `10s`                    | SMTP TCP connection timeout                               |
 | ssl.type                       | SSL_TYPE                       | none                     | `none`-HTTP, `static`-HTTPS, `auto`-HTTPS + le            |
 | ssl.port                       | SSL_PORT                       | `8443`                   | port for HTTPS server                                     |

@@ -77,7 +77,7 @@ type ServerCommand struct {
 	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames  []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
-	SimpleView       bool          `long:"simpler-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	SimpleView       bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments"`
 	SubscribersOnly  bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
@@ -155,7 +155,7 @@ type ImageGroup struct {
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
-	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	MaxSize      int      `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
 	ResizeWidth  int      `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of a resized image"`
 	ResizeHeight int      `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of a resized image"`
@@ -170,7 +170,7 @@ type AvatarGroup struct {
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
-	} `group:"bolt" namespace:"bolt" env-namespace:"bolt"`
+	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
 	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
@@ -237,7 +237,7 @@ type NotifyGroup struct {
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
 		Template string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
-		Headers  []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,..."` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
+		Headers  []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
