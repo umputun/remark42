@@ -27,7 +27,7 @@ type MemImage struct {
 
 // NewMemImageStore makes admin Store in memory.
 func NewMemImageStore() *MemImage {
-	log.Print("[DEBUG] make memory image store")
+	log.Print("[DEBUG] make memory image storage")
 	return &MemImage{
 		imagesStaging: map[string][]byte{},
 		images:        map[string][]byte{},

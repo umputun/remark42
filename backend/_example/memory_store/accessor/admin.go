@@ -31,7 +31,7 @@ type AdminRec struct {
 
 // NewMemAdminStore makes admin Store in memory
 func NewMemAdminStore(key string) *MemAdmin {
-	log.Print("[DEBUG] make memory admin store")
+	log.Print("[DEBUG] make memory admin storage")
 	return &MemAdmin{data: map[string]AdminRec{}, key: key}
 }
 

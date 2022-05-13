@@ -98,9 +98,9 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 		if postBkt, err = b.makePostBucket(tx, comment.Locator.URL); err != nil {
 			return err
 		}
-		// check if key already in store, reject doubles
+		// check if key already in storage, reject doubles
 		if postBkt.Get([]byte(comment.ID)) != nil {
-			return fmt.Errorf("key %s already in store", comment.ID)
+			return fmt.Errorf("key %s already in storage", comment.ID)
 		}
 
 		// serialize comment to json []byte for bolt and save
@@ -276,7 +276,7 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 			usersBkt := tx.Bucket([]byte(userBucketName))
 			userIDBkt := usersBkt.Bucket([]byte(req.UserID))
 			if userIDBkt == nil {
-				return fmt.Errorf("no comments for user %s in store for %s site", req.UserID, req.Locator.SiteID)
+				return fmt.Errorf("no comments for user %s in storage for %s site", req.UserID, req.Locator.SiteID)
 			}
 			stats := userIDBkt.Stats()
 			count = stats.KeyN
@@ -497,7 +497,7 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
 		if userIDBkt == nil {
-			return fmt.Errorf("no comments for user %s in store", userID)
+			return fmt.Errorf("no comments for user %s in storage", userID)
 		}
 
 		c := userIDBkt.Cursor()
@@ -931,7 +931,7 @@ func (b *BoltDB) getPostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, error
 	}
 	res := postsBkt.Bucket([]byte(postURL))
 	if res == nil {
-		return nil, fmt.Errorf("no bucket %s in store", postURL)
+		return nil, fmt.Errorf("no bucket %s in storage", postURL)
 	}
 	return res, nil
 }
@@ -944,7 +944,7 @@ func (b *BoltDB) makePostBucket(tx *bolt.Tx, postURL string) (*bolt.Bucket, erro
 	}
 	res, err := postsBkt.CreateBucketIfNotExists([]byte(postURL))
 	if err != nil {
-		return nil, fmt.Errorf("no bucket %s in store: %w", postURL, err)
+		return nil, fmt.Errorf("no bucket %s in storage: %w", postURL, err)
 	}
 	return res, nil
 }

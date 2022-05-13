@@ -1,4 +1,4 @@
-# sample store implementation
+# sample storage implementation
 
 `memory_store` illustrates how to make a custom storage plugin for remark42.
 

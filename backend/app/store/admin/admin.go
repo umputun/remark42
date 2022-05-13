@@ -1,4 +1,4 @@
-// Package admin defines and implements store for admin-level data like secret key, list of admins and so on
+// Package admin defines and implements storage for admin-level data like secret key, list of admins and so on
 package admin
 
 import (
@@ -50,7 +50,7 @@ func NewStaticKeyStore(key string) *StaticStore {
 // Key returns static key, same for all sites
 func (s *StaticStore) Key(_ string) (key string, err error) {
 	if s.key == "" {
-		return "", fmt.Errorf("empty key for static key store")
+		return "", fmt.Errorf("empty key for static key storage")
 	}
 	return s.key, nil
 }

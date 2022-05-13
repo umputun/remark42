@@ -11,7 +11,7 @@ func TestStaticStore_Get(t *testing.T) {
 		[]string{"123", "xyz"}, "aa@example.com")
 
 	k, err := ks.Key("any")
-	assert.NoError(t, err, "valid store")
+	assert.NoError(t, err, "valid storage")
 	assert.Equal(t, "key123", k, "valid site")
 
 	a, err := ks.Admins("s1")

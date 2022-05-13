@@ -32,7 +32,7 @@ func TestBoltDB_CreateAndFind(t *testing.T) {
 
 	_, err = b.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
 	assert.Error(t, err)
-	assert.Equal(t, "key id-1 already in store", err.Error())
+	assert.Equal(t, "key id-1 already in storage", err.Error())
 
 	req = FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, Sort: "time"}
 	_, err = b.Find(req)
@@ -119,7 +119,7 @@ func TestBoltDB_Update(t *testing.T) {
 	comment.Locator.SiteID = "radio-t"
 	comment.Locator.URL = "https://radio-t.com-bad"
 	err = b.Update(comment)
-	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
+	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in storage`)
 }
 
 func TestBoltDB_FindLast(t *testing.T) {
@@ -217,7 +217,7 @@ func TestBoltDB_FindForUser(t *testing.T) {
 
 	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "userZ", Limit: 1, Skip: 1}
 	_, err = b.Find(req)
-	assert.EqualError(t, err, `no comments for user userZ in store`)
+	assert.EqualError(t, err, `no comments for user userZ in storage`)
 }
 
 func TestBoltDB_FindForUserPagination(t *testing.T) {
@@ -317,7 +317,7 @@ func TestBoltDB_CountUser(t *testing.T) {
 
 	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "userZ"}
 	_, err = b.Count(req)
-	assert.EqualError(t, err, `no comments for user userZ in store for radio-t site`)
+	assert.EqualError(t, err, `no comments for user userZ in storage for radio-t site`)
 }
 
 func TestBoltDB_InfoPost(t *testing.T) {
@@ -716,7 +716,7 @@ func TestBolt_DeleteComment(t *testing.T) {
 
 	delReq.Locator = store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}
 	err = b.Delete(delReq)
-	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in store`)
+	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in storage`)
 }
 
 func TestBolt_DeleteHard(t *testing.T) {
@@ -830,7 +830,7 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 	assert.Equal(t, 0, c, "0 count")
 
 	_, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.EqualError(t, err, "no comments for user user1 in store")
+	assert.EqualError(t, err, "no comments for user user1 in storage")
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.NoError(t, err)
@@ -870,7 +870,7 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 	assert.Equal(t, 0, c, "0 count")
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
+	assert.NoError(t, err, "no comments for user user1 in storage")
 	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.True(t, comments[0].Deleted)
 	assert.True(t, comments[1].Deleted)

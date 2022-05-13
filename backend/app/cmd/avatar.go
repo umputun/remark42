@@ -28,7 +28,7 @@ type AvatarMigrator interface {
 
 type avatarMigrator struct{}
 
-// Migrate from one avatar store to another. Can be used to convert between stores
+// Migrate from one avatar storage to another. Can be used to convert between storages
 func (a avatarMigrator) Migrate(dst, src avatar.Store) (int, error) {
 	return avatar.Migrate(dst, src)
 }
@@ -39,12 +39,12 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 
 	src, err := ac.makeAvatarStore(ac.AvatarSrc)
 	if err != nil {
-		return fmt.Errorf("can't make avatart store for %s: %w", ac.AvatarSrc.Type, err)
+		return fmt.Errorf("can't make avatart storage for %s: %w", ac.AvatarSrc.Type, err)
 	}
 
 	dst, err := ac.makeAvatarStore(ac.AvatarDst)
 	if err != nil {
-		return fmt.Errorf("can't make avatart store for %s: %w", ac.AvatarDst.Type, err)
+		return fmt.Errorf("can't make avatart storage for %s: %w", ac.AvatarDst.Type, err)
 	}
 
 	if ac.migrator == nil {
@@ -57,10 +57,10 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 	}
 
 	if err = dst.Close(); err != nil {
-		log.Printf("[WARN] failed to close dst store %s", ac.AvatarDst.Type)
+		log.Printf("[WARN] failed to close dst storage %s", ac.AvatarDst.Type)
 	}
 	if err = src.Close(); err != nil {
-		log.Printf("[WARN] failed to close src store %s", ac.AvatarSrc.Type)
+		log.Printf("[WARN] failed to close src storage %s", ac.AvatarSrc.Type)
 	}
 
 	log.Printf("[INFO] completed, migrated avatars = %d", count)
@@ -68,18 +68,18 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 }
 
 func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
-	log.Printf("[DEBUG] make avatar store, type=%s", gr.Type)
+	log.Printf("[DEBUG] make avatar storage, type=%s", gr.Type)
 	switch gr.Type {
 	case "fs":
 		if err := makeDirs(gr.FS.Path); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
+			return nil, fmt.Errorf("failed to create avatar storage: %w", err)
 		}
 		return avatar.NewLocalFS(gr.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(gr.Bolt.File)); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
+			return nil, fmt.Errorf("failed to create avatar storage: %w", err)
 		}
 		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{})
 	}
-	return nil, fmt.Errorf("unsupported avatar store type %s", gr.Type)
+	return nil, fmt.Errorf("unsupported avatar storage type %s", gr.Type)
 }

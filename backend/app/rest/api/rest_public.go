@@ -218,7 +218,7 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	data, err := s.cache.Get(key, func() ([]byte, error) {
 		comments, e := s.dataService.User(siteID, userID, limit, skip, rest.GetUserOrEmpty(r))
 		if e != nil {
-			if strings.Contains(e.Error(), "no comments for user") { // store returns this error when no comments found
+			if strings.Contains(e.Error(), "no comments for user") { // storage returns this error when no comments found
 				resp.Comments, resp.Count = []store.Comment{}, 0
 				return encodeJSONWithHTML(resp)
 			}

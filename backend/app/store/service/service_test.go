@@ -1327,7 +1327,7 @@ func TestService_UserCount(t *testing.T) {
 	assert.Equal(t, 1, c)
 
 	_, err = b.UserCount("radio-t", "userBad")
-	assert.EqualError(t, err, "no comments for user userBad in store for radio-t site")
+	assert.EqualError(t, err, "no comments for user userBad in storage for radio-t site")
 }
 
 func TestService_DeleteAll(t *testing.T) {

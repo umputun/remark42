@@ -24,6 +24,7 @@ services:
       - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
       - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
       - SECRET=abcd-123456-xyz-$%^&           # secret key
+      - AUTH_ANON=true                        # anonymous auth, easiest to enable and most accessible for users
       - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
       - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
     volumes:
@@ -44,7 +45,7 @@ services:
 | store.rpc.timeout              | STORE_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
 | store.rpc.auth_user            | STORE_RPC_AUTH_USER            |                          | basic auth user name                                      |
 | store.rpc.auth_passwd          | STORE_RPC_AUTH_PASSWD          |                          | basic auth user password                                  |
-| admin.type                     | ADMIN_TYPE                     | `shared`                 | type of admin store, `shared` or `rpc`                    |
+| admin.type                     | ADMIN_TYPE                     | `shared`                 | type of admin storage, `shared` or `rpc`                    |
 | admin.rpc.api                  | ADMIN_RPC_API                  |                          | rpc extension api url                                     |
 | admin.rpc.timeout              | ADMIN_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
 | admin.rpc.auth_user            | ADMIN_RPC_AUTH_USER            |                          | basic auth user name                                      |
@@ -61,7 +62,7 @@ services:
 | avatar.type                    | AVATAR_TYPE                    | `fs`                     | type of avatar storage, `fs`, `bolt`, or `uri`            |
 | avatar.fs.path                 | AVATAR_FS_PATH                 | `./var/avatars`          | avatars location for `fs` store                           |
 | avatar.bolt.file               | AVATAR_BOLT_FILE               | `./var/avatars.db`       | avatars `bolt` file location                              |
-| avatar.uri                     | AVATAR_URI                     | `./var/avatars`          | avatars store URI                                         |
+| avatar.uri                     | AVATAR_URI                     | `./var/avatars`          | avatars storage URI                                         |
 | avatar.rsz-lmt                 | AVATAR_RESIZE                  | `0` (disabled)           | max image size for resizing avatars on save               |
 | image.type                     | IMAGE_TYPE                     | `fs`                     | type of image storage, `fs`, `bolt`                       |
 | image.fs.path                  | IMAGE_FS_PATH                  | `./var/pictures`         | permanent location of images                              |

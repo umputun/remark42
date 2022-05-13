@@ -32,7 +32,7 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Service wraps Store with common functions needed for any store implementation
+// Service wraps Store with common functions needed for any storage implementation
 // It also provides async Submit with func param retrieving all submitting IDs.
 // Submitted IDs committed (i.e. moved from staging to final) on ServiceParams.EditDuration expiration.
 type Service struct {
@@ -56,7 +56,7 @@ type ServiceParams struct {
 	MaxWidth     int
 }
 
-// StoreInfo contains image store meta information
+// StoreInfo contains image storage meta information
 type StoreInfo struct {
 	FirstStagingImageTS time.Time
 }
@@ -64,7 +64,7 @@ type StoreInfo struct {
 // To regenerate mock run from this directory:
 // sh -c "mockery -inpkg -name Store -print > /tmp/image-mock.tmp && mv /tmp/image-mock.tmp image_mock.go"
 
-// Store defines interface for saving and loading pictures.
+// Store defines interface for saving and loading images.
 // Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location.
 // Two-stage commit scheme is used for not storing images which are uploaded but later never used in the comments,
 // e.g. when somebody uploaded a picture but did not sent the comment.
@@ -141,8 +141,8 @@ func (s *Service) Submit(idsFn func() []string) {
 	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
 }
 
-// ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
-func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
+// ExtractImages gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
+func (s *Service) ExtractImages(commentHTML string) (ids []string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
 		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
@@ -181,7 +181,7 @@ func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
 // Cleanup runs periodic cleanup with 1.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer
 func (s *Service) Cleanup(ctx context.Context) {
 	cleanupTTL := s.EditDuration * 15 / 10 // cleanup images older than 1.5 * EditDuration
-	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", cleanupTTL)
+	log.Printf("[INFO] start images cleanup, staging ttl=%v", cleanupTTL)
 
 	for {
 		select {

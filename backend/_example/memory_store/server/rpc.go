@@ -14,7 +14,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
-// RPC handler wraps both engine and remote server and implements all handlers for data store and admin store
+// RPC handler wraps both engine and remote server and implements all handlers for data store and admin storage
 // Note: this file can be used as-is in any custom jrpc plugin
 type RPC struct {
 	*jrpc.Server
@@ -46,7 +46,7 @@ func (s *RPC) addHandlers() {
 		"close":       s.closeHndl,
 	})
 
-	// admin store handlers
+	// admin storage handlers
 	s.Group("admin", jrpc.HandlersGroup{
 		"key":     s.admKeyHndl,
 		"admins":  s.admAdminsHndl,

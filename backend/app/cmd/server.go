@@ -135,7 +135,7 @@ type AuthGroup struct {
 	CSEC string `long:"csec" env:"CSEC" description:"OAuth client secret"`
 }
 
-// StoreGroup defines options group for store params
+// StoreGroup defines options group for data (comments, users) storage params
 type StoreGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"bolt" choice:"rpc" default:"bolt"` // nolint
 	Bolt struct {
@@ -145,12 +145,12 @@ type StoreGroup struct {
 	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
-// ImageGroup defines options group for store pictures
+// ImageGroup defines options group for images storage
 type ImageGroup struct {
 	Type string `long:"type" env:"TYPE" description:"type of storage" choice:"fs" choice:"bolt" choice:"rpc" default:"fs"` // nolint
 	FS   struct {
 		Path       string `long:"path" env:"PATH" default:"./var/pictures" description:"images location"`
-		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging location"`
+		Staging    string `long:"staging" env:"STAGING" default:"./var/pictures.staging" description:"staging images location"`
 		Partitions int    `long:"partitions" env:"PARTITIONS" default:"100" description:"partitions (subdirs)"`
 	} `group:"fs" namespace:"fs" env-namespace:"FS"`
 	Bolt struct {
@@ -171,7 +171,7 @@ type AvatarGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
+	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars storage URI"`
 	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
 }
 
@@ -188,7 +188,7 @@ type CacheGroup struct {
 
 // AdminGroup defines options group for admin params
 type AdminGroup struct {
-	Type   string `long:"type" env:"TYPE" description:"type of admin store" choice:"shared" choice:"rpc" default:"shared"` //nolint
+	Type   string `long:"type" env:"TYPE" description:"type of admin storage" choice:"shared" choice:"rpc" default:"shared"` //nolint
 	Shared struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
@@ -451,7 +451,7 @@ func contains(s string, a []string) bool {
 // doesn't start anything
 func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	if err := makeDirs(s.BackupLocation); err != nil {
-		return nil, fmt.Errorf("failed to create backup store: %w", err)
+		return nil, fmt.Errorf("failed to create backup storage: %w", err)
 	}
 
 	if !strings.HasPrefix(s.RemarkURL, "http://") && !strings.HasPrefix(s.RemarkURL, "https://") {
@@ -461,17 +461,17 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
-		return nil, fmt.Errorf("failed to make data store engine: %w", err)
+		return nil, fmt.Errorf("failed to make data storage: %w", err)
 	}
 
 	adminStore, err := s.makeAdminStore()
 	if err != nil {
-		return nil, fmt.Errorf("failed to make admin store: %w", err)
+		return nil, fmt.Errorf("failed to make admin storage: %w", err)
 	}
 
-	imageService, err := s.makePicturesStore()
+	imageService, err := s.makeImagesStore()
 	if err != nil {
-		return nil, fmt.Errorf("failed to make pictures store: %w", err)
+		return nil, fmt.Errorf("failed to make images storage: %w", err)
 	}
 	log.Printf("[DEBUG] image service for url=%s, EditDuration=%v", imageService.ImageAPI, imageService.EditDuration)
 
@@ -499,7 +499,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
 		_ = dataService.Close()
-		return nil, fmt.Errorf("failed to make avatar store: %w", err)
+		return nil, fmt.Errorf("failed to make avatar storage: %w", err)
 	}
 	authRefreshCache := newAuthRefreshCache()
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
@@ -632,7 +632,7 @@ func (a *serverApp) run(ctx context.Context) error {
 		log.Printf("[WARN] failed to resubmit comments with staging images, %s", e)
 	}
 
-	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
+	go a.imageService.Cleanup(ctx) // cleanup for staging images
 
 	a.restSrv.Run(a.Address, a.Port)
 
@@ -641,10 +641,10 @@ func (a *serverApp) run(ctx context.Context) error {
 		a.devAuth.Shutdown()
 	}
 	if e := a.dataService.Close(); e != nil {
-		log.Printf("[WARN] failed to close data store, %s", e)
+		log.Printf("[WARN] failed to close data storage, %s", e)
 	}
 	if e := a.avatarStore.Close(); e != nil {
-		log.Printf("[WARN] failed to close avatar store, %s", e)
+		log.Printf("[WARN] failed to close avatar storage, %s", e)
 	}
 	if e := a.restSrv.Cache.Close(); e != nil {
 		log.Printf("[WARN] failed to close rest server cache, %s", e)
@@ -683,12 +683,12 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 
 // makeDataStore creates store for all sites
 func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
-	log.Printf("[INFO] make data store, type=%s", s.Store.Type)
+	log.Printf("[INFO] make data storage, type=%s", s.Store.Type)
 
 	switch s.Store.Type {
 	case "bolt":
 		if err = makeDirs(s.Store.Bolt.Path); err != nil {
-			return nil, fmt.Errorf("failed to create bolt store: %w", err)
+			return nil, fmt.Errorf("failed to create bolt storage: %w", err)
 		}
 		sites := []engine.BoltSite{}
 		for _, site := range s.Sites {
@@ -704,35 +704,35 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 		}}
 		return r, nil
 	default:
-		return nil, fmt.Errorf("unsupported store type %s", s.Store.Type)
+		return nil, fmt.Errorf("unsupported storage type %s", s.Store.Type)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("can't initialize data store: %w", err)
+		return nil, fmt.Errorf("can't initialize data storage: %w", err)
 	}
 	return result, nil
 }
 
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
-	log.Printf("[INFO] make avatar store, type=%s", s.Avatar.Type)
+	log.Printf("[INFO] make avatar storage, type=%s", s.Avatar.Type)
 
 	switch s.Avatar.Type {
 	case "fs":
 		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
+			return nil, fmt.Errorf("failed to create avatar storage: %w", err)
 		}
 		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
 	case "bolt":
 		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
+			return nil, fmt.Errorf("failed to create avatar storage: %w", err)
 		}
 		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
 	case "uri":
 		return avatar.NewStore(s.Avatar.URI)
 	}
-	return nil, fmt.Errorf("unsupported avatar store type %s", s.Avatar.Type)
+	return nil, fmt.Errorf("unsupported avatar storage type %s", s.Avatar.Type)
 }
 
-func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
+func (s *ServerCommand) makeImagesStore() (*image.Service, error) {
 	imageServiceParams := image.ServiceParams{
 		ImageAPI:     s.RemarkURL + "/api/v1/picture/",
 		ProxyAPI:     s.RemarkURL + "/api/v1/img",
@@ -750,7 +750,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 		return image.NewService(boltImageStore, imageServiceParams), nil
 	case "fs":
 		if err := makeDirs(s.Image.FS.Path); err != nil {
-			return nil, fmt.Errorf("failed to create pictures store: %w", err)
+			return nil, fmt.Errorf("failed to create images storage: %w", err)
 		}
 		return image.NewService(&image.FileSystem{
 			Location:   s.Image.FS.Path,
@@ -766,11 +766,11 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 				AuthPasswd: s.Image.RPC.AuthPassword,
 			}}, imageServiceParams), nil
 	}
-	return nil, fmt.Errorf("unsupported pictures store type %s", s.Image.Type)
+	return nil, fmt.Errorf("unsupported images storage type %s", s.Image.Type)
 }
 
 func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
-	log.Printf("[INFO] make admin store, type=%s", s.Admin.Type)
+	log.Printf("[INFO] make admin storage, type=%s", s.Admin.Type)
 
 	switch s.Admin.Type {
 	case "shared":
@@ -792,7 +792,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		}}
 		return r, nil
 	default:
-		return nil, fmt.Errorf("unsupported admin store type %s", s.Admin.Type)
+		return nil, fmt.Errorf("unsupported admin storage type %s", s.Admin.Type)
 	}
 }
 

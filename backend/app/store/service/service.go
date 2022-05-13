@@ -269,7 +269,7 @@ func (s *DataStore) submitImages(comment store.Comment) {
 			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", comment.ID, err)
 			return nil
 		}
-		imgIDs := s.ImageService.ExtractPictures(cc.Text)
+		imgIDs := s.ImageService.ExtractImages(cc.Text)
 		if len(imgIDs) > 0 {
 			log.Printf("[DEBUG] image ids extracted from %s - %+v", comment.ID, imgIDs)
 		}

@@ -747,7 +747,7 @@ func TestMemAdmin_DeleteUserHard(t *testing.T) {
 	assert.Equal(t, 0, c, "0 count")
 
 	_, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
+	assert.NoError(t, err, "no comments for user user1 in storage")
 
 	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.NoError(t, err)
@@ -773,7 +773,7 @@ func TestMemAdmin_DeleteUserSoft(t *testing.T) {
 	assert.Equal(t, 0, c, "0 count")
 
 	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
+	assert.NoError(t, err, "no comments for user user1 in storage")
 	require.Equal(t, 2, len(comments), "2 comments with deleted info")
 	assert.True(t, comments[0].Deleted)
 	assert.True(t, comments[1].Deleted)

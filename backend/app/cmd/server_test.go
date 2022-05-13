@@ -319,7 +319,7 @@ func TestServerApp_Failed(t *testing.T) {
 	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
+	assert.EqualError(t, err, "failed to make data storage: failed to create bolt storage: can't make directory /dev/null: mkdir /dev/null: not a directory")
 	t.Log(err)
 
 	// RO backup location
@@ -330,7 +330,7 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove("/tmp/remark.db")
 	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
+	assert.EqualError(t, err, "failed to create backup storage: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
 
 	// invalid url
@@ -351,7 +351,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	opts.Store.Type = "blah"
 	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to make data store engine: unsupported store type blah")
+	assert.EqualError(t, err, "failed to make data storage: unsupported storage type blah")
 	t.Log(err)
 
 	// wrong redis location

@@ -163,7 +163,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	c3 := store.Comment{Text: "test test #3", Orig: "o test test #3", User: store.User{ID: "id2", Name: "name"}, ParentID: "",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
-	// write comments directly to store to keep user id
+	// write comments directly to storage to keep user id
 	id1, err := srv.DataService.Create(c1)
 	assert.NoError(t, err)
 	_, err = srv.DataService.Create(c2)
@@ -731,7 +731,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	_, err = srv.DataService.User("remark42", "user1", 0, 0, store.User{})
-	assert.EqualError(t, err, "no comments for user user1 in store")
+	assert.EqualError(t, err, "no comments for user user1 in storage")
 
 	email, err = srv.DataService.GetUserEmail("remark42", "user1")
 	assert.NoError(t, err)

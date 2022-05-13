@@ -23,7 +23,7 @@ type Bolt struct {
 	db       *bolt.DB
 }
 
-// NewBoltStorage create bolt image store
+// NewBoltStorage create bolt image storage
 func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 	db, err := bolt.Open(fileName, 0o600, &options) //nolint:gocritic //octalLiteral is OK as FileMode
 	if err != nil {
