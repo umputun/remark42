@@ -119,6 +119,12 @@ Maybe middleware will allow you to change the flow of the middleware stack execu
 value of maybeFn(request). This is useful for example if you'd like to skip a middleware handler if
 a request does not satisfy the maybeFn logic.
 
+### Benchmarks middleware
+
+Benchmarks middleware allows to measure the time of request handling, number of request per second and report aggregated metrics. This middleware keeps track of the request in the memory and keep up to 900 points (15 minutes, data-point per second).
+
+In order to retrieve the data user should call `Stats(d duration)` method. duration is the time window for which the benchmark data should be returned. It can be any duration from 1s to 15m.
+
 ## Helpers
 
 - `rest.Wrap` - converts a list of middlewares to nested handlers calls (in reverse order)

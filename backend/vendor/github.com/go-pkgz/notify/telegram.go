@@ -449,6 +449,7 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data in
 		}
 
 		client := http.Client{Timeout: t.Timeout}
+		defer client.CloseIdleConnections()
 		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to send request: %w", err)
