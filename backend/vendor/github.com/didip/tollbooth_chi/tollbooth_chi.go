@@ -32,6 +32,7 @@ func (l *limiterWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		httpError := tollbooth.LimitByRequest(l.lmt, w, r)
 		if httpError != nil {
+			l.lmt.ExecOnLimitReached(w, r)
 			w.Header().Add("Content-Type", l.lmt.GetMessageContentType())
 			w.WriteHeader(httpError.StatusCode)
 			w.Write([]byte(httpError.Message))

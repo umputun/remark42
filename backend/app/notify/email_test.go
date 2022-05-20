@@ -46,7 +46,7 @@ func TestEmailNew(t *testing.T) {
 	assert.Equal(t, smtpParams.Port, email.Port, "emailParams.Port unchanged after creation")
 	assert.Equal(t, smtpParams.TLS, email.TLS, "emailParams.TLS unchanged after creation")
 	assert.Equal(t, smtpParams.StartTLS, email.StartTLS, "emailParams.TLS unchanged after creation")
-	assert.Equal(t, "email: with username 'test@username' at server test@host:1000 with TLS", email.String())
+	assert.Equal(t, "email: with username 'test@username' at server test@host:1000 with TLS with StartTLS", email.String())
 }
 
 func Test_initTemplatesErr(t *testing.T) {

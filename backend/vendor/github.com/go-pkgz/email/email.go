@@ -190,7 +190,7 @@ func (em *Sender) client() (c *smtp.Client, err error) {
 		return nil, fmt.Errorf("timeout connecting to %s: %w", srvAddress, err)
 	}
 
-	c, err = smtp.NewClient(conn, srvAddress)
+	c, err = smtp.NewClient(conn, em.host)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
 	}

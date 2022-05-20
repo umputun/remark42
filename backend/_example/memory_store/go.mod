@@ -18,12 +18,12 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/didip/tollbooth/v6 v6.1.2 // indirect
-	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21 // indirect
+	github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/go-chi/render v1.0.1 // indirect
 	github.com/go-pkgz/expirable-cache v0.0.3 // indirect
-	github.com/go-pkgz/rest v1.14.0 // indirect
+	github.com/go-pkgz/rest v1.15.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/stretchr/objx v0.3.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect

@@ -60,7 +60,7 @@ github.com/didip/tollbooth/v6
 github.com/didip/tollbooth/v6/errors
 github.com/didip/tollbooth/v6/libstring
 github.com/didip/tollbooth/v6/limiter
-# github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21
+# github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b
 ## explicit; go 1.14
 github.com/didip/tollbooth_chi
 # github.com/dlclark/regexp2 v1.4.0
@@ -75,7 +75,7 @@ github.com/go-chi/chi/middleware
 ## explicit; go 1.14
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
-# github.com/go-chi/cors v1.2.0
+# github.com/go-chi/cors v1.2.1
 ## explicit; go 1.14
 github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
@@ -95,7 +95,7 @@ github.com/go-pkgz/auth/middleware
 github.com/go-pkgz/auth/provider
 github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
-# github.com/go-pkgz/email v0.2.1-0.20220428155644-a7e5d837d02f
+# github.com/go-pkgz/email v0.3.0
 ## explicit; go 1.17
 github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache v0.0.3
@@ -112,14 +112,14 @@ github.com/go-pkgz/lcw/internal/cache
 # github.com/go-pkgz/lgr v0.10.4
 ## explicit; go 1.15
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v0.0.0-20220429105545-bc5c80a54199
+# github.com/go-pkgz/notify v0.1.1
 ## explicit; go 1.17
 github.com/go-pkgz/notify
 # github.com/go-pkgz/repeater v1.1.3
 ## explicit; go 1.12
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
-# github.com/go-pkgz/rest v1.14.0
+# github.com/go-pkgz/rest v1.15.0
 ## explicit; go 1.16
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
@@ -227,8 +227,6 @@ github.com/stretchr/objx
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
-# github.com/valyala/fasthttp v1.35.0
-## explicit; go 1.15
 # github.com/xdg-go/pbkdf2 v1.0.0
 ## explicit; go 1.9
 github.com/xdg-go/pbkdf2
@@ -244,7 +242,7 @@ github.com/youmark/pkcs8
 # go.etcd.io/bbolt v1.3.6
 ## explicit; go 1.12
 go.etcd.io/bbolt
-# go.mongodb.org/mongo-driver v1.9.0
+# go.mongodb.org/mongo-driver v1.9.1
 ## explicit; go 1.10
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
@@ -285,7 +283,7 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit; go 1.13
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+# golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898
 ## explicit; go 1.17
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -296,7 +294,7 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.12
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
+# golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
