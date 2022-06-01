@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-v1.8.0 as build-backend
+FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -8,7 +8,6 @@ ARG SKIP_BACKEND_TEST
 ARG BACKEND_TEST_TIMEOUT
 
 ADD backend /build/backend
-ADD .git/ /build/backend/.git/
 WORKDIR /build/backend
 
 ENV GOFLAGS="-mod=vendor"
