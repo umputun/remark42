@@ -173,7 +173,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		s.notifyService.Submit(notify.Request{Comment: finalComment})
 	}
 
-	log.Printf("[DEBUG] created commend %+v", finalComment)
+	log.Printf("[DEBUG] created comment %+v", finalComment)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
