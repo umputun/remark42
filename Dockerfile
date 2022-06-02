@@ -72,7 +72,7 @@ RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
     ; fi
 RUN rm -rf ./node_modules
 
-FROM umputun/baseimage:app-v1.8.0
+FROM umputun/baseimage:app-v1.9.1
 
 WORKDIR /srv
 

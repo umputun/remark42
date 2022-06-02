@@ -45,8 +45,9 @@ frontend:
 	docker-compose -f compose-dev-frontend.yml build
 
 rundev:
-	docker pull umputun/baseimage:buildgo-latest
-	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true docker-compose -f compose-private.yml build
+	docker pull umputun/baseimage:buildgo-v1.9.1
+	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true GITHUB_REF=$(GITHUB_REF) GITHUB_SHA=$(GITHUB_SHA) CI=true \
+ 		docker-compose -f compose-private.yml build
 	docker-compose -f compose-private.yml up
 
 .PHONY: bin backend
