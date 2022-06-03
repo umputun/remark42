@@ -389,6 +389,34 @@ func TestRest_subscribersOnly(t *testing.T) {
 	}
 }
 
+func Test_validEmaiAuth(t *testing.T) {
+	tbl := []struct {
+		req    string
+		status int
+	}{
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Евгений+Умпутун", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=12", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
+		{"/auth/twitter/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%example.com", http.StatusOK},
+	}
+
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com"+tt.req, http.NoBody)
+			w := httptest.NewRecorder()
+			h := validEmaiAuth()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h.ServeHTTP(w, req)
+			resp := w.Result()
+			assert.Equal(t, tt.status, resp.StatusCode)
+			assert.NoError(t, resp.Body.Close())
+		})
+	}
+}
+
 // randomPath pick a file or folder name which is not in use for sure
 func randomPath(tempDir, basename, suffix string) (string, error) {
 	for i := 0; i < 10; i++ {
