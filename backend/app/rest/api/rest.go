@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"regexp"
 	"strings"
 	"sync"
@@ -653,11 +654,11 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 }
 
 // validEmaiAuth is a middleware for auth endpoints for email method.
-// it rejects login request if user or email are suspicious
+// it rejects login request if user, site or email are suspicious
 func validEmaiAuth() func(http.Handler) http.Handler {
 
-	// matches ui side validation, adding min/max limitation
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`)
+	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
+	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_]{1,64}$`)
 
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -674,6 +675,21 @@ func validEmaiAuth() func(http.Handler) http.Handler {
 					return
 				}
 			}
+
+			if a := r.URL.Query().Get("address"); a != "" {
+				if _, err := mail.ParseAddress(a); err != nil {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
+
+			if s := r.URL.Query().Get("site"); s != "" {
+				if !reSite.MatchString(s) {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
+
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
