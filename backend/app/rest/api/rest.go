@@ -224,7 +224,7 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)), middleware.NoCache)
+		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(2, nil)), middleware.NoCache)
 		r.Use(validEmaiAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
