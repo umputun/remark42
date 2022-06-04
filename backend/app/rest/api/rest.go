@@ -662,7 +662,7 @@ func validEmaiAuth() func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if !strings.Contains(r.URL.Path, "/email/login") {
+			if r.URL.Path != "/auth/email/login" {
 				// not email login, skip the check
 				h.ServeHTTP(w, r)
 				return
