@@ -402,6 +402,9 @@ func Test_validEmaiAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
 		{"/auth/twitter/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun+example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=bad!site&address=umputun%example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%example.com&user=someone", http.StatusForbidden},
 	}
 
 	for i, tt := range tbl {
