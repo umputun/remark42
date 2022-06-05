@@ -337,7 +337,7 @@ There are several ways to adjust functionality of the library:
 1. `SecretReader` - interface with a single method `Get(aud string) string` to return the secret used for JWT signing and verification
 1. `ClaimsUpdater` - interface with `Update(claims Claims) Claims` method. This is the primary way to alter a token at login time and add any attributes, set ip, email, admin status, roles and so on.
 1. `Validator` - interface with `Validate(token string, claims Claims) bool` method. This is post-token hook and will be called on **each request** wrapped with `Auth` middleware. This will be the place for special logic to reject some tokens or users.
-1. `UserUpdater` - interface with `Update(claims token.User) token.User` method.  This method will be called on **each request** wrapped with `UpdateUser` middleware. This will be the place for special logic modify User Info in request context. [Example of usage.]((https://github.com/go-pkgz/auth/blob/master/_example/main.go#L148))
+1. `UserUpdater` - interface with `Update(claims token.User) token.User` method.  This method will be called on **each request** wrapped with `UpdateUser` middleware. This will be the place for special logic modify User Info in request context. [Example of usage.](https://github.com/go-pkgz/auth/blob/19c1b6d26608494955a4480f8f6165af85b1deab/_example/main.go#L189)
 
 All of the interfaces above have corresponding Func adapters - `SecretFunc`, `ClaimsUpdFunc`, `ValidatorFunc` and `UserUpdFunc`.
 

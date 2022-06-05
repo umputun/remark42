@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"golang.org/x/oauth2"

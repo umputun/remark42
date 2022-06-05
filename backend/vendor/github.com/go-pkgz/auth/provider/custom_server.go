@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	goauth2 "github.com/go-oauth2/oauth2/v4/server"

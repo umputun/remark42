@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 // LocalFS implements Store for local file system
@@ -30,28 +28,28 @@ func NewLocalFS(storePath string) *LocalFS {
 // userID can be avatarID as well, in this case encoding just strip .image prefix
 func (fs *LocalFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	if reader == nil {
-		return "", errors.New("empty reader")
+		return "", fmt.Errorf("empty reader")
 	}
 	id := encodeID(userID)
 	location := fs.location(id) // location adds partition to path
 
 	if e := os.MkdirAll(location, 0o750); e != nil {
-		return "", errors.Wrapf(e, "failed to mkdir avatar location %s", location)
+		return "", fmt.Errorf("failed to mkdir avatar location %s: %w", location, e)
 	}
 
 	avFile := path.Join(location, id+imgSfx)
 	fh, err := os.Create(avFile) //nolint
 	if err != nil {
-		return "", errors.Wrapf(err, "can't create file %s", avFile)
+		return "", fmt.Errorf("can't create file %s: %w", avFile, err)
 	}
 	defer func() { //nolint
 		if e := fh.Close(); e != nil {
-			err = errors.Wrapf(err, "can't close avatar file %s", avFile)
+			err = fmt.Errorf("can't close avatar file %s: %w", avFile, e)
 		}
 	}()
 
 	if _, err = io.Copy(fh, reader); err != nil {
-		return "", errors.Wrapf(err, "can't save file %s", avFile)
+		return "", fmt.Errorf("can't save file %s: %w", avFile, err)
 	}
 	return id + imgSfx, nil
 }
@@ -61,7 +59,7 @@ func (fs *LocalFS) Get(avatar string) (reader io.ReadCloser, size int, err error
 	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
 	fh, err := os.Open(path.Join(location, avatar)) //nolint
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "can't load avatar %s, id", avatar)
+		return nil, 0, fmt.Errorf("can't load avatar %s, id: %w", avatar, err)
 	}
 	if fi, e := fh.Stat(); e == nil {
 		size = int(fi.Size())
@@ -100,7 +98,10 @@ func (fs *LocalFS) List() (ids []string, err error) {
 			}
 			return nil
 		})
-	return ids, errors.Wrap(err, "can't list avatars")
+	if err != nil {
+		return nil, fmt.Errorf("can't list avatars: %w", err)
+	}
+	return ids, nil
 }
 
 // Close gridfs does nothing but satisfies interface

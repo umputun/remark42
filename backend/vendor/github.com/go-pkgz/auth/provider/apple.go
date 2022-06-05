@@ -25,7 +25,6 @@ import (
 
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt"
-	"github.com/pkg/errors"
 
 	"github.com/go-pkgz/auth/logger"
 	"github.com/go-pkgz/auth/token"
@@ -119,7 +118,7 @@ func LoadApplePrivateKeyFromFile(path string) LoadFromFileFunc {
 // LoadPrivateKey implement pre-defined (built-in) PrivateKeyLoaderInterface interface method for load private key from local file
 func (lf LoadFromFileFunc) LoadPrivateKey() ([]byte, error) {
 	if lf.Path == "" {
-		return nil, errors.New("empty private key path not allowed")
+		return nil, fmt.Errorf("empty private key path not allowed")
 	}
 
 	keyFile, err := os.Open(lf.Path)
@@ -184,7 +183,7 @@ func NewApple(p Params, appleCfg AppleConfig, privateKeyLoader PrivateKeyLoaderI
 	}
 
 	if privateKeyLoader == nil {
-		return nil, errors.New("private key loader undefined")
+		return nil, fmt.Errorf("private key loader undefined")
 	}
 
 	ah.PrivateKeyLoader = privateKeyLoader
@@ -198,12 +197,12 @@ func (ah *AppleHandler) initPrivateKey() error {
 
 	sKey, err := ah.PrivateKeyLoader.LoadPrivateKey()
 	if err != nil {
-		return errors.Wrap(err, "problem with private key loading")
+		return fmt.Errorf("problem with private key loading: %w", err)
 	}
 
 	block, _ := pem.Decode(sKey)
 	if block == nil {
-		return errors.New("empty block after decoding")
+		return fmt.Errorf("empty block after decoding")
 	}
 	ah.conf.privateKey, err = x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
@@ -220,7 +219,7 @@ func (ah *AppleHandler) initPrivateKey() error {
 // tokenKeyFunc use for verify JWT sign, it receives the parsed token and should return the key for validating.
 func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (interface{}, error) {
 	if jwtToken == nil {
-		return nil, errors.New("failed to call token keyFunc, because token is nil")
+		return nil, fmt.Errorf("failed to call token keyFunc, because token is nil")
 	}
 	return ah.conf.publicKey, nil // extract public key from private key
 }
@@ -401,7 +400,7 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 	if tkn, err := jwt.Parse(ah.conf.clientSecret, ah.tokenKeyFunc); err != nil || tkn == nil {
 		ah.conf.clientSecret, err = ah.createClientSecret()
 		if err != nil {
-			return errors.Wrap(err, "client secret create failed")
+			return fmt.Errorf("client secret create failed: %w", err)
 		}
 	}
 
@@ -430,7 +429,7 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 	// Trying to decode (unmarshal json) data of response
 	err = json.NewDecoder(res.Body).Decode(result)
 	if err != nil {
-		return errors.Wrap(err, "unmarshalling data from apple service response failed")
+		return fmt.Errorf("unmarshalling data from apple service response failed: %w", err)
 	}
 
 	defer func() {
@@ -453,7 +452,7 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 func (ah *AppleHandler) createClientSecret() (string, error) {
 
 	if ah.conf.privateKey == nil {
-		return "", errors.New("private key can't be empty")
+		return "", fmt.Errorf("private key can't be empty")
 	}
 	// Create a claims
 	now := time.Now()

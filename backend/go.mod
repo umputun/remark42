@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.19.0
+	github.com/go-pkgz/auth v1.19.1-0.20220605174438-06e72788bcbb
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
@@ -39,7 +39,7 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.6.0 // indirect
+	cloud.google.com/go/compute v1.6.1 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.2 // indirect
 	github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -70,7 +70,7 @@ require (
 	go.mongodb.org/mongo-driver v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
