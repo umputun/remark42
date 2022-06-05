@@ -4,7 +4,7 @@ import b, { Mix } from 'bem-react-helper';
 
 import { User, Theme, Image, ApiError } from 'common/types';
 import { StaticStore } from 'common/static-store';
-import { pageTitle } from 'common/settings';
+import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
@@ -21,8 +21,6 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 
-let textareaId = 0;
-
 export type CommentFormProps = {
   id: string;
   user: User | null;
@@ -31,14 +29,13 @@ export type CommentFormProps = {
   mix?: Mix;
   mode?: 'main' | 'edit' | 'reply';
   theme: Theme;
-  simpleView?: boolean;
   autofocus?: boolean;
 
   onSubmit(text: string, pageTitle: string): Promise<void>;
   getPreview(text: string): Promise<string>;
   /** action on cancel. optional as root input has no cancel option */
-  onCancel?: () => void;
-  uploadImage?: (image: File) => Promise<Image>;
+  onCancel?(): void;
+  uploadImage?(image: File): Promise<Image>;
   intl: IntlShape;
 };
 
@@ -101,38 +98,24 @@ export const messages = defineMessages({
 export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
-  textareaId: string;
+  static textareaId = 0;
+
+  state = {
+    preview: null,
+    isErrorShown: false,
+    errorMessage: null,
+    errorLock: false,
+    isDisabled: false,
+    text: '',
+    buttonText: null,
+  };
 
   constructor(props: CommentFormProps) {
     super(props);
-    textareaId = textareaId + 1;
-    this.textareaId = `textarea_${textareaId}`;
 
     const savedComments = getJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE);
-    let text = savedComments?.[props.id] ?? '';
-
-    if (props.value) {
-      text = props.value;
-    }
-
-    this.state = {
-      preview: null,
-      isErrorShown: false,
-      errorMessage: null,
-      errorLock: false,
-      isDisabled: false,
-      text,
-      buttonText: null,
-    };
-
-    this.getPreview = this.getPreview.bind(this);
-    this.onKeyDown = this.onKeyDown.bind(this);
-    this.onDragOver = this.onDragOver.bind(this);
-    this.onDrop = this.onDrop.bind(this);
-    this.appendError = this.appendError.bind(this);
-    this.uploadImage = this.uploadImage.bind(this);
-    this.uploadImages = this.uploadImages.bind(this);
-    this.onPaste = this.onPaste.bind(this);
+    this.state.text = props.value ?? savedComments?.[props.id] ?? '';
+    CommentForm.textareaId += 1;
   }
 
   componentWillReceiveProps(nextProps: CommentFormProps) {
@@ -161,12 +144,12 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     );
   }
 
-  onKeyDown(e: KeyboardEvent) {
+  onKeyDown = (e: KeyboardEvent) => {
     // send on cmd+enter / ctrl+enter
     if (e.keyCode === 13 && (e.metaKey || e.ctrlKey)) {
       this.send(e);
     }
-  }
+  };
 
   onInput = (e: Event) => {
     const { value } = e.target as HTMLInputElement;
@@ -190,14 +173,14 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     });
   };
 
-  async onPaste(e: ClipboardEvent) {
+  onPaste = async (e: ClipboardEvent) => {
     if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
       return;
     }
     e.preventDefault();
     const files = Array.from(e.clipboardData.files);
     await this.uploadImages(files);
-  }
+  };
 
   send = async (e: Event) => {
     const { text } = this.state;
@@ -212,7 +195,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
 
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
-      await this.props.onSubmit(text, pageTitle || document.title);
+      await this.props.onSubmit(text, settings.pageTitle || document.title);
     } catch (e) {
       this.setState({
         isDisabled: false,
@@ -233,7 +216,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     this.setState({ isDisabled: false, preview: null, text: '' });
   };
 
-  getPreview() {
+  getPreview = () => {
     const text = this.textareaRef.current?.value ?? this.state.text;
 
     if (!text || !text.trim()) return;
@@ -246,10 +229,10 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       .catch(() => {
         this.setState({ isErrorShown: true, errorMessage: null });
       });
-  }
+  };
 
   /** appends error to input's error block */
-  appendError(...errors: string[]) {
+  appendError = (...errors: string[]) => {
     if (!this.state.errorMessage) {
       this.setState({
         errorMessage: errors.join('\n'),
@@ -261,9 +244,9 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       errorMessage: `${this.state.errorMessage}\n${errors.join('\n')}`,
       isErrorShown: true,
     });
-  }
+  };
 
-  onDragOver(e: DragEvent) {
+  onDragOver = (e: DragEvent) => {
     if (!this.props.user) e.preventDefault();
     if (!this.props.uploadImage) return;
     if (StaticStore.config.max_image_size === 0) return;
@@ -273,9 +256,9 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     if (Array.from(items).filter((i) => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }
+  };
 
-  onDrop(e: DragEvent) {
+  onDrop = (e: DragEvent) => {
     const isAnonymous = this.props.user && isUserAnonymous(this.props.user);
     if (!this.props.user || isAnonymous) {
       const message = isAnonymous ? messages.anonymousUploadingDisabled : messages.unauthorizedUploadingDisabled;
@@ -296,7 +279,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     e.preventDefault();
 
     this.uploadImages(data);
-  }
+  };
 
   /** returns selection range of a textarea */
   getSelection(): [number, number] {
@@ -323,7 +306,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
   }
 
   /** wrapper with error handling for props.uploadImage */
-  uploadImage(file: File): Promise<Image | Error> {
+  uploadImage = (file: File): Promise<Image | Error> => {
     const intl = this.props.intl;
     return this.props.uploadImage!(file).catch((e: ApiError | string) => {
       return new Error(
@@ -333,10 +316,10 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         })
       );
     });
-  }
+  };
 
   /** performs upload process */
-  async uploadImages(files: File[]) {
+  uploadImages = async (files: File[]) => {
     const intl = this.props.intl;
     if (!this.props.uploadImage) return;
     if (!this.textareaRef.current) return;
@@ -419,7 +402,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     }
 
     this.setState({ errorLock: false, isDisabled: false, buttonText: null });
-  }
+  };
 
   renderMarkdownTip = () => (
     <div className="comment-form__markdown">
@@ -437,8 +420,32 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     </div>
   );
 
+  renderSubscribeButtons = () => {
+    const isEmailNotifications = StaticStore.config.email_notifications;
+    const isEmailSubscription = isEmailNotifications && settings.isEmailSubscription;
+    const { isRssSubscription } = settings;
+
+    if (!isRssSubscription && !isEmailSubscription) {
+      return null;
+    }
+
+    return (
+      <>
+        <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
+        {isRssSubscription && <SubscribeByRSS userId={this.props.user?.id ?? null} />}
+        {isRssSubscription && isEmailSubscription && (
+          <>
+            {' '}
+            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
+          </>
+        )}
+        {isEmailSubscription && <SubscribeByEmail />}
+      </>
+    );
+  };
+
   render() {
-    const { theme, mode, simpleView, mix, uploadImage, autofocus, user, intl } = this.props;
+    const { theme, mode, mix, uploadImage, autofocus, user, intl } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
     const charactersLeft = StaticStore.config.max_comment_size - text.length;
     const errorMessage = this.props.errorMessage || this.state.errorMessage;
@@ -447,15 +454,18 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
+    const textareaId = `textarea_${CommentForm.textareaId}`;
     const label = buttonText || Labels[mode || 'main'];
     const placeholderMessage = intl.formatMessage(messages.placeholder);
+    const isSimpleView = StaticStore.config.simple_view;
+
     return (
       <form
         className={b('comment-form', {
           mods: {
             theme,
             type: mode || 'reply',
-            simple: simpleView,
+            simple: isSimpleView,
           },
           mix,
         })}
@@ -463,21 +473,22 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
         onDrop={this.onDrop}
+        data-testid={`commentform_${this.props.id}`}
       >
-        {!simpleView && (
-          <div className="comment-form__control-panel">
+        {!isSimpleView && (
+          <div className="comment-form__control-panel" data-testid="markdown-toolbar">
             <MarkdownToolbar
               intl={intl}
               allowUpload={Boolean(uploadImage)}
               uploadImages={this.uploadImages}
-              textareaId={this.textareaId}
+              textareaId={textareaId}
             />
           </div>
         )}
         <div className="comment-form__field-wrapper">
           <TextExpander>
             <TextareaAutosize
-              id={this.textareaId}
+              id={textareaId}
               ref={this.textareaRef}
               onPaste={this.onPaste}
               className="comment-form__field"
@@ -504,7 +515,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
           {user ? (
             <>
               <div>
-                {!simpleView && (
+                {!isSimpleView && (
                   <Button
                     kind="secondary"
                     theme={theme}
@@ -521,17 +532,10 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
                 </Button>
               </div>
 
-              {!simpleView && mode === 'main' && (
+              {mode === 'main' && (
                 <div className="comment-form__rss">
                   {this.renderMarkdownTip()}
-                  <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-                  <SubscribeByRSS userId={user !== null ? user.id : null} />
-                  {StaticStore.config.email_notifications && StaticStore.query.show_email_subscription && (
-                    <>
-                      {' '}
-                      <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" /> <SubscribeByEmail />
-                    </>
-                  )}
+                  {this.renderSubscribeButtons()}
                 </div>
               )}
             </>

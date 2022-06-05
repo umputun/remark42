@@ -4,10 +4,7 @@ import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 
 import { loadLocale } from 'utils/loadLocale';
-import { getLocale } from 'utils/getLocale';
-import { parseQuery } from 'utils/parse-query';
 import { parseMessage } from 'utils/post-message';
-import { parseBooleansFromDictionary } from 'utils/parse-booleans-from-dictionary';
 import { ConnectedRoot } from 'components/root';
 import { Profile } from 'components/profile';
 import { store } from 'store';
@@ -16,6 +13,7 @@ import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
+import { locale, theme, rawParams } from 'common/settings';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -32,8 +30,6 @@ async function init(): Promise<void> {
     throw new Error("Remark42: Can't find root node.");
   }
 
-  const params = parseQuery();
-  const locale = getLocale(params);
   const messages = await loadLocale(locale).catch(() => ({}));
   const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, store.dispatch);
 
@@ -51,7 +47,7 @@ async function init(): Promise<void> {
     }
   });
 
-  if (params.theme === 'dark') {
+  if (theme === 'dark') {
     document.body.classList.add('dark');
   }
 
@@ -59,12 +55,14 @@ async function init(): Promise<void> {
   boundActions.restoreCollapsedThreads();
 
   const config = await getConfig();
-  const optionsParams = parseBooleansFromDictionary(params, 'simple_view');
-  StaticStore.config = { ...config, ...optionsParams };
+  StaticStore.config = {
+    ...config,
+    simple_view: rawParams.simple_view === undefined || rawParams.simple_view === 'true',
+  };
 
   render(
     <IntlProvider locale={locale} messages={messages}>
-      <Provider store={store}>{params.page === 'profile' ? <Profile /> : <ConnectedRoot />}</Provider>
+      <Provider store={store}>{rawParams.page === 'profile' ? <Profile /> : <ConnectedRoot />}</Provider>
     </IntlProvider>,
     node
   );
