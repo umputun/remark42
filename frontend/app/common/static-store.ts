@@ -1,9 +1,7 @@
 import { Config } from './types';
-import { QuerySettingsType, querySettings } from './settings';
 
 interface StaticStoreType {
   config: Config;
-  query: QuerySettingsType;
   /** used in fetcher, fer example to set comment edit timeout */
   serverClientTimeDiff?: number;
 }
@@ -32,5 +30,4 @@ export const StaticStore: StaticStoreType = {
     telegram_bot_username: '',
     emoji_enabled: false,
   },
-  query: querySettings as QuerySettingsType,
 };

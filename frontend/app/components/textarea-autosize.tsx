@@ -25,5 +25,5 @@ export const TextareaAutosize = forwardRef<HTMLTextAreaElement, Props>(({ onInpu
     autoResize(ref.current);
   }, [value, ref]);
 
-  return <textarea {...props} onInput={handleInput} value={value} ref={ref} />;
+  return <textarea {...props} data-testid={props.id} onInput={handleInput} value={value} ref={ref} />;
 });
