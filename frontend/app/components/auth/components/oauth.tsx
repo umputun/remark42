@@ -40,7 +40,7 @@ export function OAuth({ providers, onOauthClick }: Props) {
               data-provider-name={name}
               title={intl.formatMessage(messages.oauthTitle, { provider: name })}
             >
-              <img className="oauth-icon" src={icon} width="20" height="20" alt="" aria-hidden={true} />
+              <img className="oauth-icon" src={`${BASE_URL}${icon}`} width="20" height="20" alt="" aria-hidden={true} />
             </a>
           </li>
         );
