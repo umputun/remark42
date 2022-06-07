@@ -39,7 +39,6 @@ module.exports = {
     '<rootDir>/app/__mocks__/localstorage.ts',
     '<rootDir>/app/__stubs__/remark-config.ts',
     '<rootDir>/app/__stubs__/static-config.ts',
-    '<rootDir>/app/__stubs__/settings.ts',
   ],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',

@@ -525,7 +525,6 @@ export class Comment extends Component<CommentProps, State> {
             getPreview={this.props.getPreview!}
             autofocus={true}
             uploadImage={uploadImageHandler}
-            simpleView={StaticStore.config.simple_view}
           />
         )}
 
@@ -544,7 +543,6 @@ export class Comment extends Component<CommentProps, State> {
             errorMessage={state.editDeadline === undefined ? intl.formatMessage(messages.expiredTime) : undefined}
             autofocus={true}
             uploadImage={uploadImageHandler}
-            simpleView={StaticStore.config.simple_view}
           />
         )}
       </article>

@@ -15,7 +15,9 @@ services:
         - SKIP_BACKEND_TEST
         - BACKEND_TEST_TIMEOUT
         - SKIP_FRONTEND_TEST=true
-
+        - CI
+        - GITHUB_REF
+        - GITHUB_SHA
     image: umputun/remark42:dev
     container_name: "remark42-dev"
     hostname: "remark42-dev"

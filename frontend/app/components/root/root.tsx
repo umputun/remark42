@@ -10,7 +10,6 @@ import type { StoreState } from 'store';
 import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
 import { maxShownComments, url } from 'common/settings';
 
-import { StaticStore } from 'common/static-store';
 import {
   setUser,
   fetchUser,
@@ -250,7 +249,6 @@ export class Root extends Component<Props, State> {
                   onSubmit={(text: string, title: string) => this.props.addComment(text, title)}
                   getPreview={this.props.getPreview}
                   uploadImage={imageUploadHandler}
-                  simpleView={StaticStore.config.simple_view}
                 />
               )}
               {this.props.pinnedComments.length > 0 && (

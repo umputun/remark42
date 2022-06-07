@@ -6,6 +6,7 @@
 /.vscode/
 /.idea/
 /bin/
+/.git/
 
 # source files
 docker-compose.yml

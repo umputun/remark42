@@ -17,7 +17,6 @@ import (
 
 	"github.com/go-pkgz/rest"
 	"github.com/nullrocks/identicon"
-	"github.com/pkg/errors"
 	"golang.org/x/image/draw"
 
 	"github.com/go-pkgz/auth/logger"
@@ -40,12 +39,12 @@ func (p *Proxy) Put(u token.User, client *http.Client) (avatarURL string, err er
 	genIdenticon := func(userID string) (avatarURL string, err error) {
 		b, e := GenerateAvatar(userID)
 		if e != nil {
-			return "", errors.Wrapf(e, "no picture for %s", userID)
+			return "", fmt.Errorf("no picture for %s: %w", userID, e)
 		}
 		// put returns avatar base name, like 123456.image
 		avatarID, e := p.Store.Put(userID, p.resize(bytes.NewBuffer(b), p.ResizeLimit))
 		if e != nil {
-			return "", err
+			return "", e
 		}
 
 		p.Logf("[DEBUG] saved identicon avatar to %s, user %q", avatarID, u.Name)
@@ -88,12 +87,12 @@ func (p *Proxy) load(url string, client *http.Client) (rc io.ReadCloser, err err
 		return e
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch avatar from the orig")
+		return nil, fmt.Errorf("failed to fetch avatar from the orig: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close() // caller won't close on error
-		return nil, errors.Errorf("failed to get avatar from the orig, status %s", resp.Status)
+		return nil, fmt.Errorf("failed to get avatar from the orig, status %s", resp.Status)
 	}
 
 	return resp.Body, nil
@@ -193,12 +192,12 @@ func GenerateAvatar(user string) ([]byte, error) {
 
 	iconGen, err := identicon.New("pkgz/auth", 5, 5)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't create identicon service")
+		return nil, fmt.Errorf("can't create identicon service: %w", err)
 	}
 
 	ii, err := iconGen.Draw(user) // generate an IdentIcon
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to draw avatar for %s", user)
+		return nil, fmt.Errorf("failed to draw avatar for %s: %w", user, err)
 	}
 
 	buf := &bytes.Buffer{}
@@ -220,7 +219,7 @@ func GetGravatarURL(email string) (res string, err error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", errors.New(resp.Status)
+		return "", fmt.Errorf("%s", resp.Status)
 	}
 	return res, nil
 }
@@ -232,5 +231,8 @@ func retry(retries int, delay time.Duration, fn func() error) (err error) {
 		}
 		time.Sleep(delay)
 	}
-	return errors.Wrap(err, "retry failed")
+	if err != nil {
+		return fmt.Errorf("retry failed: %w", err)
+	}
+	return nil
 }

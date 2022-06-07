@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -223,7 +225,8 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)), middleware.NoCache)
+		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(2, nil)), middleware.NoCache)
+		r.Use(validEmaiAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
 
@@ -644,6 +647,49 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 					return
 				}
 			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// validEmaiAuth is a middleware for auth endpoints for email method.
+// it rejects login request if user, site or email are suspicious
+func validEmaiAuth() func(http.Handler) http.Handler {
+
+	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
+	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_]{1,64}$`)
+
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			if r.URL.Path != "/auth/email/login" {
+				// not email login, skip the check
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			if u := r.URL.Query().Get("user"); u != "" {
+				if !reUser.MatchString(u) {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
+
+			if a := r.URL.Query().Get("address"); a != "" {
+				if _, err := mail.ParseAddress(a); err != nil {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
+
+			if s := r.URL.Query().Get("site"); s != "" {
+				if !reSite.MatchString(s) {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+			}
+
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)

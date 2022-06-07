@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -53,7 +52,7 @@ func NewStore(uri string) (Store, error) {
 
 		db, bucketName, u, err := parseExtMongoURI(uri)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't parse mongo store uri %s", uri)
+			return nil, fmt.Errorf("can't parse mongo store uri %s: %w", uri, err)
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -61,16 +60,16 @@ func NewStore(uri string) (Store, error) {
 
 		client, err := mongo.Connect(ctx, options.Client().ApplyURI(u))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to connect to mongo server")
+			return nil, fmt.Errorf("failed to connect to mongo server: %w", err)
 		}
 		if err = client.Ping(ctx, nil); err != nil {
-			return nil, errors.Wrap(err, "failed to connect to mongo server")
+			return nil, fmt.Errorf("failed to connect to mongo server: %w", err)
 		}
 		return NewGridFS(client, db, bucketName, time.Second*5), nil
 	case strings.HasPrefix(uri, "bolt://"):
 		return NewBoltDB(strings.TrimPrefix(uri, "bolt://"), bolt.Options{})
 	}
-	return nil, errors.Errorf("can't parse store url %s", uri)
+	return nil, fmt.Errorf("can't parse store url %s", uri)
 }
 
 // Migrate avatars between stores

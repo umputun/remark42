@@ -22,17 +22,17 @@ RUN cd /srv/frontend && \
     npm run build && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:buildgo-latest as build-backend
+FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
 
 ARG GITHUB_TOKEN
+ARG GITHUB_REF
+ARG GITHUB_SHA
 ENV SKIP_BACKEND_TEST=true
 
 WORKDIR /build/backend
 ADD backend /build/backend
 ADD README.md /build/
 ADD LICENSE /build/
-
-ADD .git/ /build/backend/.git/
 
 COPY --from=build-frontend /srv/frontend/public/ web
 
