@@ -22,7 +22,7 @@ import { LS_SORT_KEY } from 'common/constants';
 
 /** sets comments, and put pinned comments in cache */
 export const setComments =
-  (comments: Node[]): StoreAction<void> =>
+  (comments: Node[]): StoreAction =>
   (dispatch) => {
     dispatch({
       type: COMMENTS_SET,
@@ -105,7 +105,7 @@ export const fetchComments =
 
 /** sets mode for comment, either reply or edit */
 export const setCommentMode =
-  (mode: StoreState['comments']['activeComment']): StoreAction<void> =>
+  (mode: StoreState['comments']['activeComment']): StoreAction =>
   (dispatch) => {
     if (mode !== null && mode.state === CommentMode.None) {
       mode = null;
@@ -121,7 +121,7 @@ export function unsetCommentMode(mode: StoreState['comments']['activeComment'] =
   } as COMMENT_MODE_SET_ACTION;
 }
 
-export function updateSorting(sort: Sorting): StoreAction<void> {
+export function updateSorting(sort: Sorting): StoreAction {
   return async (dispatch, getState) => {
     const { sort: prevSort } = getState().comments;
     dispatch({ type: COMMENTS_SET_SORT, payload: sort });

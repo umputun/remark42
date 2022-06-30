@@ -4,7 +4,7 @@ import { StoreAction } from '../';
 import { THEME_SET } from './types';
 
 export const setTheme =
-  (theme: Theme): StoreAction<void> =>
+  (theme: Theme): StoreAction =>
   (dispatch) =>
     dispatch({
       type: THEME_SET,

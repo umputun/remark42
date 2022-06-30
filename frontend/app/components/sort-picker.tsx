@@ -1,15 +1,14 @@
 import { h } from 'preact';
 import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import { useMemo } from 'preact/hooks';
-import { useSelector, useDispatch } from 'react-redux';
 
-import { StoreState } from 'store';
+import { StoreState, useAppDispatch, useAppSelector } from 'store';
 import { Select } from 'components/select';
 import { updateSorting } from 'store/comments/actions';
 import type { Sorting } from 'common/types';
 
 export function SortPicker() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const intl = useIntl();
   const [items, itemsById] = useMemo(() => {
     const sortOptions = {
@@ -31,7 +30,7 @@ export function SortPicker() {
 
     return [sortItems, sortById];
   }, [intl]);
-  const sort = useSelector((s: StoreState) => s.comments.sort) || items[0].value;
+  const sort = useAppSelector((s: StoreState) => s.comments.sort) || items[0].value;
   const selected = itemsById[sort];
 
   function handleSortChange(evt: Event) {

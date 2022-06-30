@@ -36,7 +36,7 @@ export function InView({ children }: Props) {
     const element = ref.current;
     const { observer, instanceMap } = getObserver();
 
-    if (!(element.base instanceof Element)) {
+    if (!(element?.base instanceof Element)) {
       return;
     }
 

@@ -23,7 +23,7 @@ const config: Config = {
       },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!(@testing-library/preact|preact|@github))'],
+  transformIgnorePatterns: ['node_modules/(?!(@testing-library/preact|preact|@github|lodash-es))'],
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
