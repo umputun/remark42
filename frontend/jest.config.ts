@@ -1,6 +1,9 @@
-module.exports = {
+import type { Config } from 'jest';
+
+const config: Config = {
+  testEnvironment: 'jsdom',
   transform: {
-    '^.+\\.(t|j)sx?$': [
+    '^.+\\.(t|j|mj)sx?$': [
       '@swc/jest',
       {
         jsc: {
@@ -20,18 +23,13 @@ module.exports = {
       },
     ],
   },
+  transformIgnorePatterns: ['node_modules/(?!(@testing-library/preact|preact|@github))'],
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
     '\\.svg': '<rootDir>/app/__stubs__/svg.tsx',
     '^react$': 'preact/compat',
     '^react-dom$': 'preact/compat',
-    /**
-     * "transformIgnorePatterns" just don't work for modules down below
-     * If you know how to handle it better PR welcome
-     */
-    '^@github/markdown-toolbar-element$': 'identity-obj-proxy',
-    '^@github/text-expander-element$': 'identity-obj-proxy',
   },
   setupFiles: ['<rootDir>/jest.setup.ts'],
   setupFilesAfterEnv: [
@@ -49,3 +47,5 @@ module.exports = {
     '!app/tests',
   ],
 };
+
+export default config;
