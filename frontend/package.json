@@ -26,20 +26,20 @@
     "npm": ">=8.1.0 <=8.*"
   },
   "dependencies": {
-    "@github/markdown-toolbar-element": "^1.5.1",
-    "@github/text-expander-element": "^2.2.1",
-    "@ungap/custom-elements": "^1.0.0",
+    "@github/markdown-toolbar-element": "^2.1.1",
+    "@github/text-expander-element": "^2.2.2",
+    "@ungap/custom-elements": "^1.1.0",
     "bem-react-helper": "^1.2.2",
     "clsx": "^1.1.1",
-    "core-js": "^3.12.0",
-    "intersection-observer": "^0.12.0",
+    "core-js": "^3.23.3",
+    "intersection-observer": "^0.12.2",
     "lodash-es": "^4.17.21",
-    "node-emoji": "^1.10.0",
-    "preact": "^10.5.13",
-    "react-intl": "^5.17.4",
-    "react-redux": "^7.2.4",
-    "redux": "^4.1.0",
-    "redux-thunk": "^2.3.0"
+    "node-emoji": "^1.11.0",
+    "preact": "^10.6.2",
+    "react-intl": "^6.0.4",
+    "react-redux": "^8.0.2",
+    "redux": "^4.2.0",
+    "redux-thunk": "^2.4.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.18.6",
