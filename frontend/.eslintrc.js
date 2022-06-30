@@ -1,10 +1,6 @@
 module.exports = {
   root: true,
   extends: ['react-app', 'preact', 'plugin:jsx-a11y/recommended', 'prettier'],
-  plugins: ['jsx-a11y', 'prettier'],
-  rules: {
-    'prettier/prettier': 'error',
-  },
   overrides: [
     {
       files: ['*.ts?(x)'],
@@ -21,6 +17,12 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-unused-vars': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
+      },
+    },
+    {
+      files: ['./jest.config.ts'],
+      rules: {
+        'jest/no-jest-import': 'off',
       },
     },
     {
