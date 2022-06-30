@@ -323,6 +323,9 @@ export function ConnectedRoot() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!rootRef.current) {
+      return;
+    }
     // TODO: throttle updates
     const observer = new MutationObserver(() => {
       postMessageToParent({ height: document.body.offsetHeight });

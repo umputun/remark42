@@ -1,12 +1,12 @@
 import { h, FunctionComponent } from 'preact';
-import { useSelector, useDispatch, shallowEqual } from 'react-redux';
+import { shallowEqual } from 'react-redux';
 import { useCallback } from 'preact/hooks';
 import b from 'bem-react-helper';
 import { useIntl } from 'react-intl';
 
 import { Comment as CommentInterface } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
-import { StoreState } from 'store';
+import { StoreState, useAppDispatch, useAppSelector } from 'store';
 import { setCollapse } from 'store/thread/actions';
 import { getThreadIsCollapsed } from 'store/thread/getters';
 import { InView } from 'components/root/in-view/in-view';
@@ -33,9 +33,9 @@ const commentSelector = (id: string) => (state: StoreState) => {
 };
 
 export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const intl = useIntl();
-  const { collapsed, comment, childs, theme } = useSelector(commentSelector(id), shallowEqual);
+  const { collapsed, comment, childs, theme } = useAppSelector(commentSelector(id), shallowEqual);
   const collapse = useCallback(() => {
     dispatch(setCollapse(id, !collapsed));
   }, [id, collapsed, dispatch]);
