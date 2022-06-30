@@ -16,7 +16,7 @@ import { Button } from './components/button';
 import { OAuth } from './components/oauth';
 import { messages } from './auth.messsages';
 import { useDropdown, useErrorMessage } from './auth.hooks';
-import { getProviders, getTokenInvalidReason } from './auth.utils';
+import { getProviders, getTokenInvalidReason, persistEmail } from './auth.utils';
 import {
   oauthSignin,
   emailSignin,
@@ -31,6 +31,7 @@ import styles from './auth.module.css';
 export function Auth() {
   const intl = useIntl();
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
+  const emailRef = useRef('');
   const dispatch = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
@@ -121,6 +122,8 @@ export function Auth() {
           const email = data.get('email') as string;
           const username = data.get('username') as string;
 
+          emailRef.current = email;
+
           await emailSignin(email, username);
           setView('token');
           break;
@@ -131,10 +134,12 @@ export function Auth() {
 
           if (invalidReason) {
             setError(invalidReason);
-          } else {
-            const user = await verifyEmailSignin(token);
-            dispatch(setUser(user));
+            break;
           }
+
+          const user = await verifyEmailSignin(token);
+          dispatch(setUser(user));
+          persistEmail(emailRef.current);
 
           break;
         }
