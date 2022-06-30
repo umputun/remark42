@@ -3,16 +3,12 @@ import clsx from 'clsx';
 
 import styles from './input.module.css';
 
-type Props = {
-  invalid?: boolean;
-  type?: string;
-  className?: string;
-} & JSX.HTMLAttributes<HTMLInputElement>;
+type Props = JSX.HTMLAttributes<HTMLInputElement> & {
+	invalid?: boolean;
+};
 
-export function Input({ children, className, type = 'text', invalid, ...props }: Props) {
+export function Input({ className, type, invalid, ...props }: Props) {
   return (
-    <input className={clsx(className, styles.input, { [styles.input]: invalid })} type={type} {...props}>
-      {children}
-    </input>
+    <input className={clsx(className, styles.input, { [styles.invalid]: invalid })} type={type ?? 'text'} {...props}/>
   );
 }
