@@ -4,6 +4,8 @@ import type { FormProvider, OAuthProvider } from 'common/types';
 
 import { OAUTH_PROVIDERS } from './components/oauth.consts';
 import { messages } from './auth.messsages';
+import { setItem, getItem } from 'common/local-storage';
+import { LS_EMAIL_KEY } from 'common/constants';
 
 export function getProviders(): [OAuthProvider[], FormProvider[]] {
   const oauthProviders: OAuthProvider[] = [];
@@ -26,4 +28,16 @@ export function getTokenInvalidReason(token: string): null | keyof typeof messag
   }
 
   return null;
+}
+
+export function persistEmail(email: string) {
+  setItem(LS_EMAIL_KEY, email);
+}
+
+export function getPersistedEmail() {
+  return getItem(LS_EMAIL_KEY) || '';
+}
+
+export function resetPersistedEmail() {
+  setItem(LS_EMAIL_KEY, '');
 }

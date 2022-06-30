@@ -3,7 +3,7 @@ import { logout } from 'components/auth/auth.api';
 import { User, BlockedUser, BlockTTL } from 'common/types';
 import { ttlToTime } from 'utils/ttl-to-time';
 import { getHiddenUsers } from 'utils/get-hidden-users';
-import { LS_EMAIL_KEY, LS_HIDDEN_USERS_KEY } from 'common/constants';
+import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { setItem } from 'common/local-storage';
 
 import { StoreAction } from '../index';
@@ -20,6 +20,7 @@ import {
 } from './types';
 import { fetchComments, unsetCommentMode } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';
+import { resetPersistedEmail } from 'components/auth/auth.utils';
 
 export function setUser(user: User | null = null): USER_SET_ACTION {
   return {
@@ -33,7 +34,7 @@ export function signout(cleanSession = true): StoreAction<Promise<void>> {
     if (cleanSession) {
       await logout();
     }
-    localStorage.removeItem(LS_EMAIL_KEY);
+    resetPersistedEmail();
     dispatch(setUser());
     dispatch(unsetCommentMode());
     dispatch(fetchComments());

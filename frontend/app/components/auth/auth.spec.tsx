@@ -141,6 +141,7 @@ describe('<Auth/>', () => {
     jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
     jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({} as User));
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
+    jest.spyOn(utils, 'persistEmail').mockImplementationOnce(jest.fn());
 
     render(<Auth />);
 
@@ -167,6 +168,7 @@ describe('<Auth/>', () => {
 
     await waitFor(() => expect(api.verifyEmailSignin).toBeCalled());
     expect(api.verifyEmailSignin).toBeCalledWith('token');
+    expect(utils.persistEmail).toBeCalledWith('email@email.com');
   });
 
   it('should show validation error for token', async () => {

@@ -5,7 +5,6 @@ import b from 'bem-react-helper';
 import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
 
 import { User } from 'common/types';
-import { LS_EMAIL_KEY } from 'common/constants';
 import { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
 import { sleep } from 'utils/sleep';
@@ -18,6 +17,7 @@ import { Button } from 'components/button';
 import { Dropdown } from 'components/dropdown';
 import { Preloader } from 'components/preloader';
 import { TextareaAutosize } from 'components/textarea-autosize';
+import { getPersistedEmail } from 'components/auth/auth.utils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 
@@ -126,7 +126,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const [step, setStep] = useState(subscribed ? Step.Subscribed : Step.Email);
 
   const [token, setToken] = useState('');
-  const [emailAddress, setEmailAddress] = useState(localStorage.getItem(LS_EMAIL_KEY) || '');
+  const [emailAddress, setEmailAddress] = useState(getPersistedEmail);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

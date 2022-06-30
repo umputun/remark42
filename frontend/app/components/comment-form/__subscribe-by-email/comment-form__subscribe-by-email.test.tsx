@@ -14,8 +14,8 @@ import { sleep } from 'utils/sleep';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { Dropdown } from 'components/dropdown';
+import { persistEmail } from 'components/auth/auth.utils';
 import enMessages from 'locales/en.json';
-import { LS_EMAIL_KEY } from 'common/constants';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
 
@@ -139,10 +139,12 @@ describe('<SubscribeByEmailForm/>', () => {
   });
 
   it('should fill in email from local storage', async () => {
-    localStorage.setItem(LS_EMAIL_KEY, 'someone@email.com');
+    const expected = 'someone@email.com';
+    persistEmail(expected);
     const wrapper = createWrapper();
     const form = wrapper.find('form');
-    expect(form.find('input').props().value).toEqual('someone@email.com');
+
+    expect(form.find('input').props().value).toBe(expected);
   });
 
   it('should send form by paste valid token', async () => {
