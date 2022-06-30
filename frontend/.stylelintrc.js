@@ -35,6 +35,7 @@ module.exports = {
     'shorthand-property-no-redundant-values': null,
     'alpha-value-notation': null,
     'declaration-block-no-redundant-longhand-properties': null,
+    'selector-not-notation': null,
   },
   overrides: [
     {
