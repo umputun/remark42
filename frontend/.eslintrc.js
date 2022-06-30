@@ -1,4 +1,5 @@
 module.exports = {
+  root: true,
   extends: ['react-app', 'preact', 'plugin:jsx-a11y/recommended', 'prettier'],
   plugins: ['jsx-a11y', 'prettier'],
   rules: {
@@ -24,7 +25,6 @@ module.exports = {
     },
     {
       files: ['*.@(test|spec).ts?(x)'],
-      extends: ['react-app/jest'],
       rules: {
         'import/first': 'off',
       },
