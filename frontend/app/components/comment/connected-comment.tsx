@@ -7,11 +7,7 @@ import './styles';
 
 import { h, FunctionComponent } from 'preact';
 
-import { Comment as CommentType } from 'common/types';
-
-import { useStore } from 'react-redux';
-
-import { StoreState } from 'store';
+import { useAppSelector } from 'store';
 import { addComment, removeComment, updateComment, setPinState, setCommentMode } from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
@@ -36,21 +32,6 @@ type ProvidedProps = Pick<
   | 'uploadImage'
 >;
 
-const mapStateToProps = (state: StoreState, cprops: { data: CommentType }) => {
-  const props: ProvidedProps = {
-    editMode: getCommentMode(cprops.data.id)(state),
-    user: state.user,
-    isUserBanned: cprops.data.user.block || state.bannedUsers.find((u) => u.id === cprops.data.user.id) !== undefined,
-    post_info: state.info,
-    isCommentsDisabled: state.info.read_only || false,
-    theme: state.theme,
-    collapsed: getThreadIsCollapsed(cprops.data)(state),
-    getPreview,
-    uploadImage,
-  };
-  return props;
-};
-
 export const boundActions = bindActions({
   addComment,
   updateComment,
@@ -66,7 +47,19 @@ export const boundActions = bindActions({
 export const ConnectedComment: FunctionComponent<Omit<CommentProps, keyof (ProvidedProps & typeof bindActions)>> = (
   props
 ) => {
-  const providedProps = mapStateToProps(useStore().getState(), props);
+  const providedProps = useAppSelector((state): ProvidedProps => {
+    return {
+      editMode: getCommentMode(props.data.id)(state),
+      user: state.user,
+      isUserBanned: props.data.user.block || state.bannedUsers.find((u) => u.id === props.data.user.id) !== undefined,
+      post_info: state.info,
+      isCommentsDisabled: state.info.read_only || false,
+      theme: state.theme,
+      collapsed: getThreadIsCollapsed(props.data)(state),
+      getPreview,
+      uploadImage,
+    };
+  });
   const actions = useActions(boundActions);
   const intl = useIntl();
 

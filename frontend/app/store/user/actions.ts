@@ -93,14 +93,14 @@ export const unblockUser =
     });
   };
 
-export const fetchHiddenUsers = (): StoreAction<void> => (dispatch) => {
+export const fetchHiddenUsers = (): StoreAction => (dispatch) => {
   const hiddenUsers = getHiddenUsers();
 
   dispatch({ type: USER_HIDELIST_SET, payload: hiddenUsers });
 };
 
 export const hideUser =
-  (user: User): StoreAction<void> =>
+  (user: User): StoreAction =>
   (dispatch, getState) => {
     const hiddenUsers = getHiddenUsers();
 
@@ -116,7 +116,7 @@ export const hideUser =
   };
 
 export const unhideUser =
-  (userId: string): StoreAction<void> =>
+  (userId: string): StoreAction =>
   (dispatch, _getState) => {
     const hiddenUsers = getHiddenUsers();
 

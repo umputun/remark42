@@ -1,33 +1,20 @@
 import { createStore, applyMiddleware, AnyAction, compose, combineReducers } from 'redux';
+import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import { rootProvider } from './reducers';
 import { ACTIONS } from './actions';
 
 const reducers = combineReducers(rootProvider);
-
-export type StoreState = ReturnType<typeof reducers>;
-
 const middleware = applyMiddleware(thunk);
+export const store = createStore(reducers, compose(middleware));
 
-/**
- * Thunk Action shortcut
- */
-export type StoreAction<R, A extends AnyAction = ACTIONS> = ThunkAction<R, StoreState, undefined, A>;
-
-/**
- * Thunk Dispatch shortcut
- */
+export type StoreState = ReturnType<typeof store.getState>;
 export type StoreDispatch = ThunkDispatch<StoreState, undefined, ACTIONS>;
+export type StoreAction<ReturnType = void> = ThunkAction<ReturnType, StoreState, unknown, AnyAction>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const composeEnhancers = (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
-  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
-  : compose;
-
-export const store = createStore(reducers, composeEnhancers(middleware));
+export const useAppDispatch: () => StoreDispatch = useDispatch;
+export const useAppSelector: TypedUseSelectorHook<StoreState> = useSelector;
 
 if (process.env.NODE_ENV === 'development') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).ReduxStore = store;
+  window.ReduxStore = store;
 }

@@ -11,13 +11,14 @@ export const restoreCollapsedThreads = (): THREAD_RESTORE_COLLAPSE_ACTION => ({
 });
 
 export const setCollapse =
-  (id: Comment['id'], value: boolean): StoreAction<void> =>
+  (id: Comment['id'], value: boolean): StoreAction =>
   (dispatch, getState) => {
     dispatch({
       type: THREAD_SET_COLLAPSE,
       id,
       collapsed: value,
     });
+
     saveCollapsedComments(
       siteId!,
       url!,
