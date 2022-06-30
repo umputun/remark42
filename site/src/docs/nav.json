@@ -49,6 +49,10 @@
         "href": "/manuals/subdomain/"
       },
       {
+        "title": "On a separate domain",
+        "href": "/manuals/separate-domain/"
+      },
+      {
         "title": "Reproxy",
         "href": "/manuals/reproxy/"
       },
