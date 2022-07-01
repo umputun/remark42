@@ -173,7 +173,7 @@ describe('<Auth/>', () => {
 
   it('should show validation error for token', async () => {
     StaticStore.config.auth_providers = ['email'];
-    jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
+    const emailSignin = jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
 
     const { getByText, getByTitle, getByPlaceholderText } = render(<Auth />);
 
@@ -183,7 +183,7 @@ describe('<Auth/>', () => {
       target: { value: 'email@email.com' },
     });
     fireEvent.click(getByText('Submit'));
-    await waitFor(() => expect(api.emailSignin).toBeCalled());
+    await waitFor(() => expect(emailSignin).toBeCalled());
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');

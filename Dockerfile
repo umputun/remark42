@@ -45,9 +45,9 @@ RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
 ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 WORKDIR /srv/frontend
-RUN mkdir node_modules
 RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
-    	CI=true npm ci --loglevel warn \
+			npm i -g pnpm && \
+    	CI=true pnpm i --loglevel warn \
     else \
     	echo "skip frontend build" \
     ; fi
