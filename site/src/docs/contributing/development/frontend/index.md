@@ -8,8 +8,8 @@ title: Frontend Development Guidelines
 
 You must have at least 2GB RAM or swap enabled for building.
 
-- install [Node.js 16.13.0](https://nodejs.org/en/) or higher
-- install [NPM 8.1.0](https://www.npmjs.com/package/npm)
+- install [Node.js 16.15](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
+- install [NPM 8.1](https://www.npmjs.com/package/npm)
 - run `npm install` inside `./frontend`
 
 Running `npm install` will set up pre-commit hooks into your git repository. They are used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.

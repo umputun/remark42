@@ -1,4 +1,4 @@
-FROM node:12.16-alpine as build-frontend-deps
+FROM node:16.15.1-alpine as build-frontend-deps
 
 ARG CI
 
@@ -9,7 +9,7 @@ ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 RUN cd /srv/frontend && CI=true npm ci
 
-FROM node:12.16-alpine as build-frontend
+FROM node:16.15.1-alpine as build-frontend
 
 ARG CI
 ARG NODE_ENV=production

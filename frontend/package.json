@@ -22,7 +22,7 @@
     "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {
-    "node": ">=16.13.0 <=17.*",
+    "node": ">=16.15 <=17.*",
     "npm": ">=8.1.0 <=8.*"
   },
   "dependencies": {

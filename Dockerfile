@@ -33,7 +33,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend-deps
+FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend-deps
 
 ARG CI
 ARG SKIP_FRONTEND_BUILD
@@ -52,7 +52,7 @@ RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
     	echo "skip frontend build" \
     ; fi
 
-FROM --platform=$BUILDPLATFORM node:16.13.2-alpine as build-frontend
+FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend
 
 ARG CI
 ARG SKIP_FRONTEND_TEST
