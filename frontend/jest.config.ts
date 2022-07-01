@@ -23,13 +23,11 @@ const config: Config = {
       },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!(@testing-library/preact|preact|@github|lodash-es))'],
+  transformIgnorePatterns: ['node_modules/.pnpm/(?!(@testing-library|preact|@github|lodash-es))'],
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
     '\\.svg': '<rootDir>/app/__stubs__/svg.tsx',
-    '^react$': 'preact/compat',
-    '^react-dom$': 'preact/compat',
   },
   setupFiles: ['<rootDir>/jest.setup.ts'],
   setupFilesAfterEnv: [

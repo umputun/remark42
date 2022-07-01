@@ -11,7 +11,7 @@ import { copy } from 'common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Profile } from 'common/types';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
-import { CommentFormProps } from 'components/comment-form';
+import { Props as CommentFormProps } from 'components/comment-form';
 import { Avatar } from 'components/avatar';
 import { VerificationIcon } from 'components/icons/verification';
 import { getPreview, uploadImage } from 'common/api';
