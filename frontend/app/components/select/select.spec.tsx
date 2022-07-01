@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent } from '@testing-library/preact';
+import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import { Select } from './select';
@@ -14,32 +14,32 @@ const items = [
 
 describe('<Select/>', () => {
   it('should has static class names', () => {
-    const { container } = render(<Select items={items} selected={items[0]} />);
-    const selectElement = container.querySelector('.select-element');
-
-    expect(container.querySelector('.select')).toBeInTheDocument();
-    expect(container.querySelector('.select-arrow')).toBeInTheDocument();
-    expect(selectElement).toBeInTheDocument();
-    fireEvent.focus(selectElement as HTMLSelectElement);
-    expect(container.querySelector('.select_focused')).toBeInTheDocument();
+    render(<Select items={items} selected={items[0]} />);
+    expect(screen.getByRole('combobox')).toHaveClass('select-element');
+    expect(screen.getByTestId('select-root')).toHaveClass('select');
+    expect(screen.getByTestId('select-arrow')).toHaveClass('select-arrow');
   });
 
   it('should render selected item', () => {
-    const { container, getAllByText } = render(<Select items={items} selected={items[0]} />);
-    const selectedOption = container.querySelector('option');
+    render(<Select items={items} selected={items[0]} />);
 
-    expect(getAllByText(items[0].label)).toHaveLength(2);
+    const selectedItem = items[0];
+    const selectedOption = screen.getAllByRole<HTMLOptionElement>('option')[0];
+
+    expect(screen.getAllByText(selectedItem.label)).toHaveLength(2);
     expect(selectedOption).toBeInTheDocument();
-    expect(selectedOption?.selected).toBeTruthy();
-    expect(selectedOption?.textContent).toBe(items[0].label);
+    expect(selectedOption.selected).toBeTruthy();
+    expect(selectedOption.textContent).toBe(selectedItem.label);
   });
 
   it('should highlight select on focus', async () => {
-    const { container } = render(<Select items={items} selected={items[0]} />);
-    const select = container.querySelector('select');
+    render(<Select items={items} selected={items[0]} />);
 
-    expect(container.querySelector('select')).toBeInTheDocument();
-    fireEvent.focus(select as HTMLSelectElement);
-    expect(container.querySelector('.rootFocused')).toBeInTheDocument();
+    fireEvent.focus(screen.getByRole('combobox'));
+    await waitFor(() => {
+      const rootElement = screen.getByTestId('select-root');
+      expect(rootElement).toHaveClass('select_focused');
+      expect(rootElement).toHaveClass('rootFocused');
+    });
   });
 });

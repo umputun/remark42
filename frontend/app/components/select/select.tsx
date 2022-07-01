@@ -31,6 +31,7 @@ export function Select({ items, selected, size = 'md', ...props }: Props) {
 
   return (
     <span
+      data-testid="select-root"
       className={clsx('select', styles.root, size && styles[size], {
         [styles.rootFocused]: focus,
         select_focused: focus,
@@ -38,7 +39,7 @@ export function Select({ items, selected, size = 'md', ...props }: Props) {
       })}
     >
       {selectedItem.label}
-      <ArrowIcon size={iconSize[size]} className={clsx('select-arrow', styles.arrow)} />
+      <ArrowIcon data-testid="select-arrow" size={iconSize[size]} className={clsx('select-arrow', styles.arrow)} />
       <select
         {...props}
         onFocus={() => setFocus(true)}

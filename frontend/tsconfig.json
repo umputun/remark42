@@ -15,7 +15,11 @@
     "baseUrl": "app",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": {
+      "react": ["../node_modules/preact/compat"],
+      "react-dom": ["../node_modules/preact/compat"]
+    }
   },
   "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],
   "exclude": ["node_modules"]

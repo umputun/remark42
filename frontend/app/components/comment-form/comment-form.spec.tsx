@@ -31,7 +31,7 @@ function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeo
     id: '1',
     ...overrideProps,
   } as Props;
-
+  // @ts-ignore
   const CommentFormWithIntl = () => <CommentForm {...props} intl={useIntl()} />;
 
   return render(<CommentFormWithIntl />);
