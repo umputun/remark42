@@ -86,7 +86,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.19.1-0.20220605174438-06e72788bcbb
+# github.com/go-pkgz/auth v1.19.1-0.20220624002401-8b91a0eee69a
 ## explicit; go 1.17
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
@@ -185,8 +185,8 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kyokomi/emoji/v2 v2.2.9
 ## explicit; go 1.14
 github.com/kyokomi/emoji/v2
-# github.com/microcosm-cc/bluemonday v1.0.18
-## explicit; go 1.16
+# github.com/microcosm-cc/bluemonday v1.0.19
+## explicit; go 1.18
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022

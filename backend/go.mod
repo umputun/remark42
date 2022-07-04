@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.19.1-0.20220605174438-06e72788bcbb
+	github.com/go-pkgz/auth v1.19.1-0.20220624002401-8b91a0eee69a
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kyokomi/emoji/v2 v2.2.9
-	github.com/microcosm-cc/bluemonday v1.0.18
+	github.com/microcosm-cc/bluemonday v1.0.19
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
