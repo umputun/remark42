@@ -309,7 +309,7 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
-		SessionOnly: false, // TODO
+		SessionOnly: false, // TODO review?
 	}
 
 	if _, err := th.TokenService.Set(w, claims); err != nil {

@@ -35,7 +35,7 @@ type DevAuthServer struct {
 }
 
 // Run oauth2 dev server on port devAuthPort
-func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
+func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 	if d.Provider.Port == 0 {
 		d.Provider.Port = defDevAuthPort
 	}
@@ -60,9 +60,7 @@ func (d *DevAuthServer) Run(ctx context.Context) { //nolint (gocyclo)
 
 				// first time it will be called without username and will ask for one
 				if !d.Automatic && (r.ParseForm() != nil || r.Form.Get("username") == "") {
-
-					formData := struct{ Query string }{Query: r.URL.RawQuery}
-
+					formData := struct{ Query template.URL }{Query: template.URL(r.URL.RawQuery)} //nolint:gosec // query is safes
 					if err = userFormTmpl.Execute(w, formData); err != nil {
 						d.Logf("[WARN] can't write, %s", err)
 					}
