@@ -12,16 +12,16 @@ import { replaceSelection } from 'utils/replaceSelection';
 import { Button } from 'components/button';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Auth } from 'components/auth';
-import { getJsonItem, updateJsonItem } from 'common/local-storage';
-import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
 import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
+import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
 
-export type CommentFormProps = {
+
+export type Props = {
   id: string;
   user: User | null;
   errorMessage?: string;
@@ -39,7 +39,7 @@ export type CommentFormProps = {
   intl: IntlShape;
 };
 
-export type CommentFormState = {
+export type State = {
   preview: string | null;
   isErrorShown: boolean;
   /** error message, if contains newlines, it will be split to multiple errors */
@@ -55,47 +55,7 @@ export type CommentFormState = {
 
 const ImageMimeRegex = /image\//i;
 
-export const messages = defineMessages({
-  placeholder: {
-    id: 'commentForm.input-placeholder',
-    defaultMessage: 'Your comment here',
-  },
-  uploadFileFail: {
-    id: 'commentForm.upload-file-fail',
-    defaultMessage: '{fileName} upload failed with "{errorMessage}"',
-  },
-  uploading: {
-    id: 'commentForm.uploading',
-    defaultMessage: 'Uploading...',
-  },
-  uploadingFile: {
-    id: 'commentForm.uploading-file',
-    defaultMessage: 'uploading {fileName}...',
-  },
-  exceededSize: {
-    id: 'commentForm.exceeded-size',
-    defaultMessage: '{fileName} exceeds size limit of {maxImageSize}',
-  },
-  newComment: {
-    id: 'commentForm.new-comment',
-    defaultMessage: 'New comment',
-  },
-  unexpectedError: {
-    id: 'commentForm.unexpected-error',
-    defaultMessage: 'Something went wrong. Please try again a bit later.',
-  },
-  unauthorizedUploadingDisabled: {
-    id: 'commentForm.unauthorized-uploading-disabled',
-    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
-  },
-  anonymousUploadingDisabled: {
-    id: 'commentForm.anonymous-uploading-disabled',
-    defaultMessage:
-      'Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.',
-  },
-});
-
-export class CommentForm extends Component<CommentFormProps, CommentFormState> {
+export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
   static textareaId = 0;
@@ -110,15 +70,15 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     buttonText: null,
   };
 
-  constructor(props: CommentFormProps) {
+  constructor(props: Props) {
     super(props);
 
-    const savedComments = getJsonItem<Record<string, string>>(LS_SAVED_COMMENT_VALUE);
-    this.state.text = props.value ?? savedComments?.[props.id] ?? '';
+    const savedComment = getPersistedComment(props.id);
+    this.state.text = props.value ?? savedComment ?? '';
     CommentForm.textareaId += 1;
   }
 
-  componentWillReceiveProps(nextProps: CommentFormProps) {
+  componentWillReceiveProps(nextProps: Props) {
     if (nextProps.value !== this.props.value) {
       this.setState({ text: nextProps.value || '' });
     }
@@ -130,7 +90,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     }
   }
 
-  shouldComponentUpdate(nextProps: CommentFormProps, nextState: CommentFormState) {
+  shouldComponentUpdate(nextProps: Props, nextState: State) {
     const userId = this.props.user !== null && this.props.user.id;
     const nextUserId = nextProps.user !== null && nextProps.user.id;
 
@@ -155,7 +115,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     const { value } = e.target as HTMLInputElement;
     const text = value.substr(0, StaticStore.config.max_comment_size);
 
-    updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: value });
+		updatePersistedComments(this.props.id, value)
 
     if (this.state.errorLock) {
       this.setState({
@@ -206,13 +166,7 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
       return;
     }
 
-    updateJsonItem<Record<string, string> | null>(LS_SAVED_COMMENT_VALUE, (data) => {
-      if (data === null) {
-        return null;
-      }
-      delete data[this.props.id];
-      return data;
-    });
+		removePersistedComment(this.props.id)
     this.setState({ isDisabled: false, preview: null, text: '' });
   };
 
@@ -368,8 +322,8 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
         continue;
       }
 
-      this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
-        updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: this.state.text });
+			this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
+				updatePersistedComments(this.props.id, this.state.text);
       });
 
       !isFirst && (await sleep(uploadDelay));
@@ -391,8 +345,8 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
             markdownString
           ),
         },
-        () => {
-          updateJsonItem(LS_SAVED_COMMENT_VALUE, { [this.props.id]: this.state.text });
+				() => {
+					updatePersistedComments(this.props.id, this.state.text);
         }
       );
       /** sleeping awhile so textarea catch state change and its selection */
@@ -566,3 +520,43 @@ export class CommentForm extends Component<CommentFormProps, CommentFormState> {
     );
   }
 }
+
+export const messages = defineMessages({
+  placeholder: {
+    id: 'commentForm.input-placeholder',
+    defaultMessage: 'Your comment here',
+  },
+  uploadFileFail: {
+    id: 'commentForm.upload-file-fail',
+    defaultMessage: '{fileName} upload failed with "{errorMessage}"',
+  },
+  uploading: {
+    id: 'commentForm.uploading',
+    defaultMessage: 'Uploading...',
+  },
+  uploadingFile: {
+    id: 'commentForm.uploading-file',
+    defaultMessage: 'uploading {fileName}...',
+  },
+  exceededSize: {
+    id: 'commentForm.exceeded-size',
+    defaultMessage: '{fileName} exceeds size limit of {maxImageSize}',
+  },
+  newComment: {
+    id: 'commentForm.new-comment',
+    defaultMessage: 'New comment',
+  },
+  unexpectedError: {
+    id: 'commentForm.unexpected-error',
+    defaultMessage: 'Something went wrong. Please try again a bit later.',
+  },
+  unauthorizedUploadingDisabled: {
+    id: 'commentForm.unauthorized-uploading-disabled',
+    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+  },
+  anonymousUploadingDisabled: {
+    id: 'commentForm.anonymous-uploading-disabled',
+    defaultMessage:
+      'Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.',
+  },
+});

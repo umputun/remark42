@@ -29,4 +29,4 @@ import './_theme/_light/comment-form_theme_light.css';
 import './_simple/comment-form_simple.css';
 
 export { CommentForm } from './comment-form';
-export type { CommentFormProps } from './comment-form';
+export type { Props } from './comment-form';
