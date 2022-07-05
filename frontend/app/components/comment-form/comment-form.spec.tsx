@@ -4,12 +4,12 @@ import { useIntl } from 'react-intl';
 
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
-import { LS_SAVED_COMMENT_VALUE } from 'common/constants';
 import * as localStorageModule from 'common/local-storage';
 
-import { CommentForm, CommentFormProps, messages } from './comment-form';
+import { CommentForm, Props, messages } from './comment-form';
+import { updatePersistedComments, getPersistedComments } from './comment-form.persist';
 
-const user: CommentFormProps['user'] = {
+const user: Props['user'] = {
   name: 'username',
   id: 'id_1',
   picture: '',
@@ -19,10 +19,7 @@ const user: CommentFormProps['user'] = {
   verified: false,
 };
 
-function setup(
-  overrideProps: Partial<CommentFormProps> = {},
-  overrideConfig: Partial<typeof StaticStore['config']> = {}
-) {
+function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeof StaticStore['config']> = {}) {
   Object.assign(StaticStore.config, overrideConfig);
 
   const props = {
@@ -33,25 +30,25 @@ function setup(
     user: null,
     id: '1',
     ...overrideProps,
-  } as CommentFormProps;
+  } as Props;
+
   const CommentFormWithIntl = () => <CommentForm {...props} intl={useIntl()} />;
 
   return render(<CommentFormWithIntl />);
 }
+
 describe('<CommentForm />', () => {
   afterEach(() => {
     // reset textarea id in order to have `textarea_1` for every test
     CommentForm.textareaId = 0;
+    localStorage.clear();
   });
 
   describe('with initial comment value', () => {
-    afterEach(() => {
-      localStorage.clear();
-    });
     it('should has empty value', () => {
       const value = 'text';
 
-      localStorage.setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ 1: value }));
+      updatePersistedComments('1', value);
       setup();
       expect(screen.getByTestId('textarea_1')).toHaveValue(value);
     });
@@ -59,36 +56,33 @@ describe('<CommentForm />', () => {
     it('should get initial value from localStorage', () => {
       const value = 'text';
 
-      localStorage.setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ 1: value }));
+      updatePersistedComments('1', value);
       setup();
       expect(screen.getByTestId('textarea_1')).toHaveValue(value);
     });
+
     it('should get initial value from props instead localStorage', () => {
       const value = 'text from props';
 
-      localStorage.setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ 1: 'text from localStorage' }));
-
+      updatePersistedComments('1', 'text from localStorage');
       setup({ value });
       expect(screen.getByTestId('textarea_1')).toHaveValue(value);
     });
   });
 
   describe('update initial value', () => {
-    afterEach(() => {
-      localStorage.clear();
-    });
     it('should update value', () => {
       setup();
 
       fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: '1' } });
-      expect(localStorage.getItem(LS_SAVED_COMMENT_VALUE)).toBe('{"1":"1"}');
+      expect(getPersistedComments()).toEqual({ '1': '1' });
 
       fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: '11' } });
-      expect(localStorage.getItem(LS_SAVED_COMMENT_VALUE)).toBe('{"1":"11"}');
+      expect(getPersistedComments()).toEqual({ '1': '11' });
     });
 
     it('should clear value after send', async () => {
-      localStorage.setItem(LS_SAVED_COMMENT_VALUE, JSON.stringify({ 1: 'asd' }));
+      updatePersistedComments('1', 'asd');
       const updateJsonItemSpy = jest.spyOn(localStorageModule, 'updateJsonItem');
 
       setup();
@@ -96,7 +90,7 @@ describe('<CommentForm />', () => {
       await waitFor(() => {
         expect(updateJsonItemSpy).toHaveBeenCalled();
       });
-      expect(localStorage.getItem(LS_SAVED_COMMENT_VALUE)).toBe('{}');
+      expect(getPersistedComments()).toEqual({});
     });
   });
 
