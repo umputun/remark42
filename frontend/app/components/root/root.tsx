@@ -315,6 +315,10 @@ const CopyrightLink = (title: string) => (
   </a>
 );
 
+function updateIframeHeight() {
+  postMessageToParent({ height: document.body.offsetHeight });
+}
+
 /** Root component connected to redux */
 export function ConnectedRoot() {
   const intl = useIntl();
@@ -326,9 +330,13 @@ export function ConnectedRoot() {
     if (!rootRef.current) {
       return;
     }
+
     // TODO: throttle updates
     const observer = new MutationObserver(() => {
-      postMessageToParent({ height: document.body.offsetHeight });
+      updateIframeHeight();
+
+      // a hacky way to force iframe height update when new image is rendered and loaded
+      rootRef.current?.querySelectorAll('img').forEach((img) => img.addEventListener('load', updateIframeHeight));
     });
 
     observer.observe(rootRef.current, { attributes: true, childList: true, subtree: true });
