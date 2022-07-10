@@ -53,7 +53,7 @@
     "@mavrin/stylelint-declaration-use-css-custom-properties": "^2.0.0",
     "@prefresh/babel-plugin": "^0.4.3",
     "@prefresh/webpack": "^3.3.4",
-    "@size-limit/preset-app": "^7.0.8",
+    "@size-limit/file": "^7.0.8",
     "@swc/core": "1.2.205",
     "@swc/jest": "^0.2.21",
     "@testing-library/jest-dom": "^5.16.4",
