@@ -5,7 +5,7 @@ module.exports = [
   },
   {
     path: 'public/remark.mjs',
-    limit: '73 KB',
+    limit: '75 KB',
   },
   {
     path: 'public/remark.css',
@@ -21,7 +21,7 @@ module.exports = [
   },
   {
     path: 'public/deleteme.mjs',
-    limit: '11 KB',
+    limit: '14 KB',
   },
   {
     path: 'public/counter.mjs',
