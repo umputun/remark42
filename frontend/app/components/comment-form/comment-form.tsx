@@ -20,7 +20,6 @@ import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
 
-
 export type Props = {
   id: string;
   user: User | null;
@@ -115,7 +114,7 @@ export class CommentForm extends Component<Props, State> {
     const { value } = e.target as HTMLInputElement;
     const text = value.substr(0, StaticStore.config.max_comment_size);
 
-		updatePersistedComments(this.props.id, value)
+    updatePersistedComments(this.props.id, value);
 
     if (this.state.errorLock) {
       this.setState({
@@ -166,7 +165,7 @@ export class CommentForm extends Component<Props, State> {
       return;
     }
 
-		removePersistedComment(this.props.id)
+    removePersistedComment(this.props.id);
     this.setState({ isDisabled: false, preview: null, text: '' });
   };
 
@@ -322,8 +321,8 @@ export class CommentForm extends Component<Props, State> {
         continue;
       }
 
-			this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
-				updatePersistedComments(this.props.id, this.state.text);
+      this.setState({ text: replaceSelection(this.state.text, selection, uploadPlaceholder) }, () => {
+        updatePersistedComments(this.props.id, this.state.text);
       });
 
       !isFirst && (await sleep(uploadDelay));
@@ -345,8 +344,8 @@ export class CommentForm extends Component<Props, State> {
             markdownString
           ),
         },
-				() => {
-					updatePersistedComments(this.props.id, this.state.text);
+        () => {
+          updatePersistedComments(this.props.id, this.state.text);
         }
       );
       /** sleeping awhile so textarea catch state change and its selection */
