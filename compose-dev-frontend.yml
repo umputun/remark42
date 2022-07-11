@@ -13,8 +13,8 @@ services:
       dockerfile: Dockerfile
       args:
         - SKIP_BACKEND_TEST=true
-        - SKIP_FRONTEND_BUILD=true
-        # - NODE_ENV=development
+        # - SKIP_FRONTEND_BUILD=true
+        # - SKIP_FRONTEND_TEST=true
 
     image: umputun/remark42:dev
     container_name: "remark42-dev"
