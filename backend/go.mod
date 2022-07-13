@@ -17,7 +17,7 @@ require (
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/go-pkgz/notify v0.1.1
 	github.com/go-pkgz/repeater v1.1.3
-	github.com/go-pkgz/rest v1.15.0
+	github.com/go-pkgz/rest v1.15.6
 	github.com/go-pkgz/syncs v1.2.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
@@ -30,12 +30,12 @@ require (
 	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/goleak v1.1.12
-	golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898
-	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/image v0.0.0-20220617043117-41969df76e82
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129
 )
 
 require (
@@ -48,7 +48,7 @@ require (
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/go-oauth2/oauth2/v4 v4.4.3 // indirect
 	github.com/go-pkgz/email v0.3.0 // indirect
-	github.com/go-pkgz/expirable-cache v0.0.3 // indirect
+	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
 	github.com/go-redis/redis/v7 v7.4.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/slack-go/slack v0.10.3 // indirect
-	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
 	github.com/xdg-go/stringprep v1.0.3 // indirect
@@ -70,10 +70,10 @@ require (
 	go.mongodb.org/mongo-driver v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
