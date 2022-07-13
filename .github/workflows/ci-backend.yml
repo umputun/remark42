@@ -1,4 +1,4 @@
-name: test_backend
+name: backend
 
 on:
   push:
@@ -10,17 +10,19 @@ on:
       - "!backend/scripts/**"
       - "!**.md"
   pull_request:
+    types: [opened, reopened]
     paths:
       - ".github/workflows/ci-test-backend.yml"
       - "backend/**"
       - "!backend/scripts/**"
       - "!**.md"
 jobs:
-  test-backend:
+  test:
+    name: Test & Coverage
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: debug if needed
         run: if [[ "$DEBUG" == "true" ]]; then env; fi

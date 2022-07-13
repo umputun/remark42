@@ -3,7 +3,7 @@ name: frontend
 on:
   push:
     branches:
-    tags:
+      - master
     paths:
       - ".github/workflows/ci-frontend.yml"
       - "frontend/apps/remark42/**"
@@ -15,7 +15,8 @@ on:
       - "!**.md"
 
 jobs:
-  check-translations:
+  translations-check:
+    name: Translations check
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
 
@@ -51,14 +52,15 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm i --loglevel warn
+        run: pnpm i
         working-directory: ./frontend
 
-      - name: Run translations check
+      - name: Translations check
         run: pnpm translation-check
         working-directory: ./frontend/apps/remark42
 
-  check-typescript:
+  type-check:
+    name: Type check
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,10 +68,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
 
@@ -94,7 +96,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm i --loglevel warn
+        run: pnpm i
         working-directory: ./frontend
 
       - name: Run type check
@@ -102,6 +104,7 @@ jobs:
         working-directory: ./frontend/apps/remark42
 
   lint:
+    name: Eslint & Stylelint
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -109,10 +112,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
 
@@ -137,14 +140,37 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm i --loglevel warn
+        run: pnpm i
         working-directory: ./frontend
 
       - name: Run linters
         run: pnpm lint
         working-directory: ./frontend/apps/remark42
 
+  size-limit:
+    name: Size limit
+    runs-on: ubuntu-latest
+    env:
+      CI_JOB_NUMBER: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2.0.1
+        id: pnpm-install
+        with:
+          version: 7
+          run_install: false
+
+      - name: Check bundle size
+        uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          directory: ./frontend/apps/remark42
+
   test:
+    name: Tests & Coverage
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -152,10 +178,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
 
@@ -180,11 +206,11 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm i --loglevel warn
+        run: pnpm i
         working-directory: ./frontend
 
-      - name: Collect tests coverage
-        run: pnpm run test --coverage
+      - name: Test & Coverage
+        run: pnpm coverage
         working-directory: ./frontend/apps/remark42
 
       - name: Submit coverage

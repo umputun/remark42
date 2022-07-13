@@ -3,6 +3,7 @@ name: build
 on:
   push:
     branches:
+      - master
     tags:
     paths:
       - ".github/workflows/ci-build.yml"
@@ -24,10 +25,11 @@ on:
 
 jobs:
   build-images:
+    name: Build Docker images
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: set up QEMU
         uses: docker/setup-qemu-action@v1
