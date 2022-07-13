@@ -1,0 +1,68 @@
+<lexer>
+  <config>
+    <name>Bicep</name>
+    <alias>bicep</alias>
+    <filename>*.bicep</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="//[^\n\r]+">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="([&#39;]?\w+[&#39;]?)(:)">
+        <bygroups>
+          <token type="NameProperty"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(&#39;(resourceGroup|subscription|managementGroup|tenant)&#39;)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="&#39;[\w\$\{\(\)\}\.]{1,}?&#39;">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="(&#39;&#39;&#39;|&#39;).*?(&#39;&#39;&#39;|&#39;)">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\b(allowed|batchSize|description|maxLength|maxValue|metadata|minLength|minValue|secure)\b">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="\b(az|sys)\.">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="\b(any|array|concat|contains|empty|first|intersection|items|last|length|min|max|range|skip|take|union|dateTimeAdd|utcNow|deployment|environment|loadFileAsBase64|loadTextContent|int|json|extensionResourceId|getSecret|list|listKeys|listKeyValue|listAccountSas|listSecrets|pickZones|reference|resourceId|subscriptionResourceId|tenantResourceId|managementGroup|resourceGroup|subscription|tenant|base64|base64ToJson|base64ToString|dataUri|dataUriToString|endsWith|format|guid|indexOf|lastIndexOf|length|newGuid|padLeft|replace|split|startsWith|string|substring|toLower|toUpper|trim|uniqueString|uri|uriComponent|uriComponentToString)\b">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\b(bool)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(for|if|in)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(module|output|param|resource|var)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="\b(array|bool|int|object|string)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(&gt;=|&gt;|&lt;=|&lt;|==|!=|=~|!~|::|&amp;&amp;|\?\?|!|-|%|\*|\/|\+)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\(\)\[\]\.:\?{}@=]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\w_-]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

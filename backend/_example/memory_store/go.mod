@@ -7,13 +7,13 @@ require (
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/stretchr/testify v1.8.0
-	github.com/umputun/remark42/backend v1.9.0
+	github.com/umputun/remark42/backend v1.10.1
 )
 
 require (
-	github.com/Depado/bfchroma v1.3.0 // indirect
+	github.com/Depado/bfchroma/v2 v2.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
-	github.com/alecthomas/chroma v0.10.0 // indirect
+	github.com/alecthomas/chroma/v2 v2.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

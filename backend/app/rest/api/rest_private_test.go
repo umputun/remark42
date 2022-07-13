@@ -54,6 +54,32 @@ func TestRest_Create(t *testing.T) {
 	assert.True(t, len(c["id"].(string)) > 8)
 }
 
+// based on issue https://github.com/umputun/remark42/issues/1292
+func TestRest_CreateFilteredCode(t *testing.T) {
+	t.Skip("not yet fixed")
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	resp, err := post(t, ts.URL+"/api/v1/comment",
+		`{"text": "`+"`foo<bar>`"+`", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+	assert.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+	assert.NoError(t, resp.Body.Close())
+
+	c := R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	loc := c["locator"].(map[string]interface{})
+	assert.Equal(t, "remark42", loc["site"])
+	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
+	assert.Equal(t, "`foo<bar>`", c["orig"])
+	assert.Contains(t, c["text"], "foo")
+	assert.Contains(t, c["text"], "bar")
+	assert.True(t, len(c["id"].(string)) > 8)
+}
+
 func TestRest_CreateOldPost(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
