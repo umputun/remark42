@@ -1,0 +1,82 @@
+<lexer>
+  <config>
+    <name>Fortran</name>
+    <alias>fortran</alias>
+    <filename>*.f03</filename>
+    <filename>*.f90</filename>
+    <filename>*.F03</filename>
+    <filename>*.F90</filename>
+    <mime_type>text/x-fortran</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="core">
+      <rule pattern="\b(NON_OVERRIDABLE|NON_INTRINSIC|ASYNCHRONOUS|ALLOCATABLE|CODIMENSION|EQUIVALENCE|CONCURRRENT|SYNCMEMORY|SUBROUTINE|CONTIGUOUS|SYNCIMAGES|ENUMERATOR|DEALLOCATE|BLOCKDATA|BACKSPACE|PROTECTED|RECURSIVE|PROCEDURE|SUBMODULE|EXTRINSIC|ASSOCIATE|PARAMETER|INTERFACE|ELEMENTAL|DIMENSION|INTRINSIC|ABSTRACT|EXTERNAL|CRITICAL|SEQUENCE|DEFERRED|CONTINUE|NAMELIST|CONTAINS|OPTIONAL|ALLOCATE|VOLATILE|IMPLICIT|FUNCTION|SYNCALL|INCLUDE|INQUIRE|EXTENDS|ALLSTOP|OPTIONS|PROGRAM|PRIVATE|POINTER|NULLIFY|GENERIC|FORMAT|FORALL|ENCODE|IMAGES|UNLOCK|ASSIGN|IMPURE|TARGET|PUBLIC|INTENT|RESULT|ACCEPT|COMMON|RETURN|MEMORY|MODULE|REWIND|DECODE|NOPASS|SELECT|IMPORT|ENTRY|BLOCK|CLASS|WRITE|WHERE|CLOSE|PAUSE|CYCLE|PRINT|FINAL|WHILE|ARRAY|VALUE|SAVE|PURE|READ|SYNC|ENUM|ELSE|EXIT|FILE|DATA|GOTO|STOP|PASS|LOCK|CASE|CALL|BYTE|OPEN|BIND|THEN|TYPE|NONE|USE|END|ALL|IF|IS|DO)\s*\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(C_LONG_DOUBLE_COMPLEX|DOUBLE PRECISION|C_DOUBLE_COMPLEX|C_INT_LEAST32_T|C_INT_LEAST64_T|C_FLOAT_COMPLEX|C_INT_LEAST16_T|C_INT_LEAST8_T|C_INT_FAST32_T|C_INT_FAST64_T|DOUBLE COMPLEX|C_INT_FAST16_T|C_SIGNED_CHAR|C_LONG_DOUBLE|C_INT_FAST8_T|C_LONG_LONG|C_INTMAX_T|C_INTPTR_T|C_INT32_T|C_INT64_T|C_INT16_T|CHARACTER|C_DOUBLE|C_SIZE_T|C_INT8_T|C_FUNPTR|COMPLEX|C_FLOAT|C_SHORT|LOGICAL|INTEGER|C_LONG|C_BOOL|C_CHAR|C_INT|C_PTR|REAL)\s*\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(\*\*|\*|\+|-|\/|&lt;|&gt;|&lt;=|&gt;=|==|\/=|=)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(::)">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="[()\[\],:&amp;%;.]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\b(Get_Environment_Variable|Command_Argument_Count|Execute_Command_Line|Get_Command_Argument|Selected_Real_Kind|Selected_Char_Kind|C_Carriage_Return|Selected_Int_Kind|C_Horizontal_Tab|Extends_Type_Of|C_F_ProcPointer|C_Vertical_Tab|Date_and_Time|Is_Contiguous|C_Null_Funptr|Atomic_Define|Is_Iostat_Eor|Iso_C_Binding|Random_Number|Is_Iostat_End|C_Associated|Same_Type_As|Storage_Size|System_Clock|Set_Exponent|ErFC_Scaled|Get_Command|Dot_Product|C_Backspace|C_Null_Char|Image_Index|C_F_Pointer|MinExponent|Random_Seed|MaxExponent|C_Form_Feed|Move_Alloc|C_New_Line|Num_Images|Atomic_Ref|Associated|This_Image|Merge_Bits|C_Null_Ptr|Bessel_Y1|Bessel_JN|Bessel_J1|Bessel_J0|Transpose|RRSpacing|Allocated|Log_Gamma|Precision|Bessel_YN|Bessel_Y0|Bit_Size|Transfer|LCoBound|CPU_Time|UCoBound|Fraction|C_Sizeof|Exponent|ImagPart|C_FunLoc|New_Line|RealPart|Len_Trim|C_Alert|Spacing|Ceiling|Epsilon|AdjustR|Product|Complex|DShiftR|AdjustL|DShiftL|Present|IParity|Reshape|FindLoc|EOShift|Logical|Nearest|Digits|Modulo|DbesYN|MaxVal|TrailZ|MvBits|DbesJN|Second|IDNInt|IAChar|MinVal|IErrNo|RShift|TtyNam|MinLoc|Repeat|Rename|LShift|UBound|System|Parity|HostNm|LBound|SymLnk|MClock|GMTime|GetUId|GetPId|GetLog|PError|Spread|MaxLoc|Unlink|MatMul|GetGId|Signal|GetEnv|IShftC|IsaTty|ShiftA|GetCWD|CShift|LnBlnk|ShiftL|Unpack|Access|GetArg|Verify|GError|ShiftR|DNInt|FSeek|FStat|FTell|Gamma|FPutC|Flush|Floor|Float|FGetC|FDate|Radix|ETime|DTime|Range|DTanH|DSqRt|DSinH|DSign|Hypot|DProd|Scale|Norm2|DErFC|DCosH|IArgC|IBClr|IBits|IBSet|IChar|IDate|DbesY|IDInt|DbesJ|DATan|DASin|DACos|Shape|C_Loc|CTime|Index|CSqRt|Count|Conjg|Cmplx|Short|IShft|ChMod|ISign|ChDir|Sleep|BTest|SRand|ITime|Merge|BesYN|BesJN|ATanH|ASinH|ANInt|UMask|Alarm|AImag|MaskR|MaskL|ACosH|LTime|LStat|AChar|IRand|Abort|ZSqRt|SqRt|ZLog|ZExp|ZCos|Link|ZAbs|ACos|AInt|ALog|Kind|Kill|Long|ZSin|AMin|Imag|IFix|IEOr|Trim|IDiM|IAny|IAnd|Sign|NInt|AMod|Tiny|Null|IAbs|ASin|Pack|Huge|FPut|FNum|FGet|Time|Exit|Rand|ErFC|TanH|DTan|Real|DSin|DMod|DMin|DMax|DLog|DInt|ATan|DExp|Scan|DErF|DDiM|DCos|Dble|DAbs|BesJ|CSin|CosH|BesY|CLog|Char|CExp|SinH|Stat|CCos|Sngl|CAbs|IAll|AMax|IOr|Sin|BGE|Sum|Cos|BGT|DiM|Tan|ErF|Exp|Log|Not|Any|And|BLE|Mod|Min|Int|Len|All|LGe|LGt|Abs|XOr|Max|LLe|LLt|Loc|BLT|Or)\s*\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\.(true|false)\.">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\.(eq|ne|lt|le|gt|ge|not|and|or|eqv|neqv)\.">
+        <token type="OperatorWord"/>
+      </rule>
+    </state>
+    <state name="strings">
+      <rule pattern="(?s)&#34;(\\\\|\\[0-7]+|\\.|[^&#34;\\])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="(?s)&#39;(\\\\|\\[0-7]+|\\.|[^&#39;\\])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="nums">
+      <rule pattern="\d+(?![.e])(_[a-z]\w+)?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[+-]?\d*\.\d+([ed][-+]?\d+)?(_[a-z]\w+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+-]?\d+\.\d*([ed][-+]?\d+)?(_[a-z]\w+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^#.*\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="!.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule>
+        <include state="strings"/>
+      </rule>
+      <rule>
+        <include state="core"/>
+      </rule>
+      <rule pattern="[a-z][\w$]*">
+        <token type="Name"/>
+      </rule>
+      <rule>
+        <include state="nums"/>
+      </rule>
+      <rule pattern="[\s]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

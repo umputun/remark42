@@ -3,9 +3,9 @@ module github.com/umputun/remark42/backend
 go 1.17
 
 require (
-	github.com/Depado/bfchroma v1.3.0
+	github.com/Depado/bfchroma/v2 v2.0.0
 	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/alecthomas/chroma v0.10.0
+	github.com/alecthomas/chroma/v2 v2.2.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b
 	github.com/go-chi/chi/v5 v5.0.7

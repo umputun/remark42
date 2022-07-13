@@ -1,0 +1,52 @@
+---
+kind: pipeline
+name: default
+type: docker
+
+steps:
+- name: test
+  image: golang:latest
+  volumes:
+  - name: deps
+    path: /go
+  commands:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+- name: linter
+  image: golang:latest
+  volumes:
+    - name: deps
+      path: /go
+  commands:
+    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
+    - ./bin/golangci-lint run --timeout 5m
+    - rm -r ./bin/
+
+- name: coverage
+  image: plugins/codecov
+  settings:
+    token:
+      from_secret: codecov_token
+    files:
+     - coverage.txt
+
+- name: telegram
+  image: appleboy/drone-telegram
+  settings:
+    to: 790376882
+    format: markdown
+    token:
+      from_secret: telegram_token
+    message: >
+      *{{repo.name}}*
+      [Build {{build.number}}]({{build.link}}) by {{commit.author}} {{#success build.status}}succeeded{{else}}failed{{/success}} in {{buildtime build.started}}
+      `{{truncate commit.sha 8}}`: "{{commit.message}}"
+  when:
+    status:
+    - success
+    - failure
+
+volumes:
+- name: deps
+  host:
+    path: /var/lib/cache/godeps/

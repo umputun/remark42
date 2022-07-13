@@ -1,45 +1,18 @@
 # cloud.google.com/go/compute v1.6.1
 ## explicit; go 1.15
 cloud.google.com/go/compute/metadata
-# github.com/Depado/bfchroma v1.3.0
-## explicit; go 1.14
-github.com/Depado/bfchroma
+# github.com/Depado/bfchroma/v2 v2.0.0
+## explicit; go 1.18
+github.com/Depado/bfchroma/v2
 # github.com/PuerkitoBio/goquery v1.8.0
 ## explicit; go 1.13
 github.com/PuerkitoBio/goquery
-# github.com/alecthomas/chroma v0.10.0
-## explicit; go 1.13
-github.com/alecthomas/chroma
-github.com/alecthomas/chroma/formatters/html
-github.com/alecthomas/chroma/lexers
-github.com/alecthomas/chroma/lexers/a
-github.com/alecthomas/chroma/lexers/b
-github.com/alecthomas/chroma/lexers/c
-github.com/alecthomas/chroma/lexers/circular
-github.com/alecthomas/chroma/lexers/d
-github.com/alecthomas/chroma/lexers/e
-github.com/alecthomas/chroma/lexers/f
-github.com/alecthomas/chroma/lexers/g
-github.com/alecthomas/chroma/lexers/h
-github.com/alecthomas/chroma/lexers/i
-github.com/alecthomas/chroma/lexers/internal
-github.com/alecthomas/chroma/lexers/j
-github.com/alecthomas/chroma/lexers/k
-github.com/alecthomas/chroma/lexers/l
-github.com/alecthomas/chroma/lexers/m
-github.com/alecthomas/chroma/lexers/n
-github.com/alecthomas/chroma/lexers/o
-github.com/alecthomas/chroma/lexers/p
-github.com/alecthomas/chroma/lexers/q
-github.com/alecthomas/chroma/lexers/r
-github.com/alecthomas/chroma/lexers/s
-github.com/alecthomas/chroma/lexers/t
-github.com/alecthomas/chroma/lexers/v
-github.com/alecthomas/chroma/lexers/w
-github.com/alecthomas/chroma/lexers/x
-github.com/alecthomas/chroma/lexers/y
-github.com/alecthomas/chroma/lexers/z
-github.com/alecthomas/chroma/styles
+# github.com/alecthomas/chroma/v2 v2.2.0
+## explicit; go 1.17
+github.com/alecthomas/chroma/v2
+github.com/alecthomas/chroma/v2/formatters/html
+github.com/alecthomas/chroma/v2/lexers
+github.com/alecthomas/chroma/v2/styles
 # github.com/andybalholm/cascadia v1.3.1
 ## explicit; go 1.16
 github.com/andybalholm/cascadia

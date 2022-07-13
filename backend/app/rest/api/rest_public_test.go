@@ -131,10 +131,10 @@ BKT
 	assert.NoError(t, err)
 	assert.Equal(t,
 		`<h1>h1</h1>
-<pre class="chroma"><code><span><span>func TestRest_Preview(t *testing.T) {
-</span></span><span><span>srv, ts := prep(t)
-</span></span><span><span>  require.NotNil(t, srv)
-</span></span><span><span>}
+<pre class="chroma"><code><span class="line"><span class="cl">func TestRest_Preview(t *testing.T) {
+</span></span><span class="line"><span class="cl">srv, ts := prep(t)
+</span></span><span class="line"><span class="cl">  require.NotNil(t, srv)
+</span></span><span class="line"><span class="cl">}
 </span></span></code></pre>`,
 		string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -157,7 +157,7 @@ BKT
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, `<pre class="chroma"><code><span><span><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
+	assert.Equal(t, `<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
 </span></span></code></pre>`, string(b))
 	assert.NoError(t, resp.Body.Close())
 }
