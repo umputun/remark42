@@ -39,18 +39,18 @@ ARG CI
 ARG SKIP_FRONTEND_BUILD
 ENV HUSKY_SKIP_INSTALL=true
 
-RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
-    	apk add --no-cache --update git \
-    ; fi
-ADD frontend/package.json /srv/frontend/package.json
-ADD frontend/pnpm-lock.yaml /srv/frontend/pnpm-lock.yaml
 WORKDIR /srv/frontend
-RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
-			npm i -g pnpm && \
-    	CI=true pnpm i --loglevel warn \
-    else \
-    	echo "skip frontend build" \
-    ; fi
+COPY frontend/package.json frontend/pnpm-lock.yaml /srv/frontend/
+RUN \
+   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
+     apk add --no-cache --update git && \
+     npm i -g pnpm; \
+   fi
+
+ RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
+   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
+     pnpm i; \
+   fi
 
 FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend
 
@@ -60,17 +60,28 @@ ARG SKIP_FRONTEND_BUILD
 ARG NODE_ENV=production
 
 COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
-ADD frontend /srv/frontend
+COPY ./frontend /srv/frontend
 WORKDIR /srv/frontend
-RUN mkdir public
-RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
-		if [ -z "$SKIP_FRONTEND_TEST" ] ; then \
-			npm run lint test check; \
-			else \
-    			echo "skip frontend tests and lint" ; npm run build \
-    	; fi \
-    ; fi
-RUN rm -rf ./node_modules
+RUN \
+   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
+     apk add --no-cache --update git && \
+     npm i -g pnpm; \
+   fi
+
+RUN \
+  if [ -z "$SKIP_FRONTEND_TEST" ]; then \
+    echo 'Skip frontend test'; \
+  else \
+    pnpm lint test check; \
+  fi
+
+RUN \
+  if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
+    mkdir public; \
+    echo 'Skip frontend build'; \
+  else \
+    pnpm build; \
+  fi
 
 FROM umputun/baseimage:app-v1.9.1
 
