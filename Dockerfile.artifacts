@@ -6,7 +6,7 @@ ENV SKIP_FRONTEND_TEST=true
 ENV CI=true
 
 ADD frontend/package.json /srv/frontend/package.json
-ADD frontend/package-lock.json /srv/frontend/package-lock.json
+ADD frontend/pnpm-lock.yaml /srv/frontend/pnpm-lock.yaml
 RUN
 	cd /srv/frontend && \
 	apk add --no-cache --update git && \

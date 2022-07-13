@@ -43,7 +43,7 @@ RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
     	apk add --no-cache --update git \
     ; fi
 ADD frontend/package.json /srv/frontend/package.json
-ADD frontend/package-lock.json /srv/frontend/package-lock.json
+ADD frontend/pnpm-lock.yaml /srv/frontend/pnpm-lock.yaml
 WORKDIR /srv/frontend
 RUN if [ -z "$SKIP_FRONTEND_BUILD" ] ; then \
 			npm i -g pnpm && \
