@@ -1,27 +1,23 @@
-FROM node:16.15.1-alpine as build-frontend-deps
-
-ARG CI
+FROM node:16.15.1-alpine AS frontend-deps
 
 ENV CI=true
 
-ADD frontend/package.json /srv/frontend/package.json
-ADD frontend/pnpm-lock.yaml /srv/frontend/pnpm-lock.yaml
 WORKDIR /srv/frontend
-RUN
-	apk add --no-cache --update git && \
-	npm i -g pnpm && \
-	pnpm i
 
-FROM node:16.15.1-alpine as build-frontend
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend
+COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/package.json
 
-ARG CI
-ARG NODE_ENV=production
-ENV HUSKY_SKIP_INSTALL=true
+RUN apk add --no-cache --update git && npm i -g pnpm
+RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 pnpm i
 
-COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
-WORKDIR /srv/frontend
-RUN npm run build && \
-    rm -rf ./node_modules
+FROM frontend-deps AS build-frontend
+
+ENV NODE_ENV=production
+ENV CI=true
+
+WORKDIR /srv/frontend/apps/remark42/
+COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
+RUN pnpm build
 
 FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
 
@@ -34,7 +30,7 @@ ADD backend /build/backend
 ADD README.md /build/
 ADD LICENSE /build/
 
-COPY --from=build-frontend /srv/frontend/public/ web
+COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/web/
 
 RUN \
     export WEB_ROOT=/build/backend/web && \
@@ -46,7 +42,7 @@ RUN \
     ls -la /build/backend/web/
 
 RUN \
-	version=$("/script/version.sh") && echo "version=${version}" && \
+  version=$("/script/version.sh") && echo "version=${version}" && \
     export GOFLAGS="-mod=vendor" && \
     GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \

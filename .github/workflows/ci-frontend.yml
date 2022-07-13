@@ -6,12 +6,12 @@ on:
     tags:
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/**"
+      - "frontend/apps/remark42/**"
       - "!**.md"
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/**"
+      - "frontend/apps/remark42/**"
       - "!**.md"
 
 jobs:
@@ -55,8 +55,8 @@ jobs:
         working-directory: ./frontend
 
       - name: Run translations check
-        run: pnpm run check:translation
-        working-directory: ./frontend
+        run: pnpm translation-check
+        working-directory: ./frontend/apps/remark42
 
   check-typescript:
     runs-on: ubuntu-latest
@@ -98,8 +98,8 @@ jobs:
         working-directory: ./frontend
 
       - name: Run type check
-        run: pnpm run check:types
-        working-directory: ./frontend
+        run: pnpm type-check
+        working-directory: ./frontend/apps/remark42
 
   lint:
     runs-on: ubuntu-latest
@@ -141,8 +141,8 @@ jobs:
         working-directory: ./frontend
 
       - name: Run linters
-        run: pnpm run lint
-        working-directory: ./frontend
+        run: pnpm lint
+        working-directory: ./frontend/apps/remark42
 
   test:
     runs-on: ubuntu-latest
@@ -185,9 +185,9 @@ jobs:
 
       - name: Collect tests coverage
         run: pnpm run test --coverage
-        working-directory: ./frontend
+        working-directory: ./frontend/apps/remark42
 
       - name: Submit coverage
-        run: ${{ github.workspace }}/frontend/node_modules/.bin/codecov
+        run: ${{ github.workspace }}/frontend/apps/remark42/node_modules/.bin/codecov
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -1,2 +1,4 @@
 # .husky/post-commit
+
+cd frontend
 git update-index --again

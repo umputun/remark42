@@ -1,4 +1,51 @@
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM --platform=$BUILDPLATFORM node:16.15.1-alpine AS frontend-deps
+
+ARG SKIP_FRONTEND_TEST
+ARG SKIP_FRONTEND_BUILD
+
+WORKDIR /srv/frontend/
+
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend/
+COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
+
+RUN \
+  if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
+    apk add --no-cache --update git && \
+    npm i -g pnpm; \
+  fi
+
+RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
+  if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
+    pnpm i; \
+  fi
+
+
+FROM --platform=$BUILDPLATFORM frontend-deps AS build-frontend
+
+ARG SKIP_FRONTEND_TEST
+ARG SKIP_FRONTEND_BUILD
+ENV CI=true
+
+WORKDIR /srv/frontend/apps/remark42/
+
+COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
+
+RUN \
+  if [ -z "$SKIP_FRONTEND_TEST" ]; then \
+    pnpm lint type-check translation-check test; \
+  else \
+    echo 'Skip frontend test'; \
+  fi
+
+RUN \
+  if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
+    pnpm build; \
+  else \
+    mkdir /srv/frontend/apps/remark42/public; \
+    echo 'Skip frontend build'; \
+  fi
+
+FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -25,64 +72,13 @@ RUN \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else \
-        echo "skip backend tests and linter" \
+      echo "skip backend tests and linter" \
     ; fi
 
 RUN \
     version="$(/script/version.sh)" && \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
-
-FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend-deps
-
-ARG CI
-ARG SKIP_FRONTEND_BUILD
-ARG SKIP_FRONTEND_TEST
-ENV HUSKY_SKIP_INSTALL=true
-
-WORKDIR /srv/frontend
-COPY frontend/package.json frontend/pnpm-lock.yaml /srv/frontend/
-RUN \
-   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
-     apk add --no-cache --update git && \
-     npm i -g pnpm; \
-   fi
-
-RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
-   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
-     pnpm i; \
-   fi
-
-FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend
-
-ARG CI
-ARG SKIP_FRONTEND_TEST
-ARG SKIP_FRONTEND_BUILD
-ARG NODE_ENV=production
-
-COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
-COPY ./frontend /srv/frontend
-WORKDIR /srv/frontend
-RUN \
-   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
-     apk add --no-cache --update git && \
-     npm i -g pnpm; \
-   fi
-
-RUN \
-  if [ -z "$SKIP_FRONTEND_TEST" ]; then \
-    pnpm lint test check; \
-  else \
-    echo 'Skip frontend test'; \
-  fi
-
-RUN \
-  if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
-    pnpm build; \
-  else \
-    mkdir -p public; \
-    echo 'Skip frontend build'; \
-  fi
 
 FROM umputun/baseimage:app-v1.9.2
 
@@ -96,7 +92,7 @@ RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/lo
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
 COPY --from=build-backend /build/backend/templates /srv
-COPY --from=build-frontend /srv/frontend/public/ /srv/web
+COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /srv/web/
 COPY docker-init.sh /srv/init.sh
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
