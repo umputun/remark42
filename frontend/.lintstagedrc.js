@@ -1,5 +1,14 @@
 module.exports = {
-  './**/*.{ts,tsx,js,jsx}': ['eslint --fix --max-warnings=0', 'prettier --write'],
-  './**/*.css': ['prettier --write', 'stylelint'],
-  './templates/**.html': ['prettier --write', 'stylelint'],
+	"./**/*.{ts,tsx,js,jsx}": [
+		"cd apps/remark42 && pnpm lint-staged:lint:scripts",
+		"cd apps/remark42 && pnpm lint-staged:format",
+	],
+	"./**/*.css": [
+		"cd apps/remark42 && pnpm lint-staged:lint:styles",
+		"cd apps/remark42 && pnpm lint-staged:format",
+	],
+	"./templates/**.html": [
+		"cd apps/remark42 && pnpm lint-staged:lint:styles",
+		"cd apps/remark42 && pnpm lint-staged:format",
+	],
 };

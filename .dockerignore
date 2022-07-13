@@ -2,7 +2,8 @@
 /target/
 /var/
 /frontend/node_modules/
-/frontend/public/
+/frontend/apps/remark42/node_modules/
+/frontend/apps/remark42/public/
 /.vscode/
 /.idea/
 /bin/
