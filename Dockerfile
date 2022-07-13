@@ -47,12 +47,8 @@ RUN \
 
 FROM umputun/baseimage:buildgo-v1.12.0 as build-backend
 
-ARG CI
-ARG GITHUB_REF
-ARG GITHUB_SHA
-ARG GIT_BRANCH
-ARG SKIP_BACKEND_TEST
-ARG BACKEND_TEST_TIMEOUT
+ARG SKIP_FRONTEND_TEST
+ARG SKIP_FRONTEND_BUILD
 
 ADD backend /build/backend
 # to embed the frontend files statically into Remark42 binary

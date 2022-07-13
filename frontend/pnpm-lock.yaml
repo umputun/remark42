@@ -24,7 +24,6 @@ importers:
       '@github/text-expander-element': ^2.2.2
       '@mavrin/stylelint-declaration-use-css-custom-properties': ^2.0.0
       '@prefresh/babel-plugin': ^0.4.3
-      '@prefresh/core': ^1.3.4
       '@prefresh/webpack': ^3.3.4
       '@size-limit/file': ^7.0.8
       '@swc/core': 1.2.205
@@ -139,7 +138,6 @@ importers:
       '@formatjs/cli': 5.0.2
       '@mavrin/stylelint-declaration-use-css-custom-properties': 2.0.0_stylelint@14.9.1
       '@prefresh/babel-plugin': 0.4.3
-      '@prefresh/core': 1.3.4_preact@10.6.2
       '@prefresh/webpack': 3.3.4_aygq4fhb36ivjwsmiykvhlqsje
       '@size-limit/file': 7.0.8_size-limit@7.0.8
       '@swc/core': 1.2.205
@@ -2855,8 +2853,8 @@ packages:
   /@types/jest/28.1.5:
     resolution: {integrity: sha512-TLAC2zXxGnohSP3GxgIyJn7yrTeRPDEyVFyCY1NE2wzg392auI+69uk5EPGjUXuhkq/K208J/TWpLG7J8ebIEQ==}
     dependencies:
-      jest-matcher-utils: 28.1.1
-      pretty-format: 28.1.1
+      jest-matcher-utils: 28.1.3
+      pretty-format: 28.1.3
     dev: true
 
   /@types/js-levenshtein/1.1.1:
@@ -2993,7 +2991,7 @@ packages:
   /@types/set-cookie-parser/2.4.2:
     resolution: {integrity: sha512-fBZgytwhYAUkj/jC/FAV4RQ5EerRup1YQsXQCh8rZfiHkc4UahC192oH0smGwsXol3cL3A5oETuAHeQHmhXM4w==}
     dependencies:
-      '@types/node': 18.0.6
+      '@types/node': 18.7.8
     dev: true
 
   /@types/sockjs/0.3.33:
@@ -4152,7 +4150,7 @@ packages:
       foreground-child: 2.0.0
       istanbul-lib-coverage: 3.2.0
       istanbul-lib-report: 3.0.0
-      istanbul-reports: 3.1.5
+      istanbul-reports: 3.1.4
       rimraf: 3.0.2
       test-exclude: 6.0.0
       v8-to-istanbul: 9.0.1
@@ -7216,14 +7214,6 @@ packages:
       istanbul-lib-report: 3.0.0
     dev: true
 
-  /istanbul-reports/3.1.5:
-    resolution: {integrity: sha512-nUsEMa9pBt/NOHqbcbeJEgqIlY/K7rVWUX6Lql2orY5e9roQOthbR3vtY4zzf2orPELg80fnxxk9zUyPlgwD1w==}
-    engines: {node: '>=8'}
-    dependencies:
-      html-escaper: 2.0.2
-      istanbul-lib-report: 3.0.0
-    dev: true
-
   /jest-changed-files/28.0.2:
     resolution: {integrity: sha512-QX9u+5I2s54ZnGoMEjiM2WeBvJR2J7w/8ZUmH2um/WLAuGAYFQcsVXY9+1YL6k0H/AGUdH8pXUAv6erDqEsvIA==}
     engines: {node: ^12.13.0 || ^14.15.0 || ^16.10.0 || >=17.0.0}
@@ -7327,16 +7317,6 @@ packages:
       ts-node: 10.8.2_oob3snywllkr2hdymfpal4vwlq
     transitivePeerDependencies:
       - supports-color
-    dev: true
-
-  /jest-diff/28.1.1:
-    resolution: {integrity: sha512-/MUUxeR2fHbqHoMMiffe/Afm+U8U4olFRJ0hiVG2lZatPJcnGxx292ustVu7bULhjV65IYMxRdploAKLbcrsyg==}
-    engines: {node: ^12.13.0 || ^14.15.0 || ^16.10.0 || >=17.0.0}
-    dependencies:
-      chalk: 4.1.2
-      diff-sequences: 28.1.1
-      jest-get-type: 28.0.2
-      pretty-format: 28.1.1
     dev: true
 
   /jest-diff/28.1.3:
@@ -7461,16 +7441,6 @@ packages:
   /jest-localstorage-mock/2.4.21:
     resolution: {integrity: sha512-IBXPBufnfPyr4VkoQeJ+zlfWlG84P0KbL4ejcV9j3xNI0v6OWznQlH6Ke9xjSarleR11090oSeWADSUow0PmFw==}
     engines: {node: '>=6.16.0'}
-    dev: true
-
-  /jest-matcher-utils/28.1.1:
-    resolution: {integrity: sha512-NPJPRWrbmR2nAJ+1nmnfcKKzSwgfaciCCrYZzVnNoxVoyusYWIjkBMNvu0RHJe7dNj4hH3uZOPZsQA+xAYWqsw==}
-    engines: {node: ^12.13.0 || ^14.15.0 || ^16.10.0 || >=17.0.0}
-    dependencies:
-      chalk: 4.1.2
-      jest-diff: 28.1.1
-      jest-get-type: 28.0.2
-      pretty-format: 28.1.1
     dev: true
 
   /jest-matcher-utils/28.1.3:
@@ -11695,7 +11665,7 @@ packages:
     dependencies:
       '@types/chai': 4.3.3
       '@types/chai-subset': 1.3.3
-      '@types/node': 18.0.6
+      '@types/node': 18.7.8
       chai: 4.3.6
       debug: 4.3.4
       jsdom: 20.0.0
