@@ -17,8 +17,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Cache defines cache interface
@@ -73,7 +71,7 @@ func NewCache(options ...Option) (Cache, error) {
 
 	for _, opt := range options {
 		if err := opt(&res); err != nil {
-			return nil, errors.Wrap(err, "failed to set cache option")
+			return nil, fmt.Errorf("failed to set cache option: %w", err)
 		}
 	}
 	return &res, nil

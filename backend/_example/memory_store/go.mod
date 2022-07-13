@@ -6,7 +6,7 @@ require (
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	github.com/umputun/remark42/backend v1.9.0
 )
 
@@ -22,8 +22,8 @@ require (
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/go-chi/render v1.0.1 // indirect
-	github.com/go-pkgz/expirable-cache v0.0.3 // indirect
-	github.com/go-pkgz/rest v1.15.0 // indirect
+	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
+	github.com/go-pkgz/rest v1.15.6 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -32,13 +32,13 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
+	golang.org/x/image v0.0.0-20220617043117-41969df76e82 // indirect
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/umputun/remark42/backend => ../../
