@@ -47,7 +47,7 @@ func prepTestStore(t *testing.T) (port int, teardown func()) {
 	mg := accessor.NewMemData()
 	adm := accessor.NewMemAdminStore("secret")
 	img := accessor.NewMemImageStore()
-	s := NewRPC(mg, adm, img, &jrpc.Server{API: "/test", Logger: jrpc.NoOpLogger})
+	s := NewRPC(mg, adm, img, jrpc.NewServer("/test"))
 
 	admRec := accessor.AdminRec{
 		SiteID:  "test-site",

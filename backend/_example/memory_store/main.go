@@ -43,16 +43,14 @@ func main() {
 	adminStore := accessor.NewMemAdminStore(opts.Secret)
 	imgStore := accessor.NewMemImageStore()
 
-	rpcServer := jrpc.Server{
-		API:        opts.API,
-		AuthUser:   opts.AuthUser,
-		AuthPasswd: opts.AuthPasswd,
-		Version:    revision,
-		AppName:    "remark42-memory",
-		Logger:     log.Default(),
-	}
+	rpcServer := jrpc.NewServer(
+		opts.API,
+		jrpc.Auth(opts.AuthUser, opts.AuthPasswd),
+		jrpc.WithSignature("remark42-memory", "umputun", revision),
+		jrpc.WithLogger(log.Default()),
+	)
 
-	srv := server.NewRPC(dataStore, adminStore, imgStore, &rpcServer)
+	srv := server.NewRPC(dataStore, adminStore, imgStore, rpcServer)
 
 	admRec := accessor.AdminRec{
 		SiteID:  "remark",

@@ -7,7 +7,8 @@ import (
 	"time"
 
 	cache "github.com/go-pkgz/expirable-cache"
-	"golang.org/x/time/rate"
+
+	"github.com/didip/tollbooth/v7/internal/time/rate"
 )
 
 // New is a constructor for Limiter.
@@ -596,4 +597,14 @@ func (l *Limiter) LimitReached(key string) bool {
 	}
 
 	return l.limitReachedWithTokenBucketTTL(key, ttl)
+}
+
+// Tokens returns current amount of tokens left in the Bucket identified by key.
+func (l *Limiter) Tokens(key string) int {
+	expiringMap, found := l.tokenBuckets.Get(key)
+	if !found {
+		return 0
+	}
+
+	return int(expiringMap.(*rate.Limiter).TokensAt(time.Now()))
 }

@@ -1,9 +1,10 @@
 package tollbooth_chi
 
 import (
-	"github.com/didip/tollbooth/v6"
-	"github.com/didip/tollbooth/v6/limiter"
 	"net/http"
+
+	"github.com/didip/tollbooth/v7"
+	"github.com/didip/tollbooth/v7/limiter"
 )
 
 func LimitHandler(lmt *limiter.Limiter) func(http.Handler) http.Handler {

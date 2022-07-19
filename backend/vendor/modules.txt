@@ -27,23 +27,20 @@ github.com/davecgh/go-spew/spew
 ## explicit; go 1.16
 github.com/dghubble/oauth1
 github.com/dghubble/oauth1/twitter
-# github.com/didip/tollbooth/v6 v6.1.2
+# github.com/didip/tollbooth/v7 v7.0.0
 ## explicit; go 1.12
-github.com/didip/tollbooth/v6
-github.com/didip/tollbooth/v6/errors
-github.com/didip/tollbooth/v6/libstring
-github.com/didip/tollbooth/v6/limiter
-# github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b
+github.com/didip/tollbooth/v7
+github.com/didip/tollbooth/v7/errors
+github.com/didip/tollbooth/v7/internal/time/rate
+github.com/didip/tollbooth/v7/libstring
+github.com/didip/tollbooth/v7/limiter
+# github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 ## explicit; go 1.14
 github.com/didip/tollbooth_chi
 # github.com/dlclark/regexp2 v1.4.0
 ## explicit
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/go-chi/chi v4.1.1+incompatible
-## explicit
-github.com/go-chi/chi
-github.com/go-chi/chi/middleware
 # github.com/go-chi/chi/v5 v5.0.7
 ## explicit; go 1.14
 github.com/go-chi/chi/v5
@@ -74,8 +71,8 @@ github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache v0.1.0
 ## explicit; go 1.14
 github.com/go-pkgz/expirable-cache
-# github.com/go-pkgz/jrpc v0.2.0
-## explicit; go 1.12
+# github.com/go-pkgz/jrpc v0.3.0
+## explicit; go 1.16
 github.com/go-pkgz/jrpc
 # github.com/go-pkgz/lcw v0.8.1
 ## explicit; go 1.15
@@ -301,9 +298,6 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.0.0-20220411224347-583f2d630306
-## explicit
-golang.org/x/time/rate
 # google.golang.org/appengine v1.6.7
 ## explicit; go 1.11
 google.golang.org/appengine

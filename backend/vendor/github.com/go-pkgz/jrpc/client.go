@@ -3,10 +3,9 @@ package jrpc
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync/atomic"
-
-	"github.com/pkg/errors"
 )
 
 // Client implements remote engine and delegates all calls to remote http server
@@ -33,23 +32,23 @@ func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 	case len(args) == 0:
 		b, err = json.Marshal(Request{Method: method, ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
-			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+			return nil, fmt.Errorf("marshaling failed for %s: %w", method, err)
 		}
 	case len(args) == 1:
 		b, err = json.Marshal(Request{Method: method, Params: args[0], ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
-			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+			return nil, fmt.Errorf("marshaling failed for %s: %w", method, err)
 		}
 	default:
 		b, err = json.Marshal(Request{Method: method, Params: args, ID: atomic.AddUint64(&r.id, 1)})
 		if err != nil {
-			return nil, errors.Wrapf(err, "marshaling failed for %s", method)
+			return nil, fmt.Errorf("marshaling failed for %s: %w", method, err)
 		}
 	}
 
 	req, err := http.NewRequest("POST", r.API, bytes.NewBuffer(b))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to make request for %s", method)
+		return nil, fmt.Errorf("failed to make request for %s: %w", method, err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
@@ -58,20 +57,20 @@ func (r *Client) Call(method string, args ...interface{}) (*Response, error) {
 	}
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		return nil, errors.Wrapf(err, "remote call failed for %s", method)
+		return nil, fmt.Errorf("remote call failed for %s: %w", method, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, errors.Errorf("bad status %s for %s", resp.Status, method)
+		return nil, fmt.Errorf("bad status %s for %s", resp.Status, method)
 	}
 
 	cr := Response{}
 	if err = json.NewDecoder(resp.Body).Decode(&cr); err != nil {
-		return nil, errors.Wrapf(err, "failed to decode response for %s", method)
+		return nil, fmt.Errorf("failed to decode response for %s: %w", method, err)
 	}
 
 	if cr.Error != "" {
-		return nil, errors.New(cr.Error)
+		return nil, fmt.Errorf("%s", cr.Error)
 	}
 	return &cr, nil
 }

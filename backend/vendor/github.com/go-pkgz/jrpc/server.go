@@ -8,25 +8,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v7"
 	"github.com/didip/tollbooth_chi"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
-	"github.com/pkg/errors"
 )
 
 // Server is json-rpc server with an optional basic auth
 type Server struct {
-	API        string // url path, i.e. "/command" or "/rpc" etc.
-	AuthUser   string // basic auth user name, should match Client.AuthUser, optional
-	AuthPasswd string // basic auth password, should match Client.AuthPasswd, optional
-	Version    string // server version, injected from main and used for informational headers only
-	AppName    string // plugin name, injected from main and used for informational headers only
-	Limits     Limits // all max values and timeouts for the server
-	Logger     L      // logger, if nil will default to NoOpLogger
+	api string // url path, i.e. "/command" or "/rpc" etc., required
+
+	authUser          string      // basic auth user name, should match Client.AuthUser, optional
+	authPasswd        string      // basic auth password, should match Client.AuthPasswd, optional
+	customMiddlewares middlewares // list of custom middlewares, should match array of http.Handler func, optional
+
+	signature signaturePayload // add server signature to server response headers appName, author, version), disable by default
+
+	timeouts Timeouts // values and timeouts for the server
+	limits   limits   // values and limits for the server
+	logger   L        // logger, if nil will default to NoOpLogger
 
 	funcs struct {
 		m    map[string]ServerFn
@@ -39,54 +42,99 @@ type Server struct {
 	}
 }
 
-// Limits includes all max values and timeouts for the server
-type Limits struct {
-	ServerThrottle    int           // max number of parallel calls for the server
-	ClientLimit       float64       // max number of call/sec per client
-	CallTimeout       time.Duration // max time allowed to finish the call
+// Timeouts includes values and timeouts for the server
+type Timeouts struct {
 	ReadHeaderTimeout time.Duration // amount of time allowed to read request headers
 	WriteTimeout      time.Duration // max duration before timing out writes of the response
 	IdleTimeout       time.Duration // max amount of time to wait for the next request when keep-alive enabled
+	CallTimeout       time.Duration // max time allowed to finish the call, optional
+}
+
+// limits includes limits values for a server
+type limits struct {
+	serverThrottle int     // max number of parallel calls for the server
+	clientLimit    float64 // max number of call/sec per client
+}
+
+// signaturePayload is the server application info which add to server response headers
+type signaturePayload struct {
+	appName string // server version, injected from main and used for informational headers only
+	author  string // plugin name, injected from main and used for informational headers only
+	version string // custom application server number
 }
 
 // ServerFn handler registered for each method with Add or Group.
 // Implementations provided by consumer and defines response logic.
 type ServerFn func(id uint64, params json.RawMessage) Response
 
+// middlewares contains list of custom middlewares which user can attach to server
+type middlewares []func(http.Handler) http.Handler
+
+// NewServer the main constructor of server instance which pass API url and another options values
+func NewServer(api string, options ...Option) *Server {
+
+	srv := &Server{
+		api:      api,
+		timeouts: getDefaultTimeouts(),
+		logger:   NoOpLogger,
+	}
+
+	for _, opt := range options {
+		opt(srv)
+	}
+	return srv
+}
+
 // Run http server on given port
 func (s *Server) Run(port int) error {
-	if s.Logger == nil {
-		s.Logger = NoOpLogger
+
+	if s.authUser == "" || s.authPasswd == "" {
+		s.logger.Logf("[WARN] extension server runs without auth")
 	}
-	if s.AuthUser == "" || s.AuthPasswd == "" {
-		s.Logger.Logf("[WARN] extension server runs without auth")
-	}
+
 	if s.funcs.m == nil && len(s.funcs.m) == 0 {
-		return errors.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
+		return fmt.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
-	s.setDefaultLimits()
 
 	router := chi.NewRouter()
-	router.Use(middleware.Throttle(s.Limits.ServerThrottle), middleware.RealIP, rest.Recoverer(s.Logger))
-	router.Use(rest.AppInfo(s.AppName, "umputun", s.Version), rest.Ping)
-	logInfoWithBody := logger.New(logger.Log(s.Logger), logger.WithBody, logger.Prefix("[DEBUG]")).Handler
-	router.Use(middleware.Timeout(s.Limits.CallTimeout))
-	router.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.Limits.ClientLimit, nil)), middleware.NoCache)
-	router.Use(s.basicAuth)
 
-	router.Post(s.API, s.handler)
+	if s.limits.serverThrottle > 0 {
+		router.Use(middleware.Throttle(s.limits.serverThrottle))
+	}
+
+	router.Use(middleware.RealIP, rest.Ping, rest.Recoverer(s.logger))
+
+	if s.signature.version != "" || s.signature.author != "" || s.signature.appName != "" {
+		router.Use(rest.AppInfo(s.signature.appName, s.signature.author, s.signature.version))
+	}
+
+	if s.timeouts.CallTimeout > 0 {
+		router.Use(middleware.Timeout(s.timeouts.CallTimeout))
+	}
+
+	logInfoWithBody := logger.New(logger.Log(s.logger), logger.WithBody, logger.Prefix("[DEBUG]")).Handler
+	router.Use(logInfoWithBody)
+
+	if s.limits.clientLimit > 0 {
+		router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.limits.clientLimit, nil)))
+	}
+
+	router.Use(middleware.NoCache)
+	router.Use(s.basicAuth)
+	router.Use(s.customMiddlewares...)
+	router.Post(s.api, s.handler)
 
 	s.httpServer.Lock()
 	s.httpServer.Server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           router,
-		ReadHeaderTimeout: s.Limits.ReadHeaderTimeout,
-		WriteTimeout:      s.Limits.WriteTimeout,
-		IdleTimeout:       s.Limits.IdleTimeout,
+		ReadHeaderTimeout: s.timeouts.ReadHeaderTimeout,
+		WriteTimeout:      s.timeouts.WriteTimeout,
+		IdleTimeout:       s.timeouts.IdleTimeout,
 	}
 	s.httpServer.Unlock()
 
-	s.Logger.Logf("[INFO] listen on %d", port)
+	s.logger.Logf("[INFO] listen on %d", port)
 	return s.httpServer.ListenAndServe()
 }
 
@@ -95,7 +143,7 @@ func (s *Server) Shutdown() error {
 	s.httpServer.Lock()
 	defer s.httpServer.Unlock()
 	if s.httpServer.Server == nil {
-		return errors.Errorf("http server is not running")
+		return fmt.Errorf("http server is not running")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -107,7 +155,7 @@ func (s *Server) Add(method string, fn ServerFn) {
 	s.httpServer.Lock()
 	defer s.httpServer.Unlock()
 	if s.httpServer.Server != nil {
-		s.Logger.Logf("[WARN] ignored method %s, can't be added to activated server", method)
+		s.logger.Logf("[WARN] ignored method %s, can't be added to activated server", method)
 		return
 	}
 
@@ -116,7 +164,7 @@ func (s *Server) Add(method string, fn ServerFn) {
 	})
 
 	s.funcs.m[method] = fn
-	s.Logger.Logf("[INFO] add handler for %s", method)
+	s.logger.Logf("[INFO] add handler for %s", method)
 }
 
 // HandlersGroup alias for map of handlers
@@ -138,13 +186,14 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rest.SendErrorJSON(w, r, s.Logger, http.StatusBadRequest, err, req.Method)
+		rest.SendErrorJSON(w, r, s.logger, http.StatusBadRequest, err, req.Method)
 		return
 	}
 	fn, ok := s.funcs.m[req.Method]
 	if !ok {
-		rest.SendErrorJSON(w, r, s.Logger, http.StatusNotImplemented, errors.New("unsupported method"), req.Method)
+		rest.SendErrorJSON(w, r, s.logger, http.StatusNotImplemented, fmt.Errorf("unsupported method"), req.Method)
 		return
+
 	}
 
 	params := json.RawMessage{}
@@ -159,13 +208,13 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) basicAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if s.AuthUser == "" || s.AuthPasswd == "" {
+		if s.authUser == "" || s.authPasswd == "" {
 			h.ServeHTTP(w, r)
 			return
 		}
 
 		user, pass, ok := r.BasicAuth()
-		if user != s.AuthUser || pass != s.AuthPasswd || !ok {
+		if user != s.authUser || pass != s.authPasswd || !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -174,29 +223,11 @@ func (s *Server) basicAuth(h http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) setDefaultLimits() {
-	if s.Limits.CallTimeout == 0 {
-		s.Limits.CallTimeout = 30 * time.Second
-	}
-
-	if s.Limits.ClientLimit == 0 {
-		s.Limits.ClientLimit = 100
-	}
-
-	if s.Limits.IdleTimeout == 0 {
-		s.Limits.IdleTimeout = 5 * time.Second
-	}
-
-	if s.Limits.ReadHeaderTimeout == 0 {
-		s.Limits.ReadHeaderTimeout = 5 * time.Second
-	}
-
-	if s.Limits.ServerThrottle == 0 {
-		s.Limits.ServerThrottle = 1000
-	}
-
-	if s.Limits.WriteTimeout == 0 {
-		s.Limits.WriteTimeout = 10 * time.Second
+func getDefaultTimeouts() Timeouts {
+	return Timeouts{
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       5 * time.Second,
 	}
 }
 

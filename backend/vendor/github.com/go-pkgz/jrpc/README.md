@@ -1,34 +1,53 @@
-# jrpc - rpc with json [![Build Status](https://travis-ci.org/go-pkgz/jrpc.svg?branch=master)](https://travis-ci.org/go-pkgz/jrpc) [![Go Report Card](https://goreportcard.com/badge/github.com/go-pkgz/jrpc)](https://goreportcard.com/report/github.com/go-pkgz/jrpc) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/jrpc/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/jrpc?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/jrpc?status.svg)](https://godoc.org/github.com/go-pkgz/jrpc)
+# jrpc - rpc with json [![Build](https://github.com/go-pkgz/jrpc/actions/workflows/ci.yml/badge.svg)](https://github.com/go-pkgz/jrpc/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/go-pkgz/jrpc)](https://goreportcard.com/report/github.com/go-pkgz/jrpc) [![Coverage Status](https://coveralls.io/repos/github/go-pkgz/jrpc/badge.svg?branch=master)](https://coveralls.io/github/go-pkgz/jrpc?branch=master) [![godoc](https://godoc.org/github.com/go-pkgz/jrpc?status.svg)](https://godoc.org/github.com/go-pkgz/jrpc)
 
 jrpc library provides client and server for RPC-like communication over HTTP with json encoded messages.
-The protocol is a somewhat simplified version of json-rpc with a single POST call sending Request json 
-(method name and the list of parameters) moreover, receiving json Response with result data and an error string.
+The protocol is a somewhat simplified version of json-rpc with a single POST call sending `Request` json 
+(method name and the list of parameters) moreover, receiving json `Response` with result data and an error string.
 
 ## Usage
 
 ### Plugin (server)
 
 ```go
-// Server wraps jrpc.Server and adds synced map to store data
-type Puglin struct {
+// Plugin wraps jrpc.Server and adds synced map to store data
+type Plugin struct {
 	*jrpc.Server
 }
 
-// create plugin (jrpc server)
-plugin := jrpcServer{
-    Server: &jrpc.Server{
-        API:        "/command",     // base url for rpc calls
-        AuthUser:   "user",         // basic auth user name
-        AuthPasswd: "password",     // basic auth password
-        AppName:    "jrpc-example", // plugin name for headers
-        Logger:     logger,
-    },
-}
+// create plugin (jrpc server) with NewServer where required param is a base url for rpc calls
+plugin := NewServer("/command")
 
+// then add you function to map 
 plugin.Add("mycommand", func(id uint64, params json.RawMessage) Response {
     return jrpc.EncodeResponse(id, "hello, it works", nil)
 })
+
+// and run server with port number value
+plugin.Run(9090)
 ```
+
+The constructor `NewServer` accept two parameters:
+* `API` - a base url for rpc calls
+* `Options` - optional parameters such is timeouts, logger, limits, middlewares and etc.
+  * `Auth` - set credentials basic auth to server, accepts `username` and `password`
+  * `WithTimeout` - sets global timeouts for server requests, such as read, write and idle. Call accept `Timeouts` struct.
+  * `WithLimits` - define limit for server call, accepts limit value in `float64` type
+  * `WithThrottler` - sets throttler middleware with specify limit value
+  * `WithtSignature` - sets server signature, accept appName, author and version. Disable by default. 
+  * `WithLogger` - define custom logger (e.g. [lgr](https://github.com/go-pkgz/lgr))
+  * `WithMiddlewares` - sets custom middlewares list to server, accepts list of handler with idiomatic type `func(http.Handler) http.Handler`
+
+Example with options:
+```go
+plugin := NewServer("/command",
+	    Auth("user", "password"),
+		WithTimeout(Timeouts{ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 10 * time.Second}),
+		WithThrottler(120),
+		WithLimits(100),
+        WithtSignature("the best plugin ever", "author", "1.0.0"),
+		WithMiddlewares(middleware.Heartbeat('/ping'), middleware.Profiler, middleware.StripSlashes),
+)
+``` 
 
 ### Application (client)
 
