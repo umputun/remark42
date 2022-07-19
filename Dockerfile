@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
+FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -25,7 +25,7 @@ RUN \
         cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else \
-    	echo "skip backend tests and linter" \
+        echo "skip backend tests and linter" \
     ; fi
 
 RUN \
@@ -37,6 +37,7 @@ FROM --platform=$BUILDPLATFORM node:16.15.1-alpine as build-frontend-deps
 
 ARG CI
 ARG SKIP_FRONTEND_BUILD
+ARG SKIP_FRONTEND_TEST
 ENV HUSKY_SKIP_INSTALL=true
 
 WORKDIR /srv/frontend
@@ -47,7 +48,7 @@ RUN \
      npm i -g pnpm; \
    fi
 
- RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
+RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
    if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
      pnpm i; \
    fi
@@ -70,20 +71,20 @@ RUN \
 
 RUN \
   if [ -z "$SKIP_FRONTEND_TEST" ]; then \
-    echo 'Skip frontend test'; \
-  else \
     pnpm lint test check; \
+  else \
+    echo 'Skip frontend test'; \
   fi
 
 RUN \
   if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
-    mkdir public; \
-    echo 'Skip frontend build'; \
-  else \
     pnpm build; \
+  else \
+    mkdir -p public; \
+    echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:app-v1.9.1
+FROM umputun/baseimage:app-v1.9.2
 
 WORKDIR /srv
 

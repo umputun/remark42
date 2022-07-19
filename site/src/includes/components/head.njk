@@ -8,7 +8,7 @@
 	{% if title %}
 		<title>{{ title }} | {{ site.name }}</title>
 	{% else %}
-  	<title>{{ renderData.title or site.name }}</title>
+		<title>{{ renderData.title or site.name }}</title>
 	{% endif %}
   <meta name="description" content="{{ metaDescription or renderData.metaDescription or site.description }}">
   <link rel="stylesheet" href="/style.css?v={% version %}"/>

@@ -22,7 +22,7 @@ dockerx:
 
 release:
 	docker build -f Dockerfile.artifacts --no-cache --pull --build-arg CI=true \
- 		--build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) -t remark42.bin .
+		--build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) -t remark42.bin .
 	- @docker rm -f remark42.bin 2>/dev/null || exit 0
 	- @mkdir -p bin
 	docker run -d --name=remark42.bin remark42.bin
@@ -45,9 +45,8 @@ frontend:
 	docker-compose -f compose-dev-frontend.yml build
 
 rundev:
-	docker pull umputun/baseimage:buildgo-v1.9.1
 	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true GITHUB_REF=$(GITHUB_REF) GITHUB_SHA=$(GITHUB_SHA) CI=true \
- 		docker-compose -f compose-private.yml build
+		docker-compose -f compose-private.yml build
 	docker-compose -f compose-private.yml up
 
 .PHONY: bin backend
