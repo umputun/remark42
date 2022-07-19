@@ -39,6 +39,20 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
+      - name: build docker image without pushing (only outside master)
+        if: ${{ github.ref != 'refs/heads/master' }}
+        run: |
+          docker buildx build \
+              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
+              --platform linux/amd64 .
+
+      - name: build example docker image without pushing (only outside master)
+        if: ${{ github.ref != 'refs/heads/master' }}
+        run: |
+          docker buildx build \
+              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
+              --platform linux/amd64 -f backend/_example/memory_store/Dockerfile .
+
       - name: build and deploy master image to ghcr.io and dockerhub
         if: ${{ github.ref == 'refs/heads/master' }}
         env:

@@ -2,13 +2,12 @@ FROM node:16.15.1-alpine as build-frontend-deps
 
 ARG CI
 
-ENV SKIP_FRONTEND_TEST=true
 ENV CI=true
 
 ADD frontend/package.json /srv/frontend/package.json
 ADD frontend/pnpm-lock.yaml /srv/frontend/pnpm-lock.yaml
+WORKDIR /srv/frontend
 RUN
-	cd /srv/frontend && \
 	apk add --no-cache --update git && \
 	npm i -g pnpm && \
 	pnpm i
@@ -17,21 +16,18 @@ FROM node:16.15.1-alpine as build-frontend
 
 ARG CI
 ARG NODE_ENV=production
-ENV SKIP_FRONTEND_TEST=true
 ENV HUSKY_SKIP_INSTALL=true
 
 COPY --from=build-frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
-ADD frontend /srv/frontend
-RUN cd /srv/frontend && \
-    npm run build && \
+WORKDIR /srv/frontend
+RUN npm run build && \
     rm -rf ./node_modules
 
-FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
+FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
 
 ARG GITHUB_TOKEN
 ARG GITHUB_REF
 ARG GITHUB_SHA
-ENV SKIP_BACKEND_TEST=true
 
 WORKDIR /build/backend
 ADD backend /build/backend

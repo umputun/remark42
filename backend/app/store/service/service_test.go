@@ -1457,7 +1457,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 
 	mockStoreEmpty.AssertNumberOfCalls(t, "Info", 1)
 
-	// 	error from image storage
+	// error from image storage
 	mockStoreError := image.MockStore{}
 	imgSvcError := image.NewService(&mockStoreError,
 		image.ServiceParams{
