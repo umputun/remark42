@@ -3,7 +3,7 @@ module github.com/umputun/remark42/memory_store
 go 1.17
 
 require (
-	github.com/go-pkgz/jrpc v0.2.0
+	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/stretchr/testify v1.8.0
@@ -17,10 +17,10 @@ require (
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/didip/tollbooth/v6 v6.1.2 // indirect
-	github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b // indirect
+	github.com/didip/tollbooth/v7 v7.0.0 // indirect
+	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
-	github.com/go-chi/chi v4.1.1+incompatible // indirect
+	github.com/go-chi/chi/v5 v5.0.7 // indirect
 	github.com/go-chi/render v1.0.1 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
 	github.com/go-pkgz/rest v1.15.6 // indirect
@@ -37,7 +37,6 @@ require (
 	golang.org/x/image v0.0.0-20220617043117-41969df76e82 // indirect
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

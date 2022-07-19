@@ -27,7 +27,7 @@ linters-settings:
 linters:
   enable:
     - megacheck
-    - golint
+    - revive
     - govet
     - unconvert
     - megacheck
@@ -44,7 +44,7 @@ linters:
     - varcheck
     - stylecheck
     - gochecknoinits
-    - scopelint
+    - exportloopref
     - gocritic
     - nakedret
     - gosimple

@@ -6,13 +6,13 @@ require (
 	github.com/Depado/bfchroma/v2 v2.0.0
 	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/alecthomas/chroma/v2 v2.2.0
-	github.com/didip/tollbooth/v6 v6.1.2
-	github.com/didip/tollbooth_chi v0.0.0-20220429013743-da966f2f674b
+	github.com/didip/tollbooth/v7 v7.0.0
+	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.1
 	github.com/go-pkgz/auth v1.19.1-0.20220624002401-8b91a0eee69a
-	github.com/go-pkgz/jrpc v0.2.0
+	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lcw v0.8.1
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/go-pkgz/notify v0.1.1
@@ -45,7 +45,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/oauth1 v0.7.1 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
-	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/go-oauth2/oauth2/v4 v4.4.3 // indirect
 	github.com/go-pkgz/email v0.3.0 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
@@ -72,7 +71,6 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

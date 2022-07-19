@@ -94,6 +94,14 @@ func (lim *Limiter) Allow() bool {
 	return lim.AllowN(time.Now(), 1)
 }
 
+// TokensAt returns the number of tokens available for the given time.
+func (lim *Limiter) TokensAt(t time.Time) float64 {
+	lim.mu.Lock()
+	_, _, tokens := lim.advance(t) // does not mutate lim
+	lim.mu.Unlock()
+	return tokens
+}
+
 // AllowN reports whether n events may happen at time now.
 // Use this method if you intend to drop / skip events that exceed the rate limit.
 // Otherwise use Reserve or Wait.
@@ -196,15 +204,13 @@ func (lim *Limiter) Reserve() *Reservation {
 // The Limiter takes this Reservation into account when allowing future events.
 // The returned Reservation’s OK() method returns false if n exceeds the Limiter's burst size.
 // Usage example:
-//
-//	r := lim.ReserveN(time.Now(), 1)
-//	if !r.OK() {
-//	  // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
-//	  return
-//	}
-//	time.Sleep(r.Delay())
-//	Act()
-//
+//   r := lim.ReserveN(time.Now(), 1)
+//   if !r.OK() {
+//     // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
+//     return
+//   }
+//   time.Sleep(r.Delay())
+//   Act()
 // Use this method if you wish to wait and slow down in accordance with the rate limit without dropping events.
 // If you need to respect a deadline or cancel the delay, use Wait instead.
 // To drop or skip events exceeding rate limit, use Allow instead.
@@ -308,25 +314,13 @@ func (lim *Limiter) SetBurstAt(now time.Time, newBurst int) {
 // reserveN returns Reservation, not *Reservation, to avoid allocation in AllowN and WaitN.
 func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duration) Reservation {
 	lim.mu.Lock()
-	defer lim.mu.Unlock()
 
 	if lim.limit == Inf {
+		lim.mu.Unlock()
 		return Reservation{
 			ok:        true,
 			lim:       lim,
 			tokens:    n,
-			timeToAct: now,
-		}
-	} else if lim.limit == 0 {
-		var ok bool
-		if lim.burst >= n {
-			ok = true
-			lim.burst -= n
-		}
-		return Reservation{
-			ok:        ok,
-			lim:       lim,
-			tokens:    lim.burst,
 			timeToAct: now,
 		}
 	}
@@ -365,6 +359,7 @@ func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duratio
 		lim.last = last
 	}
 
+	lim.mu.Unlock()
 	return r
 }
 
@@ -390,9 +385,6 @@ func (lim *Limiter) advance(now time.Time) (newNow time.Time, newLast time.Time,
 // durationFromTokens is a unit conversion function from the number of tokens to the duration
 // of time it takes to accumulate them at a rate of limit tokens per second.
 func (limit Limit) durationFromTokens(tokens float64) time.Duration {
-	if limit <= 0 {
-		return InfDuration
-	}
 	seconds := tokens / float64(limit)
 	return time.Duration(float64(time.Second) * seconds)
 }
@@ -400,8 +392,5 @@ func (limit Limit) durationFromTokens(tokens float64) time.Duration {
 // tokensFromDuration is a unit conversion function from a time duration to the number of tokens
 // which could be accumulated during that duration at a rate of limit tokens per second.
 func (limit Limit) tokensFromDuration(d time.Duration) float64 {
-	if limit <= 0 {
-		return 0
-	}
 	return d.Seconds() * float64(limit)
 }

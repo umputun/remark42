@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/didip/tollbooth/v6/errors"
-	"github.com/didip/tollbooth/v6/libstring"
-	"github.com/didip/tollbooth/v6/limiter"
+	"github.com/didip/tollbooth/v7/errors"
+	"github.com/didip/tollbooth/v7/libstring"
+	"github.com/didip/tollbooth/v7/limiter"
 )
 
 // setResponseHeaders configures X-Rate-Limit-Limit and X-Rate-Limit-Duration
@@ -25,6 +25,14 @@ func setResponseHeaders(lmt *limiter.Limiter, w http.ResponseWriter, r *http.Req
 	w.Header().Add("X-Rate-Limit-Request-Remote-Addr", r.RemoteAddr)
 }
 
+// setRateLimitResponseHeaders configures RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset
+// as seen at https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers
+func setRateLimitResponseHeaders(lmt *limiter.Limiter, w http.ResponseWriter, tokensLeft int) {
+	w.Header().Add("RateLimit-Limit", fmt.Sprintf("%d", int(math.Round(lmt.GetMax()))))
+	w.Header().Add("RateLimit-Reset", "1")
+	w.Header().Add("RateLimit-Remaining", fmt.Sprintf("%d", tokensLeft))
+}
+
 // NewLimiter is a convenience function to limiter.New.
 func NewLimiter(max float64, tbOptions *limiter.ExpirableOptions) *limiter.Limiter {
 	return limiter.New(tbOptions).
@@ -36,11 +44,18 @@ func NewLimiter(max float64, tbOptions *limiter.ExpirableOptions) *limiter.Limit
 // LimitByKeys keeps track number of request made by keys separated by pipe.
 // It returns HTTPError when limit is exceeded.
 func LimitByKeys(lmt *limiter.Limiter, keys []string) *errors.HTTPError {
+	err, _ := LimitByKeysAndReturn(lmt, keys)
+	return err
+}
+
+// LimitByKeysAndReturn keeps track number of request made by keys separated by pipe.
+// It returns HTTPError when limit is exceeded, and also returns the current limit value.
+func LimitByKeysAndReturn(lmt *limiter.Limiter, keys []string) (*errors.HTTPError, int) {
 	if lmt.LimitReached(strings.Join(keys, "|")) {
-		return &errors.HTTPError{Message: lmt.GetMessage(), StatusCode: lmt.GetStatusCode()}
+		return &errors.HTTPError{Message: lmt.GetMessage(), StatusCode: lmt.GetStatusCode()}, 0
 	}
 
-	return nil
+	return nil, lmt.Tokens(strings.Join(keys, "|"))
 }
 
 // ShouldSkipLimiter is a series of filter that decides if request should be limited or not.
@@ -281,14 +296,24 @@ func LimitByRequest(lmt *limiter.Limiter, w http.ResponseWriter, r *http.Request
 
 	sliceKeys := BuildKeys(lmt, r)
 
+	// Get the lowest value over all keys to return in headers.
+	// Start with high arbitrary number so that any limit returned would be lower and would
+	// overwrite the value we start with.
+	var tokensLeft = math.MaxInt32
+
 	// Loop sliceKeys and check if one of them has error.
 	for _, keys := range sliceKeys {
-		httpError := LimitByKeys(lmt, keys)
+		httpError, keysLimit := LimitByKeysAndReturn(lmt, keys)
+		if tokensLeft > keysLimit {
+			tokensLeft = keysLimit
+		}
 		if httpError != nil {
+			setRateLimitResponseHeaders(lmt, w, tokensLeft)
 			return httpError
 		}
 	}
 
+	setRateLimitResponseHeaders(lmt, w, tokensLeft)
 	return nil
 }
 
