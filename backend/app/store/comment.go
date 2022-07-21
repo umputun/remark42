@@ -15,7 +15,7 @@ type Comment struct {
 	ID          string                 `json:"id" bson:"_id"`
 	ParentID    string                 `json:"pid"`
 	Text        string                 `json:"text"`
-	Orig        string                 `json:"orig,omitempty"`
+	Orig        string                 `json:"orig,omitempty"` // important: never render this as HTML! It's not sanitized.
 	User        User                   `json:"user"`
 	Locator     Locator                `json:"locator"`
 	Score       int                    `json:"score"`
@@ -112,7 +112,9 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	}
 }
 
-// Sanitize clean dangerous html/js from the comment
+// Sanitize clean dangerous html/js from the comment.
+// Comment.Orig which is used to store the original comment text is not sanitized
+// as we expect to never render it as HTML and render Comment.Text instead
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^chroma$")).OnElements("pre")
@@ -125,7 +127,6 @@ func (c *Comment) Sanitize() {
 	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
 	p.AllowAttrs("loading").Matching(regexp.MustCompile("^(lazy|eager)$")).OnElements("img")
 	c.Text = p.Sanitize(c.Text)
-	c.Orig = p.Sanitize(c.Orig)
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.SanitizeText(c.User.Name)
 	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
