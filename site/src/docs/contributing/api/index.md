@@ -28,7 +28,7 @@ type Comment struct {
     ID          string    `json:"id"`      // comment ID, read only
     ParentID    string    `json:"pid"`     // parent ID
     Text        string    `json:"text"`    // comment text, after md processing
-    Orig        string    `json:"orig"`    // original comment text
+    Orig        string    `json:"orig"`    // original comment text in Markdown, should never be rendered as HTML as-is!
     User        User      `json:"user"`    // user info, read only
     Locator     Locator   `json:"locator"` // post locator
     Score       int       `json:"score"`   // comment score, read only
@@ -83,7 +83,9 @@ type EditRequest struct {
 
 - `GET /api/v1/last/{max}?site=site-id&since=ts-msec` - get up to `{max}` last comments, `since` (epoch time, milliseconds) is optional
 - `GET /api/v1/id/{id}?site=site-id` - get comment by `comment id`
-- `GET /api/v1/comments?site=site-id&user=id&limit=N` - get comment by `user id`, returns `response` object
+- `GET /api/v1/comments?site=site-id&user=id&limit=N` - get comment by `user id`, returns `response` object.
+
+**Important**: original comment text in Markdown in the `orig` field should never be rendered as HTML as-is, only `text` containing HTML is sanitized and safe for render.
 
 ```go
 type response struct {

@@ -56,7 +56,6 @@ func TestRest_Create(t *testing.T) {
 
 // based on issue https://github.com/umputun/remark42/issues/1292
 func TestRest_CreateFilteredCode(t *testing.T) {
-	t.Skip("not yet fixed")
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
