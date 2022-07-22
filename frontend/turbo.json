@@ -1,0 +1,30 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "baseBranch": "origin/master",
+  "pipeline": {
+    "dev": {},
+    "start": {},
+    "build": {
+      "outputs": ["public/**"]
+    },
+    "lint": {
+      "inputs": ["**/*.tsx", "**/*.ts", "**/*.css"]
+    },
+    "lint:styles": {
+      "inputs": ["**/*.css"]
+    },
+    "lint:scripts": {
+      "inputs": ["**/*.tsx", "**/*.ts"]
+    },
+    "test": {
+      "inputs": ["**/*.tsx", "**/*.ts"]
+    },
+    "coverage": {
+      "inputs": ["**/*.tsx", "**/*.ts"]
+    },
+    "type-check": {
+      "inputs": ["**/*.tsx", "**/*.ts"]
+    },
+    "format": {}
+  }
+}
