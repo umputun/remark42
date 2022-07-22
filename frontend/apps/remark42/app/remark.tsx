@@ -57,7 +57,7 @@ async function init(): Promise<void> {
   const config = await getConfig();
   StaticStore.config = {
     ...config,
-    simple_view: rawParams.simple_view === undefined || rawParams.simple_view === 'true',
+    simple_view: config.simple_view || rawParams.simple_view === 'true',
   };
 
   render(
