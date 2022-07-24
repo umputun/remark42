@@ -82,6 +82,17 @@ RUN \
 
 FROM umputun/baseimage:app-v1.9.2
 
+ARG GITHUB_SHA
+
+LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
+      org.opencontainers.image.description="Remark42 comment engine" \
+      org.opencontainers.image.documentation="https://remark42.com/docs/getting-started/" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/umputun/remark42.git" \
+      org.opencontainers.image.title="Remark42" \
+      org.opencontainers.image.url="https://remark42.com/" \
+      org.opencontainers.image.revision="${GITHUB_SHA}"
+
 WORKDIR /srv
 
 ADD docker-init.sh /entrypoint.sh
