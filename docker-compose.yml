@@ -2,6 +2,8 @@ version: "2"
 
 services:
   remark:
+    # remove the next line in case you want to use this docker-compose separately
+    # as otherwise it would complain for absence of Dockerfile
     build: .
     image: umputun/remark42:latest
     container_name: "remark42"
@@ -17,6 +19,7 @@ services:
     # uncomment to expose directly (no proxy)
     #ports:
     #  - "80:8080"
+    #  - "443:8443"
 
     environment:
       - REMARK_URL
@@ -30,6 +33,9 @@ services:
       - AUTH_FACEBOOK_CSEC
       - AUTH_DISQUS_CID
       - AUTH_DISQUS_CSEC
-      # - ADMIN_PASSWD=password
+      # Enable it only for the initial comment import or for manual backups.
+      # Do not leave server running with ADMIN_PASSWD set if you don't have intention
+      # to keep creating backups manually!
+      # - ADMIN_PASSWD=<your secret password>
     volumes:
       - ./var:/srv/var

@@ -74,24 +74,20 @@
     "section": "Backup",
     "children": [
       {
-        "title": "Manual",
-        "href": "/backup/manual/"
-      },
-      {
-        "title": "Migration",
-        "href": "/backup/migration/"
+        "title": "Backup",
+        "href": "/backup/backup/"
       },
       {
         "title": "Restore",
         "href": "/backup/restore/"
       },
       {
-        "title": "Site URL migration",
-        "href": "/backup/url-migration/"
+        "title": "Migration",
+        "href": "/backup/migration/"
       },
       {
-        "title": "Automatic",
-        "href": "/backup/automatic/"
+        "title": "Site URL migration",
+        "href": "/backup/url-migration/"
       }
     ]
   },
