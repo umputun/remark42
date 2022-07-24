@@ -15,14 +15,14 @@ import (
 
 // CleanupCommand set of flags and command for cleanup
 type CleanupCommand struct {
-	Site        string   `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Dry         bool     `long:"dry" description:"dry mode, will not remove comments"`
-	From        string   `long:"from" description:"from yyyymmdd"`
-	To          string   `long:"to" description:"from yyyymmdd"`
-	BadWords    []string `short:"w" long:"bword" description:"bad word(s)"`
-	BadUsers    []string `short:"u" long:"buser" description:"bad user(s)"`
-	AdminPasswd string   `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
-	SetTitle    bool     `long:"title" description:"title mode, will not remove comments, but reset titles to page's title'"`
+	Dry      bool     `long:"dry" description:"dry mode, will not remove comments"`
+	From     string   `long:"from" description:"from yyyymmdd"`
+	To       string   `long:"to" description:"from yyyymmdd"`
+	BadWords []string `short:"w" long:"bword" description:"bad word(s)"`
+	BadUsers []string `short:"u" long:"buser" description:"bad user(s)"`
+	SetTitle bool     `long:"title" description:"title mode, will not remove comments, but reset titles to page's title'"`
+
+	SupportCmdOpts
 	CommonOpts
 }
 

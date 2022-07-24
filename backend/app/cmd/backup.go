@@ -14,11 +14,10 @@ import (
 // BackupCommand set of flags and command for export
 // ExportPath used as a separate element to leverage BACKUP_PATH. If ExportFile has a path (i.e. with /) BACKUP_PATH ignored.
 type BackupCommand struct {
-	ExportPath  string        `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
-	ExportFile  string        `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
-	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Timeout     time.Duration `long:"timeout" default:"60m" description:"export (backup) timeout"`
-	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
+	ExportPath string `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
+	ExportFile string `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.TS}}.gz" description:"file name"`
+
+	SupportCmdOpts
 	CommonOpts
 }
 
