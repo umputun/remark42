@@ -17,31 +17,20 @@ https://example.org/old-url-2/ https://example.org/new-url-2/
 
 ### Applying the remap
 
-After rules file is ready, run the following command:
+After rules file is ready, run the following command (`ADMIN_PASSWD` must to be enabled on server for it to work):
 
 ```shell
-remark42 remap --admin-passwd <password> -f var/rules
+remark42 remap --admin-passwd <password> -s <your site ID> -f var/rules
 ```
 
-If running in a docker container, the command becomes:
+If running in a docker container, the command becomes (`ADMIN_PASSWD` will be taken from the environment):
 
 ```shell
-docker ps # to find the container name
-docker exec -it <container> remark42 remap --admin-passwd <password> -f var/rules
+docker exec -it remark42 remap -s <your site ID> -f var/rules
 ```
 
-#### Tips
-
-1. The command above sends a *request* to start the remap job. You can see the job execution logs by running:
+The command above sends a *request* to start the remap job. You can see the job execution logs by running:
 
 ```shell
 docker logs <container>
 ```
-
-2. If you see in logs an entry similar to `export failed with site "site1.com,site2" not found`, please run the command again and specify desired site with command line arguments. For example:
-
-```shell
-docker exec -it <container> remark42 remap --admin-passwd <password> -f var/rules --site site1.com
-``` 
-
-

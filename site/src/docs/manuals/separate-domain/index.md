@@ -10,7 +10,7 @@ Unless discussion [#1139](https://github.com/umputun/remark42/discussions/1139) 
 
 ### Setup
 
-Set `ALLOWED_HOSTS='self',example1.org,example2.org` with your domain names and `AUTH_SAME_SITE=none`. `'self'` means "domain which Remark42 is installed on" so you don't need to write it twice.
+Set `ALLOWED_HOSTS='self',example1.org,example2.org` with your domain names and `AUTH_SAME_SITE=none`. The `'self'` value means "domain which Remark42 is installed on" so you don't need to write it twice.
 
 ### Technical details
 
