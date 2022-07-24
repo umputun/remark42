@@ -31,6 +31,14 @@ type CommonOpts struct {
 	Revision     string
 }
 
+// SupportCmdOpts is set of commands shared among similar commands like backup/restore and such.
+// Order of fields defines the help command output order.
+type SupportCmdOpts struct {
+	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
+	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	Timeout     time.Duration `long:"timeout" default:"60m" description:"timeout for the command run"`
+}
+
 // DeprecatedFlag contains information about deprecated option
 type DeprecatedFlag struct {
 	Old       string

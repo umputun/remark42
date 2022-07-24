@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 
 	log "github.com/go-pkgz/lgr"
 )
@@ -14,10 +13,9 @@ import (
 // RemapCommand set of flags and command for change linkage between comments to
 // different urls based on given rules (input file)
 type RemapCommand struct {
-	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	InputFile   string        `short:"f" long:"file" description:"input file name" required:"true"`
-	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
-	Timeout     time.Duration `long:"timeout" default:"60m" description:"remap timeout"`
+	InputFile string `short:"f" long:"file" description:"input file name" required:"true"`
+
+	SupportCmdOpts
 	CommonOpts
 }
 

@@ -11,9 +11,7 @@ type RestoreCommand struct {
 	ImportPath string `short:"p" long:"path" env:"BACKUP_PATH" default:"./var/backup" description:"export path"`
 	ImportFile string `short:"f" long:"file" default:"userbackup-{{.SITE}}-{{.YYYYMMDD}}.gz" description:"file name" required:"true"`
 
-	Site        string        `short:"s" long:"site" env:"SITE" default:"remark" description:"site name"`
-	Timeout     time.Duration `long:"timeout" default:"60m" description:"import timeout"`
-	AdminPasswd string        `long:"admin-passwd" env:"ADMIN_PASSWD" required:"true" description:"admin basic auth password"`
+	SupportCmdOpts
 	CommonOpts
 }
 
@@ -29,12 +27,10 @@ func (rc *RestoreCommand) Execute(args []string) error {
 		return err
 	}
 	importer := ImportCommand{
-		InputFile:   fname,
-		Site:        rc.Site,
-		Provider:    "native",
-		Timeout:     rc.Timeout,
-		AdminPasswd: rc.AdminPasswd,
-		CommonOpts:  rc.CommonOpts,
+		InputFile:      fname,
+		Provider:       "native",
+		SupportCmdOpts: rc.SupportCmdOpts,
+		CommonOpts:     rc.CommonOpts,
 	}
 	return importer.Execute(args)
 }
