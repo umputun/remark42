@@ -7,10 +7,12 @@ services:
     volumes:
       - ./build:/site/build
 
+  # Runs dev evn for the site
   server:
     image: remark42-site
-    build: .
-    command: yarn dev
+    build:
+      dockerfile: Dockerfile.dev
+      context: .
 
     logging:
       driver: json-file
