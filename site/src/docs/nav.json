@@ -95,18 +95,12 @@
     "section": "Contributing",
     "children": [
       {
-        "title": "Development",
-        "href": "/contributing/development/",
-        "children": [
-          {
-            "title": "Backend",
-            "href": "/contributing/development/backend/"
-          },
-          {
-            "title": "Frontend",
-            "href": "/contributing/development/frontend/"
-          }
-        ]
+        "title": "Backend",
+        "href": "/contributing/backend/"
+      },
+      {
+        "title": "Frontend",
+        "href": "/contributing/frontend/"
       },
       {
         "title": "Translations",
@@ -115,10 +109,6 @@
       {
         "title": "API",
         "href": "/contributing/api/"
-      },
-      {
-        "title": "Technical Details",
-        "href": "/contributing/technical-details/"
       }
     ]
   }
