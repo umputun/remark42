@@ -967,7 +967,8 @@ func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinat
 	if destinations == nil {
 		destinations = []notify.Destination{}
 	}
-	if telegram != nil {
+	// it's possible that telegram notification service was created for auth but should not be used for notifications
+	if telegram != nil && (contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins)) {
 		destinations = append(destinations, telegram)
 	}
 
