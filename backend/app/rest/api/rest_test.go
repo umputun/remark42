@@ -60,23 +60,6 @@ func TestRest_FileServer(t *testing.T) {
 	_ = os.Remove(testHTMLFile)
 }
 
-func TestRest_GetStarted(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
-
-	getStartedHTML := os.TempDir() + "/getstarted.html"
-	err := os.WriteFile(getStartedHTML, []byte("some html blah"), 0o700)
-	assert.NoError(t, err)
-
-	body, code := get(t, ts.URL+"/index.html")
-	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, "some html blah", body)
-
-	_ = os.Remove(getStartedHTML)
-	_, code = get(t, ts.URL+"/index.html")
-	assert.Equal(t, http.StatusNotFound, code)
-}
-
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
 	done := make(chan bool)

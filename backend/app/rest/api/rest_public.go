@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +30,6 @@ type public struct {
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
-	webRoot          string
 }
 
 type pubStore interface {
@@ -343,16 +340,6 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	if _, err = io.Copy(w, bytes.NewReader(img)); err != nil {
 		log.Printf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
-}
-
-// GET /index.html - respond to /index.html with the content of getstarted.html under /web root
-func (s *public) getStartedCtrl(w http.ResponseWriter, r *http.Request) {
-	data, err := os.ReadFile(path.Join(s.webRoot, "getstarted.html"))
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	render.HTML(w, r, string(data))
 }
 
 // GET /robots.txt
