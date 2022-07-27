@@ -11,7 +11,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 )
 
-// NOTE: mockery works from linked to go-path and with GOFLAGS='-mod=vendor' go generate
+// NOTE: mockery works from linked to go-path and with go generate
 //go:generate sh -c "mockery -inpkg -name Interface -print > /tmp/engine-mock.tmp && mv /tmp/engine-mock.tmp engine_mock.go"
 
 // Interface defines methods provided by low-level storage engine

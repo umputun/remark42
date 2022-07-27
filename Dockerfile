@@ -57,8 +57,6 @@ ARG BACKEND_TEST_TIMEOUT
 ADD backend /build/backend
 WORKDIR /build/backend
 
-ENV GOFLAGS="-mod=vendor"
-
 # install gcc in order to be able to go test package with -race
 RUN apk --no-cache add gcc libc-dev
 

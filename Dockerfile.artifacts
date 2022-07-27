@@ -43,7 +43,6 @@ RUN \
 
 RUN \
   version=$("/script/version.sh") && echo "version=${version}" && \
-    export GOFLAGS="-mod=vendor" && \
     GOOS=linux GOARCH=amd64 go build -o remark42.linux-amd64 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=386 go build -o remark42.linux-386 -ldflags "-X main.revision=${version} -s -w" ./app && \
     GOOS=linux GOARCH=arm go build -o remark42.linux-arm -ldflags "-X main.revision=${version} -s -w" ./app && \

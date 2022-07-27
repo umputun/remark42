@@ -46,7 +46,6 @@ jobs:
           $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run --out-format=github-actions ./...
         working-directory: backend/app
         env:
-          GOFLAGS: "-mod=vendor"
           TZ: "America/Chicago"
 
       - name: test and lint examples
