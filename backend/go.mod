@@ -26,7 +26,6 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kyokomi/emoji/v2 v2.2.9
 	github.com/microcosm-cc/bluemonday v1.0.19
-	github.com/rakyll/statik v0.1.7
 	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e

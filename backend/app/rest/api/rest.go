@@ -3,10 +3,13 @@ package api
 import (
 	"bytes"
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/mail"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -23,7 +26,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
-	"github.com/rakyll/statik/fs"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -49,6 +51,7 @@ type Rest struct {
 
 	AnonVote        bool
 	WebRoot         string
+	WebFS           embed.FS
 	RemarkURL       string
 	ReadOnlyAge     int
 	SharedSecret    string
@@ -351,8 +354,8 @@ func (s *Rest) routes() chi.Router {
 		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
-	// file server for static content from /web
-	addFileServer(router, "/web", http.Dir(s.WebRoot), s.Version)
+	// file server for static content from s.WebRoot on path /web
+	addFileServer(router, s.WebFS, s.WebRoot, s.Version)
 	return router
 }
 
@@ -463,34 +466,28 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, cnf)
 }
 
-// serves static files from /web or embedded by statik
-func addFileServer(r chi.Router, path string, root http.FileSystem, version string) {
+// serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
+func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	var webFS http.Handler
 
-	statikFS, err := fs.New()
-	if err != nil {
-		log.Printf("[DEBUG] no embedded assets loaded, %s", err)
-		log.Printf("[INFO] run file server for %s, path %s", root, path)
-		webFS = http.FileServer(root)
+	if _, err := os.Stat(webRoot); err == nil {
+		log.Printf("[INFO] run file server from %s from the disk", webRoot)
+		webFS = http.FileServer(http.Dir(webRoot))
 	} else {
-		log.Printf("[INFO] run file server for %s, embedded", root)
-		webFS = http.FileServer(statikFS)
+		log.Printf("[INFO] run file server, embedded")
+		var contentFS, _ = fs.Sub(embedFS, "web")
+		webFS = http.FileServer(http.FS(contentFS))
 	}
 
-	origPath := path
-	webFS = http.StripPrefix(path, webFS)
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
+	webFS = http.StripPrefix("/web", webFS)
+	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)),
 		middleware.Timeout(10*time.Second),
 		cacheControl(time.Hour, version),
-	).Get(path, func(w http.ResponseWriter, r *http.Request) {
+	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (origPath+"/") {
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {
 			http.NotFound(w, r)
 			return
 		}

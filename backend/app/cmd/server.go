@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,6 +41,9 @@ import (
 	"github.com/umputun/remark42/backend/app/store/service"
 	"github.com/umputun/remark42/backend/app/templates"
 )
+
+//go:embed web
+var webFS embed.FS
 
 // ServerCommand with command line flags and env
 type ServerCommand struct {
@@ -556,6 +560,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Version:             s.Revision,
 		DataService:         dataService,
 		WebRoot:             s.WebRoot,
+		WebFS:               webFS,
 		RemarkURL:           s.RemarkURL,
 		ImageProxy:          imgProxy,
 		CommentFormatter:    commentFormatter,

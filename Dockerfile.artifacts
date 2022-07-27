@@ -30,14 +30,9 @@ ADD backend /build/backend
 ADD README.md /build/
 ADD LICENSE /build/
 
-COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/web/
+COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
 
-RUN \
-    export WEB_ROOT=/build/backend/web && \
-    find . -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \; && \
-    statik --src=${WEB_ROOT} --dest=/build/backend/app/rest -p api -f && \
-    ls -la /build/backend/app/rest/api/statik.go && \
-    ls -la /build/backend/web/
+RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 
 RUN \
   version=$("/script/version.sh") && echo "version=${version}" && \
