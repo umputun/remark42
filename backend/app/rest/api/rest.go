@@ -347,7 +347,6 @@ func (s *Rest) routes() chi.Router {
 	router.Group(func(rroot chi.Router) {
 		rroot.Use(middleware.Timeout(10 * time.Second))
 		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
-		rroot.Get("/index.html", s.pubRest.getStartedCtrl)
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
 		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
@@ -365,7 +364,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		imageService:     s.ImageService,
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
-		webRoot:          s.WebRoot,
 	}
 
 	privGrp := private{
