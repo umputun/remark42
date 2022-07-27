@@ -1,38 +1,24 @@
 package templates
 
 import (
-	"net/http"
+	"embed"
+	"io/fs"
 	"os"
 	"path/filepath"
-
-	log "github.com/go-pkgz/lgr"
-	"github.com/rakyll/statik/fs"
 )
 
-// FS stores link to statikFS if it exists
-type FS struct {
-	statik http.FileSystem
-}
+//go:embed static
+var templateFS embed.FS
 
-// FileReader describes methods of filesystem
-type FileReader interface {
-	ReadFile(path string) ([]byte, error)
-}
-
-// NewFS returns new FS instance, which will read from statik if it's available and from fs otherwise
-func NewFS() *FS {
-	f := &FS{}
-	if statikFS, err := fs.NewWithNamespace("templates"); err == nil {
-		log.Printf("[INFO] templates will be read from statik")
-		f.statik = statikFS
+// Read reads either template from disk if it exists, or from embedded template
+func Read(path string) ([]byte, error) {
+	if _, err := os.Stat(filepath.Clean(path)); err == nil {
+		return os.ReadFile(filepath.Clean(path))
 	}
-	return f
-}
-
-// ReadFile depends on statik achieve exists
-func (f *FS) ReadFile(path string) ([]byte, error) {
-	if f.statik != nil {
-		return fs.ReadFile(f.statik, filepath.Join("/", path)) //nolint:gocritic // root folder is a requirement for statik
+	// remove "static/" prefix from path
+	var contentFS, err = fs.Sub(templateFS, "static")
+	if err != nil {
+		return nil, err
 	}
-	return os.ReadFile(filepath.Clean(path))
+	return fs.ReadFile(contentFS, filepath.Clean(path))
 }

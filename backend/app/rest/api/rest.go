@@ -31,7 +31,6 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
-	"github.com/umputun/remark42/backend/app/templates"
 )
 
 // Rest is a rest access server
@@ -377,7 +376,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		telegramService:  s.TelegramService,
 		remarkURL:        s.RemarkURL,
 		anonVote:         s.AnonVote,
-		templates:        templates.NewFS(),
 	}
 
 	admGrp := admin{

@@ -43,7 +43,6 @@ type private struct {
 	telegramService  telegramService
 	remarkURL        string
 	anonVote         bool
-	templates        templates.FileReader
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -473,29 +472,26 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	tkn := r.URL.Query().Get("tkn")
 	if tkn == "" {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest,
-			fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
 	siteID := r.URL.Query().Get("site")
 
 	confClaims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
 
 	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorHTML(w, r, http.StatusForbidden,
-			fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
 
 	// Handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest,
-			fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
 		return
 	}
 	userID := elems[0]
@@ -508,14 +504,11 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
 	if existingAddress == "" {
-		rest.SendErrorHTML(w, r, http.StatusConflict,
-			fmt.Errorf("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
 		return
 	}
 	if address != existingAddress {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest,
-			fmt.Errorf("wrong email unsubscription"), "email address in request does not match known for this user",
-			rest.ErrInternal, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
 		return
 	}
 
@@ -523,7 +516,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if err = s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
 		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code, s.templates)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
 		return
 	}
 	// clean User.Email from the token, if user has the token
@@ -534,7 +527,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
 		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
-			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal, s.templates)
+			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
 	}
@@ -546,7 +539,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	MustRead := func(path string) string {
-		file, err := s.templates.ReadFile(path)
+		file, err := templates.Read(path)
 		if err != nil {
 			panic(err)
 		}

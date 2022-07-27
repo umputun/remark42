@@ -190,7 +190,7 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 
 ## HTML templates for emails and error messages
 
-Remark42 uses golang templates for email templating. Templates are located in `backend/templates` and embedded into binary by statik
+Remark42 uses golang templates for email templating. Templates are located in `backend/app/templates/static` and embedded into binary by `go:embed` [directive](https://pkg.go.dev/embed).
 
 Now we have the following templates:
 
