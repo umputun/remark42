@@ -14,7 +14,7 @@ This documentation describes how to enable the email-related capabilities of Rem
 
 - email notifications for any users except anonymous:
 
-  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the replies down the tree):
+  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
 
   ![Email notifications subscription](images/email_notifications.png)
 
@@ -46,7 +46,7 @@ NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
 
 ### Admin notifications
 
-Here is the list of variables that affect admin notifications, which will be sent for each new comment on your site:
+Admin would receive a message for each new comment on your site. Here is the list of variables that affect them:
 
 ```yaml
 NOTIFY_ADMINS=email
@@ -56,7 +56,7 @@ ADMIN_SHARED_EMAIL=admin@example.com
 
 ### Mailgun
 
-This is an example of a configuration using [Mailgun](https://www.mailgun.com/) email service:
+Here is an example of a configuration using the [Mailgun](https://www.mailgun.com/) email service:
 
 ```yaml
 - SMTP_HOST=smtp.eu.mailgun.org
@@ -70,7 +70,7 @@ This is an example of a configuration using [Mailgun](https://www.mailgun.com/) 
 
 ### SendGrid
 
-This is an example of a configuration using [SendGrid](https://sendgrid.com/) email service:
+Here is an example of a configuration using the [SendGrid](https://sendgrid.com/) email service:
 
 ```yaml
 - SMTP_HOST=smtp.sendgrid.net
@@ -84,9 +84,9 @@ This is an example of a configuration using [SendGrid](https://sendgrid.com/) em
 
 ### Mailgun or SendGrid without exposing your server's IP
 
-When you don't want to expose your IP (which is impossible with any SMTP provider) and when connecting to an external SMTP server is impossible due to firewall settings setting up an SMTP-to-API bridge and sending messages through it.
+When you don't want to expose your IP (which is impossible with any SMTP provider) or when connecting to an external SMTP server is impossible due to firewall settings, set up an SMTP-to-API bridge and send messages through it.
 
-To use any of the containers below within remark42 environment, set the following two `SMTP` variables:
+To use any of the containers below within the Remark42 environment, set the following two `SMTP` variables:
 
 ```yaml
 - SMTP_HOST=mail
@@ -95,7 +95,7 @@ To use any of the containers below within remark42 environment, set the followin
 
 #### stevenolen/mailgun-smtp-server
 
-Here is `docker-compose.yml` configuration part spinning up a container for
+Here is the `docker-compose.yml` configuration part spinning up a container for
 [stevenolen/mailgun-smtp-server](https://hub.docker.com/r/stevenolen/mailgun-smtp-server):
 
 ```yaml
@@ -115,12 +115,11 @@ mailgun:
     - MG_DOMAIN=example.com
 ```
 
-Please note that before [stevenolen/mailgun-smtp-server#5](https://github.com/stevenolen/mailgun-smtp-server/issues/5) is fixed, Europe domain names are not supported by this tool.
-
+Please note that this Docker image is unmaintained and Europe domain names are not supported by this tool.
 
 #### fgribreau/smtp-to-sendgrid-gateway
 
-Here is `docker-compose.yml` configuration part spinning up a container for
+Here is the `docker-compose.yml` configuration part spinning up a container for
 [fgribreau/smtp-to-sendgrid-gateway](https://hub.docker.com/r/fgribreau/smtp-to-sendgrid-gateway):
 
 ```yaml
@@ -167,9 +166,9 @@ Configuration example for [Amazon SES](https://aws.amazon.com/ses/) (us-east-1 r
 - NOTIFY_EMAIL_FROM=notify@example.com
 ```
 
-A domain or an email that will be used in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM` must first be [verified](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html).
+You must first [verify](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html) a domain or email you will use in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM`.
 
-[SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html) must first be obtained from [Amazon SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#smtp-settings:)
+Then you should obtain [SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html) from [Amazon SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#/account).
 
 ## Setup email authentication
 
@@ -178,30 +177,43 @@ Here is the list of variables that affect email authentication:
 ```
 AUTH_EMAIL_ENABLE
 AUTH_EMAIL_FROM
-AUTH_EMAIL_SUBJ
-AUTH_EMAIL_CONTENT_TYPE
-AUTH_EMAIL_TEMPLATE
+AUTH_EMAIL_SUBJ ("remark42 confirmation" by default)
+AUTH_EMAIL_CONTENT_TYPE ("text/html" by default)
 ```
 
-After you set `SMTP_` variables, you can allow email authentication by setting these two variables:
+After you set `SMTP_` variables, you can allow email authentication by setting the first two:
 
 ```yaml
 - AUTH_EMAIL_ENABLE=true
 - AUTH_EMAIL_FROM=notify@example.com
 ```
 
-Usually, you don't need to change/set anything else. In case if you want to use a different email template, set `AUTH_EMAIL_TEMPLATE`, for instance `- AUTH_EMAIL_TEMPLATE="Confirmation email, token: {{.Token}}"`. See [verified-authentication](https://github.com/go-pkgz/auth#verified-authentication) for more details.
-
-## Email messages templates
+## HTML templates for emails and error messages
 
 Remark42 uses golang templates for email templating. Templates are located in `backend/templates` and embedded into binary by statik
-
-For getting access to the files, you can use package `templates` from `backend/app/templates`
 
 Now we have the following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
 - `email_reply.html.tmpl` – used for sending replies to user comments (when the user subscribed to it) and for noticing admins about new comments on a site
-- `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribe from replies
+- `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
+
+To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside docker-compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
+
+```yaml
+    volumes:
+      - ./var:/srv/var
+      - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
+      - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
+      - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
+      - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
+      - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
+```
+
+The easiest way to test it is to mount `error_response.html.tmpl`, and then head to <http://127.0.0.1:8080/email/unsubscribe.html>, where you are supposed to see the page like the following:
+
+![Error_template](images/error_template.png)
+
+If the file is mounted correctly, the page will render the new file content immediately after hitting the refresh button in your browser once you change the file.
