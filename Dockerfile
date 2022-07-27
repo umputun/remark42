@@ -55,6 +55,9 @@ ARG SKIP_BACKEND_TEST
 ARG BACKEND_TEST_TIMEOUT
 
 ADD backend /build/backend
+# to embed the frontend files statically into Remark42 binary
+COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
+RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 WORKDIR /build/backend
 
 # install gcc in order to be able to go test package with -race
@@ -107,7 +110,6 @@ RUN ln -s /srv/remark42 /usr/bin/remark42
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
-
 
 RUN chmod +x /srv/init.sh
 CMD ["/srv/remark42", "server"]

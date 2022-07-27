@@ -36,13 +36,13 @@ In order to have working Remark42 installation you need once to copy frontend st
 # frontend files
 docker pull umputun/remark42:master
 docker create -ti --name remark42files umputun/remark42:master sh
-docker cp remark42files:/srv/web/ ./backend/
+docker cp remark42files:/srv/web/ ./backend/app/cmd/
 docker rm -f remark42files
 # fix frontend files to point to the right URL
 ## Mac version
-find -E ./backend/web -regex '.*\.(html|js|mjs)$' -print -exec sed -i '' "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
+find -E ./backend/app/cmd/web -regex '.*\.(html|js|mjs)$' -print -exec sed -i '' "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 ## Linux version
-find ./backend/web -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
+find ./backend/app/cmd/web -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 ```
 
 To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`. It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
