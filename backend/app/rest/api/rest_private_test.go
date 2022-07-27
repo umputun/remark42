@@ -600,17 +600,10 @@ func TestRest_AnonVote(t *testing.T) {
 	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs)
 }
 
-type MockFS struct{}
-
-func (fs *MockFS) ReadFile(path string) ([]byte, error) {
-	return []byte(fmt.Sprintf("template %s", path)), nil
-}
-
 func TestRest_EmailAndTelegram(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	srv.privRest.templates = &MockFS{}
 	srv.privRest.telegramService = &mockTelegram{site: "remark42"}
 
 	// issue good token

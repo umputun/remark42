@@ -48,9 +48,9 @@ type errTmplData struct {
 	Details string
 }
 
-// SendErrorHTML makes html body with provided template and responds with provided http status code,
+// SendErrorHTML makes html body from error_response.html.tmpl template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
-func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int, t templates.FileReader) {
+func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	// MustExecute behaves like template.Execute, but panics if an error occurs.
 	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
 		if err = tmpl.Execute(wr, data); err != nil {
@@ -58,7 +58,7 @@ func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, e
 		}
 	}
 	MustRead := func(path string) string {
-		file, e := t.ReadFile(path)
+		file, e := templates.Read(path)
 		if e != nil {
 			panic(e)
 		}

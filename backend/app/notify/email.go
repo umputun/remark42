@@ -100,7 +100,6 @@ func NewEmail(emailParams EmailParams, smtpParams ntf.SMTPParams) (*Email, error
 func (e *Email) setTemplates() error {
 	var err error
 	var msgTmplFile, verifyTmplFile []byte
-	fs := templates.NewFS()
 
 	if e.VerificationTemplatePath == "" {
 		e.VerificationTemplatePath = defaultEmailVerificationTemplatePath
@@ -110,10 +109,10 @@ func (e *Email) setTemplates() error {
 		e.MsgTemplatePath = defaultEmailTemplatePath
 	}
 
-	if msgTmplFile, err = fs.ReadFile(e.MsgTemplatePath); err != nil {
+	if msgTmplFile, err = templates.Read(e.MsgTemplatePath); err != nil {
 		return fmt.Errorf("can't read message template: %w", err)
 	}
-	if verifyTmplFile, err = fs.ReadFile(e.VerificationTemplatePath); err != nil {
+	if verifyTmplFile, err = templates.Read(e.VerificationTemplatePath); err != nil {
 		return fmt.Errorf("can't read verification template: %w", err)
 	}
 	if e.msgTmpl, err = template.New("msgTmpl").Parse(string(msgTmplFile)); err != nil {

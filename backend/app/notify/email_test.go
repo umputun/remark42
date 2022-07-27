@@ -56,31 +56,17 @@ func Test_initTemplatesErr(t *testing.T) {
 		emailParams EmailParams
 	}{
 		{
-			name:        "with wrong (default, working in prod) path to reply template",
-			errText:     "can't read message template: open email_reply.html.tmpl: no such file or directory",
-			emailParams: EmailParams{},
-		},
-		{
-			name:    "with wrong (default, working in prod) path to verification template",
-			errText: "can't read verification template: open email_confirmation_subscription.html.tmpl: no such file or directory",
-			emailParams: EmailParams{
-				MsgTemplatePath: "testdata/msg.html.tmpl",
-			},
-		},
-		{
 			name:    "with wrong path to verification template",
-			errText: "can't read verification template: open notfound.tmpl: no such file or directory",
+			errText: "notfound.tmpl: file does not exist",
 			emailParams: EmailParams{
 				VerificationTemplatePath: "notfound.tmpl",
-				MsgTemplatePath:          "testdata/msg.html.tmpl",
 			},
 		},
 		{
 			name:    "with wrong path to message template",
-			errText: "can't read message template: open notfound.tmpl: no such file or directory",
+			errText: "notfound.tmpl: file does not exist",
 			emailParams: EmailParams{
-				VerificationTemplatePath: "testdata/verification.html.tmpl",
-				MsgTemplatePath:          "notfound.tmpl",
+				MsgTemplatePath: "notfound.tmpl",
 			},
 		},
 		{

@@ -667,19 +667,6 @@ func TestServerAuthHooks(t *testing.T) {
 	client.CloseIdleConnections()
 }
 
-func TestServer_loadEmailTemplate(t *testing.T) {
-	cmd := ServerCommand{}
-	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
-	r, err := cmd.loadEmailTemplate()
-	assert.NoError(t, err)
-	assert.Equal(t, "The token is {{.Token}}", r)
-
-	cmd.Auth.Email.MsgTemplate = "badpath.tmpl"
-	r, err = cmd.loadEmailTemplate()
-	assert.EqualError(t, err, "failed to read file badpath.tmpl: open badpath.tmpl: no such file or directory")
-	assert.Equal(t, r, "")
-}
-
 func TestServerCommand_parseSameSite(t *testing.T) {
 	tbl := []struct {
 		inp string

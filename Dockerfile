@@ -100,7 +100,6 @@ ADD backend/scripts/import.sh /usr/local/bin/import
 RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
-COPY --from=build-backend /build/backend/templates /srv
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /srv/web/
 COPY docker-init.sh /srv/init.sh
 RUN chown -R app:app /srv

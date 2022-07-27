@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	bfchroma "github.com/Depado/bfchroma/v2"
+	"github.com/Depado/bfchroma/v2"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/chroma/v2/formatters/html"
 	bf "github.com/russross/blackfriday/v2"

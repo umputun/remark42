@@ -877,11 +877,11 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			ContentType:  s.Auth.Email.ContentType,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
-		tmpl, err := s.loadEmailTemplate()
+		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
 		if err != nil {
 			return err
 		}
-		authenticator.AddVerifProvider("email", tmpl, sndr)
+		authenticator.AddVerifProvider("email", string(tmpl), sndr)
 	}
 
 	if s.Auth.Anonymous {
@@ -923,27 +923,6 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 
 	return nil
-}
-
-// loadEmailTemplate trying to get template from statik
-func (s *ServerCommand) loadEmailTemplate() (string, error) {
-	var file []byte
-	var err error
-
-	if s.Auth.Email.MsgTemplate == "email_confirmation_login.html.tmpl" {
-		fs := templates.NewFS()
-		file, err = fs.ReadFile(s.Auth.Email.MsgTemplate)
-	} else {
-		// deprecated loading from an external file, should be removed before v1.9.0
-		file, err = os.ReadFile(s.Auth.Email.MsgTemplate)
-		log.Printf("[INFO] template %s will be read from disk", s.Auth.Email.MsgTemplate)
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("failed to read file %s: %w", s.Auth.Email.MsgTemplate, err)
-	}
-
-	return string(file), nil
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
