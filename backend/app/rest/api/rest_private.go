@@ -552,7 +552,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 		return string(file)
 	}
-	tmplstr := MustRead("unsubscribe.html.tmpl")
+	tmplstr := MustRead("email_unsubscribe.html.tmpl")
 	tmpl := template.Must(template.New("unsubscribe").Parse(tmplstr))
 	msg := bytes.Buffer{}
 	MustExecute(tmpl, &msg, nil)
