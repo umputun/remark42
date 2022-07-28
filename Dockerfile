@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.9.1 as build-backend
+FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
 
 ARG CI
 ARG GITHUB_REF
