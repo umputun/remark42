@@ -1,0 +1,14 @@
+FROM  --platform=$BUILDPLATFORM squidfunk/mkdocs-material as build
+
+WORKDIR /build
+COPY docs /build/docs
+
+RUN mv docs/mkdocs.yml /build/mkdocs.yml
+RUN mkdocs build
+
+
+FROM ghcr.io/umputun/reproxy
+COPY --from=build /build/site /srv/site
+EXPOSE 8080
+USER app
+ENTRYPOINT ["/srv/reproxy", "--assets.location=/srv/site"]
