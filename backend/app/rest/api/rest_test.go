@@ -394,7 +394,7 @@ func Test_validEmaiAuth(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com"+tt.req, http.NoBody)
 			w := httptest.NewRecorder()
-			h := validEmaiAuth()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := validEmailAuth()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)

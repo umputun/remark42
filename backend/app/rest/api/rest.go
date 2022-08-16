@@ -228,7 +228,7 @@ func (s *Rest) routes() chi.Router {
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
 		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(2, nil)), middleware.NoCache)
-		r.Use(validEmaiAuth()) // reject suspicious email logins
+		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
 
@@ -646,9 +646,9 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 	}
 }
 
-// validEmaiAuth is a middleware for auth endpoints for email method.
+// validEmailAuth is a middleware for auth endpoints for email method.
 // it rejects login request if user, site or email are suspicious
-func validEmaiAuth() func(http.Handler) http.Handler {
+func validEmailAuth() func(http.Handler) http.Handler {
 
 	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
 	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_]{1,64}$`)
@@ -664,6 +664,7 @@ func validEmaiAuth() func(http.Handler) http.Handler {
 
 			if u := r.URL.Query().Get("user"); u != "" {
 				if !reUser.MatchString(u) {
+					log.Printf("[WARN] suspicious user rejected: %s", u)
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -671,6 +672,7 @@ func validEmaiAuth() func(http.Handler) http.Handler {
 
 			if a := r.URL.Query().Get("address"); a != "" {
 				if _, err := mail.ParseAddress(a); err != nil {
+					log.Printf("[WARN] suspicious address rejected: %s", a)
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -678,6 +680,7 @@ func validEmaiAuth() func(http.Handler) http.Handler {
 
 			if s := r.URL.Query().Get("site"); s != "" {
 				if !reSite.MatchString(s) {
+					log.Printf("[WARN] suspicious site rejected: %s", s)
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
