@@ -1,0 +1,11 @@
+{
+  "name": "@remark42/common",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Paul Mineev <paul@mineev.me>",
+  "license": "MIT"
+}

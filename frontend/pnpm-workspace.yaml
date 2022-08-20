@@ -2,3 +2,4 @@ packages:
   - "apps/*"
   - "e2e"
   - "packages/*"
+  - 'widgets/*'

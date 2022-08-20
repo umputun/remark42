@@ -1,0 +1,39 @@
+{
+  "name": "@remark42/app-svelte-vite",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@github/markdown-toolbar-element": "^2.1.1",
+    "@github/text-expander-element": "^2.2.2",
+    "@remark42/api": "workspace:*",
+    "@ungap/custom-elements": "^1.1.0",
+    "svelte-lazy-component": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^1.0.1",
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/svelte": "^3.2.0",
+    "@tsconfig/svelte": "^3.0.0",
+    "@types/node": "^18.7.8",
+    "@vitejs/plugin-basic-ssl": "^0.1.1",
+    "@vitest/coverage-c8": "^0.22.1",
+    "autoprefixer": "^10.4.8",
+    "jsdom": "^20.0.0",
+    "postcss": "^8.4.16",
+    "svelte": "^3.49.0",
+    "svelte-check": "^2.8.0",
+    "svelte-preprocess": "^4.10.7",
+    "tailwindcss": "^3.1.8",
+    "tslib": "^2.4.0",
+    "typescript": "^4.6.4",
+    "vite": "^3.0.7",
+    "vitest": "^0.22.0"
+  }
+}

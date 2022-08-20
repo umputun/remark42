@@ -87,7 +87,7 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	 * Get server config
 	 */
 	async function getConfig(): Promise<Config> {
-		return fetcher.get('/config')
+		return fetcher.get<Config>('/config')
 	}
 
 	/**
@@ -106,7 +106,7 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 		params: string | GetUserCommentsParams
 	): Promise<Comment[] | CommentsTree> {
 		if (typeof params === 'string') {
-			return fetcher.get('/comments', { url: params })
+			return fetcher.get<Comment[]>('/comments', { url: params })
 		}
 
 		return fetcher.get<CommentsTree>('/find', { ...params, format: 'tree' })
@@ -117,21 +117,21 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	 */
 	async function addComment(url: string, payload: CommentPayload): Promise<Comment> {
 		const locator = { site, url }
-		return fetcher.post('/comment', {}, { ...payload, locator })
+		return fetcher.post<Comment>('/comment', {}, { ...payload, locator })
 	}
 
 	/**
 	 * Update comment
 	 */
 	async function updateComment(url: string, id: string, text: string): Promise<Comment> {
-		return fetcher.put(`/comment/${id}`, { url }, { text })
+		return fetcher.put<Comment>(`/comment/${id}`, { url }, { text })
 	}
 
 	/**
 	 * Remove comment on a page
 	 */
 	async function removeComment(url: string, id: string): Promise<void> {
-		return fetcher.put(`/comment/${id}`, { url }, { delete: true })
+		return fetcher.put<undefined>(`/comment/${id}`, { url }, { delete: true })
 	}
 
 	/**

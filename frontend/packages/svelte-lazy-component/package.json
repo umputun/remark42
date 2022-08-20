@@ -1,0 +1,38 @@
+{
+  "name": "svelte-lazy-component",
+  "version": "1.0.0",
+  "description": "",
+  "author": "",
+  "license": "MIT",
+  "keywords": [
+    "svelte",
+    "lazyload",
+    "lazy",
+    "component",
+    "lazy component",
+    "lazyload component"
+  ],
+  "main": "index.js",
+  "module": "index.mjs",
+  "svelte": "index.svelte",
+  "types": "index.d.ts",
+  "files": [
+    "index.mjs",
+    "index.js",
+    "index.svelte",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "peerDependencies": {
+    "svelte": "3.x"
+  },
+  "devDependencies": {
+    "rollup": "^2.77.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-svelte": "^7.1.0",
+    "svelte": "^3.49.0"
+  }
+}

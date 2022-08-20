@@ -2,6 +2,7 @@
   "name": "remark42",
   "version": "0.0.0",
   "description": "Frontend related code for Remark42",
+  "type": "module",
   "keywords": [
     "remark42",
     "comments",

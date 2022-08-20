@@ -8,3 +8,4 @@ coverage
 public
 dist
 !remark42
+.pnpm-*
