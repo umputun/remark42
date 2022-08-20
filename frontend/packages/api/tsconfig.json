@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "lib": ["DOM"],
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "declaration": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true
+  },
+  "include": ["index.ts", "clients", "lib"],
+  "exclude": ["tests", "coverage"]
+}
