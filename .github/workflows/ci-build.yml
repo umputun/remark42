@@ -8,16 +8,17 @@ on:
     paths:
       - ".github/workflows/ci-build.yml"
       - "backend/**"
-      - "frontend/**"
+      - "frontend/apps/**"
       - ".dockerignore"
       - "docker-init.sh"
       - "Dockerfile"
       - "!**.md"
+      - "!frontend/packages/**"
   pull_request:
     paths:
       - ".github/workflows/ci-build.yml"
       - "backend/**"
-      - "frontend/**"
+      - "frontend/apps/**"
       - ".dockerignore"
       - "docker-init.sh"
       - "Dockerfile"

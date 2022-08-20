@@ -10,10 +10,15 @@
   ],
   "scripts": {
     "prepare": "if [ -z \"$CI\" ]; then cd .. && husky install frontend/.husky; else echo \"Skip Husky Hooks\"; fi",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "test:api": "turbo run test --filter=@remark42/api",
+    "coverage:api": "turbo run coverage --filter=@remark42/api",
+    "type-check:api": "turbo run type-check --filter=@remark42/api",
+    "lint:api": "turbo run lint --filter=@remark42/api"
   },
   "devDependencies": {
     "husky": "^8.0.1",
-    "lint-staged": "^13.0.3"
+    "lint-staged": "^13.0.3",
+    "turbo": "^1.4.3"
   }
 }
