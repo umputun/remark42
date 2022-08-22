@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/playwright:v1.25.0-focal
+
+ENV CI true
+WORKDIR /frontend
+
+COPY ./package.json ./pnpm-workspace.yaml ./pnpm-lock.yaml /frontend/
+COPY ./e2e/package.json /frontend/e2e/
+RUN corepack enable pnpm && pnpm install
+
+COPY ./e2e/playwright.config.ts /frontend/e2e/
+COPY ./e2e/tests /frontend/e2e/tests/
+
+WORKDIR /frontend/e2e
+
+CMD pnpm test

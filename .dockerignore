@@ -1,13 +1,19 @@
 /logs/
 /target/
 /var/
-/frontend/node_modules/
-/frontend/apps/remark42/node_modules/
-/frontend/apps/remark42/public/
 /.vscode/
 /.idea/
 /bin/
 /.git/
+
+# frontend files not needed in docker image
+/frontend/node_modules/
+/frontend/apps/remark42/node_modules/
+/frontend/apps/remark42/public/
+# e2e tests arficats
+/frontend/e2e/playwright-report/
+/frontend/e2e/playwright/.cache/
+/frontend/e2e/test-results/
 
 # source files
 docker-compose.yml
@@ -28,3 +34,4 @@ debug.test
 *.test
 remark42
 /backend/var/
+/playwright-report/
