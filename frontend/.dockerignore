@@ -1,0 +1,7 @@
+/.vscode/
+/.idea/
+
+# e2e tests arficats
+/e2e/playwright-report/
+/e2e/playwright/.cache/
+/e2e/test-results/

@@ -1,0 +1,34 @@
+name: e2e
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "frontend/apps/remark42/**"
+      - "frontend/e2e/**"
+
+  pull_request:
+    branches: [master]
+    paths:
+      - "frontend/apps/remark42/**"
+      - "frontend/e2e/**"
+
+jobs:
+  tests:
+    name: Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build & run containers
+        id: tests
+        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
+
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: playwright-report
+          path: ./playwright-report/
+          retention-days: 30
