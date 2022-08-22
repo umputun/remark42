@@ -8,6 +8,7 @@ import { parseQuery } from 'utils/parse-query';
 import { requestDeletion } from 'utils/email';
 import { setStyles } from 'utils/set-dom-props';
 import { Avatar } from 'components/avatar';
+import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { postMessageToParent } from 'utils/post-message';
 import { Comment } from 'components/comment';
 import { Preloader } from 'components/preloader';
@@ -18,7 +19,7 @@ import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
 import { Button } from 'components/auth/components/button';
 import { messages as authMessages } from 'components/auth/auth.messsages';
-import type { Comment as CommentType, Theme } from 'common/types';
+import type { Comment as CommentType, Theme, User } from 'common/types';
 
 import styles from './profile.module.css';
 import { Counter } from './components/counter';
@@ -219,7 +220,7 @@ export function Profile() {
           {comments === null && isCommentsLoading && <Preloader className={styles.preloader} />}
           {comments !== null && commentsJSX}
         </section>
-        {isCurrent ? (
+        {isCurrent && !isUserAnonymous(user as unknown as User) ? (
           <footer className={clsx('profile-footer', styles.footer)}>
             <Button kind="hollow" size="sm" onClick={handleClickRequestRemoveData}>
               <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request my data removal" />
