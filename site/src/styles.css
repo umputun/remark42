@@ -6,7 +6,7 @@
 	@apply before:hidden after:hidden text-brand-800 dark:text-brand-300 font-light;
 }
 .prose strong code {
-	@apply font-bold text-yellow-600 dark:text-yellow-400;;
+	@apply font-bold text-yellow-600 dark:text-yellow-400;
 }
 
 .burger-icon {
