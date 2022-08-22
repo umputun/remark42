@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { waitFor, fireEvent } from '@testing-library/preact';
+import { waitFor, fireEvent, screen } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -189,5 +189,16 @@ describe('<Profile />', () => {
 
     fireEvent.click(await findByRole('button', { name: /load more/i }));
     expect(queryByTestId('preloader')).not.toBeInTheDocument();
+  });
+
+  it('should not render removal button for anonymous user', async () => {
+    jest
+      .spyOn(api, 'getUserComments')
+      .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
+    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, name: 'anonymous_1' }));
+
+    render(<Profile />);
+
+    expect(screen.queryByText(/request my data removal/i)).not.toBeInTheDocument();
   });
 });
