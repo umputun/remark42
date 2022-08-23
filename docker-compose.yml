@@ -34,7 +34,7 @@ services:
       - AUTH_DISQUS_CID
       - AUTH_DISQUS_CSEC
       # Enable it only for the initial comment import or for manual backups.
-      # Do not leave server running with ADMIN_PASSWD set if you don't have intention
+      # Do not leave the server running with the ADMIN_PASSWD set if you don't have an intention
       # to keep creating backups manually!
       # - ADMIN_PASSWD=<your secret password>
     volumes:

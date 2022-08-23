@@ -65,7 +65,7 @@ User's activity throttled globally (up to 1000 simultaneous requests) and limite
 
 Request timeout set to 60sec.
 
-Admin authentication (`--admin-password` set) allows to hit Remark42 API without social login and admin privileges. Adds basic-auth for username: `admin`, password: `${ADMIN_PASSWD}`. Enable it only for the initial comment import or for manual backups. Do not leave server running with admin password set if you don't have intention to keep creating backups manually!
+Admin authentication (`--admin-password` set) allows to hit Remark42 API without social login and admin privileges. Adds basic-auth for username: `admin`, password: `${ADMIN_PASSWD}`. Enable it only for the initial comment import or for manual backups. Do not leave the server running with admin password set if you don't have an intention to keep creating backups manually!
 
 User can vote for the comment multiple times but only to change the vote. Double voting is not allowed.
 
