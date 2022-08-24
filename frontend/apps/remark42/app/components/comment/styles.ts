@@ -5,7 +5,6 @@ import './__body/comment__body.css';
 
 import './__info/comment__info.css';
 import './__input/comment__input.css';
-import './__link-to-parent/comment__link-to-parent.css';
 import './__status/comment__status.css';
 import './__text/comment__text.css';
 import './__time/comment__time.css';

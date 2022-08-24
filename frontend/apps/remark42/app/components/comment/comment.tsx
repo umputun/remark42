@@ -446,13 +446,17 @@ export class Comment extends Component<CommentProps, State> {
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
             <a
-              className="comment__link-to-parent"
+              className={styles.threadStarterAnchor}
               href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.pid}`}
-              aria-label={goToParentMessage}
               title={goToParentMessage}
               onClick={(e) => this.scrollToParent(e)}
             >
-              {' '}
+              <svg width="7" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 7 11" aria-hidden>
+                <path
+                  fill="currentColor"
+                  d="M.815 5.905L2.915 4v7H4.08V4l2.105 1.905.815-.74-3.5-3.17L0 5.165l.815.74zM0 1.045h7V0H0v1.045z"
+                />
+              </svg>
             </a>
           )}
 
