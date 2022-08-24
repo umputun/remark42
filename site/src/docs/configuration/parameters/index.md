@@ -24,6 +24,7 @@ services:
       - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
       - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
       - SECRET=abcd-123456-xyz-$%^&           # secret key
+      - AUTH_ANON=true                        # enable anonymous commenting
       - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
       - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
     volumes:
@@ -194,33 +195,11 @@ environment:
 
 To get a user ID just log in and click on your username or any other user you want to promote to admins. It will expand login info and show the full user ID.
 
-### Docker parameters
+### Docker image
 
 Two parameters allow customizing the Docker container on the system level:
 
 * `APP_UID` - sets UID to run Remark42 application in container (default=1001)
-* `TIME_ZONE` - sets time zone of Remark42 container (default=America/Chicago)
+* `TIME_ZONE` - sets time zone of Remark42 container, would be used only on the backend as comments shown with user's timezone in the web interface (default=America/Chicago)
 
-_see [umputun/baseimage](https://github.com/umputun/baseimage) for more details_
-
-Example of `docker-compose.yml`:
-
-```yaml
-version: '2'
-
-services:
-  remark42:
-    image: umputun/remark42:latest
-    restart: always
-    container_name: "remark42"
-    environment:
-      - APP_UID=2000                          # runs Remark42 app with non-default UID
-      - TIME_ZONE=GTC                         # sets container time to UTC
-      - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
-      - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
-      - SECRET=abcd-123456-xyz-$%^&           # secret key
-      - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
-      - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
-    volumes:
-      - ./var:/srv/var                        # persistent volume to store all Remark42 data
-```
+_See [umputun/baseimage](https://github.com/umputun/baseimage) for more details._
