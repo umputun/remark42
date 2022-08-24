@@ -11,6 +11,7 @@
   "scripts": {
     "prepare": "if [ -z \"$CI\" ]; then cd .. && husky install frontend/.husky; else echo \"Skip Husky Hooks\"; fi",
     "lint-staged": "lint-staged",
+    "dev:remark42": "turbo run dev --filter=@remark42/app",
     "test:api": "turbo run test --filter=@remark42/api",
     "coverage:api": "turbo run coverage --filter=@remark42/api",
     "type-check:api": "turbo run type-check --filter=@remark42/api",
