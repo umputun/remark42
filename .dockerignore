@@ -11,6 +11,11 @@
 
 # source files
 docker-compose.yml
+compose-dev-backend.yml
+compose-dev-frontend.yml
+compose-private-backend.yml
+compose-private-frontend.yml
+compose-private.yml
 rest-client.env.json
 
 # generated files
@@ -23,4 +28,3 @@ debug.test
 *.test
 remark42
 /backend/var/
-compose-private-backend.yml
