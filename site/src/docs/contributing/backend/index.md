@@ -16,7 +16,9 @@ docker-compose -f compose-private.yml up --build
 
 It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To access the UI demo page go to <http://127.0.0.1:8080/web/>. By default, you would be logged in as `dev_user`, defined as admin. You can tweak any of the [supported parameters](https://remark42.com/docs/configuration/parameters/) in corresponded yml file.
 
-**Important**: use `127.0.0.1` and not `localhost` to access the server, as otherwise, CORS will prevent your browser from authentication to work correctly.
+::: note 🚨
+Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. You could alter the address for dev auth with the `REMARK_URL` environment variable.
+:::
 
 Backend Docker Compose config (`compose-dev-backend.yml`) by default skips running frontend related tests. Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
 

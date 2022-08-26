@@ -1,13 +1,12 @@
 package lcw
 
 import (
+	"fmt"
 	"sync/atomic"
 
+	"github.com/go-pkgz/lcw/eventbus"
 	"github.com/google/uuid"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/pkg/errors"
-
-	"github.com/go-pkgz/lcw/eventbus"
 )
 
 // LruCache wraps lru.LruCache with loading cache Get and size limits
@@ -31,7 +30,7 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 	}
 	for _, opt := range opts {
 		if err := opt(&res.options); err != nil {
-			return nil, errors.Wrap(err, "failed to set cache option")
+			return nil, fmt.Errorf("failed to set cache option: %w", err)
 		}
 	}
 
@@ -41,7 +40,7 @@ func NewLruCache(opts ...Option) (*LruCache, error) {
 
 func (c *LruCache) init() error {
 	if err := c.eventBus.Subscribe(c.onBusEvent); err != nil {
-		return errors.Wrapf(err, "can't subscribe to event bus")
+		return fmt.Errorf("can't subscribe to event bus: %w", err)
 	}
 
 	onEvicted := func(key interface{}, value interface{}) {
@@ -58,7 +57,7 @@ func (c *LruCache) init() error {
 	var err error
 	// OnEvicted called automatically for expired and manually deleted
 	if c.backend, err = lru.NewWithEvict(c.maxKeys, onEvicted); err != nil {
-		return errors.Wrap(err, "failed to make lru cache backend")
+		return fmt.Errorf("failed to make lru cache backend: %w", err)
 	}
 
 	return nil

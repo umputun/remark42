@@ -27,7 +27,7 @@ You must have at least 2GB RAM or swap enabled for building.
 Running `pnpm i` will set up pre-commit hooks into your git repository. They are used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
 
 ::: note 🚨
-Use `127.0.0.1` and not `localhost` to access the server, as otherwise, CORS will prevent your browser from authentication to work correctly.
+Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. You could alter the address for dev auth with the `REMARK_URL` environment variable.
 :::
 
 ## Development

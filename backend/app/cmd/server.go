@@ -865,7 +865,11 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
-		authenticator.AddProvider("dev", "", "")
+		u, errURL := url.Parse(s.RemarkURL)
+		if errURL != nil {
+			return fmt.Errorf("can't parse Remark42 URL: %w", errURL)
+		}
+		authenticator.AddDevProvider(u.Hostname(), 8084)
 		providersCount++
 	}
 

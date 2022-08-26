@@ -1,9 +1,8 @@
 package lcw
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Scache wraps LoadingCache with partitions (sub-system), and scopes.
@@ -111,7 +110,7 @@ func (k Key) String() string {
 func parseKey(keyStr string) (Key, error) {
 	elems := strings.Split(keyStr, "@@")
 	if len(elems) != 3 {
-		return Key{}, errors.Errorf("can't parse cache key %s, invalid number of segments %d", keyStr, len(elems))
+		return Key{}, fmt.Errorf("can't parse cache key %s, invalid number of segments %d", keyStr, len(elems))
 	}
 
 	scopes := strings.Split(elems[2], "$$")

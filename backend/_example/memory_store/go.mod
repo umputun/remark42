@@ -13,6 +13,7 @@ require (
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
@@ -21,7 +22,7 @@ require (
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.7 // indirect
-	github.com/go-chi/render v1.0.1 // indirect
+	github.com/go-chi/render v1.0.2 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
 	github.com/go-pkgz/rest v1.15.6 // indirect
 	github.com/gorilla/css v1.0.0 // indirect

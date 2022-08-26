@@ -1,5 +1,9 @@
 # render
 
+![tests](https://github.com/go-chi/render/actions/workflows/test.yml/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/go-chi/render)](https://goreportcard.com/report/github.com/go-chi/render)
+[![Go Reference](https://pkg.go.dev/badge/github.com/go-chi/render.svg)](https://pkg.go.dev/github.com/go-chi/render)
+
 The `render` package helps manage HTTP request / response payloads.
 
 Every well-designed, robust and maintainable Web Service / REST API also needs
@@ -21,4 +25,3 @@ request bodies. Please have a look at the [rest](https://github.com/go-chi/chi/b
 example which uses the latest chi/render sub-pkg.
 
 All feedback is welcome, thank you!
-

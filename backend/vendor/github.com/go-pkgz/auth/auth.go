@@ -257,8 +257,8 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 	s.authMiddleware.Providers = s.providers
 }
 
-// AddDevProvider with a custom port
-func (s *Service) AddDevProvider(port int) {
+// AddDevProvider with a custom host and port
+func (s *Service) AddDevProvider(host string, port int) {
 	p := provider.Params{
 		URL:         s.opts.URL,
 		JwtService:  s.jwtService,
@@ -266,6 +266,7 @@ func (s *Service) AddDevProvider(port int) {
 		AvatarSaver: s.avatarProxy,
 		L:           s.logger,
 		Port:        port,
+		Host:        host,
 	}
 	s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
 }

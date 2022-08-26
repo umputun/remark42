@@ -4,11 +4,10 @@
 package cache
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // LoadingCache provides expirable loading cache with LRC eviction.
@@ -19,7 +18,7 @@ type LoadingCache struct {
 	done       chan struct{}
 	onEvicted  func(key string, value interface{})
 
-	sync.Mutex
+	mu   sync.Mutex
 	data map[string]*cacheItem
 }
 
@@ -39,7 +38,7 @@ func NewLoadingCache(options ...Option) (*LoadingCache, error) {
 
 	for _, opt := range options {
 		if err := opt(&res); err != nil {
-			return nil, errors.Wrap(err, "failed to set cache option")
+			return nil, fmt.Errorf("failed to set cache option: %w", err)
 		}
 	}
 
@@ -54,9 +53,9 @@ func NewLoadingCache(options ...Option) (*LoadingCache, error) {
 				case <-done:
 					return
 				case <-ticker.C:
-					res.Lock()
+					res.mu.Lock()
 					res.purge(res.maxKeys)
-					res.Unlock()
+					res.mu.Unlock()
 				}
 			}
 		}(res.done)
@@ -66,8 +65,8 @@ func NewLoadingCache(options ...Option) (*LoadingCache, error) {
 
 // Set key
 func (c *LoadingCache) Set(key string, value interface{}) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	now := time.Now()
 	if _, ok := c.data[key]; !ok {
@@ -86,8 +85,8 @@ func (c *LoadingCache) Set(key string, value interface{}) {
 
 // Get returns the key value
 func (c *LoadingCache) Get(key string) (interface{}, bool) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	value, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -97,8 +96,8 @@ func (c *LoadingCache) Get(key string) (interface{}, bool) {
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
 func (c *LoadingCache) Peek(key string) (interface{}, bool) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	value, ok := c.getValue(key)
 	if !ok {
 		return nil, false
@@ -108,19 +107,19 @@ func (c *LoadingCache) Peek(key string) (interface{}, bool) {
 
 // Invalidate key (item) from the cache
 func (c *LoadingCache) Invalidate(key string) {
-	c.Lock()
+	c.mu.Lock()
 	if value, ok := c.data[key]; ok {
 		delete(c.data, key)
 		if c.onEvicted != nil {
 			c.onEvicted(key, value.data)
 		}
 	}
-	c.Unlock()
+	c.mu.Unlock()
 }
 
 // InvalidateFn deletes multiple keys if predicate is true
 func (c *LoadingCache) InvalidateFn(fn func(key string) bool) {
-	c.Lock()
+	c.mu.Lock()
 	for key, value := range c.data {
 		if fn(key) {
 			delete(c.data, key)
@@ -129,13 +128,13 @@ func (c *LoadingCache) InvalidateFn(fn func(key string) bool) {
 			}
 		}
 	}
-	c.Unlock()
+	c.mu.Unlock()
 }
 
 // Keys return slice of current keys in the cache
 func (c *LoadingCache) Keys() []string {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	keys := make([]string, 0, len(c.data))
 	for k := range c.data {
 		keys = append(keys, k)
@@ -157,8 +156,8 @@ func (c *LoadingCache) getValue(key string) (interface{}, bool) {
 
 // Purge clears the cache completely.
 func (c *LoadingCache) Purge() {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for k, v := range c.data {
 		delete(c.data, k)
 		if c.onEvicted != nil {
@@ -169,23 +168,23 @@ func (c *LoadingCache) Purge() {
 
 // DeleteExpired clears cache of expired items
 func (c *LoadingCache) DeleteExpired() {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.purge(0)
 }
 
 // ItemCount return count of items in cache
 func (c *LoadingCache) ItemCount() int {
-	c.Lock()
+	c.mu.Lock()
 	n := len(c.data)
-	c.Unlock()
+	c.mu.Unlock()
 	return n
 }
 
 // Close cleans the cache and destroys running goroutines
 func (c *LoadingCache) Close() {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	close(c.done)
 }
 
