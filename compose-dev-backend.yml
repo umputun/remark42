@@ -33,13 +33,15 @@ services:
       - "8084:8084" # local oauth2 server
 
     environment:
-      #            - APP_UID=1000
-      #            - TIME_ZONE=GMT
+      # - APP_UID=1000
+      # - TIME_ZONE=GMT
+      # REMARK_URL below would be used for the dev auth,
+      # so that it would work on http://127.0.0.1 but wouldn't on http://localhost
       - REMARK_URL=http://127.0.0.1:8080
       - SECRET=12345
       - DEBUG=true
       - ADMIN_PASSWD=password
-      - AUTH_DEV=true # activate local oauth "dev"
+      - AUTH_DEV=true # activate local OAuth "dev" on REMARK_URL hostname
       - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local oauth2
       - NOTIFY_USERS
       - NOTIFY_ADMINS

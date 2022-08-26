@@ -16,7 +16,10 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
-const defDevAuthPort = 8084
+const (
+	defDevAuthPort = 8084
+	defDevAuthHost = "127.0.0.1"
+)
 
 // DevAuthServer is a fake oauth server for development
 // it provides stand-alone server running on its own port and pretending to be the real oauth2. It also provides
@@ -28,7 +31,6 @@ type DevAuthServer struct {
 	Provider   Oauth2Handler
 	Automatic  bool
 	GetEmailFn func(string) string
-
 	username   string // unsafe, but fine for dev
 	httpServer *http.Server
 	lock       sync.Mutex
@@ -39,6 +41,10 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 	if d.Provider.Port == 0 {
 		d.Provider.Port = defDevAuthPort
 	}
+	if d.Provider.Host == "" {
+		d.Provider.Host = defDevAuthHost
+	}
+
 	d.username = "dev_user"
 	d.Logf("[INFO] run local oauth2 dev server on %d, redirect url=%s", d.Provider.Port, d.Provider.conf.RedirectURL)
 	d.lock.Lock()
@@ -93,7 +99,7 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 				}
 
 			case strings.HasPrefix(r.URL.Path, "/user"):
-				ava := fmt.Sprintf("http://127.0.0.1:%d/avatar?user=%s", d.Provider.Port, d.username)
+				ava := fmt.Sprintf("http://%s:%d/avatar?user=%s", d.Provider.Host, d.Provider.Port, d.username)
 				res := fmt.Sprintf(`{
 					"id": "%s",
 					"name":"%s",
@@ -165,14 +171,17 @@ func NewDev(p Params) Oauth2Handler {
 	if p.Port == 0 {
 		p.Port = defDevAuthPort
 	}
+	if p.Host == "" {
+		p.Host = defDevAuthHost
+	}
 	oh := initOauth2Handler(p, Oauth2Handler{
 		name: "dev",
 		endpoint: oauth2.Endpoint{
-			AuthURL:  fmt.Sprintf("http://127.0.0.1:%d/login/oauth/authorize", p.Port),
-			TokenURL: fmt.Sprintf("http://127.0.0.1:%d/login/oauth/access_token", p.Port),
+			AuthURL:  fmt.Sprintf("http://%s:%d/login/oauth/authorize", p.Host, p.Port),
+			TokenURL: fmt.Sprintf("http://%s:%d/login/oauth/access_token", p.Host, p.Port),
 		},
 		scopes:  []string{"user:email"},
-		infoURL: fmt.Sprintf("http://127.0.0.1:%d/user", p.Port),
+		infoURL: fmt.Sprintf("http://%s:%d/user", p.Host, p.Port),
 		mapUser: func(data UserData, _ []byte) token.User {
 			userInfo := token.User{
 				ID:      data.Value("id"),

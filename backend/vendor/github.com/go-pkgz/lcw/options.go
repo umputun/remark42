@@ -1,7 +1,7 @@
 package lcw
 
 import (
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-pkgz/lcw/eventbus"
@@ -25,7 +25,7 @@ type Option func(o *options) error
 func MaxValSize(max int) Option {
 	return func(o *options) error {
 		if max < 0 {
-			return errors.New("negative max value size")
+			return fmt.Errorf("negative max value size")
 		}
 		o.maxValueSize = max
 		return nil
@@ -37,7 +37,7 @@ func MaxValSize(max int) Option {
 func MaxKeySize(max int) Option {
 	return func(o *options) error {
 		if max < 0 {
-			return errors.New("negative max key size")
+			return fmt.Errorf("negative max key size")
 		}
 		o.maxKeySize = max
 		return nil
@@ -49,7 +49,7 @@ func MaxKeySize(max int) Option {
 func MaxKeys(max int) Option {
 	return func(o *options) error {
 		if max < 0 {
-			return errors.New("negative max keys")
+			return fmt.Errorf("negative max keys")
 		}
 		o.maxKeys = max
 		return nil
@@ -61,7 +61,7 @@ func MaxKeys(max int) Option {
 func MaxCacheSize(max int64) Option {
 	return func(o *options) error {
 		if max < 0 {
-			return errors.New("negative max cache size")
+			return fmt.Errorf("negative max cache size")
 		}
 		o.maxCacheSize = max
 		return nil
@@ -73,7 +73,7 @@ func MaxCacheSize(max int64) Option {
 func TTL(ttl time.Duration) Option {
 	return func(o *options) error {
 		if ttl < 0 {
-			return errors.New("negative ttl")
+			return fmt.Errorf("negative ttl")
 		}
 		o.ttl = ttl
 		return nil

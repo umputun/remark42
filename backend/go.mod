@@ -10,10 +10,10 @@ require (
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
-	github.com/go-chi/render v1.0.1
-	github.com/go-pkgz/auth v1.19.1-0.20220624002401-8b91a0eee69a
+	github.com/go-chi/render v1.0.2
+	github.com/go-pkgz/auth v1.19.1
 	github.com/go-pkgz/jrpc v0.3.0
-	github.com/go-pkgz/lcw v0.8.1
+	github.com/go-pkgz/lcw v1.0.1
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/go-pkgz/notify v0.1.1
 	github.com/go-pkgz/repeater v1.1.3
@@ -24,7 +24,7 @@ require (
 	github.com/gorilla/feeds v1.1.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/kyokomi/emoji/v2 v2.2.9
+	github.com/kyokomi/emoji/v2 v2.2.10
 	github.com/microcosm-cc/bluemonday v1.0.19
 	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
@@ -39,15 +39,18 @@ require (
 
 require (
 	cloud.google.com/go/compute v1.6.1 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/oauth1 v0.7.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.4.3 // indirect
 	github.com/go-pkgz/email v0.3.0 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
-	github.com/go-redis/redis/v7 v7.4.1 // indirect
+	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

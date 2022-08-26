@@ -1,11 +1,12 @@
 package lcw
 
 import (
+	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
-	"github.com/go-redis/redis/v7"
-	"github.com/pkg/errors"
+	"github.com/go-redis/redis/v8"
 )
 
 // RedisValueSizeLimit is maximum allowed value size in Redis
@@ -27,7 +28,7 @@ func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
 	}
 	for _, opt := range opts {
 		if err := opt(&res.options); err != nil {
-			return nil, errors.Wrap(err, "failed to set cache option")
+			return nil, fmt.Errorf("failed to set cache option: %w", err)
 		}
 	}
 
@@ -42,7 +43,7 @@ func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
 
 // Get gets value by key or load with fn if not found in cache
 func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data interface{}, err error) {
-	v, getErr := c.backend.Get(key).Result()
+	v, getErr := c.backend.Get(context.Background(), key).Result()
 	switch getErr {
 	// RedisClient returns nil when find a key in DB
 	case nil:
@@ -65,7 +66,7 @@ func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data inter
 		return data, nil
 	}
 
-	_, setErr := c.backend.Set(key, data, c.ttl).Result()
+	_, setErr := c.backend.Set(context.Background(), key, data, c.ttl).Result()
 	if setErr != nil {
 		atomic.AddInt64(&c.Errors, 1)
 		return data, setErr
@@ -76,16 +77,16 @@ func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data inter
 
 // Invalidate removes keys with passed predicate fn, i.e. fn(key) should be true to get evicted
 func (c *RedisCache) Invalidate(fn func(key string) bool) {
-	for _, key := range c.backend.Keys("*").Val() { // Keys() returns copy of cache's key, safe to remove directly
+	for _, key := range c.backend.Keys(context.Background(), "*").Val() { // Keys() returns copy of cache's key, safe to remove directly
 		if fn(key) {
-			c.backend.Del(key)
+			c.backend.Del(context.Background(), key)
 		}
 	}
 }
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
 func (c *RedisCache) Peek(key string) (interface{}, bool) {
-	ret, err := c.backend.Get(key).Result()
+	ret, err := c.backend.Get(context.Background(), key).Result()
 	if err != nil {
 		return nil, false
 	}
@@ -94,18 +95,18 @@ func (c *RedisCache) Peek(key string) (interface{}, bool) {
 
 // Purge clears the cache completely.
 func (c *RedisCache) Purge() {
-	c.backend.FlushDB()
+	c.backend.FlushDB(context.Background())
 
 }
 
 // Delete cache item by key
 func (c *RedisCache) Delete(key string) {
-	c.backend.Del(key)
+	c.backend.Del(context.Background(), key)
 }
 
 // Keys gets all keys for the cache
 func (c *RedisCache) Keys() (res []string) {
-	return c.backend.Keys("*").Val()
+	return c.backend.Keys(context.Background(), "*").Val()
 }
 
 // Stat returns cache statistics
@@ -129,11 +130,11 @@ func (c *RedisCache) size() int64 {
 }
 
 func (c *RedisCache) keys() int {
-	return int(c.backend.DBSize().Val())
+	return int(c.backend.DBSize(context.Background()).Val())
 }
 
 func (c *RedisCache) allowed(key string, data interface{}) bool {
-	if c.maxKeys > 0 && c.backend.DBSize().Val() >= int64(c.maxKeys) {
+	if c.maxKeys > 0 && c.backend.DBSize(context.Background()).Val() >= int64(c.maxKeys) {
 		return false
 	}
 	if c.maxKeySize > 0 && len(key) > c.maxKeySize {

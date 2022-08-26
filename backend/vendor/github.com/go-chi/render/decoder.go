@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/ajg/form"
 )
 
 // Decode is a package-level variable set to our default Decoder. We do this
@@ -17,6 +19,8 @@ import (
 // bytes allowed to be read from the request body.
 var Decode = DefaultDecoder
 
+// DefaultDecoder detects the correct decoder for use on an HTTP request and
+// marshals into a given interface.
 func DefaultDecoder(r *http.Request, v interface{}) error {
 	var err error
 
@@ -25,7 +29,8 @@ func DefaultDecoder(r *http.Request, v interface{}) error {
 		err = DecodeJSON(r.Body, v)
 	case ContentTypeXML:
 		err = DecodeXML(r.Body, v)
-	// case ContentTypeForm: // TODO
+	case ContentTypeForm:
+		err = DecodeForm(r.Body, v)
 	default:
 		err = errors.New("render: unable to automatically decode the request content type")
 	}
@@ -33,12 +38,20 @@ func DefaultDecoder(r *http.Request, v interface{}) error {
 	return err
 }
 
+// DecodeJSON decodes a given reader into an interface using the json decoder.
 func DecodeJSON(r io.Reader, v interface{}) error {
-	defer io.Copy(ioutil.Discard, r)
+	defer io.Copy(ioutil.Discard, r) //nolint:errcheck
 	return json.NewDecoder(r).Decode(v)
 }
 
+// DecodeXML decodes a given reader into an interface using the xml decoder.
 func DecodeXML(r io.Reader, v interface{}) error {
-	defer io.Copy(ioutil.Discard, r)
+	defer io.Copy(ioutil.Discard, r) //nolint:errcheck
 	return xml.NewDecoder(r).Decode(v)
+}
+
+// DecodeForm decodes a given reader into an interface using the form decoder.
+func DecodeForm(r io.Reader, v interface{}) error {
+	decoder := form.NewDecoder(r) //nolint:errcheck
+	return decoder.Decode(v)
 }

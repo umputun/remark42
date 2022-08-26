@@ -1,13 +1,13 @@
 package lcw
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // New parses uri and makes any of supported caches
@@ -19,23 +19,26 @@ import (
 func New(uri string) (LoadingCache, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parse cache uri %s", uri)
+		return nil, fmt.Errorf("parse cache uri %s: %w", uri, err)
 	}
 
 	query := u.Query()
 	opts, err := optionsFromQuery(query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parse uri options %s", uri)
+		return nil, fmt.Errorf("parse uri options %s: %w", uri, err)
 	}
 
 	switch u.Scheme {
 	case "redis":
-		redisOpts, err := redisOptionsFromURL(u)
-		if err != nil {
-			return nil, err
+		redisOpts, e := redisOptionsFromURL(u)
+		if e != nil {
+			return nil, e
 		}
-		res, err := NewRedisCache(redis.NewClient(redisOpts), opts...)
-		return res, errors.Wrapf(err, "make redis for %s", uri)
+		res, e := NewRedisCache(redis.NewClient(redisOpts), opts...)
+		if e != nil {
+			return nil, fmt.Errorf("make redis for %s: %w", uri, e)
+		}
+		return res, nil
 	case "mem":
 		switch u.Hostname() {
 		case "lru":
@@ -43,12 +46,12 @@ func New(uri string) (LoadingCache, error) {
 		case "expirable":
 			return NewExpirableCache(opts...)
 		default:
-			return nil, errors.Errorf("unsupported mem cache type %s", u.Hostname())
+			return nil, fmt.Errorf("unsupported mem cache type %s", u.Hostname())
 		}
 	case "nop":
 		return NewNopCache(), nil
 	}
-	return nil, errors.Errorf("unsupported cache type %s", u.Scheme)
+	return nil, fmt.Errorf("unsupported cache type %s", u.Scheme)
 }
 
 func optionsFromQuery(q url.Values) (opts []Option, err error) {
@@ -57,7 +60,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 	if v := q.Get("max_val_size"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, errors.Wrapf(e, "max_val_size query param %s", v))
+			errs = multierror.Append(errs, fmt.Errorf("max_val_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, MaxValSize(vv))
 		}
@@ -66,7 +69,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 	if v := q.Get("max_key_size"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, errors.Wrapf(e, "max_key_size query param %s", v))
+			errs = multierror.Append(errs, fmt.Errorf("max_key_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, MaxKeySize(vv))
 		}
@@ -75,7 +78,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 	if v := q.Get("max_keys"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, errors.Wrapf(e, "max_keys query param %s", v))
+			errs = multierror.Append(errs, fmt.Errorf("max_keys query param %s: %w", v, e))
 		} else {
 			opts = append(opts, MaxKeys(vv))
 		}
@@ -84,7 +87,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 	if v := q.Get("max_cache_size"); v != "" {
 		vv, e := strconv.ParseInt(v, 10, 64)
 		if e != nil {
-			errs = multierror.Append(errs, errors.Wrapf(e, "max_cache_size query param %s", v))
+			errs = multierror.Append(errs, fmt.Errorf("max_cache_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, MaxCacheSize(vv))
 		}
@@ -93,7 +96,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 	if v := q.Get("ttl"); v != "" {
 		vv, e := time.ParseDuration(v)
 		if e != nil {
-			errs = multierror.Append(errs, errors.Wrapf(e, "ttl query param %s", v))
+			errs = multierror.Append(errs, fmt.Errorf("ttl query param %s: %w", v, e))
 		} else {
 			opts = append(opts, TTL(vv))
 		}
@@ -107,7 +110,7 @@ func redisOptionsFromURL(u *url.URL) (*redis.Options, error) {
 
 	db, err := strconv.Atoi(query.Get("db"))
 	if err != nil {
-		return nil, errors.Wrapf(err, "db from %s", u)
+		return nil, fmt.Errorf("db from %s: %w", u, err)
 	}
 
 	res := &redis.Options{

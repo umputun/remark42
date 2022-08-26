@@ -1,14 +1,13 @@
 package lcw
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-
 	"github.com/go-pkgz/lcw/eventbus"
 	"github.com/go-pkgz/lcw/internal/cache"
+	"github.com/google/uuid"
 )
 
 // ExpirableCache implements LoadingCache with TTL.
@@ -34,12 +33,12 @@ func NewExpirableCache(opts ...Option) (*ExpirableCache, error) {
 
 	for _, opt := range opts {
 		if err := opt(&res.options); err != nil {
-			return nil, errors.Wrap(err, "failed to set cache option")
+			return nil, fmt.Errorf("failed to set cache option: %w", err)
 		}
 	}
 
 	if err := res.eventBus.Subscribe(res.onBusEvent); err != nil {
-		return nil, errors.Wrapf(err, "can't subscribe to event bus")
+		return nil, fmt.Errorf("can't subscribe to event bus: %w", err)
 	}
 
 	backend, err := cache.NewLoadingCache(
@@ -61,7 +60,7 @@ func NewExpirableCache(opts ...Option) (*ExpirableCache, error) {
 		}),
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating backend")
+		return nil, fmt.Errorf("error creating backend: %w", err)
 	}
 	res.backend = backend
 
