@@ -1,6 +1,7 @@
 const { format } = require('date-fns')
 const htmlmin = require('html-minifier')
 const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
+const markdownItAnchor = require('./src/plugins/markdown-it-anchor.js')
 
 function noteContainer() {
 	const { utils } = require('markdown-it')()
@@ -39,7 +40,6 @@ function markdownTableWrapper(md) {
 
 function getMarkdownLib() {
 	const markdownIt = require('markdown-it')
-	const markdownItAnchor = require('markdown-it-anchor')
 	const markdownItContainer = require('markdown-it-container')
 
 	return markdownIt({
@@ -47,13 +47,7 @@ function getMarkdownLib() {
 		breaks: true,
 		linkify: true,
 	})
-		.use(markdownItAnchor, {
-			permalink: markdownItAnchor.permalink.linkInsideHeader({
-				placement: 'before',
-				class: '',
-				symbol: '',
-			}),
-		})
+		.use(markdownItAnchor)
 		.use(markdownItContainer, 'note', noteContainer())
 		.use(markdownTableWrapper)
 }
