@@ -3,7 +3,8 @@
 // Service object encloses Store and add common methods, this is the one consumer should use.
 package image
 
-//go:generate sh -c "mockery -inpkg -name Store -print > /tmp/mock.tmp && mv /tmp/mock.tmp image_mock.go"
+// NOTE: mockery should be installed globally and works with `go generate ./...`
+//go:generate mockery --inpackage --name Store --filename image_mock.go
 
 import (
 	"bytes"
@@ -60,9 +61,6 @@ type ServiceParams struct {
 type StoreInfo struct {
 	FirstStagingImageTS time.Time
 }
-
-// To regenerate mock run from this directory:
-// sh -c "mockery -inpkg -name Store -print > /tmp/image-mock.tmp && mv /tmp/image-mock.tmp image_mock.go"
 
 // Store defines interface for saving and loading pictures.
 // Declares two-stage save with Commit. Save stores to staging area and Commit moves to the final location.
@@ -367,7 +365,7 @@ func Sha1Str(s string) string {
 // ID would look like: "cached_images/<sha1-of-image-url-hostname>-<sha1-of-image-entire-url>"
 // <sha1-of-image-url-hostname> - would allow us to identify all images from particular site if ever needed
 // <sha1-of-image-entire-url> - would allow us to avoid storing duplicates of the same image
-//                              (as accurate as deduplication based on potentially mutable url can be)
+// (as accurate as deduplication based on potentially mutable url can be)
 func CachedImgID(imgURL string) (string, error) {
 	parsedURL, err := url.Parse(imgURL)
 	if err != nil {
