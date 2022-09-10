@@ -372,12 +372,13 @@ func TestRest_subscribersOnly(t *testing.T) {
 	}
 }
 
-func Test_validEmaiAuth(t *testing.T) {
+func Test_validEmailAuth(t *testing.T) {
 	tbl := []struct {
 		req    string
 		status int
 	}{
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=site-with-dash_and_underscore&address=umputun%example.com&user=someone", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Евгений+Умпутун", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=12", http.StatusForbidden},
