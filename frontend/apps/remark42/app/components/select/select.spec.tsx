@@ -21,15 +21,11 @@ describe('<Select/>', () => {
   });
 
   it('should render selected item', () => {
-    render(<Select items={items} selected={items[0]} />);
+    const selectedIndex = 1;
+    const selectedItem = items[selectedIndex];
 
-    const selectedItem = items[0];
-    const selectedOption = screen.getAllByRole<HTMLOptionElement>('option')[0];
-
-    expect(screen.getAllByText(selectedItem.label)).toHaveLength(2);
-    expect(selectedOption).toBeInTheDocument();
-    expect(selectedOption.selected).toBeTruthy();
-    expect(selectedOption.textContent).toBe(selectedItem.label);
+    render(<Select items={items} selected={selectedItem} />);
+    expect(screen.getAllByRole<HTMLOptionElement>('option')[selectedIndex].selected).toBeTruthy();
   });
 
   it('should highlight select on focus', async () => {

@@ -45,12 +45,9 @@ export function Select({ items, selected, size = 'md', ...props }: Props) {
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
         className={clsx('select-element', styles.select)}
-        // wrong typings in preact lib
-        // @ts-ignore
-        selected={selectedItem.value}
       >
         {items.map((i) => (
-          <option key={i.value} value={i.value}>
+          <option key={i.value} value={i.value} selected={selectedItem.value === i.value}>
             {i.label}
           </option>
         ))}
