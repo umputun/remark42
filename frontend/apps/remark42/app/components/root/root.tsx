@@ -122,7 +122,6 @@ export class Root extends Component<Props, State> {
     Promise.all([userloading, this.props.fetchComments()]).finally(() => {
       setTimeout(this.checkUrlHash);
       window.addEventListener('hashchange', this.checkUrlHash);
-      postMessageToParent({ height: document.body.offsetHeight });
     });
 
     window.addEventListener('message', this.onMessage);
@@ -274,33 +273,12 @@ export class Root extends Component<Props, State> {
               <div className={clsx('sort-picker', styles.sortPicker)}>
                 <SortPicker />
               </div>
-              {!!this.props.topComments.length && !props.isCommentsLoading && (
-                <div className="root__threads" role="list">
-                  {(IS_MOBILE && commentsShown < this.props.topComments.length
-                    ? this.props.topComments.slice(0, commentsShown)
-                    : this.props.topComments
-                  ).map((id) => (
-                    <Thread
-                      key={`thread-${id}`}
-                      id={id}
-                      mix="root__thread"
-                      level={0}
-                      getPreview={this.props.getPreview}
-                    />
-                  ))}
-
-                  {commentsShown < this.props.topComments.length && IS_MOBILE && (
-                    <Button className={clsx('more-comments', styles.moreComments)} onClick={this.showMore}>
-                      <FormattedMessage id="root.show-more" defaultMessage="Show more" />
-                    </Button>
-                  )}
-                </div>
-              )}
-              {props.isCommentsLoading && (
-                <div className="root__threads" role="list">
-                  <Preloader className="root__preloader" />
-                </div>
-              )}
+              <Comments
+                commentsShown={commentsShown}
+                isLoading={props.isCommentsLoading}
+                topComments={props.topComments}
+                showMore={this.showMore}
+              />
             </>
           )}
         </div>
@@ -309,21 +287,17 @@ export class Root extends Component<Props, State> {
   }
 }
 
-const CopyrightLink = (title: string) => (
-  <a class="root__copyright-link" href="https://remark42.com/">
-    {title}
-  </a>
-);
-
 function updateIframeHeight() {
   postMessageToParent({ height: document.body.offsetHeight });
 }
 
-/** Root component connected to redux */
-export function ConnectedRoot() {
-  const intl = useIntl();
-  const props = useSelector(mapStateToProps);
-  const actions = useActions(boundActions);
+interface CommentsProps {
+  isLoading: boolean;
+  topComments: string[];
+  commentsShown: number;
+  showMore(): void;
+}
+function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -336,7 +310,9 @@ export function ConnectedRoot() {
       updateIframeHeight();
 
       // a hacky way to force iframe height update when new image is rendered and loaded
-      rootRef.current?.querySelectorAll('img').forEach((img) => img.addEventListener('load', updateIframeHeight));
+      rootRef.current?.querySelectorAll('img').forEach((img) => {
+        img.addEventListener('load', updateIframeHeight);
+      });
     });
 
     observer.observe(rootRef.current, { attributes: true, childList: true, subtree: true });
@@ -344,8 +320,45 @@ export function ConnectedRoot() {
     return () => observer.disconnect();
   }, []);
 
+  const renderComments =
+    IS_MOBILE && commentsShown < topComments.length ? topComments.slice(0, commentsShown) : topComments;
+  const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
+
   return (
-    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)} ref={rootRef}>
+    <div className="root__threads" role="list" ref={rootRef}>
+      {isLoading ? (
+        <Preloader className="root__preloader" />
+      ) : (
+        <>
+          {topComments.length > 0 &&
+            renderComments.map((id) => (
+              <Thread key={`thread-${id}`} id={id} mix="root__thread" level={0} getPreview={getPreview} />
+            ))}
+          {isShowMoreButtonVisible && (
+            <Button className={clsx('more-comments', styles.moreComments)} onClick={showMore}>
+              <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+            </Button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const CopyrightLink = (title: string) => (
+  <a class="root__copyright-link" href="https://remark42.com/">
+    {title}
+  </a>
+);
+
+/** Root component connected to redux */
+export function ConnectedRoot() {
+  const intl = useIntl();
+  const props = useSelector(mapStateToProps);
+  const actions = useActions(boundActions);
+
+  return (
+    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
       <p className="root__copyright" role="contentinfo">
         <FormattedMessage
