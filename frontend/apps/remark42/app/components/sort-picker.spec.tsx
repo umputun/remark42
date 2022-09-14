@@ -26,8 +26,7 @@ describe('<SortPicker />', () => {
 
   it('should render selected element', () => {
     render(<SortPicker />, { comments: { sort: '-active' } as StoreState['comments'] });
-    expect(screen.getAllByText('Recently updated')).toHaveLength(2);
-    expect(screen.getAllByRole('option')[0].parentElement).toHaveAttribute('selected', '-active');
+    expect(screen.getAllByText<HTMLOptionElement>('Recently updated')[1].selected).toBeTruthy();
   });
 
   it('should change selected store', async () => {

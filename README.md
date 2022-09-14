@@ -37,6 +37,12 @@ For admin screenshots see [Admin UI documentation](https://remark42.com/docs/man
 
 All remark42 documentation is available [by the link](https://remark42.com/docs/getting-started/installation/).
 
+## Contribution
+
+In order to start and work on the project locally in development mode check our contribution documentation for [backend](https://remark42.com/docs/contributing/backend/) and [frontend](https://remark42.com/docs/contributing/frontend/).
+
+If you are interested in adding a new localization please check [these docs](https://remark42.com/docs/contributing/translations/).
+
 ## Related projects
 
 * [A Helm chart for Remark42 on Kubernetes](https://github.com/groundhog2k/helm-charts/tree/master/charts/remark42)
