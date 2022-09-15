@@ -11,7 +11,7 @@ bin:
 	docker rm -f remark42.bin
 
 docker:
-	docker build -t umputun/remark42 --build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) \
+	DOCKER_BUILDKIT=1 docker build -t umputun/remark42 --build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) \
 		--build-arg CI=true --build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true .
 
 dockerx:

@@ -4,7 +4,7 @@ ENV CI=true
 
 WORKDIR /srv/frontend
 
-COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend/
 COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/package.json
 
 RUN apk add --no-cache --update git && npm i -g pnpm
