@@ -223,9 +223,6 @@ module.exports = (_, { mode, analyze }) => {
       { path: '/api', target: REMARK_API_BASE_URL, changeOrigin: true },
       { path: '/auth', target: REMARK_API_BASE_URL, changeOrigin: true },
     ],
-    client: {
-      overlay: false,
-    },
   };
 
   const plugins = [
