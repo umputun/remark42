@@ -70,7 +70,9 @@ export function useDropdown(disableClosing?: boolean) {
   useEffect(() => {
     const dropdownElement = rootRef.current;
 
-    if (!dropdownElement) {
+    if (!dropdownElement || !showDropdown) {
+      handleChangeIframeSize(document.body);
+
       return;
     }
 
