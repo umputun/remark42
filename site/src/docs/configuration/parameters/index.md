@@ -134,6 +134,9 @@ services:
 | ssl.key                        | SSL_KEY                        |                          | path to the key.pem file                                  |
 | ssl.acme-location              | SSL_ACME_LOCATION              | `./var/acme`             | dir where obtained le-certs will be stored                |
 | ssl.acme-email                 | SSL_ACME_EMAIL                 |                          | admin email for receiving notifications from LE           |
+| search.enable                  | SEARCH_ENABLE                  | `false`                  | enable search engine                                      |
+| search.index_path              | SEARCH_INDEX_PATH              | `./var/search_index`     | search index location                                     |
+| search.analyzer                | SEARCH_ANALYZER                | `standard`               | text analyzer type, set language-specific one to improve search quality (`standard`, `ar`, `de`, `en`, `es`, `fi`, `fr`, `it` or `ru` ) |
 | max-comment                    | MAX_COMMENT_SIZE               | `2048`                   | comment's size limit                                      |
 | max-votes                      | MAX_VOTES                      | `-1`                     | votes limit per comment, `-1` - unlimited                 |
 | votes-ip                       | VOTES_IP                       | `false`                  | restrict votes from the same IP                           |

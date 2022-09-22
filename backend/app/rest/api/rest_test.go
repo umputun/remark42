@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	urlpkg "net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ import (
 	adminstore "github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/search"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -210,6 +212,94 @@ func TestRest_rejectAnonUser(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "real user")
+}
+
+func TestRest_Search(t *testing.T) {
+	var searchIndexPath string
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		var err error
+		searchIndexPath, err = randomPath(srv.WebRoot, "test-search-remark", "")
+		require.NoError(t, err)
+		srv.DataService.SearchService, err = search.NewService([]string{"remark42"}, search.ServiceParams{
+			IndexPath: searchIndexPath,
+			Analyzer:  "standard",
+		})
+		require.NoError(t, err)
+	})
+	defer teardown()
+	defer func() { _ = os.RemoveAll(searchIndexPath) }()
+
+	t0 := time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local)
+
+	id1 := addComment(t, store.Comment{Text: "test test", Timestamp: t0.Add(1 * time.Minute), Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/abc"}}, ts)
+	id2 := addComment(t, store.Comment{Text: "test hello", Timestamp: t0.Add(2 * time.Minute), Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+	id3 := addComment(t, store.Comment{Text: "hello world", Timestamp: t0.Add(3 * time.Minute), Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+	id4 := addComment(t, store.Comment{Text: "# title\n\nok\n", Timestamp: t0.Add(4 * time.Minute), Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+
+	idToPos := map[string]int{id1: 1, id2: 2, id3: 3, id4: 4}
+	tbl := []struct {
+		query       string
+		extraParams string
+		ids         []int
+		status      int
+	}{
+		{"blah", "", []int{}, http.StatusOK},
+		{"h1", "", []int{}, http.StatusOK},
+		{"world", "", []int{3}, http.StatusOK},
+		{"title", "", []int{4}, http.StatusOK},
+		{"\"hello world\"", "", []int{3}, http.StatusOK},
+		{"test", "&sort=time", []int{1, 2}, http.StatusOK},
+		{"hello", "&sort=-time", []int{3, 2}, http.StatusOK},
+		{"hello world", "&sort=time", []int{2, 3}, http.StatusOK},
+		{"hello world test", "&sort=time", []int{1, 2, 3}, http.StatusOK},
+		{"hello world test", "&sort=time&skip=1", []int{2, 3}, http.StatusOK},
+		{"hello world test", "&sort=time&skip=1&limit=1", []int{2}, http.StatusOK},
+		{"", "", []int{}, http.StatusBadRequest},
+		{"test", "&sort=text", []int{}, http.StatusBadRequest},
+		{"test", "&skip=-1", []int{}, http.StatusBadRequest},
+		{"test", "&limit=999999", []int{}, http.StatusBadRequest},
+	}
+
+	cnt := 0
+	for i, tt := range tbl {
+		tt := tt
+
+		cnt++
+		if (cnt % 10) == 0 {
+			// wait for rate limiter
+			time.Sleep(1 * time.Second)
+		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			resp, err := http.Get(fmt.Sprintf("%s/api/v1/search?site=remark42&query=%s%s",
+				ts.URL, urlpkg.QueryEscape(tt.query), tt.extraParams))
+			require.NoError(t, err)
+
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.status, resp.StatusCode)
+
+			result := commentsWithTotal{}
+			err = json.Unmarshal(body, &result)
+			require.NoError(t, err)
+
+			foundIds := make([]int, len(result.Comments))
+			for i, c := range result.Comments {
+				foundIds[i] = idToPos[c.ID]
+			}
+			require.Equal(t, tt.ids, foundIds)
+		})
+	}
+}
+
+func TestRest_SearchDisabledFeature(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	resp, err := http.Get(ts.URL + "/api/v1/search?site=remark42&query=test")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func Test_URLKey(t *testing.T) {
@@ -633,5 +723,9 @@ func waitForHTTPSServerStart(port int) {
 }
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m,
+		// we should call bleve.Config.Shutdown() to close all the workers,
+		// but we don't do it for each server instance because it's global per application
+		goleak.IgnoreTopFunction("github.com/blevesearch/bleve_index_api.AnalysisWorker"),
+	)
 }

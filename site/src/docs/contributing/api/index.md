@@ -233,3 +233,23 @@ http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 - `GET /api/v1/admin/deleteme?token=token` - process deleteme user's request
 
 _all admin calls require auth and admin privilege_
+
+### Search
+
+* `GET /search?site=siteID&query=query` - search comments for query `query` and returns `ResultPage`
+* `GET /search?site=siteID&query=query&sort=time` - sort by time ascending (oldest first)
+* `GET /search?site=siteID&query=query&sort=-time` - sort by time descending (newest first)
+* `GET /search?site=siteID&query=query&sort=-time&limit=20&skip=10` - pagination, get 20 comments after skiping 10 most newest
+
+  Returns the list of comments matching the query.
+  Comments are sorted according to the field specified in `sort` parameter. If the filed name is prefixed by `-` then the order will be reversed.
+  The maximal value for the `limit` parameter is 100 and for the `skip` is 1000.
+  The field `total` in the result contains the total number of comments matching the query in the index.
+  Note: this functionality is optional and should be configured. If it's disabled, the `/search` endpoint will return a `Bad Request` error.
+
+```go
+type CommentsWithTotal struct {
+	Comments []store.Comment `json:"comments"`
+	Total    uint64          `json:"total"`
+}
+```

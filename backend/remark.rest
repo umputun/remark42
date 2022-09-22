@@ -118,6 +118,9 @@ GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
 ### get default avatar
 GET {{host}}/api/v1/avatar/blah
 
+### search comments
+GET {{host}}/api/v1/search?site={{site}}&query=query&limit=20&skip=0&sort=time
+
 ### send confirmation token for current user to specified email. auth token for dev user for secret=12345.
 ### in case the user logged in with the same email, it will be confirmed right away with "updated" set to "true" in the response,
 ### and no email will be sent.
