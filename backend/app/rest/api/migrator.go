@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"sync"
@@ -172,7 +171,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		defer m.setBusy(siteID, false)
 
 		// do export
-		fh, e := ioutil.TempFile("", "remark42_convert")
+		fh, e := os.CreateTemp("", "remark42_convert")
 		if e != nil {
 			log.Printf("[WARN] failed to make temp file %+v", e)
 			return
@@ -250,7 +249,7 @@ func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 
 // saveTemp reads from reader and saves to temp file
 func (m *Migrator) saveTemp(r io.Reader) (string, error) {
-	tmpfile, err := ioutil.TempFile("", "remark42_import")
+	tmpfile, err := os.CreateTemp("", "remark42_import")
 	if err != nil {
 		return "", fmt.Errorf("can't make temp file: %w", err)
 	}
