@@ -981,9 +981,9 @@ func (s *DataStore) prepVotes(c store.Comment, user store.User) store.Comment {
 }
 
 // get secret for given siteID
-// Note: secret shared across sites, but some sites can be disabled.
+// Note: siteID ignored for the default admin.Static store
 func (s *DataStore) getSecret(siteID string) (secret string, err error) {
-	if secret, err = s.AdminStore.Key("any"); err != nil {
+	if secret, err = s.AdminStore.Key(siteID); err != nil {
 		return "", fmt.Errorf("can't get secret for site %s: %w", siteID, err)
 	}
 
