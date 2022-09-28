@@ -1107,7 +1107,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
-			return admns.Key("")
+			return admns.Key(aud)
 		}),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
