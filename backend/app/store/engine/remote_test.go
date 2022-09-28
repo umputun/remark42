@@ -134,7 +134,13 @@ func TestRemote_ListFlag(t *testing.T) {
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
 	res, err := c.ListFlags(FlagRequest{Locator: store.Locator{SiteID: "site_id"}, Flag: Blocked})
 	assert.NoError(t, err)
-	assert.Equal(t, []interface{}{map[string]interface{}{"ID": "id1"}, map[string]interface{}{"ID": "id2"}}, res)
+	require.Equal(t, 2, len(res))
+	blockedUsers := make([]store.BlockedUser, 0, len(res))
+	for _, v := range res {
+		blockedUsers = append(blockedUsers, v.(store.BlockedUser))
+	}
+	assert.Equal(t, 2, len(blockedUsers))
+	assert.Equal(t, []store.BlockedUser{{ID: "id1"}, {ID: "id2"}}, blockedUsers)
 }
 
 func TestRemote_UserDetail(t *testing.T) {
