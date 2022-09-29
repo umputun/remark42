@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -22,7 +21,7 @@ import (
 )
 
 func Test_Main(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "remark42")
+	dir, err := os.MkdirTemp(os.TempDir(), "remark42")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -60,7 +59,7 @@ func Test_Main(t *testing.T) {
 }
 
 func TestMain_WithWebhook(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "remark42")
+	dir, err := os.MkdirTemp(os.TempDir(), "remark42")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 

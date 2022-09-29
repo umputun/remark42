@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -1558,7 +1557,7 @@ func Benchmark_ServiceCreate(b *testing.B) {
 
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
-	testDBLoc, err := ioutil.TempDir("", "test_image_r42")
+	testDBLoc, err := os.MkdirTemp("", "test_image_r42")
 	require.NoError(t, err)
 	testDB := path.Join(testDBLoc, "test.db")
 	_ = os.Remove(testDB)
