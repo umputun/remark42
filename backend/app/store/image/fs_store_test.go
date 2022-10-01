@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path"
@@ -254,10 +253,10 @@ func TestFsStore_Info(t *testing.T) {
 }
 
 func prepareImageTest(t *testing.T) (svc *FileSystem, teardown func()) {
-	loc, err := ioutil.TempDir("", "test_image_r42")
+	loc, err := os.MkdirTemp("", "test_image_r42")
 	require.NoError(t, err, "failed to make temp dir")
 
-	staging, err := ioutil.TempDir("", "test_image_r42.staging")
+	staging, err := os.MkdirTemp("", "test_image_r42.staging")
 	require.NoError(t, err, "failed to make temp staging dir")
 
 	svc = &FileSystem{

@@ -19,7 +19,7 @@ All README examples show configurations with remark42 on its own subdomain, i.e.
 
 Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in docker-compose.
 
-Example `docker-compose.yaml`:
+Example `docker-compose.yml`:
 
 ```yaml
 version: "2"

@@ -36,8 +36,8 @@ jobs:
 
       - name: install golangci-lint and goveralls
         run: |
-          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $GITHUB_WORKSPACE v1.46.1
-          go get -u github.com/mattn/goveralls
+          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GITHUB_WORKSPACE v1.49.0
+          go install github.com/mattn/goveralls@latest
 
       - name: test and lint backend
         run: |
@@ -59,7 +59,7 @@ jobs:
           TZ: "America/Chicago"
 
       - name: submit coverage
-        run: $(go env GOPATH)/bin/goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+        run: goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
         working-directory: backend
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,8 +8,6 @@ run:
 linters-settings:
   govet:
     check-shadowing: true
-  golint:
-    min-confidence: 0.1
   maligned:
     suggest-new: true
   goconst:
@@ -38,17 +36,14 @@ linters:
     - govet
     - unconvert
     - megacheck
-    - structcheck
     - gas
     - gocyclo
     - dupl
     - misspell
     - unparam
-    - varcheck
-    - deadcode
+    - unused
     - typecheck
     - ineffassign
-    - varcheck
     - stylecheck
     - gochecknoinits
     - exportloopref
@@ -64,9 +59,9 @@ issues:
     - text: "at least one file in a package should have a package comment"
       linters:
         - stylecheck
-    - text: "should have a package comment, unless it's in another file for this package"
+    - text: "package-comments: should have a package comment"
       linters:
-        - golint
+        - revive
     - path: _test\.go
       linters:
         - gosec

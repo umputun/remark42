@@ -2,7 +2,6 @@ package image
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -150,7 +149,7 @@ func checkBoltImgData(t *testing.T, db *bolt.DB, bucket, id string, callback fun
 }
 
 func prepareBoltImageStorageTest(t *testing.T) (svc *Bolt, teardown func()) {
-	loc, err := ioutil.TempDir("", "test_image_r42")
+	loc, err := os.MkdirTemp("", "test_image_r42")
 	require.NoError(t, err, "failed to make temp dir")
 
 	svc, err = NewBoltStorage(path.Join(loc, "picture.db"), bolt.Options{})

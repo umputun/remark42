@@ -71,14 +71,44 @@ func (r *RPC) Flag(req FlagRequest) (status bool, err error) {
 	return status, err
 }
 
+func unmarshalString(data []byte) ([]interface{}, error) {
+	var strings []string
+	if err := json.Unmarshal(data, &strings); err != nil {
+		return nil, err
+	}
+	list := make([]interface{}, 0, len(strings))
+	for _, w := range strings {
+		list = append(list, w)
+	}
+	return list, nil
+}
+
+func unmarshalBlockedUser(data []byte) ([]interface{}, error) {
+	var blockedUsers []store.BlockedUser
+	if err := json.Unmarshal(data, &blockedUsers); err != nil {
+		return nil, err
+	}
+	list := make([]interface{}, 0, len(blockedUsers))
+	for _, w := range blockedUsers {
+		list = append(list, w)
+	}
+	return list, nil
+}
+
 // ListFlags get list of flagged keys, like blocked & verified user
-func (r *RPC) ListFlags(req FlagRequest) (list []interface{}, err error) {
+func (r *RPC) ListFlags(req FlagRequest) ([]interface{}, error) {
 	resp, err := r.Call("store.list_flags", req)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &list)
-	return list, err
+	// try []store.BlockedUser
+	list, err := unmarshalBlockedUser(*resp.Result)
+	if err == nil {
+		return list, nil
+	}
+
+	// try []strings
+	return unmarshalString(*resp.Result)
 }
 
 // UserDetail sets or gets single detail value, or gets all details for requested site.

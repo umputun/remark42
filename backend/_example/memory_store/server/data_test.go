@@ -198,25 +198,62 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "123456", id)
 
-	flagReq := engine.FlagRequest{
+	// verify user
+	verifyFlagReq := engine.FlagRequest{
 		Flag:   engine.Verified,
 		UserID: "u1",
 		Locator: store.Locator{
 			SiteID: "test-site",
 		},
 	}
-	flags, err := re.ListFlags(flagReq)
+	flags, err := re.ListFlags(verifyFlagReq)
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{}, flags)
+	assert.Empty(t, flags)
 
-	flagReq.Update = engine.FlagTrue
-	status, err := re.Flag(flagReq)
+	verifyFlagReq.Update = engine.FlagTrue
+	status, err := re.Flag(verifyFlagReq)
 	require.NoError(t, err)
 	assert.Equal(t, true, status)
 
-	flags, err = re.ListFlags(flagReq)
+	flags, err = re.ListFlags(verifyFlagReq)
 	require.NoError(t, err)
 	assert.Equal(t, []interface{}{"u1"}, flags)
+	verifiedUsers := make([]string, 0, len(flags))
+	for _, v := range flags {
+		verifiedUsers = append(verifiedUsers, v.(string))
+	}
+	assert.Equal(t, []string{"u1"}, verifiedUsers)
+
+	// block user
+	blockFlagReq := engine.FlagRequest{
+		Flag:   engine.Blocked,
+		UserID: "u1",
+		Locator: store.Locator{
+			SiteID: "test-site",
+		},
+		TTL: time.Hour,
+	}
+	flags, err = re.ListFlags(blockFlagReq)
+	require.NoError(t, err)
+	assert.Empty(t, flags)
+
+	blockFlagReq.Update = engine.FlagTrue
+	status, err = re.Flag(blockFlagReq)
+	require.NoError(t, err)
+	assert.Equal(t, true, status)
+
+	flags, err = re.ListFlags(blockFlagReq)
+	require.NoError(t, err)
+	assert.NotEmpty(t, flags)
+	blockedUsers := make([]store.BlockedUser, 0, len(flags))
+	for _, v := range flags {
+		blockedUsers = append(blockedUsers, v.(store.BlockedUser))
+	}
+	require.Equal(t, 1, len(blockedUsers))
+	blockedUserInfo := blockedUsers[0]
+	assert.Equal(t, "u1", blockedUserInfo.ID)
+	assert.True(t, blockedUserInfo.Until.After(time.Now().Add(time.Minute*59)), "blocked duration is more than 59m away")
+	assert.True(t, blockedUserInfo.Until.Before(time.Now().Add(time.Minute*61)), "blocked duration is less than 61m away")
 }
 
 func TestRPC_userDetailHndl(t *testing.T) {
