@@ -114,7 +114,7 @@ export const blockUser = (
   block: boolean;
   site_id: string;
   user_id: string;
-}> => adminFetcher.put(`/user/${id}`, { block: 1, ttl: ttl === 'permanently' ? ttl : undefined });
+}> => adminFetcher.put(`/user/${id}`, { block: 1, ttl: ttl === 'permanently' ? undefined : ttl });
 
 export const unblockUser = (
   id: User['id']
