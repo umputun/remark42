@@ -1358,11 +1358,10 @@ func TestService_DeleteAll(t *testing.T) {
 func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	mockStore := image.MockStore{}
-	mockStore.On("Commit", "dev/pic1.png").Once().Return(nil)
-	mockStore.On("Commit", "dev/pic2.png").Once().Return(nil)
-	mockStore.On("ResetCleanupTimer", "dev/pic1.png").Once().Return(nil)
-	mockStore.On("ResetCleanupTimer", "dev/pic2.png").Once().Return(nil)
+	mockStore := image.StoreMock{
+		CommitFunc:            func(id string) error { return nil },
+		ResetCleanupTimerFunc: func(id string) error { return nil },
+	}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
 			EditDuration: 50 * time.Millisecond,
@@ -1388,13 +1387,25 @@ func TestService_submitImages(t *testing.T) {
 	assert.NoError(t, err)
 
 	b.submitImages(c)
-	mockStore.AssertNumberOfCalls(t, "ResetCleanupTimer", 2)
+	assert.Equal(t, 2, len(mockStore.ResetCleanupTimerCalls()))
+	assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
 	time.Sleep(b.EditDuration + 100*time.Millisecond)
-	mockStore.AssertNumberOfCalls(t, "Commit", 2)
+	assert.Equal(t, 2, len(mockStore.CommitCalls()))
+	assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
 }
 
 func TestService_ResubmitStagingImages(t *testing.T) {
-	mockStore := image.MockStore{}
+	mockStore := image.StoreMock{
+		InfoFunc: func() (image.StoreInfo, error) {
+			return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
+		},
+		CommitFunc: func(id string) error {
+			return nil
+		},
+		ResetCleanupTimerFunc: func(id string) error { return nil },
+	}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
 			EditDuration: 10 * time.Millisecond,
@@ -1406,10 +1417,6 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
-
-	mockStore.On("ResetCleanupTimer", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
-	mockStore.On("ResetCleanupTimer", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
-	mockStore.On("ResetCleanupTimer", "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e").Once().Return(nil)
 
 	// create comment with three images without preparing it properly
 	comment := store.Comment{
@@ -1426,21 +1433,19 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	require.NoError(t, err)
 
 	// resubmit single comment with three images, of which two are in staging storage
-	mockStore.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil)
 	err = b.ResubmitStagingImages([]string{"radio-t"})
 	assert.NoError(t, err)
 
 	// wait for Submit goroutine to commit image
-	mockStore.On("Commit", "dev_user/bqf122eq9r8ad657n3ng").Once().Return(nil)
-	mockStore.On("Commit", "dev_user/bqf321eq9r8ad657n3ng").Once().Return(nil)
-	mockStore.On("Commit", "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e").Once().Return(nil)
 	time.Sleep(b.EditDuration + time.Millisecond*100)
 
-	mockStore.AssertNumberOfCalls(t, "Info", 1)
-	mockStore.AssertNumberOfCalls(t, "Commit", 3)
+	assert.Equal(t, 1, len(mockStore.InfoCalls()))
+	assert.Equal(t, 3, len(mockStore.CommitCalls()))
 
 	// empty answer
-	mockStoreEmpty := image.MockStore{}
+	mockStoreEmpty := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
+		return image.StoreInfo{FirstStagingImageTS: time.Time{}}, nil
+	}}
 	imgSvcEmpty := image.NewService(&mockStoreEmpty,
 		image.ServiceParams{
 			EditDuration: 10 * time.Millisecond,
@@ -1449,15 +1454,16 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	defer imgSvcEmpty.Close(context.TODO())
 	bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
 
-	// resubmit receive empty timestamp and should do nothing
-	mockStoreEmpty.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}}, nil)
+	// resubmit receive empty timestamp and should do nothing )
 	err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
 	assert.NoError(t, err)
 
-	mockStoreEmpty.AssertNumberOfCalls(t, "Info", 1)
+	assert.Equal(t, 1, len(mockStore.InfoCalls()))
 
 	// error from image storage
-	mockStoreError := image.MockStore{}
+	mockStoreError := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
+		return image.StoreInfo{}, fmt.Errorf("mock_err")
+	}}
 	imgSvcError := image.NewService(&mockStoreError,
 		image.ServiceParams{
 			EditDuration: 10 * time.Millisecond,
@@ -1467,15 +1473,20 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	bError := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcError}
 
 	// resubmit will receive error from image storage and should return it
-	mockStoreError.On("Info").Once().Return(image.StoreInfo{}, fmt.Errorf("mock_err"))
 	err = bError.ResubmitStagingImages([]string{"radio-t"})
 	assert.EqualError(t, err, "mock_err")
 
-	mockStoreError.AssertNumberOfCalls(t, "Info", 1)
+	assert.Equal(t, 1, len(mockStore.InfoCalls()))
+	assert.Equal(t, 3, len(mockStore.ResetCleanupTimerCalls()))
+	assert.Equal(t, "dev_user/bqf122eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[0].ID)
+	assert.Equal(t, "dev_user/bqf321eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[1].ID)
+	assert.Equal(t, "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e", mockStore.ResetCleanupTimerCalls()[2].ID)
 }
 
 func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
-	mockStore := image.MockStore{}
+	mockStore := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
+		return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
+	}}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
 			EditDuration: 10 * time.Millisecond,
@@ -1483,26 +1494,37 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 		})
 	defer imgSvc.Close(context.TODO())
 
-	engineMock := engine.MockInterface{}
+	first := true
+	engineMock := engine.InterfaceMock{
+		FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+			if first {
+				first = false
+				return nil, nil
+			}
+			return nil, fmt.Errorf("mockError")
+		},
+	}
 	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
 	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
-	engineMock.On("Find", site1Req).Return(nil, nil)
-	engineMock.On("Find", site2Req).Return(nil, fmt.Errorf("mockError"))
 	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
 	// One call without error and one with error
-	mockStore.On("Info").Once().Return(image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil)
 	err := b.ResubmitStagingImages([]string{"site1", "site2"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "problem finding comments for site site2: mockError")
 
-	mockStore.AssertNumberOfCalls(t, "Info", 1)
+	assert.Equal(t, 1, len(mockStore.InfoCalls()))
+	assert.Equal(t, 2, len(engineMock.FindCalls()))
+	assert.Equal(t, site1Req, engineMock.FindCalls()[0].Req)
+	assert.Equal(t, site2Req, engineMock.FindCalls()[1].Req)
 }
 
 func TestService_alterComment(t *testing.T) {
-	engineMock := engine.MockInterface{}
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			return false, nil
+		},
+	}
 	svc := DataStore{Engine: &engineMock}
 
 	r := svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"},
@@ -1513,24 +1535,48 @@ func TestService_alterComment(t *testing.T) {
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}},
 		store.User{Name: "dev", ID: "devid", Admin: true})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid"}}, r, "ip not cleaned")
+	assert.Equal(t, 4, len(engineMock.FlagCalls()))
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}, engineMock.FlagCalls()[1].Req)
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[2].Req)
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}, engineMock.FlagCalls()[3].Req)
 
-	engineMock = engine.MockInterface{}
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(false, nil)
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(true, nil)
+	first := true
+	engineMock = engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			if first {
+				first = false
+				return false, nil
+			}
+			return true, nil
+		},
+	}
 	svc = DataStore{Engine: &engineMock}
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", ID: "devid", Verified: true}}, r, "verified set")
+	assert.Equal(t, 2, len(engineMock.FlagCalls()))
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}, engineMock.FlagCalls()[1].Req)
 
-	engineMock = engine.MockInterface{}
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}).Return(true, nil)
-	engineMock.On("Flag", engine.FlagRequest{Flag: engine.Verified, UserID: "devid"}).Return(false, nil)
+	first = true
+	engineMock = engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			if first {
+				first = false
+				return true, nil
+			}
+			return false, nil
+		},
+	}
 	svc = DataStore{Engine: &engineMock}
 	r = svc.alterComment(store.Comment{ID: "123", User: store.User{IP: "127.0.0.1", ID: "devid", Verified: true},
 		Locator: store.Locator{URL: "javascript:alert('XSS1')"}},
 		store.User{Name: "dev", ID: "devid", Admin: false})
 	assert.Equal(t, store.Comment{ID: "123", User: store.User{IP: "", Verified: true, Blocked: true, ID: "devid"},
 		Deleted: false}, r, "blocked")
+	assert.Equal(t, 1, len(engineMock.FlagCalls()))
+	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
 }
 
 func Benchmark_ServiceCreate(b *testing.B) {

@@ -11,8 +11,8 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 )
 
-// NOTE: mockery should be installed globally and works with `go generate ./...`
-//go:generate mockery --inpackage --name Interface --filename engine_mock.go
+// NOTE: matryer/moq should be installed globally and works with `go generate ./...`
+//go:generate moq --out engine_mock.go . Interface
 
 // Interface defines methods provided by low-level storage engine
 type Interface interface {

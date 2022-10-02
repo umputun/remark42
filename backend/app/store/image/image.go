@@ -3,8 +3,8 @@
 // Service object encloses Store and add common methods, this is the one consumer should use.
 package image
 
-// NOTE: mockery should be installed globally and works with `go generate ./...`
-//go:generate mockery --inpackage --name Store --filename image_mock.go
+// NOTE: matryer/moq should be installed globally and works with `go generate ./...`
+//go:generate moq --out image_mock.go . Store
 
 import (
 	"bytes"
