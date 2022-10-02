@@ -14,22 +14,30 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestService_SaveAndLoad(t *testing.T) {
-	store := MockStore{}
+	store := StoreMock{
+		SaveFunc: func(id string, img []byte) error {
+			return nil
+		},
+		LoadFunc: func(id string) ([]byte, error) {
+			return nil, nil
+		},
+	}
 	svc := NewService(&store, ServiceParams{MaxSize: 1500, MaxWidth: 32, MaxHeight: 32})
 
-	store.On("Save", "test_id", mock.Anything).Return(nil)
 	err := svc.SaveWithID("test_id", gopherPNG())
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(store.SaveCalls()))
+	assert.Equal(t, "test_id", store.SaveCalls()[0].ID)
 
-	store.On("Load", "test_id", mock.Anything).Return(nil, nil)
 	img, err := svc.Load("test_id")
 	assert.NoError(t, err)
 	assert.Nil(t, img)
+	assert.Equal(t, 1, len(store.LoadCalls()))
+	assert.Equal(t, "test_id", store.LoadCalls()[0].ID)
 }
 
 func TestService_Resize(t *testing.T) {
@@ -116,72 +124,91 @@ func TestService_ExtractPictures(t *testing.T) {
 }
 
 func TestService_Cleanup(t *testing.T) {
-	store := MockStore{}
-	store.On("Cleanup", mock.Anything, mock.Anything).Times(10).Return(nil)
+	store := StoreMock{
+		CleanupFunc: func(ctx context.Context, ttl time.Duration) error {
+			return nil
+		},
+	}
 
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	// cancel context after 2.1 cleanup TTLs
 	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
 	defer cancel()
 	svc.Cleanup(ctx)
-	store.AssertNumberOfCalls(t, "Cleanup", 2)
+	assert.Equal(t, 2, len(store.CleanupCalls()))
 }
 
 func TestService_Submit(t *testing.T) {
-	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(7).Return(nil)
-	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(7).Return(nil)
+	store := StoreMock{
+		CommitFunc: func(id string) error {
+			return nil
+		},
+		ResetCleanupTimerFunc: func(id string) error {
+			return nil
+		},
+	}
 	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 3)
+	assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
 	err := svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
 	assert.NoError(t, err)
 	svc.Submit(func() []string { return []string{"id6", "id7"} })
-	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
+	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
 	svc.Submit(nil)
-	store.AssertNumberOfCalls(t, "Commit", 2)
+	assert.Equal(t, 2, len(store.CommitCalls()))
 	time.Sleep(time.Millisecond * 175)
-	store.AssertNumberOfCalls(t, "Commit", 7)
+	assert.Equal(t, 7, len(store.CommitCalls()))
 	svc.Close(context.TODO())
 }
 
 func TestService_Close(t *testing.T) {
-	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store := StoreMock{
+		CommitFunc: func(id string) error {
+			return nil
+		},
+		ResetCleanupTimerFunc: func(id string) error {
+			return nil
+		},
+	}
 	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
+	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
 	svc.Close(context.TODO())
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	assert.Equal(t, 5, len(store.CommitCalls()))
 }
 
 func TestService_SubmitDelay(t *testing.T) {
-	store := MockStore{}
-	store.On("Commit", mock.Anything, mock.Anything).Times(5).Return(nil)
-	store.On("ResetCleanupTimer", mock.Anything, mock.Anything).Times(5).Return(nil)
+	store := StoreMock{
+		CommitFunc: func(id string) error {
+			return nil
+		},
+		ResetCleanupTimerFunc: func(id string) error {
+			return nil
+		},
+	}
 	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
-	store.AssertNumberOfCalls(t, "ResetCleanupTimer", 5)
-	store.AssertNumberOfCalls(t, "Commit", 3)
+	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
+	assert.Equal(t, 3, len(store.CommitCalls()))
 	svc.Close(context.TODO())
-	store.AssertNumberOfCalls(t, "Commit", 5)
+	assert.Equal(t, 5, len(store.CommitCalls()))
 }
 
 func TestService_Info(t *testing.T) {
-	store := MockStore{}
-	store.On("Info", mock.Anything, mock.Anything).Once().Return(StoreInfo{}, nil)
+	store := StoreMock{InfoFunc: func() (StoreInfo, error) {
+		return StoreInfo{}, nil
+	}}
 
 	svc := Service{store: &store, ServiceParams: ServiceParams{}}
 	info, err := svc.Info()
 	assert.NoError(t, err)
 	assert.True(t, info.FirstStagingImageTS.IsZero())
-	store.AssertNumberOfCalls(t, "Info", 1)
+	assert.Equal(t, 1, len(store.InfoCalls()))
 }
 
 func TestService_resize(t *testing.T) {
