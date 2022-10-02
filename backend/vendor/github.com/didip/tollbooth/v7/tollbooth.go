@@ -112,6 +112,10 @@ func ShouldSkipLimiter(lmt *limiter.Limiter, r *http.Request) bool {
 		requestHeadersDefinedInLimiter = false
 
 		for headerKey, headerValues := range lmtHeaders {
+			if len(headerValues) == 0 {
+				requestHeadersDefinedInLimiter = true
+				continue
+			}
 			for _, headerValue := range headerValues {
 				if r.Header.Get(headerKey) == headerValue {
 					requestHeadersDefinedInLimiter = true

@@ -19,6 +19,7 @@ type SMTPParams struct {
 	StartTLS    bool          // StartTLS auth
 	ContentType string        // Content type
 	Charset     string        // Character set
+	LoginAuth   bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
 	Username    string        // username
 	Password    string        // password
 	TimeOut     time.Duration // TCP connection timeout
@@ -44,6 +45,10 @@ func NewEmail(smtpParams SMTPParams) *Email {
 
 	if smtpParams.Charset != "" {
 		opts = append(opts, email.Charset(smtpParams.Charset))
+	}
+
+	if smtpParams.LoginAuth {
+		opts = append(opts, email.LoginAuth())
 	}
 
 	if smtpParams.Port != 0 {

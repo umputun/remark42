@@ -23,7 +23,7 @@ type (
 	UserAuthorizationHandler func(w http.ResponseWriter, r *http.Request) (userID string, err error)
 
 	// PasswordAuthorizationHandler get user id from username and password
-	PasswordAuthorizationHandler func(ctx context.Context, username, password string) (userID string, err error)
+	PasswordAuthorizationHandler func(ctx context.Context, clientID, username, password string) (userID string, err error)
 
 	// RefreshingScopeHandler check the scope of the refreshing token
 	RefreshingScopeHandler func(tgr *oauth2.TokenGenerateRequest, oldScope string) (allowed bool, err error)

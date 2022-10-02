@@ -4,10 +4,9 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // JSON is a map alias, just for convenience
@@ -30,7 +29,7 @@ func RenderJSON(w http.ResponseWriter, data interface{}) {
 func RenderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if _, err := w.Write(data); err != nil {
-		return errors.Wrapf(err, "failed to send response to %s", r.RemoteAddr)
+		return fmt.Errorf("failed to send response to %s: %w", r.RemoteAddr, err)
 	}
 	return nil
 }
@@ -43,7 +42,7 @@ func RenderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) e
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(false)
 		if err := enc.Encode(v); err != nil {
-			return nil, errors.Wrap(err, "json encoding failed")
+			return nil, fmt.Errorf("json encoding failed: %w", err)
 		}
 		return buf.Bytes(), nil
 	}
@@ -86,15 +85,15 @@ func ParseFromTo(r *http.Request) (from, to time.Time, err error) {
 				return t, nil
 			}
 		}
-		return time.Time{}, errors.Errorf("can't parse date %q", ts)
+		return time.Time{}, fmt.Errorf("can't parse date %q", ts)
 	}
 
 	if from, err = parseTimeStamp(r.URL.Query().Get("from")); err != nil {
-		return from, to, errors.Wrap(err, "incorrect from time")
+		return from, to, fmt.Errorf("incorrect from time: %w", err)
 	}
 
 	if to, err = parseTimeStamp(r.URL.Query().Get("to")); err != nil {
-		return from, to, errors.Wrap(err, "incorrect to time")
+		return from, to, fmt.Errorf("incorrect to time: %w", err)
 	}
 	return from, to, nil
 }

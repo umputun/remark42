@@ -6,6 +6,7 @@
     <filename>*.js</filename>
     <filename>*.jsm</filename>
     <filename>*.mjs</filename>
+    <filename>*.cjs</filename>
     <mime_type>application/javascript</mime_type>
     <mime_type>application/x-javascript</mime_type>
     <mime_type>text/x-javascript</mime_type>

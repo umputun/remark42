@@ -119,6 +119,7 @@ services:
 | smtp.port                      | SMTP_PORT                      |                          | SMTP port                                                 |
 | smtp.username                  | SMTP_USERNAME                  |                          | SMTP user name                                            |
 | smtp.password                  | SMTP_PASSWORD                  |                          | SMTP password                                             |
+| smtp.login_auth                | SMTP_LOGIN_AUTH                | `false                   | enable LOGIN auth instead of PLAIN                        |
 | smtp.tls                       | SMTP_TLS                       | `false`                  | enable TLS for SMTP                                       |
 | smtp.starttls                  | SMTP_STARTTLS                  | `false`                  | enable StartTLS for SMTP                                  |
 | smtp.timeout                   | SMTP_TIMEOUT                   | `10s`                    | SMTP TCP connection timeout                               |
