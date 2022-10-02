@@ -373,6 +373,109 @@ func TestRest_UpdateDelete(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
+func TestRest_DeleteChildThenParent(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	p := store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	idP := addComment(t, p, ts)
+
+	c1 := store.Comment{Text: "test test #1", ParentID: idP,
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	idC1 := addComment(t, c1, ts)
+
+	c2 := store.Comment{Text: "test test #1", ParentID: idP,
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	idC2 := addComment(t, c2, ts)
+
+	// check multi count equals two
+	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1"]`)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	j := []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	assert.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3}}, j)
+
+	// update a parent comment fails after child is created
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+idP+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text": "updated text", "summary":"updated by user"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err := client.Do(req)
+	require.NoError(t, err)
+	body, err := io.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
+
+	// delete first child comment
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+idC1+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
+
+	// delete a parent comment, fails as one comment child still present
+	defer client.CloseIdleConnections()
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+idP+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
+
+	// delete second child comment, as an admin to check both deletion methods
+	req, err = http.NewRequest(http.MethodDelete,
+		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, idC2), http.NoBody)
+	require.NoError(t, err)
+	requireAdminOnly(t, req)
+	resp, err = sendReq(t, req, adminUmputunToken)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// delete a parent comment, shouldn't fail after children are deleted
+	defer client.CloseIdleConnections()
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+idP+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete": true, "summary":"removed by user"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	b, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(b.Body)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, b.StatusCode, string(body))
+	assert.NoError(t, b.Body.Close())
+
+	// check multi count decremented to zero
+	resp, err = post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1"]`)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	bb, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	j = []store.PostInfo{}
+	err = json.Unmarshal(bb, &j)
+	assert.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 0}}, j)
+}
+
 func TestRest_UpdateNotOwner(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -396,8 +499,6 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, b.StatusCode, string(body), "update from non-owner")
 	assert.Equal(t, `{"code":3,"details":"can not edit comments for other users","error":"rejected"}`+"\n", string(body))
 
-	client = http.Client{}
-	defer client.CloseIdleConnections()
 	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id1+
 		"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(`ERRR "text":"updated text", "summary":"my"}`))
 	assert.NoError(t, err)
