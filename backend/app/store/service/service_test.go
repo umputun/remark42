@@ -971,7 +971,7 @@ func TestService_HasReplies(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
-	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
+	b := DataStore{Engine: eng,
 		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
 	defer b.Close()
 
@@ -982,11 +982,10 @@ func TestService_HasReplies(t *testing.T) {
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
-
 	assert.False(t, b.HasReplies(comment))
 
 	reply := store.Comment{
-		ID:        "123456",
+		ID:        "c-1",
 		ParentID:  "id-1",
 		Text:      "some text",
 		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
@@ -995,7 +994,45 @@ func TestService_HasReplies(t *testing.T) {
 	}
 	_, err := b.Create(reply)
 	assert.NoError(t, err)
+	_, found := b.repliesCache.Peek(comment.ID)
+	assert.False(t, found, "not yet checked")
 	assert.True(t, b.HasReplies(comment))
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.True(t, found, "checked and has replies")
+
+	// deletion of the parent comment shouldn't work as the comment has replies
+	_, err = b.EditComment(reply.Locator, comment.ID, EditRequest{Orig: comment.ID, Delete: true, Summary: "user deletes the comment"})
+	assert.EqualError(t, err, "parent comment with reply can't be edited, "+comment.ID)
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.True(t, found, "checked and has replies")
+
+	// should not report replies after deletion of the child
+	err = b.Delete(reply.Locator, reply.ID, store.HardDelete)
+	assert.NoError(t, err)
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.False(t, found, "cleaned up from cache by Delete call")
+	assert.False(t, b.HasReplies(comment))
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.False(t, found, "checked and has no replies")
+
+	// recreate reply with the new ID
+	reply.ID = "c-2"
+	_, err = b.Create(reply)
+	assert.NoError(t, err)
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.False(t, found, "not yet checked")
+	assert.True(t, b.HasReplies(comment))
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.True(t, found, "checked and has replies again")
+
+	// should not report replies after deletion of the child using Edit mechanism
+	_, err = b.EditComment(reply.Locator, reply.ID, EditRequest{Orig: reply.ID, Delete: true, Summary: "user deletes the comment"})
+	assert.NoError(t, err)
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.False(t, found, "cleaned up from cache by EditComment call")
+	assert.False(t, b.HasReplies(comment))
+	_, found = b.repliesCache.Peek(reply.ParentID)
+	assert.False(t, found, "checked and has no replies")
 }
 
 func TestService_UserReplies(t *testing.T) {
