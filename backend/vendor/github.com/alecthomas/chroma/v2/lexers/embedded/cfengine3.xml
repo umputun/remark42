@@ -70,18 +70,6 @@
           <token type="NameFunction"/>
         </bygroups>
       </rule>
-      <rule pattern="(&#34;)([^&#34;]+)(&#34;)(\s+)(string|slist|int|real)(\s*)(=&gt;)(\s*)">
-        <bygroups>
-          <token type="Punctuation"/>
-          <token type="NameVariable"/>
-          <token type="Punctuation"/>
-          <token type="Text"/>
-          <token type="KeywordType"/>
-          <token type="Text"/>
-          <token type="Operator"/>
-          <token type="Text"/>
-        </bygroups>
-      </rule>
       <rule pattern="(\S+)(\s*)(=&gt;)(\s*)">
         <bygroups>
           <token type="KeywordReserved"/>

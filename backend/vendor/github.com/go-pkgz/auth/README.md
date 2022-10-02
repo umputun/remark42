@@ -210,6 +210,26 @@ The API for this provider:
 
 The provider acts like any other, i.e. will be registered as `/auth/email/login`.
 
+### Email
+
+For email notify provider, please use `github.com/go-pkgz/auth/provider/sender` package:
+```go
+    sndr := sender.NewEmailClient(sender.EmailParams{
+        Host:         "email.hostname",
+        Port:         567,
+        SMTPUserName: "username",
+        SMTPPassword: "pass",
+        StartTLS:     true,
+        From:         "notify@email.hostname",
+        Subject:      "subject",
+        ContentType:  "text/html",
+        Charset:      "UTF-8",
+    }, log.Default())
+    authenticator.AddVerifProvider("email", "template goes here", sndr)
+```
+
+See [that documentation](https://github.com/go-pkgz/email#options) for full options list.
+
 ### Telegram
 
 Telegram provider allows your users to log in with Telegram account. First, you will need to create your bot.

@@ -157,9 +157,12 @@ func (s *StyleBuilder) AddAll(entries StyleEntries) *StyleBuilder {
 }
 
 func (s *StyleBuilder) Get(ttype TokenType) StyleEntry {
-	// This is less than ideal, but it's the price for having to check errors on each Add().
+	// This is less than ideal, but it's the price for not having to check errors on each Add().
 	entry, _ := ParseStyleEntry(s.entries[ttype])
-	return entry.Inherit(s.parent.Get(ttype))
+	if s.parent != nil {
+		entry = entry.Inherit(s.parent.Get(ttype))
+	}
+	return entry
 }
 
 // Add an entry to the Style map.
@@ -172,6 +175,25 @@ func (s *StyleBuilder) Add(ttype TokenType, entry string) *StyleBuilder { // nol
 
 func (s *StyleBuilder) AddEntry(ttype TokenType, entry StyleEntry) *StyleBuilder {
 	s.entries[ttype] = entry.String()
+	return s
+}
+
+// Transform passes each style entry currently defined in the builder to the supplied
+// function and saves the returned value. This can be used to adjust a style's colours;
+// see Colour's ClampBrightness function, for example.
+func (s *StyleBuilder) Transform(transform func(StyleEntry) StyleEntry) *StyleBuilder {
+	types := make(map[TokenType]struct{})
+	for tt := range s.entries {
+		types[tt] = struct{}{}
+	}
+	if s.parent != nil {
+		for _, tt := range s.parent.Types() {
+			types[tt] = struct{}{}
+		}
+	}
+	for tt := range types {
+		s.AddEntry(tt, transform(s.Get(tt)))
+	}
 	return s
 }
 

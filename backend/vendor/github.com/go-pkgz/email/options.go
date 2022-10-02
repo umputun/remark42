@@ -62,6 +62,13 @@ func Auth(smtpUserName, smtpPasswd string) Option {
 	}
 }
 
+// LoginAuth sets LOGIN auth method
+func LoginAuth() Option {
+	return func(s *Sender) {
+		s.authMethod = authMethodLogin
+	}
+}
+
 // TimeOut sets smtp timeout
 func TimeOut(timeOut time.Duration) Option {
 	return func(s *Sender) {

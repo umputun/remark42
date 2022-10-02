@@ -31,29 +31,25 @@ linters-settings:
 
 linters:
   enable:
-    - megacheck
-    - revive
-    - govet
-    - unconvert
-    - megacheck
-    - structcheck
-    - gas
-    - gocyclo
     - dupl
-    - misspell
-    - unparam
-    - varcheck
-    - deadcode
-    - typecheck
-    - ineffassign
-    - varcheck
-    - stylecheck
-    - gochecknoinits
     - exportloopref
+    - gas
+    - gochecknoinits
     - gocritic
-    - nakedret
+    - gocyclo
     - gosimple
+    - govet
+    - ineffassign
+    - megacheck
+    - misspell
+    - nakedret
     - prealloc
+    - revive
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
   fast: false
   disable-all: true
 

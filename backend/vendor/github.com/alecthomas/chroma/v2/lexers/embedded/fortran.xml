@@ -2,20 +2,29 @@
   <config>
     <name>Fortran</name>
     <alias>fortran</alias>
+    <alias>f90</alias>
     <filename>*.f03</filename>
     <filename>*.f90</filename>
+    <filename>*.f95</filename>
     <filename>*.F03</filename>
     <filename>*.F90</filename>
+    <filename>*.F95</filename>
     <mime_type>text/x-fortran</mime_type>
     <case_insensitive>true</case_insensitive>
   </config>
   <rules>
     <state name="core">
-      <rule pattern="\b(NON_OVERRIDABLE|NON_INTRINSIC|ASYNCHRONOUS|ALLOCATABLE|CODIMENSION|EQUIVALENCE|CONCURRRENT|SYNCMEMORY|SUBROUTINE|CONTIGUOUS|SYNCIMAGES|ENUMERATOR|DEALLOCATE|BLOCKDATA|BACKSPACE|PROTECTED|RECURSIVE|PROCEDURE|SUBMODULE|EXTRINSIC|ASSOCIATE|PARAMETER|INTERFACE|ELEMENTAL|DIMENSION|INTRINSIC|ABSTRACT|EXTERNAL|CRITICAL|SEQUENCE|DEFERRED|CONTINUE|NAMELIST|CONTAINS|OPTIONAL|ALLOCATE|VOLATILE|IMPLICIT|FUNCTION|SYNCALL|INCLUDE|INQUIRE|EXTENDS|ALLSTOP|OPTIONS|PROGRAM|PRIVATE|POINTER|NULLIFY|GENERIC|FORMAT|FORALL|ENCODE|IMAGES|UNLOCK|ASSIGN|IMPURE|TARGET|PUBLIC|INTENT|RESULT|ACCEPT|COMMON|RETURN|MEMORY|MODULE|REWIND|DECODE|NOPASS|SELECT|IMPORT|ENTRY|BLOCK|CLASS|WRITE|WHERE|CLOSE|PAUSE|CYCLE|PRINT|FINAL|WHILE|ARRAY|VALUE|SAVE|PURE|READ|SYNC|ENUM|ELSE|EXIT|FILE|DATA|GOTO|STOP|PASS|LOCK|CASE|CALL|BYTE|OPEN|BIND|THEN|TYPE|NONE|USE|END|ALL|IF|IS|DO)\s*\b">
+      <rule pattern="\b(DO)(\s+)(CONCURRENT)\b">
         <token type="Keyword"/>
       </rule>
-      <rule pattern="\b(C_LONG_DOUBLE_COMPLEX|DOUBLE PRECISION|C_DOUBLE_COMPLEX|C_INT_LEAST32_T|C_INT_LEAST64_T|C_FLOAT_COMPLEX|C_INT_LEAST16_T|C_INT_LEAST8_T|C_INT_FAST32_T|C_INT_FAST64_T|DOUBLE COMPLEX|C_INT_FAST16_T|C_SIGNED_CHAR|C_LONG_DOUBLE|C_INT_FAST8_T|C_LONG_LONG|C_INTMAX_T|C_INTPTR_T|C_INT32_T|C_INT64_T|C_INT16_T|CHARACTER|C_DOUBLE|C_SIZE_T|C_INT8_T|C_FUNPTR|COMPLEX|C_FLOAT|C_SHORT|LOGICAL|INTEGER|C_LONG|C_BOOL|C_CHAR|C_INT|C_PTR|REAL)\s*\b">
-        <token type="KeywordType"/>
+      <rule pattern="\b(GO)(\s*)(TO)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(ABSTRACT|ACCEPT|ALL|ALLSTOP|ALLOCATABLE|ALLOCATE|ARRAY|ASSIGN|ASSOCIATE|ASYNCHRONOUS|BACKSPACE|BIND|BLOCK|BLOCKDATA|BYTE|CALL|CASE|CLASS|CLOSE|CODIMENSION|COMMON|CONTIGUOUS|CONTAINS|CONTINUE|CRITICAL|CYCLE|DATA|DEALLOCATE|DECODE|DEFERRED|DIMENSION|DO|ELEMENTAL|ELSE|ENCODE|END|ENDASSOCIATE|ENDBLOCK|ENDDO|ENDENUM|ENDFORALL|ENDFUNCTION|ENDIF|ENDINTERFACE|ENDMODULE|ENDPROGRAM|ENDSELECT|ENDSUBMODULE|ENDSUBROUTINE|ENDTYPE|ENDWHERE|ENTRY|ENUM|ENUMERATOR|EQUIVALENCE|ERROR STOP|EXIT|EXTENDS|EXTERNAL|EXTRINSIC|FILE|FINAL|FORALL|FORMAT|FUNCTION|GENERIC|IF|IMAGES|IMPLICIT|IMPORT|IMPURE|INCLUDE|INQUIRE|INTENT|INTERFACE|INTRINSIC|IS|LOCK|MEMORY|MODULE|NAMELIST|NULLIFY|NONE|NON_INTRINSIC|NON_OVERRIDABLE|NOPASS|ONLY|OPEN|OPTIONAL|OPTIONS|PARAMETER|PASS|PAUSE|POINTER|PRINT|PRIVATE|PROGRAM|PROCEDURE|PROTECTED|PUBLIC|PURE|READ|RECURSIVE|RESULT|RETURN|REWIND|SAVE|SELECT|SEQUENCE|STOP|SUBMODULE|SUBROUTINE|SYNC|SYNCALL|SYNCIMAGES|SYNCMEMORY|TARGET|THEN|TYPE|UNLOCK|USE|VALUE|VOLATILE|WHERE|WRITE|WHILE)\s*\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(CHARACTER|COMPLEX|DOUBLE PRECISION|DOUBLE COMPLEX|INTEGER|LOGICAL|REAL|C_INT|C_SHORT|C_LONG|C_LONG_LONG|C_SIGNED_CHAR|C_SIZE_T|C_INT8_T|C_INT16_T|C_INT32_T|C_INT64_T|C_INT_LEAST8_T|C_INT_LEAST16_T|C_INT_LEAST32_T|C_INT_LEAST64_T|C_INT_FAST8_T|C_INT_FAST16_T|C_INT_FAST32_T|C_INT_FAST64_T|C_INTMAX_T|C_INTPTR_T|C_FLOAT|C_DOUBLE|C_LONG_DOUBLE|C_FLOAT_COMPLEX|C_DOUBLE_COMPLEX|C_LONG_DOUBLE_COMPLEX|C_BOOL|C_CHAR|C_PTR|C_FUNPTR)\s*\b">
+        <token type="Keyword"/>
       </rule>
       <rule pattern="(\*\*|\*|\+|-|\/|&lt;|&gt;|&lt;=|&gt;=|==|\/=|=)">
         <token type="Operator"/>
@@ -26,7 +35,7 @@
       <rule pattern="[()\[\],:&amp;%;.]">
         <token type="Punctuation"/>
       </rule>
-      <rule pattern="\b(Get_Environment_Variable|Command_Argument_Count|Execute_Command_Line|Get_Command_Argument|Selected_Real_Kind|Selected_Char_Kind|C_Carriage_Return|Selected_Int_Kind|C_Horizontal_Tab|Extends_Type_Of|C_F_ProcPointer|C_Vertical_Tab|Date_and_Time|Is_Contiguous|C_Null_Funptr|Atomic_Define|Is_Iostat_Eor|Iso_C_Binding|Random_Number|Is_Iostat_End|C_Associated|Same_Type_As|Storage_Size|System_Clock|Set_Exponent|ErFC_Scaled|Get_Command|Dot_Product|C_Backspace|C_Null_Char|Image_Index|C_F_Pointer|MinExponent|Random_Seed|MaxExponent|C_Form_Feed|Move_Alloc|C_New_Line|Num_Images|Atomic_Ref|Associated|This_Image|Merge_Bits|C_Null_Ptr|Bessel_Y1|Bessel_JN|Bessel_J1|Bessel_J0|Transpose|RRSpacing|Allocated|Log_Gamma|Precision|Bessel_YN|Bessel_Y0|Bit_Size|Transfer|LCoBound|CPU_Time|UCoBound|Fraction|C_Sizeof|Exponent|ImagPart|C_FunLoc|New_Line|RealPart|Len_Trim|C_Alert|Spacing|Ceiling|Epsilon|AdjustR|Product|Complex|DShiftR|AdjustL|DShiftL|Present|IParity|Reshape|FindLoc|EOShift|Logical|Nearest|Digits|Modulo|DbesYN|MaxVal|TrailZ|MvBits|DbesJN|Second|IDNInt|IAChar|MinVal|IErrNo|RShift|TtyNam|MinLoc|Repeat|Rename|LShift|UBound|System|Parity|HostNm|LBound|SymLnk|MClock|GMTime|GetUId|GetPId|GetLog|PError|Spread|MaxLoc|Unlink|MatMul|GetGId|Signal|GetEnv|IShftC|IsaTty|ShiftA|GetCWD|CShift|LnBlnk|ShiftL|Unpack|Access|GetArg|Verify|GError|ShiftR|DNInt|FSeek|FStat|FTell|Gamma|FPutC|Flush|Floor|Float|FGetC|FDate|Radix|ETime|DTime|Range|DTanH|DSqRt|DSinH|DSign|Hypot|DProd|Scale|Norm2|DErFC|DCosH|IArgC|IBClr|IBits|IBSet|IChar|IDate|DbesY|IDInt|DbesJ|DATan|DASin|DACos|Shape|C_Loc|CTime|Index|CSqRt|Count|Conjg|Cmplx|Short|IShft|ChMod|ISign|ChDir|Sleep|BTest|SRand|ITime|Merge|BesYN|BesJN|ATanH|ASinH|ANInt|UMask|Alarm|AImag|MaskR|MaskL|ACosH|LTime|LStat|AChar|IRand|Abort|ZSqRt|SqRt|ZLog|ZExp|ZCos|Link|ZAbs|ACos|AInt|ALog|Kind|Kill|Long|ZSin|AMin|Imag|IFix|IEOr|Trim|IDiM|IAny|IAnd|Sign|NInt|AMod|Tiny|Null|IAbs|ASin|Pack|Huge|FPut|FNum|FGet|Time|Exit|Rand|ErFC|TanH|DTan|Real|DSin|DMod|DMin|DMax|DLog|DInt|ATan|DExp|Scan|DErF|DDiM|DCos|Dble|DAbs|BesJ|CSin|CosH|BesY|CLog|Char|CExp|SinH|Stat|CCos|Sngl|CAbs|IAll|AMax|IOr|Sin|BGE|Sum|Cos|BGT|DiM|Tan|ErF|Exp|Log|Not|Any|And|BLE|Mod|Min|Int|Len|All|LGe|LGt|Abs|XOr|Max|LLe|LLt|Loc|BLT|Or)\s*\b">
+      <rule pattern="\b(Abort|Abs|Access|AChar|ACos|ACosH|AdjustL|AdjustR|AImag|AInt|Alarm|All|Allocated|ALog|AMax|AMin|AMod|And|ANInt|Any|ASin|ASinH|Associated|ATan|ATanH|Atomic_Define|Atomic_Ref|BesJ|BesJN|Bessel_J0|Bessel_J1|Bessel_JN|Bessel_Y0|Bessel_Y1|Bessel_YN|BesY|BesYN|BGE|BGT|BLE|BLT|Bit_Size|BTest|CAbs|CCos|Ceiling|CExp|Char|ChDir|ChMod|CLog|Cmplx|Command_Argument_Count|Complex|Conjg|Cos|CosH|Count|CPU_Time|CShift|CSin|CSqRt|CTime|C_Loc|C_Associated|C_Null_Ptr|C_Null_Funptr|C_F_Pointer|C_F_ProcPointer|C_Null_Char|C_Alert|C_Backspace|C_Form_Feed|C_FunLoc|C_Sizeof|C_New_Line|C_Carriage_Return|C_Horizontal_Tab|C_Vertical_Tab|DAbs|DACos|DASin|DATan|Date_and_Time|DbesJ|DbesJN|DbesY|DbesYN|Dble|DCos|DCosH|DDiM|DErF|DErFC|DExp|Digits|DiM|DInt|DLog|DMax|DMin|DMod|DNInt|Dot_Product|DProd|DSign|DSinH|DShiftL|DShiftR|DSin|DSqRt|DTanH|DTan|DTime|EOShift|Epsilon|ErF|ErFC|ErFC_Scaled|ETime|Execute_Command_Line|Exit|Exp|Exponent|Extends_Type_Of|FDate|FGet|FGetC|FindLoc|Float|Floor|Flush|FNum|FPutC|FPut|Fraction|FSeek|FStat|FTell|Gamma|GError|GetArg|Get_Command|Get_Command_Argument|Get_Environment_Variable|GetCWD|GetEnv|GetGId|GetLog|GetPId|GetUId|GMTime|HostNm|Huge|Hypot|IAbs|IAChar|IAll|IAnd|IAny|IArgC|IBClr|IBits|IBSet|IChar|IDate|IDiM|IDInt|IDNInt|IEOr|IErrNo|IFix|Imag|ImagPart|Image_Index|Index|Int|IOr|IParity|IRand|IsaTty|IShft|IShftC|ISign|Iso_C_Binding|Is_Contiguous|Is_Iostat_End|Is_Iostat_Eor|ITime|Kill|Kind|LBound|LCoBound|Len|Len_Trim|LGe|LGt|Link|LLe|LLt|LnBlnk|Loc|Log|Log_Gamma|Logical|Long|LShift|LStat|LTime|MaskL|MaskR|MatMul|Max|MaxExponent|MaxLoc|MaxVal|MClock|Merge|Merge_Bits|Move_Alloc|Min|MinExponent|MinLoc|MinVal|Mod|Modulo|MvBits|Nearest|New_Line|NInt|Norm2|Not|Null|Num_Images|Or|Pack|Parity|PError|Precision|Present|Product|Radix|Rand|Random_Number|Random_Seed|Range|Real|RealPart|Rename|Repeat|Reshape|RRSpacing|RShift|Same_Type_As|Scale|Scan|Second|Selected_Char_Kind|Selected_Int_Kind|Selected_Real_Kind|Set_Exponent|Shape|ShiftA|ShiftL|ShiftR|Short|Sign|Signal|SinH|Sin|Sleep|Sngl|Spacing|Spread|SqRt|SRand|Stat|Storage_Size|Sum|SymLnk|System|System_Clock|Tan|TanH|Time|This_Image|Tiny|TrailZ|Transfer|Transpose|Trim|TtyNam|UBound|UCoBound|UMask|Unlink|Unpack|Verify|XOr|ZAbs|ZCos|ZExp|ZLog|ZSin|ZSqRt)\s*\b">
         <token type="NameBuiltin"/>
       </rule>
       <rule pattern="\.(true|false)\.">
@@ -45,13 +54,16 @@
       </rule>
     </state>
     <state name="nums">
-      <rule pattern="\d+(?![.e])(_[a-z]\w+)?">
+      <rule pattern="\d+(?![.e])(_([1-9]|[a-z]\w*))?">
         <token type="LiteralNumberInteger"/>
       </rule>
-      <rule pattern="[+-]?\d*\.\d+([ed][-+]?\d+)?(_[a-z]\w+)?">
+      <rule pattern="[+-]?\d*\.\d+([ed][-+]?\d+)?(_([1-9]|[a-z]\w+))?">
         <token type="LiteralNumberFloat"/>
       </rule>
-      <rule pattern="[+-]?\d+\.\d*([ed][-+]?\d+)?(_[a-z]\w+)?">
+      <rule pattern="[+-]?\d+\.\d*([ed][-+]?\d+)?(_([1-9]|[a-z]\w*))?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+-]?\d+(\.\d*)?[ed][-+]?\d+(_([1-9]|[a-z]\w*))?">
         <token type="LiteralNumberFloat"/>
       </rule>
     </state>
@@ -75,7 +87,7 @@
         <include state="nums"/>
       </rule>
       <rule pattern="[\s]+">
-        <token type="Text"/>
+        <token type="TextWhitespace"/>
       </rule>
     </state>
   </rules>
