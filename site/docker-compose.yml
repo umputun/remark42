@@ -1,15 +1,8 @@
 version: '2'
 services:
-  build:
-    image: remark42-site
-    build: .
-
-    volumes:
-      - ./build:/site/build
-
-  # Runs dev evn for the site
+  # Runs dev env for the site
   server:
-    image: remark42-site
+    image: remark42-site:dev
     build:
       dockerfile: Dockerfile.dev
       context: .
