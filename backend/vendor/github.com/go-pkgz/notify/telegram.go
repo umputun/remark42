@@ -48,7 +48,7 @@ type Telegram struct {
 	}
 }
 
-// telegramMsg is used to send message trough Telegram bot API
+// telegramMsg is used to send message through Telegram bot API
 type telegramMsg struct {
 	Text      string `json:"text"`
 	ParseMode string `json:"parse_mode,omitempty"`

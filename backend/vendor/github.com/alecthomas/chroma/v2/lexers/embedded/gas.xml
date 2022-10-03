@@ -48,8 +48,22 @@
       <rule pattern="(?:0[xX][a-zA-Z0-9]+|\d+)">
         <token type="LiteralNumberInteger"/>
       </rule>
+      <rule pattern="%(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameVariable"/>
+      </rule>
       <rule pattern="[\r\n]+">
         <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="([;#]|//).*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/[*].*?\n[\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
         <pop depth="1"/>
       </rule>
       <rule>
@@ -99,6 +113,17 @@
         <token type="Text"/>
         <pop depth="1"/>
       </rule>
+      <rule pattern="([;#]|//).*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/[*].*?\n[\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
       <rule>
         <include state="punctuation"/>
       </rule>
@@ -113,8 +138,11 @@
       <rule pattern="\s+">
         <token type="Text"/>
       </rule>
-      <rule pattern="[;#].*?\n">
-        <token type="Comment"/>
+      <rule pattern="([;#]|//).*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/[*][\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
       </rule>
     </state>
   </rules>

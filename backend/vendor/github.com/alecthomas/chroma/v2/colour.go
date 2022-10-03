@@ -92,7 +92,7 @@ func (c Colour) Brighten(factor float64) Colour {
 	return NewColour(uint8(r), uint8(g), uint8(b))
 }
 
-// BrightenOrDarken brightens a colour if it is < 0.5 brighteness or darkens if > 0.5 brightness.
+// BrightenOrDarken brightens a colour if it is < 0.5 brightness or darkens if > 0.5 brightness.
 func (c Colour) BrightenOrDarken(factor float64) Colour {
 	if c.Brightness() < 0.5 {
 		return c.Brighten(factor)
@@ -100,7 +100,35 @@ func (c Colour) BrightenOrDarken(factor float64) Colour {
 	return c.Brighten(-factor)
 }
 
-// Brightness of the colour (roughly) in the range 0.0 to 1.0
+// ClampBrightness returns a copy of this colour with its brightness adjusted such that
+// it falls within the range [min, max] (or very close to it due to rounding errors).
+// The supplied values use the same [0.0, 1.0] range as Brightness.
+func (c Colour) ClampBrightness(min, max float64) Colour {
+	if !c.IsSet() {
+		return c
+	}
+
+	min = math.Max(min, 0)
+	max = math.Min(max, 1)
+	current := c.Brightness()
+	target := math.Min(math.Max(current, min), max)
+	if current == target {
+		return c
+	}
+
+	r := float64(c.Red())
+	g := float64(c.Green())
+	b := float64(c.Blue())
+	rgb := r + g + b
+	if target > current {
+		// Solve for x: target == ((255-r)*x + r + (255-g)*x + g + (255-b)*x + b) / 255 / 3
+		return c.Brighten((target*255*3 - rgb) / (255*3 - rgb))
+	}
+	// Solve for x: target == (r*(x+1) + g*(x+1) + b*(x+1)) / 255 / 3
+	return c.Brighten((target*255*3)/rgb - 1)
+}
+
+// Brightness of the colour (roughly) in the range 0.0 to 1.0.
 func (c Colour) Brightness() float64 {
 	return (float64(c.Red()) + float64(c.Green()) + float64(c.Blue())) / 255.0 / 3.0
 }
