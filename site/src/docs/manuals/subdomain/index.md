@@ -4,7 +4,7 @@ title: Configure Instance without Subdomain
 
 ## How to configure remark42 without a subdomain
 
-All README examples show configurations with remark42 on its own subdomain, i.e., `https://remark42.example.com`. However, it is possible and sometimes desirable to run remark42 without a subdomain, but just under some path, i.e., `https://example.com/remark42`.
+All documentation examples show configurations with remark42 on its own subdomain, i.e., `https://remark42.example.com`. However, it is possible and sometimes desirable to run remark42 without a subdomain, but just under some path, i.e., `https://example.com/remark42`.
 
 - The frontend URL looks like this: `s.src = 'https://example.com/remark42/web/embed.js;`
 
