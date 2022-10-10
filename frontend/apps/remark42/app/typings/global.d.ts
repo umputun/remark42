@@ -13,6 +13,7 @@ type RemarkConfig = {
   max_last_comments?: number;
   __colors__?: Record<string, string>;
   simple_view?: boolean;
+  no_footer?: boolean;
 };
 
 declare global {
