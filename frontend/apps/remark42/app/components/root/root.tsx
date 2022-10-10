@@ -351,22 +351,28 @@ const CopyrightLink = (title: string) => (
   </a>
 );
 
+const Copyright = () => (
+  <p className="root__copyright" role="contentinfo">
+    <FormattedMessage id="root.powered-by" defaultMessage="Powered by <a>Remark42</a>" values={{ a: CopyrightLink }} />
+  </p>
+);
+
 /** Root component connected to redux */
 export function ConnectedRoot() {
   const intl = useIntl();
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
 
+  if (!window.remark_config) {
+    throw new Error('Remark42: Config object is undefined');
+  }
+
+  const { no_footer } = window.remark_config;
+
   return (
     <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
-      <p className="root__copyright" role="contentinfo">
-        <FormattedMessage
-          id="root.powered-by"
-          defaultMessage="Powered by <a>Remark42</a>"
-          values={{ a: CopyrightLink }}
-        />
-      </p>
+      {!no_footer && <Copyright />}
     </div>
   );
 }

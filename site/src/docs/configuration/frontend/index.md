@@ -20,6 +20,7 @@ title: Frontend Configuration
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – overrides the parameter from the backend minimized UI with basic info only
+- **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signatue and links to remark42
 
 Example with all of the params:
 
@@ -34,7 +35,8 @@ Example with all of the params:
     page_title: 'My custom title for a page',
     locale: 'es',
     show_email_subscription: false,
-    simple_view: true
+    simple_view: true,
+    no_footer: false
   }
 </script>
 ```
