@@ -35,7 +35,6 @@ linters:
     - revive
     - govet
     - unconvert
-    - megacheck
     - gas
     - gocyclo
     - dupl
