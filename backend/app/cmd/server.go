@@ -523,7 +523,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	migr := &api.Migrator{
 		Cache:             loadingCache,
 		NativeImporter:    &migrator.Native{DataStore: dataService},
-		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
+		DisqusImporter:    &migrator.Disqus{DataStore: dataService, AvatarSaver: authenticator.AvatarProxy()},
 		WordPressImporter: &migrator.WordPress{DataStore: dataService},
 		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
