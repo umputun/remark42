@@ -16,15 +16,15 @@ import (
 
 // BoltDB implements store.Interface, represents multiple sites with multiplexing to different bolt dbs. Thread safe.
 // there are 6 types of top-level buckets:
-//  - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
-//  - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
-//    value is not full comment but a reference combined from post-url+commentID
-//  - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
-//    is a nested bucket named userID with kv as ts:reference
-//  - users details in "user_details" bucket. Key is userID, value - UserDetailEntry
-//  - blocking info sits in "block" bucket. Key is userID, value - ts
-//  - counts per post to keep number of comments. Key is post url, value - count
-//  - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
+//   - comments for post in "posts" top-level bucket. Each url (post) makes its own bucket and each k:v pair is commentID:comment
+//   - history of all comments. They all in a single "last" bucket (per site) and key is defined by ref struct as ts+commentID
+//     value is not full comment but a reference combined from post-url+commentID
+//   - user to comment references in "users" bucket. It used to get comments for user. Key is userID and value
+//     is a nested bucket named userID with kv as ts:reference
+//   - users details in "user_details" bucket. Key is userID, value - UserDetailEntry
+//   - blocking info sits in "block" bucket. Key is userID, value - ts
+//   - counts per post to keep number of comments. Key is post url, value - count
+//   - readonly per post to keep status of manually set RO posts. Key is post url, value - ts
 type BoltDB struct {
 	dbs map[string]*bolt.DB
 }
@@ -780,7 +780,7 @@ func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDe
 	}
 
 	return bdb.Update(func(tx *bolt.Tx) error {
-		// updated entry is not empty and we need to store it's updated copy
+		// updated entry is not empty and we need to store its updated copy
 		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), userID, entry)
 		if err != nil {
 			return fmt.Errorf("failed to update detail %s for %s: %w", userDetail, userID, err)

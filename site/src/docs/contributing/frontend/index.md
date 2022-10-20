@@ -12,7 +12,7 @@ TLDR: Preact replicates React API and compatible with its libraries.
 :::
 
 In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget.
-Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have it's own interface.
+Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
 
 While development we setup environment which imitates real world example. We serve the page which uses Remark42 config and inject all of the widgets on it. You can check it on our [demo site](https://demo.remark42.com/web/). After successful installation you should have the same page running locally.
 
