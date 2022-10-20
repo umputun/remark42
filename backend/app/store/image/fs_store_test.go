@@ -227,7 +227,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 	_, err = os.Stat(img2)
 	assert.Error(t, err, "no file on staging anymore")
 	_, err = os.Stat(img3)
-	assert.NoError(t, err, "third image is still on staging because it's cleanup timer was reset")
+	assert.NoError(t, err, "third image is still on staging because its cleanup timer was reset")
 
 	err = svc.ResetCleanupTimer("unknown_image.png")
 	assert.Error(t, err)

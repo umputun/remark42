@@ -496,7 +496,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
 			log.Printf("[WARN] failed to send delete event, %s", e)
 		}
-		// clean up the comment and it's parent from cache, so that
+		// clean up the comment and its parent from cache, so that
 		// after cleaning up the child, parent won't be stuck non-deletable till cache expires
 		if s.repliesCache.LoadingCache != nil {
 			s.repliesCache.Delete(commentID)
@@ -745,12 +745,12 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
 		log.Printf("[WARN] failed to send delete event, %s", e)
 	}
-	// get comment to learn it's parent ID
+	// get comment to learn its parent ID
 	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
 	}
-	// clean up the comment and it's parent from cache, so that
+	// clean up the comment and its parent from cache, so that
 	// after cleaning up the child, parent won't be stuck non-deletable till cache expires
 	if s.repliesCache.LoadingCache != nil {
 		s.repliesCache.Delete(commentID)
