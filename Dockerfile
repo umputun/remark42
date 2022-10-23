@@ -96,20 +96,18 @@ LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
 
 WORKDIR /srv
 
-ADD docker-init.sh /entrypoint.sh
+COPY docker-init.sh /srv/init.sh
 ADD backend/scripts/backup.sh /usr/local/bin/backup
 ADD backend/scripts/restore.sh /usr/local/bin/restore
 ADD backend/scripts/import.sh /usr/local/bin/import
-RUN chmod +x /entrypoint.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
+RUN chmod +x /srv/init.sh /usr/local/bin/backup /usr/local/bin/restore /usr/local/bin/import
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /srv/web/
-COPY docker-init.sh /srv/init.sh
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
 
-RUN chmod +x /srv/init.sh
 CMD ["/srv/remark42", "server"]
