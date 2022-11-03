@@ -8,11 +8,11 @@ package accessor
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 	"time"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
 )
@@ -267,7 +267,7 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err erro
 		return res, nil
 
 	case engine.Blocked:
-		log.Printf("%+v", m.metaUsers)
+		log.Printf("[INFO] metaUsers: %+v", m.metaUsers)
 		for _, u := range m.metaUsers {
 			if u.SiteID == req.Locator.SiteID && u.Blocked && u.BlockedUntil.After(time.Now()) {
 				res = append(res, store.BlockedUser{ID: u.UserID, Until: u.BlockedUntil})
