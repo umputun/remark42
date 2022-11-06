@@ -40,7 +40,7 @@ type pubStore interface {
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	UserCount(siteID, userID string) (int, error)
 	Count(locator store.Locator) (int, error)
-	List(siteID string, limit int, skip int) ([]store.PostInfo, error)
+	List(siteID string, limit, skip int) ([]store.PostInfo, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 
 	ValidateComment(c *store.Comment) error

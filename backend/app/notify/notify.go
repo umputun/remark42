@@ -34,8 +34,8 @@ type Destination interface {
 // Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
 	Get(locator store.Locator, id string, user store.User) (store.Comment, error)
-	GetUserEmail(siteID string, userID string) (string, error)
-	GetUserTelegram(siteID string, userID string) (string, error)
+	GetUserEmail(siteID, userID string) (string, error)
+	GetUserTelegram(siteID, userID string) (string, error)
 }
 
 // used for email and telegram retrieval from user details
