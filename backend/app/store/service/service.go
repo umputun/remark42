@@ -154,12 +154,6 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 	return s.alterComment(c, user), nil
 }
 
-// Put updates comment, mutable parts only
-func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
-	comment.Locator = locator
-	return s.Engine.Update(comment)
-}
-
 // GetUserEmail gets user email
 func (s *DataStore) GetUserEmail(siteID, userID string) (string, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
