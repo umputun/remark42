@@ -29,15 +29,15 @@ type admin struct {
 
 type adminStore interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
-	DeleteUser(siteID string, userID string, mode store.DeleteMode) error
-	DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error
+	DeleteUser(siteID, userID string, mode store.DeleteMode) error
+	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
-	IsBlocked(siteID string, userID string) bool
-	SetBlock(siteID string, userID string, status bool, ttl time.Duration) error
+	IsBlocked(siteID, userID string) bool
+	SetBlock(siteID, userID string, status bool, ttl time.Duration) error
 	BlockedUsers(siteID string) ([]store.BlockedUser, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 	SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error)
-	SetVerified(siteID string, userID string, status bool) error
+	SetVerified(siteID, userID string, status bool) error
 	SetReadOnly(locator store.Locator, status bool) error
 	SetPin(locator store.Locator, commentID string, status bool) error
 }
