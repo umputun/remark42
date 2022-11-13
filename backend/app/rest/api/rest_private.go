@@ -58,15 +58,15 @@ type privStore interface {
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
-	GetUserEmail(siteID string, userID string) (string, error)
-	SetUserEmail(siteID string, userID string, value string) (string, error)
-	GetUserTelegram(siteID string, userID string) (string, error)
-	SetUserTelegram(siteID string, userID string, value string) (string, error)
-	DeleteUserDetail(siteID string, userID string, detail engine.UserDetail) error
+	GetUserEmail(siteID, userID string) (string, error)
+	SetUserEmail(siteID, userID, value string) (string, error)
+	GetUserTelegram(siteID, userID string) (string, error)
+	SetUserTelegram(siteID, userID, value string) (string, error)
+	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
 	ValidateComment(c *store.Comment) error
-	IsVerified(siteID string, userID string) bool
+	IsVerified(siteID, userID string) bool
 	IsReadOnly(locator store.Locator) bool
-	IsBlocked(siteID string, userID string) bool
+	IsBlocked(siteID, userID string) bool
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
 }
 

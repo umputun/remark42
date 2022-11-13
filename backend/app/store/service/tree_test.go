@@ -14,7 +14,7 @@ import (
 
 func TestMakeTree(t *testing.T) {
 	loc := store.Locator{URL: "url", SiteID: "site"}
-	ts := func(min int, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
+	ts := func(min, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
 
 	// unsorted by purpose
 	comments := []store.Comment{
@@ -54,7 +54,7 @@ func TestMakeTree(t *testing.T) {
 
 func TestMakeEmptySubtree(t *testing.T) {
 	loc := store.Locator{URL: "url", SiteID: "site"}
-	ts := func(min int, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
+	ts := func(min, sec int) time.Time { return time.Date(2017, 12, 25, 19, min, sec, 0, time.UTC) }
 
 	// unsorted by purpose
 	comments := []store.Comment{

@@ -83,7 +83,7 @@ func (ab AutoBackup) removeOldBackupFiles() {
 			backFiles = append(backFiles, info)
 		}
 	}
-	sort.Slice(backFiles, func(i int, j int) bool { return backFiles[i].Name() < backFiles[j].Name() })
+	sort.Slice(backFiles, func(i, j int) bool { return backFiles[i].Name() < backFiles[j].Name() })
 
 	if len(backFiles) > ab.KeepMax {
 		for i := 0; i < len(backFiles)-ab.KeepMax; i++ {
