@@ -180,7 +180,7 @@ func TestFsStore_Cleanup(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 
-	save := func(file string, user string) (filePath string) {
+	save := func(file, user string) (filePath string) {
 		id := path.Join(user, file)
 		err := svc.Save(id, gopherPNGBytes())
 		require.NoError(t, err)

@@ -78,5 +78,5 @@ func (s *StaticStore) Enabled(site string) (ok bool, err error) {
 	return false, nil
 }
 
-// OnEvent doesn nothing for StaticStore
+// OnEvent does nothing for StaticStore
 func (s *StaticStore) OnEvent(_ string, _ EventType) error { return nil }
