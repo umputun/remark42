@@ -305,10 +305,9 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
       return;
     }
 
+    updateIframeHeight();
     // TODO: throttle updates
     const observer = new MutationObserver(() => {
-      updateIframeHeight();
-
       // a hacky way to force iframe height update when new image is rendered and loaded
       rootRef.current?.querySelectorAll('img').forEach((img) => {
         img.addEventListener('load', updateIframeHeight);
