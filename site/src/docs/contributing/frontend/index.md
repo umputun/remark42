@@ -36,12 +36,12 @@ Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS
 
 You can run frontend against demo instance of Remark42. This method of running Remark42 frontend code is preferred when you make a translation or visual adjustments that are easy to see without extensive testing. For this method we use our demo instance of Remark42 served on https://demo.remark42.com
 
-For local development mode with Hot Reloading, use `pnpm start:app`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
+For local development mode with Hot Reloading, use `pnpm dev:app`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
 
-You can attach the frontend to the locally running backend by providing the `REMARK_URL` environment variable.
+You can attach the frontend to the locally running backend from `frontend/apps/remark42` folder and providing the `REMARK_URL` environment variable.
 
 ```shell
-npx cross-env REMARK_URL=http://127.0.0.1:8080 pnpm dev:app
+npx cross-env REMARK_URL=http://127.0.0.1:8080 pnpm dev:custom
 ```
 
 ::: note ℹ️
