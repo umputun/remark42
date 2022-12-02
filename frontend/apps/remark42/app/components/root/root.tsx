@@ -36,7 +36,7 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage } from 'utils/post-message';
+import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
@@ -285,10 +285,6 @@ export class Root extends Component<Props, State> {
       </Fragment>
     );
   }
-}
-
-function updateIframeHeight() {
-  postMessageToParent({ height: document.body.offsetHeight });
 }
 
 interface CommentsProps {
