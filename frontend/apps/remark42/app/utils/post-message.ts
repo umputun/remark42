@@ -61,3 +61,10 @@ export function parseMessage({ data }: MessageEvent): AllMessages {
 
   return data as AllMessages;
 }
+
+/**
+ * Sends size of the iframe to parent window
+ */
+export function updateIframeHeight() {
+  postMessageToParent({ height: document.body.offsetHeight });
+}

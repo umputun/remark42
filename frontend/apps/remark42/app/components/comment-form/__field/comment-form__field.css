@@ -13,6 +13,7 @@
   line-height: 1.4;
   border: 0;
   resize: none;
+  overflow: hidden; /* prevent scrollbar from appearing */
   backface-visibility: hidden; /* let's try to fix blinking in Safari */
   transform: translateZ(0); /* let's try to fix blinking in Safari, again */
 
