@@ -24,6 +24,7 @@ type CleanupCommand struct {
 
 	SupportCmdOpts
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 var (

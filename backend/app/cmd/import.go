@@ -19,6 +19,7 @@ type ImportCommand struct {
 
 	SupportCmdOpts
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 // Execute runs import with ImportCommand parameters, entry point for "import" command

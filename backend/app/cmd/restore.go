@@ -13,6 +13,7 @@ type RestoreCommand struct {
 
 	SupportCmdOpts
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 // Execute runs import with RestoreCommand parameters, entry point for "restore" command

@@ -26,9 +26,13 @@ type CommonOptionsCommander interface {
 
 // CommonOpts sets externally from main, shared across all commands
 type CommonOpts struct {
-	RemarkURL    string
-	SharedSecret string
-	Revision     string
+	RemarkURL string
+	Revision  string
+}
+
+// DeprecatedSharedSecret is unused option preserved for compatibility
+type DeprecatedSharedSecret struct {
+	SharedSecret string `long:"secret" env:"SECRET" description:"[deprecated] not used in this command, preserved for compatibility"`
 }
 
 // SupportCmdOpts is set of commands shared among similar commands like backup/restore and such.
@@ -51,7 +55,6 @@ type DeprecatedFlag struct {
 // The method called by main for each command
 func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
 	c.RemarkURL = strings.TrimSuffix(commonOpts.RemarkURL, "/") // allow RemarkURL with trailing /
-	c.SharedSecret = commonOpts.SharedSecret
 	c.Revision = commonOpts.Revision
 }
 

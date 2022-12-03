@@ -19,6 +19,7 @@ type BackupCommand struct {
 
 	SupportCmdOpts
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 // Execute runs export with ExportCommand parameters, entry point for "export" command

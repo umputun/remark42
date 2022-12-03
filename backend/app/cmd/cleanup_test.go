@@ -65,9 +65,11 @@ func TestCleanup_postsInRange(t *testing.T) {
 	defer ts.Close()
 
 	cmd := CleanupCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret",
+		"--secret=12345", // deprecated, but must not fail the command execution
+	})
 	require.NoError(t, err)
 	posts, err := cmd.postsInRange("20181218", "20181219")
 	assert.NoError(t, err)
@@ -88,7 +90,7 @@ func TestCleanup_listComments(t *testing.T) {
 	defer ts.Close()
 
 	cmd := CleanupCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_", "--admin-passwd=secret"})
 	require.NoError(t, err)
@@ -114,7 +116,7 @@ func TestCleanup_ExecuteSpam(t *testing.T) {
 	defer ts.Close()
 
 	cmd := CleanupCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--bword=bad1", "--bword=bad2", "--buser=bu_",
 		"--from=20181217", "--to=20181218", "--admin-passwd=secret"})
@@ -133,7 +135,7 @@ func TestCleanup_ExecuteTitle(t *testing.T) {
 	defer ts.Close()
 
 	cmd := CleanupCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--site=remark", "--title", "--from=20181217", "--to=20181218", "--admin-passwd=secret"})
 	require.NoError(t, err)

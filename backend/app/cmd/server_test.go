@@ -226,13 +226,13 @@ func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn s
 func TestServerApp_WithSSL(t *testing.T) {
 	opts := ServerCommand{}
 	sslPort := chooseRandomUnusedPort()
-	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort)})
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
+		"--secret==123456", "--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
 		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=/tmp"})
 	require.NoError(t, err)
@@ -283,13 +283,13 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 func TestServerApp_WithRemote(t *testing.T) {
 	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
-		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
+		"--secret=123456", "--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
 		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
 		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1"})
 	require.NoError(t, err)
@@ -320,12 +320,12 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 func TestServerApp_Failed(t *testing.T) {
 	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
+	_, err := p.ParseArgs([]string{"--secret==123456", "--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
@@ -333,9 +333,9 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// RO backup location
 	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
-	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
+	_, err = p.ParseArgs([]string{"--secret==123456", "--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
 	assert.NoError(t, err)
 	defer os.Remove("/tmp/remark.db")
 	_, err = opts.newServerApp(context.Background())
@@ -344,9 +344,9 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// invalid url
 	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com"})
 
-	_, err = p.ParseArgs([]string{"--backup=/tmp", "----store.bolt.path=/tmp"})
+	_, err = p.ParseArgs([]string{"--secret==123456", "--backup=/tmp", "----store.bolt.path=/tmp"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
@@ -354,7 +354,7 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// wrong store type
 	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	_, err = p.ParseArgs([]string{"--backup=/tmp", "--store.type=blah"})
 	assert.Error(t, err, "blah is invalid type")
@@ -366,9 +366,9 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// wrong redis location
 	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
+	_, err = p.ParseArgs([]string{"--secret==123456", "--store.bolt.path=/tmp", "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
@@ -379,9 +379,9 @@ func TestServerApp_Failed(t *testing.T) {
 
 	// wrong apple private key type
 	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--auth.apple.cid=123", "--auth.apple.tid=123",
+	_, err = p.ParseArgs([]string{"--auth.apple.cid=123", "--auth.apple.tid=123", "--secret=123456",
 		"--auth.apple.kid=123", "--auth.apple.private-key-filepath=testdata/apple-bad.p8"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
@@ -416,11 +416,11 @@ func TestServerApp_MainSignal(t *testing.T) {
 	}()
 
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	p := flags.NewParser(&s, flags.Default)
 	port := chooseRandomUnusedPort()
-	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
+	args := []string{"test", "--secret==123456", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/xyz")
 	defer os.Remove("/tmp/xyz/remark.db")
@@ -436,11 +436,12 @@ func TestServerApp_MainSignal(t *testing.T) {
 
 func TestServerApp_DeprecatedArgs(t *testing.T) {
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
+		"--secret==123456",
 		"--notify.type=email",
 		"--notify.type=telegram",
 		"--notify.users=none",
@@ -494,11 +495,12 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 
 func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
+		"--secret==123456",
 		"--auth.email.host=smtp-old.example.org",
 		"--smtp.host=smtp-new.example.org",
 		"--auth.email.port=666",
@@ -535,10 +537,11 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 
 	// case which should return nothing
 	s = ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 	p = flags.NewParser(&s, flags.Default)
 	args = []string{
 		"test",
+		"--secret==123456",
 		"--auth.email.host=smtp-old.example.org",
 		"--smtp.host=''",
 	}
@@ -550,9 +553,9 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 
 func Test_ACMEEmail(t *testing.T) {
 	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443"})
 	p := flags.NewParser(&cmd, flags.Default)
-	args := []string{"--ssl.type=auto"}
+	args := []string{"--secret==123456", "--ssl.type=auto"}
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
 	cfg, err := cmd.makeSSLConfig()
@@ -560,9 +563,9 @@ func Test_ACMEEmail(t *testing.T) {
 	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com"})
 	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--ssl.acme-email=adminname@adminhost.com"}
+	args = []string{"--secret==123456", "--ssl.type=auto", "--ssl.acme-email=adminname@adminhost.com"}
 	_, err = p.ParseArgs(args)
 	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
@@ -570,9 +573,9 @@ func Test_ACMEEmail(t *testing.T) {
 	assert.Equal(t, "adminname@adminhost.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com"})
 	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--admin.type=shared", "--admin.shared.email=superadmin@admin.com"}
+	args = []string{"--secret==123456", "--ssl.type=auto", "--admin.type=shared", "--admin.shared.email=superadmin@admin.com"}
 	_, err = p.ParseArgs(args)
 	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
@@ -580,9 +583,9 @@ func Test_ACMEEmail(t *testing.T) {
 	assert.Equal(t, "superadmin@admin.com", cfg.ACMEEmail)
 
 	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443"})
 	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--admin.type=shared"}
+	args = []string{"--secret==123456", "--ssl.type=auto", "--admin.type=shared"}
 	_, err = p.ParseArgs(args)
 	require.NoError(t, err)
 	cfg, err = cmd.makeSSLConfig()
@@ -764,11 +767,11 @@ func waitForHTTPSServerStart(port int) {
 
 func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
+	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com"})
 
 	// prepare options
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark", "--secret==secret"})
 	require.NoError(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp/remark42_test", "fs", "/tmp/remark42_test", "/tmp/remark42_test"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)

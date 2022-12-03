@@ -16,10 +16,12 @@ func TestAvatar_Execute(t *testing.T) {
 
 	// from fs to bolt
 	cmd := AvatarCommand{migrator: &avatarMigratorMock{retCount: 100}}
-	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ""})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
-		"--dst.bolt.file=/tmp/ava-test.db"})
+		"--dst.bolt.file=/tmp/ava-test.db",
+		"--secret=12345", // deprecated, but must not fail the command execution
+	})
 	require.NoError(t, err)
 	defer os.Remove("/tmp/ava-test.db")
 	err = cmd.Execute(nil)
@@ -27,7 +29,7 @@ func TestAvatar_Execute(t *testing.T) {
 
 	// failed
 	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 0, retError: fmt.Errorf("failed blah")}}
-	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ""})
 	p = flags.NewParser(&cmd, flags.Default)
 	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
 		"--dst.bolt.file=/tmp/ava-test2.db"})

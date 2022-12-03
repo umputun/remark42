@@ -27,10 +27,12 @@ func TestRestore_Execute(t *testing.T) {
 	defer ts.Close()
 
 	cmd := RestoreCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
+	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=testdata", "--file=import.txt", "--admin-passwd=secret"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--path=testdata", "--file=import.txt", "--admin-passwd=secret",
+		"--secret=12345", // deprecated, but must not fail the command execution
+	})
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)

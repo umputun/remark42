@@ -19,6 +19,7 @@ type AvatarCommand struct {
 
 	migrator AvatarMigrator
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 // AvatarMigrator defines interface for migration

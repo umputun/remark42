@@ -23,8 +23,7 @@ type Opts struct {
 	CleanupCmd cmd.CleanupCommand `command:"cleanup"`
 	RemapCmd   cmd.RemapCommand   `command:"remap"`
 
-	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
-	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"the shared secret key used to sign JWT, should be a random, long, hard-to-guess string"`
+	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
 
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
 }
@@ -41,9 +40,8 @@ func main() {
 		// commands implements CommonOptionsCommander to allow passing set of extra options defined for all commands
 		c := command.(cmd.CommonOptionsCommander)
 		c.SetCommon(cmd.CommonOpts{
-			RemarkURL:    opts.RemarkURL,
-			SharedSecret: opts.SharedSecret,
-			Revision:     revision,
+			RemarkURL: opts.RemarkURL,
+			Revision:  revision,
 		})
 		logDeprecatedParams(c.HandleDeprecatedFlags())
 		err := c.Execute(args)

@@ -17,6 +17,7 @@ type RemapCommand struct {
 
 	SupportCmdOpts
 	CommonOpts
+	DeprecatedSharedSecret
 }
 
 // Execute runs (re)mapper with RemapCommand parameters, entry point for "remap" command
