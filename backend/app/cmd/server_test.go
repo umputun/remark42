@@ -290,7 +290,8 @@ func TestServerApp_WithRemote(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
-		"--port=" + strconv.Itoa(port), "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
+		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
+		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1"})
 	require.NoError(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"

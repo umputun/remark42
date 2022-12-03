@@ -35,7 +35,8 @@ func NewMemAdminStore(key string) *MemAdmin {
 	return &MemAdmin{data: map[string]AdminRec{}, key: key}
 }
 
-// Key executes find by siteID and returns substructure with secret key
+// Key supposed to execute find by siteID and returns substructure with secret key,
+// but in this case the shared secret is used for all sites
 func (m *MemAdmin) Key(_ string) (key string, err error) {
 	return m.key, nil
 }
