@@ -206,7 +206,7 @@ type AdminGroup struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
-	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
+	RPC AdminRPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // TelegramGroup defines token for Telegram used in notify and auth modules
@@ -272,6 +272,12 @@ type RPCGroup struct {
 	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"http timeout"`
 	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
+}
+
+// AdminRPCGroup defines options for remote admin store
+type AdminRPCGroup struct {
+	RPCGroup
+	SecretPerSite bool `long:"secret_per_site" env:"SECRET_PER_SITE" description:"enable JWT secret retrieval per aud, which is site_id in this case"`
 }
 
 // LoadingCache defines interface for caching
@@ -1184,6 +1190,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		Logger:            log.Default(),
 		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
+		AudSecrets:        s.Admin.RPC.SecretPerSite,
 	})
 }
 
