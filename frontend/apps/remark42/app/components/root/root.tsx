@@ -1,5 +1,5 @@
 import { h, Component, Fragment } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import { useSelector } from 'react-redux';
 import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
@@ -36,11 +36,18 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
+import { postMessageToParent, parseMessage } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
 import styles from './root.module.css';
+
+/**
+ * Sends size of the iframe to parent window
+ */
+export function updateIframeHeight() {
+  postMessageToParent({ height: document.body.offsetHeight });
+}
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -294,33 +301,12 @@ interface CommentsProps {
   showMore(): void;
 }
 function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!rootRef.current) {
-      return;
-    }
-
-    updateIframeHeight();
-    // TODO: throttle updates
-    const observer = new MutationObserver(() => {
-      // a hacky way to force iframe height update when new image is rendered and loaded
-      rootRef.current?.querySelectorAll('img').forEach((img) => {
-        img.addEventListener('load', updateIframeHeight);
-      });
-    });
-
-    observer.observe(rootRef.current, { attributes: true, childList: true, subtree: true });
-
-    return () => observer.disconnect();
-  }, []);
-
   const renderComments =
     IS_MOBILE && commentsShown < topComments.length ? topComments.slice(0, commentsShown) : topComments;
   const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
 
   return (
-    <div className="root__threads" role="list" ref={rootRef}>
+    <div className="root__threads" role="list">
       {isLoading ? (
         <Preloader className="root__preloader" />
       ) : (
@@ -357,6 +343,14 @@ export function ConnectedRoot() {
   const intl = useIntl();
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(updateIframeHeight);
+
+    updateIframeHeight();
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, []);
 
   if (!window.remark_config) {
     throw new Error('Remark42: Config object is undefined');

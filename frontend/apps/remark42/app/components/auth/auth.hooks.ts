@@ -76,11 +76,11 @@ export function useDropdown(disableClosing?: boolean) {
 
     handleChangeIframeSize(dropdownElement);
 
-    const observer = new MutationObserver(() => {
+    const observer = new ResizeObserver(() => {
       handleChangeIframeSize(dropdownElement);
     });
 
-    observer.observe(dropdownElement, { attributes: true, childList: true, subtree: true });
+    observer.observe(dropdownElement);
 
     return () => {
       document.body.style.removeProperty('min-height');
