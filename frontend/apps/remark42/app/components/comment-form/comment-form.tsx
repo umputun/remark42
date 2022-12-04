@@ -19,7 +19,6 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
-import { updateIframeHeight } from 'utils/post-message';
 
 export type Props = {
   id: string;
@@ -453,7 +452,6 @@ export class CommentForm extends Component<Props, State> {
               disabled={isDisabled}
               autofocus={!!autofocus}
               spellcheck={true}
-              onResize={updateIframeHeight}
             />
           </TextExpander>
           {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
