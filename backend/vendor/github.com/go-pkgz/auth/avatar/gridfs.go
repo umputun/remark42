@@ -59,7 +59,6 @@ func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error)
 	return io.NopCloser(buf), int(sz), nil
 }
 
-//
 // ID returns a fingerprint of the avatar content. Uses MD5 because gridfs provides it directly
 func (gf *GridFS) ID(avatar string) (id string) {
 
@@ -143,7 +142,7 @@ func (gf *GridFS) List() (ids []string, err error) {
 	return ids, nil
 }
 
-// Close gridfs does nothing but satisfies interface
+// Close gridfs store
 func (gf *GridFS) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
 	defer cancel()

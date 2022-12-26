@@ -65,7 +65,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.20.0
+# github.com/go-pkgz/auth v1.20.1-0.20221226231300-65f433fba0f1
 ## explicit; go 1.17
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
@@ -74,8 +74,8 @@ github.com/go-pkgz/auth/middleware
 github.com/go-pkgz/auth/provider
 github.com/go-pkgz/auth/provider/sender
 github.com/go-pkgz/auth/token
-# github.com/go-pkgz/email v0.4.0
-## explicit; go 1.17
+# github.com/go-pkgz/email v0.4.1
+## explicit; go 1.19
 github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache v0.1.0
 ## explicit; go 1.14
@@ -83,7 +83,7 @@ github.com/go-pkgz/expirable-cache
 # github.com/go-pkgz/jrpc v0.3.0
 ## explicit; go 1.16
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw v1.0.1
+# github.com/go-pkgz/lcw v1.0.3-0.20221226231215-a66ea7c4aff7
 ## explicit; go 1.15
 github.com/go-pkgz/lcw
 github.com/go-pkgz/lcw/eventbus
@@ -143,7 +143,7 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/golang-lru v0.5.4
+# github.com/hashicorp/golang-lru v0.6.0
 ## explicit; go 1.12
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
@@ -196,7 +196,7 @@ github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
 github.com/slack-go/slack/internal/timex
 github.com/slack-go/slack/slackutilsx
-# github.com/stretchr/testify v1.8.0
+# github.com/stretchr/testify v1.8.1
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require

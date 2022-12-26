@@ -143,6 +143,12 @@ func (s *Service) SubmitVerification(req VerificationRequest) {
 // Close queue channel and wait for completion
 func (s *Service) Close() {
 	if s.queue != nil {
+		// don't panic in case service is already closed
+		select {
+		case <-s.ctx.Done():
+			return
+		default:
+		}
 		log.Print("[DEBUG] close notifier")
 		close(s.queue)
 		close(s.verificationQueue)

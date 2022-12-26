@@ -186,11 +186,17 @@ func TestRemote_Delete(t *testing.T) {
 }
 
 func TestRemote_Close(t *testing.T) {
-	ts := testServer(t, `{"method":"store.close","id":1}`, `{}`)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), "{\"method\":\"store.close\",\"id\":")
+		t.Logf("req: %s", string(body))
+		_, _ = fmt.Fprint(w, "{}")
+	}))
 	defer ts.Close()
 	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
-	err := c.Close()
-	assert.NoError(t, err)
+	assert.NoError(t, c.Close())
+	assert.NoError(t, c.Close(), "second call should not result in panic or errors")
 }
 
 func testServer(t *testing.T, req, resp string) *httptest.Server {

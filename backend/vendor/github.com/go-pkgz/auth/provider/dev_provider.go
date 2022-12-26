@@ -57,7 +57,8 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 	}
 
 	d.httpServer = &http.Server{
-		Addr: fmt.Sprintf(":%d", d.Provider.Port),
+		Addr:              fmt.Sprintf(":%d", d.Provider.Port),
+		ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			d.Logf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
 			switch {

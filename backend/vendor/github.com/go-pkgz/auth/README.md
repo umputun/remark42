@@ -153,10 +153,6 @@ Such provider acts like any other, i.e. will be registered as `/auth/local/login
 
 The API for this provider supports both GET and POST requests:
 
-* GET request with user credentials provided as query params:
-  ```
-  GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]
-  ```
 * POST request could be encoded as application/x-www-form-urlencoded or application/json:
   ```
   POST /auth/<name>/login?session=[1|0]
@@ -171,6 +167,10 @@ The API for this provider supports both GET and POST requests:
     "passwd": "xyz",
     "aud": "bar",
   }
+  ```
+* GET request with user credentials provided as query params, but be aware that [the https query string is not secure](https://stackoverflow.com/a/323286/633961):
+  ```
+  GET /auth/<name>/login?user=<user>&passwd=<password>&aud=<site_id>&session=[1|0]
   ```
 
 _note: password parameter doesn't have to be naked/real password and can be any kind of password hash prepared by caller._

@@ -624,6 +624,7 @@ func TestMemData_DeleteComment(t *testing.T) {
 func TestMemData_Close(t *testing.T) {
 	b := prepMem(t)
 	assert.NoError(t, b.Close())
+	assert.NoError(t, b.Close(), "second call should not result in panic or errors")
 }
 
 func TestMemData_DeleteHard(t *testing.T) {

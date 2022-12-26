@@ -185,6 +185,12 @@ func (c *LoadingCache) ItemCount() int {
 func (c *LoadingCache) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	// don't panic in case service is already closed
+	select {
+	case <-c.done:
+		return
+	default:
+	}
 	close(c.done)
 }
 

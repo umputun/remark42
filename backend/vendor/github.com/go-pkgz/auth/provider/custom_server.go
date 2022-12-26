@@ -88,7 +88,8 @@ func (c *CustomServer) Run(ctx context.Context) {
 	}
 
 	c.httpServer = &http.Server{
-		Addr: fmt.Sprintf(":%s", port),
+		Addr:              fmt.Sprintf(":%s", port),
+		ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasSuffix(r.URL.Path, "/authorize"):
