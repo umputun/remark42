@@ -1638,6 +1638,30 @@ func Benchmark_ServiceCreate(b *testing.B) {
 	}
 }
 
+func TestService_DoubleClose_Bolt(t *testing.T) {
+	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
+	defer func() { _ = os.Remove(dbFile) }()
+
+	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
+	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	require.NoError(t, err)
+	assert.NoError(t, boltStore.Close())
+	assert.NoError(t, boltStore.Close(), "second call should not result in panic or errors")
+	assert.NoError(t, svc.Close())
+	assert.NoError(t, svc.Close(), "second call should not result in panic or errors")
+}
+
+func TestService_DoubleClose_Static(t *testing.T) {
+	ks := admin.NewStaticKeyStore("secret 123")
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+	b.Close()
+	// second call should not result in panic or errors
+	b.Close()
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	testDBLoc, err := os.MkdirTemp("", "test_image_r42")

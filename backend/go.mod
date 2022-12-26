@@ -11,9 +11,9 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.2
-	github.com/go-pkgz/auth v1.20.0
+	github.com/go-pkgz/auth v1.20.1-0.20221226231300-65f433fba0f1
 	github.com/go-pkgz/jrpc v0.3.0
-	github.com/go-pkgz/lcw v1.0.1
+	github.com/go-pkgz/lcw v1.0.3-0.20221226231215-a66ea7c4aff7
 	github.com/go-pkgz/lgr v0.10.4
 	github.com/go-pkgz/notify v0.2.0
 	github.com/go-pkgz/repeater v1.1.3
@@ -29,7 +29,7 @@ require (
 	github.com/rs/xid v1.4.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/goleak v1.2.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
@@ -48,7 +48,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.1 // indirect
-	github.com/go-pkgz/email v0.4.0 // indirect
+	github.com/go-pkgz/email v0.4.1 // indirect
 	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -56,7 +56,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/klauspost/compress v1.15.2 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022 // indirect

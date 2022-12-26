@@ -338,6 +338,6 @@ func TestRPC_closeHndl(t *testing.T) {
 	api := fmt.Sprintf("http://localhost:%d/test", port)
 
 	re := engine.RPC{Client: jrpc.Client{API: api, Client: http.Client{Timeout: 1 * time.Second}}}
-	err := re.Close()
-	assert.NoError(t, err)
+	assert.NoError(t, re.Close())
+	assert.NoError(t, re.Close(), "second call should not result in panic or errors")
 }

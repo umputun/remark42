@@ -104,7 +104,7 @@ func (fs *LocalFS) List() (ids []string, err error) {
 	return ids, nil
 }
 
-// Close gridfs does nothing but satisfies interface
+// Close LocalFS does nothing but satisfies interface
 func (fs *LocalFS) Close() error {
 	return nil
 }

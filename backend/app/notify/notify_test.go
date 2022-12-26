@@ -21,6 +21,8 @@ func TestService_NoDestinations(t *testing.T) {
 	s.Submit(Request{Comment: store.Comment{ID: "123"}})
 	s.Submit(Request{Comment: store.Comment{ID: "123"}})
 	s.Close()
+	// second call should not result in panic
+	s.Close()
 }
 
 func TestService_WithDestinations(t *testing.T) {

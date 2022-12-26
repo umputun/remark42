@@ -177,7 +177,7 @@ func (em *Sender) client() (c *smtp.Client, err error) {
 	}
 
 	if em.tls {
-		conn, e := tls.Dial("tcp", srvAddress, tlsConf)
+		conn, e := tls.DialWithDialer(&net.Dialer{Timeout: em.timeOut}, "tcp", srvAddress, tlsConf)
 		if e != nil {
 			return nil, fmt.Errorf("failed to dial smtp tls to %s: %w", srvAddress, e)
 		}

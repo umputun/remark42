@@ -30,22 +30,30 @@ Main features:
 ## Usage
 
 ```go
-cache, err := lcw.NewLruCache(lcw.MaxKeys(500), lcw.MaxCacheSize(65536), lcw.MaxValSize(200), lcw.MaxKeySize(32))
-if err != nil {
-    panic("failed to create cache")
+package main
+
+import (
+	"github.com/go-pkgz/lcw"
+)
+
+func main() {
+	cache, err := lcw.NewLruCache(lcw.MaxKeys(500), lcw.MaxCacheSize(65536), lcw.MaxValSize(200), lcw.MaxKeySize(32))
+	if err != nil {
+		panic("failed to create cache")
+	}
+	defer cache.Close()
+
+	val, err := cache.Get("key123", func() (interface{}, error) {
+		res, err := getDataFromSomeSource(params) // returns string
+		return res, err
+	})
+
+	if err != nil {
+		panic("failed to get data")
+	}
+
+	s := val.(string) // cached value
 }
-defer cache.Close()
-
-val, err := cache.Get("key123", func() (lcw.Value, error) {
-    res, err := getDataFromSomeSource(params) // returns string
-    return res, err
-})
-
-if err != nil {
-    panic("failed to get data")
-}
-
-s := val.(string) // cached value
 ```
 
 ### Cache with URI
@@ -73,7 +81,6 @@ Cache can be created with URIs:
   that mutable values can be changed outside of cache. `ExampleLoadingCache_Mutability` illustrates that.
 - All byte-size limits (MaxCacheSize and MaxValSize) only work for values implementing `lcw.Sizer` interface.
 - Negative limits (max options) rejected
-- `lgr.Value` wraps `interface{}` and should be converted back to the concrete type.
 - The implementation started as a part of [remark42](https://github.com/umputun/remark)
   and later on moved to [go-pkgz/rest](https://github.com/go-pkgz/rest/tree/master/cache)
   library and finally generalized to become `lcw`.

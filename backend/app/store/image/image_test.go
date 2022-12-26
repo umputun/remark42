@@ -286,3 +286,11 @@ func TestCachedImgID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "cached_images/"+Sha1Str("example.org")+"-"+Sha1Str(imgURL), img)
 }
+
+func TestService_DoubleClose(t *testing.T) {
+	store := StoreMock{}
+	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+	svc.Close(context.TODO())
+	// second call should not result in panic
+	svc.Close(context.TODO())
+}

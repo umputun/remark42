@@ -6,8 +6,6 @@
 // 3 flavors of cache provided - NoP (do-nothing cache), ExpirableCache (TTL based), and LruCache
 package lcw
 
-//go:generate sh -c "mockery -inpkg -name LoadingCache -print > /tmp/cache-mock.tmp && mv /tmp/cache-mock.tmp cache_mock.go"
-
 import (
 	"fmt"
 )

@@ -911,6 +911,13 @@ func TestBoltDB_NewFailed(t *testing.T) {
 	assert.EqualError(t, err, "failed to make boltdb for /tmp/no-such-place/tmp.db: open /tmp/no-such-place/tmp.db: no such file or directory")
 }
 
+func TestBoltDB_DoubleClose(t *testing.T) {
+	var b, teardown = prep(t)
+	defer teardown()
+	assert.NoError(t, b.Close())
+	assert.NoError(t, b.Close(), "second call should not result in panic or errors")
+}
+
 // makes new boltdb, put two records
 func prep(t *testing.T) (b *BoltDB, teardown func()) {
 	_ = os.Remove(testDB)
