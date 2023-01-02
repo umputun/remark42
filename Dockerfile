@@ -1,3 +1,5 @@
+ARG BUILDPLATFORM=amd64
+
 FROM --platform=$BUILDPLATFORM node:16.15.1-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
