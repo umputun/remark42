@@ -79,7 +79,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 9+1, len(providers), "extra auth provider")
+	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -107,7 +107,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 9+1, len(providers), "extra auth provider for anon")
+	require.Equal(t, 10+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	client := http.Client{Timeout: 10 * time.Second}
@@ -758,6 +758,8 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp/remark42_test", "fs", "/tmp/remark42_test", "/tmp/remark42_test"
 	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 	cmd.Store.Bolt.Timeout = 10 * time.Second
+	cmd.Auth.Apple.CID, cmd.Auth.Apple.KID, cmd.Auth.Apple.TID = "cid", "kid", "tid"
+	cmd.Auth.Apple.PrivateKeyFilePath = "testdata/apple.p8"
 	cmd.Auth.Github.CSEC, cmd.Auth.Github.CID = "csec", "cid"
 	cmd.Auth.Google.CSEC, cmd.Auth.Google.CID = "csec", "cid"
 	cmd.Auth.Facebook.CSEC, cmd.Auth.Facebook.CID = "csec", "cid"

@@ -142,6 +142,8 @@ github.com/go-oauth2/oauth2/v4 v4.5.1 h1:3vxp+cjLqDe1TbogbwtMyeHRHr1tD+ksrK7xNpp
 github.com/go-oauth2/oauth2/v4 v4.5.1/go.mod h1:wk/2uLImWIa9VVQDgxz99H2GDbhmfi/9/Xr+GvkSUSQ=
 github.com/go-pkgz/auth v1.20.1-0.20221226231300-65f433fba0f1 h1:MJA4rZAwjd+KpaR2PqrxeDPloNu9Wml1UVQjL2fOtVM=
 github.com/go-pkgz/auth v1.20.1-0.20221226231300-65f433fba0f1/go.mod h1:fG1CP4+LDPnebYeO1BAZg/euTQQ8cnGn+5ZrXvJfckA=
+github.com/go-pkgz/auth v1.20.1-0.20230103203948-168bd5a101b7 h1:ktKI3Y3UytkBLL1cOEzJmAi3nNKeaRGOzDj51Kgqp6M=
+github.com/go-pkgz/auth v1.20.1-0.20230103203948-168bd5a101b7/go.mod h1:fG1CP4+LDPnebYeO1BAZg/euTQQ8cnGn+5ZrXvJfckA=
 github.com/go-pkgz/email v0.3.1-0.20221002173339-19d25a20d99c/go.mod h1:TpnmSLkQW3FyICit2hn7WIhCUDrhCX6btzz5wS3wHRI=
 github.com/go-pkgz/email v0.4.1 h1:2vtP2gibsSzqhz6eD5DklSp11m657XEVf17fuXaxMvk=
 github.com/go-pkgz/email v0.4.1/go.mod h1:BdxglsQnymzhfdbnncEE72a6DrucZHy6I+42LK2jLEc=
