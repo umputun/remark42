@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Site",
   "subscribeByRSS.thread": "Fil d'actualités",
   "subscribeByRSS.title": "RSS",
-  "token": "Jeton",
+  "token": "Copiez et collez le jeton de l'e-mail",
   "token.expired": "Le jeton a expiré",
   "token.invalid": "Le jeton n'est pas valide",
   "toolbar.attach-image": "Joindre une image, la glisser-déposer ou la coller à partir du presse-papier",

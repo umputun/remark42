@@ -27,7 +27,7 @@ export const messages = defineMessages<string>({
   },
   token: {
     id: 'token',
-    defaultMessage: 'Token',
+    defaultMessage: 'Copy and paste the token from the email',
   },
   expiredToken: {
     id: 'token.expired',

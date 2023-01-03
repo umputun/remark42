@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "網站",
   "subscribeByRSS.thread": "Thread",
   "subscribeByRSS.title": "RSS",
-  "token": "Token",
+  "token": "從電子郵件中復制並粘貼 token",
   "token.expired": "Token 已過期",
   "token.invalid": "無效的 Token",
   "toolbar.attach-image": "透過托放或從剪貼簿貼上來添加圖片。",

@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Сайт",
   "subscribeByRSS.thread": "Гілка",
   "subscribeByRSS.title": "RSS",
-  "token": "Токен",
+  "token": "Скопіюйте та вставте токен з листа",
   "token.expired": "Час дії токена минув",
   "token.invalid": "Токен недійсний",
   "toolbar.attach-image": "Прикріпити зображення, перетягніть або вставте зображення з буфера обміну",

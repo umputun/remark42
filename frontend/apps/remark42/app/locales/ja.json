@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "サイト",
   "subscribeByRSS.thread": "スレッド",
   "subscribeByRSS.title": "RSS",
-  "token": "トークン",
+  "token": "メールに記載されているトークンをコピー＆ペーストしてください。",
   "token.expired": "トークンの有効期限が切れています",
   "token.invalid": "トークンが無効です",
   "toolbar.attach-image": "画像を添付、ドラッグアンドドロップ、またはクリップボードから貼り付けてください",

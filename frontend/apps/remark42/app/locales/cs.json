@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Web",
   "subscribeByRSS.thread": "Vlákno",
   "subscribeByRSS.title": "RSS",
-  "token": "Token",
+  "token": "Zkopírujte a vložte token z e-mailu",
   "token.expired": "Token expiroval",
   "token.invalid": "Token je neplatný",
   "toolbar.attach-image": "Obrázek",
