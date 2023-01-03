@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "เว็บไซต์",
   "subscribeByRSS.thread": "เทรด",
   "subscribeByRSS.title": "RSS",
-  "token": "โทเค็น",
+  "token": "คัดลอกและวางโทเค็นจากอีเมล",
   "token.expired": "โทเค็นหมดอายุ",
   "token.invalid": "โทเค็นไม่ถูกต้อง",
   "toolbar.attach-image": "แนบรูปภาพ หรือลากและวาง",

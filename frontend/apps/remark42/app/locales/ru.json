@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Сайт",
   "subscribeByRSS.thread": "Ветка",
   "subscribeByRSS.title": "RSS",
-  "token": "Токен",
+  "token": "Скопируйте и вставьте токен из электронного письма",
   "token.expired": "Время действия токена истекло",
   "token.invalid": "Токен недействителен",
   "toolbar.attach-image": "Прикрепить изображение, перетащить или вставить изображение из буфера обмена",

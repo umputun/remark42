@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "사이트",
   "subscribeByRSS.thread": "스레드",
   "subscribeByRSS.title": "RSS",
-  "token": "토큰",
+  "token": "이메일에서 토큰 복사 및 붙여넣기",
   "token.expired": "토큰이 만료되었습니다",
   "token.invalid": "토큰이 유효하지 않습니다",
   "toolbar.attach-image": "이미지를 첨부하거나 드래그앤드롭하거나 클립보드에서 붙여넣으세요",

@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "网站",
   "subscribeByRSS.thread": "会话",
   "subscribeByRSS.title": "RSS",
-  "token": "令牌",
+  "token": "复制并粘贴电子邮件中的令牌",
   "token.expired": "令牌已经过期",
   "token.invalid": "令牌无效",
   "toolbar.attach-image": "附加、拖放或从剪贴板粘贴图片",

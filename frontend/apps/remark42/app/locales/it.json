@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Sito",
   "subscribeByRSS.thread": "Argomento",
   "subscribeByRSS.title": "RSS",
-  "token": "Token",
+  "token": "Copiare e incollare il token dall'e-mail",
   "token.expired": "Il token è scaduto",
   "token.invalid": "Il token non è valido",
   "toolbar.attach-image": "Allega immagini, trascina o incolla qui",

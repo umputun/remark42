@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Sivusto",
   "subscribeByRSS.thread": "Teema",
   "subscribeByRSS.title": "RSS",
-  "token": "Tunnus",
+  "token": "Kopioi ja liitä tunniste sähköpostista",
   "token.expired": "Tunnus on vanhentunut",
   "token.invalid": "Token is invalid",
   "toolbar.attach-image": "Liitä kuva, vedä ja pudota tai liitä leikepöydältä",
