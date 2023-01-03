@@ -80,6 +80,10 @@ services:
 | auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                   | cookie TTL                                                |
 | auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                  | send JWT as a header instead of a cookie                  |
 | auth.same-site                 | AUTH_SAME_SITE                 | `default`                | set same site policy for cookies (`default`, `none`, `lax` or `strict`) |
+| auth.apple.cid                 | AUTH_APPLE_CID                 |                          | Apple client ID                                           |
+| auth.apple.tid                 | AUTH_APPLE_TID                 |                          | Apple service ID                                          |
+| auth.apple.kid                 | AUTH_APPLE_KID                 |                          | Private key ID                                            |
+| auth.apple.private-key-filepath | AUTH_APPLE_PRIVATE_KEY_FILEPATH | `/var/apple.p8`        | Private key file location                                 |
 | auth.google.cid                | AUTH_GOOGLE_CID                |                          | Google OAuth client ID                                    |
 | auth.google.csec               | AUTH_GOOGLE_CSEC               |                          | Google OAuth client secret                                |
 | auth.facebook.cid              | AUTH_FACEBOOK_CID              |                          | Facebook OAuth client ID                                  |

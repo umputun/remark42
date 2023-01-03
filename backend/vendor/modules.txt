@@ -65,7 +65,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.20.1-0.20221226231300-65f433fba0f1
+# github.com/go-pkgz/auth v1.20.1-0.20230103203948-168bd5a101b7
 ## explicit; go 1.17
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar

@@ -96,16 +96,17 @@ type ServerCommand struct {
 		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
-		Google    AuthGroup `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
-		Github    AuthGroup `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
-		Facebook  AuthGroup `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
-		Microsoft AuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
-		Yandex    AuthGroup `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
-		Patreon   AuthGroup `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
-		Telegram  bool      `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
-		Dev       bool      `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
-		Anonymous bool      `long:"anon" env:"ANON" description:"enable anonymous login"`
+		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
+		Google    AuthGroup  `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
+		Github    AuthGroup  `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
+		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
+		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
+		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
+		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
+		Anonymous bool       `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
 			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
 			From         string        `long:"from" env:"FROM" description:"from email address"`
@@ -131,6 +132,14 @@ type ServerCommand struct {
 type ImageProxyGroup struct {
 	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
 	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
+}
+
+// AppleGroup defines options for Apple auth params
+type AppleGroup struct {
+	CID                string `long:"cid" env:"CID" description:"Apple client ID"`
+	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
+	KID                string `long:"kid" env:"KID" description:"Private key ID"`
+	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/var/apple.p8"`
 }
 
 // AuthGroup defines options group for auth params
@@ -829,12 +838,27 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
+//nolint:gocyclo // simple code but many if checks
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	providersCount := 0
 	if s.Auth.Telegram {
 		providersCount++
 	}
 
+	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
+		err := authenticator.AddAppleProvider(
+			provider.AppleConfig{
+				ClientID: s.Auth.Apple.CID,
+				TeamID:   s.Auth.Apple.TID,
+				KeyID:    s.Auth.Apple.KID,
+			},
+			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
+		)
+		if err != nil {
+			return err
+		}
+		providersCount++
+	}
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
 		authenticator.AddProvider("google", s.Auth.Google.CID, s.Auth.Google.CSEC)
 		providersCount++

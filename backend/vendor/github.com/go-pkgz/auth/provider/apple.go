@@ -208,7 +208,11 @@ func (ah *AppleHandler) initPrivateKey() error {
 	if err != nil {
 		return err
 	}
-	ah.conf.publicKey = ah.conf.privateKey.(*ecdsa.PrivateKey).Public()
+	publicKey, ok := ah.conf.privateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		return fmt.Errorf("provided private key is not ECDSA")
+	}
+	ah.conf.publicKey = publicKey.Public()
 	ah.conf.clientSecret, err = ah.createClientSecret()
 	if err != nil {
 		return err

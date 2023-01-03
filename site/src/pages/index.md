@@ -8,7 +8,7 @@ title: Remark42 – Privacy-focused lightweight commenting engine
 
 Remark42 allows you to have a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
-* Social login via Google, Twitter, Facebook, Microsoft, GitHub, Yandex, Patreon and Telegram
+* Social login via Google, Twitter, Facebook, Microsoft, GitHub, Apple, Yandex, Patreon and Telegram
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
