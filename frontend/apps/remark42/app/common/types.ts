@@ -97,6 +97,7 @@ export interface Tree {
 }
 
 export type OAuthProvider =
+  | 'apple'
   | 'facebook'
   | 'twitter'
   | 'google'

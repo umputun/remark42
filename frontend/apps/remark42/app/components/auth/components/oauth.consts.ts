@@ -1,4 +1,11 @@
 export const OAUTH_DATA = {
+  apple: {
+    name: 'Apple',
+    icons: {
+      light: require('assets/social/apple-light.svg').default as string,
+      dark: require('assets/social/apple-dark.svg').default as string,
+    },
+  },
   facebook: require('assets/social/facebook.svg').default as string,
   twitter: require('assets/social/twitter.svg').default as string,
   patreon: require('assets/social/patreon.svg').default as string,
