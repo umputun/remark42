@@ -139,7 +139,7 @@ type AppleGroup struct {
 	CID                string `long:"cid" env:"CID" description:"Apple client ID"`
 	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
 	KID                string `long:"kid" env:"KID" description:"Private key ID"`
-	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/var/apple.p8"`
+	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/srv/var/apple.p8"`
 }
 
 // AuthGroup defines options group for auth params
@@ -524,6 +524,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
 		_ = dataService.Close()
+		_ = authRefreshCache.Close()
 		return nil, fmt.Errorf("failed to make authenticator: %w", err)
 	}
 
@@ -563,6 +564,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
 		_ = dataService.Close()
+		_ = authRefreshCache.Close()
 		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
 
@@ -603,6 +605,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
 			_ = dataService.Close()
+			_ = authRefreshCache.Close()
 			return nil, fmt.Errorf("can't make dev oauth2 server: %w", errDevAuth)
 		}
 		devAuth = da

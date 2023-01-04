@@ -13,7 +13,7 @@ Authentication handled by external providers. You should set up OAuth2 for at le
 1. Enable the "Sign in with Apple" capability for your App ID in [the Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list) section.
 1. Create [Service ID](https://developer.apple.com/account/resources/identifiers/list/serviceId) and bind with App ID from the previous step. Apple will display the description field value to end-users on sign-in. You'll need that service **Identifier as a ClientID** later on.
 1. Configure "Sign in with Apple" for created Service ID. Add domain where you will use that auth on to "Domains and subdomains" and its main page URL (like `https://example.com/` to "Return URLs".
-1. Register a [New Key](https://developer.apple.com/account/resources/authkeys/list) (**private key**) for the "Sign in with Apple" feature and download it, you'll need to put it to `/var/apple.p8` path inside container. Also write down the private **Key ID**.
+1. Register a [New Key](https://developer.apple.com/account/resources/authkeys/list) (**private key**) for the "Sign in with Apple" feature and download it, you'll need to put it to `/srv/var/apple.p8` path inside container. Also write down the private **Key ID**.
 1. Add your Remark42 domain name and sender email in the Certificates, Identifiers & Profiles >> [More](https://developer.apple.com/account/resources/services/configure) section as a new Email Source.
 
 After completing the previous steps, you can proceed with configuring the Apple auth provider. You'll need to set the following environment variables:
@@ -21,7 +21,7 @@ After completing the previous steps, you can proceed with configuring the Apple 
 - `AUTH_APPLE_CID` (**required**) - Client ID
 - `AUTH_APPLE_TID` (**required**) - Team ID
 - `AUTH_APPLE_KID` (**required**) - Private Key ID
-- `AUTH_APPLE_PRIVATE_KEY_FILEPATH` (default `/var/apple.p8`) - Private key file location
+- `AUTH_APPLE_PRIVATE_KEY_FILEPATH` (default `/srv/var/apple.p8`) - Private key file location
 
 ### Facebook
 
