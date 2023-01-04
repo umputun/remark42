@@ -351,6 +351,7 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
+	// wrong store type
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
@@ -373,6 +374,19 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make cache: cache backend initialization, redis PubSub initialisation: "+
 			"problem subscribing to channel remark42-cache on address wrong_address: "+
 			"dial tcp: address wrong_address: missing port in address")
+	t.Log(err)
+
+	// wrong apple private key type
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--auth.apple.cid=123", "--auth.apple.tid=123",
+		"--auth.apple.kid=123", "--auth.apple.private-key-filepath=testdata/apple-bad.p8"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: an AppleProvider creating failed: "+
+			"provided private key is not ECDSA")
 	t.Log(err)
 }
 
