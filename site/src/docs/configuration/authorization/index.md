@@ -6,7 +6,7 @@ title: Authorization
 
 Authentication handled by external providers. You should set up OAuth2 for at least one of them to allow users to make comments. It is not mandatory to have all of them, but one should be correctly configured.
 
-### Apple (not implemented yet)
+### Apple
 
 1. Log in [to the developer account](https://developer.apple.com/account).
 1. If you don't have an App ID yet, [create one](https://developer.apple.com/account/resources/identifiers/add/bundleId). Later on, you'll need **TeamID**, which is an "App ID Prefix" value.

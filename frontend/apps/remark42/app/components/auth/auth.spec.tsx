@@ -74,6 +74,7 @@ describe('<Auth/>', () => {
     [['facebook', 'google', 'microsoft']],
     [['facebook', 'google', 'microsoft', 'yandex']],
     [['facebook', 'google', 'microsoft', 'yandex', 'twitter']],
+    [['facebook', 'google', 'microsoft', 'yandex', 'twitter', 'apple']],
   ] as [OAuthProvider[]][])('should renders with %j providers', async (providers) => {
     StaticStore.config.auth_providers = providers;
 
