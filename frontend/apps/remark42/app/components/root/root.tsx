@@ -8,7 +8,7 @@ import clsx from 'clsx';
 import 'styles/global.css';
 import type { StoreState } from 'store';
 import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
-import { maxShownComments, url } from 'common/settings';
+import { maxShownComments, noFooter, url } from 'common/settings';
 
 import {
   fetchUser,
@@ -329,12 +329,6 @@ const CopyrightLink = (title: string) => (
   </a>
 );
 
-const Copyright = () => (
-  <p className="root__copyright" role="contentinfo">
-    <FormattedMessage id="root.powered-by" defaultMessage="Powered by <a>Remark42</a>" values={{ a: CopyrightLink }} />
-  </p>
-);
-
 /** Root component connected to redux */
 export function ConnectedRoot() {
   const intl = useIntl();
@@ -349,16 +343,18 @@ export function ConnectedRoot() {
     return () => observer.disconnect();
   }, []);
 
-  if (!window.remark_config) {
-    throw new Error('Remark42: Config object is undefined');
-  }
-
-  const { no_footer } = window.remark_config;
-
   return (
     <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
-      {!no_footer && <Copyright />}
+      {!noFooter && (
+        <p className="root__copyright" role="contentinfo">
+          <FormattedMessage
+            id="root.powered-by"
+            defaultMessage="Powered by <a>Remark42</a>"
+            values={{ a: CopyrightLink }}
+          />
+        </p>
+      )}
     </div>
   );
 }
