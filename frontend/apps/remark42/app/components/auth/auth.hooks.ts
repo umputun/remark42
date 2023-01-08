@@ -3,15 +3,8 @@ import { useIntl } from 'react-intl';
 
 import { errorMessages, RequestError } from 'utils/errorUtils';
 import { isObject } from 'utils/is-object';
-import { parseMessage, postMessageToParent } from 'utils/post-message';
+import { parseMessage, updateIframeHeight } from 'utils/post-message';
 import { messages } from './auth.messsages';
-
-function handleChangeIframeSize(element: HTMLElement) {
-  const { top } = element.getBoundingClientRect();
-  const height = Math.max(window.scrollY + Math.abs(top) + element.scrollHeight + 20, document.body.offsetHeight);
-
-  postMessageToParent({ height });
-}
 
 export function useDropdown(disableClosing?: boolean) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -74,10 +67,10 @@ export function useDropdown(disableClosing?: boolean) {
       return;
     }
 
-    handleChangeIframeSize(dropdownElement);
+    updateIframeHeight(dropdownElement);
 
     const observer = new ResizeObserver(() => {
-      handleChangeIframeSize(dropdownElement);
+      updateIframeHeight(dropdownElement);
     });
 
     observer.observe(dropdownElement);
