@@ -21,8 +21,10 @@ compose-dev-backend.yml
 compose-dev-frontend.yml
 compose-private-backend.yml
 compose-private-frontend.yml
+compose-e2e-test.yml
 compose-private.yml
 rest-client.env.json
+Makefile
 
 # generated files
 *.cov
