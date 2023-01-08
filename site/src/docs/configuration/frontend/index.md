@@ -13,14 +13,15 @@ title: Frontend Configuration
   - `'embed'` – basic comments widget
   - `'last-comments'` – last comments widget, see [Last Comments](#last-comments-widget) section below
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
-- **`max_shown_comments`**`: number` (optional, `15` by default) – maximum number of comments that is renered on mobile version
+- **`max_shown_comments`**`: number` (optional, `15` by default) – maximum number of comments that is rendered on mobile version
+- **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – overrides the parameter from the backend minimized UI with basic info only
-- **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signatue and links to remark42
+- **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 
 Example with all of the params:
 
