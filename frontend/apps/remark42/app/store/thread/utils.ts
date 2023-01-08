@@ -20,6 +20,8 @@ export const getCollapsedComments = (): string[] =>
   }, []);
 
 /**
+ * @param siteId site id
+ * @param url url of the page with comments
  * @param info list of string of type "site-id_url_comment-id
  */
 export const saveCollapsedComments = (siteId: string, url: string, info: Comment['id'][]): void => {

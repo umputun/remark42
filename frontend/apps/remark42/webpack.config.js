@@ -48,7 +48,7 @@ function getLocalIdent(loaderContext, _, localName, options) {
  * Generates excludes for babel-loader
  *
  * Exclude is a module that has >=es6 code and resides in node_modules.
- * By default babel-loader ignores everything from node_modules,
+ * By default, babel-loader ignores everything from node_modules,
  * so we have to exclude from ignore these modules
  */
 const exclude = [

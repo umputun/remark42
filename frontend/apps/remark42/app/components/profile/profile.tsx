@@ -40,7 +40,7 @@ export function Profile() {
   const [error, setError] = useState(false);
   const [comments, setComments] = useState<CommentType[] | null>(null);
   const [commentsAmount, setCommentsAmount] = useState(0);
-  // store skip count in ref because it don't affect the view
+  // store skip count in ref because it doesn't affect the view
   const commentsSkipCountsRef = useRef(0);
   const [isSigningOut, setSigningOut] = useState(false);
 
@@ -179,7 +179,7 @@ export function Profile() {
   return (
     <div className={clsx('profile', styles.root)} ref={rootRef}>
       {/* disable jsx-a11y/no-static-element-interactions and jsx-a11y/click-events-have-key-events  */}
-      {/* that's fine because inside of the element we have button that will throw all events and provide all of the interactions */}
+      {/* that's fine because inside the element we have button that will throw all events and provide all the interactions */}
       {/* eslint-disable-next-line */}
       <div className={clsx('profile-close-button-wrapper', styles.closeButtonWrapper)} onClick={handleClickClose}>
         <IconButton title={intl.formatMessage({ id: 'profile.close', defaultMessage: 'Close profile' })}>

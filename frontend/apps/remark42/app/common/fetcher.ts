@@ -23,7 +23,7 @@ type Methods = {
   delete: BodylessMethod;
 };
 
-/** JWT token received from server and will be send by each request, if it present */
+/** JWT token received from server and will be sent by each request, if it is present */
 let activeJwtToken: string | undefined;
 
 const createFetcher = (baseUrl: string = ''): Methods => {
