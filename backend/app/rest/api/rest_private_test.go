@@ -849,7 +849,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// send confirmation token for email
 	req, err = http.NewRequest(
 		http.MethodPost,
-		ts.URL+"/api/v1/email/subscribe?site=remark42&address=",
+		ts.URL+"/api/v1/email/subscribe",
 		io.NopCloser(strings.NewReader(`{"site": "remark42", "address": "good@example.com"}`)),
 	)
 	require.NoError(t, err)
@@ -865,6 +865,25 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, 1, len(mockDestination.GetVerify()))
 	assert.Equal(t, "good@example.com", mockDestination.GetVerify()[0].Email)
 	verificationToken := mockDestination.GetVerify()[0].Token
+
+	// get user information to verify lack of the subscription
+	req, err = http.NewRequest(
+		http.MethodGet,
+		ts.URL+"/api/v1/user?site=remark42",
+		http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var clearUser store.User
+	err = json.Unmarshal(body, &clearUser)
+	assert.NoError(t, err)
+	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: false,
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, clearUser)
 
 	// verify email
 	req, err = http.NewRequest(
@@ -894,11 +913,11 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	var user store.User
-	err = json.Unmarshal(body, &user)
+	var subscribedUser store.User
+	err = json.Unmarshal(body, &subscribedUser)
 	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: true,
-		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, subscribedUser)
 
 	// create child comment from another user, email notification expected
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
@@ -949,6 +968,80 @@ func TestRest_EmailNotification(t *testing.T) {
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 4, len(mockDestination.Get()))
 	assert.Empty(t, mockDestination.Get()[3].Emails)
+
+	// confirm email via subscribe call with query params, old behavior, email notification is expected
+	req, err = http.NewRequest(
+		http.MethodPost,
+		ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com",
+		http.NoBody,
+	)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", emailUserToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 2, len(mockDestination.GetVerify()), "verification email was sent")
+
+	// get email user information to verify there is no subscription yet
+	req, err = http.NewRequest(
+		http.MethodGet,
+		ts.URL+"/api/v1/user?site=remark42",
+		http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", emailUserToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var unsubscribedEmailUser store.User
+	err = json.Unmarshal(body, &unsubscribedEmailUser)
+	assert.NoError(t, err)
+	assert.Equal(t, store.User{Name: "good@example.com test user", ID: "email_f5dfe9d2e6bd75fc74ea5fabf273b45b5baeb195", EmailSubscription: false,
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, unsubscribedEmailUser)
+
+	// confirm email via subscribe call, no email notification is expected
+	req, err = http.NewRequest(
+		http.MethodPost,
+		ts.URL+"/api/v1/email/subscribe",
+		io.NopCloser(strings.NewReader(`{"site": "remark42", "address": "good@example.com"}`)),
+	)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", emailUserToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	// wait for mock notification Submit to kick off
+	time.Sleep(time.Millisecond * 30)
+	require.Equal(t, 2, len(mockDestination.GetVerify()), "no new verification email was sent")
+
+	// get email user information to verify the subscription happened without the confirmation call
+	req, err = http.NewRequest(
+		http.MethodGet,
+		ts.URL+"/api/v1/user?site=remark42",
+		http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", emailUserToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	var subscribedEmailUser store.User
+	err = json.Unmarshal(body, &subscribedEmailUser)
+	assert.NoError(t, err)
+	assert.Equal(t, store.User{Name: "good@example.com test user", ID: "email_f5dfe9d2e6bd75fc74ea5fabf273b45b5baeb195", EmailSubscription: true,
+		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, subscribedEmailUser)
 }
 
 func TestRest_TelegramNotification(t *testing.T) {

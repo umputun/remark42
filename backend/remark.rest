@@ -119,6 +119,8 @@ GET {{host}}/api/v1/rss/reply?site={{site}}&user={{user}}
 GET {{host}}/api/v1/avatar/blah
 
 ### send confirmation token for current user to specified email. auth token for dev user for secret=12345.
+### in case the user logged in with the same email, it will be confirmed right away with "updated" set to "true" in the response,
+### and no email will be sent.
 POST {{host}}/api/v1/email/subscribe
 X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
 Content-Type: application/json
