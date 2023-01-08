@@ -728,19 +728,25 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		responseCode int
 		noAuth       bool
 		cookieEmail  string
+		body         string
 	}{
 		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
 		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
 		{description: "delete non-existent user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "set user email, token not set", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send email confirmation without address", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send email confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "set user email, token not set", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
+		{description: "set user email, token not set, old query param", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send email confirmation without address", url: "/api/v1/email/subscribe", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
+		{description: "send email confirmation without address, old query param", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "send email confirmation", url: "/api/v1/email/subscribe", method: http.MethodPost, responseCode: http.StatusOK, body: `{"site":"remark42","address":"good@example.com"}`},
+		{description: "send email confirmation, old query param", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "set user email, token is good", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
+		{description: "set user email, token is good, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "send confirmation with same address", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusConflict},
 		{description: "get user email", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send another confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
+		{description: "set user email, token is good", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
+		{description: "set user email, token is good, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "unsubscribe user, no token", url: "/email/unsubscribe.html?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
 		{description: "unsubscribe user, wrong token", url: "/email/unsubscribe.html?site=remark42&tkn=jwt", method: http.MethodGet, responseCode: http.StatusForbidden},
 		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
@@ -761,7 +767,11 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	for _, x := range testData {
 		x := x
 		t.Run(x.description, func(t *testing.T) {
-			req, err := http.NewRequest(x.method, ts.URL+x.url, http.NoBody)
+			reqBody := io.NopCloser(strings.NewReader(x.body))
+			if x.body == "" {
+				reqBody = http.NoBody
+			}
+			req, err := http.NewRequest(x.method, ts.URL+x.url, reqBody)
 			require.NoError(t, err)
 			if !x.noAuth {
 				req.Header.Add("X-JWT", devToken)
@@ -837,7 +847,11 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.Empty(t, mockDestination.Get()[1].Emails)
 
 	// send confirmation token for email
-	req, err = http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42&address=good@example.com", http.NoBody)
+	req, err = http.NewRequest(
+		http.MethodPost,
+		ts.URL+"/api/v1/email/subscribe?site=remark42&address=",
+		io.NopCloser(strings.NewReader(`{"site": "remark42", "address": "good@example.com"}`)),
+	)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -853,7 +867,11 @@ func TestRest_EmailNotification(t *testing.T) {
 	verificationToken := mockDestination.GetVerify()[0].Token
 
 	// verify email
-	req, err = http.NewRequest(http.MethodPost, ts.URL+fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", verificationToken), http.NoBody)
+	req, err = http.NewRequest(
+		http.MethodPost,
+		ts.URL+"/api/v1/email/confirm",
+		io.NopCloser(strings.NewReader(fmt.Sprintf(`{"site": "remark42", "token": %q}`, verificationToken))),
+	)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
@@ -864,7 +882,10 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
 	// get user information to verify the subscription
-	req, err = http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", http.NoBody)
+	req, err = http.NewRequest(
+		http.MethodGet,
+		ts.URL+"/api/v1/user?site=remark42",
+		http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err = client.Do(req)
