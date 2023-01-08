@@ -72,12 +72,6 @@ export interface Comment {
    */
   hidden?: boolean;
 }
-
-export interface CommentsResponse {
-  comments: Comment[];
-  count: number;
-}
-
 export interface Node {
   comment: Comment;
   replies?: Node[];

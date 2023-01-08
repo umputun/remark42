@@ -33,19 +33,4 @@ declare global {
         | undefined;
     };
   }
-
-  namespace NodeJS {
-    interface Global {
-      Headers: typeof Headers;
-      localStorage: typeof Storage;
-    }
-  }
 }
-
-/**
- * Variable responsive for dynamic setting public path for
- * assets. Dynamic imports with relative url will be resolved over this path.
- *
- * https://webpack.js.org/guides/public-path/#on-the-fly
- */
-declare let __webpack_public_path__: string;

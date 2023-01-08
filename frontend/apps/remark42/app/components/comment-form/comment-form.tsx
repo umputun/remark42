@@ -112,7 +112,7 @@ export class CommentForm extends Component<Props, State> {
 
   onInput = (e: Event) => {
     const { value } = e.target as HTMLInputElement;
-    const text = value.substr(0, StaticStore.config.max_comment_size);
+    const text = value.substring(0, StaticStore.config.max_comment_size);
 
     updatePersistedComments(this.props.id, value);
 

@@ -9,8 +9,6 @@ export const getConfig = (): Promise<Config> => apiFetcher.get('/config');
 
 export const getPostComments = (sort: Sorting) => apiFetcher.get<Tree>('/find', { url, sort, format: 'tree' });
 
-export const getComment = (id: Comment['id']): Promise<Comment> => apiFetcher.get(`/id/${id}`, { url });
-
 export const getUserComments = (
   userId: User['id'],
   config: { limit: number; skip?: number } = { limit: 10, skip: 0 }

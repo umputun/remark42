@@ -91,8 +91,7 @@ class SettingsComponent extends Component<Props, State> {
   };
 
   __isUserHidden = (user: User): boolean => {
-    if (this.state.unhiddenUsers.indexOf(user.id) === -1) return true;
-    return false;
+    return !this.state.unhiddenUsers.includes(user.id);
   };
 
   render({ user, theme }: Props, { blockedUsers, unblockedUsers, unhiddenUsers }: State) {

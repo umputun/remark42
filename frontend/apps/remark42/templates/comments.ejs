@@ -52,7 +52,7 @@
       var query = (function () {
         if (window.location.search.length === 0) return {};
         return window.location.search
-          .substr(1)
+          .substring(1)
           .split('&')
           .map(function (item) {
             return item.split('=');

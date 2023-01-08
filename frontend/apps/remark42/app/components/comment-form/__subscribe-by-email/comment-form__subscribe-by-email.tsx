@@ -26,7 +26,6 @@ const emailRegexp = /[^@]+@[^.]+\..+/;
 enum Step {
   Email,
   Token,
-  Final,
   Close,
   Subscribed,
   Unsubscribed,
