@@ -67,6 +67,10 @@
       {
         "title": "Gatsby Integration",
         "href": "/manuals/integration-with-gatsby/"
+      },
+      {
+        "title": "Anti-Spam",
+        "href": "/manuals/spam/"
       }
     ]
   },
