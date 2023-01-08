@@ -49,4 +49,7 @@ rundev:
 		docker-compose -f compose-private.yml build
 	docker-compose -f compose-private.yml up
 
+e2e:
+	docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
+
 .PHONY: bin backend
