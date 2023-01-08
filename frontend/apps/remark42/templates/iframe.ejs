@@ -75,7 +75,7 @@
         window.location.search.length < 2
           ? {}
           : window.location.search
-              .substr(1)
+              .substring(1)
               .split('&')
               .reduce(function (c, x) {
                 var splitted = x.split('=');

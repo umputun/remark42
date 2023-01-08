@@ -69,9 +69,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       // TODO: it should be clarified when frontend gets this header and what could be in it to simplify this logic and cover by tests
       const date = (res.headers.has('date') && res.headers.get('date')) || '';
       const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
-      const timeDiff = (new Date().getTime() - timestamp) / 1000;
-
-      StaticStore.serverClientTimeDiff = timeDiff;
+      StaticStore.serverClientTimeDiff = (new Date().getTime() - timestamp) / 1000;
 
       // backend could update jwt in any time. so, we should handle it
       if (res.headers.has(JWT_HEADER)) {

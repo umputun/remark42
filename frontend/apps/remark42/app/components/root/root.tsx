@@ -11,7 +11,6 @@ import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBI
 import { maxShownComments, url } from 'common/settings';
 
 import {
-  setUser,
   fetchUser,
   blockUser,
   unblockUser,
@@ -20,7 +19,7 @@ import {
   unhideUser,
   signout,
 } from 'store/user/actions';
-import { fetchComments, addComment, updateComment, unsetCommentMode } from 'store/comments/actions';
+import { fetchComments, addComment, updateComment } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
@@ -73,7 +72,6 @@ const mapStateToProps = (state: StoreState) => ({
 
 const boundActions = bindActions({
   fetchComments,
-  setUser,
   fetchUser,
   fetchBlockedUsers,
   setTheme,
@@ -85,7 +83,6 @@ const boundActions = bindActions({
   addComment,
   updateComment,
   setCollapse,
-  unsetCommentMode,
   signout,
 });
 

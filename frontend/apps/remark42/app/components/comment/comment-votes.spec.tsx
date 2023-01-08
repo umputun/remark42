@@ -56,7 +56,7 @@ describe('<CommentVote />', () => {
     ['downvote', -1, 'Vote down', 'Vote up', 'downVoteButtonActive'],
   ])(
     'should go throught voting process and communicate with store when %s button is clicked',
-    async (_, increment, activeButtonText, secondButtonText, activeButtonClass) => {
+    async (_, increment, activeButtonText, secondButtonText) => {
       const putCommentVoteSpy = jest
         .spyOn(api, 'putCommentVote')
         .mockImplementationOnce(({ vote }) => Promise.resolve({ id: '1', score: 10 + vote }));

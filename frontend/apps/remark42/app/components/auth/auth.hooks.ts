@@ -123,7 +123,7 @@ export function useErrorMessage(): [string | null, (e: unknown) => void] {
       }
 
       const errorReason =
-        err instanceof RequestError || (isObject(err) && typeof (err as Record<string, string>).error === 'string')
+        err instanceof RequestError || isObject(err)
           ? (err as Record<'error', string>).error
           : err instanceof Error
           ? err.message
