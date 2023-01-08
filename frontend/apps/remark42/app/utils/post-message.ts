@@ -36,7 +36,7 @@ export function postMessageToParent(data: ParentMessage): boolean {
  * Sends message to target iframe
  *
  * @param target iframe to send data
- * @param data that will be send to iframe
+ * @param data that will be sent to iframe
  * @returns request success of fail
  */
 export function postMessageToIframe(target: HTMLIFrameElement, data: ChildMessage): boolean {

@@ -14,7 +14,7 @@ TLDR: Preact replicates React API and compatible with its libraries.
 In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget.
 Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
 
-While development we setup environment which imitates real world example. We serve the page which uses Remark42 config and inject all of the widgets on it. You can check it on our [demo site](https://demo.remark42.com/web/). After successful installation you should have the same page running locally.
+While developing, we set up environment which imitates real world example. We serve the page which uses Remark42 config and inject all the widgets on it. You can check it on our [demo site](https://demo.remark42.com/web/). After successful installation you should have the same page running locally.
 
 ## Installation
 
@@ -92,7 +92,7 @@ Run `pnpm build` inside `./frontend`, and result files will be saved in `./front
 - The project uses TypeScript to analyze code statically
 - The project uses Eslint and Stylelint to check the frontend code. You can manually run via `pnpm lint`
 - Git Hooks (via husky) installed automatically on `pnpm i`. They check and try to fix code style if possible, otherwise commit will be rejected
-- If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Also, you have configure Eslint for work in subdirectory. For example you have to add configuration for VSCode like that `"eslint.workingDirectories": ["frontend/apps/remark42"]`
+- If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Also, you have configured Eslint for work in subdirectory. For example, you have to add configuration for VSCode like that `"eslint.workingDirectories": ["frontend/apps/remark42"]`
 
 ## CSS Styles
 
@@ -111,7 +111,7 @@ Run `pnpm build` inside `./frontend`, and result files will be saved in `./front
 ## Testing
 
 - Project uses [Jest](https://jestjs.io) as test framework
-- [Testing Library](https://testing-library.com) is used as UI test utilities (there are still tests with Enzyme but we are in process of migration)
+- [Testing Library](https://testing-library.com) is used as UI test utilities (there are still tests with Enzyme, but we are in process of migration)
 - Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`
 - Tests are running on push attempt
 - Example tests can be found in `./app/components/auth/auth.spec.ts`, `./app/store/user/reducers.test.ts`

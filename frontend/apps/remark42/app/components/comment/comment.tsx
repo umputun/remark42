@@ -88,7 +88,7 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   /**
-   * Defines whether comment made by logged in user
+   * Defines whether comment made by logged-in user
    */
   isCurrentUser = (): boolean => {
     return !this.isGuest() && this.props.data.user.id === this.props.user?.id;
