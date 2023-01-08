@@ -307,6 +307,8 @@ func (s *private) getEmailCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // sendEmailConfirmationCtrl gets address and siteID from query, makes confirmation token and sends it to user.
+// In case user is logged in with the same email, and auto_confirm is true, confirm it right away.
+// In case of quick confirmation, "updated" is set to true, otherwise - to false.
 // POST /email/subscribe with site and address in json body
 //
 //nolint:dupl // too hard to deduplicate that logic, as then it's tricky to use SendErrorJSON
@@ -314,17 +316,19 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	user := rest.MustGetUserInfo(r)
 
 	subscribe := struct {
-		Site    string
-		Address string
-	}{}
+		Site        string
+		Address     string
+		autoConfirm bool
+	}{autoConfirm: true}
 	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &subscribe); err != nil {
 		if err != io.EOF {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse request body", rest.ErrDecode)
 			return
 		}
-		// old behavior fallback, reading from the query params
+		// old behavior fallback, reading from the query params. Auto confirm is false in this case.
 		subscribe.Address = r.URL.Query().Get("address")
 		subscribe.Site = r.URL.Query().Get("site")
+		subscribe.autoConfirm = false
 	}
 
 	if subscribe.Address == "" {
@@ -332,15 +336,28 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
-	existingAddress, err := s.dataService.GetUserEmail(subscribe.Site, user.ID)
-	if err != nil {
-		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
+	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
+	if getErr != nil {
+		log.Printf("[WARN] can't read email for %s, %v", user.ID, getErr)
 	}
 	if subscribe.Address == existingAddress {
 		rest.SendErrorJSON(w, r, http.StatusConflict,
 			fmt.Errorf("already verified"), "email address is already verified for this user", rest.ErrInternal)
 		return
 	}
+
+	// in case the user logged in with the same email as they try to subscribe with, confirm it right away
+	// this behavior is different from the previous one and is hidden behind the autoConfirm flag,
+	// which is true for the new API, and false for the old one
+	//
+	// nolint:gosec // this is not used for security purposes
+	if subscribe.autoConfirm &&
+		strings.HasPrefix(user.ID, "email_") &&
+		strings.TrimPrefix(user.ID, "email_") == token.HashID(sha1.New(), subscribe.Address) {
+		s.setEmail(w, r, user.ID, subscribe.Site, subscribe.Address)
+		return
+	}
+
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address},
 		StandardClaims: jwt.StandardClaims{
@@ -366,7 +383,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		},
 	)
 
-	render.JSON(w, r, R.JSON{"user": user, "address": subscribe.Address})
+	render.JSON(w, r, R.JSON{"user": user, "address": subscribe.Address, "updated": false})
 }
 
 // telegramSubscribeCtrl generates and verifies telegram notification request
@@ -470,17 +487,20 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	address := elems[1]
+	s.setEmail(w, r, user.ID, confirm.Site, address)
+}
 
-	log.Printf("[DEBUG] set email for user %s", user.ID)
+func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteID, address string) {
+	log.Printf("[DEBUG] set email for user %s", userID)
 
-	val, err := s.dataService.SetUserEmail(confirm.Site, user.ID, address)
+	val, err := s.dataService.SetUserEmail(siteID, userID, address)
 	if err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
 		return
 	}
 
-	// update User.Email from the token
+	// update User.Email field
 	claims, _, err := s.authenticator.TokenService().Get(r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
