@@ -26,3 +26,4 @@ export const pageTitle = rawParams.page_title;
 export const url = rawParams.url;
 export const token = rawParams.token;
 export const locale = rawParams.locale || 'en';
+export const noFooter = rawParams.no_footer === 'true';
