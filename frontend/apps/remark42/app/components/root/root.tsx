@@ -35,18 +35,11 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage } from 'utils/post-message';
+import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
 import styles from './root.module.css';
-
-/**
- * Sends size of the iframe to parent window
- */
-export function updateIframeHeight() {
-  postMessageToParent({ height: document.body.offsetHeight });
-}
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -336,7 +329,7 @@ export function ConnectedRoot() {
   const actions = useActions(boundActions);
 
   useEffect(() => {
-    const observer = new ResizeObserver(updateIframeHeight);
+    const observer = new ResizeObserver(() => updateIframeHeight());
 
     updateIframeHeight();
     observer.observe(document.body);
