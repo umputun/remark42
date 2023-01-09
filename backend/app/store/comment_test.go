@@ -88,6 +88,10 @@ func TestComment_Sanitize(t *testing.T) {
 			inp: Comment{Text: "blah blah", PostTitle: "<script>alert()</script>something"},
 			out: Comment{Text: "blah blah", PostTitle: "something"},
 		},
+		{
+			inp: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw">@marcsheep</a> <a href="https://t.co/ULnVpG8w55">pic.twitter.com/ULnVpG8w55</a></p>&mdash; Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw">November 9, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`, PostTitle: "Twitter quote"},
+			out: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn" rel="nofollow">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw" rel="nofollow">@marcsheep</a> <a href="https://t.co/ULnVpG8w55" rel="nofollow">pic.twitter.com/ULnVpG8w55</a></p>— Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw" rel="nofollow">November 9, 2020</a></blockquote> `, PostTitle: "Twitter quote"},
+		},
 	}
 
 	for n, tt := range tbl {
