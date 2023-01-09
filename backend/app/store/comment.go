@@ -118,6 +118,8 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 func (c *Comment) Sanitize() {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^chroma$")).OnElements("pre")
+	// special case for embedding the quotes from Twitter
+	p.AllowAttrs("class").Matching(regexp.MustCompile("^twitter-tweet$")).OnElements("blockquote")
 	// this is list of <span> tag classes which could be produced by chroma code renderer
 	// source: https://github.com/alecthomas/chroma/blob/cc2dd5b/types.go#L211-L307
 	const codeSpanClassRegex = "^(bg|chroma|line|ln|lnt|hl|lntable|lntd|cl|w|err|x|k|kc" +
