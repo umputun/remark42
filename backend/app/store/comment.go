@@ -121,8 +121,8 @@ func (c *Comment) Sanitize() {
 	// special case for embedding the quotes from Twitter
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^twitter-tweet$")).OnElements("blockquote")
 	// this is list of <span> tag classes which could be produced by chroma code renderer
-	// source: https://github.com/alecthomas/chroma/blob/cc2dd5b/types.go#L211-L307
-	const codeSpanClassRegex = "^(bg|chroma|line|ln|lnt|hl|lntable|lntd|cl|w|err|x|k|kc" +
+	// source: https://github.com/alecthomas/chroma/blob/c263f6f/types.go#L209-L306
+	const codeSpanClassRegex = "^(bg|chroma|line|ln|lnt|hl|lntable|lntd|lnlinks|cl|w|err|x|k|kc" +
 		"|kd|kn|kp|kr|kt|n|na|nb|bp|nc|no|nd|ni|ne|nf|fm|py|nl|nn|nx|nt|nv|vc|vg" +
 		"|vi|vm|l|ld|s|sa|sb|sc|dl|sd|s2|se|sh|si|sx|sr|s1|ss|m|mb|mf|mh|mi|il" +
 		"|mo|o|ow|p|c|ch|cm|cp|cpf|c1|cs|g|gd|ge|gr|gh|gi|go|gp|gs|gu|gt|gl)$"

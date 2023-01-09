@@ -780,22 +780,25 @@ func TestService_ValidateComment(t *testing.T) {
 
 	tbl := []struct {
 		inp store.Comment
-		err error
+		err string
 	}{
-		{inp: store.Comment{}, err: fmt.Errorf("empty comment text")},
-		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: nil},
-		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: fmt.Errorf("empty user info")},
-		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: fmt.Errorf("comment text exceeded max allowed size 2000 (4000)")},
+		{inp: store.Comment{}, err: "empty comment text"},
+		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: ""},
+		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: "empty user info"},
+		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: "comment text exceeded max allowed size 2000 (4000)"},
+		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "multiple links, one is bad: [test](http://test) [test2](bad_url) [test3](https://test3)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 	}
 
 	for n, tt := range tbl {
 		err := b.ValidateComment(&tt.inp)
-		if tt.err == nil {
+		if tt.err == "" {
 			assert.NoError(t, err, "check #%d", n)
 			continue
 		}
 		require.Error(t, err)
-		assert.EqualError(t, tt.err, err.Error(), "check #%d", n)
+		assert.EqualError(t, err, tt.err, "check #%d", n)
 	}
 }
 

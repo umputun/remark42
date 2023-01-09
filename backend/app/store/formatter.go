@@ -42,17 +42,8 @@ func (f *CommentFormatter) Format(c Comment) Comment {
 
 // FormatText converts text with markdown processor, applies external converters and shortens links
 func (f *CommentFormatter) FormatText(txt string) (res string) {
-	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
-		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
-		bf.BackslashLineBreak | bf.Autolink
-
-	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{
-		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
-	})
-
-	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses(true)))
-
-	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(extRend)))
+	mdExt, rend := GetMdExtensionsAndRenderer()
+	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
 	res = f.unEscape(res)
 
 	for _, conv := range f.converters {
@@ -125,4 +116,19 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 		return commentHTML
 	}
 	return resHTML
+}
+
+// GetMdExtensionsAndRenderer returns blackfriday extensions and renderer used for rendering markdown
+// within store module.
+func GetMdExtensionsAndRenderer() (bf.Extensions, *bfchroma.Renderer) {
+	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
+		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
+		bf.BackslashLineBreak | bf.Autolink
+
+	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{
+		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
+	})
+
+	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses(true)))
+	return mdExt, extRend
 }

@@ -166,6 +166,25 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	assert.Equal(t, "invalid comment", c["details"])
 }
 
+func TestRest_CreateRelativeURL(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// check that it's not possible to click insert URL button and not alter the URL in it (which is `url` by default)
+	relativeURLText := `{"text": "here is a link with relative URL: [google.com](url)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+	resp, err := post(t, ts.URL+"/api/v1/comment", relativeURLText)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	c := R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	assert.Equal(t, "links should start with mailto:, http:// or https://", c["error"])
+	assert.Equal(t, "invalid comment", c["details"])
+}
+
 func TestRest_CreateRejected(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
