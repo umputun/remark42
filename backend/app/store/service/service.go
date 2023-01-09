@@ -14,6 +14,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	bf "github.com/russross/blackfriday/v2"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/admin"
@@ -627,7 +628,9 @@ func (s *DataStore) Counts(siteID string, postIDs []string) ([]store.PostInfo, e
 	return res, nil
 }
 
-// ValidateComment checks if comment size below max and user fields set
+// ValidateComment checks if comment size below max and user fields set.
+// It also validates the absence of relative links as they are almost never the intention of the commenter,
+// usually added by mistakes and only create confusion.
 func (s *DataStore) ValidateComment(c *store.Comment) error {
 	maxSize := s.MaxCommentSize
 	if s.MaxCommentSize <= 0 {
@@ -642,7 +645,21 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	if c.User.ID == "" || c.User.Name == "" {
 		return fmt.Errorf("empty user info")
 	}
-	return nil
+
+	mdExt, rend := store.GetMdExtensionsAndRenderer()
+	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
+	var wrongLinkError error
+	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+		if len(node.LinkData.Destination) != 0 &&
+			!(strings.HasPrefix(string(node.LinkData.Destination), "http://") ||
+				strings.HasPrefix(string(node.LinkData.Destination), "https://") ||
+				strings.HasPrefix(string(node.LinkData.Destination), "mailto:")) {
+			wrongLinkError = fmt.Errorf("links should start with mailto:, http:// or https://")
+			return bf.Terminate
+		}
+		return bf.GoToNext
+	})
+	return wrongLinkError
 }
 
 // IsAdmin checks if usesID in the list of admins
