@@ -135,7 +135,7 @@ func (c *CustomServer) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			formData := struct{ Query string }{Query: r.URL.RawQuery}
+			formData := struct{ Query template.URL }{Query: template.URL(r.URL.RawQuery)} //nolint:gosec // query is safe
 
 			if err := userLoginTmpl.Execute(w, formData); err != nil {
 				c.Logf("[WARN] can't write, %s", err)

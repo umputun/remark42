@@ -180,6 +180,9 @@
       <rule pattern="@(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
         <token type="NameDecorator"/>
       </rule>
+      <rule pattern="(?:\p{Lu}[_\p{L}]*)(?=\.)">
+        <token type="NameClass"/>
+      </rule>
       <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
         <token type="Name"/>
       </rule>

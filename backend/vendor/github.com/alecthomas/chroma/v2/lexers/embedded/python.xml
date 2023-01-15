@@ -379,7 +379,7 @@
       </rule>
     </state>
     <state name="name">
-      <rule pattern="@[_\p{L}][_\p{L}\p{N}]*">
+      <rule pattern="@[_\p{L}][_\p{L}\p{N}]*(\s*\.\s*[_\p{L}][_\p{L}\p{N}]*)*">
         <token type="NameDecorator"/>
       </rule>
       <rule pattern="@">

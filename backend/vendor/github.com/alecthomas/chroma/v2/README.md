@@ -37,26 +37,26 @@ translators for Pygments lexers and styles.
 Prefix | Language
 :----: | --------
 A | ABAP, ABNF, ActionScript, ActionScript 3, Ada, Angular2, ANTLR, ApacheConf, APL, AppleScript, Arduino, Awk
-B | Ballerina, Base Makefile, Bash, Batchfile, BibTeX, Bicep, BlitzBasic, BNF, Brainfuck
+B | Ballerina, Bash, Batchfile, BibTeX, Bicep, BlitzBasic, BNF, Brainfuck, BQN
 C | C, C#, C++, Caddyfile, Caddyfile Directives, Cap'n Proto, Cassandra CQL, Ceylon, CFEngine3, cfstatement, ChaiScript, Chapel, Cheetah, Clojure, CMake, COBOL, CoffeeScript, Common Lisp, Coq, Crystal, CSS, Cython
 D | D, Dart, Diff, Django/Jinja, Docker, DTD, Dylan
 E | EBNF, Elixir, Elm, EmacsLisp, Erlang
 F | Factor, Fish, Forth, Fortran, FSharp
 G | GAS, GDScript, Genshi, Genshi HTML, Genshi Text, Gherkin, GLSL, Gnuplot, Go, Go HTML Template, Go Text Template, GraphQL, Groff, Groovy
-H | Handlebars, Haskell, Haxe, HCL, Hexdump, HLB, HTML, HTTP, Hy
+H | Handlebars, Haskell, Haxe, HCL, Hexdump, HLB, HLSL, HTML, HTTP, Hy
 I | Idris, Igor, INI, Io
 J | J, Java, JavaScript, JSON, Julia, Jungle
 K | Kotlin
 L | Lighttpd configuration file, LLVM, Lua
-M | Mako, markdown, Mason, Mathematica, Matlab, MiniZinc, MLIR, Modula-2, MonkeyC, MorrowindScript, Myghty, MySQL
+M | Makefile, Mako, markdown, Mason, Mathematica, Matlab, MiniZinc, MLIR, Modula-2, MonkeyC, MorrowindScript, Myghty, MySQL
 N | NASM, Newspeak, Nginx configuration file, Nim, Nix
 O | Objective-C, OCaml, Octave, OnesEnterprise, OpenEdge ABL, OpenSCAD, Org Mode
-P | PacmanConf, Perl, PHP, PHTML, Pig, PkgConfig, PL/pgSQL, plaintext, Pony, PostgreSQL SQL dialect, PostScript, POVRay, PowerShell, Prolog, PromQL, Properties, Protocol Buffer, Puppet, Python 2, Python
+P | PacmanConf, Perl, PHP, PHTML, Pig, PkgConfig, PL/pgSQL, plaintext, Pony, PostgreSQL SQL dialect, PostScript, POVRay, PowerShell, Prolog, PromQL, Properties, Protocol Buffer, PSL, Puppet, Python 2, Python
 Q | QBasic
 R | R, Racket, Ragel, Raku, react, ReasonML, reg, reStructuredText, Rexx, Ruby, Rust
-S | SAS, Sass, Scala, Scheme, Scilab, SCSS, Smalltalk, Smarty, Snobol, Solidity, SPARQL, SQL, SquidConf, Standard ML, Stylus, Svelte, Swift, SYSTEMD, systemverilog
+S | SAS, Sass, Scala, Scheme, Scilab, SCSS, Sed, Smalltalk, Smarty, Snobol, Solidity, SPARQL, SQL, SquidConf, Standard ML, stas, Stylus, Svelte, Swift, SYSTEMD, systemverilog
 T | TableGen, TASM, Tcl, Tcsh, Termcap, Terminfo, Terraform, TeX, Thrift, TOML, TradingView, Transact-SQL, Turing, Turtle, Twig, TypeScript, TypoScript, TypoScriptCssData, TypoScriptHtmlData
-V | VB.net, verilog, VHDL, VimL, vue
+V | VB.net, verilog, VHDL, VHS, VimL, vue
 W | WDTE
 X | XML, Xorg
 Y | YAML, YANG
@@ -185,7 +185,7 @@ following constructor options:
 - `ClassPrefix(prefix)` - prefix each generated CSS class.
 - `TabWidth(width)` - Set the rendered tab width, in characters.
 - `WithLineNumbers()` - Render line numbers (style with `LineNumbers`).
-- `LinkableLineNumbers()` - Make the line numbers linkable and be a link to themselves.
+- `WithLinkableLineNumbers()` - Make the line numbers linkable and be a link to themselves.
 - `HighlightLines(ranges)` - Highlight lines in these ranges (style with `LineHighlight`).
 - `LineNumbersInTable()` - Use a table for formatting line numbers and code, rather than spans.
 
@@ -207,14 +207,13 @@ for details on implementing lexers. Most concepts apply directly to Chroma,
 but see existing lexer implementations for real examples.
 
 In many cases lexers can be automatically converted directly from Pygments by
-using the included Python 3 script `pygments2chroma.py`. I use something like
+using the included Python 3 script `pygments2chroma_xml.py`. I use something like
 the following:
 
 ```sh
-python3 _tools/pygments2chroma.py \
+python3 _tools/pygments2chroma_xml.py \
   pygments.lexers.jvm.KotlinLexer \
-  > lexers/k/kotlin.go \
-  && gofmt -s -w lexers/k/kotlin.go
+  > lexers/embedded/kotlin.xml
 ```
 
 See notes in [pygments-lexers.txt](https://github.com/alecthomas/chroma/blob/master/pygments-lexers.txt)
@@ -231,17 +230,22 @@ formatter outputs raw tokens. The latter is useful for debugging lexers.
 <a id="markdown-styles" name="styles"></a>
 ### Styles
 
-Chroma styles use the [same syntax](http://pygments.org/docs/styles/) as Pygments.
+Chroma styles are defined in XML. The style entries use the
+[same syntax](http://pygments.org/docs/styles/) as Pygments.
 
-All Pygments styles have been converted to Chroma using the `_tools/style.py` script.
+All Pygments styles have been converted to Chroma using the `_tools/style.py`
+script.
 
-When you work with one of [Chroma's styles](https://github.com/alecthomas/chroma/tree/master/styles), know that the `chroma.Background` token type provides the default style for tokens. It does so by defining a foreground color and background color.
+When you work with one of [Chroma's styles](https://github.com/alecthomas/chroma/tree/master/styles), 
+know that the `Background` token type provides the default style for tokens. It does so
+by defining a foreground color and background color.
 
-For example, this gives each token name not defined in the style a default color of `#f8f8f8` and uses `#000000` for the highlighted code block's background:
+For example, this gives each token name not defined in the style a default color
+of `#f8f8f8` and uses `#000000` for the highlighted code block's background:
 
-~~~go
-chroma.Background: "#f8f8f2 bg:#000000",
-~~~
+```xml
+<entry type="Background" style="#f8f8f2 bg:#000000"/>
+```
 
 Also, token types in a style file are hierarchical. For instance, when `CommentSpecial` is not defined, Chroma uses the token style from `Comment`. So when several comment tokens use the same color, you'll only need to define `Comment` and override the one that has a different color.
 
