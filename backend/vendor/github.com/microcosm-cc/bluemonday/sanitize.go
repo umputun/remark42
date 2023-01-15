@@ -440,8 +440,8 @@ func (p *Policy) sanitize(r io.Reader, w io.Writer) error {
 					if _, err := buff.WriteString(" "); err != nil {
 						return err
 					}
-					break
 				}
+				break
 			}
 			if !skipElementContent {
 				if _, err := buff.WriteString(token.String()); err != nil {

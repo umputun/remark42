@@ -15,42 +15,42 @@ import (
 
 // Serialisation of Chroma rules to XML. The format is:
 //
-//     <rules>
-//       <state name="$STATE">
-//         <rule [pattern="$PATTERN"]>
-//           [<$EMITTER ...>]
-//           [<$MUTATOR ...>]
-//         </rule>
-//       </state>
-//     </rules>
+//	<rules>
+//	  <state name="$STATE">
+//	    <rule [pattern="$PATTERN"]>
+//	      [<$EMITTER ...>]
+//	      [<$MUTATOR ...>]
+//	    </rule>
+//	  </state>
+//	</rules>
 //
 // eg. Include("String") would become:
 //
-//     <rule>
-//       <include state="String" />
-//     </rule>
+//	<rule>
+//	  <include state="String" />
+//	</rule>
 //
-//     [null, null, {"kind": "include", "state": "String"}]
+//	[null, null, {"kind": "include", "state": "String"}]
 //
 // eg. Rule{`\d+`, Text, nil} would become:
 //
-//     <rule pattern="\\d+">
-//       <token type="Text"/>
-//     </rule>
+//	<rule pattern="\\d+">
+//	  <token type="Text"/>
+//	</rule>
 //
 // eg. Rule{`"`, String, Push("String")}
 //
-//     <rule pattern="\"">
-//       <token type="String" />
-//       <push state="String" />
-//     </rule>
+//	<rule pattern="\"">
+//	  <token type="String" />
+//	  <push state="String" />
+//	</rule>
 //
 // eg. Rule{`(\w+)(\n)`, ByGroups(Keyword, Whitespace), nil},
 //
-//     <rule pattern="(\\w+)(\\n)">
-//       <bygroups token="Keyword" token="Whitespace" />
-//       <push state="String" />
-//     </rule>
+//	<rule pattern="(\\w+)(\\n)">
+//	  <bygroups token="Keyword" token="Whitespace" />
+//	  <push state="String" />
+//	</rule>
 var (
 	// ErrNotSerialisable is returned if a lexer contains Rules that cannot be serialised.
 	ErrNotSerialisable = fmt.Errorf("not serialisable")
@@ -372,13 +372,12 @@ func (t *TokenType) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	if err := d.DecodeElement(&el, &start); err != nil {
 		return err
 	}
-	for tt, text := range _TokenType_map {
-		if text == el.Type {
-			*t = tt
-			return nil
-		}
+	tt, err := TokenTypeString(el.Type)
+	if err != nil {
+		return err
 	}
-	return fmt.Errorf("unknown TokenType %q", el.Type)
+	*t = tt
+	return nil
 }
 
 func (t TokenType) MarshalXML(e *xml.Encoder, start xml.StartElement) error {

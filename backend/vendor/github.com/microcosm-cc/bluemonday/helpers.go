@@ -193,10 +193,11 @@ func (p *Policy) AllowImages() {
 // http://en.wikipedia.org/wiki/Data_URI_scheme
 //
 // Images must have a mimetype matching:
-//   image/gif
-//   image/jpeg
-//   image/png
-//   image/webp
+//
+//	image/gif
+//	image/jpeg
+//	image/png
+//	image/webp
 //
 // NOTE: There is a potential security risk to allowing data URIs and you should
 // only permit them on content you already trust.

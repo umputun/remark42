@@ -263,7 +263,7 @@ func TestComment_sanitizeText(t *testing.T) {
 		},
 		{
 			"<a href=javascript:alert(document.domain)//>xxx</a>",
-			"&lt;a/&gt;xxx&lt;/a&gt;",
+			"xxx&lt;/a&gt;",
 		},
 	}
 

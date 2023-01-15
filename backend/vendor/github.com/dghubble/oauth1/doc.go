@@ -8,7 +8,7 @@ authorized requests on behalf of a user (e.g. API calls).
 It takes design cues from golang.org/x/oauth2, providing an http.Client which
 handles request signing and authorization.
 
-Usage
+# Usage
 
 Package oauth1 implements the OAuth1 authorization flow and provides an
 http.Client which can sign and authorize OAuth1 requests.
@@ -23,7 +23,7 @@ clients.
 * https://github.com/dghubble/go-digits
 * https://github.com/benfb/go-tumblr
 
-Authorization Flow
+# Authorization Flow
 
 Perform the OAuth 1 authorization flow to ask a user to grant an application
 access to his/her resources via an access token.
@@ -69,7 +69,7 @@ to make requests on behalf of the user.
 Check the examples to see this authorization flow in action from the command
 line, with Twitter PIN-based login and Tumblr login.
 
-Authorized Requests
+# Authorized Requests
 
 Use an access Token to make authorized requests on behalf of a user.
 

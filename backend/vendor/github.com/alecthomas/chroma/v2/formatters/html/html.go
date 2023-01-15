@@ -100,9 +100,9 @@ func LineNumbersInTable(b bool) Option {
 	}
 }
 
-// LinkableLineNumbers decorates the line numbers HTML elements with an "id"
+// WithLinkableLineNumbers decorates the line numbers HTML elements with an "id"
 // attribute so they can be linked.
-func LinkableLineNumbers(b bool, prefix string) Option {
+func WithLinkableLineNumbers(b bool, prefix string) Option {
 	return func(f *Formatter) {
 		f.linkableLineNumbers = b
 		f.lineNumbersIDPrefix = prefix
@@ -262,7 +262,7 @@ func (f *Formatter) writeHTML(w io.Writer, style *chroma.Style, tokens []chroma.
 				fmt.Fprintf(w, "<span%s>", f.styleAttr(css, chroma.LineHighlight))
 			}
 
-			fmt.Fprintf(w, "<span%s%s>%s\n</span>", f.styleAttr(css, chroma.LineNumbersTable), f.lineIDAttribute(line), f.lineTitleWithLinkIfNeeded(lineDigits, line))
+			fmt.Fprintf(w, "<span%s%s>%s\n</span>", f.styleAttr(css, chroma.LineNumbersTable), f.lineIDAttribute(line), f.lineTitleWithLinkIfNeeded(css, lineDigits, line))
 
 			if highlight {
 				fmt.Fprintf(w, "</span>")
@@ -302,7 +302,7 @@ func (f *Formatter) writeHTML(w io.Writer, style *chroma.Style, tokens []chroma.
 
 			// Line number
 			if f.lineNumbers && !wrapInTable {
-				fmt.Fprintf(w, "<span%s%s>%s</span>", f.styleAttr(css, chroma.LineNumbers), f.lineIDAttribute(line), f.lineTitleWithLinkIfNeeded(lineDigits, line))
+				fmt.Fprintf(w, "<span%s%s>%s</span>", f.styleAttr(css, chroma.LineNumbers), f.lineIDAttribute(line), f.lineTitleWithLinkIfNeeded(css, lineDigits, line))
 			}
 
 			fmt.Fprintf(w, `<span%s>`, f.styleAttr(css, chroma.CodeLine))
@@ -345,12 +345,12 @@ func (f *Formatter) lineIDAttribute(line int) string {
 	return fmt.Sprintf(" id=\"%s\"", f.lineID(line))
 }
 
-func (f *Formatter) lineTitleWithLinkIfNeeded(lineDigits, line int) string {
+func (f *Formatter) lineTitleWithLinkIfNeeded(css map[chroma.TokenType]string, lineDigits, line int) string {
 	title := fmt.Sprintf("%*d", lineDigits, line)
 	if !f.linkableLineNumbers {
 		return title
 	}
-	return fmt.Sprintf("<a style=\"outline: none; text-decoration:none; color:inherit\" href=\"#%s\">%s</a>", f.lineID(line), title)
+	return fmt.Sprintf("<a%s href=\"#%s\">%s</a>", f.styleAttr(css, chroma.LineLink), f.lineID(line), title)
 }
 
 func (f *Formatter) lineID(line int) string {
@@ -520,6 +520,7 @@ func (f *Formatter) styleToCSS(style *chroma.Style) map[chroma.TokenType]string 
 	classes[chroma.LineNumbersTable] = lineNumbersStyle + classes[chroma.LineNumbersTable]
 	classes[chroma.LineTable] = "border-spacing: 0; padding: 0; margin: 0; border: 0;" + classes[chroma.LineTable]
 	classes[chroma.LineTableTD] = "vertical-align: top; padding: 0; margin: 0; border: 0;" + classes[chroma.LineTableTD]
+	classes[chroma.LineLink] = "outline: none; text-decoration: none; color: inherit" + classes[chroma.LineLink]
 	return classes
 }
 
