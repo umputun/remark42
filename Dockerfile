@@ -70,7 +70,7 @@ RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         CGO_ENABLED=1 go test -race -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=atomic -coverprofile=/profile.cov_tmp ./... && \
-        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
+        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov && \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else \
       echo "skip backend tests and linter" \
