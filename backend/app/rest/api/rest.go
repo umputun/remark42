@@ -500,6 +500,8 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 			http.NotFound(w, r)
 			return
 		}
+		// without it it would be set to "max-age=3600, no-cache" which is redundant
+		w.Header().Set("Cache-Control", "no-cache")
 		webFS.ServeHTTP(w, r)
 	})
 }
