@@ -264,7 +264,7 @@ golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/image v0.3.0
+# golang.org/x/image v0.5.0
 ## explicit; go 1.12
 golang.org/x/image/draw
 golang.org/x/image/math/f64
@@ -294,7 +294,7 @@ golang.org/x/sync/errgroup
 # golang.org/x/sys v0.4.0
 ## explicit; go 1.17
 golang.org/x/sys/unix
-# golang.org/x/text v0.6.0
+# golang.org/x/text v0.7.0
 ## explicit; go 1.17
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
