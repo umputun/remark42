@@ -152,7 +152,7 @@
   "subscribeByRSS.site": "Sitio",
   "subscribeByRSS.thread": "Hilo",
   "subscribeByRSS.title": "RSS",
-  "token": "Kopeeri ja kleebi sümbol e-kirjast.",
+  "token": "Copie y pegue el token del mensaje del correo electrónico",
   "token.expired": "Token expirado",
   "token.invalid": "El token no es válido",
   "toolbar.attach-image": "Adjunta la imágen, arrastra y suelta, o pega desde el portapapeles",
