@@ -30,7 +30,7 @@ Example with all of the params:
   var remark_config = {
     host: 'https://remark42.example.com',
     site_id: 'my_site',
-    components: ['embeded', 'last-comments']
+    components: ['embed', 'last-comments']
     max_shown_comments: 100,
     theme: 'dark',
     page_title: 'My custom title for a page',
