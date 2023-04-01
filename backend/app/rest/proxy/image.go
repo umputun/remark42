@@ -159,7 +159,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("can't download image %s: %w", imgURL, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint gosec // we don't care about response body
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)

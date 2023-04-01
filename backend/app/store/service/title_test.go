@@ -124,7 +124,7 @@ func TestTitle_GetFailed(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")
 }
 
-func TestTitle_DoubleClosed(t *testing.T) {
+func TestTitle_DoubleClosed(*testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
 	ex.Close()
 	// second call should not result in panic

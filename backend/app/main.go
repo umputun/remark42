@@ -56,9 +56,8 @@ func main() {
 	if _, err := p.Parse(); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
 			os.Exit(0)
-		} else {
-			os.Exit(1)
 		}
+		os.Exit(1)
 	}
 }
 
