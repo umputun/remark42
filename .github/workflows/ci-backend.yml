@@ -32,34 +32,42 @@ jobs:
       - name: install go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version: "1.17"
 
-      - name: install golangci-lint and goveralls
-        run: |
-          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GITHUB_WORKSPACE v1.49.0
-          go install github.com/mattn/goveralls@latest
-
-      - name: test and lint backend
+      - name: test and build backend
         run: |
           go test -race -timeout=60s -covermode=atomic -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
           cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
-          $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run --out-format=github-actions ./...
+          go build -race ./...
         working-directory: backend/app
         env:
           TZ: "America/Chicago"
 
-      - name: test and lint examples
+      - name: test examples
         run: |
-          go version
-          $GITHUB_WORKSPACE/golangci-lint version
           go test -race ./...
-          $GITHUB_WORKSPACE/golangci-lint --config ${GITHUB_WORKSPACE}/backend/.golangci.yml run --out-format=github-actions ./...
+          go build -race ./...
         working-directory: backend/_example/memory_store
         env:
           TZ: "America/Chicago"
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: backend/app
+
+      - name: golangci-lint on example directory
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --config ../../.golangci.yml
+          working-directory: backend/_example/memory_store
+
       - name: submit coverage
-        run: goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
+        run: |
+          go install github.com/mattn/goveralls@latest
+          goveralls -service="github" -coverprofile=$GITHUB_WORKSPACE/profile.cov
         working-directory: backend
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
