@@ -7,7 +7,7 @@ WORKDIR /srv/frontend
 COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend/
 COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/package.json
 
-RUN apk add --no-cache --update git && npm i -g pnpm
+RUN apk add --no-cache --update git && npm i -g pnpm@7
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 pnpm i
 
 FROM frontend-deps AS build-frontend
