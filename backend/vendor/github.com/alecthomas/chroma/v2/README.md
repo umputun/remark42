@@ -27,7 +27,8 @@ translators for Pygments lexers and styles.
     2. [Formatters](#formatters)
     3. [Styles](#styles)
 6. [Command-line interface](#command-line-interface)
-7. [What's missing compared to Pygments?](#whats-missing-compared-to-pygments)
+7. [Testing lexers](#testing-lexers)
+8. [What's missing compared to Pygments?](#whats-missing-compared-to-pygments)
 
 <!-- /TOC -->
 
@@ -277,6 +278,20 @@ Debian and derivatives](https://manpages.debian.org/lesspipe#USER_DEFINED_FILTER
 for that setup the `chroma` executable can be just symlinked to `~/.lessfilter`.
 
 <a id="markdown-whats-missing-compared-to-pygments" name="whats-missing-compared-to-pygments"></a>
+
+<a id="markdown-testing-lexers" name="testing-lexers"></a>
+## Testing lexers
+If you edit some lexers and want to test it, open a shell in `cmd/chromad` and run:
+```shell
+go run .
+```
+A Link will be printed. Open it in your Browser. Now you can test on the Playground with your local changes.
+
+If you want to run the tests and the lexers, open a shell in the root directory and run:
+```shell
+go test ./lexers
+```
+
 ## What's missing compared to Pygments?
 
 - Quite a few lexers, for various reasons (pull-requests welcome):

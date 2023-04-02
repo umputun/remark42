@@ -522,7 +522,7 @@ After completing the previous steps, you can proceed with configuring the Apple 
 - _ClientID_ (**required**) - Service ID identifier which is used for Sign with Apple
 - _TeamID_ (**required**) - Identifier a developer account (use as prefix for all App ID)
 - _KeyID_ (**required**) - Identifier a generated key for Sign with Apple
-
+- _ResponseMode_  - Response Mode, please see [documentation](https://developer.apple.com/documentation/sign_in_with_apple/request_an_authorization_to_the_sign_in_with_apple_server?changes=_1_2#4066168) for reference, default is `form_post`
 
 ```go
     // apple config parameters

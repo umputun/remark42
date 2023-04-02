@@ -1,7 +1,7 @@
 <style name="vulcan">
   <entry type="Other" style="#c9c9c9"/>
   <entry type="Error" style="#cf5967"/>
-  <entry type="Background" style="#282c34"/>
+  <entry type="Background" style="bg:#282c34"/>
   <entry type="Keyword" style="#7fbaf5"/>
   <entry type="KeywordConstant" style="#cf5967 bg:#43454f"/>
   <entry type="KeywordDeclaration" style="#7fbaf5"/>

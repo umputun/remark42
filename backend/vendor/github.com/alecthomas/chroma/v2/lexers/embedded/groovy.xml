@@ -56,7 +56,7 @@
       <rule pattern="(true|false|null)\b">
         <token type="KeywordConstant"/>
       </rule>
-      <rule pattern="(class|interface)(\s+)">
+      <rule pattern="(class|interface|record)(\s+)">
         <bygroups>
           <token type="KeywordDeclaration"/>
           <token type="Text"/>

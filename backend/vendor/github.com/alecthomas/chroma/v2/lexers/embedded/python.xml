@@ -206,7 +206,7 @@
       </rule>
     </state>
     <state name="keywords">
-      <rule pattern="(yield from|nonlocal|continue|finally|except|lambda|assert|global|return|raise|yield|while|break|await|async|pass|else|elif|with|try|for|del|as|if)\b">
+      <rule pattern="(yield from|nonlocal|continue|finally|except|lambda|assert|global|return|raise|yield|while|break|await|async|pass|else|elif|with|try|for|del|as|if|match|case)\b">
         <token type="Keyword"/>
       </rule>
       <rule pattern="(False|True|None)\b">

@@ -44,10 +44,10 @@
       </rule>
     </state>
     <state name="int-suffix">
-      <rule pattern="\&#39;i(32|64)">
+      <rule pattern="\&#39;(i|u)(32|64)">
         <token type="LiteralNumberIntegerLong"/>
       </rule>
-      <rule pattern="\&#39;i(8|16)">
+      <rule pattern="\&#39;(u|(i|u)(8|16))">
         <token type="LiteralNumberInteger"/>
       </rule>
       <rule>
@@ -55,7 +55,7 @@
       </rule>
     </state>
     <state name="float-suffix">
-      <rule pattern="\&#39;f(32|64)">
+      <rule pattern="\&#39;(f|d|f(32|64))">
         <token type="LiteralNumberFloat"/>
       </rule>
       <rule>
@@ -176,7 +176,7 @@
       <rule pattern="\b((?![_\d])\w)(((?!_)\w)|(_(?!_)\w))*">
         <token type="Name"/>
       </rule>
-      <rule pattern="[0-9][0-9_]*(?=([e.]|\&#39;f(32|64)))">
+      <rule pattern="[0-9][0-9_]*(?=([e.]|\&#39;(f|d|f(32|64))))">
         <token type="LiteralNumberFloat"/>
         <push state="float-suffix" state="float-number"/>
       </rule>

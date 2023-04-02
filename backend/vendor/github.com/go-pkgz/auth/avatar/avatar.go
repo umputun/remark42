@@ -217,7 +217,7 @@ func GetGravatarURL(email string) (res string, err error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint gosec // we don't care about response body
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("%s", resp.Status)
 	}

@@ -52,10 +52,11 @@ func NewStore(uri string) (Store, error) {
 			return nil, fmt.Errorf("can't parse mongo store uri %s: %w", uri, err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		const timeout = time.Second * 30
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		client, err := mongo.Connect(ctx, options.Client().ApplyURI(u))
+		client, err := mongo.Connect(ctx, options.Client().ApplyURI(u).SetConnectTimeout(timeout))
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to mongo server: %w", err)
 		}
