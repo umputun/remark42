@@ -67,5 +67,9 @@ issues:
       text: "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server"
       linters:
         - gosec
+    - path: _test\.go
+      text: "Deferring unsafe method \"Close\" on type \"io.ReadCloser\""
+      linters:
+        - gosec
 
   exclude-use-default: false

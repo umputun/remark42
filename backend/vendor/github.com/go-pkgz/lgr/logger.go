@@ -2,6 +2,7 @@
 // The logger's output can be customized in 2 ways:
 //   - by setting individual formatting flags, i.e. lgr.New(lgr.Msec, lgr.CallerFunc)
 //   - by passing formatting template, i.e. lgr.New(lgr.Format(lgr.Short))
+//
 // Leveled output works for messages based on text prefix, i.e. Logf("INFO some message") means INFO level.
 // Debug and trace levels can be filtered based on lgr.Trace and lgr.Debug options.
 // ERROR, FATAL and PANIC levels send to err as well. FATAL terminate caller application with os.Exit(1)
@@ -51,6 +52,7 @@ var (
 type Logger struct {
 	// set with Option calls
 	stdout, stderr io.Writer // destination writes for out and err
+	sameStream     bool      // stdout and stderr are the same stream
 	dbg            bool      // allows reporting for DEBUG level
 	trace          bool      // allows reporting for TRACE and DEBUG levels
 	callerFile     bool      // reports caller file with line number, i.e. foo/bar.go:89
@@ -128,6 +130,8 @@ func New(options ...Option) *Logger {
 	res.callerOn = strings.Contains(res.format, "{{.Caller") || res.callerFile || res.callerFunc || res.callerPkg
 	res.levelBracesOn = strings.Contains(res.format, "[{{.Level}}]") || res.levelBraces
 
+	res.sameStream = isStreamsSame(res.stdout, res.stderr)
+
 	return &res
 }
 
@@ -140,7 +144,7 @@ func (l *Logger) Logf(format string, args ...interface{}) {
 	l.logf(format, args...)
 }
 
-//nolint gocyclo
+// nolint gocyclo
 func (l *Logger) logf(format string, args ...interface{}) {
 
 	var lv, msg string
@@ -197,7 +201,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	// write to err as well for high levels, exit(1) on fatal and panic and dump stack on panic level
 	switch lv {
 	case "ERROR":
-		if l.stderr != l.stdout {
+		if !l.sameStream {
 			_, _ = l.stderr.Write(data)
 		}
 		if l.errorDump {
@@ -210,12 +214,12 @@ func (l *Logger) logf(format string, args ...interface{}) {
 			}
 		}
 	case "FATAL":
-		if l.stderr != l.stdout {
+		if !l.sameStream {
 			_, _ = l.stderr.Write(data)
 		}
 		l.fatal()
 	case "PANIC":
-		if l.stderr != l.stdout {
+		if !l.sameStream {
 			_, _ = l.stderr.Write(data)
 		}
 		_, _ = l.stderr.Write(getDump())
@@ -404,4 +408,22 @@ func getDump() []byte {
 		length = maxSize
 	}
 	return stacktrace[:length]
+}
+
+// isStreamsSame checks if two streams are the same by comparing file which they refer to
+func isStreamsSame(s1, s2 io.Writer) bool {
+	s1File, outOk := s1.(*os.File)
+	s2File, errOk := s2.(*os.File)
+	if outOk && errOk {
+		outStat, err := s1File.Stat()
+		if err != nil {
+			return false
+		}
+		errStat, err := s2File.Stat()
+		if err != nil {
+			return false
+		}
+		return os.SameFile(outStat, errStat)
+	}
+	return s1 == s2
 }

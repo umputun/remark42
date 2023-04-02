@@ -12,6 +12,7 @@
     <case_insensitive>true</case_insensitive>
     <dot_all>true</dot_all>
     <ensure_nl>true</ensure_nl>
+    <priority>3</priority>
   </config>
   <rules>
     <state name="magicfuncs">

@@ -199,10 +199,10 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 }
 
 // AuthHandler doesn't do anything for direct login as it has no callbacks
-func (e VerifyHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {}
+func (e VerifyHandler) AuthHandler(http.ResponseWriter, *http.Request) {}
 
 // LogoutHandler - GET /logout
-func (e VerifyHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (e VerifyHandler) LogoutHandler(w http.ResponseWriter, _ *http.Request) {
 	e.TokenService.Reset(w)
 }
 

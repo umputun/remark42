@@ -879,6 +879,7 @@ func (p *Policy) addDefaultElementsWithoutAttrs() {
 	p.setOfElementsAllowedWithoutAttrs["optgroup"] = struct{}{}
 	p.setOfElementsAllowedWithoutAttrs["option"] = struct{}{}
 	p.setOfElementsAllowedWithoutAttrs["p"] = struct{}{}
+	p.setOfElementsAllowedWithoutAttrs["picture"] = struct{}{}
 	p.setOfElementsAllowedWithoutAttrs["pre"] = struct{}{}
 	p.setOfElementsAllowedWithoutAttrs["q"] = struct{}{}
 	p.setOfElementsAllowedWithoutAttrs["rp"] = struct{}{}

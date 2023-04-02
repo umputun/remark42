@@ -171,10 +171,10 @@ var (
 	defaultPreWrapper = preWrapper{
 		start: func(code bool, styleAttr string) string {
 			if code {
-				return fmt.Sprintf(`<pre tabindex="0"%s><code>`, styleAttr)
+				return fmt.Sprintf(`<pre%s><code>`, styleAttr)
 			}
 
-			return fmt.Sprintf(`<pre tabindex="0"%s>`, styleAttr)
+			return fmt.Sprintf(`<pre%s>`, styleAttr)
 		},
 		end: func(code bool) string {
 			if code {
@@ -513,7 +513,7 @@ func (f *Formatter) styleToCSS(style *chroma.Style) map[chroma.TokenType]string 
 	if f.wrapLongLines {
 		classes[chroma.PreWrapper] += `white-space: pre-wrap; word-break: break-word;`
 	}
-	lineNumbersStyle := `white-space: pre; user-select: none; margin-right: 0.4em; padding: 0 0.4em 0 0.4em;`
+	lineNumbersStyle := `white-space: pre; -webkit-user-select: none; user-select: none; margin-right: 0.4em; padding: 0 0.4em 0 0.4em;`
 	// All rules begin with default rules followed by user provided rules
 	classes[chroma.Line] = `display: flex;` + classes[chroma.Line]
 	classes[chroma.LineNumbers] = lineNumbersStyle + classes[chroma.LineNumbers]
