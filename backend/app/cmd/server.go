@@ -18,7 +18,6 @@ import (
 	"github.com/go-pkgz/lcw/eventbus"
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/go-pkgz/syncs"
 	"github.com/golang-jwt/jwt"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
@@ -672,19 +671,12 @@ func (a *serverApp) run(ctx context.Context) error {
 		log.Printf("[WARN] failed to resubmit comments with staging images, %s", e)
 	}
 
-	numWorkersForIndexing := 8
-	grp := syncs.NewErrSizedGroup(numWorkersForIndexing)
-	for _, siteID := range a.Sites {
-		a.dataService.RunSiteIndexers(ctx, siteID, grp) // index comments for the first time run
+	// synchronously index comments for the first time run
+	maxBatchSize := 1024
+	err := a.dataService.IndexSites(ctx, a.Sites, maxBatchSize)
+	if err != nil {
+		log.Printf("[WARN] failed to build search index, %s", err)
 	}
-
-	// don't lock here, wait in background to log error if any
-	go func() {
-		err := grp.Wait()
-		if err != nil {
-			log.Printf("[WARN] background task for indexing existing comments failed: %s", err)
-		}
-	}()
 
 	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
 

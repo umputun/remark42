@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/syncs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -239,13 +238,11 @@ func TestSearch_IndexStartup(t *testing.T) {
 	storeEngine, dbTeardown := createDB(t, 42, sites)
 	defer dbTeardown()
 
-	grp := syncs.NewErrSizedGroup(4)
+	maxBatchSize := 1024
 	for _, siteID := range sites {
-		err := IndexSite(context.Background(), siteID, searcher, storeEngine, grp)
+		err := IndexSite(context.Background(), siteID, maxBatchSize, searcher, storeEngine)
 		require.NoError(t, err)
 	}
-	err := grp.Wait()
-	require.NoError(t, err)
 
 	for _, siteID := range sites {
 		serp, err := searcher.Search(&Request{

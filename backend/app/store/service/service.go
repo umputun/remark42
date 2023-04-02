@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-pkgz/lcw"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/syncs"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
@@ -950,17 +949,30 @@ func (s *DataStore) Search(siteID, query, sortBy string, limit, skip int) ([]sto
 	return comments, searchRes.Total, nil
 }
 
-// RunSiteIndexers indexes all comments for siteID in the sized group.
-// It's required to call this method at the startup to support "cold start"
-// when store contains some data, but search functionality is enabled for the first time.
-func (s *DataStore) RunSiteIndexers(ctx context.Context, siteID string, grp *syncs.ErrSizedGroup) {
+// IndexSites indexes all comments for all sites.
+// It's required to call this method at the startup to support cold start
+// (store contains some data, but search functionality is enabled for the first time)
+// Note: this method is synchronous and can take time to complete to build the initial index.
+func (s *DataStore) IndexSites(ctx context.Context, sites []string, maxBatchSize int) error {
 	if s.SearchService == nil {
-		return
+		return nil
 	}
-	err := search.IndexSite(ctx, siteID, s.SearchService, s.Engine, grp)
-	if err != nil {
-		log.Printf("[WARN] error occurred during indexing comments for site %q: %e", siteID, err)
+	if maxBatchSize <= 0 {
+		return fmt.Errorf("invalid maxBatchSize %d, should be > 0", maxBatchSize)
 	}
+
+	log.Printf("[INFO] start building search index for %d sites", len(sites))
+	startTime := time.Now()
+
+	for _, siteID := range sites {
+		err := search.IndexSite(ctx, siteID, maxBatchSize, s.SearchService, s.Engine)
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Printf("[INFO] finish building search index in %v", time.Since(startTime))
+	return nil
 }
 
 // Close store service
