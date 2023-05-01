@@ -126,6 +126,7 @@ export interface Config {
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';
 export type BlockTTL = 'permanently' | '43200m' | '10080m' | '1440m';
 export type Theme = 'light' | 'dark';
+export const isTheme = (theme: unknown): theme is Theme => theme === 'light' || theme === 'dark';
 
 /**
  * Comment component's edit mode:

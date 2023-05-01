@@ -1,4 +1,6 @@
-import type { Theme, Profile, ThemeStyles } from 'common/types';
+import { ThemeStyles } from 'common/theme';
+
+import type { Profile, Theme } from 'common/types';
 
 type ParentMessage = {
   inited?: true;

@@ -20,6 +20,8 @@ type RemarkConfig = {
   max_last_comments?: number;
   // Optional, 'dark' or 'light', 'light' by default. Changes UI theme.
   theme?: Theme;
+  // Optional, changes theme styles.
+  styles?: ThemeStyle;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
   // Optional, 'en' by default. Interface localization.
@@ -45,6 +47,7 @@ declare global {
     remark_config: RemarkConfig;
     REMARK42: {
       changeTheme?: (theme: Theme) => void;
+      changeStyles?: (styles: ThemeStyle) => void;
       destroy?: () => void;
       createInstance: (remark_config: RemarkConfig) =>
         | {

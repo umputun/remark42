@@ -94,11 +94,25 @@ export const darkenColor = (color: Color, amount: number): Color => {
  * @param {Color} color - The color object to convert to a hexadecimal color code.
  * @returns {string} A hexadecimal color code representation of the input color.
  */
-export const colorToHex = (color: Color): string => {
+export const colorToHexStr = (color: Color): string => {
   const { r, g, b, a } = color;
-  let str = `#${pad(r.toString(16), 2, '0')}${pad(g.toString(16), 2, '0')}${pad(b.toString(16), 2, '0')}`;
+  let str: string = `#${pad(r.toString(16), 2, '0')}${pad(g.toString(16), 2, '0')}${pad(b.toString(16), 2, '0')}`;
   if (a !== 1) {
     str += `${pad(Math.round(a * 255).toString(16), 2, '0')}`;
+  }
+  return str;
+};
+
+export const colorToRgbStr = (color: Color): string => {
+  const { r, g, b, a } = color;
+  return `rgb${a !== 1 ? 'a' : ''}(${r},${g},${b}${a !== 1 ? `,${a}` : ''})`;
+};
+
+export const colorToNumStr = (color: Color): string => {
+  const { r, g, b, a } = color;
+  let str = `${r},${g},${b}`;
+  if (a !== 1) {
+    str += `,${a}`;
   }
   return str;
 };

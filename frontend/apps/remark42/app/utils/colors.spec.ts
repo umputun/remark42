@@ -1,4 +1,4 @@
-import { Color, colorToHex, darkenColor, lightenColor, parseColorStr } from './colors';
+import { Color, colorToHexStr, darkenColor, lightenColor, parseColorStr } from './colors';
 
 describe('parseColorStr function', () => {
   it('should parse a 3-digit hex color code', () => {
@@ -103,25 +103,25 @@ describe('darkenColor', () => {
   });
 });
 
-describe('colorToHex function', () => {
+describe('colorToHexStr function', () => {
   it('should convert a color object to a 6-digit hex color code', () => {
     const color: Color = { r: 255, g: 128, b: 0, a: 1 };
     const expectedHexCode = '#ff8000';
-    const hexCode = colorToHex(color);
+    const hexCode = colorToHexStr(color);
     expect(hexCode).toBe(expectedHexCode);
   });
 
   it('should convert a color object to a 3-digit hex color code', () => {
     const color: Color = { r: 34, g: 68, b: 102, a: 1 };
     const expectedHexCode = '#224466';
-    const hexCode = colorToHex(color);
+    const hexCode = colorToHexStr(color);
     expect(hexCode).toBe(expectedHexCode);
   });
 
   it('should convert a color object with alpha to an 8-digit hex color code', () => {
     const color: Color = { r: 0, g: 128, b: 255, a: 0.5 };
     const expectedHexCode = '#0080ff80';
-    const hexCode = colorToHex(color);
+    const hexCode = colorToHexStr(color);
     expect(hexCode).toBe(expectedHexCode);
   });
 });
