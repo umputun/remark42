@@ -86,7 +86,6 @@ const setPrimaryColors = (val: DualColors) => {
   // may not be exact, but are fairly close.
   const rootEl = document.documentElement;
   const darkRootEl = document.querySelector(':root body.dark');
-  console.log(darkRootEl);
   const light = color(val.light); // #0aa, rgb(0, 170, 170)
   const dark = color(val.dark); // #099, rgb(0, 153, 153)
 

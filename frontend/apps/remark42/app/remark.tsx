@@ -15,6 +15,7 @@ import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
 import { locale, theme, rawParams, styling } from 'common/settings';
 import { isThemeStyling, setThemeStyling } from 'common/theme';
+import { Theme } from 'common/types';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -43,6 +44,7 @@ async function init(): Promise<void> {
     }
     if (isThemeStyling(data.styling)) {
       setThemeStyling(data.styling);
+      store.dispatch({ type: 'STYLING/SET', styling: data.styling });
     }
   });
 
@@ -51,6 +53,7 @@ async function init(): Promise<void> {
   }
   if (styling) {
     setThemeStyling(styling);
+    store.dispatch({ type: 'STYLING/SET', styling });
   }
 
   boundActions.fetchHiddenUsers();
@@ -70,11 +73,10 @@ async function init(): Promise<void> {
   );
 }
 
-const setTheme = (theme: string) => {
+const setTheme = (theme: Theme) => {
   if (theme === 'light') {
     document.body.classList.remove('dark');
   }
-
   if (theme === 'dark') {
     document.body.classList.add('dark');
   }

@@ -11,7 +11,6 @@ type Params = {
 
 export function createIframe({ __colors__, styles, styling, ...params }: Params) {
   const iframe = document.createElement('iframe');
-  console.log(params);
   const query = new URLSearchParams({
     ...(params as Record<string, string>),
     ...themeStylingToUrlSearchParams(styling),
