@@ -1,5 +1,5 @@
 /**
- * Represents a color object with red, green, blue, and alpha values.
+ * Represents a color with RGBA components.
  *
  * @typedef {Object} Color
  * @property {number} r - The red component of the color (0-255).
@@ -15,12 +15,44 @@ export interface Color {
 }
 
 /**
+ * Creates a color object that provides utility methods for manipulating and converting color values.
+ *
+ * @function
+ * @param {string | Color} inputValue - A string representing a CSS color value, or an object representing a color with RGBA components.
+ * @returns {object} - An object containing utility methods for manipulating and converting color values.
+ * @throws {Error} - If the provided color value is invalid.
+ *
+ * @example
+ * const myColor = color('#ff0000');
+ * const lighterColor = myColor.lighten(0.2).hex(); // returns a hex string representation of the original color, lightened by 20%
+ * const rgbaValue = myColor.rgb(); // returns an RGBA string representation of the original color
+ * const alphaValue = myColor.alpha(0.5).object(); // returns an object representing the original color with its alpha value set to 0.5
+ */
+export const color = (inputValue: string | Color) => {
+  const parts = typeof inputValue === 'string' ? parseColorStr(inputValue) : inputValue;
+  if (!parts) {
+    throw new Error(`Invalid color value: ${inputValue}`);
+  }
+
+  const lighten = (amount: number) => color(lightenColor(parts, amount));
+  const darken = (amount: number) => color(darkenColor(parts, amount));
+  const alpha = (amount: number) => color({ ...parts, a: amount });
+  const hex = () => colorToHexStr(parts);
+  const rgb = () => colorToRgbStr(parts);
+  const rgbBody = () => colorToRgbBodyStr(parts);
+  const object = () => ({ ...parts });
+
+  return { alpha, lighten, darken, hex, rgb, rgbBody, object };
+};
+
+/**
  * Parses a color string in the format of a 3-digit or 6-digit hexadecimal color code
  * or an RGB(A) color code and returns an object representing the color's RGB values.
  * @param {string} color - The color string to parse.
  * @returns {Color|undefined} An object representing the color's RGB values, or `undefined` if the color string is invalid.
  */
-export const parseColorStr = (color: string): Color | undefined => {
+export const parseColorStr = (rawColor: string): Color | undefined => {
+  const color = rawColor.toLowerCase().trim();
   if (color.charAt(0) === '#') {
     if (color.length === 4) {
       const r = parseInt(color.charAt(1) + color.charAt(1), 16);
@@ -103,12 +135,22 @@ export const colorToHexStr = (color: Color): string => {
   return str;
 };
 
+/**
+ * Converts a color object into its equivalent RGB string representation.
+ * @param {Color} color - The color object to convert.
+ * @returns {string} The RGB string representation of the input color object.
+ */
 export const colorToRgbStr = (color: Color): string => {
   const { r, g, b, a } = color;
   return `rgb${a !== 1 ? 'a' : ''}(${r},${g},${b}${a !== 1 ? `,${a}` : ''})`;
 };
 
-export const colorToNumStr = (color: Color): string => {
+/**
+ * Converts a color object into its equivalent RGB(A) body string representation.
+ * @param {Color} color - The color object to convert.
+ * @returns {string} The RGB(A) body string representation of the input color object.
+ */
+export const colorToRgbBodyStr = (color: Color): string => {
   const { r, g, b, a } = color;
   let str = `${r},${g},${b}`;
   if (a !== 1) {

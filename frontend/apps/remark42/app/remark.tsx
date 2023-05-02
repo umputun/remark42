@@ -1,19 +1,20 @@
-import { getConfig } from 'common/api';
-import { BASE_URL, NODE_ID } from 'common/constants';
-import { locale, rawParams, theme } from 'common/settings';
-import { StaticStore } from 'common/static-store';
-import { isThemeStyles, setThemeStyles } from 'common/theme';
-import { Profile } from 'components/profile';
-import { ConnectedRoot } from 'components/root';
-import { render } from 'preact';
-import { IntlProvider } from 'react-intl';
-import { Provider } from 'react-redux';
+import { h, render } from 'preact';
 import { bindActionCreators } from 'redux';
-import { store } from 'store';
-import { restoreCollapsedThreads } from 'store/thread/actions';
-import { fetchHiddenUsers } from 'store/user/actions';
+import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
+
 import { loadLocale } from 'utils/loadLocale';
 import { parseMessage } from 'utils/post-message';
+import { ConnectedRoot } from 'components/root';
+import { Profile } from 'components/profile';
+import { store } from 'store';
+import { NODE_ID, BASE_URL } from 'common/constants';
+import { StaticStore } from 'common/static-store';
+import { getConfig } from 'common/api';
+import { fetchHiddenUsers } from 'store/user/actions';
+import { restoreCollapsedThreads } from 'store/thread/actions';
+import { locale, theme, rawParams } from 'common/settings';
+import { isThemeStyles, setThemeStyles } from 'common/theme';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

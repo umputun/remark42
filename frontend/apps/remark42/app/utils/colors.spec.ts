@@ -2,31 +2,19 @@ import { Color, colorToHexStr, darkenColor, lightenColor, parseColorStr } from '
 
 describe('parseColorStr function', () => {
   it('should parse a 3-digit hex color code', () => {
-    const colorCode = '#abc';
-    const expectedColor: Color = { r: 170, g: 187, b: 204, a: 1 };
-    const parsedColor = parseColorStr(colorCode);
-    expect(parsedColor).toEqual(expectedColor);
+    expect(parseColorStr('#abc')).toEqual({ r: 170, g: 187, b: 204, a: 1 });
   });
 
   it('should parse a 6-digit hex color code', () => {
-    const colorCode = '#abcdef';
-    const expectedColor: Color = { r: 171, g: 205, b: 239, a: 1 };
-    const parsedColor = parseColorStr(colorCode);
-    expect(parsedColor).toEqual(expectedColor);
+    expect(parseColorStr('#abcdef')).toEqual({ r: 171, g: 205, b: 239, a: 1 });
   });
 
   it('should parse an RGB color code', () => {
-    const colorCode = 'rgb(255, 0, 128)';
-    const expectedColor: Color = { r: 255, g: 0, b: 128, a: 1 };
-    const parsedColor = parseColorStr(colorCode);
-    expect(parsedColor).toEqual(expectedColor);
+    expect(parseColorStr('rgb(255, 0, 128)')).toEqual({ r: 255, g: 0, b: 128, a: 1 });
   });
 
   it('should parse an RGBA color code', () => {
-    const colorCode = 'rgba(100, 200, 150, 0.5)';
-    const expectedColor: Color = { r: 100, g: 200, b: 150, a: 0.5 };
-    const parsedColor = parseColorStr(colorCode);
-    expect(parsedColor).toEqual(expectedColor);
+    expect(parseColorStr('rgba(100, 200, 150, 0.5)')).toEqual({ r: 100, g: 200, b: 150, a: 0.5 });
   });
 
   it('should return default color for an invalid color code', () => {
