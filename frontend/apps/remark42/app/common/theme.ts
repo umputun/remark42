@@ -45,14 +45,15 @@ export const setThemeStyles = (styles: ThemeStyles) => {
 
 const setColors = (colors: ThemeColors) => {
   const { primary } = colors;
-  // Primary
+  // Primary str color
   if (isStr(primary)) {
     const val = parseColorStr(primary);
     if (val) {
-      // Generate dark color from light
+      // Generate dark color from light, make it little bit darker
       setPrimaryColors({ light: val, dark: color(val).darken(0.1).object() });
     } else console.error('Invalid primary color format: ', primary);
   }
+  // Primary dual color
   if (isThemeDualColors(primary)) {
     const { light, dark } = primary;
     const lightVal = parseColorStr(light);
@@ -68,7 +69,12 @@ const setPrimaryColors = (val: DualColors) => {
   const darkRootEl = document.querySelector('.root.dark');
   const light = color(val.light); // #0aa, rgb(0, 170, 170)
   const dark = color(val.dark); // #099, rgb(0, 153, 153)
-  /* Numerid variables  */
+
+  // Lighten and darken percentages are based on the colors provided
+  // in the "styles/custom-properties.css" file. The resulting colors
+  // may not be exact, but are fairly close.
+
+  // Numerid variables
   rootEl.style.setProperty('--color9', light.hex()); // #0aa;
   rootEl.style.setProperty('--color15', light.darken(0.1).hex()); // #099, rgb(0, 153, 153)
   rootEl.style.setProperty('--color33', light.lighten(0.3).hex()); // #06c5c5, rgb(6,197,197) (equivalent rgb(77, 196, 196));
@@ -77,7 +83,7 @@ const setPrimaryColors = (val: DualColors) => {
   rootEl.style.setProperty('--color42', light.lighten(0.8).hex()); // #c6efef, rgb(198,239,239)
   rootEl.style.setProperty('--color48', light.darken(0.1).alpha(0.6).rgb()); // rgba(37, 156, 154, 0.6)
   rootEl.style.setProperty('--color47', light.darken(0.1).alpha(0.4).rgb()); // rgba(37, 156, 154, 0.4)
-  /* Named variables */
+  // Named variables
   rootEl.style.setProperty('--primary-color', light.rgbBody()); // rgb(0, 170, 170)
   rootEl.style.setProperty('--primary-brighter-color', light.darken(0.1).rgbBody()); // rgb(0, 153, 153);
   rootEl.style.setProperty('--primary-darker-color', light.darken(0.4).rgbBody()); // rgb(0, 102, 102);
