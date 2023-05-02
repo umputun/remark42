@@ -14,6 +14,11 @@ export interface Color {
   a: number;
 }
 
+export interface DualColors {
+  light: Color;
+  dark: Color;
+}
+
 /**
  * Creates a color object that provides utility methods for manipulating and converting color values.
  *
