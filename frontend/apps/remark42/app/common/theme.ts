@@ -3,6 +3,11 @@ import { isStr, isUnknownDict } from 'utils/types';
 
 // Types
 
+/**
+ * An interface representing the styles for a theme.
+ * @interface
+ * @property {ThemeColors} [colors] - An optional object representing the colors for the theme.
+ */
 export interface ThemeStyles {
   colors?: ThemeColors;
 }
@@ -13,6 +18,11 @@ export const isThemeStyles = (val: unknown): val is ThemeStyles => {
   return true;
 };
 
+/**
+ * An interface representing the colors for a theme.
+ * @interface
+ * @property {ThemeColor} [primary] - An optional object representing the primary color for the theme.
+ */
 interface ThemeColors {
   primary?: ThemeColor;
 }
@@ -27,6 +37,12 @@ type ThemeColor = string | ThemeDualColors;
 
 const isThemeColor = (val: unknown): val is ThemeColor => isStr(val) || isThemeDualColors(val);
 
+/**
+ * An interface representing two color values for a theme, one for light mode and one for dark mode.
+ * @interface
+ * @property {string} light - The color value for light mode.
+ * @property {string} dark - The color value for dark mode.
+ */
 interface ThemeDualColors {
   light: string;
   dark: string;
@@ -51,7 +67,7 @@ const setColors = (colors: ThemeColors) => {
     if (val) {
       // Generate dark color from light, make it little bit darker
       setPrimaryColors({ light: val, dark: color(val).darken(0.1).object() });
-    } else console.error('Invalid primary color format: ', primary);
+    } else console.error('Remark42: invalid primary color format: ', primary);
   }
   // Primary dual color
   if (isThemeDualColors(primary)) {
@@ -60,19 +76,18 @@ const setColors = (colors: ThemeColors) => {
     const darkVal = parseColorStr(dark);
     if (lightVal && darkVal) {
       setPrimaryColors({ light: lightVal, dark: darkVal });
-    } else console.error('Invalid primary color format: ', primary);
+    } else console.error('Remark42: invalid primary color format: ', primary);
   }
 };
 
 const setPrimaryColors = (val: DualColors) => {
+  // Lighten and darken percentages are based on the colors provided
+  // in the "styles/custom-properties.css" file. The resulting colors
+  // may not be exact, but are fairly close.
   const rootEl = document.documentElement;
   const darkRootEl = document.querySelector('.root.dark');
   const light = color(val.light); // #0aa, rgb(0, 170, 170)
   const dark = color(val.dark); // #099, rgb(0, 153, 153)
-
-  // Lighten and darken percentages are based on the colors provided
-  // in the "styles/custom-properties.css" file. The resulting colors
-  // may not be exact, but are fairly close.
 
   // Numerid variables
   rootEl.style.setProperty('--color9', light.hex()); // #0aa;
