@@ -1,4 +1,4 @@
-import { ThemeStyles } from 'common/theme';
+import { ThemeStyling } from 'common/theme';
 
 import type { Profile, Theme } from 'common/types';
 
@@ -15,7 +15,7 @@ type ChildMessage = {
   hash?: string;
   title?: string;
   theme?: Theme;
-  styles?: ThemeStyles;
+  styling?: ThemeStyling;
   signout?: true;
 };
 

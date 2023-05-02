@@ -3,7 +3,7 @@ import { parseMessage, postMessageToIframe } from 'utils/post-message';
 import { createIframe } from 'utils/create-iframe';
 import type { Theme } from 'common/types';
 import { closeProfile, openProfile } from 'profile';
-import { ThemeStyles } from 'common/theme';
+import { ThemeStyling } from 'common/theme';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -115,9 +115,9 @@ function createInstance(config: typeof window.remark_config) {
     postMessageToIframe(iframe, { theme });
   }
 
-  function changeStyles(styles: ThemeStyles) {
-    window.remark_config.styles = styles;
-    postMessageToIframe(iframe, { styles });
+  function changeStyling(styling: ThemeStyling) {
+    window.remark_config.styling = styling;
+    postMessageToIframe(iframe, { styling });
   }
 
   function destroy() {
@@ -137,11 +137,11 @@ function createInstance(config: typeof window.remark_config) {
 
   // TODO: These do not appear in Chrome DevTools
   window.REMARK42.changeTheme = changeTheme;
-  window.REMARK42.changeStyles = changeStyles;
+  window.REMARK42.changeStyling = changeStyling;
   window.REMARK42.destroy = () => {
     destroy();
     delete window.REMARK42.changeTheme;
-    delete window.REMARK42.changeStyles;
+    delete window.REMARK42.changeStyling;
     delete window.REMARK42.destroy;
   };
 

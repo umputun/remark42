@@ -13,8 +13,8 @@ import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
-import { locale, theme, rawParams } from 'common/settings';
-import { isThemeStyles, setThemeStyles } from 'common/theme';
+import { locale, theme, rawParams, styling } from 'common/settings';
+import { isThemeStyling, setThemeStyling } from 'common/theme';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -38,18 +38,19 @@ async function init(): Promise<void> {
 
   window.addEventListener('message', (evt) => {
     const data = parseMessage(evt);
-
     if (data.theme) {
       setTheme(data.theme);
     }
-
-    if (isThemeStyles(data.styles)) {
-      setThemeStyles(data.styles);
+    if (isThemeStyling(data.styling)) {
+      setThemeStyling(data.styling);
     }
   });
 
   if (theme) {
     setTheme(theme);
+  }
+  if (styling) {
+    setThemeStyling(styling);
   }
 
   boundActions.fetchHiddenUsers();

@@ -1,5 +1,6 @@
 import 'jest-fetch-mock';
 import type { Theme } from 'common/types';
+import { ThemeStyling } from 'common/theme';
 
 type RemarkConfig = {
   // Hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
@@ -20,8 +21,8 @@ type RemarkConfig = {
   max_last_comments?: number;
   // Optional, 'dark' or 'light', 'light' by default. Changes UI theme.
   theme?: Theme;
-  // Optional, changes theme styles.
-  styles?: ThemeStyle;
+  // Optional, changes theme styling.
+  styling?: ThemeStyling;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
   // Optional, 'en' by default. Interface localization.
@@ -47,7 +48,7 @@ declare global {
     remark_config: RemarkConfig;
     REMARK42: {
       changeTheme?: (theme: Theme) => void;
-      changeStyles?: (styles: ThemeStyle) => void;
+      changeStyling?: (styles: ThemeStyling) => void;
       destroy?: () => void;
       createInstance: (remark_config: RemarkConfig) =>
         | {

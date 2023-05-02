@@ -8,11 +8,11 @@ import { isStr, isUnknownDict } from 'utils/types';
  * @interface
  * @property {ThemeColors} [colors] - An optional object representing the colors for the theme.
  */
-export interface ThemeStyles {
+export interface ThemeStyling {
   colors?: ThemeColors;
 }
 
-export const isThemeStyles = (val: unknown): val is ThemeStyles => {
+export const isThemeStyling = (val: unknown): val is ThemeStyling => {
   if (!isUnknownDict(val)) return false;
   if (val.colors && !isThemeColors(val.colors)) return false;
   return true;
@@ -53,7 +53,7 @@ const isThemeDualColors = (val: unknown): val is ThemeDualColors =>
 
 // Functionality
 
-export const setThemeStyles = (styles: ThemeStyles) => {
+export const setThemeStyling = (styles: ThemeStyling) => {
   if (styles.colors) {
     setColors(styles.colors);
   }
@@ -85,7 +85,8 @@ const setPrimaryColors = (val: DualColors) => {
   // in the "styles/custom-properties.css" file. The resulting colors
   // may not be exact, but are fairly close.
   const rootEl = document.documentElement;
-  const darkRootEl = document.querySelector('.root.dark');
+  const darkRootEl = document.querySelector(':root body.dark');
+  console.log(darkRootEl);
   const light = color(val.light); // #0aa, rgb(0, 170, 170)
   const dark = color(val.dark); // #099, rgb(0, 153, 153)
 
@@ -106,4 +107,42 @@ const setPrimaryColors = (val: DualColors) => {
     darkRootEl.style.setProperty('--primary-color', dark.rgbBody()); // rgb(0, 153, 153)
     darkRootEl.style.setProperty('--primary-brighter-color', dark.lighten(0.1).rgbBody()); // rgb(0, 170, 170)
   }
+};
+
+// URL search params
+
+export const themeStylingToUrlSearchParams = (styling?: ThemeStyling): Record<string, string> => {
+  const params: Record<string, string> = {};
+  if (!styling) return params;
+  const { colors } = styling;
+  if (colors) {
+    const { primary } = colors;
+    if (isStr(primary)) params['colorsPrimary'] = primary;
+    if (isThemeDualColors(primary)) {
+      params['colorsPrimaryLight'] = primary.light;
+      params['colorsPrimaryDark'] = primary.dark;
+    }
+  }
+  return params;
+};
+
+export const themeStylingFromUrlSearchParams = (params: Record<string, string>): ThemeStyling | undefined => {
+  const colors = paramsToColors(params);
+  return colors ? { colors } : undefined;
+};
+
+const paramsToColors = (params: Record<string, string>): ThemeColors | undefined => {
+  const colors: ThemeColors = {};
+  const primary = paramsToPrimary(params);
+  if (primary) colors.primary = primary;
+  return Object.keys(colors).length > 0 ? colors : undefined;
+};
+
+const paramsToPrimary = (params: Record<string, string>): ThemeColor | undefined => {
+  const light = params['colorsPrimaryLight'];
+  const dark = params['colorsPrimaryDark'];
+  if (light && dark) return { light, dark };
+  const primary = params['colorsPrimary'];
+  if (primary) return primary;
+  return undefined;
 };

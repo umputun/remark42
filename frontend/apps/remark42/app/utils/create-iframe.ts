@@ -1,11 +1,21 @@
 import { BASE_URL } from 'common/constants.config';
-import { setStyles, setAttributes, StylesDeclaration } from 'utils/set-dom-props';
+import { ThemeStyling, themeStylingToUrlSearchParams } from 'common/theme';
+import { setAttributes, setStyles, StylesDeclaration } from 'utils/set-dom-props';
 
-type Params = { [key: string]: unknown; __colors__?: Record<string, string>; styles?: StylesDeclaration };
+type Params = {
+  [key: string]: unknown;
+  __colors__?: Record<string, string>;
+  styles?: StylesDeclaration;
+  styling?: ThemeStyling;
+};
 
-export function createIframe({ __colors__, styles, ...params }: Params) {
+export function createIframe({ __colors__, styles, styling, ...params }: Params) {
   const iframe = document.createElement('iframe');
-  const query = new URLSearchParams(params as Record<string, string>).toString();
+  console.log(params);
+  const query = new URLSearchParams({
+    ...(params as Record<string, string>),
+    ...themeStylingToUrlSearchParams(styling),
+  }).toString();
 
   setAttributes(iframe, {
     src: `${BASE_URL}/web/iframe.html?${query}`,
