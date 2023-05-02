@@ -96,7 +96,7 @@
         <div class="controls__item"><button id="toggle-theme">Toggle theme</button></div>
         <div class="controls__item">
           <input type="color" id="primary-color-picker" name="primary-color"
-            value="#009999">
+            value="#0aa">
           <label for="body">Primary Color</label>
         </div>
       </div>
@@ -156,6 +156,14 @@
         url: window.location.href,
         components: ['embed', 'counter'],
         theme: theme,
+        styling: {
+          colors: {
+            primary: {
+              light: '#0aa',
+              dark: '#099',
+            },
+          },
+        },
         // locale: "ru",
         // simple_view: true
       };
