@@ -195,15 +195,12 @@
 }
 
 .header-anchor {
-	pointer-events: none;
+	@apply pointer-events-none;
 }
 .header-anchor::before {
-	content: '';
-	display: block;
-	height: 75px;
-	margin-top: -75px;
-	visibility: hidden;
-}
-.header-anchor:focus-visible {
-	outline: none;
+	@apply content-[''];
+	@apply block;
+	@apply h-16;
+	@apply -mt-16;
+	@apply invisible;
 }
