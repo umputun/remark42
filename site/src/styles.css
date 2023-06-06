@@ -193,3 +193,17 @@
 .token.space:before {
 	color: #3c526d;
 }
+
+.header-anchor {
+	pointer-events: none;
+}
+.header-anchor::before {
+	content: '';
+	display: block;
+	height: 75px;
+	margin-top: -75px;
+	visibility: hidden;
+}
+.header-anchor:focus-visible {
+	outline: none;
+}
