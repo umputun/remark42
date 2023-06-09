@@ -201,6 +201,9 @@ export function Auth() {
       </Button>
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
+          {!hasOAuthProviders && !hasFormProviders && (
+            <div className={clsx('auth-error', styles.error)}>{intl.formatMessage(messages.noProviders)}</div>
+          )}
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
             {view === 'telegram' && telegramParamsRef.current !== null ? (
               <>

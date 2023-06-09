@@ -65,4 +65,8 @@ export const messages = defineMessages<string>({
     id: 'auth.signout',
     defaultMessage: 'Sign Out',
   },
+  noProviders: {
+    id: 'auth.no-providers',
+    defaultMessage: 'No providers available. May be you forgot to enable them?',
+  },
 });
