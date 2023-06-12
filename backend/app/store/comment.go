@@ -146,13 +146,17 @@ func (c *Comment) Snippet(limit int) string {
 	if size < limit {
 		return cleanText
 	}
-	snippet := []rune(cleanText)[:size]
+	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
 	for i := len(snippet) - 1; i >= 0; i-- {
 		if snippet[i] == ' ' {
 			snippet = snippet[:i]
 			break
 		}
+	}
+	// Don't add a space if comment is just a one single word which has been truncated.
+	if len(snippet) == limit {
+		return string(snippet) + "..."
 	}
 	return string(snippet) + " ..."
 }
