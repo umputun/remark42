@@ -196,8 +196,8 @@ func TestComment_Snippet(t *testing.T) {
 		{0, "", ""},
 		{-1, "test\nblah", "test blah"},
 		{5, "test\nblah", "test ..."},
-		{5, "xyz12345 xxx", "xyz12345 ..."},
-		{10, "xyz12345 xxx\ntest 123456", "xyz12345 xxx test ..."},
+		{5, "xyz12345 xxx", "xyz12..."},
+		{10, "xyz12345 xxx\ntest 123456", "xyz12345 ..."},
 	}
 
 	for i, tt := range tbl {
