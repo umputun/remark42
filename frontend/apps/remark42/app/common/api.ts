@@ -73,13 +73,13 @@ export const uploadImage = (image: File): Promise<Image> => {
  * @param emailAddress email for subscription
  */
 export const emailVerificationForSubscribe = (emailAddress: string) =>
-  apiFetcher.post('/email/subscribe', { address: emailAddress });
+  apiFetcher.post('/email/subscribe', {}, { address: emailAddress });
 
 /**
  * Confirmation of email subscription to updates
  * @param token confirmation token from email
  */
-export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', { tkn: token });
+export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', {}, { token });
 
 /**
  * Decline current subscription to updates
