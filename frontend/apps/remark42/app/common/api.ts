@@ -83,7 +83,7 @@ export const uploadImage = (image: File): Promise<Image> => {
  * @param emailAddress email for subscription
  */
 export const emailVerificationForSubscribe = (emailAddress: string): Promise<EmailSubVerificationStatus> =>
-  apiFetcher.post('/email/subscribe', {}, { address: emailAddress });
+  apiFetcher.post('/email/subscribe', {}, { address: emailAddress, autoConfirm: true });
 
 /**
  * Confirmation of email subscription to updates
