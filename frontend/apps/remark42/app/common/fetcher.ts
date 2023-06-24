@@ -59,7 +59,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       params.body = body;
     } else if (typeof body === 'object' && body !== null) {
       headers['Content-Type'] = 'application/json';
-      params.body = JSON.stringify(body);
+      params.body = JSON.stringify({ ...body, site: siteId });
     } else {
       params.body = body;
     }
