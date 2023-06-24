@@ -132,6 +132,7 @@ describe('fetcher', () => {
       expect.assertions(1);
 
       const data = { text: 'text' };
+      const dataShouldBe = { ...data, site: 'remark' };
       const headersWithContentType = { ...headers, 'Content-Type': 'application/json' };
 
       mockFetch();
@@ -140,7 +141,7 @@ describe('fetcher', () => {
       expect(window.fetch).toBeCalledWith(apiUrl, {
         method: 'post',
         headers: headersWithContentType,
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataShouldBe),
       });
     });
 
