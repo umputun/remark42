@@ -29,6 +29,8 @@ const unsubscribeFromEmailUpdatesMock = unsubscribeFromEmailUpdates as unknown a
   ReturnType<typeof unsubscribeFromEmailUpdates>
 >;
 
+emailVerificationForSubscribeMock.mockImplementation((email) => Promise.resolve({ address: email, updated: false }));
+
 const initialStore = {
   user,
   theme: 'light',
@@ -132,6 +134,29 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(emailConfirmationForSubscribeMock).toHaveBeenCalledWith('tokentokentoken');
 
     await sleep(0);
+    wrapper.update();
+
+    expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+  });
+
+  it('should pass throw subscribe process without confirmation', async () => {
+    emailVerificationForSubscribeMock.mockImplementationOnce((email) =>
+      Promise.resolve({ address: email, updated: true })
+    );
+
+    const wrapper = createWrapper();
+
+    const input = wrapper.find('input');
+    const form = wrapper.find('form');
+
+    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
+    input.simulate('input');
+    form.simulate('submit');
+
+    expect(emailVerificationForSubscribeMock).toHaveBeenCalledWith('some@email.com');
+
+    await sleep();
     wrapper.update();
 
     expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);

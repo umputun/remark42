@@ -135,18 +135,25 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       setLoading(true);
       setError(null);
 
+      const subscribed = () => {
+        dispatch(setUserSubscribed(true));
+        previousStep.current = Step.Token;
+        setStep(Step.Subscribed);
+      };
+
       try {
         switch (step) {
           case Step.Email:
-            await emailVerificationForSubscribe(emailAddress);
+            if ((await emailVerificationForSubscribe(emailAddress)).updated) {
+              subscribed();
+              break;
+            }
             setToken('');
             setStep(Step.Token);
             break;
           case Step.Token:
             await emailConfirmationForSubscribe(currentToken);
-            dispatch(setUserSubscribed(true));
-            previousStep.current = Step.Token;
-            setStep(Step.Subscribed);
+            subscribed();
             break;
           default:
             break;
