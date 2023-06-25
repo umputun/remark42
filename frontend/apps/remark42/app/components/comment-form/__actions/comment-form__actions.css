@@ -5,4 +5,5 @@
   flex-wrap: wrap;
   justify-content: space-between;
   min-height: 30px;
+  gap: 12px;
 }
