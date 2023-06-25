@@ -197,9 +197,11 @@
 }
 
 .telegramQR {
+  background-color: var(--white-color);
+  box-sizing: border-box;
   display: block;
   margin: 12px auto;
-  width: 75%;
+  padding: 10px;
 }
 
 .telegram {
