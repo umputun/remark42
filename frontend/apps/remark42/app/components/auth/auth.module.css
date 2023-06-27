@@ -197,7 +197,7 @@
 }
 
 .telegramQR {
-  background-color: var(--white-color);
+  background-color: rgb(var(--white-color));
   box-sizing: border-box;
   display: block;
   margin: 12px auto;
