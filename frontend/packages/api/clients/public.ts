@@ -17,7 +17,7 @@ export interface Config {
 	simple_view: boolean
 	anon_vote: boolean
 	email_notifications: boolean
-	telegram_bot_username: string
+	telegram_notifications: boolean
 	emoji_enabled: boolean
 }
 
