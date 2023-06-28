@@ -106,7 +106,7 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
   });
 
-  it('should pass throw subscribe process', async () => {
+  it('should pass through subscribe process', async () => {
     const wrapper = createWrapper();
 
     const input = wrapper.find('input');
@@ -140,7 +140,7 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
-  it('should pass throw subscribe process without confirmation', async () => {
+  it('should pass through subscribe process without confirmation', async () => {
     emailVerificationForSubscribeMock.mockImplementationOnce((email) =>
       Promise.resolve({ address: email, updated: true })
     );

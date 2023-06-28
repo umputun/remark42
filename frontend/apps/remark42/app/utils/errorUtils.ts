@@ -97,6 +97,10 @@ export const errorMessages = defineMessages<string | number>({
     id: 'errors.forbidden',
     defaultMessage: 'Forbidden.',
   },
+  409: {
+    id: 'errors.conflict',
+    defaultMessage: 'Conflict.',
+  },
   429: {
     id: 'errors.to-many-request',
     defaultMessage: 'You have reached maximum request limit.',

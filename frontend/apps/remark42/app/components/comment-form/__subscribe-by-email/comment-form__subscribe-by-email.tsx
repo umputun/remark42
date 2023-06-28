@@ -8,7 +8,7 @@ import { User } from 'common/types';
 import { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
 import { sleep } from 'utils/sleep';
-import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { extractErrorMessageFromResponse, RequestError } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
 import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
@@ -135,17 +135,27 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       setLoading(true);
       setError(null);
 
-      const subscribed = () => {
-        dispatch(setUserSubscribed(true));
-        previousStep.current = Step.Token;
-        setStep(Step.Subscribed);
-      };
-
       try {
+        let emailVerificationResponse;
+        let emailAlreadySubscribed = false;
+
         switch (step) {
           case Step.Email:
-            if ((await emailVerificationForSubscribe(emailAddress)).updated) {
-              subscribed();
+            try {
+              emailVerificationResponse = await emailVerificationForSubscribe(emailAddress);
+            } catch (e) {
+              if ((e as RequestError).code !== 409) {
+                throw e;
+              }
+              emailVerificationResponse = { address: emailAddress, updated: true };
+              emailAlreadySubscribed = true;
+            }
+            if (emailVerificationResponse.updated) {
+              dispatch(setUserSubscribed(true));
+              if (!emailAlreadySubscribed) {
+                previousStep.current = Step.Token;
+              }
+              setStep(Step.Subscribed);
               break;
             }
             setToken('');
@@ -153,7 +163,9 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
             break;
           case Step.Token:
             await emailConfirmationForSubscribe(currentToken);
-            subscribed();
+            dispatch(setUserSubscribed(true));
+            previousStep.current = Step.Token;
+            setStep(Step.Subscribed);
             break;
           default:
             break;
@@ -217,7 +229,6 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
     try {
       await unsubscribeFromEmailUpdates();
       dispatch(setUserSubscribed(false));
-      previousStep.current = Step.Subscribed;
       setStep(Step.Unsubscribed);
     } catch (e) {
       // @ts-ignore
