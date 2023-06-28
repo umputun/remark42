@@ -18,6 +18,7 @@ import { persistEmail } from 'components/auth/auth.utils';
 import enMessages from 'locales/en.json';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
+import { RequestError } from '../../../utils/errorUtils';
 
 const emailVerificationForSubscribeMock = emailVerificationForSubscribe as unknown as jest.Mock<
   ReturnType<typeof emailVerificationForSubscribe>
@@ -138,6 +139,24 @@ describe('<SubscribeByEmailForm/>', () => {
 
     expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
     expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+  });
+
+  it('should handle http error 409: already subscribed', async () => {
+    emailVerificationForSubscribeMock.mockImplementationOnce(() => Promise.reject(new RequestError('', 409)));
+
+    const wrapper = createWrapper();
+
+    const input = wrapper.find('input');
+    const form = wrapper.find('form');
+
+    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
+    input.simulate('input');
+    form.simulate('submit');
+
+    await sleep();
+    wrapper.update();
+
+    expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
   });
 
   it('should pass through subscribe process without confirmation', async () => {
