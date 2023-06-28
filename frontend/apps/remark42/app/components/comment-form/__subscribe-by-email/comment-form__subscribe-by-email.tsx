@@ -120,7 +120,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
-  const previousStep = useRef<Step | null>(null);
+  const justSubscribed = useRef<Boolean>(false);
 
   const [step, setStep] = useState(subscribed ? Step.Subscribed : Step.Email);
 
@@ -137,24 +137,20 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
       try {
         let emailVerificationResponse;
-        let emailAlreadySubscribed = false;
 
         switch (step) {
           case Step.Email:
             try {
               emailVerificationResponse = await emailVerificationForSubscribe(emailAddress);
+              justSubscribed.current = true;
             } catch (e) {
               if ((e as RequestError).code !== 409) {
                 throw e;
               }
               emailVerificationResponse = { address: emailAddress, updated: true };
-              emailAlreadySubscribed = true;
             }
             if (emailVerificationResponse.updated) {
               dispatch(setUserSubscribed(true));
-              if (!emailAlreadySubscribed) {
-                previousStep.current = Step.Token;
-              }
               setStep(Step.Subscribed);
               break;
             }
@@ -164,7 +160,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
           case Step.Token:
             await emailConfirmationForSubscribe(currentToken);
             dispatch(setUserSubscribed(true));
-            previousStep.current = Step.Token;
+            justSubscribed.current = true;
             setStep(Step.Subscribed);
             break;
           default:
@@ -247,10 +243,9 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   }
 
   if (step === Step.Subscribed) {
-    const text =
-      previousStep.current === Step.Token
-        ? intl.formatMessage(messages.haveSubscribed)
-        : intl.formatMessage(messages.subscribed);
+    const text = justSubscribed.current
+      ? intl.formatMessage(messages.haveSubscribed)
+      : intl.formatMessage(messages.subscribed);
 
     return (
       <div className={b('comment-form__subscribe-by-email', { mods: { subscribed: true } })}>
