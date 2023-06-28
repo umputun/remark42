@@ -16,7 +16,7 @@ beforeEach(() => {
     simple_view: false,
     anon_vote: false,
     email_notifications: false,
-    telegram_bot_username: '',
+    telegram_notifications: false,
     emoji_enabled: true,
   };
 });
