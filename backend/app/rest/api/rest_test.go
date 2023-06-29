@@ -301,7 +301,7 @@ func TestRest_cacheControl(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", tt.url, nil)
+			req := httptest.NewRequest("GET", tt.url, http.NoBody)
 			w := httptest.NewRecorder()
 
 			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -329,7 +329,7 @@ func TestRest_frameAncestors(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", nil)
+			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			w := httptest.NewRecorder()
 
 			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -363,7 +363,7 @@ func TestRest_subscribersOnly(t *testing.T) {
 	for i, tt := range tbl {
 		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", nil)
+			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			if tt.setUser {
 				req = token.SetUserInfo(req, tt.user)
 			}
