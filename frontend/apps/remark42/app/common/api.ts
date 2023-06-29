@@ -1,6 +1,16 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, BlockTTL, Image } from './types';
+import {
+  Config,
+  Comment,
+  Tree,
+  User,
+  BlockedUser,
+  Sorting,
+  BlockTTL,
+  Image,
+  EmailSubVerificationStatus,
+} from './types';
 import { apiFetcher, adminFetcher } from './fetcher';
 
 /* API methods */
@@ -72,8 +82,8 @@ export const uploadImage = (image: File): Promise<Image> => {
  * Start process of email subscription to updates
  * @param emailAddress email for subscription
  */
-export const emailVerificationForSubscribe = (emailAddress: string) =>
-  apiFetcher.post('/email/subscribe', {}, { address: emailAddress });
+export const emailVerificationForSubscribe = (emailAddress: string): Promise<EmailSubVerificationStatus> =>
+  apiFetcher.post('/email/subscribe', {}, { address: emailAddress, autoConfirm: true });
 
 /**
  * Confirmation of email subscription to updates

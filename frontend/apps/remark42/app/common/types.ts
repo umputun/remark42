@@ -156,3 +156,8 @@ export interface ApiError {
   /** in-depth explanation */
   error: string;
 }
+
+export interface EmailSubVerificationStatus {
+  updated: boolean;
+  address: string;
+}
