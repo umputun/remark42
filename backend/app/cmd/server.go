@@ -525,7 +525,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 
 	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
-	telegramService, telegramBotUsername := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	telegramService := s.startTelegramAuthAndNotify(ctx, telegramAuth)
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
@@ -575,33 +575,33 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}
 
 	srv := &api.Rest{
-		Version:             s.Revision,
-		DataService:         dataService,
-		WebRoot:             s.WebRoot,
-		WebFS:               webFS,
-		RemarkURL:           s.RemarkURL,
-		ImageProxy:          imgProxy,
-		CommentFormatter:    commentFormatter,
-		Migrator:            migr,
-		ReadOnlyAge:         s.ReadOnlyAge,
-		SharedSecret:        s.SharedSecret,
-		Authenticator:       authenticator,
-		Cache:               loadingCache,
-		NotifyService:       notifyService,
-		TelegramService:     telegramService,
-		SSLConfig:           sslConfig,
-		UpdateLimiter:       s.UpdateLimit,
-		ImageService:        imageService,
-		EmailNotifications:  contains("email", s.Notify.Users),
-		TelegramBotUsername: telegramBotUsername,
-		EmojiEnabled:        s.EnableEmoji,
-		AnonVote:            s.AnonymousVote && s.RestrictVoteIP,
-		SimpleView:          s.SimpleView,
-		ProxyCORS:           s.ProxyCORS,
-		AllowedAncestors:    s.AllowedHosts,
-		SendJWTHeader:       s.Auth.SendJWTHeader,
-		SubscribersOnly:     s.SubscribersOnly,
-		DisableSignature:    s.DisableSignature,
+		Version:               s.Revision,
+		DataService:           dataService,
+		WebRoot:               s.WebRoot,
+		WebFS:                 webFS,
+		RemarkURL:             s.RemarkURL,
+		ImageProxy:            imgProxy,
+		CommentFormatter:      commentFormatter,
+		Migrator:              migr,
+		ReadOnlyAge:           s.ReadOnlyAge,
+		SharedSecret:          s.SharedSecret,
+		Authenticator:         authenticator,
+		Cache:                 loadingCache,
+		NotifyService:         notifyService,
+		TelegramService:       telegramService,
+		SSLConfig:             sslConfig,
+		UpdateLimiter:         s.UpdateLimit,
+		ImageService:          imageService,
+		EmailNotifications:    contains("email", s.Notify.Users),
+		TelegramNotifications: contains("telegram", s.Notify.Users) && telegramService != nil,
+		EmojiEnabled:          s.EnableEmoji,
+		AnonVote:              s.AnonymousVote && s.RestrictVoteIP,
+		SimpleView:            s.SimpleView,
+		ProxyCORS:             s.ProxyCORS,
+		AllowedAncestors:      s.AllowedHosts,
+		SendJWTHeader:         s.Auth.SendJWTHeader,
+		SubscribersOnly:       s.SubscribersOnly,
+		DisableSignature:      s.DisableSignature,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -1212,20 +1212,15 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 
 // startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
 // Does nothing if telegram auth and notifications are disabled.
-// Doesn't return telegram bot username if user notifications are disabled, as that is the way frontend knows they are enabled.
-func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram, telegramBotUsername string) {
+func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram) {
 	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
-		return nil, ""
+		return nil
 	}
 
 	var err error
 	if tg, err = s.makeTelegramNotify(); err != nil {
 		log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		return nil, ""
-	}
-
-	if contains("telegram", s.Notify.Users) {
-		telegramBotUsername = tg.GetBotUsername()
+		return nil
 	}
 
 	telegramReceivers := []providers.TGUpdatesReceiver{tg}
@@ -1235,7 +1230,7 @@ func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegram
 	// start bot messages receiver for both notify and auth services
 	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
 
-	return tg, telegramBotUsername
+	return tg
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.
