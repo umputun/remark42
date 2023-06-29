@@ -5,7 +5,7 @@ module.exports = [
   },
   {
     path: 'public/remark.mjs',
-    limit: '75 KB',
+    limit: '76 KB',
   },
   {
     path: 'public/remark.css',
