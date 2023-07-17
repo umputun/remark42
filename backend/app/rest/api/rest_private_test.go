@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
@@ -69,7 +71,7 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.NoError(t, err)
+	require.NoError(t, err, string(b))
 	loc := c["locator"].(map[string]interface{})
 	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
@@ -77,6 +79,86 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 	assert.Contains(t, c["text"], "foo")
 	assert.Contains(t, c["text"], "bar")
 	assert.True(t, len(c["id"].(string)) > 8)
+}
+
+// based on issue https://github.com/umputun/remark42/issues/1631
+func TestRest_CreateAndPreviewWithImage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	ts.Close()
+	defer teardown()
+
+	srv.ImageService.ProxyAPI = srv.RemarkURL + "/api/v1/img"
+	srv.ImageProxy = &proxy.Image{
+		HTTP2HTTPS:    true,
+		CacheExternal: true,
+		RoutePath:     "/api/v1/img",
+		RemarkURL:     srv.RemarkURL,
+		ImageService:  srv.ImageService,
+	}
+	srv.CommentFormatter = store.NewCommentFormatter(srv.ImageProxy)
+	// need to recreate the server with new ImageProxy, otherwise old one will be used
+	ts = httptest.NewServer(srv.routes())
+	defer ts.Close()
+
+	var pngRead bool
+	// server with the test PNG image
+	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, e := io.Copy(w, gopherPNG())
+		assert.NoError(t, e)
+		pngRead = true
+	}))
+	defer pngServer.Close()
+
+	t.Run("create", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/comment",
+			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+		assert.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+
+		c := R.JSON{}
+		err = json.Unmarshal(b, &c)
+		require.NoError(t, err, string(b))
+		assert.NotContains(t, c["text"], pngServer.URL)
+		assert.Contains(t, c["text"], srv.RemarkURL)
+		loc := c["locator"].(map[string]interface{})
+		assert.Equal(t, "remark42", loc["site"])
+		assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
+		assert.True(t, len(c["id"].(string)) > 8)
+		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
+	})
+
+	t.Run("preview", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/preview",
+			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+		assert.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+
+		assert.NotContains(t, string(b), pngServer.URL)
+		assert.Contains(t, string(b), srv.RemarkURL)
+
+		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
+		// retrieve the image from the cache
+		imgURL := strings.Split(strings.Split(string(b), "src=\"")[1], "\"")[0]
+		// replace srv.RemarkURL with ts.URL
+		imgURL = strings.ReplaceAll(imgURL, srv.RemarkURL, ts.URL)
+		resp, err = http.Get(imgURL)
+		assert.NoError(t, err)
+		b, err = io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+		// compare image to original gopher png after decoding from base64
+		assert.Equal(t, gopher, base64.StdEncoding.EncodeToString(b))
+
+		assert.Equal(t, true, pngRead, "original image accessed to be shown to user")
+	})
+
 }
 
 func TestRest_CreateOldPost(t *testing.T) {

@@ -88,8 +88,8 @@ func NewService(s Store, p ServiceParams) *Service {
 	return &Service{ServiceParams: p, store: s}
 }
 
-// SubmitAndCommit multiple ids immediately
-func (s *Service) SubmitAndCommit(idsFn func() []string) error {
+// Commit multiple ids immediately
+func (s *Service) Commit(idsFn func() []string) error {
 	errs := new(multierror.Error)
 	for _, id := range idsFn() {
 		err := s.store.Commit(id)
@@ -117,7 +117,7 @@ func (s *Service) Submit(idsFn func() []string) {
 				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.EditDuration {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
-				err := s.SubmitAndCommit(req.idsFn)
+				err := s.Commit(req.idsFn)
 				if err != nil {
 					log.Printf("[WARN] image commit error %v", err)
 				}
@@ -141,39 +141,14 @@ func (s *Service) Submit(idsFn func() []string) {
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
 func (s *Service) ExtractPictures(commentHTML string) (ids []string) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
-	if err != nil {
-		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
-		return nil
-	}
-	doc.Find("img").Each(func(i int, sl *goquery.Selection) {
-		if im, ok := sl.Attr("src"); ok {
-			if strings.Contains(im, s.ImageAPI) {
-				elems := strings.Split(im, "/")
-				if len(elems) >= 2 {
-					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
-					ids = append(ids, id)
-				}
-			}
-			if strings.Contains(im, s.ProxyAPI) {
-				proxiedURL, err := url.Parse(im)
-				if err != nil {
-					return
-				}
-				imgURL, err := base64.URLEncoding.DecodeString(proxiedURL.Query().Get("src"))
-				if err != nil {
-					return
-				}
-				imgID, err := CachedImgID(string(imgURL))
-				if err != nil {
-					return
-				}
-				ids = append(ids, imgID)
-			}
-		}
-	})
+	return s.extractImageIDs(commentHTML, true)
+}
 
-	return ids
+// ExtractNonProxiedPictures gets list of non-proxied images from the doc html and convert from urls to ids, i.e. user/pic.png
+// This method is used in image check on post preview and load, as proxied images have lazy loading
+// and wouldn't be present on disk but still valid as they will be loaded the first time someone requests them.
+func (s *Service) ExtractNonProxiedPictures(commentHTML string) (ids []string) {
+	return s.extractImageIDs(commentHTML, false)
 }
 
 // Cleanup runs periodic cleanup with 1.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer
@@ -260,6 +235,43 @@ func (s *Service) ImgContentType(img []byte) string {
 		return "image/*"
 	}
 	return contentType
+}
+
+// returns list of image IDs from the comment html, including proxied images if includeProxied is true
+func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids []string) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
+		return nil
+	}
+	doc.Find("img").Each(func(i int, sl *goquery.Selection) {
+		if im, ok := sl.Attr("src"); ok {
+			if strings.Contains(im, s.ImageAPI) {
+				elems := strings.Split(im, "/")
+				if len(elems) >= 2 {
+					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
+					ids = append(ids, id)
+				}
+			}
+			if includeProxied && strings.Contains(im, s.ProxyAPI) {
+				proxiedURL, err := url.Parse(im)
+				if err != nil {
+					return
+				}
+				imgURL, err := base64.URLEncoding.DecodeString(proxiedURL.Query().Get("src"))
+				if err != nil {
+					return
+				}
+				imgID, err := CachedImgID(string(imgURL))
+				if err != nil {
+					return
+				}
+				ids = append(ids, imgID)
+			}
+		}
+	})
+
+	return ids
 }
 
 // prepareImage calls readAndValidateImage and resize on provided image.
