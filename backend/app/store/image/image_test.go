@@ -105,6 +105,7 @@ func TestService_ExtractPictures(t *testing.T) {
 	ids = svc.ExtractPictures(html)
 	require.Equal(t, 1, len(ids), "one image in")
 	assert.Equal(t, "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e", ids[0])
+	require.Empty(t, svc.ExtractNonProxiedPictures(html), "no non-proxied images expected to be found")
 
 	// bad url
 	html = `<img src=" https://remark42.radio-t.com/api/v1/img">`
@@ -150,7 +151,7 @@ func TestService_Submit(t *testing.T) {
 	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
-	err := svc.SubmitAndCommit(func() []string { return []string{"id4", "id5"} })
+	err := svc.Commit(func() []string { return []string{"id4", "id5"} })
 	assert.NoError(t, err)
 	svc.Submit(func() []string { return []string{"id6", "id7"} })
 	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))

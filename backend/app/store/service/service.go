@@ -279,7 +279,7 @@ func (s *DataStore) submitImages(comment store.Comment) {
 
 	var err error
 	if comment.Imported {
-		err = s.ImageService.SubmitAndCommit(idsFn)
+		err = s.ImageService.Commit(idsFn)
 	} else {
 		s.ImageService.Submit(idsFn)
 	}

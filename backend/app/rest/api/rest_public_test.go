@@ -76,8 +76,8 @@ func TestRest_Preview(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat`,
 	)
 	assert.Contains(t,
 		string(b),
@@ -97,8 +97,8 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat ",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat `,
 	)
 	assert.Contains(t,
 		string(b),

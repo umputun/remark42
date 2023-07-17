@@ -90,11 +90,11 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment = s.commentFormatter.Format(comment)
 	comment.Sanitize()
 
-	// check if images are valid
-	for _, id := range s.imageService.ExtractPictures(comment.Text) {
+	// check if images are valid, omit proxied images as they are lazy-loaded
+	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		err := s.imageService.ResetCleanupTimer(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't renew staged picture cleanup timer", rest.ErrImgNotFound)
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
@@ -129,8 +129,8 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comment = s.commentFormatter.Format(comment)
 
-	// check if images are valid
-	for _, id := range s.imageService.ExtractPictures(comment.Text) {
+	// check if images are valid, omit proxied images as they are lazy-loaded
+	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		_, err := s.imageService.Load(id)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
