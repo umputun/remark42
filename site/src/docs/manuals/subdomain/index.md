@@ -61,17 +61,14 @@ The `nginx.conf` would then look something like:
 Example of Caddy configuration (`Caddyfile`) running remark42 service on `example.com/remark42/`:
 
 ```
-example.com {
-	gzip
-	tls mail@example.com
-
-	root /srv/www
-	log  /logs/access.log
-
-	# remark42
-	proxy /remark42/ http://remark42:8080/ {
-		without /remark42
-		transparent
-	}
+https://example.com {
+        log {
+                output file /var/log/caddy/example.com.access.log
+        }
+        root * /home/example/web
+        handle_path /remark42* {
+                reverse_proxy  localhost:8080
+        }
+        file_server
 }
 ```
