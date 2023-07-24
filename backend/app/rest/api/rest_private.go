@@ -430,7 +430,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 	var address, siteID string
 	address, siteID, err := s.telegramService.CheckToken(queryToken, user.ID)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set telegram for user", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusNotFound, err, "request is not verified yet", rest.ErrInternal)
 		return
 	}
 

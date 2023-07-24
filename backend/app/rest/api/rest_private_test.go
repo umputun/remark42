@@ -1238,8 +1238,8 @@ func TestRest_TelegramNotification(t *testing.T) {
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode, string(body))
-	require.Equal(t, `{"code":0,"details":"can't set telegram for user","error":"not verified"}`+"\n", string(body))
+	require.Equal(t, http.StatusNotFound, resp.StatusCode, string(body))
+	require.Equal(t, `{"code":0,"details":"request is not verified yet","error":"not verified"}`+"\n", string(body))
 
 	mockTlgrm.notVerified = false
 
