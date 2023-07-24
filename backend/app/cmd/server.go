@@ -38,6 +38,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/search"
 	"github.com/umputun/remark42/backend/app/store/service"
 	"github.com/umputun/remark42/backend/app/templates"
 )
@@ -57,6 +58,7 @@ type ServerCommand struct {
 	Image      ImageGroup      `group:"image" namespace:"image" env-namespace:"IMAGE"`
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
+	Search     SearchGroup     `group:"search" namespace:"search" env-namespace:"SEARCH"`
 
 	Sites            []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	AnonymousVote    bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
@@ -278,6 +280,13 @@ type RPCGroup struct {
 type AdminRPCGroup struct {
 	RPCGroup
 	SecretPerSite bool `long:"secret_per_site" env:"SECRET_PER_SITE" description:"enable JWT secret retrieval per aud, which is site_id in this case"`
+}
+
+// SearchGroup defines options group for search engine
+type SearchGroup struct {
+	Enable    bool   `long:"enable" env:"ENABLE" description:"enable search engine"`
+	IndexPath string `long:"index_path" env:"INDEX_PATH" description:"search index location" default:"./var/search_index"`
+	Analyzer  string `long:"analyzer" env:"ANALYZER" description:"text analyzer type, set language-specific one to improve search quality" choice:"standard" choice:"ar" choice:"de" choice:"en" choice:"es" choice:"fi" choice:"fr" choice:"it" choice:"ru" default:"standard"` //nolint
 }
 
 // LoadingCache defines interface for caching
@@ -574,6 +583,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
 
+	dataService.SearchService, err = s.makeSearchService()
+	if err != nil {
+		_ = dataService.Close()
+		return nil, fmt.Errorf("failed to create search service: %w", err)
+	}
+
 	srv := &api.Rest{
 		Version:               s.Revision,
 		DataService:           dataService,
@@ -654,6 +669,13 @@ func (a *serverApp) run(ctx context.Context) error {
 	// staging images resubmit after restart of the app
 	if e := a.dataService.ResubmitStagingImages(a.Sites); e != nil {
 		log.Printf("[WARN] failed to resubmit comments with staging images, %s", e)
+	}
+
+	// synchronously index comments for the first time run
+	maxBatchSize := 1024
+	err := a.dataService.IndexSites(ctx, a.Sites, maxBatchSize)
+	if err != nil {
+		log.Printf("[WARN] failed to build search index, %s", err)
 	}
 
 	go a.imageService.Cleanup(ctx) // pictures cleanup for staging images
@@ -1192,6 +1214,22 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
 		AudSecrets:        s.Admin.RPC.SecretPerSite,
+	})
+}
+
+func (s *ServerCommand) makeSearchService() (*search.Service, error) {
+	if !s.Search.Enable {
+		return nil, nil
+	}
+	log.Printf("[INFO] creating search service")
+
+	if s.Search.IndexPath == "" {
+		return nil, fmt.Errorf("search index path is not set")
+	}
+
+	return search.NewService(s.Sites, search.ServiceParams{
+		IndexPath: s.Search.IndexPath,
+		Analyzer:  s.Search.Analyzer,
 	})
 }
 

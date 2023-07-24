@@ -36,6 +36,7 @@ below to have your translation available to all remark42 users and included in t
 1.  Run `npm run translation:generate` in the `frontend` folder
 1.  Translate all values in the newly created JSON file in
     [frontend/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/app/locales)
+1. Add corresponding analyzer to the list of imports in [backend/app/store/search/bleve.go](https://github.com/umputun/remark42/blob/master/backend/app/store/search/bleve.go) to enable language support in the search engine. You may find the list of supported languages in [github.com/blevesearch/bleve/v2/analysis/lang](https://github.com/blevesearch/bleve/tree/master/analysis/lang).
 1.  Commit all changes above in your fork
 1.  Test your changes in the interface:
 

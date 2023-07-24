@@ -157,5 +157,10 @@ func TestMain(m *testing.M) {
 		m,
 		goleak.IgnoreTopFunction("github.com/umputun/remark42/backend/app.init.0.func1"),
 		goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"),
+
+		// we should call bleve.Config.Shutdown() to close all the workers,
+		// but it's global per application and cannot be reinitialized multiple times
+		// so we do not terminate them, ignore the leak
+		goleak.IgnoreTopFunction("github.com/blevesearch/bleve_index_api.AnalysisWorker"),
 	)
 }

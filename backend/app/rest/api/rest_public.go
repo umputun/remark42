@@ -42,6 +42,7 @@ type pubStore interface {
 	Count(locator store.Locator) (int, error)
 	List(siteID string, limit, skip int) ([]store.PostInfo, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
+	Search(siteID, query, sortBy string, limit, skip int) ([]store.Comment, uint64, error)
 
 	ValidateComment(c *store.Comment) error
 	IsReadOnly(locator store.Locator) bool
@@ -383,6 +384,73 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	if _, err = w.Write(png); err != nil {
 		log.Printf("[WARN] can't render qr, %v", err)
+	}
+}
+
+// GET /search?site=siteID&query=query&limit=20&skip=10&sort=[-]field - search documents
+// site - site ID
+// query - user-provided search query
+// limit - number of documents to return, default is 20, maximum is 100
+// skip - number of documents to skip, default is 0 (do not skip anything), maximum is 1000
+// sort - sort by specified field, can be prefixed with "-" to reverse the order
+func (s *public) searchQueryCtrl(w http.ResponseWriter, r *http.Request) {
+	getIntParamInRange := func(min, max, defaultVal int, name string) (int, error) {
+		s := r.URL.Query().Get(name)
+		if s == "" {
+			return defaultVal, nil
+		}
+
+		value, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, fmt.Errorf("%s parameter should be an integer", name)
+		}
+
+		if min <= value && value <= max {
+			return value, nil
+		}
+		return 0, fmt.Errorf("%s parameter should be between %d and %d", name, min, max)
+	}
+
+	var err error
+
+	var limit int
+	if limit, err = getIntParamInRange(1, 100, 20, "limit"); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("wrong param"), err.Error(), rest.ErrInternal)
+		return
+	}
+
+	var skip int
+	if skip, err = getIntParamInRange(0, 1000, 0, "skip"); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("wrong param"), err.Error(), rest.ErrInternal)
+		return
+	}
+
+	siteID := r.URL.Query().Get("site")
+	query := r.URL.Query().Get("query")
+	sortBy := r.URL.Query().Get("sort")
+
+	if siteID == "" || query == "" {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing param"), "site and query parameters are required", rest.ErrInternal)
+		return
+	}
+
+	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, searchScope)
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		comments, total, searchErr := s.dataService.Search(siteID, query, sortBy, limit, skip)
+		if searchErr != nil {
+			return nil, searchErr
+		}
+
+		return encodeJSONWithHTML(commentsWithTotal{Comments: comments, Total: total})
+	})
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't perform search request", rest.ErrInternal)
+		return
+	}
+
+	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
+		log.Printf("[WARN] can't render search results for site %s", siteID)
 	}
 }
 

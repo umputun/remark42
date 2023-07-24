@@ -3,6 +3,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -20,6 +21,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/search"
 )
 
 // DataStore wraps store.Interface with additional methods
@@ -37,6 +39,7 @@ type DataStore struct {
 	TitleExtractor         *TitleExtractor
 	RestrictedWordsMatcher *RestrictedWordsMatcher
 	ImageService           *image.Service
+	SearchService          *search.Service
 	AdminEdits             bool // allow admin unlimited edits
 
 	// granular locks
@@ -104,6 +107,10 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 
 	commentID, err = s.Engine.Create(comment)
 	s.submitImages(comment)
+
+	if e := s.indexCommentForSearch(comment); e != nil {
+		log.Printf("[WARN] failed to index comment for search, %v", e)
+	}
 
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvCreate); e != nil {
 		log.Printf("[WARN] failed to send create event, %s", e)
@@ -523,6 +530,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	err = s.Engine.Update(comment)
+
+	if e := s.indexCommentForSearch(comment); e != nil {
+		log.Printf("[WARN] failed to update comment index, %v", e)
+	}
+
 	return comment, err
 }
 
@@ -924,6 +936,62 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 	return s.alterComments(comments, user), nil
 }
 
+// Search executes search query and enriches the result with comment content
+func (s *DataStore) Search(siteID, query, sortBy string, limit, skip int) ([]store.Comment, uint64, error) {
+	if s.SearchService == nil {
+		return []store.Comment{}, 0, fmt.Errorf("search service is not enabled")
+	}
+	req := &search.Request{
+		SiteID: siteID,
+		Query:  query,
+		Limit:  limit,
+		Skip:   skip,
+		SortBy: sortBy,
+	}
+
+	searchRes, err := s.SearchService.Search(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search failed: %w", err)
+	}
+
+	comments := make([]store.Comment, 0, len(searchRes.Keys))
+	for _, docKey := range searchRes.Keys {
+		comment, e := s.Get(docKey.Locator, docKey.ID, nonAdminUser)
+		if e != nil {
+			// ignore error because comment can be deleted from the store (but we still have it in search index)
+			continue
+		}
+		comments = append(comments, comment)
+	}
+	return comments, searchRes.Total, nil
+}
+
+// IndexSites indexes all comments for all sites.
+// It's required to call this method at the startup to support cold start
+// (store contains some data, but search functionality is enabled for the first time)
+// Note: this method is synchronous and can take time to complete to build the initial index.
+func (s *DataStore) IndexSites(ctx context.Context, sites []string, maxBatchSize int) error {
+	if s.SearchService == nil {
+		return nil
+	}
+	if maxBatchSize <= 0 {
+		return fmt.Errorf("invalid maxBatchSize %d, should be > 0", maxBatchSize)
+	}
+
+	log.Printf("[INFO] start building search index for %d sites", len(sites))
+	startTime := time.Now()
+
+	for _, siteID := range sites {
+		err := search.IndexSite(ctx, siteID, maxBatchSize, s.SearchService, s.Engine)
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Printf("[INFO] finish building search index in %v", time.Since(startTime))
+	return nil
+}
+
 // Close store service
 func (s *DataStore) Close() error {
 	errs := new(multierror.Error)
@@ -932,6 +1000,9 @@ func (s *DataStore) Close() error {
 	}
 	if s.TitleExtractor != nil {
 		errs = multierror.Append(errs, s.TitleExtractor.Close())
+	}
+	if s.SearchService != nil {
+		errs = multierror.Append(errs, s.SearchService.Close())
 	}
 	errs = multierror.Append(errs, s.Engine.Close())
 	return errs.ErrorOrNil()
@@ -1029,4 +1100,14 @@ func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 		return "", fmt.Errorf("site %s disabled", siteID)
 	}
 	return secret, nil
+}
+
+func (s *DataStore) indexCommentForSearch(comment store.Comment) error {
+	if s.SearchService != nil {
+		err := s.SearchService.Index(comment)
+		if err != nil {
+			return fmt.Errorf("can't index comment %s: %w", comment.ID, err)
+		}
+	}
+	return nil
 }

@@ -10,6 +10,10 @@ github.com/Depado/bfchroma/v2
 # github.com/PuerkitoBio/goquery v1.8.1
 ## explicit; go 1.13
 github.com/PuerkitoBio/goquery
+# github.com/RoaringBitmap/roaring v0.9.4
+## explicit; go 1.14
+github.com/RoaringBitmap/roaring
+github.com/RoaringBitmap/roaring/internal
 # github.com/ajg/form v1.5.1
 ## explicit
 github.com/ajg/form
@@ -26,6 +30,111 @@ github.com/andybalholm/cascadia
 ## explicit
 github.com/aymerick/douceur/css
 github.com/aymerick/douceur/parser
+# github.com/bits-and-blooms/bitset v1.2.0
+## explicit; go 1.14
+github.com/bits-and-blooms/bitset
+# github.com/blevesearch/bleve/v2 v2.3.7
+## explicit; go 1.19
+github.com/blevesearch/bleve/v2
+github.com/blevesearch/bleve/v2/analysis
+github.com/blevesearch/bleve/v2/analysis/analyzer/custom
+github.com/blevesearch/bleve/v2/analysis/analyzer/keyword
+github.com/blevesearch/bleve/v2/analysis/analyzer/standard
+github.com/blevesearch/bleve/v2/analysis/datetime/flexible
+github.com/blevesearch/bleve/v2/analysis/datetime/optional
+github.com/blevesearch/bleve/v2/analysis/lang/ar
+github.com/blevesearch/bleve/v2/analysis/lang/de
+github.com/blevesearch/bleve/v2/analysis/lang/en
+github.com/blevesearch/bleve/v2/analysis/lang/es
+github.com/blevesearch/bleve/v2/analysis/lang/fi
+github.com/blevesearch/bleve/v2/analysis/lang/fr
+github.com/blevesearch/bleve/v2/analysis/lang/it
+github.com/blevesearch/bleve/v2/analysis/lang/ru
+github.com/blevesearch/bleve/v2/analysis/token/elision
+github.com/blevesearch/bleve/v2/analysis/token/lowercase
+github.com/blevesearch/bleve/v2/analysis/token/porter
+github.com/blevesearch/bleve/v2/analysis/token/stop
+github.com/blevesearch/bleve/v2/analysis/token/unicodenorm
+github.com/blevesearch/bleve/v2/analysis/tokenizer/single
+github.com/blevesearch/bleve/v2/analysis/tokenizer/unicode
+github.com/blevesearch/bleve/v2/document
+github.com/blevesearch/bleve/v2/geo
+github.com/blevesearch/bleve/v2/index/scorch
+github.com/blevesearch/bleve/v2/index/scorch/mergeplan
+github.com/blevesearch/bleve/v2/index/upsidedown
+github.com/blevesearch/bleve/v2/index/upsidedown/store/boltdb
+github.com/blevesearch/bleve/v2/index/upsidedown/store/gtreap
+github.com/blevesearch/bleve/v2/mapping
+github.com/blevesearch/bleve/v2/numeric
+github.com/blevesearch/bleve/v2/registry
+github.com/blevesearch/bleve/v2/search
+github.com/blevesearch/bleve/v2/search/collector
+github.com/blevesearch/bleve/v2/search/facet
+github.com/blevesearch/bleve/v2/search/highlight
+github.com/blevesearch/bleve/v2/search/highlight/format/html
+github.com/blevesearch/bleve/v2/search/highlight/fragmenter/simple
+github.com/blevesearch/bleve/v2/search/highlight/highlighter/html
+github.com/blevesearch/bleve/v2/search/highlight/highlighter/simple
+github.com/blevesearch/bleve/v2/search/query
+github.com/blevesearch/bleve/v2/search/scorer
+github.com/blevesearch/bleve/v2/search/searcher
+github.com/blevesearch/bleve/v2/size
+# github.com/blevesearch/bleve_index_api v1.0.5
+## explicit; go 1.18
+github.com/blevesearch/bleve_index_api
+# github.com/blevesearch/geo v0.1.17
+## explicit; go 1.18
+github.com/blevesearch/geo/geojson
+github.com/blevesearch/geo/s2
+# github.com/blevesearch/go-porterstemmer v1.0.3
+## explicit; go 1.13
+github.com/blevesearch/go-porterstemmer
+# github.com/blevesearch/gtreap v0.1.1
+## explicit; go 1.13
+github.com/blevesearch/gtreap
+# github.com/blevesearch/mmap-go v1.0.4
+## explicit; go 1.13
+github.com/blevesearch/mmap-go
+# github.com/blevesearch/scorch_segment_api/v2 v2.1.4
+## explicit; go 1.18
+github.com/blevesearch/scorch_segment_api/v2
+# github.com/blevesearch/segment v0.9.1
+## explicit; go 1.18
+github.com/blevesearch/segment
+# github.com/blevesearch/snowballstem v0.9.0
+## explicit; go 1.13
+github.com/blevesearch/snowballstem
+github.com/blevesearch/snowballstem/english
+github.com/blevesearch/snowballstem/finnish
+github.com/blevesearch/snowballstem/french
+github.com/blevesearch/snowballstem/german
+github.com/blevesearch/snowballstem/italian
+github.com/blevesearch/snowballstem/russian
+github.com/blevesearch/snowballstem/spanish
+# github.com/blevesearch/upsidedown_store_api v1.0.2
+## explicit; go 1.18
+github.com/blevesearch/upsidedown_store_api
+# github.com/blevesearch/vellum v1.0.9
+## explicit; go 1.18
+github.com/blevesearch/vellum
+github.com/blevesearch/vellum/levenshtein
+github.com/blevesearch/vellum/regexp
+github.com/blevesearch/vellum/utf8
+# github.com/blevesearch/zapx/v11 v11.3.7
+## explicit; go 1.18
+github.com/blevesearch/zapx/v11
+# github.com/blevesearch/zapx/v12 v12.3.7
+## explicit; go 1.18
+github.com/blevesearch/zapx/v12
+# github.com/blevesearch/zapx/v13 v13.3.7
+## explicit; go 1.18
+github.com/blevesearch/zapx/v13
+# github.com/blevesearch/zapx/v14 v14.3.7
+## explicit; go 1.18
+github.com/blevesearch/zapx/v14
+# github.com/blevesearch/zapx/v15 v15.3.9
+## explicit; go 1.18
+github.com/blevesearch/zapx/v15
 # github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -122,6 +231,12 @@ github.com/go-redis/redis/v8/internal/util
 # github.com/golang-jwt/jwt v3.2.2+incompatible
 ## explicit
 github.com/golang-jwt/jwt
+# github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
+## explicit; go 1.12
+github.com/golang/geo/r1
+github.com/golang/geo/r2
+github.com/golang/geo/r3
+github.com/golang/geo/s1
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
@@ -153,6 +268,9 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/jessevdk/go-flags v1.5.0
 ## explicit; go 1.15
 github.com/jessevdk/go-flags
+# github.com/json-iterator/go v0.0.0-20171115153421-f7279a603ede
+## explicit
+github.com/json-iterator/go
 # github.com/klauspost/compress v1.15.0
 ## explicit; go 1.15
 github.com/klauspost/compress
@@ -171,6 +289,9 @@ github.com/microcosm-cc/bluemonday/css
 # github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
 ## explicit
 github.com/montanaflynn/stats
+# github.com/mschoch/smat v0.2.0
+## explicit; go 1.13
+github.com/mschoch/smat
 # github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
 ## explicit
 github.com/nullrocks/identicon
