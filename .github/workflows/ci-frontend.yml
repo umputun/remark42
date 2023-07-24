@@ -165,10 +165,11 @@ jobs:
           run_install: false
 
       - name: Check bundle size
-        uses: andresz1/size-limit-action@v1
+        uses: andresz1/size-limit-action@dd31dce7dcc72a041fd3e49abf0502b13fc4ce05
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend/apps/remark42
+          package_manager: pnpm
 
   test:
     name: Tests & Coverage
