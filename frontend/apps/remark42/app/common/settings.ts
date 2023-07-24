@@ -18,6 +18,7 @@ function includes<T extends U, U>(coll: ReadonlyArray<T>, el: U): el is T {
 export const rawParams = parseQuery();
 export const maxShownComments = parseNumber(rawParams.max_shown_comments) ?? MAX_SHOWN_ROOT_COMMENTS;
 export const isEmailSubscription = rawParams.show_email_subscription !== 'false';
+export const isTelegramSubscription = rawParams.show_telegram_subscription !== 'false';
 export const isRssSubscription =
   rawParams.show_rss_subscription === undefined || rawParams.show_rss_subscription !== 'false';
 export const theme = (rawParams.theme = includes(THEMES, rawParams.theme) ? rawParams.theme : THEMES[0]);

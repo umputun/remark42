@@ -14,6 +14,7 @@ import { TextareaAutosize } from 'components/textarea-autosize';
 import { Auth } from 'components/auth';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
+import { SubscribeByTelegram } from './__subscribe-by-telegram';
 import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import { MarkdownToolbar } from './markdown-toolbar';
@@ -376,9 +377,11 @@ export class CommentForm extends Component<Props, State> {
   renderSubscribeButtons = () => {
     const isEmailNotifications = StaticStore.config.email_notifications;
     const isEmailSubscription = isEmailNotifications && settings.isEmailSubscription;
-    const { isRssSubscription } = settings;
+    const isTelegramNotificationsEnabledOnBackend = StaticStore.config.telegram_notifications;
+    const isTelegramSubscription = isTelegramNotificationsEnabledOnBackend && settings.isTelegramSubscription;
 
-    if (!isRssSubscription && !isEmailSubscription) {
+    const { isRssSubscription } = settings;
+    if (!isRssSubscription && !isEmailSubscription && !isTelegramSubscription) {
       return null;
     }
 
@@ -393,6 +396,13 @@ export class CommentForm extends Component<Props, State> {
           </>
         )}
         {isEmailSubscription && <SubscribeByEmail />}
+        {(isRssSubscription && isTelegramSubscription) || (isEmailSubscription && isTelegramSubscription) ? (
+          <>
+            {' '}
+            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
+          </>
+        ) : null}
+        {isTelegramSubscription && <SubscribeByTelegram />}
       </>
     );
   };

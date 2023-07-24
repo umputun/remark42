@@ -1,0 +1,15 @@
+.telegram {
+  margin-bottom: 0;
+}
+
+.telegramQR {
+  background-color: rgb(var(--white-color));
+  box-sizing: border-box;
+  display: block;
+  margin: 12px auto;
+  padding: 10px;
+}
+
+.button {
+  width: 100%;
+}
