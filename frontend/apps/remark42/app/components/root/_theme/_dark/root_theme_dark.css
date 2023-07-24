@@ -1,6 +1,22 @@
 .root_theme_dark {
   color: var(--color20);
 
+  & a {
+    color: var(--color20);
+  }
+
+  & a:hover {
+    color: var(--color6);
+  }
+
+  & a:visited {
+    color: var(--color39);
+  }
+
+  & a:active {
+    color: var(--color39);
+  }
+
   & .root__copyright {
     color: var(--color1);
   }

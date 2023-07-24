@@ -28,6 +28,10 @@ type RemarkConfig = {
   // if you set this param in 'false' you will get notifications email notifications as admin but your users
   // won't have interface for subscription
   show_email_subscription?: boolean;
+  // Optional, 'true' by default. Enables telegram subscription feature in interface when enable it from backend side,
+  // if you set this param in 'false' you will get telegram notifications as admin but your users
+  // won't have interface for subscription
+  show_telegram_subscription?: boolean;
   // Optional, 'true' by default. Enables RSS subscription feature in interface.
   show_rss_subscription?: boolean;
   // Optional, 'false' by default. Overrides the parameter from the backend minimized UI with basic info only.

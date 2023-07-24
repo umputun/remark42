@@ -79,6 +79,34 @@ export const uploadImage = (image: File): Promise<Image> => {
 /* Subscription methods */
 
 /**
+ * Start process of telegram subscription to updates
+ */
+export const telegramSubscribe = (): Promise<{
+  bot: string;
+  token: string;
+}> => apiFetcher.get('/telegram/subscribe');
+
+/**
+ * Start process of telegram subscription to updates
+ * Example of error response: {"code":0,"details":"can't set telegram for user","error":"request is not verified yet"}
+ * Example of success response: {"address":"223211010","updated":true}
+ */
+export const telegramCurrentSubscribtion = ({
+  token,
+}: {
+  token: string;
+}): Promise<{
+  address: string;
+  updated: boolean;
+}> => apiFetcher.get('/telegram/subscribe', { tkn: token });
+
+/**
+ * Start process of telegram subscription to updates
+ * Example of success response: {"deleted":true}
+ */
+export const telegramUnsubcribe = (): Promise<{ deleted: boolean }> => apiFetcher.delete('/telegram');
+
+/**
  * Start process of email subscription to updates
  * @param emailAddress email for subscription
  */

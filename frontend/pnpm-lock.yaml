@@ -31,6 +31,7 @@ importers:
       '@swc/jest': ^0.2.21
       '@testing-library/jest-dom': ^5.16.4
       '@testing-library/preact': ^3.2.2
+      '@testing-library/preact-hooks': ^1.1.0
       '@types/enzyme': ^3.10.12
       '@types/eslint': ^8.4.5
       '@types/jest': ^28.1.4
@@ -145,6 +146,7 @@ importers:
       '@swc/jest': 0.2.21_@swc+core@1.2.205
       '@testing-library/jest-dom': 5.16.4
       '@testing-library/preact': 3.2.2_preact@10.6.2
+      '@testing-library/preact-hooks': 1.1.0_3jy4ehlhhntshptwdxmaawp6ue
       '@types/enzyme': 3.10.12
       '@types/eslint': 8.4.5
       '@types/jest': 28.1.5
@@ -2621,6 +2623,16 @@ packages:
       dom-accessibility-api: 0.5.14
       lodash: 4.17.21
       redent: 3.0.0
+    dev: true
+
+  /@testing-library/preact-hooks/1.1.0_3jy4ehlhhntshptwdxmaawp6ue:
+    resolution: {integrity: sha512-+JIor+NsOHkK3oIrwMDGKGHXTN0JJi462dBJlj4FNbGaDPTlctE6eu2ranWQirh7/FJMkWfzQCP+tk7jmY8ZrQ==}
+    peerDependencies:
+      '@testing-library/preact': ^2.0.0
+      preact: ^10.4.8
+    dependencies:
+      '@testing-library/preact': 3.2.2_preact@10.6.2
+      preact: 10.6.2
     dev: true
 
   /@testing-library/preact/3.2.2_preact@10.6.2:

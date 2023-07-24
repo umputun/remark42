@@ -1,0 +1,15 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  padding: 8px;
+  width: 250px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.preloader {
+  margin: 0 auto;
+  filter: invert(1);
+}

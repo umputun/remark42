@@ -59,6 +59,7 @@
     "@swc/jest": "^0.2.21",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/preact": "^3.2.2",
+    "@testing-library/preact-hooks": "^1.1.0",
     "@types/enzyme": "^3.10.12",
     "@types/eslint": "^8.4.5",
     "@types/jest": "^28.1.4",

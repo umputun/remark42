@@ -4,9 +4,9 @@ import { useState, useRef } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
 
-import { BASE_URL, API_BASE } from 'common/constants.config';
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
+import { TelegramLink } from 'components/telegram/telegram-link';
 import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Spinner } from 'components/spinner/spinner';
@@ -234,33 +234,12 @@ export function Auth() {
                     <CrossIcon />
                   </button>
                 </div>
-                <p className={clsx('telegram', styles.telegram)}>
-                  {intl.formatMessage(messages.telegramMessage1)}{' '}
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={`https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
-                  >
-                    {intl.formatMessage(messages.telegramLink)}
-                  </a>
-                  {window.screen.width >= 768 && ` ${intl.formatMessage(messages.telegramOptionalQR)}`}{' '}
-                  {intl.formatMessage(messages.telegramMessage2)}
-                  <br />
-                  {intl.formatMessage(messages.telegramMessage3)}
-                </p>
-                {window.screen.width >= 768 && (
-                  <img
-                    src={`${BASE_URL}${API_BASE}/qr/telegram?url=https://t.me/${telegramParamsRef.current.bot}/?start=${telegramParamsRef.current.token}`}
-                    height="200"
-                    width="200"
-                    className={clsx('telegram-qr', styles.telegramQR)}
-                    alt={intl.formatMessage(messages.telegramQR)}
-                  />
-                )}
-                {errorMessage && <div className={clsx('auth-error', styles.error)}>{errorMessage}</div>}
-                <Button key="submit" className="auth-submit" type="submit" onClick={handleTelegramSubmit}>
-                  {intl.formatMessage(messages.telegramCheck)}
-                </Button>
+                <TelegramLink
+                  onSubmit={handleTelegramSubmit}
+                  errorMessage={errorMessage}
+                  bot={telegramParamsRef.current.bot}
+                  token={telegramParamsRef.current.token}
+                />
               </>
             ) : view === 'token' ? (
               <>
