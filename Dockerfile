@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM umputun/baseimage:buildgo-v1.11.0 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -81,7 +81,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM umputun/baseimage:app-v1.9.2
+FROM umputun/baseimage:app-v1.11.0
 
 ARG GITHUB_SHA
 
