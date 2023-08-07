@@ -413,7 +413,6 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, 0, len(res[0].VotedIPs), "vote ips hidden")
 
 	// random +1/-1 result should be [0..2]
-	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {

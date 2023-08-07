@@ -821,8 +821,6 @@ func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Cont
 	ctx, cancel := context.WithCancel(context.Background())
 	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
-
-	rand.Seed(time.Now().UnixNano())
 	return app, ctx, cancel
 }
 
