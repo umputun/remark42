@@ -67,7 +67,6 @@ func (b *bitReaderBytes) fillFast() {
 
 	// 2 bounds checks.
 	v := b.in[b.off-4 : b.off]
-	v = v[:4]
 	low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 	b.value |= uint64(low) << (b.bitsRead - 32)
 	b.bitsRead -= 32
@@ -88,8 +87,7 @@ func (b *bitReaderBytes) fill() {
 		return
 	}
 	if b.off > 4 {
-		v := b.in[b.off-4:]
-		v = v[:4]
+		v := b.in[b.off-4 : b.off]
 		low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 		b.value |= uint64(low) << (b.bitsRead - 32)
 		b.bitsRead -= 32
@@ -179,7 +177,6 @@ func (b *bitReaderShifted) fillFast() {
 
 	// 2 bounds checks.
 	v := b.in[b.off-4 : b.off]
-	v = v[:4]
 	low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 	b.value |= uint64(low) << ((b.bitsRead - 32) & 63)
 	b.bitsRead -= 32
@@ -200,8 +197,7 @@ func (b *bitReaderShifted) fill() {
 		return
 	}
 	if b.off > 4 {
-		v := b.in[b.off-4:]
-		v = v[:4]
+		v := b.in[b.off-4 : b.off]
 		low := (uint32(v[0])) | (uint32(v[1]) << 8) | (uint32(v[2]) << 16) | (uint32(v[3]) << 24)
 		b.value |= uint64(low) << ((b.bitsRead - 32) & 63)
 		b.bitsRead -= 32
@@ -213,11 +209,6 @@ func (b *bitReaderShifted) fill() {
 		b.bitsRead -= 8
 		b.off--
 	}
-}
-
-// finished returns true if all bits have been read from the bit stream.
-func (b *bitReaderShifted) finished() bool {
-	return b.off == 0 && b.bitsRead >= 64
 }
 
 func (b *bitReaderShifted) remaining() uint {

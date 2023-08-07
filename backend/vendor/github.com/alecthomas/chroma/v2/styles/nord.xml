@@ -15,8 +15,10 @@
   <entry type="NameFunction" style="#88c0d0"/>
   <entry type="NameLabel" style="#8fbcbb"/>
   <entry type="NameNamespace" style="#8fbcbb"/>
+  <entry type="NameOther" style="#d8dee9"/>
   <entry type="NameTag" style="#81a1c1"/>
   <entry type="NameVariable" style="#d8dee9"/>
+  <entry type="NameProperty" style="#8fbcbb"/>
   <entry type="LiteralString" style="#a3be8c"/>
   <entry type="LiteralStringDoc" style="#616e87"/>
   <entry type="LiteralStringEscape" style="#ebcb8b"/>

@@ -620,11 +620,7 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 	if err = createNumericalIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
 		return err
 	}
-	if err = createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
-		return err
-	}
-
-	return nil
+	return createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel)
 }
 
 func (b *Bucket) checkFirstWrite(ctx context.Context) error {
@@ -654,6 +650,8 @@ func (b *Bucket) parseUploadOptions(opts ...*options.UploadOptions) (*Upload, er
 		uo.Registry = bson.DefaultRegistry
 	}
 	if uo.Metadata != nil {
+		// TODO(GODRIVER-2726): Replace with marshal() and unmarshal() once the
+		// TODO gridfs package is merged into the mongo package.
 		raw, err := bson.MarshalWithRegistry(uo.Registry, uo.Metadata)
 		if err != nil {
 			return nil, err

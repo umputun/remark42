@@ -32,7 +32,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.17"
+          go-version: "1.20"
 
       - name: test and build backend
         run: |

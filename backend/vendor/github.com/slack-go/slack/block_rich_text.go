@@ -294,7 +294,7 @@ func NewRichTextSectionLinkElement(url, text string, style *RichTextSectionTextS
 type RichTextSectionTeamElement struct {
 	Type   RichTextSectionElementType `json:"type"`
 	TeamID string                     `json:"team_id"`
-	Style  *RichTextSectionTextStyle  `json:"style.omitempty"`
+	Style  *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionTeamElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -327,17 +327,17 @@ func NewRichTextSectionUserGroupElement(usergroupID string) *RichTextSectionUser
 
 type RichTextSectionDateElement struct {
 	Type      RichTextSectionElementType `json:"type"`
-	Timestamp string                     `json:"timestamp"`
+	Timestamp JSONTime                   `json:"timestamp"`
 }
 
 func (r RichTextSectionDateElement) RichTextSectionElementType() RichTextSectionElementType {
 	return r.Type
 }
 
-func NewRichTextSectionDateElement(timestamp string) *RichTextSectionDateElement {
+func NewRichTextSectionDateElement(timestamp int64) *RichTextSectionDateElement {
 	return &RichTextSectionDateElement{
 		Type:      RTSEDate,
-		Timestamp: timestamp,
+		Timestamp: JSONTime(timestamp),
 	}
 }
 

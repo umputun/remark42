@@ -37,7 +37,7 @@ translators for Pygments lexers and styles.
 
 Prefix | Language
 :----: | --------
-A | ABAP, ABNF, ActionScript, ActionScript 3, Ada, Angular2, ANTLR, ApacheConf, APL, AppleScript, Arduino, Awk
+A | ABAP, ABNF, ActionScript, ActionScript 3, Ada, Angular2, ANTLR, ApacheConf, APL, AppleScript, ArangoDB AQL, Arduino, Awk
 B | Ballerina, Bash, Batchfile, BibTeX, Bicep, BlitzBasic, BNF, Brainfuck, BQN
 C | C, C#, C++, Caddyfile, Caddyfile Directives, Cap'n Proto, Cassandra CQL, Ceylon, CFEngine3, cfstatement, ChaiScript, Chapel, Cheetah, Clojure, CMake, COBOL, CoffeeScript, Common Lisp, Coq, Crystal, CSS, Cython
 D | D, Dart, Diff, Django/Jinja, Docker, DTD, Dylan
@@ -55,7 +55,7 @@ O | Objective-C, OCaml, Octave, OnesEnterprise, OpenEdge ABL, OpenSCAD, Org Mode
 P | PacmanConf, Perl, PHP, PHTML, Pig, PkgConfig, PL/pgSQL, plaintext, Pony, PostgreSQL SQL dialect, PostScript, POVRay, PowerShell, Prolog, PromQL, Properties, Protocol Buffer, PSL, Puppet, Python 2, Python
 Q | QBasic
 R | R, Racket, Ragel, Raku, react, ReasonML, reg, reStructuredText, Rexx, Ruby, Rust
-S | SAS, Sass, Scala, Scheme, Scilab, SCSS, Sed, Smalltalk, Smarty, Snobol, Solidity, SPARQL, SQL, SquidConf, Standard ML, stas, Stylus, Svelte, Swift, SYSTEMD, systemverilog
+S | SAS, Sass, Scala, Scheme, Scilab, SCSS, Sed, Smali, Smalltalk, Smarty, Snobol, Solidity, SPARQL, SQL, SquidConf, Standard ML, stas, Stylus, Svelte, Swift, SYSTEMD, systemverilog
 T | TableGen, TASM, Tcl, Tcsh, Termcap, Terminfo, Terraform, TeX, Thrift, TOML, TradingView, Transact-SQL, Turing, Turtle, Twig, TypeScript, TypoScript, TypoScriptCssData, TypoScriptHtmlData
 V | VB.net, verilog, VHDL, VHS, VimL, vue
 W | WDTE
@@ -281,7 +281,7 @@ for that setup the `chroma` executable can be just symlinked to `~/.lessfilter`.
 
 <a id="markdown-testing-lexers" name="testing-lexers"></a>
 ## Testing lexers
-If you edit some lexers and want to test it, open a shell in `cmd/chromad` and run:
+If you edit some lexers and want to try it, open a shell in `cmd/chromad` and run:
 ```shell
 go run .
 ```
@@ -291,6 +291,7 @@ If you want to run the tests and the lexers, open a shell in the root directory 
 ```shell
 go test ./lexers
 ```
+When updating or adding a lexer, please add tests. See [lexers/README.md](lexers/README.md) for more.
 
 ## What's missing compared to Pygments?
 

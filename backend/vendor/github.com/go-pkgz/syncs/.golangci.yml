@@ -2,7 +2,7 @@ linters-settings:
   govet:
     check-shadowing: true
   golint:
-    min-confidence: 0
+    min-confidence: 0.6
   gocyclo:
     min-complexity: 15
   maligned:
@@ -23,47 +23,61 @@ linters-settings:
       - experimental
     disabled-checks:
       - wrapperFunc
+      - hugeParam
+      - rangeValCopy
 
 linters:
+  disable-all: true
   enable:
     - megacheck
     - revive
     - govet
     - unconvert
-    - megacheck
-    - structcheck
     - gas
-    - gocyclo
-    - dupl
     - misspell
-    - unparam
-    - varcheck
-    - deadcode
+    - unused
     - typecheck
     - ineffassign
-    - varcheck
     - stylecheck
     - gochecknoinits
     - exportloopref
-    - gocritic
     - nakedret
     - gosimple
     - prealloc
+
   fast: false
-  disable-all: true
+
 
 run:
-  output:
-    format: tab
+  #  modules-download-mode: vendor
   skip-dirs:
     - vendor
+  concurrency: 4
 
 issues:
   exclude-rules:
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint
+    - text: "exitAfterDefer:"
+      linters:
+        - gocritic
+    - text: "whyNoLint: include an explanation for nolint directive"
+      linters:
+        - gocritic
+    - text: "go.mongodb.org/mongo-driver/bson/primitive.E"
+      linters:
+        - govet
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
     - text: "at least one file in a package should have a package comment"
       linters:
         - stylecheck
+    - text: "should have a package comment"
+      linters:
+        - revive
+    - text: 'Deferring unsafe method "Close" on type "io.ReadCloser"'
+      linters:
+        - gosec
   exclude-use-default: false

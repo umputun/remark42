@@ -11,38 +11,40 @@
   <rules>
   <!-- NameFunction|TypeName -->
     <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
       <rule pattern="//.*$">
         <token type="CommentSingle"/>
       </rule>
       <rule pattern="/(\\\n)?[*](.|\n)*?[*](\\\n)?/">
         <token type="CommentMultiline"/>
       </rule>
-      <rule pattern="\+|-|\*|/|%|'?&lt;|'?&gt;|'?=|\band\b|\bor\b|_|:">
+      <rule pattern="\+|-|\*|\/|\b%\b|&lt;|&gt;|=|'|\band\b|\bor\b|_|:|!">
         <token type="Operator"/>
       </rule>
-      <rule pattern="[{}(),\[\]]">
+      <rule pattern="[{}(,)\[\]]">
         <token type="Punctuation"/>
+        <push state="root"/>
       </rule>
-      <rule pattern="[+-]?\d*\.\d+">
+      <rule pattern="#">
+        <token type="KeywordPseudo"/>
+        <push state="directive"/>
+      </rule>
+      <rule pattern="\.?\d+">
         <token type="LiteralNumber"/>
       </rule>
       <rule pattern="&quot;">
         <token type="LiteralString"/>
         <push state="string"/>
       </rule>
-      <rule pattern="\.">
-        <token type="Operator"/>
-        <push state="method"/>
-      </rule>
-      <rule pattern="\$\$">
-        <token type="NameFunction"/>
-        <push state="method"/>
-      </rule>
-      <rule pattern="\bdo\b">
-        <token type="KeywordReserved"/>
-        <push state="callmethod"/>
-      </rule>
-      <rule pattern="\b(do|set|if|for|while|quit|catch|return|while)\b">
+      <rule pattern="\b(do|set|if|else|for|while|quit|catch|return|ret|while)\b">
         <token type="Keyword"/>
       </rule>
       <rule pattern="\b(true|false)\b">
@@ -58,11 +60,27 @@
       <rule pattern="\b(Boolean|String|Number|Date)\b">
         <token type="KeywordType"/>
       </rule>
-      <rule pattern="\^?[a-zA-Z][a-zA-Z0-9]*">
-        <token type="Name"/>
+      <rule pattern="(\${0,2}[_a-zA-z]\w*)?(\^[_a-zA-Z]\w*)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="NameClass"/>
+        </bygroups>
       </rule>
-      <rule pattern="\s+">
-        <token type="Text"/>
+      <rule pattern="([_a-zA-z]\w*)(\.[_a-zA-Z]\w*)(\()">
+        <bygroups>
+          <token type="Name"/>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\${0,2}[_a-zA-z]\w*)(\.[_a-zA-Z]\w*)">
+        <bygroups>
+          <token type="Name"/>
+          <token type="NameProperty"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\.?(%|\${0,2})[_a-zA-Z]\w*">
+        <token type="Name"/>
       </rule>
     </state>
     <state name="string">
@@ -83,33 +101,6 @@
         <token type="LiteralString"/>
       </rule>
     </state>
-    <state name="method">
-      <rule pattern="\(">
-        <token type="Punctuation"/>
-        <pop depth="1"/>
-      </rule>
-      <rule pattern="\^[a-zA-Z][a-zA-Z0-9]*">
-        <token type="NameClass"/>
-      </rule>
-      <rule pattern="[a-zA-Z][a-zA-Z0-9]*">
-        <token type="NameFunction"/>
-      </rule>
-    </state>
-    <state name="callmethod">
-      <rule pattern="\(|{">
-        <token type="Punctuation"/>
-        <pop depth="1"/>
-      </rule>
-      <rule pattern="\^[a-zA-Z][a-zA-Z0-9]*">
-        <token type="NameClass"/>
-      </rule>
-      <rule pattern="[a-zA-Z][a-zA-Z0-9]*">
-        <token type="NameFunction"/>
-      </rule>
-      <rule pattern="\s+">
-        <token type="Text"/>
-      </rule>
-    </state>
     <state name="typename">
       <rule pattern="\s+">
         <token type="Text"/>
@@ -117,9 +108,105 @@
       <rule pattern="\b(public|req|private|void)\b">
         <token type="KeywordDeclaration"/>
       </rule>
-      <rule pattern="[a-zA-Z][a-zA-Z0-9]*">
-        <token type="NameClass"/>
+      <rule pattern="([_a-zA-Z]\w*)?(\s+)([_a-zA-Z]\w*)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="Name"/>
+        </bygroups>
         <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="directive">
+      <rule pattern="ACCEPT">
+        <token type="KeywordPseudo"/>
+        <push state="accept-directive"/>
+      </rule>
+      <rule pattern="CLASSDEF">
+        <token type="KeywordPseudo"/>
+        <push state="classdef-directive"/>
+      </rule>
+      <rule pattern="IF|ELSEIF">
+        <token type="KeywordPseudo"/>
+        <push state="if-directive"/>
+      </rule>
+      <rule pattern="PACKAGE">
+        <token type="KeywordPseudo"/>
+        <push state="package-directive"/>
+      </rule>
+      <rule pattern="PROPERTYDEF">
+        <token type="KeywordPseudo"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="INFO|WARN">
+        <token type="KeywordPseudo"/>
+        <push state="warn-directive"/>
+      </rule>
+      <rule pattern="OPTION">
+        <token type="KeywordPseudo"/>
+        <push state="option-directive"/>
+      </rule>
+      <rule pattern="BYPASS|ELSE|END|ENDBYPASS|ENDIF|OPTIMIZE">
+        <token type="KeywordPseudo"/>
+        <push state="other-directive"/>
+      </rule>
+    </state>
+    <state name="accept-directive">
+      <rule pattern=".+$">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="other-directive">
+      <rule pattern=".+$">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="classdef-directive">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="delimiter|extends">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="public">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\w\d]+">
+        <token type="NameClass"/>
+      </rule>
+    </state>
+    <state name="if-directive">
+      <rule pattern=".+$">
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="option-directive">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="ON|OFF">
+        <token type="KeywordConstant"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[\w\d]+">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="package-directive">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="Name"/>
+      </rule>
+      <rule>
+        <include state="root"/>
       </rule>
     </state>
   </rules>

@@ -9,8 +9,12 @@ const (
 	METOverflow       MessageElementType = "overflow"
 	METDatepicker     MessageElementType = "datepicker"
 	METTimepicker     MessageElementType = "timepicker"
+	METDatetimepicker MessageElementType = "datetimepicker"
 	METPlainTextInput MessageElementType = "plain_text_input"
 	METRadioButtons   MessageElementType = "radio_buttons"
+	METEmailTextInput MessageElementType = "email_text_input"
+	METURLTextInput   MessageElementType = "url_text_input"
+	METNumber         MessageElementType = "number_input"
 
 	MixedElementImage MixedElementType = "mixed_image"
 	MixedElementText  MixedElementType = "mixed_text"
@@ -389,6 +393,87 @@ func NewTimePickerBlockElement(actionID string) *TimePickerBlockElement {
 	}
 }
 
+// DateTimePickerBlockElement defines an element that allows the selection of both
+// a date and a time of day formatted as a UNIX timestamp.
+// More Information: https://api.slack.com/reference/messaging/block-elements#datetimepicker
+type DateTimePickerBlockElement struct {
+	Type            MessageElementType       `json:"type"`
+	ActionID        string                   `json:"action_id,omitempty"`
+	InitialDateTime int64                    `json:"initial_date_time,omitempty"`
+	Confirm         *ConfirmationBlockObject `json:"confirm,omitempty"`
+}
+
+// ElementType returns the type of the Element
+func (s DateTimePickerBlockElement) ElementType() MessageElementType {
+	return s.Type
+}
+
+// NewDatePickerBlockElement returns an instance of a datetime picker element
+func NewDateTimePickerBlockElement(actionID string) *DateTimePickerBlockElement {
+	return &DateTimePickerBlockElement{
+		Type:     METDatetimepicker,
+		ActionID: actionID,
+	}
+}
+
+// EmailTextInputBlockElement creates a field where a user can enter email
+// data.
+// email-text-input elements are currently only available in modals.
+//
+// More Information: https://api.slack.com/reference/block-kit/block-elements#email
+type EmailTextInputBlockElement struct {
+	Type                 MessageElementType    `json:"type"`
+	ActionID             string                `json:"action_id,omitempty"`
+	Placeholder          *TextBlockObject      `json:"placeholder,omitempty"`
+	InitialValue         string                `json:"initial_value,omitempty"`
+	DispatchActionConfig *DispatchActionConfig `json:"dispatch_action_config,omitempty"`
+	FocusOnLoad          bool                  `json:"focus_on_load,omitempty"`
+}
+
+// ElementType returns the type of the Element
+func (s EmailTextInputBlockElement) ElementType() MessageElementType {
+	return s.Type
+}
+
+// NewEmailTextInputBlockElement returns an instance of a plain-text input
+// element
+func NewEmailTextInputBlockElement(placeholder *TextBlockObject, actionID string) *EmailTextInputBlockElement {
+	return &EmailTextInputBlockElement{
+		Type:        METEmailTextInput,
+		ActionID:    actionID,
+		Placeholder: placeholder,
+	}
+}
+
+// URLTextInputBlockElement creates a field where a user can enter url data.
+//
+// url-text-input elements are currently only available in modals.
+//
+// More Information: https://api.slack.com/reference/block-kit/block-elements#url
+type URLTextInputBlockElement struct {
+	Type                 MessageElementType    `json:"type"`
+	ActionID             string                `json:"action_id,omitempty"`
+	Placeholder          *TextBlockObject      `json:"placeholder,omitempty"`
+	InitialValue         string                `json:"initial_value,omitempty"`
+	DispatchActionConfig *DispatchActionConfig `json:"dispatch_action_config,omitempty"`
+	FocusOnLoad          bool                  `json:"focus_on_load,omitempty"`
+}
+
+// ElementType returns the type of the Element
+func (s URLTextInputBlockElement) ElementType() MessageElementType {
+	return s.Type
+}
+
+// NewURLTextInputBlockElement returns an instance of a plain-text input
+// element
+func NewURLTextInputBlockElement(placeholder *TextBlockObject, actionID string) *URLTextInputBlockElement {
+	return &URLTextInputBlockElement{
+		Type:        METURLTextInput,
+		ActionID:    actionID,
+		Placeholder: placeholder,
+	}
+}
+
 // PlainTextInputBlockElement creates a field where a user can enter freeform
 // data.
 // Plain-text input elements are currently only available in modals.
@@ -473,5 +558,36 @@ func NewRadioButtonsBlockElement(actionID string, options ...*OptionBlockObject)
 		Type:     METRadioButtons,
 		ActionID: actionID,
 		Options:  options,
+	}
+}
+
+// NumberInputBlockElement creates a field where a user can enter number
+// data.
+// Number input elements are currently only available in modals.
+//
+// More Information: https://api.slack.com/reference/block-kit/block-elements#number
+type NumberInputBlockElement struct {
+	Type                 MessageElementType    `json:"type"`
+	IsDecimalAllowed     bool                  `json:"is_decimal_allowed"`
+	ActionID             string                `json:"action_id,omitempty"`
+	Placeholder          *TextBlockObject      `json:"placeholder,omitempty"`
+	InitialValue         string                `json:"initial_value,omitempty"`
+	MinValue             string                `json:"min_value,omitempty"`
+	MaxValue             string                `json:"max_value,omitempty"`
+	DispatchActionConfig *DispatchActionConfig `json:"dispatch_action_config,omitempty"`
+}
+
+// ElementType returns the type of the Element
+func (s NumberInputBlockElement) ElementType() MessageElementType {
+	return s.Type
+}
+
+// NewNumberInputBlockElement returns an instance of a number input element
+func NewNumberInputBlockElement(placeholder *TextBlockObject, actionID string, isDecimalAllowed bool) *NumberInputBlockElement {
+	return &NumberInputBlockElement{
+		Type:             METNumber,
+		ActionID:         actionID,
+		Placeholder:      placeholder,
+		IsDecimalAllowed: isDecimalAllowed,
 	}
 }
