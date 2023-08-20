@@ -325,8 +325,8 @@ func TestRest_FindUserView(t *testing.T) {
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
-	assert.Equal(t, "dev", comments.Comments[0].User.ID)
-	assert.Equal(t, "dev", comments.Comments[1].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[0].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[1].User.ID)
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.Equal(t, "", comments.Comments[1].Text)
 
@@ -440,7 +440,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	assert.Equal(t, http.StatusOK, code, "noting for user blah")
 	assert.Equal(t, `{"comments":[],"count":0}`+"\n", comments)
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -459,7 +459,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	}
 
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev&skip=1&limit=2")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev&skip=1&limit=2")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -486,7 +486,7 @@ func TestRest_UserInfo(t *testing.T) {
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "http://example.com/pic.png",
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
 

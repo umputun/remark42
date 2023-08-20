@@ -743,9 +743,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "provider1_user1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "provider1_user2"}}
 
 	_, err := srv.DataService.Create(c1)
 	assert.NoError(t, err)
@@ -768,13 +768,13 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 		SessionOnly: true,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  "remark42",
-			Id:        "1234567",
+			Id:        "provider1_1234567",
 			Issuer:    "remark42",
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 		},
 		User: &token.User{
-			ID: "user1",
+			ID: "provider1_user1",
 			Attributes: map[string]interface{}{
 				"delete_me": true,
 			},

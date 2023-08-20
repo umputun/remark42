@@ -612,7 +612,7 @@ func TestServerAuthHooks(t *testing.T) {
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 		User: &token.User{
-			ID:   "dev",
+			ID:   "github_dev",
 			Name: "developer one",
 		},
 	}
@@ -651,14 +651,14 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
-	// block user dev as admin
+	// block user github_dev as admin
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), http.NoBody)
+		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", port), http.NoBody)
 	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "user github_dev blocked")
 	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())

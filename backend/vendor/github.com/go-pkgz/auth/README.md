@@ -464,15 +464,27 @@ Authentication handled by external providers. You should setup oauth2 for all (o
 2.  Choose the new project from the top right project dropdown (only if another project is selected)
 3.  In the project Dashboard center pane, choose **"API Manager"**
 4.  In the left Nav pane, choose **"Credentials"**
-5.  In the center pane, choose **"OAuth consent screen"** tab. Fill in **"Product name shown to users"** and hit save.
-6.  In the center pane, choose **"Credentials"** tab.
-    * Open the **"New credentials"** drop down
-    * Choose **"OAuth client ID"**
-    * Choose **"Web application"**
-    * Application name is freeform, choose something appropriate
-    * Authorized origins is your domain ex: `https://example.mysite.com`
-    * Authorized redirect URIs is the location of oauth2/callback constructed as domain + `/auth/google/callback`, ex: `https://example.mysite.com/auth/google/callback`
-    * Choose **"Create"**
+5. In the center pane, choose the **"OAuth consent screen"** tab.
+  * Select "**External**" and click "Create"
+  * Fill in **"App name"** and select **User support email**
+  * Upload a logo, if you want to
+  * In the **App Domain** section:
+    * **Application home page** - your site URL, e.g., `https://mysite.com`
+    * **Application privacy policy link** - `/web/privacy.html` of your Remark42 installation, e.g. `https://remark42.mysite.com/web/privacy.html` (please check that it works)
+    * **Terms of service** - leave empty
+  * **Authorized domains** - your site domain, e.g., `mysite.com`
+  * **Developer contact information** - add your email, and then click **Save and continue**
+  * On the **Scopes** tab, just click **Save and continue**
+  * On the **Test users**, add your email, then click **Save and continue**
+  * Before going to the next step, set the app to "Production" and send it to verification
+6. In the center pane, choose the **"Credentials"** tab
+   * Open the **"Create credentials"** drop-down
+   * Choose **"OAuth client ID"**
+   * Choose **"Web application"**
+   * Application **Name** is freeform; choose something appropriate, like "Comments on mysite.com"
+   * **Authorized JavaScript Origins** should be your domain, e.g., `https://remark42.mysite.com`
+   * **Authorized redirect URIs** is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
+   * Click **"Create"**
 7.  Take note of the **Client ID** and **Client Secret**
 
 _instructions for google oauth2 setup borrowed from [oauth2_proxy](https://github.com/bitly/oauth2_proxy)_

@@ -68,8 +68,8 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.21.0
-## explicit; go 1.18
+# github.com/go-pkgz/auth v1.21.1-0.20230820223834-cea049c06aa5
+## explicit; go 1.20
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
 github.com/go-pkgz/auth/logger
@@ -196,8 +196,8 @@ github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
 github.com/slack-go/slack/internal/timex
 github.com/slack-go/slack/slackutilsx
-# github.com/stretchr/testify v1.8.2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/xdg-go/pbkdf2 v1.0.0

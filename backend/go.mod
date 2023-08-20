@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
-	github.com/go-pkgz/auth v1.21.0
+	github.com/go-pkgz/auth v1.21.1-0.20230820223834-cea049c06aa5
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lcw v1.0.2
 	github.com/go-pkgz/lgr v0.11.0
@@ -29,7 +29,7 @@ require (
 	github.com/rs/xid v1.5.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
 	go.uber.org/goleak v1.2.1
 	golang.org/x/crypto v0.12.0

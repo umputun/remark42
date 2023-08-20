@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw"
 	R "github.com/go-pkgz/rest"
@@ -40,13 +41,15 @@ import (
 // To generate a token, enter one of the tokens here into https://jwt.io, change the secret to one you're using in your test
 // ("secret" in case of startupT), and alter the fields you want to be changed.
 
-var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
+var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6InByb3ZpZGVyMV9kZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.dirTS_ahSF6375sdO2iodm2K2UmRTzQNQMFiHuTQCVs`
+
+var dev2Token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6InByb3ZpZGVyMV9kZXYyIiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn19.qsR_PupfjIq7uw0eAuyGV8nsUoMx9v541c9olnRInRQ`
 
 var anonToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImFub255bW91cyB0ZXN0IHVzZXIiLCJpZCI6ImFub255bW91c190ZXN0X3VzZXIiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoiYW5vbkBleGFtcGxlLmNvbSJ9fQ.gAae2WMxZNZE5ebVboptPEyQ7Nk6EQxciNnGJ_mPOuU`
 
 var emailUserToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6Imdvb2RAZXhhbXBsZS5jb20gdGVzdCB1c2VyIiwiaWQiOiJlbWFpbF9mNWRmZTlkMmU2YmQ3NWZjNzRlYTVmYWJmMjczYjQ1YjViYWViMTk1IiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Imdvb2RAZXhhbXBsZS5jb20ifX0.vH2HN1JpuXL8okTJq1A-zGHQ-l2ILcwxvDDEmu2zwks`
 
-var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.FuTTocVtcxr4VjpfIICvU2yOb3su28VkDzj94H9Q3xY`
+var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJwcm92aWRlcjFfZGV2IiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn19.X-lvnHvBz6VfEbVV4f-bjcZuLY5pYtvEansk_TQMrX8`
 
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
@@ -489,6 +492,14 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
+	// add some providers. Needed because we don't allow users with unlisted providers to authenticate
+	providers := []string{"provider1", "anonymous", "github", "email"}
+	for _, p := range providers {
+		srv.Authenticator.AddDirectProvider(p, provider.CredCheckerFunc(func(user, password string) (ok bool, err error) {
+			return true, nil
+		}))
+	}
+
 	for _, h := range srvHook {
 		h(srv)
 	}
@@ -544,6 +555,20 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	req, err := http.NewRequest("GET", url, http.NoBody)
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
+	r, err := client.Do(req)
+	require.NoError(t, err)
+	b, err := io.ReadAll(r.Body)
+	assert.NoError(t, err)
+	require.NoError(t, r.Body.Close())
+	return string(b), r.StatusCode
+}
+
+func getWithDev2Auth(t *testing.T, url string) (body string, code int) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url, http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", dev2Token)
 	r, err := client.Do(req)
 	require.NoError(t, err)
 	b, err := io.ReadAll(r.Body)

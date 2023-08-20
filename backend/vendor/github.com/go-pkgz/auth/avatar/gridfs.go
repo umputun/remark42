@@ -146,7 +146,10 @@ func (gf *GridFS) List() (ids []string, err error) {
 func (gf *GridFS) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), gf.timeout)
 	defer cancel()
-	return gf.client.Disconnect(ctx)
+	if err := gf.client.Disconnect(ctx); err != nil && err != mongo.ErrClientDisconnected {
+		return err
+	}
+	return nil
 }
 
 func (gf *GridFS) String() string {
