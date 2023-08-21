@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
-	github.com/go-pkgz/auth v1.21.1-0.20230820223834-cea049c06aa5
+	github.com/go-pkgz/auth v1.22.0
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lcw v1.0.2
 	github.com/go-pkgz/lgr v0.11.0
