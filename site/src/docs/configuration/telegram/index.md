@@ -39,7 +39,7 @@ For a description of the Bot API, see this page: https://core.telegram.org/bots/
 
 ## Authentication
 
-To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
+To enable Telegram authentication for the users, set the variable `AUTH_TELEGRAM=true`.
 
 ## Notifications
 
@@ -55,12 +55,8 @@ To integrate notifications about any comment on your sites with remark42 with [T
 
 ### Notifications for users
 
-**IMPORTANT: It doesn't work as of 30.01.2022, will be working after [this](https://github.com/umputun/remark42/issues/830) issue resolution** (waits for frontend support).
-
 Enabling Telegram user notifications allows users to sign up for notifications about replies to their messages. To do it, set the variable `NOTIFY_USERS=telegram`.
 
 ### Technical details
 
-Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram.
-
-The only way to improve the formatting of the messages would be to replace unsupported tags with supported ones, [like](https://github.com/umputun/remark42/issues/1202) `h1`-`h6` with `<b>`.
+Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram. To mitigate this, `h1`-`h6` are replaced with supported `<b>` tag.
