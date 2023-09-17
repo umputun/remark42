@@ -180,8 +180,8 @@ export class CommentForm extends Component<Props, State> {
     this.props
       .getPreview(text)
       .then((preview) => this.setState({ preview }))
-      .catch(() => {
-        this.setState({ isErrorShown: true, errorMessage: null });
+      .catch((e) => {
+        this.setState({ isErrorShown: true, errorMessage: extractErrorMessageFromResponse(e, this.props.intl) });
       });
   };
 
