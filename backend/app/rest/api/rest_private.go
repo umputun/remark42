@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec //not used for security
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -150,7 +151,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.dataService.Create(comment)
-	if err == service.ErrRestrictedWordsFound {
+	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
 	}
@@ -219,7 +220,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := s.dataService.EditComment(locator, id, editReq)
-	if err == service.ErrRestrictedWordsFound {
+	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
