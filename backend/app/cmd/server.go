@@ -4,12 +4,14 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -504,7 +506,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
@@ -631,6 +633,41 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		terminated:       make(chan struct{}),
 		authRefreshCache: authRefreshCache,
 	}, nil
+}
+
+// Extract second level domains from s.RemarkURL and s.AllowedHosts.
+// It can be and IP like http//127.0.0.1 in which case we need to use whole IP as domain
+func (s *ServerCommand) getAllowedDomains() []string {
+	rawDomains := s.AllowedHosts
+	rawDomains = append(rawDomains, s.RemarkURL)
+	allowedDomains := []string{}
+	for _, rawURL := range rawDomains {
+		// case of 'self' AllowedHosts, which is not a valid rawURL name
+		if rawURL == "self" || rawURL == "'self'" || rawURL == "\"self\"" {
+			continue
+		}
+		// AllowedHosts usually don't have https:// prefix
+		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+			rawURL = "https://" + rawURL
+		}
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			log.Printf("[WARN] failed to parse URL %s for TitleExtract whitelist: %v", rawURL, err)
+			continue
+		}
+		domain := parsedURL.Hostname()
+		// if domain is not IP and has more than two levels, extract second level domain
+		if net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
+			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
+		}
+
+		if domain != "" && // don't add empty domain as it will allow everything to be extracted
+			!slices.Contains(allowedDomains, domain) && // don't duplicate domains
+			(domain == "localhost" || len(strings.Split(domain, ".")) > 1) { // don't allow single-word domains like "com" except localhost
+			allowedDomains = append(allowedDomains, domain)
+		}
+	}
+	return allowedDomains
 }
 
 // Run all application objects
