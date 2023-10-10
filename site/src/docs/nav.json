@@ -12,11 +12,11 @@
     "section": "Configuration",
     "children": [
       {
-        "title": "Frontend",
+        "title": "Frontend configuration",
         "href": "/configuration/frontend/"
       },
       {
-        "title": "CLI parameters",
+        "title": "Backend configuration",
         "href": "/configuration/parameters/"
       },
       {
