@@ -480,7 +480,7 @@ func TestRest_FindUserComments(t *testing.T) {
 
 func TestRest_FindUserComments_CWE_918(t *testing.T) {
 	ts, srv, teardown := startupT(t)
-	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}) // required for extracting the title, bad URL test
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"radio-t.com"}) // required for extracting the title, bad URL test
 	defer srv.DataService.TitleExtractor.Close()
 	defer teardown()
 
@@ -496,7 +496,8 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 
 	assert.False(t, backendRequestedArbitraryServer)
 	addComment(t, arbitraryURLComment, ts)
-	assert.True(t, backendRequestedArbitraryServer)
+	assert.False(t, backendRequestedArbitraryServer,
+		"no request is expected to the test server as it's not in the list of the allowed domains for the title extractor")
 
 	res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
 	assert.Equal(t, http.StatusOK, code)

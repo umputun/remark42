@@ -111,7 +111,7 @@ func TestAdmin_Title(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second})
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/post1" {
 			_, err := w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))

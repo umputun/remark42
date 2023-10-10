@@ -726,6 +726,27 @@ func Test_splitAtCommas(t *testing.T) {
 	}
 }
 
+func Test_getAllowedDomains(t *testing.T) {
+	tbl := []struct {
+		s              ServerCommand
+		allowedDomains []string
+	}{
+		// correct example, parsed and returned as allowed domain
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "https://remark42.example.org"}}, []string{"example.org"}},
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "http://localhost"}}, []string{"localhost"}},
+		// incorrect URLs, so Hostname is empty but returned list doesn't include empty string as it would allow any domain
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "bad hostname"}}, []string{}},
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "not_a_hostname"}}, []string{}},
+		// test removal of 'self', multiple AllowedHosts and deduplication
+		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, CommonOpts: CommonOpts{RemarkURL: "https://example.org"}}, []string{"example.org", "remark42.com"}},
+	}
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.allowedDomains, tt.s.getAllowedDomains())
+		})
+	}
+}
+
 func chooseRandomUnusedPort() (port int) {
 	for i := 0; i < 10; i++ {
 		port = 40000 + int(rand.Int31n(10000))

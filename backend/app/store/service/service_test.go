@@ -131,7 +131,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
 	defer b.Close()
 
 	postPath := "/post/42"
@@ -195,7 +195,7 @@ func TestService_SetTitle(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
 	defer b.Close()
 	comment := store.Comment{
 		Text:      "text",
@@ -1658,10 +1658,10 @@ func TestService_DoubleClose_Static(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
-	b.Close()
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})}
+	assert.NoError(t, b.Close())
 	// second call should not result in panic or errors
-	b.Close()
+	assert.NoError(t, b.Close())
 }
 
 // makes new boltdb, put two records
