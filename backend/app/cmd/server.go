@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
-	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -646,7 +645,7 @@ func (s *ServerCommand) getAllowedDomains() []string {
 		if rawURL == "self" || rawURL == "'self'" || rawURL == "\"self\"" {
 			continue
 		}
-		// AllowedHosts usually don't have https:// prefix
+		// AllowedHosts usually don't have https:// prefix, so we're adding it just to make parsing below work the same way as for RemarkURL
 		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 			rawURL = "https://" + rawURL
 		}
@@ -656,16 +655,19 @@ func (s *ServerCommand) getAllowedDomains() []string {
 			continue
 		}
 		domain := parsedURL.Hostname()
+
+		if domain == "" || // don't add empty domain as it will allow everything to be extracted
+			(len(strings.Split(domain, ".")) < 2 && // don't allow single-word domains like "com"
+				domain != "localhost") { // localhost is an exceptional single-word domain which is allowed
+			continue
+		}
+
 		// if domain is not IP and has more than two levels, extract second level domain
 		if net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
 			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
 		}
 
-		if domain != "" && // don't add empty domain as it will allow everything to be extracted
-			!slices.Contains(allowedDomains, domain) && // don't duplicate domains
-			(domain == "localhost" || len(strings.Split(domain, ".")) > 1) { // don't allow single-word domains like "com" except localhost
-			allowedDomains = append(allowedDomains, domain)
-		}
+		allowedDomains = append(allowedDomains, domain)
 	}
 	return allowedDomains
 }

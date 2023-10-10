@@ -27,6 +27,7 @@ type TitleExtractor struct {
 
 // NewTitleExtractor makes extractor with cache. If memory cache failed, switching to no-cache
 func NewTitleExtractor(client http.Client, allowedDomains []string) *TitleExtractor {
+	log.Printf("[DEBUG] creating extractor, allowed domains %+v", allowedDomains)
 	res := TitleExtractor{
 		client:         client,
 		allowedDomains: allowedDomains,
@@ -49,7 +50,9 @@ func (t *TitleExtractor) Get(pageURL string) (string, error) {
 	}
 	allowed := false
 	for _, domain := range t.allowedDomains {
-		if strings.HasSuffix(u.Hostname(), domain) {
+		if u.Hostname() == domain ||
+			(strings.HasSuffix(u.Hostname(), domain) && // suffix match, e.g. "example.com" matches "www.example.com"
+				u.Hostname()[len(u.Hostname())-len(domain)-1] == '.') { // but we should not match "notexample.com"
 			allowed = true
 			break
 		}
