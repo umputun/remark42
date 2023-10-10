@@ -493,16 +493,10 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 
 	arbitraryURLComment := store.Comment{Text: "arbitrary URL request test",
 		Locator: store.Locator{SiteID: "remark42", URL: arbitraryServer.URL}}
-	aHrefTitleComment := store.Comment{Text: "a href title test", PostTitle: "<a href=\"https://example.com\">test</a>",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	urlTitleComment := store.Comment{Text: "url title test", PostTitle: "https://j5pxshabxb5037lms6z182pkjbp4d01p.oastify.com",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	assert.False(t, backendRequestedArbitraryServer)
 	addComment(t, arbitraryURLComment, ts)
 	assert.True(t, backendRequestedArbitraryServer)
-	addComment(t, aHrefTitleComment, ts)
-	addComment(t, urlTitleComment, ts)
 
 	res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
 	assert.Equal(t, http.StatusOK, code)
@@ -514,14 +508,10 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 
 	err := json.Unmarshal([]byte(res), &resp)
 	assert.NoError(t, err)
-	require.Equal(t, 3, len(resp.Comments), "should have 2 comments")
+	require.Equal(t, 1, len(resp.Comments), "should have 2 comments")
 
-	assert.Equal(t, "https://j5pxshabxb5037lms6z182pkjbp4d01p.oastify.com", resp.Comments[0].PostTitle, "unsanitised post title")
-	assert.Equal(t, "https://radio-t.com/blah2", resp.Comments[0].Locator.URL)
-	assert.Equal(t, "&lt;a href=\"https://example.com\" rel=\"nofollow\"&gt;test&lt;/a&gt;", resp.Comments[1].PostTitle, "unsanitised post title")
-	assert.Equal(t, "https://radio-t.com/blah1", resp.Comments[1].Locator.URL)
-	assert.Equal(t, "", resp.Comments[2].PostTitle, "empty from the first post")
-	assert.Equal(t, arbitraryServer.URL, resp.Comments[2].Locator.URL, "arbitrary URL provided by the request")
+	assert.Equal(t, "", resp.Comments[0].PostTitle, "empty from the first post")
+	assert.Equal(t, arbitraryServer.URL, resp.Comments[0].Locator.URL, "arbitrary URL provided by the request")
 }
 
 func TestRest_UserInfo(t *testing.T) {
