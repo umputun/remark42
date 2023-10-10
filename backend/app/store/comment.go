@@ -182,8 +182,8 @@ func (c *Comment) escapeHTMLWithSome(inp string) string {
 	return res
 }
 
-// SanitizeText used to sanitize any input string
+// SanitizeText used to sanitize any input string, and removes any HTML tags
 func (c *Comment) SanitizeText(inp string) string {
-	clean := bluemonday.UGCPolicy().Sanitize(inp)
-	return c.escapeHTMLWithSome(clean)
+	clean := bluemonday.StrictPolicy().Sanitize(inp)
+	return strings.TrimSpace(c.escapeHTMLWithSome(clean))
 }
