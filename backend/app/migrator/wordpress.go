@@ -16,7 +16,8 @@ const wpTimeLayout = "2006-01-02 15:04:05"
 
 // WordPress implements Importer from WP xml
 type WordPress struct {
-	DataStore Store
+	DataStore                  Store
+	DisableFancyTextFormatting bool
 }
 
 type wpItem struct {
@@ -138,7 +139,7 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 								ParentID:  comment.PID,
 								Imported:  true,
 							}
-							commentsCh <- commentFormatter.Format(c)
+							commentsCh <- commentFormatter.Format(c, w.DisableFancyTextFormatting)
 							stats.inpComments++
 							if stats.inpComments%1000 == 0 {
 								log.Printf("[DEBUG] processed %d comments", stats.inpComments)

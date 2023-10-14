@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,6 +36,12 @@ func TestFormatter_FormatText(t *testing.T) {
 			"lazy image",
 		},
 		{"&mdash; not translated #354", "<p>— not translated #354</p>\n!converted", "mdash"},
+		{`no_smartpants "quoted" text`, "<p>no_smartpants &#34;quoted&#34; text</p>\n!converted", "normal quotes without smartpants"},
+		{`"quoted" text`, "<p>«quoted» text</p>\n!converted", "normal quotes with smartpants"},
+		{`no_smartpants “quoted” text`, "<p>no_smartpants “quoted” text</p>\n!converted", "curly quotes without smartpants"},
+		{`“quoted” text`, "<p>“quoted” text</p>\n!converted", "curly quotes with smartpants"},
+		{`no_smartpants «quoted» text`, "<p>no_smartpants «quoted» text</p>\n!converted", "French guillemets without smartpants"},
+		{`«quoted» text`, "<p>«quoted» text</p>\n!converted", "French guillemets with smartpants"},
 		{"smth\n```go\nfunc main(aa string) int {return 0}\n```", `<p>smth</p>
 <pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
 </span></span></code></pre>!converted`, "code with language"},
@@ -45,20 +52,22 @@ func TestFormatter_FormatText(t *testing.T) {
 	for _, tt := range tbl {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.out, f.FormatText(tt.in))
+			raw := strings.HasPrefix(tt.in, `no_smartpants`)
+			t.Logf("raw: %v", raw)
+			assert.Equal(t, tt.out, f.FormatText(tt.in, raw))
 		})
 	}
 }
 
 func TestFormatter_FormatTextNoConverter(t *testing.T) {
 	f := NewCommentFormatter()
-	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345"))
+	assert.Equal(t, "<p>12345</p>\n", f.FormatText("12345", false))
 }
 
 func TestFormatter_FormatTextConverterFunc(t *testing.T) {
 	fn := CommentConverterFunc(func(text string) string { return "zz!" + text })
 	f := NewCommentFormatter(fn)
-	assert.Equal(t, "zz!<p>12345</p>\n", f.FormatText("12345"))
+	assert.Equal(t, "zz!<p>12345</p>\n", f.FormatText("12345", false))
 }
 
 func TestFormatter_FormatComment(t *testing.T) {
@@ -78,7 +87,7 @@ func TestFormatter_FormatComment(t *testing.T) {
 	f := NewCommentFormatter(mockConverter{})
 	exp := comment
 	exp.Text = "<p>blah</p>\n\n<p>xyz</p>\n!converted"
-	assert.Equal(t, exp, f.Format(comment))
+	assert.Equal(t, exp, f.Format(comment, false))
 }
 
 func TestFormatter_ShortenAutoLinks(t *testing.T) {

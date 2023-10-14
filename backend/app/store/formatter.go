@@ -35,14 +35,16 @@ func NewCommentFormatter(converters ...CommentConverter) *CommentFormatter {
 }
 
 // Format comment fields
-func (f *CommentFormatter) Format(c Comment) Comment {
-	c.Text = f.FormatText(c.Text)
+func (f *CommentFormatter) Format(c Comment, raw bool) Comment {
+	c.Text = f.FormatText(c.Text, raw)
 	return c
 }
 
 // FormatText converts text with markdown processor, applies external converters and shortens links
-func (f *CommentFormatter) FormatText(txt string) (res string) {
-	mdExt, rend := GetMdExtensionsAndRenderer()
+//
+// raw=true disables SmartyPants for HTML rendering (replacement of quotes, dashes, fractions, etc).
+func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
+	mdExt, rend := GetMdExtensionsAndRenderer(raw)
 	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
 	res = f.unEscape(res)
 
@@ -120,14 +122,19 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 
 // GetMdExtensionsAndRenderer returns blackfriday extensions and renderer used for rendering markdown
 // within store module.
-func GetMdExtensionsAndRenderer() (bf.Extensions, *bfchroma.Renderer) {
+//
+// raw=true disables SmartyPants for HTML rendering (replacement of quotes, dashes, fractions, etc).
+func GetMdExtensionsAndRenderer(raw bool) (bf.Extensions, *bfchroma.Renderer) {
 	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
 		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
 		bf.BackslashLineBreak | bf.Autolink
 
-	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{
-		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
-	})
+	flags := bf.HTMLFlags(0)
+	if !raw {
+		flags = bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes
+	}
+
+	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{Flags: flags})
 
 	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses(true)))
 	return mdExt, extRend

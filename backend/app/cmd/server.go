@@ -59,34 +59,35 @@ type ServerCommand struct {
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
 
-	Sites            []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	AnonymousVote    bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
-	AdminPasswd      string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
-	BackupLocation   string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles   int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	LegacyImageProxy bool          `long:"img-proxy" env:"IMG_PROXY" description:"[deprecated, use image-proxy.http2https] enable image proxy"`
-	MaxCommentSize   int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxVotes         int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
-	RestrictVoteIP   bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
-	DurationVoteIP   time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
-	LowScore         int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore    int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	PositiveScore    bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
-	ReadOnlyAge      int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration     time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
-	AdminEdit        bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
-	Port             int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	Address          string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
-	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
-	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
-	RestrictedNames  []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
-	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
-	SimpleView       bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
-	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
-	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments" env-delim:","`
-	SubscribersOnly  bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
-	DisableSignature bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
+	Sites                      []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote              bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
+	AdminPasswd                string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	BackupLocation             string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles             int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	LegacyImageProxy           bool          `long:"img-proxy" env:"IMG_PROXY" description:"[deprecated, use image-proxy.http2https] enable image proxy"`
+	MaxCommentSize             int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxVotes                   int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
+	RestrictVoteIP             bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
+	DurationVoteIP             time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
+	LowScore                   int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore              int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	PositiveScore              bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
+	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
+	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
+	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
+	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
+	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
+	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
+	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments" env-delim:","`
+	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
+	DisableSignature           bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
+	DisableFancyTextFormatting bool          `long:"disable-fancy-text-formatting" env:"DISABLE_FANCY_TEXT_FORMATTING" description:"disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc)"`
 
 	Auth struct {
 		TTL struct {
@@ -541,7 +542,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Cache:             loadingCache,
 		NativeImporter:    &migrator.Native{DataStore: dataService},
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
-		WordPressImporter: &migrator.WordPress{DataStore: dataService},
+		WordPressImporter: &migrator.WordPress{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting},
 		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
 		URLMapperMaker:    migrator.NewURLMapper,
@@ -576,33 +577,34 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}
 
 	srv := &api.Rest{
-		Version:               s.Revision,
-		DataService:           dataService,
-		WebRoot:               s.WebRoot,
-		WebFS:                 webFS,
-		RemarkURL:             s.RemarkURL,
-		ImageProxy:            imgProxy,
-		CommentFormatter:      commentFormatter,
-		Migrator:              migr,
-		ReadOnlyAge:           s.ReadOnlyAge,
-		SharedSecret:          s.SharedSecret,
-		Authenticator:         authenticator,
-		Cache:                 loadingCache,
-		NotifyService:         notifyService,
-		TelegramService:       telegramService,
-		SSLConfig:             sslConfig,
-		UpdateLimiter:         s.UpdateLimit,
-		ImageService:          imageService,
-		EmailNotifications:    contains("email", s.Notify.Users),
-		TelegramNotifications: contains("telegram", s.Notify.Users) && telegramService != nil,
-		EmojiEnabled:          s.EnableEmoji,
-		AnonVote:              s.AnonymousVote && s.RestrictVoteIP,
-		SimpleView:            s.SimpleView,
-		ProxyCORS:             s.ProxyCORS,
-		AllowedAncestors:      s.AllowedHosts,
-		SendJWTHeader:         s.Auth.SendJWTHeader,
-		SubscribersOnly:       s.SubscribersOnly,
-		DisableSignature:      s.DisableSignature,
+		Version:                    s.Revision,
+		DataService:                dataService,
+		WebRoot:                    s.WebRoot,
+		WebFS:                      webFS,
+		RemarkURL:                  s.RemarkURL,
+		ImageProxy:                 imgProxy,
+		CommentFormatter:           commentFormatter,
+		Migrator:                   migr,
+		ReadOnlyAge:                s.ReadOnlyAge,
+		SharedSecret:               s.SharedSecret,
+		Authenticator:              authenticator,
+		Cache:                      loadingCache,
+		NotifyService:              notifyService,
+		TelegramService:            telegramService,
+		SSLConfig:                  sslConfig,
+		UpdateLimiter:              s.UpdateLimit,
+		ImageService:               imageService,
+		EmailNotifications:         contains("email", s.Notify.Users),
+		TelegramNotifications:      contains("telegram", s.Notify.Users) && telegramService != nil,
+		EmojiEnabled:               s.EnableEmoji,
+		AnonVote:                   s.AnonymousVote && s.RestrictVoteIP,
+		SimpleView:                 s.SimpleView,
+		ProxyCORS:                  s.ProxyCORS,
+		AllowedAncestors:           s.AllowedHosts,
+		SendJWTHeader:              s.Auth.SendJWTHeader,
+		SubscribersOnly:            s.SubscribersOnly,
+		DisableSignature:           s.DisableSignature,
+		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore

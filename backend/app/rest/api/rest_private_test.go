@@ -368,6 +368,56 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false, IP: ""}, comment.User, "no ip")
 }
 
+func TestRest_CreateWithQuotes(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	// create comment with quotes with smartypants
+	resp, err := post(t, ts.URL+"/api/v1/comment",
+		`{"text": "smartpants \"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	c := R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	id := c["id"].(string)
+
+	// get created comment by id as non-admin
+	res, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
+	assert.Equal(t, http.StatusOK, code)
+	comment := store.Comment{}
+	err = json.Unmarshal([]byte(res), &comment)
+	assert.NoError(t, err)
+	assert.Equal(t, "<p>smartpants «quoted» text</p>\n", comment.Text)
+	assert.Equal(t, "smartpants \"quoted\" text", comment.Orig)
+
+	// create comment with quotes without smartypants
+	srv.privRest.disableFancyTextFormatting = true
+	resp, err = post(t, ts.URL+"/api/v1/comment",
+		`{"text": "no_smartpants \"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	c = R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	id = c["id"].(string)
+
+	// get created comment by id as non-admin
+	res, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
+	assert.Equal(t, http.StatusOK, code)
+	comment = store.Comment{}
+	err = json.Unmarshal([]byte(res), &comment)
+	assert.NoError(t, err)
+	assert.Equal(t, "<p>no_smartpants &#34;quoted&#34; text</p>\n", comment.Text)
+	assert.Equal(t, "no_smartpants \"quoted\" text", comment.Orig)
+}
+
 func TestRest_Update(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
