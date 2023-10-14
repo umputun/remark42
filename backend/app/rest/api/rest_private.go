@@ -34,16 +34,17 @@ import (
 )
 
 type private struct {
-	dataService      privStore
-	cache            LoadingCache
-	readOnlyAge      int
-	commentFormatter *store.CommentFormatter
-	imageService     *image.Service
-	notifyService    *notify.Service
-	authenticator    *auth.Service
-	telegramService  telegramService
-	remarkURL        string
-	anonVote         bool
+	dataService                privStore
+	cache                      LoadingCache
+	readOnlyAge                int
+	commentFormatter           *store.CommentFormatter
+	imageService               *image.Service
+	notifyService              *notify.Service
+	authenticator              *auth.Service
+	telegramService            telegramService
+	remarkURL                  string
+	anonVote                   bool
+	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -88,7 +89,7 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment = s.commentFormatter.Format(comment)
+	comment = s.commentFormatter.Format(comment, s.disableFancyTextFormatting)
 	comment.Sanitize()
 
 	// check if images are valid, omit proxied images as they are lazy-loaded
@@ -128,7 +129,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
-	comment = s.commentFormatter.Format(comment)
+	comment = s.commentFormatter.Format(comment, s.disableFancyTextFormatting)
 
 	// check if images are valid, omit proxied images as they are lazy-loaded
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
@@ -212,7 +213,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	editReq := service.EditRequest{
-		Text:    s.commentFormatter.FormatText(edit.Text),
+		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 		Delete:  edit.Delete,

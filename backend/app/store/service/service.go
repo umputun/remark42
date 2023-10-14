@@ -646,7 +646,9 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 		return fmt.Errorf("empty user info")
 	}
 
-	mdExt, rend := store.GetMdExtensionsAndRenderer()
+	// for validation purposes it's not important if SmartyPants formatting is disabled or enabled,
+	// while for storing the comment that flag is set based on user preference
+	mdExt, rend := store.GetMdExtensionsAndRenderer(false)
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
 	var wrongLinkError error
 	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {

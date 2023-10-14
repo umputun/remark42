@@ -59,16 +59,17 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter         float64
-	EmailNotifications    bool
-	TelegramNotifications bool
-	EmojiEnabled          bool
-	SimpleView            bool
-	ProxyCORS             bool
-	SendJWTHeader         bool
-	AllowedAncestors      []string // sets Content-Security-Policy "frame-ancestors ..."
-	SubscribersOnly       bool
-	DisableSignature      bool // prevent signature from being added to headers
+	UpdateLimiter              float64
+	EmailNotifications         bool
+	TelegramNotifications      bool
+	EmojiEnabled               bool
+	SimpleView                 bool
+	ProxyCORS                  bool
+	SendJWTHeader              bool
+	AllowedAncestors           []string // sets Content-Security-Policy "frame-ancestors ..."
+	SubscribersOnly            bool
+	DisableSignature           bool // prevent signature from being added to headers
+	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -369,16 +370,17 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 	}
 
 	privGrp := private{
-		dataService:      s.DataService,
-		cache:            s.Cache,
-		imageService:     s.ImageService,
-		commentFormatter: s.CommentFormatter,
-		readOnlyAge:      s.ReadOnlyAge,
-		authenticator:    s.Authenticator,
-		notifyService:    s.NotifyService,
-		telegramService:  s.TelegramService,
-		remarkURL:        s.RemarkURL,
-		anonVote:         s.AnonVote,
+		dataService:                s.DataService,
+		cache:                      s.Cache,
+		imageService:               s.ImageService,
+		commentFormatter:           s.CommentFormatter,
+		readOnlyAge:                s.ReadOnlyAge,
+		authenticator:              s.Authenticator,
+		notifyService:              s.NotifyService,
+		telegramService:            s.TelegramService,
+		remarkURL:                  s.RemarkURL,
+		anonVote:                   s.AnonVote,
+		disableFancyTextFormatting: s.DisableFancyTextFormatting,
 	}
 
 	admGrp := admin{

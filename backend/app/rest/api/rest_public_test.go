@@ -84,6 +84,24 @@ func TestRest_Preview(t *testing.T) {
 		string(b),
 		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
 	)
+
+	// test quotes with and without smartypants
+	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, "<p>«quoted» text</p>\n", string(b))
+
+	srv.privRest.disableFancyTextFormatting = true
+	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, "<p>&#34;quoted&#34; text</p>\n", string(b))
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {

@@ -159,6 +159,7 @@ services:
 | update-limit                   | UPDATE_LIMIT                   | `0.5`                    | updates/sec limit                                         |
 | subscribers-only               | SUBSCRIBERS_ONLY               | `false`                  | enable commenting only for Patreon subscribers            |
 | disable-signature              | DISABLE_SIGNATURE              | `false`                  | disable server signature in headers                       |
+| disable-fancy-text-formatting  | DISABLE_FANCY_HTML_FORMATTING  | `false`                  | disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc) |
 | admin-passwd                   | ADMIN_PASSWD                   | none (disabled)          | password for `admin` basic auth                           |
 | dbg                            | DEBUG                          | `false`                  | debug mode                                                |
 
