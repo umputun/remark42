@@ -98,6 +98,11 @@ type commentsWithInfo struct {
 	Info     store.PostInfo  `json:"info,omitempty"`
 }
 
+type treeWithInfo struct {
+	*service.Tree
+	Info store.PostInfo `json:"info,omitempty"`
+}
+
 // Run the lister and request's router, activate rest server
 func (s *Rest) Run(address string, port int) {
 	if address == "*" {

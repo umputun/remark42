@@ -229,7 +229,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, id2, comments.Comments[0].ID)
 
 	// get in tree mode
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -255,7 +255,7 @@ func TestRest_FindAge(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	require.NoError(t, err)
 
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
@@ -298,7 +298,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -306,7 +306,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is ro")
 
-	tree = service.Tree{}
+	tree = treeWithInfo{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -658,11 +658,11 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":5,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
 		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":3,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
 		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":2,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"format=tree", `"info":{"url":"test-url","count":7`},
+		{"format=tree", `"info":{"count":7`},
 		{"format=tree&url=test-url", `"info":{"url":"test-url","count":6`},
-		{"format=tree&sort=+time", `"info":{"url":"test-url","count":7`},
+		{"format=tree&sort=+time", `"info":{"count":7`},
 		{"format=tree&url=test-url&sort=+time", `"info":{"url":"test-url","count":6`},
-		{"format=tree&sort=-score", `"info":{"url":"test-url","count":7`},
+		{"format=tree&sort=-score", `"info":{"count":7`},
 		{"format=tree&url=test-url&sort=-score", `"info":{"url":"test-url","count":6`},
 		{"sort=+time", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
 		{"sort=-time", fmt.Sprintf(`"score":1,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[0])},
