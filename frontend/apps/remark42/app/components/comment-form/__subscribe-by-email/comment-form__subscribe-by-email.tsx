@@ -166,9 +166,8 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
           default:
             break;
         }
-      } catch (e) {
-        // @ts-ignore
-        setError(extractErrorMessageFromResponse(e, intl));
+      } catch (err) {
+        setError(extractErrorMessageFromResponse(err, intl));
       } finally {
         setLoading(false);
       }
@@ -226,9 +225,8 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       await unsubscribeFromEmailUpdates();
       dispatch(setUserSubscribed(false));
       setStep(Step.Unsubscribed);
-    } catch (e) {
-      // @ts-ignore
-      setError(extractErrorMessageFromResponse(e, intl));
+    } catch (err) {
+      setError(extractErrorMessageFromResponse(err, intl));
     } finally {
       setLoading(false);
     }

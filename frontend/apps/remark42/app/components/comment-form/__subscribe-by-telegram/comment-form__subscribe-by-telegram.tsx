@@ -97,8 +97,8 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
         return;
       }
       setStep('subscribed');
-    } catch (e) {
-      setError(extractErrorMessageFromResponse(e as FetcherError, intl));
+    } catch (err) {
+      setError(extractErrorMessageFromResponse(err, intl));
     } finally {
       setLoading(false);
     }
@@ -119,8 +119,8 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
       }, 0);
       await telegramUnsubcribe();
       setStep('unsubscribed');
-    } catch (e) {
-      setError(extractErrorMessageFromResponse(e as FetcherError, intl));
+    } catch (err) {
+      setError(extractErrorMessageFromResponse(err, intl));
     } finally {
       setLoading(false);
     }
