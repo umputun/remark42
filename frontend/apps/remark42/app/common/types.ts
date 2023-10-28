@@ -150,9 +150,13 @@ export interface Image {
 
 /** error struct returned in case of api call error */
 export interface ApiError {
-  code: number;
+  /**
+   * Error code, that is part of server error response.
+   * Note that -1 is reserved for error where `error` field shall be used directly
+   */
+  code?: number;
   /** simple explanation */
-  details: string;
+  details?: string;
   /** in-depth explanation */
   error: string;
 }

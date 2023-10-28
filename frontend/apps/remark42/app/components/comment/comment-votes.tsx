@@ -38,7 +38,6 @@ export function CommentVotes({ id, votes, vote, disabled }: Props) {
       setErrorMessage(undefined);
       setTimeout(() => setLoadingState(null), 200);
     } catch (err) {
-      // @ts-ignore
       setErrorMessage(extractErrorMessageFromResponse(err, intl));
       setLoadingState(null);
     }

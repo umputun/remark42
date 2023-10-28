@@ -156,12 +156,11 @@ export class CommentForm extends Component<Props, State> {
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
       await this.props.onSubmit(text, settings.pageTitle || document.title);
-    } catch (e) {
+    } catch (err) {
       this.setState({
         isDisabled: false,
         isErrorShown: true,
-        // @ts-ignore
-        errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+        errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
       });
       return;
     }
@@ -180,8 +179,8 @@ export class CommentForm extends Component<Props, State> {
     this.props
       .getPreview(text)
       .then((preview) => this.setState({ preview }))
-      .catch((e) => {
-        this.setState({ isErrorShown: true, errorMessage: extractErrorMessageFromResponse(e, this.props.intl) });
+      .catch((err) => {
+        this.setState({ isErrorShown: true, errorMessage: extractErrorMessageFromResponse(err, this.props.intl) });
       });
   };
 
@@ -260,13 +259,13 @@ export class CommentForm extends Component<Props, State> {
   }
 
   /** wrapper with error handling for props.uploadImage */
-  uploadImage = (file: File): Promise<Image | Error> => {
+  uploadImage = async (file: File): Promise<Image | Error> => {
     const intl = this.props.intl;
-    return this.props.uploadImage!(file).catch((e: ApiError | string) => {
+    return this.props.uploadImage!(file).catch((err) => {
       return new Error(
         intl.formatMessage(messages.uploadFileFail, {
           fileName: file.name,
-          errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+          errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
         })
       );
     });
