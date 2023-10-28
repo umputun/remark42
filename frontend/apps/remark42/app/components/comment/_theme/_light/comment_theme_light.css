@@ -46,6 +46,10 @@
 
   & .comment__time {
     color: var(--color11);
+
+    &:hover {
+      color: var(--color10);
+    }
   }
 
   & .comment__user-id {
