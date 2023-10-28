@@ -2,7 +2,7 @@ import { h, Component, createRef, Fragment } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
-import { User, Theme, Image, ApiError } from 'common/types';
+import { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
