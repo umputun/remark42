@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:16.20.2-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:20.9.0-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
