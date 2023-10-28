@@ -8,10 +8,9 @@ import clsx from 'clsx';
 import 'styles/global.css';
 import type { StoreState } from 'store';
 import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
-import { maxShownComments, url } from 'common/settings';
+import { maxShownComments, noFooter, url } from 'common/settings';
 
 import {
-  setUser,
   fetchUser,
   blockUser,
   unblockUser,
@@ -20,7 +19,7 @@ import {
   unhideUser,
   signout,
 } from 'store/user/actions';
-import { fetchComments, addComment, updateComment, unsetCommentMode } from 'store/comments/actions';
+import { fetchComments, addComment, updateComment } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 import { setTheme } from 'store/theme/actions';
 
@@ -36,18 +35,11 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage } from 'utils/post-message';
+import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
 import styles from './root.module.css';
-
-/**
- * Sends size of the iframe to parent window
- */
-export function updateIframeHeight() {
-  postMessageToParent({ height: document.body.offsetHeight });
-}
 
 const mapStateToProps = (state: StoreState) => ({
   sort: state.comments.sort,
@@ -73,7 +65,6 @@ const mapStateToProps = (state: StoreState) => ({
 
 const boundActions = bindActions({
   fetchComments,
-  setUser,
   fetchUser,
   fetchBlockedUsers,
   setTheme,
@@ -85,7 +76,6 @@ const boundActions = bindActions({
   addComment,
   updateComment,
   setCollapse,
-  unsetCommentMode,
   signout,
 });
 
@@ -332,12 +322,6 @@ const CopyrightLink = (title: string) => (
   </a>
 );
 
-const Copyright = () => (
-  <p className="root__copyright" role="contentinfo">
-    <FormattedMessage id="root.powered-by" defaultMessage="Powered by <a>Remark42</a>" values={{ a: CopyrightLink }} />
-  </p>
-);
-
 /** Root component connected to redux */
 export function ConnectedRoot() {
   const intl = useIntl();
@@ -345,23 +329,25 @@ export function ConnectedRoot() {
   const actions = useActions(boundActions);
 
   useEffect(() => {
-    const observer = new ResizeObserver(updateIframeHeight);
+    const observer = new ResizeObserver(() => updateIframeHeight());
 
     updateIframeHeight();
     observer.observe(document.body);
     return () => observer.disconnect();
   }, []);
 
-  if (!window.remark_config) {
-    throw new Error('Remark42: Config object is undefined');
-  }
-
-  const { no_footer } = window.remark_config;
-
   return (
     <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
       <Root {...props} {...actions} intl={intl} />
-      {!no_footer && <Copyright />}
+      {!noFooter && (
+        <p className="root__copyright" role="contentinfo">
+          <FormattedMessage
+            id="root.powered-by"
+            defaultMessage="Powered by <a>Remark42</a>"
+            values={{ a: CopyrightLink }}
+          />
+        </p>
+      )}
     </div>
   );
 }

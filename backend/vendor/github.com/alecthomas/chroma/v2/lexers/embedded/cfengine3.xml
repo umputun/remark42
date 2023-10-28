@@ -38,7 +38,7 @@
       <rule pattern="#.*?\n">
         <token type="Comment"/>
       </rule>
-      <rule pattern="@.*?\n">
+      <rule pattern="^@.*?\n">
         <token type="CommentPreproc"/>
       </rule>
       <rule pattern="(body)(\s+)(\S+)(\s+)(control)">
@@ -78,6 +78,12 @@
           <token type="Text"/>
         </bygroups>
       </rule>
+      <rule pattern="([\w.!&amp;|()&#34;&#36;]+)(::)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
       <rule pattern="&#34;">
         <token type="LiteralString"/>
         <push state="doublequotestring"/>
@@ -96,12 +102,6 @@
           <token type="Punctuation"/>
         </bygroups>
       </rule>
-      <rule pattern="([\w.!&amp;|()]+)(::)">
-        <bygroups>
-          <token type="NameClass"/>
-          <token type="Punctuation"/>
-        </bygroups>
-      </rule>
       <rule pattern="(\w+)(:)">
         <bygroups>
           <token type="KeywordDeclaration"/>
@@ -109,6 +109,9 @@
         </bygroups>
       </rule>
       <rule pattern="@[{(][^)}]+[})]">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$[(][^)]+[)]">
         <token type="NameVariable"/>
       </rule>
       <rule pattern="[(){},;]">

@@ -133,7 +133,7 @@
         <token type="LiteralString"/>
         <push state="string"/>
       </rule>
-      <rule pattern="\b(open|module)(\s+)([\w.]+)">
+      <rule pattern="\b(open type|open|module)(\s+)([\w.]+)">
         <bygroups>
           <token type="Keyword"/>
           <token type="Text"/>

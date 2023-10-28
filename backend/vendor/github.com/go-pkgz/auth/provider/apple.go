@@ -70,9 +70,10 @@ type appleVerificationResponse struct {
 
 // AppleConfig is the main oauth2 required parameters for "Sign in with Apple"
 type AppleConfig struct {
-	ClientID string // the identifier Services ID for your app created in Apple developer account.
-	TeamID   string // developer Team ID (10 characters), required for create JWT. It available, after signed in at developer account, by link: https://developer.apple.com/account/#/membership
-	KeyID    string // private key ID  assigned to private key obtain in Apple developer account
+	ClientID     string // the identifier Services ID for your app created in Apple developer account.
+	TeamID       string // developer Team ID (10 characters), required for create JWT. It available, after signed in at developer account, by link: https://developer.apple.com/account/#/membership
+	KeyID        string // private key ID  assigned to private key obtain in Apple developer account
+	ResponseMode string // changes method of receiving data in callback. Default value "form_post" (https://developer.apple.com/documentation/sign_in_with_apple/request_an_authorization_to_the_sign_in_with_apple_server?changes=_1_2#4066168)
 
 	scopes       []string         // for this package allow only username scope and UID in token claims. Apple service API provide only "email" and "name" scope values (https://developer.apple.com/documentation/sign_in_with_apple/clientconfigi/3230955-scope)
 	privateKey   interface{}      // private key from Apple obtained in developer account (the keys section). Required for create the Client Secret (https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens#3262048)
@@ -156,16 +157,22 @@ func NewApple(p Params, appleCfg AppleConfig, privateKeyLoader PrivateKeyLoaderI
 		return nil, fmt.Errorf("required params missed: %s", strings.Join(emptyParams, ", "))
 	}
 
+	responseMode := "form_post"
+	if appleCfg.ResponseMode != "" {
+		responseMode = appleCfg.ResponseMode
+	}
+
 	ah := AppleHandler{
 		Params: p,
 		name:   "apple", // static name for an Apple provider
 
 		conf: AppleConfig{
-			ClientID: appleCfg.ClientID,
-			TeamID:   appleCfg.TeamID,
-			KeyID:    appleCfg.KeyID,
-			scopes:   []string{"name"},
-			jwkURL:   appleKeysURL,
+			ClientID:     appleCfg.ClientID,
+			TeamID:       appleCfg.TeamID,
+			KeyID:        appleCfg.KeyID,
+			scopes:       []string{"name"},
+			jwkURL:       appleKeysURL,
+			ResponseMode: responseMode,
 		},
 
 		endpoint: oauth2.Endpoint{
@@ -503,6 +510,10 @@ func (ah *AppleHandler) prepareLoginURL(state, path string) (string, error) {
 
 	scopesList := strings.Join(ah.conf.scopes, " ")
 
+	if scopesList != "" && ah.conf.ResponseMode != "form_post" {
+		return "", fmt.Errorf("response_mode must be form_post if scope is not empty")
+	}
+
 	authURL, err := url.Parse(ah.endpoint.AuthURL)
 	if err != nil {
 		return "", err
@@ -511,7 +522,7 @@ func (ah *AppleHandler) prepareLoginURL(state, path string) (string, error) {
 	query := authURL.Query()
 	query.Set("state", state)
 	query.Set("response_type", "code")
-	query.Set("response_mode", "form_post")
+	query.Set("response_mode", ah.conf.ResponseMode)
 	query.Set("client_id", ah.conf.ClientID)
 	query.Set("scope", scopesList)
 	query.Set("redirect_uri", ah.makeRedirURL(path))

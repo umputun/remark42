@@ -49,7 +49,7 @@
       </rule>
     </state>
     <state name="value">
-      <rule pattern="([&gt;|](?:[+-])?)(\n(^ {1,})(?:.*\n*(?:^\3 *).*)*)">
+      <rule pattern="([&gt;|](?:[+-])?)(\n(^ {1,})(?:(?:.*\n*(?:^\3 *).*)+|.*))">
         <bygroups>
           <token type="Punctuation"/>
           <token type="LiteralStringDoc"/>

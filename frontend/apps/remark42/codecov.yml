@@ -2,4 +2,13 @@ codecov:
   notify:
     require_ci_to_pass: false
 
+ignore:
+  - .editorconfig
+  - .eslitnrc.js
+  - .lintstagedrc.cjs
+  - .prettierignore
+  - .prettierrc.js
+  - .size-limit.js
+  - README.md
+
 comment: false

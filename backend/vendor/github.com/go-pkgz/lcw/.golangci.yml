@@ -26,14 +26,18 @@ linters:
     - revive
     - govet
     - unconvert
+    - megacheck
+    - structcheck
     - gas
     - gocyclo
     - dupl
     - misspell
     - unparam
-    - unused
+    - varcheck
+    - deadcode
     - typecheck
     - ineffassign
+    - varcheck
     - stylecheck
     - gochecknoinits
     - exportloopref

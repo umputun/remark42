@@ -290,7 +290,8 @@ func TestServerApp_WithRemote(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
-		"--port=" + strconv.Itoa(port), "--admin.type=rpc", "--admin.rpc.api=http://127.0.0.1", "--avatar.fs.path=/tmp"})
+		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
+		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1"})
 	require.NoError(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
@@ -611,7 +612,7 @@ func TestServerAuthHooks(t *testing.T) {
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 		},
 		User: &token.User{
-			ID:   "dev",
+			ID:   "github_dev",
 			Name: "developer one",
 		},
 	}
@@ -650,14 +651,14 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
-	// block user dev as admin
+	// block user github_dev as admin
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/dev?site=remark&block=1&ttl=10d", port), http.NoBody)
+		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", port), http.NoBody)
 	assert.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "user dev blocked")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "user github_dev blocked")
 	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
@@ -721,6 +722,28 @@ func Test_splitAtCommas(t *testing.T) {
 	for i, tt := range tbl {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.res, splitAtCommas(tt.inp))
+		})
+	}
+}
+
+func Test_getAllowedDomains(t *testing.T) {
+	tbl := []struct {
+		s              ServerCommand
+		allowedDomains []string
+	}{
+		// correct example, parsed and returned as allowed domain
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "https://remark42.example.org"}}, []string{"example.org"}},
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "http://remark42.example.org"}}, []string{"example.org"}},
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "http://localhost"}}, []string{"localhost"}},
+		// incorrect URLs, so Hostname is empty but returned list doesn't include empty string as it would allow any domain
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "bad hostname"}}, []string{}},
+		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "not_a_hostname"}}, []string{}},
+		// test removal of 'self', multiple AllowedHosts. No deduplication is expected
+		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, CommonOpts: CommonOpts{RemarkURL: "https://example.org"}}, []string{"example.org", "example.org", "remark42.com", "example.org"}},
+	}
+	for i, tt := range tbl {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			assert.Equal(t, tt.allowedDomains, tt.s.getAllowedDomains())
 		})
 	}
 }
@@ -820,8 +843,6 @@ func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Cont
 	ctx, cancel := context.WithCancel(context.Background())
 	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
-
-	rand.Seed(time.Now().UnixNano())
 	return app, ctx, cancel
 }
 

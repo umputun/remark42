@@ -12,11 +12,11 @@
     "section": "Configuration",
     "children": [
       {
-        "title": "Frontend",
+        "title": "Frontend configuration",
         "href": "/configuration/frontend/"
       },
       {
-        "title": "CLI parameters",
+        "title": "Backend configuration",
         "href": "/configuration/parameters/"
       },
       {
@@ -63,6 +63,10 @@
       {
         "title": "Kubernetes",
         "href": "/manuals/kubernetes/"
+      },
+      {
+        "title": "Astro Integration (w/Svelte)",
+        "href": "/manuals/integration-with-astro/"
       },
       {
         "title": "Gatsby Integration",

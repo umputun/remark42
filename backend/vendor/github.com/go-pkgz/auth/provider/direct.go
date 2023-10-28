@@ -69,11 +69,12 @@ func (p DirectHandler) Name() string { return p.ProviderName }
 // user=name&passwd=xyz&aud=bar
 //
 // application/json body example:
-// {
-//   "user": "name",
-//   "passwd": "xyz",
-//   "aud": "bar",
-// }
+//
+//	{
+//	  "user": "name",
+//	  "passwd": "xyz",
+//	  "aud": "bar",
+//	}
 func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	creds, err := p.getCredentials(w, r)
 	if err != nil {
@@ -184,9 +185,9 @@ func (p DirectHandler) getCredentials(w http.ResponseWriter, r *http.Request) (c
 }
 
 // AuthHandler doesn't do anything for direct login as it has no callbacks
-func (p DirectHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {}
+func (p DirectHandler) AuthHandler(http.ResponseWriter, *http.Request) {}
 
 // LogoutHandler - GET /logout
-func (p DirectHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (p DirectHandler) LogoutHandler(w http.ResponseWriter, _ *http.Request) {
 	p.TokenService.Reset(w)
 }

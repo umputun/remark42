@@ -1,4 +1,4 @@
-# OAuth1 [![Build Status](https://github.com/dghubble/oauth1/workflows/test/badge.svg)](https://github.com/dghubble/oauth1/actions?query=workflow%3Atest+branch%3Amaster) [![Coverage](https://gocover.io/_badge/github.com/dghubble/oauth1)](https://gocover.io/github.com/dghubble/oauth1) [![GoDoc](http://godoc.org/github.com/dghubble/oauth1?status.svg)](http://godoc.org/github.com/dghubble/oauth1)
+# OAuth1 [![GoDoc](https://pkg.go.dev/badge/github.com/dghubble/oauth1.svg)](https://pkg.go.dev/github.com/dghubble/oauth1) [![Workflow](https://github.com/dghubble/oauth1/actions/workflows/test.yaml/badge.svg)](https://github.com/dghubble/oauth1/actions/workflows/test.yaml?query=branch%3Amain) [![Sponsors](https://img.shields.io/github/sponsors/dghubble?logo=github)](https://github.com/sponsors/dghubble) [![Mastodon](https://img.shields.io/badge/follow-news-6364ff?logo=mastodon)](https://fosstodon.org/@typhoon)
 
 <img align="right" src="https://storage.googleapis.com/dghubble/oauth1.png">
 

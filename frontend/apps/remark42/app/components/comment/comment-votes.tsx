@@ -21,7 +21,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function CommentVotes({ id, votes, vote, disabled, controversy = 0 }: Props) {
+export function CommentVotes({ id, votes, vote, disabled }: Props) {
   const intl = useIntl();
   const dispatch = useDispatch();
   const [loadingState, setLoadingState] = useState<{ vote: number; votes: number } | null>(null);
@@ -38,7 +38,6 @@ export function CommentVotes({ id, votes, vote, disabled, controversy = 0 }: Pro
       setErrorMessage(undefined);
       setTimeout(() => setLoadingState(null), 200);
     } catch (err) {
-      // @ts-ignore
       setErrorMessage(extractErrorMessageFromResponse(err, intl));
       setLoadingState(null);
     }

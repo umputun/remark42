@@ -50,7 +50,7 @@ function getMarkdownLib() {
 		.use(markdownItAnchor, {
 			permalink: markdownItAnchor.permalink.linkInsideHeader({
 				placement: 'before',
-				class: '',
+				class: 'header-anchor',
 				symbol: '',
 			}),
 		})

@@ -655,7 +655,7 @@ func rakuRules() Rules {
 			// Substitution
 			{`(?<=^|\b|\s)(?<!\.)(ss|S|s|TR|tr)\b(\s*)`, ByGroups(Keyword, Text), Push("substitution")},
 			{keywordsPattern, Keyword, nil},
-			{builtinTypesPattern, NameBuiltin, nil},
+			{builtinTypesPattern, KeywordType, nil},
 			{builtinRoutinesPattern, NameBuiltin, nil},
 			// Class name
 			{

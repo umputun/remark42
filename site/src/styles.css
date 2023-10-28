@@ -193,3 +193,10 @@
 .token.space:before {
 	color: #3c526d;
 }
+
+.header-anchor {
+	@apply pointer-events-none;
+}
+.header-anchor::before {
+	@apply content-[''] block h-24 -mt-24 invisible md:h-16 md:-mt-16;
+}

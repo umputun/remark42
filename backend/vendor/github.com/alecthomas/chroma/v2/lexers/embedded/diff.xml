@@ -14,6 +14,18 @@
       <rule pattern=" .*\n">
         <token type="Text"/>
       </rule>
+      <rule pattern="\d+(,\d+)?(a|c|d)\d+(,\d+)?\n">
+        <token type="GenericSubheading"/>
+      </rule>
+      <rule pattern="---\n">
+        <token type="GenericStrong"/>
+      </rule>
+      <rule pattern="&lt; .*\n">
+        <token type="GenericDeleted"/>
+      </rule>
+      <rule pattern="&gt; .*\n">
+        <token type="GenericInserted"/>
+      </rule>
       <rule pattern="\+.*\n">
         <token type="GenericInserted"/>
       </rule>

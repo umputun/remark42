@@ -1,8 +1,6 @@
 linters-settings:
   govet:
     check-shadowing: true
-  golint:
-    min-confidence: 0
   gocyclo:
     min-complexity: 15
   maligned:
@@ -25,7 +23,7 @@ linters-settings:
 linters:
   enable:
     - megacheck
-    - golint
+    - revive
     - govet
     - unconvert
     - megacheck
@@ -42,7 +40,7 @@ linters:
     - varcheck
     - stylecheck
     - gochecknoinits
-    - scopelint
+    - exportloopref
     - gocritic
     - nakedret
     - gosimple
@@ -57,8 +55,4 @@ run:
     - vendor
 
 issues:
-  exclude-rules:
-    - text: "should have a package comment, unless it's in another file for this package"
-      linters:
-        - golint
   exclude-use-default: false

@@ -208,16 +208,16 @@ func GenerateAvatar(user string) ([]byte, error) {
 // GetGravatarURL returns url to gravatar picture for given email
 func GetGravatarURL(email string) (res string, err error) {
 
-	hash := md5.Sum([]byte(email))
+	hash := md5.Sum([]byte(strings.ToLower(strings.TrimSpace(email))))
 	hexHash := hex.EncodeToString(hash[:])
 
-	client := http.Client{Timeout: 1 * time.Second}
-	res = "https://www.gravatar.com/avatar/" + hexHash + ".jpg"
+	client := http.Client{Timeout: 5 * time.Second}
+	res = "https://www.gravatar.com/avatar/" + hexHash
 	resp, err := client.Get(res + "?d=404&s=80")
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint gosec // we don't care about response body
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("%s", resp.Status)
 	}

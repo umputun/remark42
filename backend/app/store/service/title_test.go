@@ -28,7 +28,7 @@ func TestTitle_GetTitle(t *testing.T) {
 		{`<html><body> 2222</body></html>`, false, ""},
 	}
 
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
 	defer ex.Close()
 	for i, tt := range tbl {
 		tt := tt
@@ -41,7 +41,7 @@ func TestTitle_GetTitle(t *testing.T) {
 }
 
 func TestTitle_Get(t *testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +75,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	for n := 0; n < 1000; n++ {
 		body += "something something blah blah\n"
 	}
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +104,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 }
 
 func TestTitle_GetFailed(t *testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,8 +125,8 @@ func TestTitle_GetFailed(t *testing.T) {
 }
 
 func TestTitle_DoubleClosed(t *testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
-	ex.Close()
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
+	assert.NoError(t, ex.Close())
 	// second call should not result in panic
-	ex.Close()
+	assert.NoError(t, ex.Close())
 }

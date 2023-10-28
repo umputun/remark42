@@ -7,8 +7,12 @@
     <filename>*.ini</filename>
     <filename>*.cfg</filename>
     <filename>*.inf</filename>
+    <filename>*.service</filename>
+    <filename>*.socket</filename>
     <filename>.gitconfig</filename>
     <filename>.editorconfig</filename>
+    <filename>pylintrc</filename>
+    <filename>.pylintrc</filename>
     <mime_type>text/x-ini</mime_type>
     <mime_type>text/inf</mime_type>
   </config>

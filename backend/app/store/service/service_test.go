@@ -131,7 +131,7 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
 	defer b.Close()
 
 	postPath := "/post/42"
@@ -195,7 +195,7 @@ func TestService_SetTitle(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
 	defer b.Close()
 	comment := store.Comment{
 		Text:      "text",
@@ -413,7 +413,6 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, 0, len(res[0].VotedIPs), "vote ips hidden")
 
 	// random +1/-1 result should be [0..2]
-	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
@@ -780,22 +779,25 @@ func TestService_ValidateComment(t *testing.T) {
 
 	tbl := []struct {
 		inp store.Comment
-		err error
+		err string
 	}{
-		{inp: store.Comment{}, err: fmt.Errorf("empty comment text")},
-		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: nil},
-		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: fmt.Errorf("empty user info")},
-		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: fmt.Errorf("comment text exceeded max allowed size 2000 (4000)")},
+		{inp: store.Comment{}, err: "empty comment text"},
+		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: ""},
+		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: "empty user info"},
+		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: "comment text exceeded max allowed size 2000 (4000)"},
+		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "multiple links, one is bad: [test](http://test) [test2](bad_url) [test3](https://test3)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 	}
 
 	for n, tt := range tbl {
 		err := b.ValidateComment(&tt.inp)
-		if tt.err == nil {
+		if tt.err == "" {
 			assert.NoError(t, err, "check #%d", n)
 			continue
 		}
 		require.Error(t, err)
-		assert.EqualError(t, tt.err, err.Error(), "check #%d", n)
+		assert.EqualError(t, err, tt.err, "check #%d", n)
 	}
 }
 
@@ -1154,7 +1156,7 @@ func TestService_Find(t *testing.T) {
 	assert.InDelta(t, 0, res[1].Controversy, 0.01)
 
 	// make sure title sanitized
-	assert.Equal(t, "some title, &lt;a href=\"http://radio-t.com\" rel=\"nofollow\"&gt;link&lt;/a&gt;", res[0].PostTitle)
+	assert.Equal(t, "some title, link", res[0].PostTitle)
 }
 
 func TestService_FindSince(t *testing.T) {
@@ -1656,10 +1658,10 @@ func TestService_DoubleClose_Static(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
 	b := DataStore{Engine: eng, AdminStore: ks,
-		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second})}
-	b.Close()
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})}
+	assert.NoError(t, b.Close())
 	// second call should not result in panic or errors
-	b.Close()
+	assert.NoError(t, b.Close())
 }
 
 // makes new boltdb, put two records

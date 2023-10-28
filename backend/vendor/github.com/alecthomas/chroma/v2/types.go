@@ -1,10 +1,6 @@
 package chroma
 
-import (
-	"fmt"
-)
-
-//go:generate stringer -type TokenType
+//go:generate enumer -text -type TokenType
 
 // TokenType is the type of token to highlight.
 //
@@ -35,6 +31,8 @@ const (
 	LineTable
 	// Line numbers table TD wrapper style.
 	LineTableTD
+	// Line number links.
+	LineLink
 	// Code line wrapper style.
 	CodeLine
 	// Input that could not be tokenised.
@@ -216,6 +214,7 @@ var (
 		LineHighlight:    "hl",
 		LineTable:        "lntable",
 		LineTableTD:      "lntd",
+		LineLink:         "lnlinks",
 		CodeLine:         "cl",
 		Text:             "",
 		Whitespace:       "w",
@@ -338,15 +337,4 @@ func (t TokenType) Emit(groups []string, _ *LexerState) Iterator {
 	return Literator(Token{Type: t, Value: groups[0]})
 }
 
-func (t TokenType) EmitterKind() string          { return "token" }
-func (t TokenType) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
-func (t *TokenType) UnmarshalText(data []byte) error {
-	key := string(data)
-	for tt, text := range _TokenType_map {
-		if text == key {
-			*t = tt
-			return nil
-		}
-	}
-	return fmt.Errorf("unknown TokenType %q", data)
-}
+func (t TokenType) EmitterKind() string { return "token" }

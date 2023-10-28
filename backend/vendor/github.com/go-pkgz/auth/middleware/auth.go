@@ -110,7 +110,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 				return
 			}
 
-			if claims.Handshake != nil { // handshake in token indicate special use cases, not for login
+			if claims.Handshake != nil { // handshake in token indicates special use cases, not for login
 				onError(h, w, r, fmt.Errorf("invalid kind of token"))
 				return
 			}
@@ -124,6 +124,13 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 				// validator passed by client and performs check on token or/and claims
 				if a.Validator != nil && !a.Validator.Validate(tkn, claims) {
 					onError(h, w, r, fmt.Errorf("user %s/%s blocked", claims.User.Name, claims.User.ID))
+					a.JWTService.Reset(w)
+					return
+				}
+
+				// check if user provider is allowed
+				if !a.isProviderAllowed(claims.User.ID) {
+					onError(h, w, r, fmt.Errorf("user %s/%s provider is not allowed", claims.User.Name, claims.User.ID))
 					a.JWTService.Reset(w)
 					return
 				}
@@ -144,6 +151,19 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+// isProviderAllowed checks if user provider is allowed, user id looks like "provider_1234567890"
+// this check is needed to reject users from providers what are used to be allowed but not anymore.
+// Such users made token before the provider was disabled and should not be allowed to login anymore.
+func (a *Authenticator) isProviderAllowed(userID string) bool {
+	userProvider := strings.Split(userID, "_")[0]
+	for _, p := range a.Providers {
+		if p.Name() == userProvider {
+			return true
+		}
+	}
+	return false
 }
 
 // refreshExpiredToken makes a new token with passed claims

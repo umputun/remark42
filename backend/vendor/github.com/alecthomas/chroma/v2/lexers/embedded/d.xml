@@ -21,7 +21,7 @@
       <rule pattern="/\+.*?\+/">
         <token type="CommentMultiline"/>
       </rule>
-      <rule pattern="(asm|assert|body|break|case|cast|catch|continue|default|debug|delete|deprecated|do|else|finally|for|foreach|foreach_reverse|goto|if|in|invariant|is|macro|mixin|new|out|pragma|return|super|switch|this|throw|try|version|while|with)\b">
+      <rule pattern="(asm|assert|body|break|case|cast|catch|continue|default|debug|delete|do|else|finally|for|foreach|foreach_reverse|goto|if|in|invariant|is|macro|mixin|new|out|pragma|return|super|switch|this|throw|try|typeid|typeof|version|while|with)\b">
         <token type="Keyword"/>
       </rule>
       <rule pattern="__(FILE|FILE_FULL_PATH|MODULE|LINE|FUNCTION|PRETTY_FUNCTION|DATE|EOF|TIME|TIMESTAMP|VENDOR|VERSION)__\b">
@@ -41,11 +41,14 @@
       <rule pattern="@[\w.]*">
         <token type="NameDecorator"/>
       </rule>
-      <rule pattern="(abstract|auto|alias|align|const|delegate|enum|export|final|function|inout|lazy|nothrow|override|package|private|protected|public|pure|static|synchronized|template|volatile|__gshared)\b">
+      <rule pattern="(abstract|auto|alias|align|const|delegate|deprecated|enum|export|extern|final|function|immutable|inout|lazy|nothrow|override|package|private|protected|public|pure|ref|scope|shared|static|synchronized|template|unittest|__gshared)\b">
         <token type="KeywordDeclaration"/>
       </rule>
-      <rule pattern="(void|bool|byte|ubyte|short|ushort|int|uint|long|ulong|cent|ucent|float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|char|wchar|dchar|string|wstring|dstring)\b">
+      <rule pattern="(void|bool|byte|ubyte|short|ushort|int|uint|long|ulong|cent|ucent|float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|char|wchar|dchar)\b">
         <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(size_t|ptrdiff_t|noreturn|string|wstring|dstring|Object|Throwable|Exception|Error|imported)\b">
+        <token type="NameBuiltin"/>
       </rule>
       <rule pattern="(module)(\s+)">
         <bygroups>

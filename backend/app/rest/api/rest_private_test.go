@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
@@ -69,7 +71,7 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
-	assert.NoError(t, err)
+	require.NoError(t, err, string(b))
 	loc := c["locator"].(map[string]interface{})
 	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
@@ -77,6 +79,86 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 	assert.Contains(t, c["text"], "foo")
 	assert.Contains(t, c["text"], "bar")
 	assert.True(t, len(c["id"].(string)) > 8)
+}
+
+// based on issue https://github.com/umputun/remark42/issues/1631
+func TestRest_CreateAndPreviewWithImage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	ts.Close()
+	defer teardown()
+
+	srv.ImageService.ProxyAPI = srv.RemarkURL + "/api/v1/img"
+	srv.ImageProxy = &proxy.Image{
+		HTTP2HTTPS:    true,
+		CacheExternal: true,
+		RoutePath:     "/api/v1/img",
+		RemarkURL:     srv.RemarkURL,
+		ImageService:  srv.ImageService,
+	}
+	srv.CommentFormatter = store.NewCommentFormatter(srv.ImageProxy)
+	// need to recreate the server with new ImageProxy, otherwise old one will be used
+	ts = httptest.NewServer(srv.routes())
+	defer ts.Close()
+
+	var pngRead bool
+	// server with the test PNG image
+	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, e := io.Copy(w, gopherPNG())
+		assert.NoError(t, e)
+		pngRead = true
+	}))
+	defer pngServer.Close()
+
+	t.Run("create", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/comment",
+			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+		assert.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+
+		c := R.JSON{}
+		err = json.Unmarshal(b, &c)
+		require.NoError(t, err, string(b))
+		assert.NotContains(t, c["text"], pngServer.URL)
+		assert.Contains(t, c["text"], srv.RemarkURL)
+		loc := c["locator"].(map[string]interface{})
+		assert.Equal(t, "remark42", loc["site"])
+		assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
+		assert.True(t, len(c["id"].(string)) > 8)
+		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
+	})
+
+	t.Run("preview", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/preview",
+			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
+		assert.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+
+		assert.NotContains(t, string(b), pngServer.URL)
+		assert.Contains(t, string(b), srv.RemarkURL)
+
+		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
+		// retrieve the image from the cache
+		imgURL := strings.Split(strings.Split(string(b), "src=\"")[1], "\"")[0]
+		// replace srv.RemarkURL with ts.URL
+		imgURL = strings.ReplaceAll(imgURL, srv.RemarkURL, ts.URL)
+		resp, err = http.Get(imgURL)
+		assert.NoError(t, err)
+		b, err = io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, string(b))
+		assert.NoError(t, resp.Body.Close())
+		// compare image to original gopher png after decoding from base64
+		assert.Equal(t, gopher, base64.StdEncoding.EncodeToString(b))
+
+		assert.Equal(t, true, pngRead, "original image accessed to be shown to user")
+	})
+
 }
 
 func TestRest_CreateOldPost(t *testing.T) {
@@ -163,6 +245,25 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
 	assert.Equal(t, "comment contains restricted words", c["error"])
+	assert.Equal(t, "invalid comment", c["details"])
+}
+
+func TestRest_CreateRelativeURL(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// check that it's not possible to click insert URL button and not alter the URL in it (which is `url` by default)
+	relativeURLText := `{"text": "here is a link with relative URL: [google.com](url)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+	resp, err := post(t, ts.URL+"/api/v1/comment", relativeURLText)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	c := R.JSON{}
+	err = json.Unmarshal(b, &c)
+	assert.NoError(t, err)
+	assert.Equal(t, "links should start with mailto:, http:// or https://", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
 }
 
@@ -574,7 +675,7 @@ func TestRest_Vote(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut,
 			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
 		assert.NoError(t, err)
-		req.Header.Add("X-JWT", devToken)
+		req.Header.Add("X-JWT", dev2Token)
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Body.Close())
@@ -583,7 +684,7 @@ func TestRest_Vote(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
 	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
-	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code := getWithDev2Auth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}
 	err := json.Unmarshal([]byte(body), &cr)
@@ -594,7 +695,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, map[string]store.VotedIPInfo(nil), cr.VotedIPs, "hidden")
 
 	assert.Equal(t, http.StatusOK, vote(-1), "opposite vote allowed")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDev2Auth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -603,7 +704,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, 0, cr.Vote)
 
 	assert.Equal(t, http.StatusOK, vote(-1), "opposite vote allowed one more time")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDev2Auth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -612,7 +713,7 @@ func TestRest_Vote(t *testing.T) {
 	assert.Equal(t, -1, cr.Vote)
 
 	assert.Equal(t, http.StatusBadRequest, vote(-1), "dbl vote not allowed")
-	body, code = getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	body, code = getWithDev2Auth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 	assert.Equal(t, http.StatusOK, code)
 	cr = store.Comment{}
 	err = json.Unmarshal([]byte(body), &cr)
@@ -709,7 +810,7 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 
 	// issue good token
 	claims := token.Claims{
-		Handshake: &token.Handshake{ID: "dev::good@example.com"},
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
 		StandardClaims: jwt.StandardClaims{
 			Audience:  "remark42",
 			ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
@@ -808,7 +909,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
 		`{"text": "test 123",
-"user": {"name": "dev::good@example.com"},
+"user": {"name": "provider1_dev::good@example.com"},
 "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`))
 	assert.NoError(t, err)
@@ -882,7 +983,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	var clearUser store.User
 	err = json.Unmarshal(body, &clearUser)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: false,
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", EmailSubscription: false,
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, clearUser)
 
 	// verify email
@@ -916,7 +1017,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	var subscribedUser store.User
 	err = json.Unmarshal(body, &subscribedUser)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", EmailSubscription: true,
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", EmailSubscription: true,
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, subscribedUser)
 
 	// create child comment from another user, email notification expected
@@ -1058,7 +1159,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	// create new comment from dev user
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
 		`{"text": "test 123",
-"user": {"name": "dev::good@example.com"},
+"user": {"name": "provider1_dev::good@example.com"},
 "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`))
 	assert.NoError(t, err)
@@ -1137,8 +1238,8 @@ func TestRest_TelegramNotification(t *testing.T) {
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode, string(body))
-	require.Equal(t, `{"code":0,"details":"can't set telegram for user","error":"not verified"}`+"\n", string(body))
+	require.Equal(t, http.StatusNotFound, resp.StatusCode, string(body))
+	require.Equal(t, `{"code":0,"details":"request is not verified yet","error":"not verified"}`+"\n", string(body))
 
 	mockTlgrm.notVerified = false
 
@@ -1186,7 +1287,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	var user store.User
 	err = json.Unmarshal(body, &user)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev",
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
 
 	// create child comment from another user, telegram notification expected
@@ -1245,7 +1346,7 @@ func TestRest_UserAllData(t *testing.T) {
 	defer teardown()
 
 	// write 3 comments
-	user := store.User{ID: "dev", Name: "user name 1"}
+	user := store.User{ID: "provider1_dev", Name: "user name 1"}
 	c1 := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 	c2 := store.Comment{User: user, Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
@@ -1270,13 +1371,13 @@ func TestRest_UserAllData(t *testing.T) {
 	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
 
 	ungzReader, err := gzip.NewReader(resp.Body)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	ungzBody, err := io.ReadAll(ungzReader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	strUungzBody := string(ungzBody)
 	assert.True(t, strings.HasPrefix(strUungzBody,
-		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
+		`{"info": {"name":"developer one","id":"provider1_dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
 	assert.Equal(t, 3, strings.Count(strUungzBody, `"text":`), "3 comments inside")
 
 	parsed := struct {
@@ -1286,7 +1387,7 @@ func TestRest_UserAllData(t *testing.T) {
 
 	err = json.Unmarshal(ungzBody, &parsed)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev",
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev",
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, parsed.Info)
 	assert.Equal(t, 3, len(parsed.Comments))
 
@@ -1302,7 +1403,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	user := store.User{ID: "dev", Name: "user name 1"}
+	user := store.User{ID: "provider1_dev", Name: "user name 1"}
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 
@@ -1329,7 +1430,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	assert.NoError(t, err)
 	strUngzBody := string(ungzBody)
 	assert.True(t, strings.HasPrefix(strUngzBody,
-		`{"info": {"name":"developer one","id":"dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
+		`{"info": {"name":"developer one","id":"provider1_dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
 	assert.Equal(t, 51, strings.Count(strUngzBody, `"text":`), "51 comments inside")
 }
 
@@ -1353,12 +1454,12 @@ func TestRest_DeleteMe(t *testing.T) {
 	err = json.Unmarshal(body, &m)
 	assert.NoError(t, err)
 	assert.Equal(t, "remark42", m["site"])
-	assert.Equal(t, "dev", m["user_id"])
+	assert.Equal(t, "provider1_dev", m["user_id"])
 
 	tkn := m["token"]
 	claims, err := srv.Authenticator.TokenService().Parse(tkn)
 	assert.NoError(t, err)
-	assert.Equal(t, "dev", claims.User.ID)
+	assert.Equal(t, "provider1_dev", claims.User.ID)
 	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+tkn, m["link"])
 
 	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), http.NoBody)

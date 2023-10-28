@@ -29,12 +29,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pkgz/expirable-cache"
+	"github.com/go-pkgz/expirable-cache/v2"
 )
 
 func main() {
 	// make cache with short TTL and 3 max keys
-	c, _ := cache.NewCache(cache.MaxKeys(3), cache.TTL(time.Millisecond*10))
+	c := cache.NewCache[string, string]().WithMaxKeys(3).WithTTL(time.Millisecond * 10)
 
 	// set value under key1.
 	// with 0 ttl (last parameter) will use cache-wide setting instead (10ms).

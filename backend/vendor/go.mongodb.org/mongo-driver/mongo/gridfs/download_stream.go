@@ -84,6 +84,8 @@ type unmarshalFile struct {
 }
 
 // UnmarshalBSON implements the bson.Unmarshaler interface.
+//
+// Deprecated: Unmarshaling a File from BSON will not be supported in Go Driver 2.0.
 func (f *File) UnmarshalBSON(data []byte) error {
 	var temp unmarshalFile
 	if err := bson.Unmarshal(data, &temp); err != nil {
@@ -234,6 +236,11 @@ func (ds *DownloadStream) fillBuffer(ctx context.Context) error {
 		if ds.cursor.Err() != nil {
 			_ = ds.cursor.Close(ctx)
 			return ds.cursor.Err()
+		}
+		// If there are no more chunks, but we didn't read the expected number of chunks, return an
+		// ErrWrongIndex error to indicate that we're missing chunks at the end of the file.
+		if ds.expectedChunk != ds.numChunks {
+			return ErrWrongIndex
 		}
 		return errNoMoreChunks
 	}

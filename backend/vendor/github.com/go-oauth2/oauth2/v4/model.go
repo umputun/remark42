@@ -10,6 +10,7 @@ type (
 		GetID() string
 		GetSecret() string
 		GetDomain() string
+		IsPublic() bool
 		GetUserID() string
 	}
 

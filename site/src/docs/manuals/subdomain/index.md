@@ -58,7 +58,27 @@ The `nginx.conf` would then look something like:
 
 ### Caddy configuration
 
-Example of Caddy configuration (`Caddyfile`) running remark42 service on `example.com/remark42/`:
+Example of Caddy 2 configuration (`Caddyfile`) running remark42 service on `example.com/remark42/`, proxying
+requests under the path /remark42 through to the docker container:
+
+```
+example.com {
+  root * /srv/www
+
+  log {
+    output file /logs/example.com.access.log
+  }
+
+  # remark42
+  handle_path /remark42* {
+    reverse_proxy remark42:8080
+  }
+  
+  file_server
+}
+```
+
+If you are using a legacy version (v1) of Caddy, the following configuration would be appropriate:
 
 ```
 example.com {
@@ -66,7 +86,7 @@ example.com {
 	tls mail@example.com
 
 	root /srv/www
-	log  /logs/access.log
+	log  /logs/example.com.access.log
 
 	# remark42
 	proxy /remark42/ http://remark42:8080/ {

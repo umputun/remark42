@@ -122,10 +122,42 @@ describe('<CommentForm />', () => {
         expect(screen.getByText(/Subscribe by/)).toBeVisible();
         expect(screen.getByTitle('Subscribe by RSS')).toBeVisible();
       });
+      it('renders Telegram subscription button', () => {
+        setup({ user }, { simple_view: true, telegram_notifications: true });
+        expect(screen.getByText(/Subscribe by/)).toBeVisible();
+        expect(screen.getByTitle('Subscribe by Telegram')).toBeVisible();
+      });
+      it('renders OR if telegram and RSS are enabled', () => {
+        setup({ user }, { simple_view: true, telegram_notifications: true, email_notifications: false });
+        // I can not use testing-library to check 2 elements with OR exists, because both of them are in the same DOM element
+        const container = screen.getByText(/ or/);
+        const regex = /\bor\b/g;
+        const matchCount = (container.textContent?.match(regex) || []).length;
+
+        expect(matchCount).toBe(1);
+      });
+      it('renders 2 OR if telegram and RSS and email are enabled', () => {
+        setup({ user }, { simple_view: true, telegram_notifications: true, email_notifications: true });
+        const container = screen.getByText(/ or/);
+        const regex = /\bor\b/g;
+        const matchCount = (container.textContent?.match(regex) || []).length;
+
+        expect(matchCount).toBe(2);
+      });
     });
     it('renders without email subscription button when email_notifications disabled', () => {
       setup({ user }, { email_notifications: false });
-      expect(screen.queryByText('Subscribe by RSS')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Subscribe by Email')).not.toBeInTheDocument();
+    });
+    it('renders Telegram subscription button', () => {
+      setup({ user }, { telegram_notifications: true });
+      expect(screen.getByText(/Subscribe by/)).toBeVisible();
+      expect(screen.getByTitle('Subscribe by Telegram')).toBeVisible();
+    });
+
+    it('renders without Telegram subscription button if telegram_notifications is false', () => {
+      setup({ user }, { telegram_notifications: false });
+      expect(screen.queryByTitle('Subscribe by Telegram')).not.toBeInTheDocument();
     });
   });
 

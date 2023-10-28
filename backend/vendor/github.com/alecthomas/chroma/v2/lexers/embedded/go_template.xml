@@ -41,7 +41,7 @@
         <token type="Operator"/>
         <push state="subexpression"/>
       </rule>
-      <rule pattern="(range|if|else|while|with|template|end|true|false|nil|and|call|html|index|js|len|not|or|print|printf|println|urlquery|eq|ne|lt|le|gt|ge)\b">
+      <rule pattern="(range|if|else|while|with|template|end|true|false|nil|and|call|html|index|js|len|not|or|print|printf|println|urlquery|eq|ne|lt|le|gt|ge|block|break|continue|define|slice)\b">
         <token type="Keyword"/>
       </rule>
       <rule pattern="\||:?=|,">

@@ -459,7 +459,7 @@ func (tg *tgAPI) request(ctx context.Context, method string, data interface{}) e
 		if err != nil {
 			return fmt.Errorf("failed to send request: %w", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint gosec // we don't care about response body
 
 		if resp.StatusCode != http.StatusOK {
 			return tg.parseError(resp.Body, resp.StatusCode)

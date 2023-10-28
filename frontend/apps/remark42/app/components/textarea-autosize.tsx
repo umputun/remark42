@@ -2,7 +2,7 @@ import { h, JSX } from 'preact';
 import { forwardRef } from 'preact/compat';
 import { useEffect, useRef } from 'preact/hooks';
 
-function autoResize(textarea: HTMLTextAreaElement, onResize?: () => void) {
+function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = '';
   textarea.style.height = `${textarea.scrollHeight}px`;
 }

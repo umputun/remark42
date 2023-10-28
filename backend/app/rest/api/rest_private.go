@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec //not used for security
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -90,11 +91,11 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment = s.commentFormatter.Format(comment)
 	comment.Sanitize()
 
-	// check if images are valid
-	for _, id := range s.imageService.ExtractPictures(comment.Text) {
+	// check if images are valid, omit proxied images as they are lazy-loaded
+	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		err := s.imageService.ResetCleanupTimer(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't renew staged picture cleanup timer", rest.ErrImgNotFound)
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
@@ -129,8 +130,8 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	comment = s.commentFormatter.Format(comment)
 
-	// check if images are valid
-	for _, id := range s.imageService.ExtractPictures(comment.Text) {
+	// check if images are valid, omit proxied images as they are lazy-loaded
+	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		_, err := s.imageService.Load(id)
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
@@ -150,7 +151,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.dataService.Create(comment)
-	if err == service.ErrRestrictedWordsFound {
+	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
 	}
@@ -219,7 +220,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := s.dataService.EditComment(locator, id, editReq)
-	if err == service.ErrRestrictedWordsFound {
+	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
 	}
@@ -430,7 +431,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 	var address, siteID string
 	address, siteID, err := s.telegramService.CheckToken(queryToken, user.ID)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't set telegram for user", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusNotFound, err, "request is not verified yet", rest.ErrInternal)
 		return
 	}
 

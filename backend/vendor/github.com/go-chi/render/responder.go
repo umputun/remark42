@@ -99,14 +99,14 @@ func JSON(w http.ResponseWriter, r *http.Request, v interface{}) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "application/json")
 	if status, ok := r.Context().Value(StatusCtxKey).(int); ok {
 		w.WriteHeader(status)
 	}
 	w.Write(buf.Bytes()) //nolint:errcheck
 }
 
-// XML marshals 'v' to JSON, setting the Content-Type as application/xml. It
+// XML marshals 'v' to XML, setting the Content-Type as application/xml. It
 // will automatically prepend a generic XML header (see encoding/xml.Header) if
 // one is not found in the first 100 bytes of 'v'.
 func XML(w http.ResponseWriter, r *http.Request, v interface{}) {

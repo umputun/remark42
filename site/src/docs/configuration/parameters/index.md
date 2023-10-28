@@ -50,6 +50,7 @@ services:
 | admin.rpc.timeout              | ADMIN_RPC_TIMEOUT              |                          | http timeout (default: 5s)                                |
 | admin.rpc.auth_user            | ADMIN_RPC_AUTH_USER            |                          | basic auth user name                                      |
 | admin.rpc.auth_passwd          | ADMIN_RPC_AUTH_PASSWD          |                          | basic auth user password                                  |
+| admin.rpc.secret_per_site      | ADMIN_RPC_SECRET_PER_SITE      |                          | enable JWT secret retrieval per aud, which is site_id in this case |
 | admin.shared.id                | ADMIN_SHARED_ID                |                          | admin IDs (list of user IDs), _multi_                     |
 | admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@${REMARK_URL}`    | admin emails, _multi_                                     |
 | backup                         | BACKUP_PATH                    | `./var/backup`           | backups location                                          |

@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -206,7 +207,7 @@ type AdminGroup struct {
 		Admins []string `long:"id" env:"ID" description:"admin(s) ids" env-delim:","`
 		Email  []string `long:"email" env:"EMAIL" description:"admin emails" env-delim:","`
 	} `group:"shared" namespace:"shared" env-namespace:"SHARED"`
-	RPC RPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
+	RPC AdminRPCGroup `group:"rpc" namespace:"rpc" env-namespace:"RPC"`
 }
 
 // TelegramGroup defines token for Telegram used in notify and auth modules
@@ -272,6 +273,12 @@ type RPCGroup struct {
 	TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"http timeout"`
 	AuthUser     string        `long:"auth_user" env:"AUTH_USER" description:"basic auth user name"`
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
+}
+
+// AdminRPCGroup defines options for remote admin store
+type AdminRPCGroup struct {
+	RPCGroup
+	SecretPerSite bool `long:"secret_per_site" env:"SECRET_PER_SITE" description:"enable JWT secret retrieval per aud, which is site_id in this case"`
 }
 
 // LoadingCache defines interface for caching
@@ -498,7 +505,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
@@ -519,7 +526,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 
 	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
-	telegramService, telegramBotUsername := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	telegramService := s.startTelegramAuthAndNotify(ctx, telegramAuth)
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
@@ -569,33 +576,33 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}
 
 	srv := &api.Rest{
-		Version:             s.Revision,
-		DataService:         dataService,
-		WebRoot:             s.WebRoot,
-		WebFS:               webFS,
-		RemarkURL:           s.RemarkURL,
-		ImageProxy:          imgProxy,
-		CommentFormatter:    commentFormatter,
-		Migrator:            migr,
-		ReadOnlyAge:         s.ReadOnlyAge,
-		SharedSecret:        s.SharedSecret,
-		Authenticator:       authenticator,
-		Cache:               loadingCache,
-		NotifyService:       notifyService,
-		TelegramService:     telegramService,
-		SSLConfig:           sslConfig,
-		UpdateLimiter:       s.UpdateLimit,
-		ImageService:        imageService,
-		EmailNotifications:  contains("email", s.Notify.Users),
-		TelegramBotUsername: telegramBotUsername,
-		EmojiEnabled:        s.EnableEmoji,
-		AnonVote:            s.AnonymousVote && s.RestrictVoteIP,
-		SimpleView:          s.SimpleView,
-		ProxyCORS:           s.ProxyCORS,
-		AllowedAncestors:    s.AllowedHosts,
-		SendJWTHeader:       s.Auth.SendJWTHeader,
-		SubscribersOnly:     s.SubscribersOnly,
-		DisableSignature:    s.DisableSignature,
+		Version:               s.Revision,
+		DataService:           dataService,
+		WebRoot:               s.WebRoot,
+		WebFS:                 webFS,
+		RemarkURL:             s.RemarkURL,
+		ImageProxy:            imgProxy,
+		CommentFormatter:      commentFormatter,
+		Migrator:              migr,
+		ReadOnlyAge:           s.ReadOnlyAge,
+		SharedSecret:          s.SharedSecret,
+		Authenticator:         authenticator,
+		Cache:                 loadingCache,
+		NotifyService:         notifyService,
+		TelegramService:       telegramService,
+		SSLConfig:             sslConfig,
+		UpdateLimiter:         s.UpdateLimit,
+		ImageService:          imageService,
+		EmailNotifications:    contains("email", s.Notify.Users),
+		TelegramNotifications: contains("telegram", s.Notify.Users) && telegramService != nil,
+		EmojiEnabled:          s.EnableEmoji,
+		AnonVote:              s.AnonymousVote && s.RestrictVoteIP,
+		SimpleView:            s.SimpleView,
+		ProxyCORS:             s.ProxyCORS,
+		AllowedAncestors:      s.AllowedHosts,
+		SendJWTHeader:         s.Auth.SendJWTHeader,
+		SubscribersOnly:       s.SubscribersOnly,
+		DisableSignature:      s.DisableSignature,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -625,6 +632,44 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		terminated:       make(chan struct{}),
 		authRefreshCache: authRefreshCache,
 	}, nil
+}
+
+// Extract second level domains from s.RemarkURL and s.AllowedHosts.
+// It can be and IP like http//127.0.0.1 in which case we need to use whole IP as domain
+func (s *ServerCommand) getAllowedDomains() []string {
+	rawDomains := s.AllowedHosts
+	rawDomains = append(rawDomains, s.RemarkURL)
+	allowedDomains := []string{}
+	for _, rawURL := range rawDomains {
+		// case of 'self' AllowedHosts, which is not a valid rawURL name
+		if rawURL == "self" || rawURL == "'self'" || rawURL == "\"self\"" {
+			continue
+		}
+		// AllowedHosts usually don't have https:// prefix, so we're adding it just to make parsing below work the same way as for RemarkURL
+		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+			rawURL = "https://" + rawURL
+		}
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			log.Printf("[WARN] failed to parse URL %s for TitleExtract whitelist: %v", rawURL, err)
+			continue
+		}
+		domain := parsedURL.Hostname()
+
+		if domain == "" || // don't add empty domain as it will allow everything to be extracted
+			(len(strings.Split(domain, ".")) < 2 && // don't allow single-word domains like "com"
+				domain != "localhost") { // localhost is an exceptional single-word domain which is allowed
+			continue
+		}
+
+		// if domain is not IP and has more than two levels, extract second level domain
+		if net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
+			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
+		}
+
+		allowedDomains = append(allowedDomains, domain)
+	}
+	return allowedDomains
 }
 
 // Run all application objects
@@ -851,9 +896,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
-				ClientID: s.Auth.Apple.CID,
-				TeamID:   s.Auth.Apple.TID,
-				KeyID:    s.Auth.Apple.KID,
+				ClientID:     s.Auth.Apple.CID,
+				TeamID:       s.Auth.Apple.TID,
+				KeyID:        s.Auth.Apple.KID,
+				ResponseMode: "query", // default is form_post which wouldn't work here
 			},
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
@@ -1184,6 +1230,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		Logger:            log.Default(),
 		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
+		AudSecrets:        s.Admin.RPC.SecretPerSite,
 	})
 }
 
@@ -1204,20 +1251,15 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 
 // startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
 // Does nothing if telegram auth and notifications are disabled.
-// Doesn't return telegram bot username if user notifications are disabled, as that is the way frontend knows they are enabled.
-func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram, telegramBotUsername string) {
+func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram) {
 	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
-		return nil, ""
+		return nil
 	}
 
 	var err error
 	if tg, err = s.makeTelegramNotify(); err != nil {
 		log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		return nil, ""
-	}
-
-	if contains("telegram", s.Notify.Users) {
-		telegramBotUsername = tg.GetBotUsername()
+		return nil
 	}
 
 	telegramReceivers := []providers.TGUpdatesReceiver{tg}
@@ -1227,7 +1269,7 @@ func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegram
 	// start bot messages receiver for both notify and auth services
 	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
 
-	return tg, telegramBotUsername
+	return tg
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.

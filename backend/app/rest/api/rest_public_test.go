@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -76,8 +77,8 @@ func TestRest_Preview(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat`,
 	)
 	assert.Contains(t,
 		string(b),
@@ -97,8 +98,8 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat ",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat `,
 	)
 	assert.Contains(t,
 		string(b),
@@ -325,8 +326,8 @@ func TestRest_FindUserView(t *testing.T) {
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
-	assert.Equal(t, "dev", comments.Comments[0].User.ID)
-	assert.Equal(t, "dev", comments.Comments[1].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[0].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[1].User.ID)
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.Equal(t, "", comments.Comments[1].Text)
 
@@ -440,7 +441,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	assert.Equal(t, http.StatusOK, code, "noting for user blah")
 	assert.Equal(t, `{"comments":[],"count":0}`+"\n", comments)
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -459,7 +460,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	}
 
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev&skip=1&limit=2")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev&skip=1&limit=2")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -477,6 +478,43 @@ func TestRest_FindUserComments(t *testing.T) {
 	}
 }
 
+func TestRest_FindUserComments_CWE_918(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"radio-t.com"}) // required for extracting the title, bad URL test
+	defer srv.DataService.TitleExtractor.Close()
+	defer teardown()
+
+	backendRequestedArbitraryServer := false
+	arbitraryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Logf("request received: %+v", r)
+		backendRequestedArbitraryServer = true
+	}))
+	defer arbitraryServer.Close()
+
+	arbitraryURLComment := store.Comment{Text: "arbitrary URL request test",
+		Locator: store.Locator{SiteID: "remark42", URL: arbitraryServer.URL}}
+
+	assert.False(t, backendRequestedArbitraryServer)
+	addComment(t, arbitraryURLComment, ts)
+	assert.False(t, backendRequestedArbitraryServer,
+		"no request is expected to the test server as it's not in the list of the allowed domains for the title extractor")
+
+	res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
+	assert.Equal(t, http.StatusOK, code)
+
+	resp := struct {
+		Comments []store.Comment
+		Count    int
+	}{}
+
+	err := json.Unmarshal([]byte(res), &resp)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resp.Comments), "should have 2 comments")
+
+	assert.Equal(t, "", resp.Comments[0].PostTitle, "empty from the first post")
+	assert.Equal(t, arbitraryServer.URL, resp.Comments[0].Locator.URL, "arbitrary URL provided by the request")
+}
+
 func TestRest_UserInfo(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -486,7 +524,7 @@ func TestRest_UserInfo(t *testing.T) {
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "http://example.com/pic.png",
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
 

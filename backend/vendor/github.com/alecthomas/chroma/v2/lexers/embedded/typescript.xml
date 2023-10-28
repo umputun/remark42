@@ -6,6 +6,8 @@
     <alias>typescript</alias>
     <filename>*.ts</filename>
     <filename>*.tsx</filename>
+    <filename>*.mts</filename>
+    <filename>*.cts</filename>
     <mime_type>text/x-typescript</mime_type>
     <dot_all>true</dot_all>
     <ensure_nl>true</ensure_nl>

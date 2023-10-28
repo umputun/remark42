@@ -11,7 +11,7 @@ COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
     apk add --no-cache --update git && \
-    npm i -g pnpm; \
+    npm i -g pnpm@7; \
   fi
 
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM umputun/baseimage:buildgo-v1.11.0 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -70,7 +70,7 @@ RUN \
     cd app && \
     if [ -z "$SKIP_BACKEND_TEST" ] ; then \
         CGO_ENABLED=1 go test -race -p 1 -timeout="${BACKEND_TEST_TIMEOUT:-300s}" -covermode=atomic -coverprofile=/profile.cov_tmp ./... && \
-        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov ; \
+        cat /profile.cov_tmp | grep -v "_mock.go" > /profile.cov && \
         golangci-lint run --config ../.golangci.yml ./... ; \
     else \
       echo "skip backend tests and linter" \
@@ -81,7 +81,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM umputun/baseimage:app-v1.9.2
+FROM umputun/baseimage:app-v1.11.0
 
 ARG GITHUB_SHA
 

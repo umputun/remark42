@@ -163,7 +163,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "remap failed, bad given rules", rest.ErrDecode)
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint gosec // we don't care about response body
 
 	// start remap procedure with mapper
 	go func() {

@@ -22,7 +22,7 @@ func TestComment_Sanitize(t *testing.T) {
 			},
 			out: Comment{
 				Text: "blah XSS\n\t",
-				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`, Name: "name &lt;b/&gt;"},
+				User: User{ID: `&lt;a href=&#34;http://blah.com&#34;&gt;username&lt;/a&gt;`, Name: "name"},
 			},
 		},
 		{
@@ -87,6 +87,14 @@ func TestComment_Sanitize(t *testing.T) {
 		{
 			inp: Comment{Text: "blah blah", PostTitle: "<script>alert()</script>something"},
 			out: Comment{Text: "blah blah", PostTitle: "something"},
+		},
+		{
+			inp: Comment{Text: "blah blah", PostTitle: "<a href=\"https://example.com\">test</a>"},
+			out: Comment{Text: "blah blah", PostTitle: "test"},
+		},
+		{
+			inp: Comment{Text: "blah blah", PostTitle: "https://example.com/blah"}, // link is left as-is, but not rendered as <a>
+			out: Comment{Text: "blah blah", PostTitle: "https://example.com/blah"},
 		},
 		{
 			inp: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw">@marcsheep</a> <a href="https://t.co/ULnVpG8w55">pic.twitter.com/ULnVpG8w55</a></p>&mdash; Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw">November 9, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`, PostTitle: "Twitter quote"},
@@ -196,8 +204,8 @@ func TestComment_Snippet(t *testing.T) {
 		{0, "", ""},
 		{-1, "test\nblah", "test blah"},
 		{5, "test\nblah", "test ..."},
-		{5, "xyz12345 xxx", "xyz12345 ..."},
-		{10, "xyz12345 xxx\ntest 123456", "xyz12345 xxx test ..."},
+		{5, "xyz12345 xxx", "xyz12..."},
+		{10, "xyz12345 xxx\ntest 123456", "xyz12345 ..."},
 	}
 
 	for i, tt := range tbl {
@@ -263,7 +271,7 @@ func TestComment_sanitizeText(t *testing.T) {
 		},
 		{
 			"<a href=javascript:alert(document.domain)//>xxx</a>",
-			"&lt;a/&gt;xxx&lt;/a&gt;",
+			"xxx",
 		},
 	}
 
