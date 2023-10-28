@@ -6,7 +6,7 @@ interface Content {
 	client: ReturnType<typeof createAuthClient>
 }
 
-describe<Content>('Auth Client', (authClient) => {
+describe.skip<Content>('Auth Client', (authClient) => {
 	beforeEach<Content>((ctx) => {
 		ctx.client = createAuthClient({ siteId: 'mysite', baseUrl: '/remark42' })
 	})

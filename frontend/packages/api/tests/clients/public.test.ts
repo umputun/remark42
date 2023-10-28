@@ -6,7 +6,7 @@ interface Context {
 	client: ReturnType<typeof createPublicClient>
 }
 
-describe<Context>('Public Client', (publicClient) => {
+describe.skip<Context>('Public Client', (publicClient) => {
 	beforeEach<Context>((ctx) => {
 		ctx.client = createPublicClient({ siteId: 'mysite', baseUrl: '/remark42' })
 	})

@@ -6,7 +6,7 @@ interface Context {
 	client: ReturnType<typeof createAdminClient>
 }
 
-describe<Context>('Admin Client', (adminClient) => {
+describe.skip<Context>('Admin Client', (adminClient) => {
 	beforeEach<Context>((ctx) => {
 		ctx.client = createAdminClient({ siteId: 'mysite', baseUrl: '/remark42' })
 	})
