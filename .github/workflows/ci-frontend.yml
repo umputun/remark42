@@ -104,7 +104,7 @@ jobs:
         working-directory: ./frontend/apps/remark42
 
   lint:
-    name: Eslint & Stylelint
+    name: Linters
     runs-on: ubuntu-latest
     strategy:
       matrix:
