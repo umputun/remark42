@@ -45,7 +45,11 @@
   }
 
   & .comment__time {
-    color: var(--color11);
+    color: var(--color35);
+
+    &:hover {
+      color: var(--color1);
+    }
   }
 
   & .comment__user-id {
@@ -54,6 +58,10 @@
 
   & .comment__username {
     color: var(--color10);
+
+    &:hover {
+      color: var(--color33);
+    }
   }
 
   &.comment_editing {

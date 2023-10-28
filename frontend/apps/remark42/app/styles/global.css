@@ -30,6 +30,16 @@ button {
   cursor: pointer;
 }
 
+a {
+  color: var(--color9);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color33);
+  }
+}
+
 #remark42 {
   height: 100%;
 }
