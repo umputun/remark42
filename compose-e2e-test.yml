@@ -24,6 +24,7 @@ services:
       - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local oauth2
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
+      - UPDATE_LIMIT=0 # we run multiple browsers in parallel and test with the same user
     volumes:
       - ./var:/srv/var
 

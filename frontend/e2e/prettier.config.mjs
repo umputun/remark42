@@ -1,8 +1,8 @@
 /** @type {import('prettier').Config} */
-module.exports = {
+export default {
 	singleQuote: true,
 	semi: false,
-	arrowParens: 'always',
-	trailingComma: 'es5',
+	arrowParens: "always",
+	trailingComma: "es5",
 	printWidth: 120,
-}
+};

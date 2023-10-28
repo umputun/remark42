@@ -1,30 +1,50 @@
-import { test } from '@playwright/test'
-import { nanoid } from 'nanoid'
-import * as path from 'path'
+import { test, expect } from "@playwright/test";
+import { nanoid } from "nanoid";
 
-test.describe('Post comment', () => {
+test.describe("Post comment", () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/web/')
-	})
+		await page.goto("/web/");
+	});
 
-	test('as dev user', async ({ page, browserName }) => {
-		const iframe = page.frameLocator('iframe[name]')
-		await iframe.locator('text=Sign In').click()
+	test("as dev user", async ({ page, browserName }) => {
+		await page.frameLocator("iframe[name]").locator("text=Sign In").click();
 		const [authPage] = await Promise.all([
-			page.waitForEvent('popup'),
-			iframe.locator("[title='Sign In with Dev']").click(),
-		])
-		await authPage.locator('text=Authorize').click()
-		// triggers tab visibility and enables widget to re-render with auth state
-		await page.press('iframe[name]', 'Tab')
-		await iframe.locator('textarea').click()
-		const message = `Hello world! ${nanoid()}`
-		await iframe.locator('textarea').type(message)
-		await iframe.locator('text=Send').click()
-		// checks if comment was posted
-		iframe.locator(`text=${message}`).first()
-		await page.reload()
-		// checks if saved comment is visible
-		iframe.locator(`text=${message}`).first()
-	})
-})
+			page.waitForEvent("popup"),
+			page
+				.frameLocator("iframe[name]")
+				.locator("[title='Sign In with Dev']")
+				.click(),
+		]);
+		await authPage.locator("text=Authorize").click();
+
+		// firefox doesn't see iframe after auth
+		if (browserName === "firefox") {
+			await page.reload();
+		} else {
+			await page.press("iframe[name]", "Tab");
+		}
+		const message = `Hello world! ${nanoid()}`;
+		await page
+			.frameLocator("iframe[name]")
+			.getByPlaceholder("Your comment here")
+			.fill(message);
+		await page
+			.frameLocator("iframe[name]")
+			.getByRole("button", { name: "Send" })
+			.click();
+		await expect(
+			page.frameLocator("iframe[name]").getByText(message)
+		).toBeVisible();
+		await page.reload();
+		// checks if comment is saved and visible after reload
+		await page
+			.frameLocator("iframe[name]")
+			.locator("body")
+			.screenshot({
+				path: `screenshot-${browserName}.png`,
+			});
+		await expect(
+			page.frameLocator("iframe[name]").getByText(message)
+		).toBeVisible();
+	});
+});
