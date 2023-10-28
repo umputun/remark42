@@ -156,13 +156,11 @@ class AuthPanelComponent extends Component<Props, State> {
         <div className="auth-panel__column">{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
-        <div className="auth-panel__column">
-          {isSettingsLabelVisible && this.renderSettingsLabel()}
-          {isSettingsLabelVisible && ' • '}
-          {isAdmin && this.renderReadOnlySwitch()}
-          {isAdmin && read_only && ' • '}
+        <div className="auth-panel__column auth-panel__column_separated">
+          {isSettingsLabelVisible && <span>{this.renderSettingsLabel()}</span>}
+          {isAdmin && <span>{this.renderReadOnlySwitch()}</span>}
           {!isAdmin && read_only && (
-            <span className="auth-panel__readonly-label">
+            <span>
               <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
             </span>
           )}
