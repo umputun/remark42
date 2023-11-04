@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -169,6 +170,50 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
+}
+
+func TestService_Put(t *testing.T) {
+	ks := admin.NewStaticKeyStore("secret 123")
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: ks}
+
+	comment := store.Comment{
+		ID:        "c-1",
+		ParentID:  "id-1",
+		Text:      "test text",
+		User:      store.User{ID: "user2", Name: "user name 2"},
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+	}
+	_, err := b.Create(comment)
+	require.NoError(t, err)
+
+	// create new comment with everything different to replace the first one with fields below
+	updatedComment := store.Comment{
+		ID:        "c-1",
+		ParentID:  "id-new",
+		Text:      "new text",
+		User:      store.User{ID: "user3", Name: "user name 3"},
+		Locator:   store.Locator{URL: "https://example.com", SiteID: "example"},
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+	}
+
+	err = b.Put(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, updatedComment)
+	require.NoError(t, err)
+
+	// request with wrong user, should not affect the comment user
+	got, err := b.Get(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "c-1", store.User{ID: "user1", Name: "user name 1"})
+	require.NoError(t, err)
+	assert.Equal(t, "c-1", got.ID)
+	assert.Equal(t, "new text", got.Text)
+	assert.Equal(t, "id-1", got.ParentID, "should be unaltered")
+	assert.Equal(t, "user2", got.User.ID, "should be unaltered")
+	assert.Equal(t, "user name 2", got.User.Name, "should be unaltered")
+	assert.Equal(t, "https://radio-t.com", got.Locator.URL, "should be unaltered")
+	assert.Equal(t, "radio-t", got.Locator.SiteID, "should be unaltered")
+	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local), got.Timestamp, "should be unaltered")
+
 }
 
 func TestService_SetTitle(t *testing.T) {
@@ -543,6 +588,111 @@ func TestService_VoteControversy(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, res[0].Score, "should have 1 score")
 	assert.InDelta(t, 1.73, res[0].Controversy, 0.01)
+}
+
+func TestService_RestrictedWords(t *testing.T) {
+	ks := admin.NewStaticKeyStore("secret 123")
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	restictedWordLister := StaticRestrictedWordsLister{Words: []string{"restricted"}}
+	b := DataStore{Engine: eng, AdminStore: ks, RestrictedWordsMatcher: NewRestrictedWordsMatcher(restictedWordLister)}
+
+	// test creating a comment with restricted words which should fail with appropriate error
+	reply := store.Comment{
+		ID:        "c-1",
+		ParentID:  "id-1",
+		Text:      "restricted word",
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name 2"},
+	}
+	id, err := b.Create(reply)
+	assert.EqualError(t, err, ErrRestrictedWordsFound.Error(), "should fail with RestrictedWordError")
+	assert.Empty(t, id)
+}
+
+func TestDataStore_AdminStoreErrors(t *testing.T) {
+	badKey := true
+	badEnabled := true
+	as := admin.StoreMock{
+		OnEventFunc: func(siteID string, et admin.EventType) error { return errors.New("err") },
+		KeyFunc: func(siteID string) (string, error) {
+			if badKey {
+				return "", errors.New("mock key err")
+			}
+			return "secret", nil
+		},
+		EnabledFunc: func(siteID string) (bool, error) {
+			if badEnabled {
+				return false, errors.New("mock enabled err")
+			}
+			return true, nil
+		},
+		AdminsFunc: func(siteID string) ([]string, error) { return nil, errors.New("mock admins err") },
+	}
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: &as, MaxVotes: -1}
+	comment := store.Comment{
+		ID:        "c-1",
+		ParentID:  "id-1",
+		Text:      "restricted word",
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name 2"},
+	}
+
+	// Key call error
+	id, err := b.Create(comment)
+	assert.ErrorContainsf(t, err, "mock key err", "should fail with mock error")
+	assert.Empty(t, id)
+	assert.Equal(t, len(as.KeyCalls()), 1)
+	assert.Equal(t, len(as.EnabledCalls()), 0)
+	assert.Equal(t, len(as.OnEventCalls()), 0)
+
+	// Enabled call error
+	badKey = false
+	id, err = b.Create(comment)
+	assert.ErrorContains(t, err, "mock enabled err", "should fail with mock error")
+	assert.Empty(t, id)
+	assert.Equal(t, len(as.KeyCalls()), 2)
+	assert.Equal(t, len(as.EnabledCalls()), 1)
+	assert.Equal(t, len(as.OnEventCalls()), 0)
+
+	// only OnEvent error
+	badEnabled = false
+	id, err = b.Create(comment)
+	assert.NoError(t, err, "OnEvent error should be just logged")
+	assert.Equal(t, id, "c-1")
+	assert.Equal(t, len(as.KeyCalls()), 3)
+	assert.Equal(t, len(as.EnabledCalls()), 2)
+	assert.Equal(t, len(as.OnEventCalls()), 1)
+
+	// OnEvent error on Vote call
+	_, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "c-1",
+		UserID: "user4", Val: true})
+	assert.NoError(t, err, "OnEvent error should be just logged")
+	assert.Equal(t, len(as.KeyCalls()), 4)
+	assert.Equal(t, len(as.EnabledCalls()), 3)
+	assert.Equal(t, len(as.OnEventCalls()), 2)
+
+	// Admins error
+	isAdmin := b.IsAdmin("radio-t", "user2")
+	assert.False(t, isAdmin)
+	assert.Equal(t, len(as.AdminsCalls()), 1)
+	assert.Equal(t, len(as.OnEventCalls()), 2)
+
+	// OnEvent error on EditComment call
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "c-1", EditRequest{Text: "new text"})
+	assert.NoError(t, err, "OnEvent error should be just logged")
+
+	// OnEvent error on Delete call
+	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "c-1", store.SoftDelete)
+	assert.NoError(t, err, "OnEvent error should be just logged")
+
+	// OnEvent error on EditComment Delete call
+	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "c-1", EditRequest{Delete: true})
+	assert.NoError(t, err, "OnEvent error should be just logged")
 }
 
 func TestService_VoteSameIP(t *testing.T) {
@@ -1185,18 +1335,55 @@ func TestService_Info(t *testing.T) {
 	b := DataStore{Engine: eng, EditDuration: 100 * time.Millisecond,
 		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
-	info, err := b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
+	// add one more comment for another URL to test site-wide Info request
+	comment := store.Comment{
+		ID:        "123456xyz",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com/another", SiteID: "radio-t"},
+		User:      store.User{ID: "user2", Name: "user name"},
+	}
+	_, err := b.Create(comment)
+	require.NoError(t, err)
+
+	// get non-existing URL info
+	info, err := b.Info(store.Locator{URL: "bad", SiteID: "radio-t"}, 0)
+	assert.Error(t, err)
+	assert.Empty(t, info)
+
+	// get non-existing site info
+	info, err = b.Info(store.Locator{SiteID: "bad"}, 0)
+	assert.Error(t, err)
+	assert.Empty(t, info)
+
+	// test two initially created comments and store first comment FirstTS
+	info, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 0)
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com", info.URL)
 	assert.Equal(t, 2, info.Count)
 	assert.False(t, info.ReadOnly)
 	assert.True(t, info.LastTS.After(info.FirstTS))
+	firstTS := info.FirstTS
 
 	time.Sleep(1 * time.Second) // make post RO in 1sec
 	info, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 1)
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com", info.URL)
 	assert.True(t, info.ReadOnly)
+
+	// get last created comment LastTS
+	info, err = b.Info(store.Locator{URL: "https://radio-t.com/another", SiteID: "radio-t"}, 0)
+	require.NoError(t, err)
+	lastTS := info.LastTS
+
+	// site-level request
+	info, err = b.Info(store.Locator{SiteID: "radio-t"}, 1)
+	require.NoError(t, err)
+	assert.Equal(t, 3, info.Count)
+	assert.Empty(t, info.URL, "site-level request should not set URL")
+	assert.False(t, info.ReadOnly, "site-level request should not set ReadOnly")
+	assert.Equal(t, firstTS, info.FirstTS, "site-level request should have FirstTS from the first post")
+	assert.Equal(t, lastTS, info.LastTS, "site-level request should have LastTS from the last post")
 }
 
 func TestService_Delete(t *testing.T) {
