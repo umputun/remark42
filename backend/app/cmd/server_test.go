@@ -739,7 +739,7 @@ func Test_getAllowedDomains(t *testing.T) {
 		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "bad hostname"}}, []string{}},
 		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "not_a_hostname"}}, []string{}},
 		// test removal of 'self', multiple AllowedHosts. No deduplication is expected
-		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, CommonOpts: CommonOpts{RemarkURL: "https://example.org"}}, []string{"example.org", "example.org", "remark42.com", "example.org"}},
+		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, CommonOpts: CommonOpts{RemarkURL: "https://example.org"}}, []string{"example.org", "test.example.org", "remark42.com", "example.org"}},
 	}
 	for i, tt := range tbl {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

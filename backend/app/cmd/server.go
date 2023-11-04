@@ -634,8 +634,9 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}, nil
 }
 
-// Extract second level domains from s.RemarkURL and s.AllowedHosts.
-// It can be and IP like http//127.0.0.1 in which case we need to use whole IP as domain
+// Extract domains from s.AllowedHosts and second level domain from s.RemarkURL.
+// It can be and IP like http://127.0.0.1 in which case we need to use whole IP as domain
+// Beware, if s.RemarkURL is in third-level domain like https://example.co.uk, co.uk will be returned.
 func (s *ServerCommand) getAllowedDomains() []string {
 	rawDomains := s.AllowedHosts
 	rawDomains = append(rawDomains, s.RemarkURL)
@@ -662,8 +663,10 @@ func (s *ServerCommand) getAllowedDomains() []string {
 			continue
 		}
 
-		// if domain is not IP and has more than two levels, extract second level domain
-		if net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
+		// Only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
+		// For AllowedHosts we don't do this as they are exact list of domains which can host comments, but
+		// RemarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
+		if rawURL == s.RemarkURL && net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
 			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
 		}
 
