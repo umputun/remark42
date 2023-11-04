@@ -8,6 +8,9 @@ import (
 	log "github.com/go-pkgz/lgr"
 )
 
+// NOTE: matryer/moq should be installed globally and works with `go generate ./...`
+//go:generate moq --out admin_mock.go . Store
+
 // Store defines interface returning admins info for given site
 type Store interface {
 	Key(siteID string) (key string, err error)
