@@ -306,9 +306,8 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 		})
 
 		// set read-only from age and manual bucket
-		readOnlyAge := req.ReadOnlyAge
-		info.ReadOnly = readOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
-		if b.checkFlag(FlagRequest{Locator: req.Locator, Flag: ReadOnly}) {
+		info.ReadOnly = req.ReadOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, req.ReadOnlyAge).Before(time.Now())
+		if !info.ReadOnly && b.checkFlag(FlagRequest{Locator: req.Locator, Flag: ReadOnly}) {
 			info.ReadOnly = true
 		}
 		return []store.PostInfo{info}, err
