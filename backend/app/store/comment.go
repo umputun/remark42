@@ -45,9 +45,9 @@ type Edit struct {
 
 // PostInfo holds summary for given post url
 type PostInfo struct {
-	URL      string    `json:"url"`
+	URL      string    `json:"url,omitempty"` // can be attached to site-wide comments but won't be set then
 	Count    int       `json:"count"`
-	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only,omitempty"`
+	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only,omitempty"` // can be attached to site-wide comments but won't be set then
 	FirstTS  time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
 	LastTS   time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
 }
@@ -98,6 +98,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Text = ""
 	c.Orig = ""
 	c.Score = 0
+	c.Controversy = 0
 	c.Votes = map[string]bool{}
 	c.VotedIPs = make(map[string]VotedIPInfo)
 	c.Edit = nil

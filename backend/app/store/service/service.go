@@ -754,7 +754,23 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 	if len(res) == 0 {
 		return store.PostInfo{}, fmt.Errorf("post %+v not found", locator)
 	}
-	return res[0], nil
+	// URL request
+	if locator.URL != "" {
+		return res[0], nil
+	}
+	// site-wide request which returned multiple store.PostInfo, so that URL and ReadOnly flags don't make sense
+	var info store.PostInfo
+	for _, i := range res {
+		info.Count += i.Count
+		if info.FirstTS.IsZero() || i.FirstTS.Before(info.FirstTS) {
+			info.FirstTS = i.FirstTS
+		}
+		if info.LastTS.IsZero() || i.LastTS.After(info.LastTS) {
+			info.LastTS = i.LastTS
+		}
+	}
+	return info, nil
+
 }
 
 // Delete comment by id
