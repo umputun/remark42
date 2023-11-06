@@ -14,6 +14,7 @@ import (
 
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -598,7 +599,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	setScore(commentLocator, ids[4], -3)
 	time.Sleep(time.Millisecond * 5)
 
-	c6 := store.Comment{Text: "third-level comment 2", ParentID: ids[4], Locator: commentLocator}
+	c6 := store.Comment{Text: "deleted third-level comment 2", ParentID: ids[4], Locator: commentLocator}
 	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
 	// deleted later so not visible in site-wide requests
 	setScore(commentLocator, ids[5], 10)
@@ -612,7 +613,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	setScore(commentLocator, ids[6], 1)
 	time.Sleep(time.Millisecond * 5)
 
-	c8 := store.Comment{Text: "second-level comment 3", ParentID: ids[6], Locator: commentLocator}
+	c8 := store.Comment{Text: "deleted second-level comment 3", ParentID: ids[6], Locator: commentLocator}
 	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
 	// deleted later so not visible in site-wide requests
 	setScore(commentLocator, ids[7], -20)
@@ -646,18 +647,19 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		params       string
 		expectedBody string
 	}{
-		{"", fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"format=plain", fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"format=plain&url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTS[0], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTS[0], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":5,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":3,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":2,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		// test parameters url, format, since, sort
+		{"", fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"format=plain", fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"format=plain&url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[0], fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[0], fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":5,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":3,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":2,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
 		{"format=tree", `"info":{"count":7`},
 		{"format=tree&url=test-url", `"info":{"url":"test-url","count":6`},
 		{"format=tree&sort=+time", `"info":{"count":7`},
@@ -677,19 +679,103 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		// three comments of which last one deleted and doesn't have controversy so returned last
 		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":1`, formattedTS[7])},
 		// test readonly status for the post without comments
-		{"url=readonly-test", `"info":{"count":0,"read_only":true`},
-		{"format=tree&url=readonly-test", `"info":{"count":0,"read_only":true`},
+		{"url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
+		{"format=tree&url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
+
+		// test parameters limit, offset_id for format=plain
+		{"limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
+		{"offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"limit=2", `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
+		{"limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
+		{"limit=2&url=test-url", `"info":{"url":"test-url","count":6,"count_left":6,"last_comment":"` + ids[1]},
+		{"limit=6&url=test-url", `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=7&url=test-url", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[2]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[4]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[3]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[4]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[8]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[2]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[4]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[3]), `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[4]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=1&url=test-url&offset_id=%s", ids[6]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[7]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[8]), `"info":{"url":"test-url","count":6,"count_left":6,`},
+		// deleted comment, offset is ignored in site-wide request but not for particular URL
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[5]), `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[5]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[7]},
+		// non-existing comment, offset is ignored, deleted comments included into request with "url"
+		{fmt.Sprintf("limit=1&offset_id=%s", uuid.New().String()), `"info":{"count":7,"count_left":6,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("limit=1&url=test-url&offset_id=%s", uuid.New().String()), `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		// since is ignored for tree format, so we test it only for plain
+		{"limit=6&since=" + sinceTenSecondsAgo, `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&since=" + sinceTS[4], `"info":{"count":3,"count_left":2,"last_comment":"` + ids[4]},
+		{"limit=6&url=test-url&since=" + sinceTenSecondsAgo, `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=1&url=test-url&since=" + sinceTS[4], `"info":{"url":"test-url","count":2,"count_left":3,"last_comment":"` + ids[4]},
+		// start with deleted comment timestamp
+		{"limit=1&since=" + sinceTS[5], `"info":{"count":2,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&since=" + sinceTS[6], `"info":{"count":2,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&url=test-url&since=" + sinceTS[5], `"info":{"url":"test-url","count":1,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=1&url=test-url&since=" + sinceTS[6], `"info":{"url":"test-url","count":1,"count_left":1,"last_comment":"` + ids[6]},
+		// test sort
+		{"limit=1&sort=+time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		{"limit=1&sort=-time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[7]},
+		{"limit=1&sort=+score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[6]},
+		{"limit=1&sort=-score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[2]},
+		{"limit=1&sort=+controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		{"limit=1&sort=-controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[3]},
+
+		// test parameters limit, offset_id for format=tree
+		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
+		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{"format=tree&limit=6", `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
+		{"format=tree&limit=7", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&url=test-url&limit=2", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		{"format=tree&url=test-url&limit=7", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
+		// start after first top-level comment
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[0]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[0]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		// start after second top-level comment
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[1]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
+		// start after third top-level comment, so expect comment to post 2, or no comments on post 1 if "url" is set
+		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=1&offset_id=%s", ids[6]), `"info":{"url":"test-url","count":6,"count_left":0`},
+		// non-root comment IDs or non-existing IDs are ignored
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[2]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[3]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[4]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[7]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", uuid.New().String()), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[2]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[3]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[4]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[7]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=1&offset_id=%s", uuid.New().String()), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		// test sort
+		{"format=tree&limit=1&sort=+time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&limit=1&sort=-time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
+		{"format=tree&limit=1&sort=+score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
+		{"format=tree&limit=1&sort=-score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":4,"last_comment":"` + ids[1]},
+		{"format=tree&limit=1&sort=+controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&limit=1&sort=-controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.params, func(t *testing.T) {
 			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
 			body, code := get(t, url)
-			assert.Equal(t, http.StatusOK, code)
+			expectedStatus := http.StatusOK
+			if strings.Contains(tc.params, "=bad") {
+				expectedStatus = http.StatusBadRequest
+			}
+			assert.Equal(t, expectedStatus, code)
 			assert.Contains(t, body, tc.expectedBody)
 			t.Log(body)
 			// prevent hit limiter from engaging
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(80 * time.Millisecond)
 		})
 	}
 }

@@ -11,6 +11,9 @@ import (
 // Tree is formatter making tree from the list of comments
 type Tree struct {
 	Nodes []*Node `json:"comments"`
+
+	countLeft          int
+	lastLimitedComment string
 }
 
 // Node is a comment with optional replies
@@ -29,7 +32,7 @@ type recurData struct {
 }
 
 // MakeTree gets unsorted list of comments and produces Tree
-func MakeTree(comments []store.Comment, sortType string) *Tree {
+func MakeTree(comments []store.Comment, sortType string, limit int, offsetID string) *Tree {
 	if len(comments) == 0 {
 		return &Tree{}
 	}
@@ -53,7 +56,18 @@ func MakeTree(comments []store.Comment, sortType string) *Tree {
 	}
 
 	res.sortNodes(sortType)
+	res.limit(limit, offsetID)
 	return &res
+}
+
+// CountLeft returns number of comments left after limit, 0 if no limit was set
+func (t *Tree) CountLeft() int {
+	return t.countLeft
+}
+
+// LastComment returns ID of the last comment in the tree after limit, empty string if no limit was set
+func (t *Tree) LastComment() string {
+	return t.lastLimitedComment
 }
 
 // proc makes tree for one top-level comment recursively
@@ -144,4 +158,82 @@ func (t *Tree) sortNodes(sortType string) {
 			return t.Nodes[i].Comment.Timestamp.Before(t.Nodes[j].Comment.Timestamp)
 		}
 	})
+}
+
+// limit limits number of comments in tree and sets countLeft and lastLimitedComment,
+// starting with comment next after offsetID.
+//
+// If offsetID is empty or invalid, it starts from the beginning. If limit is 0, it doesn't limit anything.
+//
+// Limit is applied to top-level comments only, so top-level comments only returned with all replies,
+// and lastLimitedComment is set to the last top-level comment and not last reply in it.
+//
+// In case limit is less than the number of replies to first comment after given offset, that first comment is
+// returned completely with all replies.
+func (t *Tree) limit(limit int, offsetID string) {
+	if offsetID == "" && limit <= 0 {
+		return
+	}
+
+	start := 0
+	if offsetID != "" {
+		for i, n := range t.Nodes {
+			if n.Comment.ID == offsetID {
+				start = i + 1
+				break
+			}
+		}
+	}
+
+	if start == len(t.Nodes) { // If the start index is beyond the available nodes, clear the nodes
+		t.Nodes = []*Node{}
+		return
+	}
+
+	t.Nodes = t.Nodes[start:]
+
+	// if there is only offset and no limit, there are no comments left and no point in returning
+	// the last comment ID as there are no comments beyond it.
+	if limit <= 0 {
+		return
+	}
+
+	// Traverse and limit the number of top-level nodes, including their replies
+	limitedNodes := []*Node{}
+	commentsCount := 0
+
+	for _, node := range t.Nodes {
+		repliesCount := countReplies(node) + 1 // Count this node and its replies
+
+		// If the limit is already reached or exceeded, calculate countLeft and move to the next node
+		if commentsCount >= limit {
+			t.countLeft += repliesCount
+			continue
+		}
+
+		// Check if we just exceeded the limit and there are already some nodes in the list,
+		// as otherwise we would have to return the first node with all its replies even if it exceeds the limit.
+		if commentsCount+repliesCount >= limit && len(limitedNodes) > 0 {
+			t.countLeft += repliesCount
+			commentsCount = limit // Adjust commentsCount to stop checking limit for the next nodes
+			continue
+		}
+
+		// Add the node and its replies to the list
+		limitedNodes = append(limitedNodes, node)
+		commentsCount += repliesCount
+	}
+
+	t.lastLimitedComment = limitedNodes[len(limitedNodes)-1].Comment.ID
+	t.Nodes = limitedNodes
+}
+
+// countReplies counts the total number of replies recursively for a given node.
+func countReplies(node *Node) int {
+	count := 0
+	for _, reply := range node.Replies {
+		count++                      // Count the reply itself
+		count += countReplies(reply) // Recursively count its replies
+	}
+	return count
 }
