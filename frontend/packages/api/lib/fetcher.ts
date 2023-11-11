@@ -79,7 +79,6 @@ export const createFetcher = (site: string, baseUrl: string): Client => {
 				.catch(Object)
 				.then((data: string) => {
 					if (res.status < 200 || res.status > 299) {
-						console.log(data)
 						return Promise.reject(data)
 					}
 					try {
