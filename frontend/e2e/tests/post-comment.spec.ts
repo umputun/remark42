@@ -23,7 +23,7 @@ test.describe("Post comment", () => {
 		} else {
 			await page.press("iframe[name]", "Tab");
 		}
-		const message = `Hello world! ${nanoid()}`;
+		const message = `Hello world, ${browserName}! ${nanoid()}`;
 		await page
 			.frameLocator("iframe[name]")
 			.getByPlaceholder("Your comment here")
@@ -41,7 +41,7 @@ test.describe("Post comment", () => {
 			.frameLocator("iframe[name]")
 			.locator("body")
 			.screenshot({
-				path: `screenshot-${browserName}.png`,
+				path: `./screenshots/${browserName}.png`,
 			});
 		await expect(
 			page.frameLocator("iframe[name]").getByText(message)
