@@ -21,20 +21,22 @@ export function createAdminClient({ site, baseUrl }: ClientParams) {
 	}
 
 	async function toggleCommenting(url: string, ro: 0 | 1): Promise<void> {
-		return fetcher.put('/readonly', { query: { url, ro } })
+		await fetcher.put('/readonly', { query: { url, ro } })
 	}
 
 	async function toggleUserBlock(id: string, ttl?: BlockTTL): Promise<BlockUserResponse> {
 		const query = ttl ? { block: 1, ttl: ttl === 'permanently' ? 0 : ttl } : { block: 0 }
+		const data = await fetcher.put<BlockUserResponse>(`/user/${id}`, { query })
 
-		return fetcher.put<BlockUserResponse>(`/user/${id}`, { query })
+		return data
 	}
 
 	/**
 	 * Request list of blocked users
 	 */
 	async function getBlockedUsers(): Promise<User[]> {
-		return fetcher.get<User[]>('/blocked')
+		const users = await fetcher.get<User[]>('/blocked')
+		return users
 	}
 
 	/**
@@ -110,8 +112,7 @@ export function createAdminClient({ site, baseUrl }: ClientParams) {
 	 * @param url page URL
 	 */
 	async function disableCommenting(url: string): Promise<void> {
-		const x = toggleCommenting(url, 0)
-		return x
+		await toggleCommenting(url, 0)
 	}
 
 	return {

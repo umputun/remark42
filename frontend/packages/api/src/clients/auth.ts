@@ -4,12 +4,23 @@ import { createFetcher } from '../lib/fetcher'
 export function createAuthClient({ site, baseUrl }: ClientParams) {
 	const fetcher = createFetcher(site, `${baseUrl}/auth`)
 
+	/**
+	 * Authenticate user as anonymous
+	 * @param username
+	 * @returns authorized user
+	 */
 	async function anonymous(username: string): Promise<User> {
 		const user = await fetcher.get<User>('/anonymous/login', { user: username, aud: site })
 
 		return user
 	}
 
+	/**
+	 * Authenticate user by email
+	 * @param email
+	 * @param username
+	 * @returns authorized user
+	 */
 	async function email(email: string, username: string): Promise<(token: string) => Promise<User>> {
 		const EMAIL_SIGNIN_ENDPOINT = '/email/login'
 
@@ -22,6 +33,10 @@ export function createAuthClient({ site, baseUrl }: ClientParams) {
 		}
 	}
 
+	/**
+	 * Authenticate user by telegram
+	 * @returns telegram auth data
+	 */
 	async function telegram() {
 		const TELEGRAM_SIGNIN_ENDPOINT = '/telegram/login'
 
@@ -38,6 +53,9 @@ export function createAuthClient({ site, baseUrl }: ClientParams) {
 		}
 	}
 
+	/**
+	 * Logout user
+	 */
 	async function logout(): Promise<void> {
 		await fetcher.get('/logout')
 	}

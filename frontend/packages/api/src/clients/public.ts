@@ -83,21 +83,31 @@ export type Vote = -1 | 1
 export function createPublicClient({ site, baseUrl }: ClientParams) {
 	const fetcher = createFetcher(site, `${baseUrl}${API_BASE}`)
 
-	/** Get server config */
+	/**
+	 * Get server config
+	 * @returns server config
+	 */
 	async function getConfig(): Promise<Config> {
 		const config = await fetcher.get<Config>('/config')
 
 		return config
 	}
 
-	/** Get current authorized user */
+	/**
+	 * Get current authorized user
+	 * @returns authorized user or null if not authorized
+	 */
 	async function getUser(): Promise<User | null> {
 		const user = await fetcher.get<User | null>('/user').catch(() => null)
 
 		return user
 	}
 
-	/** Get comments */
+	/**
+	 * Get comments
+	 * @param params url or params
+	 * @returns comments
+	 */
 	async function getComments<T extends string | GetUserCommentsParams>(
 		params: T,
 	): Promise<T extends string ? CommentsTree : Comment[]> {
@@ -111,6 +121,9 @@ export function createPublicClient({ site, baseUrl }: ClientParams) {
 
 	/**
 	 * Add new comment
+	 * @param url page url
+	 * @param payload comment payload
+	 * @returns added comment
 	 */
 	async function addComment(url: string, payload: CommentPayload): Promise<Comment> {
 		const comment = await fetcher.post<Comment>('/comment', {
@@ -119,18 +132,34 @@ export function createPublicClient({ site, baseUrl }: ClientParams) {
 		return comment
 	}
 
-	/** Update comment */
+	/**
+	 * Update comment
+	 * @param url page url
+	 * @param id comment id
+	 * @param text comment text
+	 * @returns updated comment
+	 */
 	async function updateComment(url: string, id: string, text: string): Promise<Comment> {
 		return fetcher.put(`/comment/${id}`, { query: { url }, payload: { text } })
 	}
 
-	/** Remove comment on a page */
+	/**
+	 * Remove comment on a page
+	 * @param url page url
+	 * @param id comment id
+	 */
 	async function removeComment(url: string, id: string): Promise<void> {
 		await fetcher.put(`/comment/${id}`, { query: { url }, payload: { delete: true } })
 	}
 
 	type VotePayload = { url: string; vote: Vote }
-	/** Vote for a comment */
+	/**
+	 * Vote for a comment
+	 * @param url page url
+	 * @param id comment id
+	 * @param vote vote value
+	 * @returns vote payload
+	 */
 	async function vote(url: string, id: string, vote: Vote): Promise<VotePayload> {
 		const result = await fetcher.put<VotePayload>(`/vote/${id}`, { query: { url, vote } })
 		return result
