@@ -1,3 +1,3 @@
 module.exports = {
-	'./**/*.ts': ['pnpm lint-staged:lint'],
+	'./**/*.ts': ['pnpm lint:fix'],
 }

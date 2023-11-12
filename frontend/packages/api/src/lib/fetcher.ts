@@ -1,29 +1,29 @@
 import { JWT_HEADER, XSRF_COOKIE, XSRF_HEADER } from '../consts'
-import { getCookie } from '../lib/cookies'
+import { getCookie } from './cookies'
 
-export type QueryParams = Record<string, string | number | string[] | number[] | undefined>
+export type QueryParams = Record<string, string | number> | undefined
 export type Payload = BodyInit | Record<string, unknown> | null
-export type BodylessMethod = <T>(url: string, query?: QueryParams) => Promise<T>
-export type BodyMethod = <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>
-export interface Client {
-	get: BodylessMethod
-	put: BodyMethod
-	post: BodyMethod
-	delete: BodylessMethod
-}
 
 /** JWT token received from server and will be send by each request, if it present */
-let token: string | undefined
+let token: string | null = null
 
-export const createFetcher = (site: string, baseUrl: string): Client => {
-	const client = {
-		get: <T>(uri: string, query?: QueryParams): Promise<T> => request<T>('get', uri, query),
-		put: <T>(uri: string, query?: QueryParams, body?: Payload): Promise<T> =>
-			request<T>('put', uri, query, body),
-		post: <T>(uri: string, query?: QueryParams, body?: Payload): Promise<T> =>
-			request<T>('post', uri, query, body),
-		delete: <T>(uri: string, query?: QueryParams, body?: Payload): Promise<T> =>
-			request<T>('delete', uri, query, body),
+export function createFetcher(site: string, baseUrl: string) {
+	const fetcher = {
+		get<T>(uri: string, query?: QueryParams): Promise<T> {
+			return request<T>('get', uri, query)
+		},
+		put<T>(uri: string, params?: { query?: QueryParams; payload?: Payload }): Promise<T> {
+			return request<T>('put', uri, params?.query, params?.payload)
+		},
+		post<T>(uri: string, params?: { query?: QueryParams; payload?: Payload }): Promise<T> {
+			return request<T>('post', uri, params?.query, params?.payload)
+		},
+		delete<T>(uri: string, query?: QueryParams): Promise<T> {
+			return request<T>('delete', uri, query)
+		},
+		get token() {
+			return token
+		},
 	}
 
 	/**
@@ -37,13 +37,11 @@ export const createFetcher = (site: string, baseUrl: string): Client => {
 	async function request<T>(
 		method: string,
 		uri: string,
-		query: QueryParams = {},
-		body?: Payload
+		query?: QueryParams,
+		body?: Payload,
 	): Promise<T> {
-		const searchParams = new URLSearchParams({ site, ...query })
-		searchParams.sort()
-		const url = `${baseUrl}${uri}?${searchParams.toString()}`
-		const headers = new Headers()
+		const url = `${baseUrl}${uri}${getSearchParams(query)}`
+		const headers = new Headers({ 'X-Site-Id': site })
 		const params: RequestInit = { method, headers }
 
 		// Save token in memory and pass it into headers in case if storing cookies is disabled
@@ -61,19 +59,18 @@ export const createFetcher = (site: string, baseUrl: string): Client => {
 		if (typeof body === 'object' && body !== null && !(body instanceof FormData)) {
 			headers.set('Content-Type', 'application/json')
 			params.body = JSON.stringify(body)
-		} else {
+		} else if (body !== undefined) {
 			params.body = body
 		}
 
 		return fetch(url, params).then<T>((res) => {
 			if ([401, 403].includes(res.status)) {
-				token = undefined
+				token = null
 
 				return Promise.reject('Unauthorized')
 			}
 
 			token = res.headers.get(JWT_HEADER) ?? token
-
 			return res
 				.text()
 				.catch(Object)
@@ -90,5 +87,23 @@ export const createFetcher = (site: string, baseUrl: string): Client => {
 		})
 	}
 
-	return client
+	return fetcher
+}
+
+function getSearchParams(query?: QueryParams) {
+	if (!query) {
+		return ''
+	}
+
+	// overrides type of init in URLSearchParams constructor because it's not correct and accepts QueryParams
+	const searchParams = new URLSearchParams(
+		Object.entries(query).reduce<Record<string, string>>(
+			(acc, [k, v]) => Object.assign(acc, { [k]: v.toString() }),
+			{},
+		),
+	)
+
+	searchParams.sort()
+
+	return `?${searchParams.toString()}`
 }

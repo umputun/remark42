@@ -1,11 +1,13 @@
 import type { ClientParams, User } from './index'
 import { createFetcher } from '../lib/fetcher'
 
-export function createAuthClient({ siteId, baseUrl }: ClientParams) {
-	const fetcher = createFetcher(siteId, `${baseUrl}/auth`)
+export function createAuthClient({ site, baseUrl }: ClientParams) {
+	const fetcher = createFetcher(site, `${baseUrl}/auth`)
 
-	async function anonymous(user: string): Promise<User> {
-		return fetcher.get<User>('/anonymous/login', { user, aud: siteId })
+	async function anonymous(username: string): Promise<User> {
+		const user = await fetcher.get<User>('/anonymous/login', { user: username, aud: site })
+
+		return user
 	}
 
 	async function email(email: string, username: string): Promise<(token: string) => Promise<User>> {
@@ -13,8 +15,10 @@ export function createAuthClient({ siteId, baseUrl }: ClientParams) {
 
 		await fetcher.get<undefined>(EMAIL_SIGNIN_ENDPOINT, { address: email, user: username })
 
-		return function tokenVerification(token: string): Promise<User> {
-			return fetcher.get<User>(EMAIL_SIGNIN_ENDPOINT, { token })
+		return async function tokenVerification(token: string) {
+			const user = await fetcher.get<User>(EMAIL_SIGNIN_ENDPOINT, { token })
+
+			return user
 		}
 	}
 
@@ -22,7 +26,7 @@ export function createAuthClient({ siteId, baseUrl }: ClientParams) {
 		const TELEGRAM_SIGNIN_ENDPOINT = '/telegram/login'
 
 		const { bot, token } = await fetcher.get<{ bot: string; token: string }>(
-			TELEGRAM_SIGNIN_ENDPOINT
+			TELEGRAM_SIGNIN_ENDPOINT,
 		)
 
 		return {
@@ -35,7 +39,7 @@ export function createAuthClient({ siteId, baseUrl }: ClientParams) {
 	}
 
 	async function logout(): Promise<void> {
-		return fetcher.get<void>('/logout')
+		await fetcher.get('/logout')
 	}
 
 	return {

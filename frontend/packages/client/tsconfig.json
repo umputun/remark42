@@ -4,8 +4,8 @@
     "target": "es2016",
     "moduleResolution": "node",
     "declaration": true,
-    "outDir": "dist"
+    "outDir": "../api/dist"
   },
-  "include": ["src"],
-  "exclude": ["**/*.test.ts"]
+  "include": ["../api/src"],
+  "exclude": ["../api/**/*.test.ts"]
 }

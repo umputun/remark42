@@ -1,4 +1,5 @@
 module.exports = {
+	root: true,
 	env: {
 		browser: true,
 		es2021: true,
@@ -11,7 +12,6 @@ module.exports = {
 		'plugin:@typescript-eslint/strict',
 		'plugin:prettier/recommended',
 	],
-	overrides: [],
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		ecmaVersion: 'latest',
@@ -19,4 +19,9 @@ module.exports = {
 		project: './tsconfig.eslint.json',
 	},
 	plugins: ['@typescript-eslint'],
+	rules: {
+		// `interface` does not allow disctinated types and
+		// `type does not work if you extend types of a dependency
+		'@typescript-eslint/consistent-type-definitions': 'off',
+	},
 }

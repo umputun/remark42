@@ -2,7 +2,7 @@ import type { ClientParams, Provider, User } from './index'
 import { createFetcher } from '../lib/fetcher'
 import { API_BASE } from '../consts'
 
-export interface Config {
+export type Config = {
 	version: string
 	auth_providers: Provider[]
 	edit_duration: number
@@ -21,7 +21,7 @@ export interface Config {
 	emoji_enabled: boolean
 }
 
-export interface Comment {
+export type Comment = {
 	/** comment id */
 	id: string
 	/** parent id */
@@ -60,19 +60,19 @@ export interface Comment {
 	title?: string
 }
 
-export interface CommentsTree {
+export type CommentsTree = {
 	comment: Comment
 	replies: Comment[]
 }
 
-export interface CommentPayload {
+export type CommentPayload = {
 	title?: string
 	pid?: string
 	text: string
 }
 
 export type Sort = '-active' | '+active'
-export interface GetUserCommentsParams {
+export type GetUserCommentsParams = {
 	url: string
 	sort?: Sort
 	limit?: number
@@ -80,65 +80,60 @@ export interface GetUserCommentsParams {
 }
 export type Vote = -1 | 1
 
-export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
+export function createPublicClient({ site, baseUrl }: ClientParams) {
 	const fetcher = createFetcher(site, `${baseUrl}${API_BASE}`)
 
-	/**
-	 * Get server config
-	 */
+	/** Get server config */
 	async function getConfig(): Promise<Config> {
-		return fetcher.get('/config')
+		const config = await fetcher.get<Config>('/config')
+
+		return config
 	}
 
-	/**
-	 * Get current authorized user
-	 */
+	/** Get current authorized user */
 	async function getUser(): Promise<User | null> {
-		return fetcher.get<User | null>('/user').catch(() => null)
+		const user = await fetcher.get<User | null>('/user').catch(() => null)
+
+		return user
 	}
 
-	/**
-	 * Get comments
-	 */
-	async function getComments(url: string): Promise<CommentsTree>
-	async function getComments(params: GetUserCommentsParams): Promise<Comment[]>
-	async function getComments(
-		params: string | GetUserCommentsParams
-	): Promise<Comment[] | CommentsTree> {
+	/** Get comments */
+	async function getComments<T extends string | GetUserCommentsParams>(
+		params: T,
+	): Promise<T extends string ? CommentsTree : Comment[]> {
 		if (typeof params === 'string') {
-			return fetcher.get('/comments', { url: params })
+			const comments = await fetcher.get<Comment[]>('/comments', { url: params })
+			return comments as T extends string ? CommentsTree : Comment[]
 		}
-
-		return fetcher.get<CommentsTree>('/find', { ...params, format: 'tree' })
+		const commentsTree = await fetcher.get<CommentsTree>('/find', { ...params, format: 'tree' })
+		return commentsTree as T extends string ? CommentsTree : Comment[]
 	}
 
 	/**
 	 * Add new comment
 	 */
 	async function addComment(url: string, payload: CommentPayload): Promise<Comment> {
-		const locator = { site, url }
-		return fetcher.post('/comment', {}, { ...payload, locator })
+		const comment = await fetcher.post<Comment>('/comment', {
+			payload: { ...payload, locator: { site, url } },
+		})
+		return comment
 	}
 
-	/**
-	 * Update comment
-	 */
+	/** Update comment */
 	async function updateComment(url: string, id: string, text: string): Promise<Comment> {
-		return fetcher.put(`/comment/${id}`, { url }, { text })
+		return fetcher.put(`/comment/${id}`, { query: { url }, payload: { text } })
 	}
 
-	/**
-	 * Remove comment on a page
-	 */
+	/** Remove comment on a page */
 	async function removeComment(url: string, id: string): Promise<void> {
-		return fetcher.put(`/comment/${id}`, { url }, { delete: true })
+		await fetcher.put(`/comment/${id}`, { query: { url }, payload: { delete: true } })
 	}
 
-	/**
-	 * Vote for a comment
-	 */
-	async function vote(url: string, id: string, vote: Vote): Promise<{ id: string; vote: number }> {
-		return fetcher.put<{ id: string; vote: number }>(`/vote/${id}`, { url, vote })
+	type VotePayload = { url: string; vote: Vote }
+	/** Vote for a comment */
+	async function vote(url: string, id: string, vote: Vote): Promise<VotePayload> {
+		const result = await fetcher.put<VotePayload>(`/vote/${id}`, { query: { url, vote } })
+		return result
 	}
 
 	return {
