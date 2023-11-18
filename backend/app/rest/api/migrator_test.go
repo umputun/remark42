@@ -164,7 +164,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1,"comments":[{"commentHex":"7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
-"domain":"example.com","url":"https://example.com/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+"domain":"example.com","url":"/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
 "markdown":"Example content","html":"","parentHex":"root","score":0,"state":"approved","creationDate":"2021-03-17T12:09:47.722181Z",
 "direction":0,"deleted":false}],"commenters":[{"commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
 "email":"somegreatmail@gmail.com","name":"User5276","link":"https://example.com/profile/257","photo":"https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",

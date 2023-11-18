@@ -20,3 +20,5 @@ Remark42 supports importing comments from Disqus, WordPress, Commento, or native
 
 1. Move exported json file to your Remark42 host within `./var`
 2. Run import command (`ADMIN_PASSWD` must to be enabled on server for it to work) - `docker exec -it remark42 import -p commento -f /srv/var/{commento-export-name}.json -s {your site ID}`
+
+Comments are imported for the domain specified in the provided file, with `https://` prefix. If you want to import comments for a different domain or for `http://` domain, you'll need to export them after importing, alter the export file `url` property and re-import them.
