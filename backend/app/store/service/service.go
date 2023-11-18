@@ -5,6 +5,7 @@ package service
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -796,6 +797,34 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		s.repliesCache.Delete(commentID)
 		s.repliesCache.Delete(comment.ParentID)
 	}
+
+	// delete images from the comment if they are not reused elsewhere in comments to the same page
+	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
+		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
+		if e != nil {
+			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, err)
+			return nil
+		}
+		var imgIDs = []string{}
+		for _, cc := range comments {
+			// exclude the comment we are deleting
+			if cc.ID != commentID {
+				imgIDs = append(imgIDs, s.ImageService.ExtractPictures(cc.Text)...)
+			}
+		}
+		return imgIDs
+	}
+	commentImgIDs := s.ImageService.ExtractPictures(comment.Text)
+	pageImgIDs := idsFn()
+	for _, id := range commentImgIDs {
+		if !slices.Contains(pageImgIDs, id) {
+			if err := s.ImageService.Delete(id); err != nil {
+				log.Printf("[WARN] failed to delete image %s on comment %s deletion, %v", id, commentID, err)
+			}
+		}
+	}
+	log.Printf("[ERROR] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
+
 	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }

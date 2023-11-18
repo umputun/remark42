@@ -70,6 +70,17 @@ func (m *MemImage) Load(id string) ([]byte, error) {
 	return img, nil
 }
 
+// Delete image by ID
+func (m *MemImage) Delete(id string) error {
+	m.mu.Lock()
+	// delete key from permanent and staging storage
+	delete(m.images, id)
+	delete(m.insertTime, id)
+	delete(m.imagesStaging, id)
+	m.mu.Unlock()
+	return nil
+}
+
 // Commit moves image from staging to permanent
 func (m *MemImage) Commit(id string) error {
 	m.mu.RLock()

@@ -70,6 +70,7 @@ type Store interface {
 	Info() (StoreInfo, error)         // get meta information about storage
 	Save(id string, img []byte) error // store image with passed id to staging
 	Load(id string) ([]byte, error)   // load image by ID
+	Delete(id string) error           // delete image by ID
 
 	ResetCleanupTimer(id string) error                    // resets cleanup timer for the image, called on comment preview
 	Commit(id string) error                               // move image from staging to permanent
@@ -210,6 +211,11 @@ func (s *Service) Close(ctx context.Context) {
 // Load wraps storage Load function.
 func (s *Service) Load(id string) ([]byte, error) {
 	return s.store.Load(id)
+}
+
+// Delete wraps storage Delete function.
+func (s *Service) Delete(id string) error {
+	return s.store.Delete(id)
 }
 
 // Save wraps storage Save function, validating and resizing the image before calling it.

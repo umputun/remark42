@@ -158,4 +158,9 @@ func TestRPC_imgInfoHndl(t *testing.T) {
 	info, err = ri.Info()
 	assert.NoError(t, err)
 	assert.False(t, info.FirstStagingImageTS.IsZero())
+
+	err = ri.Delete("test_img")
+	assert.NoError(t, err)
+	_, err = ri.Load("test_img")
+	assert.EqualError(t, err, "image test_img not found")
 }

@@ -4,9 +4,9 @@
 package image
 
 import (
-	context "context"
+	"context"
 	"sync"
-	time "time"
+	"time"
 )
 
 // Ensure, that StoreMock does implement Store.
@@ -24,6 +24,9 @@ var _ Store = &StoreMock{}
 //			},
 //			CommitFunc: func(id string) error {
 //				panic("mock out the Commit method")
+//			},
+//			DeleteFunc: func(id string) error {
+//				panic("mock out the Delete method")
 //			},
 //			InfoFunc: func() (StoreInfo, error) {
 //				panic("mock out the Info method")
@@ -49,6 +52,9 @@ type StoreMock struct {
 
 	// CommitFunc mocks the Commit method.
 	CommitFunc func(id string) error
+
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(id string) error
 
 	// InfoFunc mocks the Info method.
 	InfoFunc func() (StoreInfo, error)
@@ -76,6 +82,11 @@ type StoreMock struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// ID is the id argument value.
+			ID string
+		}
 		// Info holds details about calls to the Info method.
 		Info []struct {
 		}
@@ -99,6 +110,7 @@ type StoreMock struct {
 	}
 	lockCleanup           sync.RWMutex
 	lockCommit            sync.RWMutex
+	lockDelete            sync.RWMutex
 	lockInfo              sync.RWMutex
 	lockLoad              sync.RWMutex
 	lockResetCleanupTimer sync.RWMutex
@@ -170,6 +182,38 @@ func (mock *StoreMock) CommitCalls() []struct {
 	mock.lockCommit.RLock()
 	calls = mock.calls.Commit
 	mock.lockCommit.RUnlock()
+	return calls
+}
+
+// Delete calls DeleteFunc.
+func (mock *StoreMock) Delete(id string) error {
+	if mock.DeleteFunc == nil {
+		panic("StoreMock.DeleteFunc: method is nil but Store.Delete was just called")
+	}
+	callInfo := struct {
+		ID string
+	}{
+		ID: id,
+	}
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	return mock.DeleteFunc(id)
+}
+
+// DeleteCalls gets all the calls that were made to Delete.
+// Check the length with:
+//
+//	len(mockedStore.DeleteCalls())
+func (mock *StoreMock) DeleteCalls() []struct {
+	ID string
+} {
+	var calls []struct {
+		ID string
+	}
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
 	return calls
 }
 
