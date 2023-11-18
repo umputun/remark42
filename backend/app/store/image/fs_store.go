@@ -23,7 +23,8 @@ type FileSystem struct {
 	Staging    string
 	Partitions int
 
-	crc struct {
+	moveLock sync.Mutex // needed only for deleting images or moving them from staging to permanent storage
+	crc      struct {
 		*crc64.Table
 		sync.Once
 		mask    string
@@ -50,6 +51,8 @@ func (f *FileSystem) Save(id string, img []byte) error {
 
 // Commit file stored in staging location by moving it to permanent location
 func (f *FileSystem) Commit(id string) error {
+	f.moveLock.Lock()
+	defer f.moveLock.Unlock()
 	log.Printf("[DEBUG] Commit image %s", id)
 	stagingImage, permImage := f.location(f.Staging, id), f.location(f.Location, id)
 
@@ -107,11 +110,31 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 	return io.ReadAll(fh)
 }
 
+// Delete image from storage
+func (f *FileSystem) Delete(id string) error {
+	f.moveLock.Lock()
+	defer f.moveLock.Unlock()
+	staging := f.location(f.Staging, id)
+	// file doesn't exist on staging, delete from permanent location
+	if _, err := os.Stat(staging); os.IsNotExist(err) {
+		file := f.location(f.Location, id)
+		e := os.Remove(file)
+		_ = os.Remove(path.Dir(file)) // try to remove directory
+		return e
+	}
+	// delete file from staging
+	err := os.Remove(staging)
+	_ = os.Remove(path.Dir(staging)) // try to remove directory
+	return err
+}
+
 // Cleanup runs scan of staging and removes old files based on ttl
 func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 	if _, err := os.Stat(f.Staging); os.IsNotExist(err) {
 		return nil
 	}
+	f.moveLock.Lock()
+	defer f.moveLock.Unlock()
 
 	// we can ignore context as on local FS remove is relatively fast operation
 	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {

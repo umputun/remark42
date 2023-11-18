@@ -1406,6 +1406,80 @@ func TestService_Delete(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestService_deleteImagesOnCommentDelete(t *testing.T) {
+	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
+
+	mockStore := image.StoreMock{
+		DeleteFunc:            func(id string) error { return nil },
+		CommitFunc:            func(id string) error { return nil },
+		ResetCleanupTimerFunc: func(id string) error { return nil },
+	}
+	imgSvc := image.NewService(&mockStore,
+		image.ServiceParams{
+			EditDuration: 50 * time.Millisecond,
+			ImageAPI:     "/images/dev/",
+			ProxyAPI:     "/non_existent",
+		})
+	defer imgSvc.Close(context.TODO())
+
+	// two comments for https://radio-t.com
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
+		AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	c := store.Comment{
+		ID:        "id-22",
+		Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+	}
+	_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+	assert.NoError(t, err)
+	b.submitImages(c)
+	// reply to the first comment with one new image and one existing one
+	c = store.Comment{
+		ID:       "id-23",
+		ParentID: "id-22",
+		Text:     `some text <img src="/images/dev/pic2.png"/> xx <img src="/images/dev/pic3.png"/>`,
+		Locator:  store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:     store.User{ID: "user1", Name: "user name"},
+	}
+	_, err = b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+	assert.NoError(t, err)
+	b.submitImages(c)
+
+	// verify that images are in staging store
+	assert.Equal(t, 4, len(mockStore.ResetCleanupTimerCalls()))
+	assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[2].ID)
+	assert.Equal(t, "dev/pic3.png", mockStore.ResetCleanupTimerCalls()[3].ID)
+	time.Sleep(b.EditDuration + 100*time.Millisecond)
+	// verify that they got into the main store
+	assert.Equal(t, 4, len(mockStore.CommitCalls()))
+	assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
+	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[2].ID)
+	assert.Equal(t, "dev/pic3.png", mockStore.CommitCalls()[3].ID)
+
+	// delete the first comment
+	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-22", store.SoftDelete)
+	assert.NoError(t, err)
+	// verify that images are deleted from the main store
+	assert.Equal(t, 1, len(mockStore.DeleteCalls()))
+	assert.Equal(t, "dev/pic1.png", mockStore.DeleteCalls()[0].ID)
+
+	// delete the second comment
+	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-23", store.SoftDelete)
+	assert.NoError(t, err)
+	// verify that images are deleted from the main store
+	assert.Equal(t, 3, len(mockStore.DeleteCalls()))
+	assert.Equal(t, "dev/pic2.png", mockStore.DeleteCalls()[1].ID)
+	assert.Equal(t, "dev/pic3.png", mockStore.DeleteCalls()[2].ID)
+}
+
 // DeleteUser removes all comments from user
 func TestService_DeleteUser(t *testing.T) {
 	// two comments for https://radio-t.com, no reply

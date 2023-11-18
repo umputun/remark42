@@ -60,6 +60,7 @@ func (s *RPC) addHandlers() {
 		"save_with_id":        s.imgSaveWithIDHndl,
 		"reset_cleanup_timer": s.imgResetClnTimerHndl,
 		"load":                s.imgLoadHndl,
+		"delete":              s.imgDeleteHndl,
 		"commit":              s.imgCommitHndl,
 		"cleanup":             s.imgCleanupHndl,
 		"info":                s.imgInfoHndl,

@@ -41,6 +41,18 @@ func TestRemote_Load(t *testing.T) {
 	assert.Equal(t, gopherPNGBytes(), res)
 }
 
+func TestRemote_Delete(t *testing.T) {
+	ts := testServer(t, `{"method":"image.delete","params":"54321","id":1}`, `{}`)
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	var a Store = &c
+	_ = a
+
+	err := c.Delete("54321")
+	assert.NoError(t, err)
+}
+
 func TestRemote_Commit(t *testing.T) {
 	ts := testServer(t, `{"method":"image.commit","params":"gopher_id","id":1}`, `{"id":1}`)
 	defer ts.Close()

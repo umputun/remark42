@@ -131,6 +131,31 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFsStore_LoadAfterDelete(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	id := "test_img"
+	err := svc.Save(id, gopherPNGBytes())
+	assert.NoError(t, err)
+	err = svc.Commit(id)
+	require.NoError(t, err)
+	err = svc.Delete(id)
+	require.NoError(t, err)
+
+	_, err = svc.Load(id)
+	assert.Error(t, err)
+
+	// create file on staging
+	err = svc.Save(id, gopherPNGBytes())
+	assert.NoError(t, err)
+	err = svc.Delete(id)
+	require.NoError(t, err)
+
+	_, err = svc.Load(id)
+	assert.Error(t, err)
+}
+
 func TestFsStore_location(t *testing.T) {
 	tbl := []struct {
 		partitions int

@@ -58,6 +58,36 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBoltStore_LoadAfterDelete(t *testing.T) {
+	svc, teardown := prepareBoltImageStorageTest(t)
+	defer teardown()
+
+	// delete image from permanent storage
+	id := "test_img"
+	err := svc.Save(id, gopherPNGBytes())
+	assert.NoError(t, err)
+
+	err = svc.Commit(id)
+	require.NoError(t, err)
+
+	err = svc.Delete(id)
+	assert.NoError(t, err)
+
+	_, err = svc.Load(id)
+	assert.Error(t, err)
+
+	// delete staging image
+	id = "staging_img"
+	err = svc.Save(id, gopherPNGBytes())
+	assert.NoError(t, err)
+
+	err = svc.Delete(id)
+	assert.NoError(t, err)
+
+	_, err = svc.Load(id)
+	assert.Error(t, err)
+}
+
 func TestBoltStore_Cleanup(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
