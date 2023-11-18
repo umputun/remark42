@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -116,10 +117,16 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				parentID = ""
 			}
 
+			commentURL, e := url.JoinPath("https://", comment.Domain, comment.Path)
+			if e != nil {
+				log.Printf("[WARN] can't construct comment URL in commento import, %s", err.Error())
+			}
+			log.Printf("[ERROR] commentoURL: %s", commentURL)
+
 			c := store.Comment{
 				ID: comment.CommentHex,
 				Locator: store.Locator{
-					URL:    comment.Path,
+					URL:    commentURL,
 					SiteID: siteID,
 				},
 				User:      u,
