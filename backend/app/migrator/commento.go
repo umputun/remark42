@@ -110,6 +110,12 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				continue
 			}
 
+			parentID := comment.ParentHex
+			// comments with ParentHex == "root" are top-level comments
+			if parentID == "root" {
+				parentID = ""
+			}
+
 			c := store.Comment{
 				ID: comment.CommentHex,
 				Locator: store.Locator{
@@ -119,7 +125,7 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				User:      u,
 				Text:      comment.Markdown,
 				Timestamp: comment.CreationDate,
-				ParentID:  comment.ParentHex,
+				ParentID:  parentID,
 				Imported:  true,
 			}
 
