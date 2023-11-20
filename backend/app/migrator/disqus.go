@@ -4,9 +4,12 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/go-pkgz/auth/provider"
+	"github.com/go-pkgz/auth/token"
 	log "github.com/go-pkgz/lgr"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -14,7 +17,8 @@ import (
 
 // Disqus implements Importer from disqus xml
 type Disqus struct {
-	DataStore Store
+	DataStore   Store
+	AvatarSaver provider.AvatarSaver
 }
 
 type disqusThread struct {
@@ -83,6 +87,7 @@ func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
 // runs async and closes channel on completion.
 func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	postsMap := map[string]string{} // tid:url
+	avatarMap := map[string]string{}
 	decoder := xml.NewDecoder(r)
 	commentsCh := make(chan store.Comment)
 
@@ -94,6 +99,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 	}{}
 
 	go func() {
+		client := &http.Client{Timeout: 1 * time.Second}
 		for {
 			t, err := decoder.Token()
 			if t == nil || err != nil {
@@ -158,6 +164,20 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 					if c.ID == "" { // no comment.UID
 						c.ID = comment.ID
 					}
+
+					if avatarMap[c.User.ID] == "" {
+						u := token.User{
+							Name:    c.User.Name,
+							ID:      c.User.ID,
+							Picture: fmt.Sprintf("https://disqus.com/api/users/avatars/%s.jpg", comment.AuthorUserName),
+						}
+						u, err = d.setAvatar(d.AvatarSaver, u, client)
+						if err != nil {
+							log.Printf("[DEBUG] The avatar for user %s doesn't loaded", u.Name)
+						}
+						avatarMap[c.User.ID] = u.Picture
+					}
+					c.User.Picture = avatarMap[c.User.ID]
 					commentsCh <- c
 					stats.commentsCount++
 					if stats.commentsCount%1000 == 0 {
@@ -178,4 +198,16 @@ func (*Disqus) cleanText(text string) string {
 	text = strings.Replace(text, "\n", "", -1)
 	text = strings.Replace(text, "\t", "", -1)
 	return text
+}
+
+func (d *Disqus) setAvatar(ava provider.AvatarSaver, u token.User, client *http.Client) (token.User, error) {
+	if ava != nil {
+		avatarURL, e := ava.Put(u, client)
+		if e != nil {
+			return u, fmt.Errorf("failed to save avatar for: %w", e)
+		}
+		u.Picture = avatarURL
+		return u, nil
+	}
+	return u, nil // empty AvatarSaver ok, just skipped
 }
