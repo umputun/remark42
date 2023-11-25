@@ -18,7 +18,7 @@ export type ButtonProps = Omit<JSX.HTMLAttributes, 'size' | 'className'> & {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ children, theme, mods, mix, kind, type = 'button', size, className, ...props }, ref) => (
     <button
-      className={clsx(b('button', { mods: { kind, size, theme }, mix }, { ...mods }), className)}
+      className={clsx(b('button', { mods: { kind, size }, mix }, { ...mods }), className)}
       type={type}
       {...props}
       ref={ref}
