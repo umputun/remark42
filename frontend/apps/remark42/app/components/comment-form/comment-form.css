@@ -109,16 +109,6 @@
   }
 }
 
-.comment-form__markdown {
-  margin-bottom: 5px;
-  font-size: 12px;
-}
-
-.comment-form__markdown-link {
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .comment-form__preview {
   margin-top: 8px;
   padding: 7px 11px;
@@ -135,23 +125,6 @@
 .comment-form__preview-wrapper {
   overflow: hidden;
   background: var(--color5);
-}
-
-.comment-form__rss {
-  font-size: 12px;
-  line-height: 1;
-}
-
-.comment-form__rss-link {
-  font-weight: 700;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  color: var(--color9);
-
-  &:hover {
-    color: var(--color33);
-  }
 }
 
 .comment-form__dropdown_rss {

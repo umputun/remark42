@@ -1,6 +1,7 @@
 import { h, Component, createRef, Fragment } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages, useIntl } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { User, Image, Theme } from 'common/types';
 import { StaticStore } from 'common/static-store';
@@ -9,6 +10,7 @@ import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
 import { replaceSelection } from 'utils/replaceSelection';
+import { useTheme } from 'hooks/useTheme';
 import { Button } from 'components/button';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Auth } from 'components/auth';
@@ -23,7 +25,7 @@ import { updatePersistedComments, getPersistedComment, removePersistedComment } 
 
 import 'components/raw-content';
 import './comment-form.css';
-import { useTheme } from 'hooks/useTheme';
+import styles from './comment-form.module.css';
 
 type State = {
   preview: string | null;
@@ -344,19 +346,17 @@ class CommentFormComponent extends Component<CommentFormComponentProps, State> {
   };
 
   renderMarkdownTip = () => (
-    <div className="comment-form__markdown">
-      <FormattedMessage
-        id="commentForm.notice-about-styling"
-        defaultMessage="Styling with <a>Markdown</a> is supported"
-        values={{
-          a: (title: string) => (
-            <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
-              {title}
-            </a>
-          ),
-        }}
-      />
-    </div>
+    <FormattedMessage
+      id="commentForm.notice-about-styling"
+      defaultMessage="Styling with <a>Markdown</a> is supported"
+      values={{
+        a: (title: string) => (
+          <a target="_blank" href="markdown-help.html" className={styles.link}>
+            {title}
+          </a>
+        ),
+      }}
+    />
   );
 
   renderSubscribeButtons = () => {
@@ -366,29 +366,36 @@ class CommentFormComponent extends Component<CommentFormComponentProps, State> {
     const isTelegramSubscription = isTelegramNotificationsEnabledOnBackend && settings.isTelegramSubscription;
 
     const { isRssSubscription } = settings;
-    if (!isRssSubscription && !isEmailSubscription && !isTelegramSubscription) {
+    const subscriptions: JSX.Element[] = [];
+
+    if (isRssSubscription) {
+      subscriptions.push(<SubscribeByRSS userId={this.props.user?.id} />);
+    }
+
+    if (isEmailSubscription) {
+      subscriptions.push(<SubscribeByEmail />);
+    }
+
+    if (isTelegramSubscription) {
+      subscriptions.push(<SubscribeByTelegram />);
+    }
+
+    if (subscriptions.length === 0) {
       return null;
     }
 
     return (
-      <>
-        <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />{' '}
-        {isRssSubscription && <SubscribeByRSS userId={this.props.user?.id ?? null} />}
-        {isRssSubscription && isEmailSubscription && (
-          <>
-            {' '}
-            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
-          </>
-        )}
-        {isEmailSubscription && <SubscribeByEmail />}
-        {(isRssSubscription && isTelegramSubscription) || (isEmailSubscription && isTelegramSubscription) ? (
-          <>
-            {' '}
-            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
-          </>
-        ) : null}
-        {isTelegramSubscription && <SubscribeByTelegram />}
-      </>
+      <div>
+        <FormattedMessage id="commentForm.subscribe-by" defaultMessage="Subscribe by" />
+        {subscriptions.map((c, i, all) => {
+          return (
+            <Fragment key={i}>
+              {c}
+              {i + 1 < all.length && <FormattedMessage id="commentForm.or" defaultMessage="or" />}
+            </Fragment>
+          );
+        })}
+      </div>
     );
   };
 
@@ -482,8 +489,8 @@ class CommentFormComponent extends Component<CommentFormComponentProps, State> {
               </div>
 
               {mode === 'main' && (
-                <div className="comment-form__rss">
-                  {this.renderMarkdownTip()}
+                <div className={clsx('comment-form-subscriptions', styles.subscriptions)}>
+                  <div>{this.renderMarkdownTip()}</div>
                   {this.renderSubscribeButtons()}
                 </div>
               )}
@@ -491,7 +498,7 @@ class CommentFormComponent extends Component<CommentFormComponentProps, State> {
           ) : (
             <>
               <Auth />
-              {this.renderMarkdownTip()}
+              <div className={clsx('comment-form-subscriptions', styles.subscriptions)}>{this.renderMarkdownTip()}</div>
             </>
           )}
         </div>

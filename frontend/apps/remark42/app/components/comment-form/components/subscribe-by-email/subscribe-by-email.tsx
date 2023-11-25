@@ -1,8 +1,7 @@
 import { h, FunctionComponent, Fragment } from 'preact';
 import { useState, useCallback, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'react-redux';
-import b from 'bem-react-helper';
-import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
+import { useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
 import { User } from 'common/types';
@@ -10,17 +9,16 @@ import { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
 import { sleep } from 'utils/sleep';
 import { extractErrorMessageFromResponse, RequestError } from 'utils/errorUtils';
-import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
+import { useTheme } from 'hooks/useTheme';
 import { Input } from 'components/input';
-import { Button } from 'components/button';
+import { Button } from 'components/auth/components/button';
 import { Dropdown } from 'components/dropdown';
 import { Preloader } from 'components/preloader';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { getPersistedEmail } from 'components/auth/auth.utils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
-import { useTheme } from 'hooks/useTheme';
 
 import styles from './subscribe-by-email.module.css';
 
@@ -167,8 +165,8 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
     return (
       <div className={clsx(styles.root, styles.rootSubscribed)}>
-        {text}
-        <Button kind="primary" size="middle" className={styles.button} onClick={handleUnsubscribe}>
+        <div>{text}</div>
+        <Button className={styles.button} onClick={handleUnsubscribe}>
           <FormattedMessage id="subscribeByEmail.unsubscribe" defaultMessage="Unsubscribe" />
         </Button>
       </div>
@@ -184,11 +182,13 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
     return (
       <div className={clsx(styles.root, styles.rootUnsubscribed)}>
-        <FormattedMessage
-          id="subscribeByEmail.have-been-unsubscribed"
-          defaultMessage="You have been unsubscribed by email to updates"
-        />
-        <Button kind="primary" size="middle" className={styles.button} onClick={() => setStep(Step.Close)}>
+        <div>
+          <FormattedMessage
+            id="subscribeByEmail.have-been-unsubscribed"
+            defaultMessage="You have been unsubscribed by email to updates"
+          />
+        </div>
+        <Button className={styles.button} onClick={() => setStep(Step.Close)}>
           <FormattedMessage id="subscribeByEmail.close" defaultMessage="Close" />
         </Button>
       </div>
@@ -217,16 +217,37 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       )}
       {step === Step.Token && (
         <>
-          <Button kind="link" {...getHandleClickProps(setEmailStep)}>
-            <FormattedMessage id="subscribeByEmail.back" defaultMessage="Back" />
-          </Button>
-          <TextareaAutosize
-            placeholder={intl.formatMessage(messages.token)}
-            autofocus
-            onInput={handleChangeToken}
-            disabled={loading}
-            value={token}
-          />
+          <div>
+            <Button className={styles.backButton} size="xs" kind="transparent" onClick={setEmailStep}>
+              <svg
+                className={styles.backButtonArrow}
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M8.75 3L5 7.25L9 11"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              {intl.formatMessage(messages.back)}
+            </Button>
+          </div>
+          <div>
+            <TextareaAutosize
+              className={styles.tokenInput}
+              placeholder={intl.formatMessage(messages.token)}
+              autofocus
+              onInput={handleChangeToken}
+              disabled={loading}
+              value={token}
+            />
+          </div>
         </>
       )}
       {error !== null && (
@@ -234,13 +255,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
           {error}
         </div>
       )}
-      <Button
-        className={styles.button}
-        kind="primary"
-        size="large"
-        type="submit"
-        disabled={!isValidEmailAddress || loading}
-      >
+      <Button type="submit" disabled={!isValidEmailAddress || loading}>
         {loading ? <Preloader className={styles.preloader} /> : buttonLabel}
       </Button>
     </form>
@@ -297,5 +312,9 @@ const messages = defineMessages({
   email: {
     id: 'subscribeByEmail.email',
     defaultMessage: 'Email',
+  },
+  back: {
+    id: 'subscribeByEmail.back',
+    defaultMessage: 'Back',
   },
 });

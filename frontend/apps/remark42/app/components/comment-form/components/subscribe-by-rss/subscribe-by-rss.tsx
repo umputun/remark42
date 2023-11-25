@@ -9,7 +9,7 @@ import { Dropdown, DropdownItem } from 'components/dropdown';
 import styles from './subscribe-by-rss.module.css';
 import { useTheme } from 'hooks/useTheme';
 
-export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ userId }) => {
+export const SubscribeByRSS: FunctionComponent<{ userId: string | undefined }> = ({ userId }) => {
   const intl = useIntl();
   const theme = useTheme();
   const items: Array<[string, string]> = useMemo(
