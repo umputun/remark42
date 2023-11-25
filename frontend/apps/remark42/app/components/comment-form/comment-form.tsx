@@ -515,9 +515,7 @@ export class CommentForm extends Component<Props, State> {
           !!preview && (
             <div className="comment-form__preview-wrapper">
               <div
-                className={b('comment-form__preview', {
-                  mix: b('raw-content', {}, { theme }),
-                })}
+                className="comment-form__preview raw-content"
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
               />

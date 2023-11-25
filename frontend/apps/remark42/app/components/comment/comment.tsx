@@ -354,7 +354,7 @@ export class Comment extends Component<CommentProps, State> {
               )}
             </div>{' '}
             <div
-              className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
+              className="comment__text raw-content"
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
@@ -473,7 +473,7 @@ export class Comment extends Component<CommentProps, State> {
         <div className="comment__body">
           {(!props.collapsed || props.view === 'pinned') && (
             <div
-              className={b('comment__text', { mix: b('raw-content', {}, { theme: props.theme }) })}
+              className="comment__text raw-content"
               ref={this.textNode}
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
