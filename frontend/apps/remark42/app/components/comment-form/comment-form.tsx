@@ -1,8 +1,8 @@
 import { h, Component, createRef, Fragment } from 'preact';
-import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
+import { FormattedMessage, IntlShape, defineMessages, useIntl } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
-import { User, Theme, Image } from 'common/types';
+import { User, Image, Theme } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
@@ -13,33 +13,19 @@ import { Button } from 'components/button';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Auth } from 'components/auth';
 
-import { SubscribeByEmail } from './__subscribe-by-email';
-import { SubscribeByTelegram } from './__subscribe-by-telegram';
-import { SubscribeByRSS } from './__subscribe-by-rss';
+import { SubscribeByEmail } from './components/subscribe-by-email';
+import { SubscribeByTelegram } from './components/subscribe-by-telegram';
+import { SubscribeByRSS } from './components/subscribe-by-rss';
 
-import { MarkdownToolbar } from './markdown-toolbar';
-import { TextExpander } from './text-expander';
+import { MarkdownToolbar } from './components/toolbar/toolbar';
+import { TextExpander } from './components/text-expander/text-expander';
 import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
 
-export type Props = {
-  id: string;
-  user: User | null;
-  errorMessage?: string;
-  value?: string;
-  mix?: Mix;
-  mode?: 'main' | 'edit' | 'reply';
-  theme: Theme;
-  autofocus?: boolean;
+import 'components/raw-content';
+import './comment-form.css';
+import { useTheme } from 'hooks/useTheme';
 
-  onSubmit(text: string, pageTitle: string): Promise<void>;
-  getPreview(text: string): Promise<string>;
-  /** action on cancel. optional as root input has no cancel option */
-  onCancel?(): void;
-  uploadImage?(image: File): Promise<Image>;
-  intl: IntlShape;
-};
-
-export type State = {
+type State = {
   preview: string | null;
   isErrorShown: boolean;
   /** error message, if contains newlines, it will be split to multiple errors */
@@ -55,7 +41,8 @@ export type State = {
 
 const ImageMimeRegex = /image\//i;
 
-export class CommentForm extends Component<Props, State> {
+type CommentFormComponentProps = Props & { intl: IntlShape; theme: Theme };
+class CommentFormComponent extends Component<CommentFormComponentProps, State> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
   static textareaId = 0;
@@ -70,12 +57,12 @@ export class CommentForm extends Component<Props, State> {
     buttonText: null,
   };
 
-  constructor(props: Props) {
+  constructor(props: CommentFormComponentProps) {
     super(props);
 
     const savedComment = getPersistedComment(props.id);
     this.state.text = props.value ?? savedComment ?? '';
-    CommentForm.textareaId += 1;
+    CommentFormComponent.textareaId += 1;
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -97,7 +84,6 @@ export class CommentForm extends Component<Props, State> {
     return (
       nextUserId !== userId ||
       nextProps.mode !== this.props.mode ||
-      nextProps.theme !== this.props.theme ||
       nextProps.value !== this.props.value ||
       nextProps.errorMessage !== this.props.errorMessage ||
       nextState !== this.state
@@ -407,7 +393,7 @@ export class CommentForm extends Component<Props, State> {
   };
 
   render() {
-    const { theme, mode, mix, uploadImage, autofocus, user, intl } = this.props;
+    const { mode, mix, uploadImage, autofocus, user, intl, theme } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
     const charactersLeft = StaticStore.config.max_comment_size - text.length;
     const errorMessage = this.props.errorMessage || this.state.errorMessage;
@@ -416,7 +402,7 @@ export class CommentForm extends Component<Props, State> {
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
-    const textareaId = `textarea_${CommentForm.textareaId}`;
+    const textareaId = `textarea_${CommentFormComponent.textareaId}`;
     const label = buttonText || Labels[mode || 'main'];
     const placeholderMessage = intl.formatMessage(messages.placeholder);
     const isSimpleView = StaticStore.config.simple_view;
@@ -425,7 +411,6 @@ export class CommentForm extends Component<Props, State> {
       <form
         className={b('comment-form', {
           mods: {
-            theme,
             type: mode || 'reply',
             simple: isSimpleView,
           },
@@ -439,12 +424,7 @@ export class CommentForm extends Component<Props, State> {
       >
         {!isSimpleView && (
           <div className="comment-form__control-panel" data-testid="markdown-toolbar">
-            <MarkdownToolbar
-              intl={intl}
-              allowUpload={Boolean(uploadImage)}
-              uploadImages={this.uploadImages}
-              textareaId={textareaId}
-            />
+            <MarkdownToolbar textareaId={textareaId} uploadImages={uploadImage ? this.uploadImages : undefined} />
           </div>
         )}
         <div className="comment-form__field-wrapper">
@@ -480,16 +460,23 @@ export class CommentForm extends Component<Props, State> {
                 {!isSimpleView && (
                   <Button
                     kind="secondary"
-                    theme={theme}
                     size="large"
                     mix="comment-form__button"
                     disabled={isDisabled}
                     onClick={this.getPreview}
+                    theme={theme}
                   >
                     <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
                   </Button>
                 )}
-                <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+                <Button
+                  kind="primary"
+                  size="large"
+                  mix="comment-form__button"
+                  type="submit"
+                  disabled={isDisabled}
+                  theme={theme}
+                >
                   {label}
                 </Button>
               </div>
@@ -515,9 +502,7 @@ export class CommentForm extends Component<Props, State> {
           !!preview && (
             <div className="comment-form__preview-wrapper">
               <div
-                className={b('comment-form__preview', {
-                  mix: b('raw-content', {}, { theme }),
-                })}
+                className="comment-form__preview raw-content"
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
               />
@@ -527,6 +512,29 @@ export class CommentForm extends Component<Props, State> {
       </form>
     );
   }
+}
+
+export type Props = {
+  id: string;
+  user: User | null;
+  errorMessage?: string;
+  value?: string;
+  mix?: Mix;
+  mode?: 'main' | 'edit' | 'reply';
+  autofocus?: boolean;
+
+  onSubmit(text: string, pageTitle: string): Promise<void>;
+  getPreview(text: string): Promise<string>;
+  /** action on cancel. optional as root input has no cancel option */
+  onCancel?(): void;
+  uploadImage?(image: File): Promise<Image>;
+};
+
+export function CommentForm(props: Props) {
+  const intl = useIntl();
+  const theme = useTheme();
+
+  return <CommentFormComponent intl={intl} theme={theme} {...props} />;
 }
 
 export const messages = defineMessages({

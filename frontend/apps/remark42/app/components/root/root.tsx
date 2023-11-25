@@ -237,8 +237,6 @@ export class Root extends Component<Props, State> {
               {!isCommentsDisabled && (
                 <CommentForm
                   id={encodeURI(url || '')}
-                  intl={this.props.intl}
-                  theme={props.theme}
                   mix="root__input"
                   mode="main"
                   user={props.user}

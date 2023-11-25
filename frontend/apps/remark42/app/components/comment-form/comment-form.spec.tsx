@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
-import { useIntl } from 'react-intl';
 
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
@@ -24,23 +23,17 @@ function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeo
 
   const props = {
     mode: 'main',
-    theme: 'light',
     onSubmit: () => Promise.resolve(),
     getPreview: () => Promise.resolve(''),
     user: null,
     id: '1',
     ...overrideProps,
-  } as Props;
-  // @ts-ignore
-  const CommentFormWithIntl = () => <CommentForm {...props} intl={useIntl()} />;
-
-  return render(<CommentFormWithIntl />);
+  } as const;
+  return render(<CommentForm {...props} />);
 }
 
 describe('<CommentForm />', () => {
   afterEach(() => {
-    // reset textarea id in order to have `textarea_1` for every test
-    CommentForm.textareaId = 0;
     localStorage.clear();
   });
 
@@ -50,7 +43,7 @@ describe('<CommentForm />', () => {
 
       updatePersistedComments('1', value);
       setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
+      expect(screen.getByTestId(/textarea/)).toHaveValue(value);
     });
 
     it('should get initial value from localStorage', () => {
@@ -58,7 +51,7 @@ describe('<CommentForm />', () => {
 
       updatePersistedComments('1', value);
       setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
+      expect(screen.getByTestId(/textarea/)).toHaveValue(value);
     });
 
     it('should get initial value from props instead localStorage', () => {
@@ -66,7 +59,7 @@ describe('<CommentForm />', () => {
 
       updatePersistedComments('1', 'text from localStorage');
       setup({ value });
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
+      expect(screen.getByTestId(/textarea/)).toHaveValue(value);
     });
   });
 
@@ -74,10 +67,10 @@ describe('<CommentForm />', () => {
     it('should update value', () => {
       setup();
 
-      fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: '1' } });
+      fireEvent.input(screen.getByTestId(/textarea/), { target: { value: '1' } });
       expect(getPersistedComments()).toEqual({ '1': '1' });
 
-      fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: '11' } });
+      fireEvent.input(screen.getByTestId(/textarea/), { target: { value: '11' } });
       expect(getPersistedComments()).toEqual({ '1': '11' });
     });
 
@@ -86,7 +79,7 @@ describe('<CommentForm />', () => {
       const updateJsonItemSpy = jest.spyOn(localStorageModule, 'updateJsonItem');
 
       setup();
-      fireEvent.submit(screen.getByTestId('textarea_1'));
+      fireEvent.submit(screen.getByTestId(/textarea/));
       await waitFor(() => {
         expect(updateJsonItemSpy).toHaveBeenCalled();
       });

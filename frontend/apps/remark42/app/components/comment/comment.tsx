@@ -11,7 +11,7 @@ import { copy } from 'common/copy';
 import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Profile } from 'common/types';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
-import { Props as CommentFormProps } from 'components/comment-form';
+import { type Props as CommentFormProps } from 'components/comment-form';
 import { Avatar } from 'components/avatar';
 import { VerificationIcon } from 'components/icons/verification';
 import { getPreview, uploadImage } from 'common/api';
@@ -508,9 +508,7 @@ export class Comment extends Component<CommentProps, State> {
         {CommentForm && isReplying && props.view === 'main' && (
           <CommentForm
             id={o.id}
-            intl={this.props.intl}
             user={props.user}
-            theme={props.theme}
             mode="reply"
             mix="comment__input"
             onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
@@ -524,9 +522,7 @@ export class Comment extends Component<CommentProps, State> {
         {CommentForm && isEditing && props.view === 'main' && (
           <CommentForm
             id={o.id}
-            intl={this.props.intl}
             user={props.user}
-            theme={props.theme}
             value={o.orig}
             mode="edit"
             mix="comment__input"
