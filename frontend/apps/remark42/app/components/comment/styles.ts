@@ -1,4 +1,4 @@
-import 'components/raw-content';
+import './raw-content.css';
 
 import './comment.css';
 import './__body/comment__body.css';
