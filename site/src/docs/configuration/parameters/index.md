@@ -135,6 +135,7 @@ services:
 | ssl.acme-location              | SSL_ACME_LOCATION              | `./var/acme`             | dir where obtained le-certs will be stored                |
 | ssl.acme-email                 | SSL_ACME_EMAIL                 |                          | admin email for receiving notifications from LE           |
 | max-comment                    | MAX_COMMENT_SIZE               | `2048`                   | comment's size limit                                      |
+| min-comment                    | MIN_COMMENT_SIZE               | `0`                      | comment's minimal size limit, `0` - unlimited             |
 | max-votes                      | MAX_VOTES                      | `-1`                     | votes limit per comment, `-1` - unlimited                 |
 | votes-ip                       | VOTES_IP                       | `false`                  | restrict votes from the same IP                           |
 | anon-vote                      | ANON_VOTE                      | `false`                  | allow voting for anonymous users, require VOTES_IP to be enabled as well |

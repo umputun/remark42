@@ -419,6 +419,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Version               string   `json:"version"`
 		EditDuration          int      `json:"edit_duration"`
 		AdminEdit             bool     `json:"admin_edit"`
+		MinCommentSize        int      `json:"min_comment_size"`
 		MaxCommentSize        int      `json:"max_comment_size"`
 		Admins                []string `json:"admins"`
 		AdminEmail            string   `json:"admin_email"`
@@ -439,6 +440,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		Version:               s.Version,
 		EditDuration:          int(s.DataService.EditDuration.Seconds()),
 		AdminEdit:             s.DataService.AdminEdits,
+		MinCommentSize:        s.DataService.MinCommentSize,
 		MaxCommentSize:        s.DataService.MaxCommentSize,
 		Admins:                admins,
 		AdminEmail:            emails,

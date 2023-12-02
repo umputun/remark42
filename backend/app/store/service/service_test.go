@@ -924,7 +924,7 @@ func TestService_EditCommentAdmin(t *testing.T) {
 }
 
 func TestService_ValidateComment(t *testing.T) {
-	b := DataStore{MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	b := DataStore{MinCommentSize: 6, MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")
 
 	tbl := []struct {
@@ -934,6 +934,7 @@ func TestService_ValidateComment(t *testing.T) {
 		{inp: store.Comment{}, err: "empty comment text"},
 		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid", Name: "name"}}, err: ""},
 		{inp: store.Comment{Orig: "something blah", User: store.User{ID: "myid"}}, err: "empty user info"},
+		{inp: store.Comment{Orig: "short", User: store.User{ID: "myid", Name: "name"}}, err: "comment text is smaller than min allowed size 6 (5)"},
 		{inp: store.Comment{Orig: longText, User: store.User{ID: "myid", Name: "name"}}, err: "comment text exceeded max allowed size 2000 (4000)"},
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
