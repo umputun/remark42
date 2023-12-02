@@ -65,6 +65,7 @@ type ServerCommand struct {
 	BackupLocation             string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles             int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
 	LegacyImageProxy           bool          `long:"img-proxy" env:"IMG_PROXY" description:"[deprecated, use image-proxy.http2https] enable image proxy"`
+	MinCommentSize             int           `long:"min-comment" env:"MIN_COMMENT_SIZE" default:"0" description:"min comment size"`
 	MaxCommentSize             int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
 	MaxVotes                   int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
 	RestrictVoteIP             bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
@@ -502,6 +503,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		EditDuration:           s.EditDuration,
 		AdminEdits:             s.AdminEdit,
 		AdminStore:             adminStore,
+		MinCommentSize:         s.MinCommentSize,
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,

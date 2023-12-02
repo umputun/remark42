@@ -27,6 +27,7 @@ type DataStore struct {
 	Engine              engine.Interface
 	EditDuration        time.Duration
 	AdminStore          admin.Store
+	MinCommentSize      int
 	MaxCommentSize      int
 	MaxVotes            int
 	RestrictSameIPVotes struct {
@@ -69,7 +70,7 @@ type PostMetaData struct {
 	ReadOnly bool   `json:"read_only"`
 }
 
-const defaultCommentMaxSize = 2000
+const defaultCommentMaxSize = 2048
 const maxLastCommentsReply = 5000
 
 // UnlimitedVotes doesn't restrict MaxVotes
@@ -639,8 +640,12 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	if c.Orig == "" {
 		return fmt.Errorf("empty comment text")
 	}
-	if len([]rune(c.Orig)) > maxSize {
-		return fmt.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
+	commentLength := len([]rune(c.Orig))
+	if commentLength > maxSize {
+		return fmt.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, commentLength)
+	}
+	if s.MinCommentSize > 0 && commentLength < s.MinCommentSize {
+		return fmt.Errorf("comment text is smaller than min allowed size %d (%d)", s.MinCommentSize, commentLength)
 	}
 	if c.User.ID == "" || c.User.Name == "" {
 		return fmt.Errorf("empty user info")
