@@ -222,19 +222,22 @@ func (s *Service) Middleware() middleware.Authenticator {
 	return s.authMiddleware
 }
 
-// AddProvider adds provider for given name
-func (s *Service) AddProvider(name, cid, csecret string) {
-
+// AddProviderWithUserAttributes adds provider with user attributes mapping
+func (s *Service) AddProviderWithUserAttributes(name, cid, csecret string, userAttributes provider.UserAttributes) {
 	p := provider.Params{
-		URL:         s.opts.URL,
-		JwtService:  s.jwtService,
-		Issuer:      s.issuer,
-		AvatarSaver: s.avatarProxy,
-		Cid:         cid,
-		Csecret:     csecret,
-		L:           s.logger,
+		URL:            s.opts.URL,
+		JwtService:     s.jwtService,
+		Issuer:         s.issuer,
+		AvatarSaver:    s.avatarProxy,
+		Cid:            cid,
+		Csecret:        csecret,
+		L:              s.logger,
+		UserAttributes: userAttributes,
 	}
+	s.addProvider(name, p)
+}
 
+func (s *Service) addProvider(name string, p provider.Params) {
 	switch strings.ToLower(name) {
 	case "github":
 		s.providers = append(s.providers, provider.NewService(provider.NewGithub(p)))
@@ -259,6 +262,23 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 	}
 
 	s.authMiddleware.Providers = s.providers
+}
+
+// AddProvider adds provider for given name
+func (s *Service) AddProvider(name, cid, csecret string) {
+
+	p := provider.Params{
+		URL:            s.opts.URL,
+		JwtService:     s.jwtService,
+		Issuer:         s.issuer,
+		AvatarSaver:    s.avatarProxy,
+		Cid:            cid,
+		Csecret:        csecret,
+		L:              s.logger,
+		UserAttributes: map[string]string{},
+	}
+
+	s.addProvider(name, p)
 }
 
 // AddDevProvider with a custom host and port

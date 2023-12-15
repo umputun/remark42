@@ -366,10 +366,11 @@ func in(value []string, arr []string) bool {
 
 func splitValues(value string) []string {
 	values := strings.Split(value, ",")
+	newValues := []string{}
 	for _, strippedValue := range values {
-		strippedValue = strings.ToLower(strings.TrimSpace(strippedValue))
+		newValues = append(newValues, strings.ToLower(strings.TrimSpace(strippedValue)))
 	}
-	return values
+	return newValues
 }
 
 func GetDefaultHandler(attr string) func(string) bool {

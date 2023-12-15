@@ -24,13 +24,14 @@ type EmailParams struct {
 	Subject     string // Email subject
 	ContentType string // Content type
 
-	TLS          bool          // TLS auth
-	StartTLS     bool          // StartTLS auth
-	Charset      string        // Character set
-	LoginAuth    bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
-	SMTPUserName string        // username
-	SMTPPassword string        // password
-	TimeOut      time.Duration // TCP connection timeout
+	TLS                bool          // TLS auth
+	StartTLS           bool          // StartTLS auth
+	InsecureSkipVerify bool          // Skip certificate verification
+	Charset            string        // Character set
+	LoginAuth          bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
+	SMTPUserName       string        // username
+	SMTPPassword       string        // password
+	TimeOut            time.Duration // TCP connection timeout
 }
 
 // NewEmailClient creates email client
@@ -67,6 +68,10 @@ func NewEmailClient(emailParams EmailParams, l logger.L) *Email {
 
 	if emailParams.StartTLS {
 		opts = append(opts, email.STARTTLS(true))
+	}
+
+	if emailParams.InsecureSkipVerify {
+		opts = append(opts, email.InsecureSkipVerify(true))
 	}
 
 	sender := email.NewSender(emailParams.Host, opts...)

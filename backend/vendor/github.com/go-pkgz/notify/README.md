@@ -33,9 +33,12 @@ func main() {
 		notify.NewWebhook(notify.WebhookParams{}),
 		notify.NewEmail(notify.SMTPParams{}),
 		notify.NewSlack("token"),
-		notify.NewTelegram(notify.TelegramParams{token: "token"}),
 	}
-	err := notify.Send(context.Background(), notifiers, "https://example.com/webhook", "Hello, world!")
+	tg, err := notify.NewTelegram(notify.TelegramParams{Token: "token"})
+	if err == nil {
+		notifiers = append(notifiers, tg)
+	}
+	err = notify.Send(context.Background(), notifiers, "https://example.com/webhook", "Hello, world!")
 	if err != nil {
 		fmt.Printf("Sent message error: %s", err))
 	}
@@ -100,18 +103,19 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/go-pkgz/notify"
 )
 
 func main() {
-	tg := notify.NewTelegram(notify.TelegramParams{
-		Token:   "token",          // required
-		Timeout: time.Second * 10, // default is 5 seconds
-		SuccessMsg:                // optional, for auth, set by default
-		ErrorMsg:                  // optional, for auth, unset by default
+	tg, err := notify.NewTelegram(notify.TelegramParams{
+		Token:      "token",          // required
+		Timeout:    time.Second * 10, // default is 5 seconds
+		SuccessMsg: "Success",        // optional, for auth, set by default
+		ErrorMsg:   "Error",          // optional, for auth, unset by default
 	})
-	err := tg.Send(context.Background(), "telegram:-1001480738202", "Hello, World!")
+	err = tg.Send(context.Background(), "telegram:-1001480738202", "Hello, World!")
 	if err != nil {
 		log.Fatalf("problem sending message using telegram, %v", err)
 	}

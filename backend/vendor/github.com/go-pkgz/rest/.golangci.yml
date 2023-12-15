@@ -57,6 +57,9 @@ run:
 
 issues:
   exclude-rules:
+    - text: 'Deferring unsafe method "Close" on type "io.ReadCloser"'
+      linters:
+        - gosec
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint

@@ -17,6 +17,9 @@ import (
 	"golang.org/x/oauth2/yandex"
 )
 
+// UserAttributes is the type that will be used to map user data from provider to token.User
+type UserAttributes map[string]string
+
 // NewGoogle makes google oauth2 provider
 func NewGoogle(p Params) Oauth2Handler {
 	return initOauth2Handler(p, Oauth2Handler{
@@ -33,6 +36,9 @@ func NewGoogle(p Params) Oauth2Handler {
 			}
 			if userInfo.Name == "" {
 				userInfo.Name = "noname_" + userInfo.ID[8:12]
+			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
 			}
 			return userInfo
 		},
@@ -55,6 +61,9 @@ func NewGithub(p Params) Oauth2Handler {
 			// github may have no user name, use login in this case
 			if userInfo.Name == "" {
 				userInfo.Name = data.Value("login")
+			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
 			}
 			return userInfo
 		},
@@ -93,6 +102,9 @@ func NewFacebook(p Params) Oauth2Handler {
 			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
 				userInfo.Picture = uinfoJSON.Picture.Data.URL
 			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
 			return userInfo
 		},
 	})
@@ -121,6 +133,9 @@ func NewYandex(p Params) Oauth2Handler {
 			if data.Value("default_avatar_id") != "" {
 				userInfo.Picture = fmt.Sprintf("https://avatars.yandex.net/get-yapic/%s/islands-200", data.Value("default_avatar_id"))
 			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
 			return userInfo
 		},
 	})
@@ -143,6 +158,9 @@ func NewTwitter(p Params) Oauth1Handler {
 			if userInfo.Name == "" {
 				userInfo.Name = data.Value("name")
 			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
 			return userInfo
 		},
 	})
@@ -164,7 +182,9 @@ func NewBattlenet(p Params) Oauth2Handler {
 				ID:   "battlenet_" + token.HashID(sha1.New(), data.Value("id")),
 				Name: data.Value("battletag"),
 			}
-
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
 			return userInfo
 		},
 	})
@@ -184,6 +204,9 @@ func NewMicrosoft(p Params) Oauth2Handler {
 				ID:      "microsoft_" + token.HashID(sha1.New(), data.Value("id")),
 				Name:    data.Value("displayName"),
 				Picture: "https://graph.microsoft.com/beta/me/photo/$value",
+			}
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
 			}
 			return userInfo
 		},
@@ -235,7 +258,9 @@ func NewPatreon(p Params) Oauth2Handler {
 					userInfo.SetPaidSub(true)
 				}
 			}
-
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
 			return userInfo
 		},
 	})

@@ -45,3 +45,29 @@ func IsAuthorized(ctx context.Context) bool {
 	v := ctx.Value(contextKey(baContextKey))
 	return v != nil && v.(bool)
 }
+
+// BasicAuthWithPrompt middleware requires basic auth and matches user & passwd with client-provided values
+// If the user is not authorized, it will prompt for basic auth
+func BasicAuthWithPrompt(user, passwd string) func(http.Handler) http.Handler {
+	checkFn := func(reqUser, reqPasswd string) bool {
+		matchUser := subtle.ConstantTimeCompare([]byte(user), []byte(reqUser))
+		matchPass := subtle.ConstantTimeCompare([]byte(passwd), []byte(reqPasswd))
+		return matchUser == 1 && matchPass == 1
+	}
+
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+
+			// extract basic auth from request
+			u, p, ok := r.BasicAuth()
+			if ok && checkFn(u, p) {
+				h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey(baContextKey), true)))
+				return
+			}
+			// not authorized, prompt for basic auth
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
