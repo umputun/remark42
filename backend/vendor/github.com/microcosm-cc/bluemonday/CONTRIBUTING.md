@@ -10,6 +10,7 @@ Third-party patches are essential for keeping bluemonday secure and offering the
 
 1. Do not vendor dependencies. As a security package, were we to vendor dependencies the projects that then vendor bluemonday may not receive the latest security updates to the dependencies. By not vendoring dependencies the project that implements bluemonday will vendor the latest version of any dependent packages. Vendoring is a project problem, not a package problem. bluemonday will be tested against the latest version of dependencies periodically and during any PR/merge.
 2. I do not care about spelling mistakes or whitespace and I do not believe that you should either. PRs therefore must be functional in their nature or be substantial and impactful if documentation or examples.
+3. This module does not participate in hacktober, please make your contributions meaningful.
 
 ## Submitting an Issue
 
@@ -45,8 +46,6 @@ We haven't gone for the formal "Sign a Contributor Licence Agreement" thing that
 
 But we do need to know that we can accept and merge your contributions, so for now the act of contributing a pull request should be considered equivalent to agreeing to a contributor licence agreement, specifically:
 
-You accept that the act of submitting code to the bluemonday project is to grant a copyright licence to the project that is perpetual, worldwide, non-exclusive, no-charge, royalty free and irrevocable.
-
-You accept that all who comply with the licence of the project (BSD 3-clause) are permitted to use your contributions to the project.
-
-You accept, and by submitting code do declare, that you have the legal right to grant such a licence to the project and that each of the contributions is your own original creation.
+* You accept that the act of submitting code to the bluemonday project is to grant a copyright licence to the project that is perpetual, worldwide, non-exclusive, no-charge, royalty free and irrevocable.
+* You accept that all who comply with the licence of the project (BSD 3-clause) are permitted to use your contributions to the project.
+* You accept, and by submitting code do declare, that you have the legal right to grant such a licence to the project and that each of the contributions is your own original creation.

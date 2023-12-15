@@ -9,13 +9,13 @@ import (
 
 // Profiler is a convenient subrouter used for mounting net/http/pprof. ie.
 //
-//  func MyService() http.Handler {
-//    r := chi.NewRouter()
-//    // ..middlewares
-//    r.Mount("/debug", middleware.Profiler())
-//    // ..routes
-//    return r
-//  }
+//	func MyService() http.Handler {
+//	  r := chi.NewRouter()
+//	  // ..middlewares
+//	  r.Mount("/debug", middleware.Profiler())
+//	  // ..routes
+//	  return r
+//	}
 func Profiler(onlyIps ...string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/pprof/", pprof.Index)
@@ -33,7 +33,7 @@ func Profiler(onlyIps ...string) http.Handler {
 }
 
 // expVars copied from stdlib expvar.go as is not public.
-func expVars(w http.ResponseWriter, r *http.Request) {
+func expVars(w http.ResponseWriter, _ *http.Request) {
 	first := true
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, "{\n")

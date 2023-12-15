@@ -1,6 +1,9 @@
 package lgr
 
-import "io"
+import (
+	"io"
+	"strings"
+)
 
 // Option func type
 type Option func(l *Logger)
@@ -74,6 +77,9 @@ func Msec(l *Logger) {
 func Secret(vals ...string) Option {
 	return func(l *Logger) {
 		for _, v := range vals {
+			if strings.TrimSpace(v) == "" {
+				continue // skip empty secrets
+			}
 			l.secrets = append(l.secrets, []byte(v))
 		}
 	}

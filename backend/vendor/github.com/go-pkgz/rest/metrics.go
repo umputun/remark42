@@ -9,12 +9,10 @@ import (
 
 // Metrics responds to GET /metrics with list of expvar
 func Metrics(onlyIps ...string) func(http.Handler) http.Handler {
-
 	return func(h http.Handler) http.Handler {
-
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == "GET" && strings.HasSuffix(strings.ToLower(r.URL.Path), "/metrics") {
-				if matched, ip := matchSourceIP(r, onlyIps); !matched {
+				if matched, ip, err := matchSourceIP(r, onlyIps); !matched || err != nil {
 					w.WriteHeader(http.StatusForbidden)
 					RenderJSON(w, JSON{"error": fmt.Sprintf("ip %s rejected", ip)})
 					return

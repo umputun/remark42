@@ -34,12 +34,13 @@ type Oauth2Handler struct {
 // Params to make initialized and ready to use provider
 type Params struct {
 	logger.L
-	URL         string
-	JwtService  TokenService
-	Cid         string
-	Csecret     string
-	Issuer      string
-	AvatarSaver AvatarSaver
+	URL            string
+	JwtService     TokenService
+	Cid            string
+	Csecret        string
+	Issuer         string
+	AvatarSaver    AvatarSaver
+	UserAttributes UserAttributes
 
 	Port int    // relevant for providers supporting port customization, for example dev oauth2
 	Host string // relevant for providers supporting host customization, for example dev oauth2

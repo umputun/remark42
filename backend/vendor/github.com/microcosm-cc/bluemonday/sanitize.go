@@ -998,7 +998,7 @@ func linkable(elementName string) bool {
 // stringInSlice returns true if needle exists in haystack
 func stringInSlice(needle string, haystack []string) bool {
 	for _, straw := range haystack {
-		if strings.ToLower(straw) == strings.ToLower(needle) {
+		if strings.EqualFold(straw, needle) {
 			return true
 		}
 	}
