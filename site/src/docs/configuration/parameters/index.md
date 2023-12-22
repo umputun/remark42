@@ -127,6 +127,7 @@ services:
 | smtp.login_auth                | SMTP_LOGIN_AUTH                | `false                   | enable LOGIN auth instead of PLAIN                        |
 | smtp.tls                       | SMTP_TLS                       | `false`                  | enable TLS for SMTP                                       |
 | smtp.starttls                  | SMTP_STARTTLS                  | `false`                  | enable StartTLS for SMTP                                  |
+| smtp.insecure_skip_verify      | SMTP_INSECURE_SKIP_VERIFY      | `false`                  | skip certificate verification for SMTP                    |
 | smtp.timeout                   | SMTP_TIMEOUT                   | `10s`                    | SMTP TCP connection timeout                               |
 | ssl.type                       | SSL_TYPE                       | none                     | `none`-HTTP, `static`-HTTPS, `auto`-HTTPS + le            |
 | ssl.port                       | SSL_PORT                       | `8443`                   | port for HTTPS server                                     |
