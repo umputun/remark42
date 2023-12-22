@@ -220,14 +220,15 @@ type TelegramGroup struct {
 
 // SMTPGroup defines options for SMTP server connection, used in auth and notify modules
 type SMTPGroup struct {
-	Host      string        `long:"host" env:"HOST" description:"SMTP host"`
-	Port      int           `long:"port" env:"PORT" description:"SMTP port"`
-	Username  string        `long:"username" env:"USERNAME" description:"SMTP user name"`
-	Password  string        `long:"password" env:"PASSWORD" description:"SMTP password"`
-	TLS       bool          `long:"tls" env:"TLS" description:"enable TLS"`
-	LoginAuth bool          `long:"login_auth" env:"LOGIN_AUTH" description:"enable LOGIN auth instead of PLAIN"`
-	StartTLS  bool          `long:"starttls" env:"STARTTLS" description:"enable StartTLS"`
-	TimeOut   time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
+	Host               string        `long:"host" env:"HOST" description:"SMTP host"`
+	Port               int           `long:"port" env:"PORT" description:"SMTP port"`
+	Username           string        `long:"username" env:"USERNAME" description:"SMTP user name"`
+	Password           string        `long:"password" env:"PASSWORD" description:"SMTP password"`
+	TLS                bool          `long:"tls" env:"TLS" description:"enable TLS"`
+	InsecureSkipVerify bool          `long:"insecure_skip_verify" env:"INSECURE_SKIP_VERIFY" description:"skip certificate verification"`
+	LoginAuth          bool          `long:"login_auth" env:"LOGIN_AUTH" description:"enable LOGIN auth instead of PLAIN"`
+	StartTLS           bool          `long:"starttls" env:"STARTTLS" description:"enable StartTLS"`
+	TimeOut            time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
 }
 
 // NotifyGroup defines options for notification
@@ -956,18 +957,19 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Email.Enable {
 		params := sender.EmailParams{
-			Host:         s.SMTP.Host,
-			Port:         s.SMTP.Port,
-			SMTPUserName: s.SMTP.Username,
-			SMTPPassword: s.SMTP.Password,
-			TimeOut:      s.SMTP.TimeOut,
-			StartTLS:     s.SMTP.StartTLS,
-			LoginAuth:    s.SMTP.LoginAuth,
-			TLS:          s.SMTP.TLS,
-			Charset:      "UTF-8",
-			From:         s.Auth.Email.From,
-			Subject:      s.Auth.Email.Subject,
-			ContentType:  s.Auth.Email.ContentType,
+			Host:               s.SMTP.Host,
+			Port:               s.SMTP.Port,
+			SMTPUserName:       s.SMTP.Username,
+			SMTPPassword:       s.SMTP.Password,
+			TimeOut:            s.SMTP.TimeOut,
+			StartTLS:           s.SMTP.StartTLS,
+			LoginAuth:          s.SMTP.LoginAuth,
+			TLS:                s.SMTP.TLS,
+			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,
+			Charset:            "UTF-8",
+			From:               s.Auth.Email.From,
+			Subject:            s.Auth.Email.Subject,
+			ContentType:        s.Auth.Email.ContentType,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
 		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
@@ -1111,16 +1113,17 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			emailParams.AdminEmails = s.Admin.Shared.Email
 		}
 		smtpParams := ntf.SMTPParams{
-			Host:        s.SMTP.Host,
-			Port:        s.SMTP.Port,
-			TLS:         s.SMTP.TLS,
-			StartTLS:    s.SMTP.StartTLS,
-			LoginAuth:   s.SMTP.LoginAuth,
-			Username:    s.SMTP.Username,
-			Password:    s.SMTP.Password,
-			TimeOut:     s.SMTP.TimeOut,
-			ContentType: "text/html",
-			Charset:     "UTF-8",
+			Host:               s.SMTP.Host,
+			Port:               s.SMTP.Port,
+			TLS:                s.SMTP.TLS,
+			StartTLS:           s.SMTP.StartTLS,
+			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,
+			LoginAuth:          s.SMTP.LoginAuth,
+			Username:           s.SMTP.Username,
+			Password:           s.SMTP.Password,
+			TimeOut:            s.SMTP.TimeOut,
+			ContentType:        "text/html",
+			Charset:            "UTF-8",
 		}
 		emailService, err := notify.NewEmail(emailParams, smtpParams)
 		if err != nil {
