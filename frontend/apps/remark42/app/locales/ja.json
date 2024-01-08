@@ -108,7 +108,7 @@
   "errors.7": "ユーザーはブロックされました。",
   "errors.8": "ユーザーはブロックされました。",
   "errors.9": "コメントの変更に失敗しました。しばらくしてからもう一度お試しください。",
-  "errors.conflict": "Conflict.",
+  "errors.conflict": "相衝。",
   "errors.failed-fetch": "取得できませんでした。インターネット接続を確認するか、しばらくしてからもう一度お試しください。",
   "errors.forbidden": "禁止されています.",
   "errors.not-authorized": "認証されていません。",
