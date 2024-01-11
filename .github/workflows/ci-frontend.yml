@@ -20,19 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.15.1]
+        node: [16.20.2]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.0.1
+        uses: pnpm/action-setup@v2.4.0
         id: pnpm-install
         with:
           version: 7
@@ -64,19 +64,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.15.1]
+        node: [16.20.2]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.0.1
+        uses: pnpm/action-setup@v2.4.0
         id: pnpm-install
         with:
           version: 7
@@ -108,19 +108,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.15.1]
+        node: [16.20.2]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.0.1
+        uses: pnpm/action-setup@v2.4.0
         id: pnpm-install
         with:
           version: 7
@@ -155,17 +155,17 @@ jobs:
       CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.0.1
+        uses: pnpm/action-setup@v2.4.0
         id: pnpm-install
         with:
           version: 7
           run_install: false
 
       - name: Check bundle size
-        uses: andresz1/size-limit-action@dd31dce7dcc72a041fd3e49abf0502b13fc4ce05
+        uses: andresz1/size-limit-action@7313b26c76b3666c1dc41e2ca05370e201a9b7de
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend/apps/remark42
@@ -176,19 +176,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.15.1]
+        node: [16.20.2]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.0.1
+        uses: pnpm/action-setup@v2.4.0
         id: pnpm-install
         with:
           version: 7

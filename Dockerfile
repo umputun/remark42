@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:16.15.1-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:16.20.2-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.11.0 as build-backend
+FROM umputun/baseimage:buildgo-v1.12.0 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -81,7 +81,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM umputun/baseimage:app-v1.11.0
+FROM umputun/baseimage:app-v1.12.0
 
 ARG GITHUB_SHA
 
