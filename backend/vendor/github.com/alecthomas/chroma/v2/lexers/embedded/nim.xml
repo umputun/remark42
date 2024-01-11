@@ -132,6 +132,10 @@
       <rule pattern="\.\.|\.|,|\[\.|\.\]|\{\.|\.\}|\(\.|\.\)|\{|\}|\(|\)|:|\^|`|;">
         <token type="Punctuation"/>
       </rule>
+      <rule pattern="(?:[\w]+)&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="tdqs"/>
+      </rule>
       <rule pattern="(?:[\w]+)&#34;">
         <token type="LiteralString"/>
         <push state="rdqs"/>

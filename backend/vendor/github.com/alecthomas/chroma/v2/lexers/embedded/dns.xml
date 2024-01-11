@@ -4,6 +4,8 @@
     <name>dns</name>
     <alias>zone</alias>
     <alias>bind</alias>
+    <filename>*.zone</filename>
+    <mime_type>text/dns</mime_type>
   </config>
   <rules>
     <state name="root">
@@ -22,10 +24,10 @@
       <rule pattern="\b\d+[dhwm]?">
         <token type="LiteralStringChar"/>
       </rule>
-      <rule pattern="\b([[:alnum:].-])+\.($|\s)">
+      <rule pattern="\b([\w\d.-])+\.($|\s)">
         <token type="NameProperty"/>
       </rule>
-      <rule pattern="^(@|[[:alnum:]-]+)">
+      <rule pattern="([\w\d\.-]+\.[a-z-]{2,24}\.?|^(@|[\w\d-]+))">
         <token type="NameClass"/>
       </rule>
       <rule pattern="^\$(TTL|GENERATE|INCLUDE|ORIGIN)">

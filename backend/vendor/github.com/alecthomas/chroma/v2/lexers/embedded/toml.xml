@@ -3,6 +3,8 @@
     <name>TOML</name>
     <alias>toml</alias>
     <filename>*.toml</filename>
+    <filename>Pipfile</filename>
+    <filename>poetry.lock</filename>
     <mime_type>text/x-toml</mime_type>
   </config>
   <rules>

@@ -15,9 +15,14 @@
     <filename>*.H</filename>
     <filename>*.cp</filename>
     <filename>*.CPP</filename>
+    <filename>*.tpp</filename>
     <mime_type>text/x-c++hdr</mime_type>
     <mime_type>text/x-c++src</mime_type>
     <ensure_nl>true</ensure_nl>
+    <analyse first="true">
+      <regex pattern="#include &lt;[a-z_]+>" score="0.2" />
+      <regex pattern="using namespace " score="0.4" />
+    </analyse>
   </config>
   <rules>
     <state name="classname">
@@ -79,7 +84,7 @@
       </rule>
     </state>
     <state name="macro">
-      <rule pattern="(include)(\s*(?:/[*].*?[*]/\s*)?)([^\n]+)">
+      <rule pattern="(include)(\s+)(&quot;[^&quot;]+?&quot;|&lt;[^&gt;]+?&gt;)">
         <bygroups>
           <token type="CommentPreproc"/>
           <token type="Text"/>

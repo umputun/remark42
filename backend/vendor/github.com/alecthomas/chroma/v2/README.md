@@ -1,7 +1,6 @@
 # Chroma — A general purpose syntax highlighter in pure Go
-[![Golang Documentation](https://godoc.org/github.com/alecthomas/chroma?status.svg)](https://godoc.org/github.com/alecthomas/chroma) [![CI](https://github.com/alecthomas/chroma/actions/workflows/ci.yml/badge.svg)](https://github.com/alecthomas/chroma/actions/workflows/ci.yml) [![Slack chat](https://img.shields.io/static/v1?logo=slack&style=flat&label=slack&color=green&message=gophers)](https://invite.slack.golangbridge.org/)
 
-> **NOTE:** As Chroma has just been released, its API is still in flux. That said, the high-level interface should not change significantly.
+[![Golang Documentation](https://godoc.org/github.com/alecthomas/chroma?status.svg)](https://godoc.org/github.com/alecthomas/chroma) [![CI](https://github.com/alecthomas/chroma/actions/workflows/ci.yml/badge.svg)](https://github.com/alecthomas/chroma/actions/workflows/ci.yml) [![Slack chat](https://img.shields.io/static/v1?logo=slack&style=flat&label=slack&color=green&message=gophers)](https://invite.slack.golangbridge.org/)
 
 Chroma takes source code and other structured text and converts it into syntax
 highlighted HTML, ANSI-coloured text, etc.
@@ -10,6 +9,7 @@ Chroma is based heavily on [Pygments](http://pygments.org/), and includes
 translators for Pygments lexers and styles.
 
 <a id="markdown-table-of-contents" name="table-of-contents"></a>
+
 ## Table of Contents
 
 <!-- TOC -->
@@ -18,14 +18,14 @@ translators for Pygments lexers and styles.
 2. [Supported languages](#supported-languages)
 3. [Try it](#try-it)
 4. [Using the library](#using-the-library)
-    1. [Quick start](#quick-start)
-    2. [Identifying the language](#identifying-the-language)
-    3. [Formatting the output](#formatting-the-output)
-    4. [The HTML formatter](#the-html-formatter)
+   1. [Quick start](#quick-start)
+   2. [Identifying the language](#identifying-the-language)
+   3. [Formatting the output](#formatting-the-output)
+   4. [The HTML formatter](#the-html-formatter)
 5. [More detail](#more-detail)
-    1. [Lexers](#lexers)
-    2. [Formatters](#formatters)
-    3. [Styles](#styles)
+   1. [Lexers](#lexers)
+   2. [Formatters](#formatters)
+   3. [Styles](#styles)
 6. [Command-line interface](#command-line-interface)
 7. [Testing lexers](#testing-lexers)
 8. [What's missing compared to Pygments?](#whats-missing-compared-to-pygments)
@@ -33,46 +33,48 @@ translators for Pygments lexers and styles.
 <!-- /TOC -->
 
 <a id="markdown-supported-languages" name="supported-languages"></a>
+
 ## Supported languages
 
-Prefix | Language
-:----: | --------
-A | ABAP, ABNF, ActionScript, ActionScript 3, Ada, Angular2, ANTLR, ApacheConf, APL, AppleScript, ArangoDB AQL, Arduino, Awk
-B | Ballerina, Bash, Batchfile, BibTeX, Bicep, BlitzBasic, BNF, Brainfuck, BQN
-C | C, C#, C++, Caddyfile, Caddyfile Directives, Cap'n Proto, Cassandra CQL, Ceylon, CFEngine3, cfstatement, ChaiScript, Chapel, Cheetah, Clojure, CMake, COBOL, CoffeeScript, Common Lisp, Coq, Crystal, CSS, Cython
-D | D, Dart, Diff, Django/Jinja, Docker, DTD, Dylan
-E | EBNF, Elixir, Elm, EmacsLisp, Erlang
-F | Factor, Fish, Forth, Fortran, FSharp
-G | GAS, GDScript, Genshi, Genshi HTML, Genshi Text, Gherkin, GLSL, Gnuplot, Go, Go HTML Template, Go Text Template, GraphQL, Groff, Groovy
-H | Handlebars, Haskell, Haxe, HCL, Hexdump, HLB, HLSL, HTML, HTTP, Hy
-I | Idris, Igor, INI, Io
-J | J, Java, JavaScript, JSON, Julia, Jungle
-K | Kotlin
-L | Lighttpd configuration file, LLVM, Lua
-M | Makefile, Mako, markdown, Mason, Mathematica, Matlab, MiniZinc, MLIR, Modula-2, MonkeyC, MorrowindScript, Myghty, MySQL
-N | NASM, Newspeak, Nginx configuration file, Nim, Nix
-O | Objective-C, OCaml, Octave, OnesEnterprise, OpenEdge ABL, OpenSCAD, Org Mode
-P | PacmanConf, Perl, PHP, PHTML, Pig, PkgConfig, PL/pgSQL, plaintext, Pony, PostgreSQL SQL dialect, PostScript, POVRay, PowerShell, Prolog, PromQL, Properties, Protocol Buffer, PSL, Puppet, Python 2, Python
-Q | QBasic
-R | R, Racket, Ragel, Raku, react, ReasonML, reg, reStructuredText, Rexx, Ruby, Rust
-S | SAS, Sass, Scala, Scheme, Scilab, SCSS, Sed, Smali, Smalltalk, Smarty, Snobol, Solidity, SPARQL, SQL, SquidConf, Standard ML, stas, Stylus, Svelte, Swift, SYSTEMD, systemverilog
-T | TableGen, TASM, Tcl, Tcsh, Termcap, Terminfo, Terraform, TeX, Thrift, TOML, TradingView, Transact-SQL, Turing, Turtle, Twig, TypeScript, TypoScript, TypoScriptCssData, TypoScriptHtmlData
-V | VB.net, verilog, VHDL, VHS, VimL, vue
-W | WDTE
-X | XML, Xorg
-Y | YAML, YANG
-Z | Zig
-
+| Prefix | Language                                                                                                                                                                                                                             |
+| :----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|   A    | ABAP, ABNF, ActionScript, ActionScript 3, Ada, Agda, AL, Alloy, Angular2, ANTLR, ApacheConf, APL, AppleScript, ArangoDB AQL, Arduino, ArmAsm, AutoHotkey, AutoIt, Awk                                                                             |
+|   B    | Ballerina, Bash, Bash Session, Batchfile, BibTeX, Bicep, BlitzBasic, BNF, BQN, Brainfuck                                                                                                                                             |
+|   C    | C, C#, C++, Caddyfile, Caddyfile Directives, Cap'n Proto, Cassandra CQL, Ceylon, CFEngine3, cfstatement, ChaiScript, Chapel, Cheetah, Clojure, CMake, COBOL, CoffeeScript, Common Lisp, Coq, Crystal, CSS, Cython                    |
+|   D    | D, Dart, Dax, Diff, Django/Jinja, dns, Docker, DTD, Dylan                                                                                                                                                                                 |
+|   E    | EBNF, Elixir, Elm, EmacsLisp, Erlang                                                                                                                                                                                                 |
+|   F    | Factor, Fennel, Fish, Forth, Fortran, FortranFixed, FSharp                                                                                                                                                                           |
+|   G    | GAS, GDScript, Genshi, Genshi HTML, Genshi Text, Gherkin, GLSL, Gnuplot, Go, Go HTML Template, Go Text Template, GraphQL, Groff, Groovy                                                                                              |
+|   H    | Handlebars, Hare, Haskell, Haxe, HCL, Hexdump, HLB, HLSL, HolyC, HTML, HTTP, Hy                                                                                                                                                      |
+|   I    | Idris, Igor, INI, Io, ISCdhcpd                                                                                                                                                                                                       |
+|   J    | J, Java, JavaScript, JSON, Julia, Jungle                                                                                                                                                                                             |
+|   K    | Kotlin                                                                                                                                                                                                                               |
+|   L    | Lighttpd configuration file, LLVM, Lua                                                                                                                                                                                               |
+|   M    | Makefile, Mako, markdown, Mason, Mathematica, Matlab, mcfunction, Meson, Metal, MiniZinc, MLIR, Modula-2, MonkeyC, MorrowindScript, Myghty, MySQL                                                                                    |
+|   N    | NASM, Natural, Newspeak, Nginx configuration file, Nim, Nix                                                                                                                                                                          |
+|   O    | Objective-C, OCaml, Octave, Odin, OnesEnterprise, OpenEdge ABL, OpenSCAD, Org Mode                                                                                                                                                   |
+|   P    | PacmanConf, Perl, PHP, PHTML, Pig, PkgConfig, PL/pgSQL, plaintext, Plutus Core, Pony, PostgreSQL SQL dialect, PostScript, POVRay, PowerQuery, PowerShell, Prolog, PromQL, properties, Protocol Buffer, PRQL, PSL, Puppet, Python, Python 2 |
+|   Q    | QBasic, QML                                                                                                                                                                                                                          |
+|   R    | R, Racket, Ragel, Raku, react, ReasonML, reg, reStructuredText, Rexx, Ruby, Rust                                                                                                                                                     |
+|   S    | SAS, Sass, Scala, Scheme, Scilab, SCSS, Sed, Sieve, Smali, Smalltalk, Smarty, Snobol, Solidity, SourcePawn, SPARQL, SQL, SquidConf, Standard ML, stas, Stylus, Svelte, Swift, SYSTEMD, systemverilog                                 |
+|   T    | TableGen, Tal, TASM, Tcl, Tcsh, Termcap, Terminfo, Terraform, TeX, Thrift, TOML, TradingView, Transact-SQL, Turing, Turtle, Twig, TypeScript, TypoScript, TypoScriptCssData, TypoScriptHtmlData                                      |
+|   V    | V, V shell, Vala, VB.net, verilog, VHDL, VHS, VimL, vue                                                                                                                                                                              |
+|   W    | WDTE, WebGPU Shading Language, Whiley                                                                                                                                                                                                |
+|   X    | XML, Xorg                                                                                                                                                                                                                            |
+|   Y    | YAML, YANG                                                                                                                                                                                                                           |
+|   Z    | Z80 Assembly, Zed, Zig                                                                                                                                                                                                               |
 
 _I will attempt to keep this section up to date, but an authoritative list can be
 displayed with `chroma --list`._
 
 <a id="markdown-try-it" name="try-it"></a>
+
 ## Try it
 
 Try out various languages and styles on the [Chroma Playground](https://swapoff.org/chroma/playground/).
 
 <a id="markdown-using-the-library" name="using-the-library"></a>
+
 ## Using the library
 
 Chroma, like Pygments, has the concepts of
@@ -94,6 +96,7 @@ be returned. In this situation you may want to default to the `Fallback`
 value in each respective package, which provides sane defaults.
 
 <a id="markdown-quick-start" name="quick-start"></a>
+
 ### Quick start
 
 A convenience function exists that can be used to simply format some source
@@ -104,6 +107,7 @@ err := quick.Highlight(os.Stdout, someSourceCode, "go", "html", "monokai")
 ```
 
 <a id="markdown-identifying-the-language" name="identifying-the-language"></a>
+
 ### Identifying the language
 
 To highlight code, you'll first have to identify what language the code is
@@ -111,21 +115,21 @@ written in. There are three primary ways to do that:
 
 1. Detect the language from its filename.
 
-    ```go
-    lexer := lexers.Match("foo.go")
-    ```
+   ```go
+   lexer := lexers.Match("foo.go")
+   ```
 
-3. Explicitly specify the language by its Chroma syntax ID (a full list is available from `lexers.Names()`).
+2. Explicitly specify the language by its Chroma syntax ID (a full list is available from `lexers.Names()`).
 
-    ```go
-    lexer := lexers.Get("go")
-    ```
+   ```go
+   lexer := lexers.Get("go")
+   ```
 
 3. Detect the language from its content.
 
-    ```go
-    lexer := lexers.Analyse("package main\n\nfunc main()\n{\n}\n")
-    ```
+   ```go
+   lexer := lexers.Analyse("package main\n\nfunc main()\n{\n}\n")
+   ```
 
 In all cases, `nil` will be returned if the language can not be identified.
 
@@ -144,6 +148,7 @@ lexer = chroma.Coalesce(lexer)
 ```
 
 <a id="markdown-formatting-the-output" name="formatting-the-output"></a>
+
 ### Formatting the output
 
 Once a language is identified you will need to pick a formatter and a style (theme).
@@ -173,6 +178,7 @@ err := formatter.Format(w, style, iterator)
 ```
 
 <a id="markdown-the-html-formatter" name="the-html-formatter"></a>
+
 ### The HTML formatter
 
 By default the `html` registered formatter generates standalone HTML with
@@ -198,9 +204,11 @@ err := formatter.WriteCSS(w, style)
 ```
 
 <a id="markdown-more-detail" name="more-detail"></a>
+
 ## More detail
 
 <a id="markdown-lexers" name="lexers"></a>
+
 ### Lexers
 
 See the [Pygments documentation](http://pygments.org/docs/lexerdevelopment/)
@@ -221,6 +229,7 @@ See notes in [pygments-lexers.txt](https://github.com/alecthomas/chroma/blob/mas
 for a list of lexers, and notes on some of the issues importing them.
 
 <a id="markdown-formatters" name="formatters"></a>
+
 ### Formatters
 
 Chroma supports HTML output, as well as terminal output in 8 colour, 256 colour, and true-colour.
@@ -229,6 +238,7 @@ A `noop` formatter is included that outputs the token text only, and a `tokens`
 formatter outputs raw tokens. The latter is useful for debugging lexers.
 
 <a id="markdown-styles" name="styles"></a>
+
 ### Styles
 
 Chroma styles are defined in XML. The style entries use the
@@ -237,7 +247,7 @@ Chroma styles are defined in XML. The style entries use the
 All Pygments styles have been converted to Chroma using the `_tools/style.py`
 script.
 
-When you work with one of [Chroma's styles](https://github.com/alecthomas/chroma/tree/master/styles), 
+When you work with one of [Chroma's styles](https://github.com/alecthomas/chroma/tree/master/styles),
 know that the `Background` token type provides the default style for tokens. It does so
 by defining a foreground color and background color.
 
@@ -253,6 +263,7 @@ Also, token types in a style file are hierarchical. For instance, when `CommentS
 For a quick overview of the available styles and how they look, check out the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/).
 
 <a id="markdown-command-line-interface" name="command-line-interface"></a>
+
 ## Command-line interface
 
 A command-line interface to Chroma is included.
@@ -280,26 +291,32 @@ for that setup the `chroma` executable can be just symlinked to `~/.lessfilter`.
 <a id="markdown-whats-missing-compared-to-pygments" name="whats-missing-compared-to-pygments"></a>
 
 <a id="markdown-testing-lexers" name="testing-lexers"></a>
+
 ## Testing lexers
+
 If you edit some lexers and want to try it, open a shell in `cmd/chromad` and run:
+
 ```shell
 go run .
 ```
+
 A Link will be printed. Open it in your Browser. Now you can test on the Playground with your local changes.
 
 If you want to run the tests and the lexers, open a shell in the root directory and run:
+
 ```shell
 go test ./lexers
 ```
+
 When updating or adding a lexer, please add tests. See [lexers/README.md](lexers/README.md) for more.
 
 ## What's missing compared to Pygments?
 
 - Quite a few lexers, for various reasons (pull-requests welcome):
-    - Pygments lexers for complex languages often include custom code to
-      handle certain aspects, such as Raku's ability to nest code inside
-      regular expressions. These require time and effort to convert.
-    - I mostly only converted languages I had heard of, to reduce the porting cost.
+  - Pygments lexers for complex languages often include custom code to
+    handle certain aspects, such as Raku's ability to nest code inside
+    regular expressions. These require time and effort to convert.
+  - I mostly only converted languages I had heard of, to reduce the porting cost.
 - Some more esoteric features of Pygments are omitted for simplicity.
 - Though the Chroma API supports content detection, very few languages support them.
   I have plans to implement a statistical analyser at some point, but not enough time.

@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt"
-	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/logger"
@@ -134,9 +133,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // GET /login?site=site&user=name&address=someone@example.com
 func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) {
 
-	user, address := r.URL.Query().Get("user"), r.URL.Query().Get("address")
-	user = e.sanitize(user)
-	address = e.sanitize(address)
+	user, address, site := r.URL.Query().Get("user"), r.URL.Query().Get("address"), r.URL.Query().Get("site")
 
 	if user == "" || address == "" {
 		rest.SendErrorJSON(w, r, e.L, http.StatusBadRequest, fmt.Errorf("wrong request"), "can't get user and address")
@@ -150,7 +147,7 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		},
 		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
 		StandardClaims: jwt.StandardClaims{
-			Audience:  e.sanitize(r.URL.Query().Get("site")),
+			Audience:  site,
 			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
 			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
 			Issuer:    e.Issuer,
@@ -179,10 +176,10 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		Token   string
 		Site    string
 	}{
-		User:    user,
-		Address: address,
+		User:    trim(user),
+		Address: trim(address),
 		Token:   tkn,
-		Site:    r.URL.Query().Get("site"),
+		Site:    site,
 	}
 	buf := bytes.Buffer{}
 	if err = emailTmpl.Execute(&buf, tmplData); err != nil {
@@ -212,14 +209,8 @@ Confirmation for {{.User}} {{.Address}}, site {{.Site}}
 Token: {{.Token}}
 `
 
-func (e VerifyHandler) sanitize(inp string) string {
-	p := bluemonday.UGCPolicy()
-	res := p.Sanitize(inp)
-	res = template.HTMLEscapeString(res)
-	res = strings.ReplaceAll(res, "&amp;", "&")
-	res = strings.ReplaceAll(res, "&#34;", "\"")
-	res = strings.ReplaceAll(res, "&#39;", "'")
-	res = strings.ReplaceAll(res, "\n", "")
+func trim(inp string) string {
+	res := strings.ReplaceAll(inp, "\n", "")
 	res = strings.TrimSpace(res)
 	if len(res) > 128 {
 		return res[:128]

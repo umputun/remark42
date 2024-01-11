@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	goauth2 "github.com/go-oauth2/oauth2/v4/server"
-	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/avatar"
@@ -160,16 +160,19 @@ func (c *CustomServer) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := ti.GetUserID()
 
-	p := bluemonday.UGCPolicy()
-	ava := p.Sanitize(fmt.Sprintf(c.URL+"/avatar?user=%s", userID))
-	res := fmt.Sprintf(`{
-					"id": "%s",
-					"name":"%s",
-					"picture":"%s"
-					}`, userID, userID, ava)
+	user := token.User{
+		ID:      userID,
+		Name:    userID,
+		Picture: fmt.Sprintf(c.URL+"/avatar?user=%s", url.QueryEscape(userID)),
+	}
+	res, err := json.Marshal(user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if _, err := w.Write([]byte(res)); err != nil {
+	if _, err := w.Write(res); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -26,6 +26,9 @@
     <filename>PKGBUILD</filename>
     <mime_type>application/x-sh</mime_type>
     <mime_type>application/x-shellscript</mime_type>
+    <analyse first="true" >
+      <regex pattern="(?m)^#!.*/bin/(?:env |)(?:bash|zsh|sh|ksh)" score="1.0" />
+    </analyse>
   </config>
   <rules>
     <state name="data">
