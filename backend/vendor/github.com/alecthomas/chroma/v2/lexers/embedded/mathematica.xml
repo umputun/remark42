@@ -4,10 +4,14 @@
     <alias>mathematica</alias>
     <alias>mma</alias>
     <alias>nb</alias>
-    <filename>*.nb</filename>
     <filename>*.cdf</filename>
-    <filename>*.nbp</filename>
+    <filename>*.m</filename>
     <filename>*.ma</filename>
+    <filename>*.mt</filename>
+    <filename>*.mx</filename>
+    <filename>*.nb</filename>
+    <filename>*.nbp</filename>
+    <filename>*.wl</filename>
     <mime_type>application/mathematica</mime_type>
     <mime_type>application/vnd.wolfram.mathematica</mime_type>
     <mime_type>application/vnd.wolfram.mathematica.package</mime_type>

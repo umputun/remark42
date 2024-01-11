@@ -2,7 +2,7 @@
   <config>
     <name>ISCdhcpd</name>
     <alias>iscdhcpd</alias>
-    <filename>*.conf</filename>
+    <filename>dhcpd.conf</filename>
   </config>
   <rules>
     <state name="interpol">

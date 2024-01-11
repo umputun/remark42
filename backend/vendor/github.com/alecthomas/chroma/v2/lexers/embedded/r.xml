@@ -17,6 +17,7 @@
     <mime_type>text/x-R</mime_type>
     <mime_type>text/x-r-history</mime_type>
     <mime_type>text/x-r-profile</mime_type>
+    <priority>0.1</priority> <!-- higher priority than Rebol -->
   </config>
   <rules>
     <state name="numbers">
@@ -36,6 +37,9 @@
       </rule>
     </state>
     <state name="root">
+      <rule>
+        <include state="keywords"/>
+      </rule>
       <rule pattern="((?:`[^`\\]*(?:\\.[^`\\]*)*`)|(?:(?:[a-zA-z]|[_.][^0-9])[\w_.]*))\s*(?=\()">
         <token type="NameFunction"/>
       </rule>
@@ -106,9 +110,6 @@
       </rule>
       <rule>
         <include state="numbers"/>
-      </rule>
-      <rule>
-        <include state="keywords"/>
       </rule>
       <rule>
         <include state="punctuation"/>

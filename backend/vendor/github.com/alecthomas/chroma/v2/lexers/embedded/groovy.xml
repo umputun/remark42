@@ -41,10 +41,10 @@
       <rule pattern="(as|assert|break|case|catch|continue|default|do|else|finally|for|if|in|goto|instanceof|new|return|switch|this|throw|try|while|in|as)\b">
         <token type="Keyword"/>
       </rule>
-      <rule pattern="(abstract|const|enum|extends|final|implements|native|private|protected|public|static|strictfp|super|synchronized|throws|transient|volatile)\b">
+      <rule pattern="(abstract|const|extends|final|implements|native|private|protected|public|static|strictfp|super|synchronized|throws|transient|volatile)\b">
         <token type="KeywordDeclaration"/>
       </rule>
-      <rule pattern="(def|boolean|byte|char|double|float|int|long|short|void)\b">
+      <rule pattern="(def|var|boolean|byte|char|double|float|int|long|short|void)\b">
         <token type="KeywordType"/>
       </rule>
       <rule pattern="(package)(\s+)">
@@ -56,7 +56,7 @@
       <rule pattern="(true|false|null)\b">
         <token type="KeywordConstant"/>
       </rule>
-      <rule pattern="(class|interface|record)(\s+)">
+      <rule pattern="(class|interface|enum|trait|record)(\s+)">
         <bygroups>
           <token type="KeywordDeclaration"/>
           <token type="Text"/>

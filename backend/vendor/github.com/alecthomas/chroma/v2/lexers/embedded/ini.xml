@@ -15,6 +15,7 @@
     <filename>.pylintrc</filename>
     <mime_type>text/x-ini</mime_type>
     <mime_type>text/inf</mime_type>
+    <priority>0.1</priority> <!-- higher priority than Inform 6 -->
   </config>
   <rules>
     <state name="root">

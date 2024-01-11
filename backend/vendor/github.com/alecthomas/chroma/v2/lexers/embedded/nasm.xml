@@ -4,8 +4,10 @@
     <alias>nasm</alias>
     <filename>*.asm</filename>
     <filename>*.ASM</filename>
+    <filename>*.nasm</filename>
     <mime_type>text/x-nasm</mime_type>
     <case_insensitive>true</case_insensitive>
+    <priority>1.0</priority> <!-- TASM uses the same file endings, but TASM is not as common as NASM, so we prioritize NASM higher by default. -->
   </config>
   <rules>
     <state name="punctuation">

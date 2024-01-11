@@ -69,7 +69,7 @@ func (m *multiMutator) MarshalXML(e *xml.Encoder, start xml.StartElement) error 
 	return e.EncodeToken(xml.EndElement{Name: name})
 }
 
-func (m *multiMutator) MutatorKind() string { return "multiple" }
+func (m *multiMutator) MutatorKind() string { return "mutators" }
 
 func (m *multiMutator) Mutate(state *LexerState) error {
 	for _, modifier := range m.Mutators {

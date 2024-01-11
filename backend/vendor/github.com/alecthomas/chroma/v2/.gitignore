@@ -1,4 +1,8 @@
 # Binaries for programs and plugins
+.git
+.idea
+.vscode
+.hermit
 *.exe
 *.dll
 *.so
@@ -18,3 +22,4 @@ _models/
 
 _examples/
 *.min.*
+build/

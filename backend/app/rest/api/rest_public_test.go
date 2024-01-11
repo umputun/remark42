@@ -150,10 +150,10 @@ BKT
 	assert.NoError(t, err)
 	assert.Equal(t,
 		`<h1>h1</h1>
-<pre class="chroma"><code><span class="line"><span class="cl">func TestRest_Preview(t *testing.T) {
-</span></span><span class="line"><span class="cl">srv, ts := prep(t)
-</span></span><span class="line"><span class="cl">  require.NotNil(t, srv)
-</span></span><span class="line"><span class="cl">}
+<pre class="chroma"><code><span class="line"><span class="cl"><span class="k">func</span> <span class="n">TestRest_Preview</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="n">srv</span><span class="p">,</span> <span class="n">ts</span> <span class="p">:</span><span class="o">=</span> <span class="n">prep</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">require</span><span class="o">.</span><span class="n">NotNil</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">srv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
 </span></span></code></pre>`,
 		string(b))
 	assert.NoError(t, resp.Body.Close())

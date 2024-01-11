@@ -6,6 +6,7 @@
     <filename>*.s</filename>
     <filename>*.S</filename>
     <mime_type>text/x-gas</mime_type>
+    <priority>0.1</priority>
   </config>
   <rules>
     <state name="punctuation">

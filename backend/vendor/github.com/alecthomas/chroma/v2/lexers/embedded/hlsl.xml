@@ -4,6 +4,9 @@
     <alias>hlsl</alias>
     <filename>*.hlsl</filename>
     <filename>*.hlsli</filename>
+    <filename>*.cginc</filename>
+    <filename>*.fx</filename>
+    <filename>*.fxh</filename>
     <mime_type>text/x-hlsl</mime_type>
   </config>
   <rules>
