@@ -1,11 +1,11 @@
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM umputun/baseimage:buildgo-v1.12.0 as build-backend
 
 ADD backend /build/backend
 WORKDIR /build/backend/_example/memory_store
 
 RUN go build -o /build/bin/memory_store -ldflags "-X main.revision=0.0.0 -s -w"
 
-FROM umputun/baseimage:app-v1.9.2
+FROM umputun/baseimage:app-v1.12.0
 
 ARG GITHUB_SHA
 
