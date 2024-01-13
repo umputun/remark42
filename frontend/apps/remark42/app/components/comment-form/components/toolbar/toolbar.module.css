@@ -1,0 +1,43 @@
+.root {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.root > * + * {
+  margin-left: 20px;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.item {
+  background: none;
+  border: 0;
+  color: var(--color37);
+  display: flex;
+  float: left;
+  height: 24px;
+  width: 24px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color9);
+  }
+}
+
+:global(.dark) {
+  & .item {
+    color: var(--color20);
+
+    &:hover {
+      color: var(--color9);
+    }
+  }
+}

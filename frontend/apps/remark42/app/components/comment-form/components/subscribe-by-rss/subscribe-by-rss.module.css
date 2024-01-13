@@ -1,0 +1,15 @@
+.root {
+  text-align: left;
+}
+
+.link {
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--color9);
+
+  &:hover {
+    color: var(--color33);
+  }
+}

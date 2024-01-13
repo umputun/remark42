@@ -1,0 +1,61 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  padding: 8px;
+  width: 240px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  text-align: left;
+  font-size: 14px;
+}
+
+.root > * + * {
+  margin-top: 12px;
+}
+
+.tokenInput {
+  composes: input from 'components/input/input.module.css';
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60px;
+  max-height: 200px;
+  margin: 0;
+  padding: 4px 8px;
+  resize: vertical;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.backButton {
+  width: auto;
+}
+
+.backButtonArrow {
+  display: inline-block;
+  margin-left: -4px;
+  margin-right: 2px;
+}
+
+.rootSubscribed,
+.rootUnsubscribed {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.preloader {
+  margin: 0 auto;
+}
+
+.error {
+  padding: 6px 8px;
+  line-height: 1.2;
+  background: var(--color26);
+  color: var(--color25);
+}
+
+:global(.dark) .error {
+  background: var(--color28);
+  color: var(--color27);
+}
