@@ -20,7 +20,7 @@ import (
 	"github.com/go-pkgz/auth/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -861,10 +861,10 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	// issue good token
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 			Issuer:    "remark42",
 		},
 	}
