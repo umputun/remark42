@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/token"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
 
@@ -605,11 +605,11 @@ func TestServerAuthHooks(t *testing.T) {
 	tkService.TokenDuration = time.Second
 
 	claims := token.Claims{
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark"},
 			Issuer:    "remark",
-			ExpiresAt: time.Now().Add(time.Second).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
 			ID:   "github_dev",
@@ -635,7 +635,7 @@ func TestServerAuthHooks(t *testing.T) {
 
 	// add comment with no-aud claim
 	claimsNoAud := claims
-	claimsNoAud.Audience = ""
+	claimsNoAud.Audience = jwt.ClaimStrings{""}
 	tkNoAud, err := tkService.Token(claimsNoAud)
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)

@@ -107,13 +107,20 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.dataService.DeleteUserDetail(claims.Audience, claims.User.ID, engine.AllUserDetails); err != nil {
+	if len(claims.Audience) != 1 {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("bad request"), "can't process token, aud is not a single element", rest.ErrActionRejected)
+		return
+	}
+
+	audience := claims.Audience[0]
+
+	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)
 		return
 	}
 
-	if err = a.dataService.DeleteUser(claims.Audience, claims.User.ID, store.HardDelete); err != nil {
+	if err = a.dataService.DeleteUser(audience, claims.User.ID, store.HardDelete); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
@@ -126,7 +133,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	a.cache.Flush(cache.Flusher(claims.Audience).Scopes(claims.Audience, claims.User.ID, lastCommentsScope))
+	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }

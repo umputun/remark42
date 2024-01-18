@@ -21,7 +21,7 @@ import (
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark42/backend/app/notify"
@@ -362,10 +362,10 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address},
-		StandardClaims: jwt.StandardClaims{
-			Audience:  r.URL.Query().Get("site"),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 			Issuer:    "remark42",
 		},
 	}
@@ -704,11 +704,11 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	claims := token.Claims{
-		StandardClaims: jwt.StandardClaims{
-			Audience:  siteID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{siteID},
 			Issuer:    "remark42",
-			ExpiresAt: time.Now().AddDate(0, 3, 0).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 3, 0)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
 			ID:   user.ID,

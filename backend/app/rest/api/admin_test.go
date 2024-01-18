@@ -16,7 +16,7 @@ import (
 	"github.com/go-pkgz/auth/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -708,12 +708,12 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
 			ID:      "user1",
@@ -777,12 +777,12 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	// try with bad auth
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "provider1_1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "provider1_1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
 			ID: "provider1_user1",

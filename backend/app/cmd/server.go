@@ -19,7 +19,7 @@ import (
 	"github.com/go-pkgz/lcw/v2/eventbus"
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
 
@@ -1096,10 +1096,10 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
-					StandardClaims: jwt.StandardClaims{
-						Audience:  site,
-						ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
-						NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+					RegisteredClaims: jwt.RegisteredClaims{
+						Audience:  jwt.ClaimStrings{site},
+						ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour)),
+						NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 						Issuer:    "remark42",
 					},
 				}
@@ -1202,10 +1202,15 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if c.User == nil {
 				return c
 			}
-			c.User.SetAdmin(ds.IsAdmin(c.Audience, c.User.ID))
-			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
+			if len(c.Audience) != 1 {
+				return c
+			}
+			audience := c.Audience[0]
+
+			c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
+			c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
 			var err error
-			c.User.Email, err = ds.GetUserEmail(c.Audience, c.User.ID)
+			c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
 			if err != nil {
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
