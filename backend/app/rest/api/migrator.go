@@ -136,7 +136,6 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-		w.WriteHeader(http.StatusOK)
 		gzWriter := gzip.NewWriter(w)
 		defer func() {
 			if e := gzWriter.Close(); e != nil {
