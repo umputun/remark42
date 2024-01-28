@@ -391,6 +391,15 @@ func TestMigrator_Export(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 
+	// export wrong site, should result in error
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", http.NoBody)
 	require.NoError(t, err)

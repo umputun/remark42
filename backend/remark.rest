@@ -103,6 +103,14 @@ GET {{host}}/api/v1/admin/blocked?site={{site}}
 ### delete comment by id
 DELETE {{host}}/api/v1/admin/comment/3665976683?site={{site}}&url={{url}}
 
+### export site (for backup)
+GET {{host}}/api/v1/admin/export?site={{site}}&mode=stream
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
+
+### export site (for backup) to .gz file
+GET {{host}}/api/v1/admin/export?site={{site}}&mode=file
+X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
+
 ### get post info
 GET {{host}}/api/v1/info?site={{site}}&url={{url}}
 
