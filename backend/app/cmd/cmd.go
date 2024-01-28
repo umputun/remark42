@@ -115,6 +115,9 @@ func responseError(resp *http.Response) error {
 	if e != nil {
 		body = []byte("")
 	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("error response %q, ensure you have set ADMIN_PASSWD and provided it to the command you're running: %s", resp.Status, body)
+	}
 	return fmt.Errorf("error response %q, %s", resp.Status, body)
 }
 

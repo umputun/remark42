@@ -397,6 +397,7 @@ func TestMigrator_Export(t *testing.T) {
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
+	resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 
