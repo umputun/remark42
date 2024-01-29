@@ -1,13 +1,18 @@
 {
   "name": "remark42",
   "version": "0.0.0",
-  "description": "Frontend related code for Remark42",
+  "license": "MIT",
+  "description": "Fronted packages for Remark42",
   "keywords": [
     "remark42",
     "comments",
     "comment engine",
     "commenting"
   ],
+  "engines": {
+    "node": ">=16.15 <=20.*",
+    "pnpm": ">=7.* <=8.*"
+  },
   "scripts": {
     "prepare": "if [ -z \"$CI\" ]; then cd .. && husky install frontend/.husky; else echo \"Skip Husky Hooks\"; fi",
     "lint-staged": "lint-staged",

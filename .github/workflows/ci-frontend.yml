@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [20.9.0]
 
     steps:
       - name: Checkout
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [20.9.0]
 
     steps:
       - name: Checkout
@@ -104,11 +104,11 @@ jobs:
         working-directory: ./frontend/apps/remark42
 
   lint:
-    name: Eslint & Stylelint
+    name: Linters
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [20.9.0]
 
     steps:
       - name: Checkout
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [20.9.0]
 
     steps:
       - name: Checkout

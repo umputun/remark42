@@ -2,7 +2,7 @@ import { createAdminClient } from './admin'
 import { createAuthClient } from './auth'
 import { createPublicClient } from './public'
 
-export interface User {
+export type User = {
 	id: string
 	name: string
 	/** url to avatar */
@@ -30,12 +30,12 @@ export type OAuthProvider =
 export type FormProvider = 'email' | 'anonymous'
 export type Provider = OAuthProvider | FormProvider
 
-export interface ClientParams {
-	siteId: string
+export type ClientParams = {
+	site: string
 	baseUrl: string
 }
 
-export interface Client {
+export type Client = {
 	admin: ReturnType<typeof createAdminClient>
 	auth: ReturnType<typeof createAuthClient>
 	public: ReturnType<typeof createPublicClient>
