@@ -5,6 +5,7 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const RefreshPlugin = require('@prefresh/webpack');
@@ -294,6 +295,14 @@ module.exports = (_, { mode, analyze }) => {
     },
     plugins: [
       ...plugins,
+      new CopyPlugin({
+        patterns: [
+          {
+            from: path.resolve(__dirname, 'templates/400x400.jpeg'),
+            to: PUBLIC_FOLDER_PATH,
+          },
+        ],
+      }),
       new ForkTsCheckerWebpackPlugin(),
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/iframe.ejs'),
