@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/rest"
-	"github.com/nullrocks/identicon"
+	"github.com/rrivera/identicon"
 	"golang.org/x/image/draw"
 
 	"github.com/go-pkgz/auth/logger"

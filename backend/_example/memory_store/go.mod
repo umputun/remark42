@@ -2,8 +2,6 @@ module github.com/umputun/remark42/memory_store
 
 go 1.21
 
-toolchain go1.21.6
-
 require (
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lgr v0.11.1
@@ -23,10 +21,10 @@ require (
 	github.com/didip/tollbooth/v7 v7.0.1 // indirect
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
-	github.com/go-chi/chi/v5 v5.0.11 // indirect
+	github.com/go-chi/chi/v5 v5.0.12 // indirect
 	github.com/go-chi/render v1.0.3 // indirect
 	github.com/go-pkgz/expirable-cache v1.0.0 // indirect
-	github.com/go-pkgz/rest v1.18.2 // indirect
+	github.com/go-pkgz/rest v1.19.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -36,8 +34,9 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	go.etcd.io/bbolt v1.3.8 // indirect
 	golang.org/x/image v0.15.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

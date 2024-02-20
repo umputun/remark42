@@ -226,7 +226,7 @@ func (l *Middleware) getBody(r *http.Request) string {
 	// https://golang.org/pkg/net/http/#Handler
 	r.Body = io.NopCloser(reader)
 
-	if len(body) > 0 {
+	if body != "" {
 		body = strings.Replace(body, "\n", " ", -1)
 		body = reMultWhtsp.ReplaceAllString(body, " ")
 	}
