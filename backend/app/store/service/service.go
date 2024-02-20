@@ -657,7 +657,7 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	mdExt, rend := store.GetMdExtensionsAndRenderer(false)
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
 	var wrongLinkError error
-	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
 		if len(node.LinkData.Destination) != 0 &&
 			!(strings.HasPrefix(string(node.LinkData.Destination), "http://") ||
 				strings.HasPrefix(string(node.LinkData.Destination), "https://") ||

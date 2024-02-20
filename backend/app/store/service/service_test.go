@@ -615,20 +615,20 @@ func TestDataStore_AdminStoreErrors(t *testing.T) {
 	badKey := true
 	badEnabled := true
 	as := admin.StoreMock{
-		OnEventFunc: func(siteID string, et admin.EventType) error { return errors.New("err") },
-		KeyFunc: func(siteID string) (string, error) {
+		OnEventFunc: func(string, admin.EventType) error { return errors.New("err") },
+		KeyFunc: func(string) (string, error) {
 			if badKey {
 				return "", errors.New("mock key err")
 			}
 			return "secret", nil
 		},
-		EnabledFunc: func(siteID string) (bool, error) {
+		EnabledFunc: func(string) (bool, error) {
 			if badEnabled {
 				return false, errors.New("mock enabled err")
 			}
 			return true, nil
 		},
-		AdminsFunc: func(siteID string) ([]string, error) { return nil, errors.New("mock admins err") },
+		AdminsFunc: func(string) ([]string, error) { return nil, errors.New("mock admins err") },
 	}
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1410,9 +1410,9 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.StoreMock{
-		DeleteFunc:            func(id string) error { return nil },
-		CommitFunc:            func(id string) error { return nil },
-		ResetCleanupTimerFunc: func(id string) error { return nil },
+		DeleteFunc:            func(string) error { return nil },
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
@@ -1660,8 +1660,8 @@ func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	mockStore := image.StoreMock{
-		CommitFunc:            func(id string) error { return nil },
-		ResetCleanupTimerFunc: func(id string) error { return nil },
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
@@ -1702,10 +1702,10 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 		InfoFunc: func() (image.StoreInfo, error) {
 			return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
 		},
-		CommitFunc: func(id string) error {
+		CommitFunc: func(string) error {
 			return nil
 		},
-		ResetCleanupTimerFunc: func(id string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
 	imgSvc := image.NewService(&mockStore,
 		image.ServiceParams{
@@ -1797,7 +1797,7 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 
 	first := true
 	engineMock := engine.InterfaceMock{
-		FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+		FindFunc: func(engine.FindRequest) ([]store.Comment, error) {
 			if first {
 				first = false
 				return nil, nil
@@ -1822,7 +1822,7 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 
 func TestService_alterComment(t *testing.T) {
 	engineMock := engine.InterfaceMock{
-		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+		FlagFunc: func(engine.FlagRequest) (bool, error) {
 			return false, nil
 		},
 	}
@@ -1844,7 +1844,7 @@ func TestService_alterComment(t *testing.T) {
 
 	first := true
 	engineMock = engine.InterfaceMock{
-		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+		FlagFunc: func(engine.FlagRequest) (bool, error) {
 			if first {
 				first = false
 				return false, nil
@@ -1862,7 +1862,7 @@ func TestService_alterComment(t *testing.T) {
 
 	first = true
 	engineMock = engine.InterfaceMock{
-		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+		FlagFunc: func(engine.FlagRequest) (bool, error) {
 			if first {
 				first = false
 				return true, nil

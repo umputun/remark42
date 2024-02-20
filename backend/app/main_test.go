@@ -64,7 +64,7 @@ func TestMain_WithWebhook(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	var webhookSent int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		atomic.StoreInt32(&webhookSent, 1)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 

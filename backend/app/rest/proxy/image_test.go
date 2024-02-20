@@ -95,7 +95,7 @@ func TestImage_Replace(t *testing.T) {
 
 func TestImage_Routes(t *testing.T) {
 	// no image supposed to be cached
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		HTTP2HTTPS:   true,
 		RemarkURL:    "https://demo.remark42.com",
@@ -132,7 +132,7 @@ func TestImage_Routes(t *testing.T) {
 }
 
 func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		RemarkURL:    "https://demo.remark42.com",
 		RoutePath:    "/api/v1/proxy",
@@ -158,10 +158,10 @@ func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 
 func TestImage_RoutesCachingImage(t *testing.T) {
 	imageStore := image.StoreMock{
-		LoadFunc: func(id string) ([]byte, error) {
+		LoadFunc: func(string) ([]byte, error) {
 			return nil, nil
 		},
-		SaveFunc: func(id string, img []byte) error {
+		SaveFunc: func(string, []byte) error {
 			return nil
 		},
 	}
@@ -196,7 +196,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	// In order to validate that cached data used cache "will return" some other data from what http server would
 	testImage := []byte(fmt.Sprintf("%256s", "X"))
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) {
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 		return testImage, nil
 	}}
 	img := Image{
@@ -226,7 +226,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 
 func TestImage_RoutesTimedOut(t *testing.T) {
 	// no image supposed to be cached
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		HTTP2HTTPS:   true,
 		RemarkURL:    "https://demo.remark42.com",

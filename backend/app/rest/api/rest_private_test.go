@@ -102,7 +102,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 
 	var pngRead bool
 	// server with the test PNG image
-	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, e := io.Copy(w, gopherPNG())
 		assert.NoError(t, e)
 		pngRead = true

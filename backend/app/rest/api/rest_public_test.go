@@ -503,7 +503,7 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 	defer teardown()
 
 	backendRequestedArbitraryServer := false
-	arbitraryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	arbitraryServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		t.Logf("request received: %+v", r)
 		backendRequestedArbitraryServer = true
 	}))

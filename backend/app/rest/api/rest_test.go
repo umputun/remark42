@@ -128,7 +128,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 
 	client := http.Client{
 		// prevent http redirect
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 
@@ -178,7 +178,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 
 	client := http.Client{
 		// prevent http redirect
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -194,7 +194,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {
-	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "Hello")
 	}))))
 	defer ts.Close()
@@ -307,7 +307,7 @@ func TestRest_cacheControl(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.url, http.NoBody)
 			w := httptest.NewRecorder()
 
-			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -335,7 +335,7 @@ func TestRest_frameAncestors(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			w := httptest.NewRecorder()
 
-			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -371,7 +371,7 @@ func TestRest_subscribersOnly(t *testing.T) {
 				req = token.SetUserInfo(req, tt.user)
 			}
 			w := httptest.NewRecorder()
-			h := subscribersOnly(tt.subsOnly)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := subscribersOnly(tt.subsOnly)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
@@ -403,7 +403,7 @@ func Test_validEmailAuth(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com"+tt.req, http.NoBody)
 			w := httptest.NewRecorder()
-			h := validEmailAuth()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := validEmailAuth()(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
@@ -458,7 +458,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
-			SecretReader: token.SecretFunc(func(aud string) (string, error) { return "secret", nil }),
+			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
 		}),
 		Cache:     memCache,
@@ -495,7 +495,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	// add some providers. Needed because we don't allow users with unlisted providers to authenticate
 	providers := []string{"provider1", "anonymous", "github", "email"}
 	for _, p := range providers {
-		srv.Authenticator.AddDirectProvider(p, provider.CredCheckerFunc(func(user, password string) (ok bool, err error) {
+		srv.Authenticator.AddDirectProvider(p, provider.CredCheckerFunc(func(_, _ string) (ok bool, err error) {
 			return true, nil
 		}))
 	}

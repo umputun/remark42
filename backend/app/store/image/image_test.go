@@ -19,10 +19,10 @@ import (
 
 func TestService_SaveAndLoad(t *testing.T) {
 	store := StoreMock{
-		SaveFunc: func(id string, img []byte) error {
+		SaveFunc: func(string, []byte) error {
 			return nil
 		},
-		LoadFunc: func(id string) ([]byte, error) {
+		LoadFunc: func(string) ([]byte, error) {
 			return nil, nil
 		},
 	}
@@ -126,7 +126,7 @@ func TestService_ExtractPictures(t *testing.T) {
 
 func TestService_Cleanup(t *testing.T) {
 	store := StoreMock{
-		CleanupFunc: func(ctx context.Context, ttl time.Duration) error {
+		CleanupFunc: func(context.Context, time.Duration) error {
 			return nil
 		},
 	}
@@ -141,12 +141,8 @@ func TestService_Cleanup(t *testing.T) {
 
 func TestService_Submit(t *testing.T) {
 	store := StoreMock{
-		CommitFunc: func(id string) error {
-			return nil
-		},
-		ResetCleanupTimerFunc: func(id string) error {
-			return nil
-		},
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
 	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
@@ -164,12 +160,8 @@ func TestService_Submit(t *testing.T) {
 
 func TestService_Close(t *testing.T) {
 	store := StoreMock{
-		CommitFunc: func(id string) error {
-			return nil
-		},
-		ResetCleanupTimerFunc: func(id string) error {
-			return nil
-		},
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
 	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
@@ -182,10 +174,8 @@ func TestService_Close(t *testing.T) {
 
 func TestService_SubmitDelay(t *testing.T) {
 	store := StoreMock{
-		CommitFunc: func(id string) error {
-			return nil
-		},
-		ResetCleanupTimerFunc: func(id string) error {
+		CommitFunc: func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error {
 			return nil
 		},
 	}
