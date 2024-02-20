@@ -250,7 +250,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 
 	client := http.Client{
 		// prevent http redirect
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 

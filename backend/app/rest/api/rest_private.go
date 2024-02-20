@@ -246,7 +246,7 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
 		}
-		if len(email) > 0 {
+		if email != "" {
 			user.EmailSubscription = true
 		}
 	}

@@ -170,7 +170,7 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 				return e
 			}
 
-			return bucket.ForEach(func(k, v []byte) error {
+			return bucket.ForEach(func(_, v []byte) error {
 				comment := store.Comment{}
 				if e = json.Unmarshal(v, &comment); e != nil {
 					return fmt.Errorf("failed to unmarshal: %w", e)
@@ -724,7 +724,7 @@ func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err e
 	err = bdb.View(func(tx *bolt.Tx) error {
 		var entry UserDetailEntry
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		return bucket.ForEach(func(userID, value []byte) error {
+		return bucket.ForEach(func(_, value []byte) error {
 			if err = json.Unmarshal(value, &entry); err != nil {
 				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
@@ -869,7 +869,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
-			err = postBkt.ForEach(func(postURL []byte, commentVal []byte) error {
+			err = postBkt.ForEach(func(_ []byte, commentVal []byte) error {
 				comment := store.Comment{}
 				if err = json.Unmarshal(commentVal, &comment); err != nil {
 					return fmt.Errorf("failed to unmarshal: %w", err)

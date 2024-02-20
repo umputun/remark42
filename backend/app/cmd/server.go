@@ -1224,7 +1224,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			return c
 		}),
 		AdminPasswd: s.AdminPasswd,
-		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool { // check on each auth call (in middleware)
+		Validator: token.ValidatorFunc(func(_ string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false
 			}

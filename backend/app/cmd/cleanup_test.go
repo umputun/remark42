@@ -195,7 +195,7 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 		require.NoError(t, json.NewEncoder(w).Encode(commentsWithInfo))
 	})
 
-	r.HandleFunc("/api/v1/admin/comment/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/admin/comment/{id}", func(_ http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "DELETE", r.Method)
 		t.Log("delete ", r.URL.Path)
 		c.lock.Lock()
@@ -203,7 +203,7 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 		c.lock.Unlock()
 	})
 
-	r.HandleFunc("/api/v1/admin/title/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/admin/title/{id}", func(_ http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "PUT", r.Method)
 		t.Log("title for ", r.URL.Path)
 		c.lock.Lock()

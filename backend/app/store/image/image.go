@@ -250,7 +250,7 @@ func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids 
 		log.Printf("[ERROR] can't parse commentHTML to parse images: %q, error: %v", commentHTML, err)
 		return nil
 	}
-	doc.Find("img").Each(func(i int, sl *goquery.Selection) {
+	doc.Find("img").Each(func(_ int, sl *goquery.Selection) {
 		if im, ok := sl.Attr("src"); ok {
 			if strings.Contains(im, s.ImageAPI) {
 				elems := strings.Split(im, "/")

@@ -62,7 +62,7 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 	if err != nil {
 		return commentHTML
 	}
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		if href, ok := s.Attr("href"); ok {
 			if href != s.Text() || len(href) < max+3 || max < 3 {
 				return
@@ -110,7 +110,7 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 	if err != nil {
 		return commentHTML
 	}
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		s.SetAttr("loading", "lazy")
 	})
 	resHTML, err = doc.Find("body").Html()

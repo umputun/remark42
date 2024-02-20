@@ -57,7 +57,7 @@ func (p Image) extract(commentHTML string, imgSrcPred func(string) bool) ([]stri
 		return nil, fmt.Errorf("can't create document: %w", err)
 	}
 	result := []string{}
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		if im, ok := s.Attr("src"); ok {
 			if imgSrcPred(im) {
 				result = append(result, im)

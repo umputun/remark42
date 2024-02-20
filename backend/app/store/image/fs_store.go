@@ -166,7 +166,7 @@ func (f *FileSystem) Info() (StoreInfo, error) {
 	}
 
 	var ts time.Time
-	err := filepath.Walk(f.Staging, func(fpath string, info os.FileInfo, err error) error {
+	err := filepath.Walk(f.Staging, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
