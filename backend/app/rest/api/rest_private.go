@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth"
 	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt"

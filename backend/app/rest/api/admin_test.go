@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
@@ -348,7 +348,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
 	assert.False(t, comments.Comments[2].Deleted, "not deleted")
 
-	srv.pubRest.cache = cache.NewScache(cache.NewNopCache()) // TODO: with lru cache it won't be refreshed and invalidated for long
+	srv.pubRest.cache = cache.NewScache[[]byte](cache.NewNopCache[[]byte]()) // TODO: with lru cache it won't be refreshed and invalidated for long
 	// time
 	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")

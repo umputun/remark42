@@ -17,15 +17,15 @@ type Sizer interface {
 }
 
 // LoadingCache defines guava-like cache with Get method returning cached value ao retrieving it if not in cache
-type LoadingCache interface {
-	Get(key string, fn func() (interface{}, error)) (val interface{}, err error) // load or get from cache
-	Peek(key string) (interface{}, bool)                                         // get from cache by key
-	Invalidate(fn func(key string) bool)                                         // invalidate items for func(key) == true
-	Delete(key string)                                                           // delete by key
-	Purge()                                                                      // clear cache
-	Stat() CacheStat                                                             // cache stats
-	Keys() []string                                                              // list of all keys
-	Close() error                                                                // close open connections
+type LoadingCache[V any] interface {
+	Get(key string, fn func() (V, error)) (val V, err error) // load or get from cache
+	Peek(key string) (V, bool)                               // get from cache by key
+	Invalidate(fn func(key string) bool)                     // invalidate items for func(key) == true
+	Delete(key string)                                       // delete by key
+	Purge()                                                  // clear cache
+	Stat() CacheStat                                         // cache stats
+	Keys() []string                                          // list of all keys
+	Close() error                                            // close open connections
 }
 
 // CacheStat represent stats values
@@ -48,37 +48,37 @@ func (s CacheStat) String() string {
 }
 
 // Nop is do-nothing implementation of LoadingCache
-type Nop struct{}
+type Nop[V any] struct{}
 
 // NewNopCache makes new do-nothing cache
-func NewNopCache() *Nop {
-	return &Nop{}
+func NewNopCache[V any]() *Nop[V] {
+	return &Nop[V]{}
 }
 
 // Get calls fn without any caching
-func (n *Nop) Get(_ string, fn func() (interface{}, error)) (interface{}, error) { return fn() }
+func (n *Nop[V]) Get(_ string, fn func() (V, error)) (V, error) { return fn() }
 
 // Peek does nothing and always returns false
-func (n *Nop) Peek(string) (interface{}, bool) { return nil, false }
+func (n *Nop[V]) Peek(string) (V, bool) { var emptyValue V; return emptyValue, false }
 
 // Invalidate does nothing for nop cache
-func (n *Nop) Invalidate(func(key string) bool) {}
+func (n *Nop[V]) Invalidate(func(key string) bool) {}
 
 // Purge does nothing for nop cache
-func (n *Nop) Purge() {}
+func (n *Nop[V]) Purge() {}
 
 // Delete does nothing for nop cache
-func (n *Nop) Delete(string) {}
+func (n *Nop[V]) Delete(string) {}
 
 // Keys does nothing for nop cache
-func (n *Nop) Keys() []string { return nil }
+func (n *Nop[V]) Keys() []string { return nil }
 
 // Stat always 0s for nop cache
-func (n *Nop) Stat() CacheStat {
+func (n *Nop[V]) Stat() CacheStat {
 	return CacheStat{}
 }
 
 // Close does nothing for nop cache
-func (n *Nop) Close() error {
+func (n *Nop[V]) Close() error {
 	return nil
 }

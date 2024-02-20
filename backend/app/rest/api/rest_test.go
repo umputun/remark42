@@ -20,7 +20,7 @@ import (
 	"github.com/go-pkgz/auth/avatar"
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -438,7 +438,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "remark42"})
 	require.NoError(t, err)
 
-	memCache := cache.NewScache(cache.NewNopCache())
+	memCache := cache.NewScache[[]byte](cache.NewNopCache[[]byte]())
 
 	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
@@ -658,5 +658,9 @@ func waitForHTTPSServerStart(port int) {
 }
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(
+		m,
+		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
+		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+	)
 }

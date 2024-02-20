@@ -4,26 +4,35 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pkgz/lcw/eventbus"
+	"github.com/go-pkgz/lcw/v2/eventbus"
 )
 
-type options struct {
+type Workers[V any] struct {
 	maxKeys      int
 	maxValueSize int
 	maxKeySize   int
 	maxCacheSize int64
 	ttl          time.Duration
-	onEvicted    func(key string, value interface{})
+	onEvicted    func(key string, value V)
 	eventBus     eventbus.PubSub
+	strToV       func(string) V
 }
 
 // Option func type
-type Option func(o *options) error
+type Option[V any] func(o *Workers[V]) error
+
+// WorkerOptions holds the option setting methods
+type WorkerOptions[T any] struct{}
+
+// NewOpts creates a new WorkerOptions instance
+func NewOpts[T any]() *WorkerOptions[T] {
+	return &WorkerOptions[T]{}
+}
 
 // MaxValSize functional option defines the largest value's size allowed to be cached
 // By default it is 0, which means unlimited.
-func MaxValSize(max int) Option {
-	return func(o *options) error {
+func (o *WorkerOptions[V]) MaxValSize(max int) Option[V] {
+	return func(o *Workers[V]) error {
 		if max < 0 {
 			return fmt.Errorf("negative max value size")
 		}
@@ -34,8 +43,8 @@ func MaxValSize(max int) Option {
 
 // MaxKeySize functional option defines the largest key's size allowed to be used in cache
 // By default it is 0, which means unlimited.
-func MaxKeySize(max int) Option {
-	return func(o *options) error {
+func (o *WorkerOptions[V]) MaxKeySize(max int) Option[V] {
+	return func(o *Workers[V]) error {
 		if max < 0 {
 			return fmt.Errorf("negative max key size")
 		}
@@ -45,9 +54,9 @@ func MaxKeySize(max int) Option {
 }
 
 // MaxKeys functional option defines how many keys to keep.
-// By default it is 0, which means unlimited.
-func MaxKeys(max int) Option {
-	return func(o *options) error {
+// By default, it is 0, which means unlimited.
+func (o *WorkerOptions[V]) MaxKeys(max int) Option[V] {
+	return func(o *Workers[V]) error {
 		if max < 0 {
 			return fmt.Errorf("negative max keys")
 		}
@@ -57,9 +66,9 @@ func MaxKeys(max int) Option {
 }
 
 // MaxCacheSize functional option defines the total size of cached data.
-// By default it is 0, which means unlimited.
-func MaxCacheSize(max int64) Option {
-	return func(o *options) error {
+// By default, it is 0, which means unlimited.
+func (o *WorkerOptions[V]) MaxCacheSize(max int64) Option[V] {
+	return func(o *Workers[V]) error {
 		if max < 0 {
 			return fmt.Errorf("negative max cache size")
 		}
@@ -70,8 +79,8 @@ func MaxCacheSize(max int64) Option {
 
 // TTL functional option defines duration.
 // Works for ExpirableCache only
-func TTL(ttl time.Duration) Option {
-	return func(o *options) error {
+func (o *WorkerOptions[V]) TTL(ttl time.Duration) Option[V] {
+	return func(o *Workers[V]) error {
 		if ttl < 0 {
 			return fmt.Errorf("negative ttl")
 		}
@@ -81,17 +90,25 @@ func TTL(ttl time.Duration) Option {
 }
 
 // OnEvicted sets callback on invalidation event
-func OnEvicted(fn func(key string, value interface{})) Option {
-	return func(o *options) error {
+func (o *WorkerOptions[V]) OnEvicted(fn func(key string, value V)) Option[V] {
+	return func(o *Workers[V]) error {
 		o.onEvicted = fn
 		return nil
 	}
 }
 
 // EventBus sets PubSub for distributed cache invalidation
-func EventBus(pubSub eventbus.PubSub) Option {
-	return func(o *options) error {
+func (o *WorkerOptions[V]) EventBus(pubSub eventbus.PubSub) Option[V] {
+	return func(o *Workers[V]) error {
 		o.eventBus = pubSub
+		return nil
+	}
+}
+
+// StrToV sets strToV function for RedisCache
+func (o *WorkerOptions[V]) StrToV(fn func(string) V) Option[V] {
+	return func(o *Workers[V]) error {
+		o.strToV = fn
 		return nil
 	}
 }

@@ -848,5 +848,10 @@ func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Cont
 
 func TestMain(m *testing.M) {
 	// ignore is added only for GitHub Actions, can't reproduce locally
-	goleak.VerifyTestMain(m, goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"))
+	goleak.VerifyTestMain(
+		m,
+		goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"),
+		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
+		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+	)
 }

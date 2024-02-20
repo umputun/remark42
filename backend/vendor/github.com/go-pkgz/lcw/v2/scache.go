@@ -7,36 +7,36 @@ import (
 
 // Scache wraps LoadingCache with partitions (sub-system), and scopes.
 // Simplified interface with just 4 funcs - Get, Flush, Stats and Close
-type Scache struct {
-	lc LoadingCache
+type Scache[V any] struct {
+	lc LoadingCache[V]
 }
 
 // NewScache creates Scache on top of LoadingCache
-func NewScache(lc LoadingCache) *Scache {
-	return &Scache{lc: lc}
+func NewScache[V any](lc LoadingCache[V]) *Scache[V] {
+	return &Scache[V]{lc: lc}
 }
 
 // Get retrieves a key from underlying backend
-func (m *Scache) Get(key Key, fn func() ([]byte, error)) (data []byte, err error) {
+func (m *Scache[V]) Get(key Key, fn func() (V, error)) (data V, err error) {
 	keyStr := key.String()
-	val, err := m.lc.Get(keyStr, func() (value interface{}, e error) {
+	val, err := m.lc.Get(keyStr, func() (value V, e error) {
 		return fn()
 	})
-	return val.([]byte), err
+	return val, err
 }
 
 // Stat delegates the call to the underlying cache backend
-func (m *Scache) Stat() CacheStat {
+func (m *Scache[V]) Stat() CacheStat {
 	return m.lc.Stat()
 }
 
 // Close calls Close function of the underlying cache
-func (m *Scache) Close() error {
+func (m *Scache[V]) Close() error {
 	return m.lc.Close()
 }
 
 // Flush clears cache and calls postFlushFn async
-func (m *Scache) Flush(req FlusherRequest) {
+func (m *Scache[V]) Flush(req FlusherRequest) {
 	if len(req.scopes) == 0 {
 		m.lc.Purge()
 		return

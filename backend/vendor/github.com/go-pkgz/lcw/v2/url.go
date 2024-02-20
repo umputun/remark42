@@ -16,14 +16,14 @@ import (
 //   - mem://lru?max_keys=10&max_cache_size=1024
 //   - mem://expirable?ttl=30s&max_val_size=100
 //   - nop://
-func New(uri string) (LoadingCache, error) {
+func New[V any](uri string) (LoadingCache[V], error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, fmt.Errorf("parse cache uri %s: %w", uri, err)
 	}
 
 	query := u.Query()
-	opts, err := optionsFromQuery(query)
+	opts, err := optionsFromQuery[V](query)
 	if err != nil {
 		return nil, fmt.Errorf("parse uri options %s: %w", uri, err)
 	}
@@ -42,27 +42,28 @@ func New(uri string) (LoadingCache, error) {
 	case "mem":
 		switch u.Hostname() {
 		case "lru":
-			return NewLruCache(opts...)
+			return NewLruCache[V](opts...)
 		case "expirable":
-			return NewExpirableCache(opts...)
+			return NewExpirableCache[V](opts...)
 		default:
 			return nil, fmt.Errorf("unsupported mem cache type %s", u.Hostname())
 		}
 	case "nop":
-		return NewNopCache(), nil
+		return NewNopCache[V](), nil
 	}
 	return nil, fmt.Errorf("unsupported cache type %s", u.Scheme)
 }
 
-func optionsFromQuery(q url.Values) (opts []Option, err error) {
+func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
 	errs := new(multierror.Error)
+	o := NewOpts[V]()
 
 	if v := q.Get("max_val_size"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
 			errs = multierror.Append(errs, fmt.Errorf("max_val_size query param %s: %w", v, e))
 		} else {
-			opts = append(opts, MaxValSize(vv))
+			opts = append(opts, o.MaxValSize(vv))
 		}
 	}
 
@@ -71,7 +72,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 		if e != nil {
 			errs = multierror.Append(errs, fmt.Errorf("max_key_size query param %s: %w", v, e))
 		} else {
-			opts = append(opts, MaxKeySize(vv))
+			opts = append(opts, o.MaxKeySize(vv))
 		}
 	}
 
@@ -80,7 +81,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 		if e != nil {
 			errs = multierror.Append(errs, fmt.Errorf("max_keys query param %s: %w", v, e))
 		} else {
-			opts = append(opts, MaxKeys(vv))
+			opts = append(opts, o.MaxKeys(vv))
 		}
 	}
 
@@ -89,7 +90,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 		if e != nil {
 			errs = multierror.Append(errs, fmt.Errorf("max_cache_size query param %s: %w", v, e))
 		} else {
-			opts = append(opts, MaxCacheSize(vv))
+			opts = append(opts, o.MaxCacheSize(vv))
 		}
 	}
 
@@ -98,7 +99,7 @@ func optionsFromQuery(q url.Values) (opts []Option, err error) {
 		if e != nil {
 			errs = multierror.Append(errs, fmt.Errorf("ttl query param %s: %w", v, e))
 		} else {
-			opts = append(opts, TTL(vv))
+			opts = append(opts, o.TTL(vv))
 		}
 	}
 

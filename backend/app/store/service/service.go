@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -49,7 +49,7 @@ type DataStore struct {
 	}
 
 	repliesCache struct {
-		lcw.LoadingCache
+		lcw.LoadingCache[struct{}]
 		once sync.Once
 	}
 }
@@ -534,7 +534,8 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 func (s *DataStore) HasReplies(comment store.Comment) bool {
 	s.repliesCache.once.Do(func() {
 		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
-		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache(lcw.TTL(5 * time.Minute))
+		o := lcw.NewOpts[struct{}]()
+		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache[struct{}](o.TTL(5 * time.Minute))
 	})
 
 	if _, found := s.repliesCache.Peek(comment.ID); found {
@@ -554,7 +555,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 				// When this code is reached, key "comment.ID" is not in cache.
 				// Calling cache.Get on it will put it in cache with 5 minutes TTL.
 				// We call it with empty struct as value as we care about keys and not values.
-				_, _ = s.repliesCache.Get(comment.ID, func() (interface{}, error) { return struct{}{}, nil })
+				_, _ = s.repliesCache.Get(comment.ID, func() (struct{}, error) { return struct{}{}, nil })
 				return true
 			}
 		}

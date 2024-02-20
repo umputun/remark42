@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 

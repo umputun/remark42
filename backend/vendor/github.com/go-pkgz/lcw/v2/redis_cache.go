@@ -2,7 +2,9 @@ package lcw
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -13,22 +15,39 @@ import (
 const RedisValueSizeLimit = 512 * 1024 * 1024
 
 // RedisCache implements LoadingCache for Redis.
-type RedisCache struct {
-	options
+type RedisCache[V any] struct {
+	Workers[V]
 	CacheStat
 	backend *redis.Client
 }
 
 // NewRedisCache makes Redis LoadingCache implementation.
-func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
-	res := RedisCache{
-		options: options{
+// Supports only string and string-based types and will return error otherwise.
+func NewRedisCache[V any](backend *redis.Client, opts ...Option[V]) (*RedisCache[V], error) {
+	// check if V is string, not underlying type but directly, and otherwise return error if strToV is nil as it should be defined
+
+	res := RedisCache[V]{
+		Workers: Workers[V]{
 			ttl: 5 * time.Minute,
 		},
 	}
 	for _, opt := range opts {
-		if err := opt(&res.options); err != nil {
+		if err := opt(&res.Workers); err != nil {
 			return nil, fmt.Errorf("failed to set cache option: %w", err)
+		}
+	}
+
+	// check if underlying type is string, so we can safely store it in Redis
+	var v V
+	if reflect.TypeOf(v).Kind() != reflect.String {
+		return nil, fmt.Errorf("can't store non-string types in Redis cache")
+	}
+	switch any(v).(type) {
+	case string:
+	// check strToV option only for string-like but non string types
+	default:
+		if res.strToV == nil {
+			return nil, fmt.Errorf("StrToV option should be set for string-like type")
 		}
 	}
 
@@ -42,23 +61,33 @@ func NewRedisCache(backend *redis.Client, opts ...Option) (*RedisCache, error) {
 }
 
 // Get gets value by key or load with fn if not found in cache
-func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data interface{}, err error) {
+func (c *RedisCache[V]) Get(key string, fn func() (V, error)) (data V, err error) {
 	v, getErr := c.backend.Get(context.Background(), key).Result()
-	switch getErr {
+	switch {
 	// RedisClient returns nil when find a key in DB
-	case nil:
+	case getErr == nil:
 		atomic.AddInt64(&c.Hits, 1)
-		return v, nil
+		switch any(data).(type) {
+		case string:
+			return any(v).(V), nil
+		default:
+			return c.strToV(v), nil
+		}
 	// RedisClient returns redis.Nil when doesn't find a key in DB
-	case redis.Nil:
+	case errors.Is(getErr, redis.Nil):
 		if data, err = fn(); err != nil {
 			atomic.AddInt64(&c.Errors, 1)
 			return data, err
 		}
-	// RedisClient returns !nil when something goes wrong while get data
+		// RedisClient returns !nil when something goes wrong while get data
 	default:
 		atomic.AddInt64(&c.Errors, 1)
-		return v, getErr
+		switch any(data).(type) {
+		case string:
+			return any(v).(V), getErr
+		default:
+			return c.strToV(v), getErr
+		}
 	}
 	atomic.AddInt64(&c.Misses, 1)
 
@@ -76,7 +105,7 @@ func (c *RedisCache) Get(key string, fn func() (interface{}, error)) (data inter
 }
 
 // Invalidate removes keys with passed predicate fn, i.e. fn(key) should be true to get evicted
-func (c *RedisCache) Invalidate(fn func(key string) bool) {
+func (c *RedisCache[V]) Invalidate(fn func(key string) bool) {
 	for _, key := range c.backend.Keys(context.Background(), "*").Val() { // Keys() returns copy of cache's key, safe to remove directly
 		if fn(key) {
 			c.backend.Del(context.Background(), key)
@@ -85,32 +114,38 @@ func (c *RedisCache) Invalidate(fn func(key string) bool) {
 }
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
-func (c *RedisCache) Peek(key string) (interface{}, bool) {
+func (c *RedisCache[V]) Peek(key string) (data V, found bool) {
 	ret, err := c.backend.Get(context.Background(), key).Result()
 	if err != nil {
-		return nil, false
+		var emptyValue V
+		return emptyValue, false
 	}
-	return ret, true
+	switch any(data).(type) {
+	case string:
+		return any(ret).(V), true
+	default:
+		return any(ret).(V), true
+	}
 }
 
 // Purge clears the cache completely.
-func (c *RedisCache) Purge() {
+func (c *RedisCache[V]) Purge() {
 	c.backend.FlushDB(context.Background())
 
 }
 
 // Delete cache item by key
-func (c *RedisCache) Delete(key string) {
+func (c *RedisCache[V]) Delete(key string) {
 	c.backend.Del(context.Background(), key)
 }
 
 // Keys gets all keys for the cache
-func (c *RedisCache) Keys() (res []string) {
+func (c *RedisCache[V]) Keys() (res []string) {
 	return c.backend.Keys(context.Background(), "*").Val()
 }
 
 // Stat returns cache statistics
-func (c *RedisCache) Stat() CacheStat {
+func (c *RedisCache[V]) Stat() CacheStat {
 	return CacheStat{
 		Hits:   c.Hits,
 		Misses: c.Misses,
@@ -121,26 +156,26 @@ func (c *RedisCache) Stat() CacheStat {
 }
 
 // Close closes underlying connections
-func (c *RedisCache) Close() error {
+func (c *RedisCache[V]) Close() error {
 	return c.backend.Close()
 }
 
-func (c *RedisCache) size() int64 {
+func (c *RedisCache[V]) size() int64 {
 	return 0
 }
 
-func (c *RedisCache) keys() int {
+func (c *RedisCache[V]) keys() int {
 	return int(c.backend.DBSize(context.Background()).Val())
 }
 
-func (c *RedisCache) allowed(key string, data interface{}) bool {
+func (c *RedisCache[V]) allowed(key string, data V) bool {
 	if c.maxKeys > 0 && c.backend.DBSize(context.Background()).Val() >= int64(c.maxKeys) {
 		return false
 	}
 	if c.maxKeySize > 0 && len(key) > c.maxKeySize {
 		return false
 	}
-	if s, ok := data.(Sizer); ok {
+	if s, ok := any(data).(Sizer); ok {
 		if c.maxValueSize > 0 && (s.Size() >= c.maxValueSize) {
 			return false
 		}
