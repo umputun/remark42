@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/hashicorp/go-multierror"
+	"github.com/redis/go-redis/v9"
 )
 
 // New parses uri and makes any of supported caches

@@ -53,7 +53,7 @@ github.com/didip/tollbooth_chi
 ## explicit; go 1.13
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
-# github.com/go-chi/chi/v5 v5.0.11
+# github.com/go-chi/chi/v5 v5.0.12
 ## explicit; go 1.14
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
@@ -68,7 +68,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.22.2-0.20240110230548-7a3db006ab6e
+# github.com/go-pkgz/auth v1.22.2-0.20240117071454-f721b8c33b05
 ## explicit; go 1.21
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
@@ -86,8 +86,8 @@ github.com/go-pkgz/expirable-cache
 # github.com/go-pkgz/jrpc v0.3.0
 ## explicit; go 1.16
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw v1.0.2
-## explicit; go 1.15
+# github.com/go-pkgz/lcw v1.1.0
+## explicit; go 1.21
 github.com/go-pkgz/lcw
 github.com/go-pkgz/lcw/eventbus
 github.com/go-pkgz/lcw/internal/cache
@@ -101,7 +101,7 @@ github.com/go-pkgz/notify
 ## explicit; go 1.12
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
-# github.com/go-pkgz/rest v1.18.2
+# github.com/go-pkgz/rest v1.19.0
 ## explicit; go 1.21
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
@@ -109,16 +109,6 @@ github.com/go-pkgz/rest/realip
 # github.com/go-pkgz/syncs v1.3.2
 ## explicit; go 1.20
 github.com/go-pkgz/syncs
-# github.com/go-redis/redis/v8 v8.11.5
-## explicit; go 1.17
-github.com/go-redis/redis/v8
-github.com/go-redis/redis/v8/internal
-github.com/go-redis/redis/v8/internal/hashtag
-github.com/go-redis/redis/v8/internal/hscan
-github.com/go-redis/redis/v8/internal/pool
-github.com/go-redis/redis/v8/internal/proto
-github.com/go-redis/redis/v8/internal/rand
-github.com/go-redis/redis/v8/internal/util
 # github.com/golang-jwt/jwt v3.2.2+incompatible
 ## explicit
 github.com/golang-jwt/jwt
@@ -128,7 +118,7 @@ github.com/golang/protobuf/proto
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
-# github.com/google/uuid v1.5.0
+# github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
 # github.com/gorilla/css v1.0.1
@@ -172,12 +162,22 @@ github.com/microcosm-cc/bluemonday/css
 # github.com/montanaflynn/stats v0.7.1
 ## explicit; go 1.13
 github.com/montanaflynn/stats
-# github.com/nullrocks/identicon v0.0.0-20180626043057-7875f45b0022
-## explicit
-github.com/nullrocks/identicon
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
+# github.com/redis/go-redis/v9 v9.4.0
+## explicit; go 1.18
+github.com/redis/go-redis/v9
+github.com/redis/go-redis/v9/internal
+github.com/redis/go-redis/v9/internal/hashtag
+github.com/redis/go-redis/v9/internal/hscan
+github.com/redis/go-redis/v9/internal/pool
+github.com/redis/go-redis/v9/internal/proto
+github.com/redis/go-redis/v9/internal/rand
+github.com/redis/go-redis/v9/internal/util
+# github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d
+## explicit; go 1.21
+github.com/rrivera/identicon
 # github.com/rs/xid v1.5.0
 ## explicit; go 1.12
 github.com/rs/xid
@@ -189,7 +189,7 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.12.3
+# github.com/slack-go/slack v0.12.4
 ## explicit; go 1.16
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -269,7 +269,7 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.18.0
+# golang.org/x/crypto v0.19.0
 ## explicit; go 1.18
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -280,14 +280,14 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.18
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.20.0
+# golang.org/x/net v0.21.0
 ## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/idna
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/oauth2 v0.16.0
+# golang.org/x/oauth2 v0.17.0
 ## explicit; go 1.18
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
@@ -307,7 +307,7 @@ golang.org/x/oauth2/yandex
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.16.0
+# golang.org/x/sys v0.17.0
 ## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows

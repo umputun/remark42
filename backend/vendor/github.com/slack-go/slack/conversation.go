@@ -22,6 +22,7 @@ type Conversation struct {
 	IsIM               bool     `json:"is_im"`
 	IsExtShared        bool     `json:"is_ext_shared"`
 	IsOrgShared        bool     `json:"is_org_shared"`
+	IsGlobalShared     bool     `json:"is_global_shared"`
 	IsPendingExtShared bool     `json:"is_pending_ext_shared"`
 	IsPrivate          bool     `json:"is_private"`
 	IsMpIM             bool     `json:"is_mpim"`
@@ -30,6 +31,9 @@ type Conversation struct {
 	NumMembers         int      `json:"num_members"`
 	Priority           float64  `json:"priority"`
 	User               string   `json:"user"`
+	ConnectedTeamIDs   []string `json:"connected_team_ids,omitempty"`
+	SharedTeamIDs      []string `json:"shared_team_ids,omitempty"`
+	InternalTeamIDs    []string `json:"internal_team_ids,omitempty"`
 
 	// TODO support pending_shared
 	// TODO support previous_names

@@ -14,11 +14,11 @@ type PubSub interface {
 type NopPubSub struct{}
 
 // Subscribe does nothing for NopPubSub
-func (n *NopPubSub) Subscribe(fn func(fromID, key string)) error {
+func (n *NopPubSub) Subscribe(func(fromID string, key string)) error {
 	return nil
 }
 
 // Publish does nothing for NopPubSub
-func (n *NopPubSub) Publish(fromID, key string) error {
+func (n *NopPubSub) Publish(string, string) error {
 	return nil
 }

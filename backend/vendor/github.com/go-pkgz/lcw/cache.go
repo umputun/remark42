@@ -56,19 +56,19 @@ func NewNopCache() *Nop {
 }
 
 // Get calls fn without any caching
-func (n *Nop) Get(key string, fn func() (interface{}, error)) (interface{}, error) { return fn() }
+func (n *Nop) Get(_ string, fn func() (interface{}, error)) (interface{}, error) { return fn() }
 
 // Peek does nothing and always returns false
-func (n *Nop) Peek(key string) (interface{}, bool) { return nil, false }
+func (n *Nop) Peek(string) (interface{}, bool) { return nil, false }
 
 // Invalidate does nothing for nop cache
-func (n *Nop) Invalidate(fn func(key string) bool) {}
+func (n *Nop) Invalidate(func(key string) bool) {}
 
 // Purge does nothing for nop cache
 func (n *Nop) Purge() {}
 
 // Delete does nothing for nop cache
-func (n *Nop) Delete(key string) {}
+func (n *Nop) Delete(string) {}
 
 // Keys does nothing for nop cache
 func (n *Nop) Keys() []string { return nil }
