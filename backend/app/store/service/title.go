@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"golang.org/x/net/html"
 )
@@ -21,7 +21,7 @@ const (
 // TitleExtractor gets html title from remote page, cached
 type TitleExtractor struct {
 	client         http.Client
-	cache          lcw.LoadingCache
+	cache          lcw.LoadingCache[string]
 	allowedDomains []string
 }
 
@@ -33,10 +33,11 @@ func NewTitleExtractor(client http.Client, allowedDomains []string) *TitleExtrac
 		allowedDomains: allowedDomains,
 	}
 	var err error
-	res.cache, err = lcw.NewExpirableCache(lcw.TTL(teCacheTTL), lcw.MaxKeySize(teCacheMaxRecs))
+	o := lcw.NewOpts[string]()
+	res.cache, err = lcw.NewExpirableCache(o.TTL(teCacheTTL), o.MaxKeySize(teCacheMaxRecs))
 	if err != nil {
 		log.Printf("[WARN] failed to make cache, caching disabled for titles, %v", err)
-		res.cache = &lcw.Nop{}
+		res.cache = &lcw.Nop[string]{}
 	}
 	return &res
 }
@@ -62,10 +63,10 @@ func (t *TitleExtractor) Get(pageURL string) (string, error) {
 	}
 	client := http.Client{Timeout: t.client.Timeout, Transport: t.client.Transport}
 	defer client.CloseIdleConnections()
-	b, err := t.cache.Get(pageURL, func() (interface{}, error) {
+	b, err := t.cache.Get(pageURL, func() (string, error) {
 		resp, e := client.Get(pageURL)
 		if e != nil {
-			return nil, fmt.Errorf("failed to load page %s: %w", pageURL, e)
+			return "", fmt.Errorf("failed to load page %s: %w", pageURL, e)
 		}
 		defer func() {
 			if err = resp.Body.Close(); err != nil {
@@ -73,23 +74,23 @@ func (t *TitleExtractor) Get(pageURL string) (string, error) {
 			}
 		}()
 		if resp.StatusCode != 200 {
-			return nil, fmt.Errorf("can't load page %s, code %d", pageURL, resp.StatusCode)
+			return "", fmt.Errorf("can't load page %s, code %d", pageURL, resp.StatusCode)
 		}
 
 		title, ok := t.getTitle(resp.Body)
 		if !ok {
-			return nil, fmt.Errorf("can't get title for %s", pageURL)
+			return "", fmt.Errorf("can't get title for %s", pageURL)
 		}
 		return title, nil
 	})
 
 	// on error save result (empty string) to cache too and return "" title
 	if err != nil {
-		_, _ = t.cache.Get(pageURL, func() (interface{}, error) { return "", nil })
+		_, _ = t.cache.Get(pageURL, func() (string, error) { return "", nil })
 		return "", err
 	}
 
-	return b.(string), nil
+	return b, nil
 }
 
 // Close title extractor

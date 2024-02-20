@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/gorilla/feeds"
 

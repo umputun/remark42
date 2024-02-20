@@ -13,7 +13,7 @@ require (
 	github.com/go-chi/render v1.0.3
 	github.com/go-pkgz/auth v1.22.2-0.20240117071454-f721b8c33b05
 	github.com/go-pkgz/jrpc v0.3.0
-	github.com/go-pkgz/lcw v1.1.0
+	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.11.1
 	github.com/go-pkgz/notify v1.1.0
 	github.com/go-pkgz/repeater v1.1.3
@@ -56,7 +56,7 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

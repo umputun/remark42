@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-
 	"github.com/hashicorp/go-multierror"
+	"github.com/redis/go-redis/v9"
 )
 
 // NewRedisPubSub creates new RedisPubSub with given parameters.
@@ -67,6 +66,7 @@ func (m *RedisPubSub) Publish(fromID, key string) error {
 // Close cleans up running goroutines and closes Redis clients
 func (m *RedisPubSub) Close() error {
 	close(m.done)
+
 	errs := new(multierror.Error)
 	if err := m.pubSub.Close(); err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("problem closing pubSub client: %w", err))

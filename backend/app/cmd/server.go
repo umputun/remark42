@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
-	"github.com/go-pkgz/lcw/eventbus"
+	"github.com/go-pkgz/lcw/v2/eventbus"
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
 	"github.com/golang-jwt/jwt"
@@ -28,7 +28,7 @@ import (
 	"github.com/go-pkgz/auth/provider"
 	"github.com/go-pkgz/auth/provider/sender"
 	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
@@ -869,27 +869,28 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 
 func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
+	o := cache.NewOpts[[]byte]()
 	switch s.Cache.Type {
 	case "redis_pub_sub":
 		redisPubSub, err := eventbus.NewRedisPubSub(s.Cache.RedisAddr, "remark42-cache")
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization, redis PubSub initialisation: %w", err)
 		}
-		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items), cache.EventBus(redisPubSub))
+		backend, err := cache.NewLruCache(o.MaxCacheSize(s.Cache.Max.Size), o.MaxValSize(s.Cache.Max.Value),
+			o.MaxKeys(s.Cache.Max.Items), o.EventBus(redisPubSub))
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
-		return cache.NewScache(backend), nil
+		return cache.NewScache[[]byte](backend), nil
 	case "mem":
-		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items))
+		backend, err := cache.NewLruCache(o.MaxCacheSize(s.Cache.Max.Size), o.MaxValSize(s.Cache.Max.Value),
+			o.MaxKeys(s.Cache.Max.Items))
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
-		return cache.NewScache(backend), nil
+		return cache.NewScache[[]byte](backend), nil
 	case "none":
-		return cache.NewScache(&cache.Nop{}), nil
+		return cache.NewScache[[]byte](&cache.Nop[[]byte]{}), nil
 	}
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
@@ -1326,11 +1327,12 @@ func splitAtCommas(s string) []string {
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	cache.LoadingCache
+	cache.LoadingCache[string]
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	expirableCache, _ := cache.NewExpirableCache(cache.TTL(5 * time.Minute))
+	o := cache.NewOpts[string]()
+	expirableCache, _ := cache.NewExpirableCache(o.TTL(5 * time.Minute))
 	return &authRefreshCache{LoadingCache: expirableCache}
 }
 
@@ -1341,5 +1343,5 @@ func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
 
 // Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	_, _ = c.LoadingCache.Get(key.(string), func() (interface{}, error) { return value, nil })
+	_, _ = c.LoadingCache.Get(key.(string), func() (string, error) { return value.(string), nil })
 }
