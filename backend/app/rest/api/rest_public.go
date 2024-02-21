@@ -50,6 +50,8 @@ type pubStore interface {
 
 // GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy]&view=[user|all]&since=unix_ts_msec
 // find comments for given post. Returns in tree or plain formats, sorted
+//
+// When `url` parameter is not set (e.g. request is for site-wide comments), does not return deleted comments.
 func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	sort := r.URL.Query().Get("sort")
@@ -92,6 +94,18 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			withInfo := commentsWithInfo{Comments: comments}
 			if info, ee := s.dataService.Info(locator, s.readOnlyAge); ee == nil {
 				withInfo.Info = info
+			}
+			if !since.IsZero() { // if since is set, number of comments can be different from total in the DB
+				withInfo.Info.Count = 0
+				for _, c := range comments {
+					if !c.Deleted {
+						withInfo.Info.Count++
+					}
+				}
+			}
+			// post might be readonly without any comments, Info call will fail then and ReadOnly flag should be checked separately
+			if !withInfo.Info.ReadOnly && locator.URL != "" && s.dataService.IsReadOnly(locator) {
+				withInfo.Info.ReadOnly = true
 			}
 			b, e = encodeJSONWithHTML(withInfo)
 		}
