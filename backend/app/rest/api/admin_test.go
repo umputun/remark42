@@ -513,6 +513,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	_, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Error(t, err)
 
+	// test format "tree"
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	comments := commentsWithInfo{}
@@ -520,6 +521,16 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 	assert.True(t, comments.Info.ReadOnly)
+	t.Logf("%+v", comments)
+
+	// test format "plain"
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+	assert.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
+	assert.False(t, comments.Info.ReadOnly, "different from the plain format, should be fixed")
 	t.Logf("%+v", comments)
 }
 

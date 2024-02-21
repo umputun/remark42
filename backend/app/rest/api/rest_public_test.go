@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -531,6 +532,159 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 
 	assert.Equal(t, "", resp.Comments[0].PostTitle, "empty from the first post")
 	assert.Equal(t, arbitraryServer.URL, resp.Comments[0].Locator.URL, "arbitrary URL provided by the request")
+}
+
+func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
+	// test that comment counting is consistent between tree and plain formats
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	commentLocator := store.Locator{URL: "test-url", SiteID: "remark42"}
+
+	// vote for comment multiple times
+	setScore := func(locator store.Locator, id string, val int) {
+		abs := func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		}
+		for i := 0; i < abs(val); i++ {
+			_, err := srv.DataService.Vote(service.VoteReq{
+				Locator:   locator,
+				CommentID: id,
+				// unique user ID is needed for correct counting of controversial votes
+				UserID: "user" + strconv.Itoa(val) + strconv.Itoa(i),
+				Val:    val > 0,
+			})
+			require.NoError(t, err)
+		}
+	}
+
+	// Adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
+	// With sleep so that at least few millisecond pass between each comment
+	// and later we would be able to use that in "since" filter with millisecond precision
+	ids := make([]string, 9)
+	timestamps := make([]time.Time, 9)
+	c1 := store.Comment{Text: "top-level comment 1", Locator: commentLocator}
+	ids[0], timestamps[0] = addCommentGetCreatedTime(t, c1, ts)
+	// #3 by score
+	setScore(commentLocator, ids[0], 1)
+	time.Sleep(time.Millisecond * 5)
+
+	c2 := store.Comment{Text: "top-level comment 2", Locator: commentLocator}
+	ids[1], timestamps[1] = addCommentGetCreatedTime(t, c2, ts)
+	// #2 by score
+	setScore(commentLocator, ids[1], 2)
+	time.Sleep(time.Millisecond * 5)
+
+	c3 := store.Comment{Text: "second-level comment 1", ParentID: ids[0], Locator: commentLocator}
+	ids[2], timestamps[2] = addCommentGetCreatedTime(t, c3, ts)
+	// #1 by score
+	setScore(commentLocator, ids[2], 10)
+	time.Sleep(time.Millisecond * 5)
+
+	c4 := store.Comment{Text: "third-level comment 1", ParentID: ids[2], Locator: commentLocator}
+	ids[3], timestamps[3] = addCommentGetCreatedTime(t, c4, ts)
+	// #5 by score, #1 by controversy
+	setScore(commentLocator, ids[3], 4)
+	setScore(commentLocator, ids[3], -4)
+	time.Sleep(time.Millisecond * 5)
+
+	c5 := store.Comment{Text: "second-level comment 2", ParentID: ids[1], Locator: commentLocator}
+	ids[4], timestamps[4] = addCommentGetCreatedTime(t, c5, ts)
+	// #5 by score, #2 by controversy
+	setScore(commentLocator, ids[4], 2)
+	setScore(commentLocator, ids[4], -3)
+	time.Sleep(time.Millisecond * 5)
+
+	c6 := store.Comment{Text: "third-level comment 2", ParentID: ids[4], Locator: commentLocator}
+	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
+	// deleted later so not visible in site-wide requests
+	setScore(commentLocator, ids[5], 10)
+	setScore(commentLocator, ids[5], -10)
+	time.Sleep(time.Millisecond * 5)
+
+	c7 := store.Comment{Text: "top-level comment 3", Locator: commentLocator}
+	ids[6], timestamps[6] = addCommentGetCreatedTime(t, c7, ts)
+	// #6 by score, #4 by controversy
+	setScore(commentLocator, ids[6], -3)
+	setScore(commentLocator, ids[6], 1)
+	time.Sleep(time.Millisecond * 5)
+
+	c8 := store.Comment{Text: "second-level comment 3", ParentID: ids[6], Locator: commentLocator}
+	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
+	// deleted later so not visible in site-wide requests
+	setScore(commentLocator, ids[7], -20)
+
+	c9 := store.Comment{Text: "comment to post 2", Locator: store.Locator{URL: "another-url", SiteID: "remark42"}}
+	ids[8], timestamps[8] = addCommentGetCreatedTime(t, c9, ts)
+	// #7 by score
+	setScore(store.Locator{URL: "another-url", SiteID: "remark42"}, ids[8], -25)
+
+	// delete two comments bringing the total from 9 to 6
+	err := srv.DataService.Delete(commentLocator, ids[7], store.SoftDelete)
+	assert.NoError(t, err)
+	err = srv.DataService.Delete(commentLocator, ids[5], store.HardDelete)
+	assert.NoError(t, err)
+	srv.Cache.Flush(cache.FlusherRequest{})
+
+	sinceTenSecondsAgo := strconv.FormatInt(time.Now().Add(-time.Second*10).UnixNano()/1000000, 10)
+	sinceTS := make([]string, 9)
+	formattedTS := make([]string, 9)
+	for i, created := range timestamps {
+		sinceTS[i] = strconv.FormatInt(created.UnixNano()/1000000, 10)
+		formattedTS[i] = created.Format(time.RFC3339Nano)
+	}
+	t.Logf("last timestamp: %v", timestamps[7])
+
+	testCases := []struct {
+		params       string
+		expectedBody string
+	}{
+		{"", fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"format=plain", fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"format=plain&url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[0], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[0], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"format=tree", `"info":{"url":"test-url","count":7`},
+		{"format=tree&url=test-url", `"info":{"url":"test-url","count":6`},
+		{"format=tree&sort=+time", `"info":{"url":"test-url","count":7`},
+		{"format=tree&url=test-url&sort=+time", `"info":{"url":"test-url","count":6`},
+		{"format=tree&sort=-score", `"info":{"url":"test-url","count":7`},
+		{"format=tree&url=test-url&sort=-score", `"info":{"url":"test-url","count":6`},
+		{"sort=+time", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-time", fmt.Sprintf(`"score":1,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[0])},
+		{"sort=+score", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[2])},
+		{"sort=+score&url=test-url", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[2])},
+		{"sort=-score", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-score&url=test-url", fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q}],"info":{"count":7`, formattedTS[4])},
+		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		// three comments of which last one deleted and doesn't have controversy so returned last
+		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":6`, formattedTS[7])},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.params, func(t *testing.T) {
+			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
+			body, code := get(t, url)
+			assert.Equal(t, http.StatusOK, code)
+			assert.Contains(t, body, tc.expectedBody)
+			t.Log(body)
+			// prevent hit limiter from engaging
+			time.Sleep(50 * time.Millisecond)
+		})
+	}
 }
 
 func TestRest_UserInfo(t *testing.T) {
