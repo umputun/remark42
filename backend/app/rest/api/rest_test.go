@@ -599,7 +599,7 @@ func post(t *testing.T, url, body string) (*http.Response, error) {
 	return client.Do(req)
 }
 
-func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
+func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server) (id string, created time.Time) {
 	b, err := json.Marshal(c)
 	require.NoError(t, err, "can't marshal comment %+v", c)
 
@@ -619,7 +619,14 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	err = json.Unmarshal(b, &crResp)
 	require.NoError(t, err)
 	time.Sleep(time.Nanosecond * 10)
-	return crResp["id"].(string)
+	created, err = time.Parse(time.RFC3339, crResp["time"].(string))
+	require.NoError(t, err)
+	return crResp["id"].(string), created
+}
+
+func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
+	id, _ := addCommentGetCreatedTime(t, c, ts)
+	return id
 }
 
 func requireAdminOnly(t *testing.T, req *http.Request) {
