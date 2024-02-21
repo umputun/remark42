@@ -629,6 +629,10 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	assert.NoError(t, err)
 	srv.Cache.Flush(cache.FlusherRequest{})
 
+	commentLocator.URL = "readonly-test"
+	// set post without comments to read-only
+	assert.NoError(t, srv.DataService.SetReadOnly(commentLocator, true))
+
 	sinceTenSecondsAgo := strconv.FormatInt(time.Now().Add(-time.Second*10).UnixNano()/1000000, 10)
 	sinceTS := make([]string, 9)
 	formattedTS := make([]string, 9)
@@ -650,10 +654,10 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"url=test-url&since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
 		{"since=" + sinceTS[0], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
 		{"url=test-url&since=" + sinceTS[0], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
-		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":7,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
-		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":6,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":5,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":3,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":2,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
 		{"format=tree", `"info":{"url":"test-url","count":7`},
 		{"format=tree&url=test-url", `"info":{"url":"test-url","count":6`},
 		{"format=tree&sort=+time", `"info":{"url":"test-url","count":7`},
@@ -666,12 +670,15 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"sort=+score&url=test-url", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[2])},
 		{"sort=-score", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
 		{"sort=-score&url=test-url", fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
-		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q}],"info":{"count":7`, formattedTS[4])},
-		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
-		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
-		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q}],"info":{"count":3`, formattedTS[4])},
+		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":4`, formattedTS[8])},
+		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":3`, formattedTS[6])},
+		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":1`, formattedTS[6])},
 		// three comments of which last one deleted and doesn't have controversy so returned last
-		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":6`, formattedTS[7])},
+		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":1`, formattedTS[7])},
+		// test readonly status for the post without comments
+		{"url=readonly-test", `"info":{"count":0,"read_only":true`},
+		{"format=tree&url=readonly-test", `"info":{"count":0,"read_only":true`},
 	}
 
 	for _, tc := range testCases {

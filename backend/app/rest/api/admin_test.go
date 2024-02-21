@@ -530,7 +530,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
-	assert.False(t, comments.Info.ReadOnly, "different from the plain format, should be fixed")
+	assert.True(t, comments.Info.ReadOnly)
 	t.Logf("%+v", comments)
 }
 
