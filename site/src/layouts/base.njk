@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html {% if section %} data-current="{{ section }}"{% endif %} class="h-full" lang="en">
   {% include "components/head.njk" %}
-  <body class="flex flex-col min-h-full bg-white dark:bg-trueGray-900 dark:text-gray-100">
+  <body class="flex flex-col min-h-full bg-white dark:bg-neutral-900 dark:text-gray-100">
 		{% include "components/header.njk" %}
 		<main id="main" class="relative pt-24 md:pt-20 container flex-grow min-h-full flex flex-wrap">
 			{{ layoutContent | safe }}

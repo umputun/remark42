@@ -2,13 +2,13 @@ const colors = require('tailwindcss/colors')
 const { spacing } = require('tailwindcss/defaultTheme')
 
 module.exports = {
-	purge: ['.eleventy.js', 'src/**/*.{njk,md,html,js}'],
+	content: ['.eleventy.js', 'src/**/*.{njk,md,html,js}'],
 	mode: 'jit',
 	darkMode: 'class',
 	theme: {
 		extend: {
 			colors: {
-				trueGray: colors.trueGray,
+				neutral: colors.neutral,
 				brand: {
 					50: '#edfdfb',
 					100: '#e0fbf8',
