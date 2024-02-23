@@ -48,28 +48,28 @@ After completing the previous steps, you can configure the Apple auth provider. 
 4. In the left Nav pane, choose **"Credentials"**
 5. In the center pane, choose the **"OAuth consent screen"** tab.
 
-    - Select "**External**" and click "Create"
-    - Fill in **"App name"** and select **User support email**
-    - Upload a logo, if you want to
-    - In the **App Domain** section:
-        - **Application home page** - your site URL, e.g., `https://mysite.com`
-        - **Application privacy policy link** - `/web/privacy.html` of your Remark42 installation, e.g. `https://remark42.mysite.com/web/privacy.html` (please check that it works)
-        - **Terms of service** - leave empty
-    - **Authorized domains** - your site domain, e.g., `mysite.com`
-    - **Developer contact information** - add your email, and then click **Save and continue**
-    - On the **Scopes** tab, just click **Save and continue**
-    - On the **Test users**, add your email, then click **Save and continue**
-    - Before going to the next step, set the app to "Production" and send it to verification
+   - Select "**External**" and click "Create"
+   - Fill in **"App name"** and select **User support email**
+   - Upload a logo, if you want to
+   - In the **App Domain** section:
+     - **Application home page** - your site URL, e.g., `https://mysite.com`
+     - **Application privacy policy link** - `/web/privacy.html` of your Remark42 installation, e.g. `https://remark42.mysite.com/web/privacy.html` (please check that it works)
+     - **Terms of service** - leave empty
+   - **Authorized domains** - your site domain, e.g., `mysite.com`
+   - **Developer contact information** - add your email, and then click **Save and continue**
+   - On the **Scopes** tab, just click **Save and continue**
+   - On the **Test users**, add your email, then click **Save and continue**
+   - Before going to the next step, set the app to "Production" and send it to verification
 
 6. In the center pane, choose the **"Credentials"** tab
 
-    - Open the **"Create credentials"** drop-down
-    - Choose **"OAuth client ID"**
-    - Choose **"Web application"**
-    - Application **Name** is freeform; choose something appropriate, like "Comments on mysite.com"
-    - **Authorized JavaScript Origins** should be your domain, e.g., `https://remark42.mysite.com`
-    - **Authorized redirect URIs** is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
-    - Click **"Create"**
+   - Open the **"Create credentials"** drop-down
+   - Choose **"OAuth client ID"**
+   - Choose **"Web application"**
+   - Application **Name** is freeform; choose something appropriate, like "Comments on mysite.com"
+   - **Authorized JavaScript Origins** should be your domain, e.g., `https://remark42.mysite.com`
+   - **Authorized redirect URIs** is the location of OAuth2/callback constructed as domain + `/auth/google/callback`, e.g., `https://remark42.mysite.com/auth/google/callback`
+   - Click **"Create"**
 
 7. Take note of the **Client ID** (`AUTH_GOOGLE_CID`) and **Client Secret** (`AUTH_GOOGLE_CSEC`)
 
@@ -124,4 +124,4 @@ For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/con
 Optionally, anonymous access can be turned on. In this case, an extra `anonymous` provider will allow logins without any social login with any name satisfying two conditions:
 
 - the name should be at least three characters long
-- the name has to start from the letter and contains letters, numbers, underscores and spaces only**
+- the name has to start from the letter and contains letters, numbers, underscores and spaces only

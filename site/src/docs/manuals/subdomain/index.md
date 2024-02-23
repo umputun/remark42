@@ -73,7 +73,7 @@ example.com {
   handle_path /remark42* {
     reverse_proxy remark42:8080
   }
-  
+
   file_server
 }
 ```

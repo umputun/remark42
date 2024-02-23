@@ -16,7 +16,7 @@ Set `ALLOWED_HOSTS='self',example1.org,example2.org` with your domain names and 
 
 `ALLOWED_HOSTS` sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which, once enabled, limits the domains where Remark42 would work. The default value is not set so that it would work on any domain.
 
-`AUTH_SAME_SITE` sets the [SAME_SITE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute for authorisation cookies, allowing Remark42 either on the original domain and subdomains there  (default value, not set which equals to `Lax`) or allows setting authorisation cookies on any domain where remark42 is shown (`None` setting).
+`AUTH_SAME_SITE` sets the [SAME_SITE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute for authorisation cookies, allowing Remark42 either on the original domain and subdomains there (default value, not set which equals to `Lax`) or allows setting authorisation cookies on any domain where remark42 is shown (`None` setting).
 
 Here are all possible combinations of these two:
 

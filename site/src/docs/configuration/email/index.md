@@ -204,13 +204,13 @@ Now we have the following templates:
 To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside docker-compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
 
 ```yaml
-    volumes:
-      - ./var:/srv/var
-      - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
-      - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
-      - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
-      - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
-      - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
+volumes:
+  - ./var:/srv/var
+  - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
+  - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
+  - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
+  - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
+  - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
 ```
 
 The easiest way to test it is to mount `error_response.html.tmpl`, and then head to <http://127.0.0.1:8080/email/unsubscribe.html>, where you are supposed to see the page like the following:

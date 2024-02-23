@@ -13,7 +13,7 @@ Most of the parameters have sane defaults and don't require customization. There
 The minimal `docker-compose.yml` has to include all required parameters:
 
 ```yaml
-version: '2'
+version: "2"
 
 services:
   remark42:
@@ -21,14 +21,14 @@ services:
     restart: always
     container_name: "remark42"
     environment:
-      - REMARK_URL=https://demo.remark42.com  # URL pointing to your Remark42 server
-      - SITE=YOUR_SITE_ID                     # site ID, same as used for `site_id`, see "Setup on your website"
-      - SECRET=abcd-123456-xyz-$%^&           # secret key
-      - AUTH_ANON=true                        # enable anonymous commenting
-      - AUTH_GITHUB_CID=12345667890           # OAuth2 client ID
-      - AUTH_GITHUB_CSEC=abcdefg12345678      # OAuth2 client secret
+      - REMARK_URL=https://demo.remark42.com # URL pointing to your Remark42 server
+      - SITE=YOUR_SITE_ID # site ID, same as used for `site_id`, see "Setup on your website"
+      - SECRET=abcd-123456-xyz-$%^& # secret key
+      - AUTH_ANON=true # enable anonymous commenting
+      - AUTH_GITHUB_CID=12345667890 # OAuth2 client ID
+      - AUTH_GITHUB_CSEC=abcdefg12345678 # OAuth2 client secret
     volumes:
-      - ./var:/srv/var                        # persistent volume to store all Remark42 data
+      - ./var:/srv/var # persistent volume to store all Remark42 data
 ```
 
 ### Complete parameters list
@@ -208,7 +208,7 @@ To get a user ID just log in and click on your username or any other user you wa
 
 Two parameters allow customizing the Docker container on the system level:
 
-* `APP_UID` - sets UID to run Remark42 application in container (default=1001)
-* `TIME_ZONE` - sets time zone of Remark42 container, would be used only on the backend as comments shown with user's timezone in the web interface (default=America/Chicago)
+- `APP_UID` - sets UID to run Remark42 application in container (default=1001)
+- `TIME_ZONE` - sets time zone of Remark42 container, would be used only on the backend as comments shown with user's timezone in the web interface (default=America/Chicago)
 
 _See [umputun/baseimage](https://github.com/umputun/baseimage) for more details._
