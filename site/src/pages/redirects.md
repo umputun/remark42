@@ -12,9 +12,9 @@ pagination:
   alias: redirect
 # Add your redirection tuples to this list!
 redirects:
-  - { 'from': '/docs/', 'destination': '/docs/getting-started/installation/' }
+  - { "from": "/docs/", "destination": "/docs/getting-started/installation/" }
 # The "permalink" attribute determines where the output page will be located.
-permalink: '{{ redirect.from }}'
+permalink: "{{ redirect.from }}"
 # The "redirect" layout just has a small html header with the meta tags that do redirection.
 layout: redirect
 ---

@@ -49,9 +49,10 @@ To integrate notifications about any comment on your sites with remark42 with [T
 
 1. Set `NOTIFY_ADMINS=telegram`
 2. Make [a channel](https://telegram.org/faq_channels), **add your bot as Administrator** into it and add channel ID to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
-  * "Post messages" permission is enough for bot to be able to post messages in your channel, others are unnecessary;
-  * To obtain a public channel ID, forward any message from it to [@JsonDumpBot](https://t.me/JsonDumpBot): look for `id` in `forward_from_chat`;
-  * If you want to use a private channel or chat, use [these instructions](https://github.com/GabrielRF/telegram-id#web-channel-id) to obtain the ID.
+
+   - "Post messages" permission is enough for bot to be able to post messages in your channel, others are unnecessary;
+   - To obtain a public channel ID, forward any message from it to [@JsonDumpBot](https://t.me/JsonDumpBot): look for `id` in `forward_from_chat`;
+   - If you want to use a private channel or chat, use [these instructions](https://github.com/GabrielRF/telegram-id#web-channel-id) to obtain the ID.
 
 ### Notifications for users
 

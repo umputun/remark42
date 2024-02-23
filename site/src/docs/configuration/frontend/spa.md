@@ -1,4 +1,3 @@
-
 ## API for Single-Page Application
 
 Add the following JavaScript to your `index.html`, which in this case, it is identical to `<script defer src="$HOST/web/embed.js"></script>`

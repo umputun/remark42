@@ -143,6 +143,7 @@ Streaming API supposed to provide server-sent events for post updates as well as
 - `GET /api/v1/stream/last?site=site-id&since=unix_ts_msec` - returns updates stream (`event: last`) with comments for the site, `since` is optional
 
 It was removed in https://github.com/umputun/remark42/pull/826 due to not being used and affecting tests flakiness and could be returned if there will be a developer who would be willing to write frontend support for it.
+
 </details>
 
 <details><summary>Response example</summary>

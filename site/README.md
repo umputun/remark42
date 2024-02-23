@@ -4,8 +4,8 @@
 
 Requirements:
 
-* [Node.js v20](https://nodejs.org/en/) or higher - install from package or with Homebrew
-* Yarn 1.22 or higher - once you have Node.js, run `npm i -g yarn`
+- [Node.js v20](https://nodejs.org/en/) or higher - install from package or with Homebrew
+- Yarn 1.22 or higher - once you have Node.js, run `npm i -g yarn`
 
 ### Development
 
