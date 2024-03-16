@@ -97,11 +97,32 @@ describe<Context>('Public Client', (publicClient) => {
 		})
 	})
 
-	const userCases = [null, { id: '1', username: 'user' }]
-	userCases.forEach((user) => {
-		publicClient('should return user', async ({ client }) => {
-			mockEndpoint('/remark42/api/v1/user', { body: user })
-			await expect(client.getUser()).resolves.toEqual(user)
-		})
-	})
+	const userCases = [
+		{ status: 'not logged in', user: null },
+		{ status: 'logged in', user: { id: '1', username: 'user' } },
+	];
+
+	userCases.forEach((testCase) => {
+		publicClient(`should return user when status is ${testCase.status}`, async ({ client }) => {
+			if (!testCase.user) {
+				mockEndpoint('/remark42/auth/status', { body: { status: testCase.status } });
+			} else {
+				mockEndpoint('/remark42/auth/status', {
+					body: {
+						status: testCase.status,
+						user: testCase.user.username
+					}
+				});
+			}
+			const userMock = mockEndpoint('/remark42/api/v1/user', { body: testCase.user });
+
+			await expect(client.getUser()).resolves.toEqual(testCase.status === 'logged in' ? testCase.user : null);
+
+			if (testCase.status === 'not logged in') {
+				expect(userMock.req).not.toHaveBeenCalled();
+			} else {
+				expect(userMock.req).toBeDefined();
+			}
+		});
+	});
 })

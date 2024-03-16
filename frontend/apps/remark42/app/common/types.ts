@@ -10,6 +10,11 @@ export type User = {
   paid_sub?: boolean;
 };
 
+export interface StatusResponse {
+  status: string;
+  user?: string;
+}
+
 /** data which is used on user-info page */
 export type Profile = Pick<User, 'id' | 'name' | 'picture'> & { current?: '1' };
 
