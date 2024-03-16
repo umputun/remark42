@@ -89,10 +89,18 @@ describe('<CommentActions/>', () => {
     expect(screen.getByText('Hide')).toBeInTheDocument();
   });
 
-  it('should render "Delete" for current user comments', () => {
+  it('should render "Delete" for current user comments when editing is available', () => {
     props.currentUser = true;
+    props.editDeadline = Date.now() + 300 * 1000; // set editDeadline to a future timestamp
     render(<CommentActions {...props} />);
     expect(screen.getByText('Delete')).toBeInTheDocument();
+  });
+
+  it('should not render "Delete" for current user comments when editDeadline is undefined', () => {
+    props.currentUser = true;
+    props.editDeadline = undefined; // set editDeadline to undefined
+    render(<CommentActions {...props} />);
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
   });
 
   it('should not render "Delete" for other users comments', () => {

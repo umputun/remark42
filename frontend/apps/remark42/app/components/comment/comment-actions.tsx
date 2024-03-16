@@ -113,7 +113,7 @@ export function CommentActions({
             )}
           </>
         )}
-        {(currentUser || admin) && deleteJSX}
+        {((currentUser && editDeadline !== undefined) || admin) && deleteJSX}
       </div>
     </div>
   );
