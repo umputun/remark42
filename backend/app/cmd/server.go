@@ -1327,11 +1327,11 @@ func splitAtCommas(s string) []string {
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	cache.LoadingCache[string]
+	cache.LoadingCache[token.Claims]
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	o := cache.NewOpts[string]()
+	o := cache.NewOpts[token.Claims]()
 	expirableCache, _ := cache.NewExpirableCache(o.TTL(5 * time.Minute))
 	return &authRefreshCache{LoadingCache: expirableCache}
 }
@@ -1343,5 +1343,5 @@ func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
 
 // Set implements cache setter with key converted to string
 func (c *authRefreshCache) Set(key, value interface{}) {
-	_, _ = c.LoadingCache.Get(key.(string), func() (string, error) { return value.(string), nil })
+	_, _ = c.LoadingCache.Get(key.(string), func() (token.Claims, error) { return value.(token.Claims), nil })
 }
