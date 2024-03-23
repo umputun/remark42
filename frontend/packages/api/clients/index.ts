@@ -16,6 +16,11 @@ export interface User {
 	paid_sub?: boolean
 }
 
+export interface StatusResponse {
+	status: string;
+	user?: string;
+}
+
 export type OAuthProvider =
 	| 'apple'
 	| 'facebook'

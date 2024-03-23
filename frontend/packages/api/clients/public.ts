@@ -1,4 +1,4 @@
-import type { ClientParams, Provider, User } from './index'
+import type { ClientParams, Provider, User, StatusResponse } from './index'
 import { createFetcher } from '../lib/fetcher'
 import { API_BASE } from '../consts'
 
@@ -82,6 +82,7 @@ export type Vote = -1 | 1
 
 export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	const fetcher = createFetcher(site, `${baseUrl}${API_BASE}`)
+	const authFetcher =  createFetcher(site,`${baseUrl}/auth`)
 
 	/**
 	 * Get server config
@@ -94,7 +95,14 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	 * Get current authorized user
 	 */
 	async function getUser(): Promise<User | null> {
-		return fetcher.get<User | null>('/user').catch(() => null)
+		return authFetcher.get<StatusResponse>('/status')
+			.then((resp: StatusResponse) => {
+				if (resp.user) {
+					// verify that user is logged in first as otherwise we get an error 401 for unlogged user
+					return fetcher.get<User | null>('/user').catch(() => null);
+				}
+				return Promise.resolve(null);
+			});
 	}
 
 	/**

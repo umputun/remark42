@@ -9,9 +9,10 @@ import {
   Sorting,
   BlockTTL,
   Image,
+  StatusResponse,
   EmailSubVerificationStatus,
 } from './types';
-import { apiFetcher, adminFetcher } from './fetcher';
+import { apiFetcher, adminFetcher, authFetcher } from './fetcher';
 
 /* API methods */
 
@@ -61,7 +62,14 @@ export const removeMyComment = (id: Comment['id']): Promise<void> =>
 export const getPreview = (text: string): Promise<string> => apiFetcher.post('/preview', {}, { text });
 
 export function getUser(): Promise<User | null> {
-  return apiFetcher.get<User | null>('/user').catch(() => null);
+  return authFetcher.get<StatusResponse>('/status')
+    .then((resp) => {
+      if (resp.user) {
+        // verify that user is logged in first as otherwise we get an error 401 for unlogged user
+        return apiFetcher.get<User | null>('/user').catch(() => null);
+      }
+      return Promise.resolve(null);
+    });
 }
 
 export const uploadImage = (image: File): Promise<Image> => {
