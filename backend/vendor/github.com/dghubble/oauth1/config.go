@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -89,7 +90,7 @@ func (c *Config) RequestToken() (requestToken, requestSecret string, err error) 
 	}
 
 	// ParseQuery to decode URL-encoded application/x-www-form-urlencoded body
-	values, err := url.ParseQuery(string(body))
+	values, err := url.ParseQuery(strings.TrimSpace(string(body)))
 	if err != nil {
 		return "", "", err
 	}

@@ -80,4 +80,10 @@ issues:
     - text: 'Deferring unsafe method "Close" on type "io.ReadCloser"'
       linters:
         - gosec
+    - linters:
+        - unparam
+        - unused
+        - revive
+      path: _test\.go$
+      text: "unused-parameter"
   exclude-use-default: false
