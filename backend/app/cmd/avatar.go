@@ -7,7 +7,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/v2/avatar"
 )
 
 // AvatarCommand set of flags and command for avatar migration

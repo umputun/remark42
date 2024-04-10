@@ -23,11 +23,11 @@ import (
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/go-pkgz/auth"
-	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/provider"
-	"github.com/go-pkgz/auth/provider/sender"
-	"github.com/go-pkgz/auth/token"
+	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
+	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/provider/sender"
+	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 
 	"github.com/umputun/remark42/backend/app/migrator"
@@ -1355,11 +1355,11 @@ func newAuthRefreshCache() *authRefreshCache {
 }
 
 // Get implements cache getter with key converted to string
-func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
-	return c.LoadingCache.Peek(key.(string))
+func (c *authRefreshCache) Get(key string) (token.Claims, bool) {
+	return c.LoadingCache.Peek(key)
 }
 
 // Set implements cache setter with key converted to string
-func (c *authRefreshCache) Set(key, value interface{}) {
-	_, _ = c.LoadingCache.Get(key.(string), func() (token.Claims, error) { return value.(token.Claims), nil })
+func (c *authRefreshCache) Set(key string, value token.Claims) {
+	_, _ = c.LoadingCache.Get(key, func() (token.Claims, error) { return value, nil })
 }

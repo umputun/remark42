@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
-	"github.com/go-pkgz/auth/token"
+	"github.com/go-pkgz/auth/v2/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
