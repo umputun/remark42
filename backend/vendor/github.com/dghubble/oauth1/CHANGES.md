@@ -4,6 +4,12 @@ Notable changes between releases.
 
 ## Latest
 
+## v0.7.3
+
+* Percent encode special characters in HMAC-SHA1 secrets ([#72](https://github.com/dghubble/oauth1/pull/72))
+* Strip whitespace from request token body ([#56](https://github.com/dghubble/oauth1/pull/56))
+* Update Go module dependencies
+
 ## v0.7.2
 
 * Update minimum Go version from v1.17 to v1.18 ([#66](https://github.com/dghubble/oauth1/pull/66))

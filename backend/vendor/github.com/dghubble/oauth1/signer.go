@@ -32,7 +32,7 @@ func (s *HMACSigner) Name() string {
 }
 
 func hmacSign(consumerSecret, tokenSecret, message string, algo func() hash.Hash) (string, error) {
-	signingKey := strings.Join([]string{consumerSecret, tokenSecret}, "&")
+	signingKey := strings.Join([]string{PercentEncode(consumerSecret), PercentEncode(tokenSecret)}, "&")
 	mac := hmac.New(algo, []byte(signingKey))
 	mac.Write([]byte(message))
 	signatureBytes := mac.Sum(nil)
