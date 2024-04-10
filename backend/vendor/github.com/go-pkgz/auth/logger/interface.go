@@ -16,7 +16,7 @@ type Func func(format string, args ...interface{})
 func (f Func) Logf(format string, args ...interface{}) { f(format, args...) }
 
 // NoOp logger
-var NoOp = Func(func(format string, args ...interface{}) {})
+var NoOp = Func(func(string, ...interface{}) {})
 
 // Std logger sends to std default logger directly
 var Std = Func(func(format string, args ...interface{}) { log.Printf(format, args...) })
