@@ -236,9 +236,21 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, res)
 }
 
-// GET /user?site=siteID - returns user info
+// GET /user?site=siteID&unauthorised200=false - returns user info, with unauthorised200=true returns 200 with error message
 func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	user := rest.MustGetUserInfo(r)
+	user, err := rest.GetUserInfo(r)
+	if err != nil {
+		if r.URL.Query().Get("unauthorised200") == "true" {
+			render.JSON(w, r, R.JSON{"error": err.Error()})
+			return
+		}
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// as user is set, call matchSiteID middleware to verify SiteID match
+	matchSiteID(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})).ServeHTTP(w, r)
+
 	if siteID := r.URL.Query().Get("site"); siteID != "" {
 		user.Verified = s.dataService.IsVerified(siteID, user.ID)
 

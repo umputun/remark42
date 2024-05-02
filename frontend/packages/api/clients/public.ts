@@ -93,8 +93,16 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	/**
 	 * Get current authorized user
 	 */
-	async function getUser(): Promise<User | null> {
-		return fetcher.get<User | null>('/user').catch(() => null)
+	async function getUser(unauthorised200= true): Promise<User | null> {
+		return fetcher
+			.get<User | null>('/user', { unauthorised200: String(unauthorised200) })
+			.then((response) => {
+				if (unauthorised200 && response && 'error' in response) {
+					return null;
+				}
+				return response;
+			})
+			.catch(() => null);
 	}
 
 	/**
