@@ -1,0 +1,74 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      "GitHub Actions updates":
+        patterns:
+          - "*"
+  - package-ecosystem: "gomod"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Go modules updates":
+        dependency-type: "production"
+  - package-ecosystem: "gomod"
+    directory: "/backend/_example/memory_store"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Go modules updates":
+        dependency-type: "production"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "monthly"
+    groups:
+      "NPM modules updates":
+        dependency-type: "production"
+      "NPM modules updates for tests":
+        dependency-type: "development"
+  - package-ecosystem: "npm"
+    directory: "/frontend/packages/api"
+    schedule:
+      interval: "monthly"
+    groups:
+      "NPM modules updates":
+        dependency-type: "production"
+      "NPM modules updates for tests":
+        dependency-type: "development"
+  - package-ecosystem: "npm"
+    directory: "/frontend/e2e"
+    schedule:
+      interval: "monthly"
+    groups:
+      "NPM modules updates":
+        dependency-type: "production"
+      "NPM modules updates for tests":
+        dependency-type: "development"
+  - package-ecosystem: "npm"
+    directory: "/frontend/apps/remark42"
+    schedule:
+      interval: "monthly"
+    groups:
+      "NPM modules updates":
+        dependency-type: "production"
+      "NPM modules updates for tests":
+        dependency-type: "development"
+  - package-ecosystem: "npm"
+    directory: "/site"
+    schedule:
+      interval: "monthly"
+    groups:
+      "NPM modules updates":
+        dependency-type: "production"
+      "NPM modules updates for tests":
+        dependency-type: "development"
