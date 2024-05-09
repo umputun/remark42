@@ -57,14 +57,14 @@ func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
 }
 
 // Shortens all the automatic links in HTML: auto link has equal "href" and "text" attributes.
-func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTML string) {
+func (f *CommentFormatter) shortenAutoLinks(commentHTML string, maximum int) (resHTML string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
 		return commentHTML
 	}
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		if href, ok := s.Attr("href"); ok {
-			if href != s.Text() || len(href) < max+3 || max < 3 {
+			if href != s.Text() || len(href) < maximum+3 || maximum < 3 {
 				return
 			}
 			commentURL, e := url.Parse(href)
@@ -77,7 +77,7 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 				return
 			}
 
-			short := string([]rune(href)[:max-3])
+			short := string([]rune(href)[:maximum-3])
 			if len(short) < len(host) {
 				short = host
 			}
