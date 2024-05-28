@@ -26,27 +26,25 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - gosimple
-    - staticcheck
-    - unused
-    - revive
-    - govet
-    - unconvert
-    - gosec
-    - gocyclo
     - dupl
+    - exportloopref
+    - gochecknoinits
+    - gocritic
+    - gocyclo
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
     - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
     - unparam
     - unused
-    - typecheck
-    - ineffassign
-    - stylecheck
-    - gochecknoinits
-    - exportloopref
-    - gocritic
-    - nakedret
-    - gosimple
-    - prealloc
   fast: false
   disable-all: true
 
