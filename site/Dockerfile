@@ -11,7 +11,7 @@ LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
       org.opencontainers.image.description="Remark42 site" \
       org.opencontainers.image.documentation="https://github.com/umputun/remark42/tree/master/site" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/umputun/remark42.git" \
+      org.opencontainers.image.source="https://github.com/umputun/remark42" \
       org.opencontainers.image.title="Remark42 site" \
       org.opencontainers.image.url="https://remark42.com/"
 
