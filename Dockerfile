@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:16.20.2-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:16.20-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.12.0 as build-backend
+FROM umputun/baseimage:buildgo-v1.13.0 as build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -81,7 +81,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM umputun/baseimage:app-v1.12.0
+FROM umputun/baseimage:app-v1.13.0
 
 ARG GITHUB_SHA
 
@@ -89,7 +89,7 @@ LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
       org.opencontainers.image.description="Remark42 comment engine" \
       org.opencontainers.image.documentation="https://remark42.com/docs/getting-started/" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/umputun/remark42.git" \
+      org.opencontainers.image.source="https://github.com/umputun/remark42" \
       org.opencontainers.image.title="Remark42" \
       org.opencontainers.image.url="https://remark42.com/" \
       org.opencontainers.image.revision="${GITHUB_SHA}"

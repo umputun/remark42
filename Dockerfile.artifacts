@@ -19,7 +19,7 @@ WORKDIR /srv/frontend/apps/remark42/
 COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
 RUN pnpm build
 
-FROM umputun/baseimage:buildgo-v1.12.0 as build-backend
+FROM umputun/baseimage:buildgo-v1.13.0 as build-backend
 
 ARG GITHUB_TOKEN
 ARG GITHUB_REF
