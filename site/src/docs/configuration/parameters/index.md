@@ -103,7 +103,7 @@ services:
 | auth.dev                       | AUTH_DEV                       | `false`                  | local OAuth2 server, development mode only                |
 | auth.anon                      | AUTH_ANON                      | `false`                  | enable anonymous login                                    |
 | auth.email.enable              | AUTH_EMAIL_ENABLE              | `false`                  | enable auth via email                                     |
-| auth.email.from                | AUTH_EMAIL_FROM                |                          | email from                                                |
+| auth.email.from                | AUTH_EMAIL_FROM                |                          | email from (e.g. `john.doe@example.com` or `"John Doe"<john.doe@example.com>`) |
 | auth.email.subj                | AUTH_EMAIL_SUBJ                | `remark42 confirmation`  | email subject                                             |
 | auth.email.content-type        | AUTH_EMAIL_CONTENT_TYPE        | `text/html`              | email content type                                        |
 | notify.users                   | NOTIFY_USERS                   | none                     | type of user notifications (`telegram`, `email`), _multi_ |
@@ -116,7 +116,7 @@ services:
 | notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": "{{.Text}}"}`  | Webhook payload template                                  |
 | notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                          | HTTP header in format Header1:Value1,Header2:Value2,...   |
 | notify.webhook.timeout         | NOTIFY_WEBHOOK_TIMEOUT         | `5s`                     | Webhook connection timeout                                |
-| notify.email.from_address      | NOTIFY_EMAIL_FROM              |                          | from email address                                        |
+| notify.email.from_address      | NOTIFY_EMAIL_FROM              |                          | from email address (e.g. `john.doe@example.com` or `"John Doe"<john.doe@example.com>`) |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification`     | verification message subject                              |
 | telegram.token                 | TELEGRAM_TOKEN                 |                          | Telegram token (used for auth and Telegram notifications) |
 | telegram.timeout               | TELEGRAM_TIMEOUT               | `5s`                     | Telegram connection timeout                               |
