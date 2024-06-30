@@ -424,11 +424,11 @@ func (b *BoltDB) Close() error {
 }
 
 // Last returns up to max last comments for given siteID
-func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments []store.Comment, err error) {
+func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 
-	if max > lastLimit || max == 0 {
-		max = lastLimit
+	if maximum > lastLimit || maximum == 0 {
+		maximum = lastLimit
 	}
 
 	bdb, err := b.db(siteID)
@@ -466,7 +466,7 @@ func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments
 				continue
 			}
 			comments = append(comments, comment)
-			if len(comments) >= max {
+			if len(comments) >= maximum {
 				break
 			}
 		}

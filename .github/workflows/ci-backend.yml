@@ -54,13 +54,13 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          version: v1.58
           working-directory: backend/app
 
       - name: golangci-lint on example directory
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          version: v1.58
           args: --config ../../.golangci.yml
           working-directory: backend/_example/memory_store
 
