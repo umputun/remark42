@@ -3,6 +3,7 @@ package notify
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"text/template"
 	"time"
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	webhookDefaultTemplate = `{"text": "{{.Text}}"}`
+	webhookDefaultTemplate = `{"text": {{.Text | escapeJSONString}}}`
 )
 
 // WebhookParams contain settings for webhook notifications
@@ -49,7 +50,7 @@ func NewWebhook(params WebhookParams) (*Webhook, error) {
 		params.Template = webhookDefaultTemplate
 	}
 
-	payloadTmpl, err := template.New("webhook").Parse(params.Template)
+	payloadTmpl, err := template.New("webhook").Funcs(template.FuncMap{"escapeJSONString": escapeJSONString}).Parse(params.Template)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse webhook template: %w", err)
 	}
@@ -81,4 +82,13 @@ func (w *Webhook) SendVerification(_ context.Context, _ VerificationRequest) err
 // String describes the webhook instance
 func (w *Webhook) String() string {
 	return fmt.Sprintf("%s to %s", w.Webhook.String(), w.url)
+}
+
+// escapeJSONString escapes string for JSON
+func escapeJSONString(s string) (string, error) {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
