@@ -487,8 +487,9 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			Cache:             memCache,
 			KeyStore:          astore,
 		},
-		NotifyService: notify.NopService,
-		EmojiEnabled:  true,
+		NotifyService:    notify.NopService,
+		EmojiEnabled:     true,
+		openRouteLimiter: 100,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 
@@ -504,7 +505,8 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		h(srv)
 	}
 
-	ts = httptest.NewServer(srv.routes())
+	routes := srv.routes()
+	ts = httptest.NewServer(routes)
 
 	teardown = func() {
 		ts.Close()
