@@ -108,27 +108,41 @@ func TestImage_Routes(t *testing.T) {
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
-	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
+	t.Run("valid image", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "1462", resp.Header["Content-Length"][0])
+		assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+	})
 
-	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+	t.Run("no image", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
-	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	t.Run("bad encoding", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		assert.Equal(t, 2, len(imageStore.LoadCalls()))
+	})
 
-	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
-	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Equal(t, 2, len(imageStore.LoadCalls()))
+	t.Run("non-image reference", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte("https://google.com"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		assert.Equal(t, 3, len(imageStore.LoadCalls()))
+	})
 }
 
 func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {

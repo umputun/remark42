@@ -98,6 +98,10 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	if img == nil {
 		img, err = p.downloadImage(context.Background(), imgURL)
 		if err != nil {
+			if strings.Contains(err.Error(), "invalid content type") {
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid content type", rest.ErrImgNotFound)
+				return
+			}
 			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "can't get image "+imgURL, rest.ErrAssetNotFound)
 			return
 		}
@@ -163,6 +167,11 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, fmt.Errorf("invalid content type %s", contentType)
 	}
 
 	imgData, err := io.ReadAll(resp.Body)

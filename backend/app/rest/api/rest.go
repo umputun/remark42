@@ -76,10 +76,11 @@ type Rest struct {
 	httpServer  *http.Server
 	lock        sync.Mutex
 
-	pubRest   public
-	privRest  private
-	adminRest admin
-	rssRest   rss
+	pubRest          public
+	privRest         private
+	adminRest        admin
+	rssRest          rss
+	openRouteLimiter float64
 }
 
 // LoadingCache defines interface for caching
@@ -90,7 +91,7 @@ type LoadingCache interface {
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
-
+const openRouteLimiter = 10     // limit for open routes
 const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
@@ -198,6 +199,10 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 }
 
 func (s *Rest) routes() chi.Router {
+	if s.openRouteLimiter == 0 {
+		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
+		s.openRouteLimiter = openRouteLimiter
+	}
 	router := chi.NewRouter()
 	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
 	if !s.DisableSignature {
@@ -257,7 +262,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.openRouteLimiter, nil)))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Get("/find", s.pubRest.findCommentsCtrl)
