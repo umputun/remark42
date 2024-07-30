@@ -1,7 +1,10 @@
 package slack
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // SlashCommand contains information about a request of the slash command
@@ -54,4 +57,35 @@ func (s SlashCommand) ValidateToken(verificationTokens ...string) bool {
 		}
 	}
 	return false
+}
+
+// UnmarshalJSON handles is_enterprise_install being either a boolean or a
+// string when parsing JSON from various payloads
+func (s *SlashCommand) UnmarshalJSON(data []byte) error {
+	type SlashCommandCopy SlashCommand
+	scopy := &struct {
+		*SlashCommandCopy
+		IsEnterpriseInstall interface{} `json:"is_enterprise_install"`
+	}{
+		SlashCommandCopy: (*SlashCommandCopy)(s),
+	}
+
+	if err := json.Unmarshal(data, scopy); err != nil {
+		return err
+	}
+
+	switch rawValue := scopy.IsEnterpriseInstall.(type) {
+	case string:
+		b, err := strconv.ParseBool(rawValue)
+		if err != nil {
+			return fmt.Errorf("parsing boolean for is_enterprise_install: %w", err)
+		}
+		s.IsEnterpriseInstall = b
+	case bool:
+		s.IsEnterpriseInstall = rawValue
+	default:
+		return fmt.Errorf("wrong data type for is_enterprise_install: %T", scopy.IsEnterpriseInstall)
+	}
+
+	return nil
 }

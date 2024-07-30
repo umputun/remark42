@@ -171,6 +171,8 @@ Sometimes, other frameworks require a little bit of shim to use Tollbooth. These
 
 ## My other Go libraries
 
+* [ErrStack](https://github.com/didip/errstack): A small library to combine errors and also display filename and line number.
+
 * [Stopwatch](https://github.com/didip/stopwatch): A small library to measure latency of things. Useful if you want to report latency data to Graphite.
 
 * [LaborUnion](https://github.com/didip/laborunion): A dynamic worker pool library.

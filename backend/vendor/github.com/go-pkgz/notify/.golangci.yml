@@ -1,15 +1,9 @@
 run:
   timeout: 5m
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
 
 linters-settings:
   govet:
     check-shadowing: true
-  maligned:
-    suggest-new: true
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -31,12 +25,12 @@ linters-settings:
 
 linters:
   enable:
-    - megacheck
     - revive
     - govet
     - unconvert
-    - megacheck
-    - gas
+    - staticcheck
+    - gosec
+    - unused
     - gocyclo
     - dupl
     - misspell
@@ -64,3 +58,5 @@ issues:
         - gosec
         - dupl
   exclude-use-default: false
+  exclude-dirs:
+    - vendor

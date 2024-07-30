@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	cache "github.com/go-pkgz/expirable-cache"
+	cache "github.com/go-pkgz/expirable-cache/v3"
 
 	"github.com/didip/tollbooth/v7/internal/time/rate"
 )
@@ -36,9 +36,9 @@ func New(generalExpirableOptions *ExpirableOptions) *Limiter {
 		lmt.generalExpirableOptions.DefaultExpirationTTL = 87600 * time.Hour
 	}
 
-	lmt.tokenBuckets, _ = cache.NewCache(cache.TTL(lmt.generalExpirableOptions.DefaultExpirationTTL))
+	lmt.tokenBuckets = cache.NewCache[string, *rate.Limiter]().WithTTL(lmt.generalExpirableOptions.DefaultExpirationTTL)
 
-	lmt.basicAuthUsers, _ = cache.NewCache(cache.TTL(lmt.generalExpirableOptions.DefaultExpirationTTL))
+	lmt.basicAuthUsers = cache.NewCache[string, bool]().WithTTL(lmt.generalExpirableOptions.DefaultExpirationTTL)
 
 	return lmt
 }
@@ -81,17 +81,17 @@ type Limiter struct {
 	generalExpirableOptions *ExpirableOptions
 
 	// List of basic auth usernames to limit.
-	basicAuthUsers cache.Cache
+	basicAuthUsers cache.Cache[string, bool]
 
 	// Map of HTTP headers to limit.
 	// Empty means skip headers checking.
-	headers map[string]cache.Cache
+	headers map[string]cache.Cache[string, bool]
 
 	// Map of Context values to limit.
-	contextValues map[string]cache.Cache
+	contextValues map[string]cache.Cache[string, bool]
 
 	// Map of limiters with TTL
-	tokenBuckets cache.Cache
+	tokenBuckets cache.Cache[string, *rate.Limiter]
 
 	// Ignore URL on the rate limiter keys
 	ignoreURL bool
@@ -261,9 +261,9 @@ func (l *Limiter) SetOnLimitReached(fn func(w http.ResponseWriter, r *http.Reque
 // ExecOnLimitReached is thread-safe way of executing after-rejection function when limit is reached.
 func (l *Limiter) ExecOnLimitReached(w http.ResponseWriter, r *http.Request) {
 	l.RLock()
-	defer l.RUnlock()
-
 	fn := l.onLimitReached
+	l.RUnlock()
+
 	if fn != nil {
 		fn(w, r)
 	}
@@ -383,7 +383,7 @@ func (l *Limiter) DeleteExpiredTokenBuckets() {
 // SetHeaders is thread-safe way of setting map of HTTP headers to limit.
 func (l *Limiter) SetHeaders(headers map[string][]string) *Limiter {
 	if l.headers == nil {
-		l.headers = make(map[string]cache.Cache)
+		l.headers = make(map[string]cache.Cache[string, bool])
 	}
 
 	for header, entries := range headers {
@@ -419,7 +419,7 @@ func (l *Limiter) SetHeader(header string, entries []string) *Limiter {
 	}
 
 	if !found {
-		existing, _ = cache.NewCache(cache.TTL(ttl))
+		existing = cache.NewCache[string, bool]().WithTTL(ttl)
 	}
 
 	for _, entry := range entries {
@@ -450,7 +450,7 @@ func (l *Limiter) RemoveHeader(header string) *Limiter {
 	}
 
 	l.Lock()
-	l.headers[header], _ = cache.NewCache(cache.TTL(ttl))
+	l.headers[header] = cache.NewCache[string, bool]().WithTTL(ttl)
 	l.Unlock()
 
 	return l
@@ -476,7 +476,7 @@ func (l *Limiter) RemoveHeaderEntries(header string, entriesForRemoval []string)
 // SetContextValues is thread-safe way of setting map of HTTP headers to limit.
 func (l *Limiter) SetContextValues(contextValues map[string][]string) *Limiter {
 	if l.contextValues == nil {
-		l.contextValues = make(map[string]cache.Cache)
+		l.contextValues = make(map[string]cache.Cache[string, bool])
 	}
 
 	for contextValue, entries := range contextValues {
@@ -512,7 +512,7 @@ func (l *Limiter) SetContextValue(contextValue string, entries []string) *Limite
 	}
 
 	if !found {
-		existing, _ = cache.NewCache(cache.TTL(ttl))
+		existing = cache.NewCache[string, bool]().WithTTL(ttl)
 	}
 
 	for _, entry := range entries {
@@ -543,7 +543,7 @@ func (l *Limiter) RemoveContextValue(contextValue string) *Limiter {
 	}
 
 	l.Lock()
-	l.contextValues[contextValue], _ = cache.NewCache(cache.TTL(ttl))
+	l.contextValues[contextValue] = cache.NewCache[string, bool]().WithTTL(ttl)
 	l.Unlock()
 
 	return l
@@ -585,7 +585,7 @@ func (l *Limiter) limitReachedWithTokenBucketTTL(key string, tokenBucketTTL time
 		return false
 	}
 
-	return !expiringMap.(*rate.Limiter).Allow()
+	return !expiringMap.Allow()
 }
 
 // LimitReached returns a bool indicating if the Bucket identified by key ran out of tokens.
@@ -606,5 +606,5 @@ func (l *Limiter) Tokens(key string) int {
 		return 0
 	}
 
-	return int(expiringMap.(*rate.Limiter).TokensAt(time.Now()))
+	return int(expiringMap.TokensAt(time.Now()))
 }
