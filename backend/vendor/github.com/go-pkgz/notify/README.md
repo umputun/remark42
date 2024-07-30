@@ -115,6 +115,9 @@ func main() {
 		SuccessMsg: "Success",        // optional, for auth, set by default
 		ErrorMsg:   "Error",          // optional, for auth, unset by default
 	})
+	if err != nil {
+		log.Fatalf("problem creating telegram notifier, %v", err)
+	}
 	err = tg.Send(context.Background(), "telegram:-1001480738202", "Hello, World!")
 	if err != nil {
 		log.Fatalf("problem sending message using telegram, %v", err)

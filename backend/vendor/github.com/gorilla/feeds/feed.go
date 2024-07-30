@@ -32,6 +32,7 @@ type Item struct {
 	Author      *Author
 	Description string // used as description in rss, summary in atom
 	Id          string // used as guid in rss, id in atom
+	IsPermaLink string // an optional parameter for guid in rss
 	Updated     time.Time
 	Created     time.Time
 	Enclosure   *Enclosure

@@ -609,6 +609,21 @@ For more details refer to [Complete Guide of Battle.net OAuth API and Login Butt
 1.	Fill **App name**  and **Description** and **URL** of your site
 1.	In the field **Callback URLs** enter the correct url of your callback handler e.g. https://example.mysite.com/{route}/twitter/callback
 1.	Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `cid` and `csecret`
+
+## XSRF Protections
+By default, the XSRF protections will apply to all requests which reach the `middlewares.Auth`,
+`middlewares.Admin` or `middlewares.RBAC` middlewares. This will require setting a request header 
+with a key of `<XSRFHeaderKey>` containing the value of the cookie named `<XSRFCookieName>`.
+
+To disable all XSRF protections, set `DisableXSRF` to `true`. This should probably only be used 
+during testing or debugging.
+
+When setting a custom request header is not possible, such as when building a web application which
+is not a Single-Page-Application and HTML link tags are used to navigate pages, specific HTTP methods
+may be excluded using the `XSRFIgnoreMethods` option. For example, to disable GET requests, set this
+option to `XSRFIgnoreMethods: []string{"GET"}`. Adding methods other than GET to this list may result
+in XSRF vulnerabilities.
+
 ## Status
 
 The library extracted from [remark42](https://github.com/umputun/remark) project. The original code in production use on multiple sites and seems to work fine.

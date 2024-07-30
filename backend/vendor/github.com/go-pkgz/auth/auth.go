@@ -46,14 +46,15 @@ type Opts struct {
 	DisableIAT  bool // disable IssuedAt claim
 
 	// optional (custom) names for cookies and headers
-	JWTCookieName   string        // default "JWT"
-	JWTCookieDomain string        // default empty
-	JWTHeaderKey    string        // default "X-JWT"
-	XSRFCookieName  string        // default "XSRF-TOKEN"
-	XSRFHeaderKey   string        // default "X-XSRF-TOKEN"
-	JWTQuery        string        // default "token"
-	SendJWTHeader   bool          // if enabled send JWT as a header instead of cookie
-	SameSiteCookie  http.SameSite // limit cross-origin requests with SameSite cookie attribute
+	JWTCookieName     string        // default "JWT"
+	JWTCookieDomain   string        // default empty
+	JWTHeaderKey      string        // default "X-JWT"
+	XSRFCookieName    string        // default "XSRF-TOKEN"
+	XSRFHeaderKey     string        // default "X-XSRF-TOKEN"
+	XSRFIgnoreMethods []string      // disable XSRF protection for the specified request methods (ex. []string{"GET", "POST")}, default empty
+	JWTQuery          string        // default "token"
+	SendJWTHeader     bool          // if enabled send JWT as a header instead of cookie
+	SameSiteCookie    http.SameSite // limit cross-origin requests with SameSite cookie attribute
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
@@ -234,39 +235,44 @@ func (s *Service) AddProviderWithUserAttributes(name, cid, csecret string, userA
 		L:              s.logger,
 		UserAttributes: userAttributes,
 	}
-	s.addProvider(name, p)
+	s.addProviderByName(name, p)
 }
 
-func (s *Service) addProvider(name string, p provider.Params) {
+func (s *Service) addProviderByName(name string, p provider.Params) {
+	var prov provider.Provider
 	switch strings.ToLower(name) {
 	case "github":
-		s.providers = append(s.providers, provider.NewService(provider.NewGithub(p)))
+		prov = provider.NewGithub(p)
 	case "google":
-		s.providers = append(s.providers, provider.NewService(provider.NewGoogle(p)))
+		prov = provider.NewGoogle(p)
 	case "facebook":
-		s.providers = append(s.providers, provider.NewService(provider.NewFacebook(p)))
+		prov = provider.NewFacebook(p)
 	case "yandex":
-		s.providers = append(s.providers, provider.NewService(provider.NewYandex(p)))
+		prov = provider.NewYandex(p)
 	case "battlenet":
-		s.providers = append(s.providers, provider.NewService(provider.NewBattlenet(p)))
+		prov = provider.NewBattlenet(p)
 	case "microsoft":
-		s.providers = append(s.providers, provider.NewService(provider.NewMicrosoft(p)))
+		prov = provider.NewMicrosoft(p)
 	case "twitter":
-		s.providers = append(s.providers, provider.NewService(provider.NewTwitter(p)))
+		prov = provider.NewTwitter(p)
 	case "patreon":
-		s.providers = append(s.providers, provider.NewService(provider.NewPatreon(p)))
+		prov = provider.NewPatreon(p)
 	case "dev":
-		s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
+		prov = provider.NewDev(p)
 	default:
 		return
 	}
 
+	s.addProvider(prov)
+}
+
+func (s *Service) addProvider(prov provider.Provider) {
+	s.providers = append(s.providers, provider.NewService(prov))
 	s.authMiddleware.Providers = s.providers
 }
 
 // AddProvider adds provider for given name
 func (s *Service) AddProvider(name, cid, csecret string) {
-
 	p := provider.Params{
 		URL:            s.opts.URL,
 		JwtService:     s.jwtService,
@@ -277,8 +283,7 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 		L:              s.logger,
 		UserAttributes: map[string]string{},
 	}
-
-	s.addProvider(name, p)
+	s.addProviderByName(name, p)
 }
 
 // AddDevProvider with a custom host and port
@@ -292,7 +297,7 @@ func (s *Service) AddDevProvider(host string, port int) {
 		Port:        port,
 		Host:        host,
 	}
-	s.providers = append(s.providers, provider.NewService(provider.NewDev(p)))
+	s.addProvider(provider.NewDev(p))
 }
 
 // AddAppleProvider allow SignIn with Apple ID
@@ -311,7 +316,7 @@ func (s *Service) AddAppleProvider(appleConfig provider.AppleConfig, privKeyLoad
 		return fmt.Errorf("an AppleProvider creating failed: %w", err)
 	}
 
-	s.providers = append(s.providers, provider.NewService(appleProvider))
+	s.addProvider(appleProvider)
 	return nil
 }
 
@@ -326,9 +331,7 @@ func (s *Service) AddCustomProvider(name string, client Client, copts provider.C
 		Csecret:     client.Csecret,
 		L:           s.logger,
 	}
-
-	s.providers = append(s.providers, provider.NewService(provider.NewCustom(name, p, copts)))
-	s.authMiddleware.Providers = s.providers
+	s.addProvider(provider.NewCustom(name, p, copts))
 }
 
 // AddDirectProvider adds provider with direct check against data store
@@ -342,8 +345,7 @@ func (s *Service) AddDirectProvider(name string, credChecker provider.CredChecke
 		CredChecker:  credChecker,
 		AvatarSaver:  s.avatarProxy,
 	}
-	s.providers = append(s.providers, provider.NewService(dh))
-	s.authMiddleware.Providers = s.providers
+	s.addProvider(dh)
 }
 
 // AddDirectProviderWithUserIDFunc adds provider with direct check against data store and sets custom UserIDFunc allows
@@ -359,8 +361,7 @@ func (s *Service) AddDirectProviderWithUserIDFunc(name string, credChecker provi
 		AvatarSaver:  s.avatarProxy,
 		UserIDFunc:   ufn,
 	}
-	s.providers = append(s.providers, provider.NewService(dh))
-	s.authMiddleware.Providers = s.providers
+	s.addProvider(dh)
 }
 
 // AddVerifProvider adds provider user's verification sent by sender
@@ -375,14 +376,12 @@ func (s *Service) AddVerifProvider(name, msgTmpl string, sender provider.Sender)
 		Template:     msgTmpl,
 		UseGravatar:  s.useGravatar,
 	}
-	s.providers = append(s.providers, provider.NewService(dh))
-	s.authMiddleware.Providers = s.providers
+	s.addProvider(dh)
 }
 
 // AddCustomHandler adds user-defined self-implemented handler of auth provider
-func (s *Service) AddCustomHandler(handler provider.Provider) {
-	s.providers = append(s.providers, provider.NewService(handler))
-	s.authMiddleware.Providers = s.providers
+func (s *Service) AddCustomHandler(p provider.Provider) {
+	s.addProvider(p)
 }
 
 // DevAuth makes dev oauth2 server, for testing and development only!
