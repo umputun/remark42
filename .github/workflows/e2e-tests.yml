@@ -6,12 +6,14 @@ on:
     paths:
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
+      - "frontend/Dockerfile.e2e"
 
   pull_request:
     branches: [master]
     paths:
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
+      - "frontend/Dockerfile.e2e"
 
 jobs:
   tests:

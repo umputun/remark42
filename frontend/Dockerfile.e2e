@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.44-jammy
+FROM mcr.microsoft.com/playwright:jammy
 
 ENV CI true
 WORKDIR /frontend
