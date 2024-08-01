@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
-	github.com/go-pkgz/auth v1.24.0
+	github.com/go-pkgz/auth/v2 v2.0.0-20240730035439-533e9f2ffe50
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.11.1
@@ -19,7 +19,7 @@ require (
 	github.com/go-pkgz/repeater v1.1.3
 	github.com/go-pkgz/rest v1.19.0
 	github.com/go-pkgz/syncs v1.3.2
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1

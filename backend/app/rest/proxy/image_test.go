@@ -263,7 +263,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	t.Log(string(b))
-	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
+	assert.Contains(t, string(b), "deadline exceeded")
 	assert.Equal(t, 1, len(imageStore.LoadCalls()))
 }
 
