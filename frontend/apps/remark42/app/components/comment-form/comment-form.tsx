@@ -461,6 +461,7 @@ export class CommentForm extends Component<Props, State> {
               disabled={isDisabled}
               autofocus={!!autofocus}
               spellcheck={true}
+              dir="auto"
             />
           </TextExpander>
           {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
@@ -518,6 +519,7 @@ export class CommentForm extends Component<Props, State> {
                 className="comment-form__preview raw-content"
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
+                dir="auto"
               />
             </div>
           )

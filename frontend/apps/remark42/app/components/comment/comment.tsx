@@ -336,7 +336,7 @@ export class Comment extends Component<CommentProps, State> {
     if (props.view === 'preview') {
       return (
         <article className={b('comment', { mix: props.mix }, defaultMods)}>
-          <div className="comment__body">
+          <div className="comment__body" dir="auto">
             {!!o.title && (
               <div className="comment__title">
                 <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
@@ -477,6 +477,7 @@ export class Comment extends Component<CommentProps, State> {
               ref={this.textNode}
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
+              dir="auto"
             />
           )}
 

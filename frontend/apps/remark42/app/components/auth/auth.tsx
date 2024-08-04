@@ -334,6 +334,7 @@ export function Auth() {
                           const element = evt.target as HTMLInputElement;
                           element.value = element.value.trim();
                         }}
+                        dir="auto"
                       />
                     </div>
                     {view === 'email' && (
@@ -345,6 +346,7 @@ export function Auth() {
                           type="email"
                           placeholder={intl.formatMessage(messages.emailAddress)}
                           disabled={isLoading}
+                          dir="auto"
                         />
                       </div>
                     )}
