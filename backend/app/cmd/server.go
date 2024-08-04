@@ -133,8 +133,10 @@ type ServerCommand struct {
 
 // ImageProxyGroup defines options group for image proxy
 type ImageProxyGroup struct {
-	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
-	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
+	HTTP2HTTPS           bool     `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
+	CacheExternal        bool     `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
+	Blacklist            []string `long:"blacklist" env:"BLACKLIST" description:"list of IPs, subnets and domains to exclude from proxy"  env-delim:","`
+	AllowPrivateNetworks bool     `long:"allow-private-networks" env:"ALLOW_PRIVATE_NETWORKS" description:"allow proxying private networks"`
 }
 
 // AppleGroup defines options for Apple auth params
@@ -560,11 +562,13 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	notifyService := s.makeNotifyService(dataService, notifyDestinations, telegramService)
 
 	imgProxy := &proxy.Image{
-		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
-		CacheExternal: s.ImageProxy.CacheExternal,
-		RoutePath:     "/api/v1/img",
-		RemarkURL:     s.RemarkURL,
-		ImageService:  imageService,
+		HTTP2HTTPS:           s.ImageProxy.HTTP2HTTPS,
+		CacheExternal:        s.ImageProxy.CacheExternal,
+		Blacklist:            s.ImageProxy.Blacklist,
+		RoutePath:            "/api/v1/img",
+		RemarkURL:            s.RemarkURL,
+		ImageService:         imageService,
+		AllowPrivateNetworks: s.ImageProxy.AllowPrivateNetworks,
 	}
 	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {
