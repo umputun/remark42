@@ -320,30 +320,29 @@ func TestRest_cacheControl(t *testing.T) {
 }
 
 func TestRest_frameAncestors(t *testing.T) {
-	tbl := []struct {
-		hosts  []string
-		header string
-	}{
-		{[]string{"http://example.com"}, "frame-ancestors http://example.com;"},
-		{[]string{}, ""},
-		{[]string{"http://example.com", "http://example2.com"}, "frame-ancestors http://example.com http://example2.com;"},
-	}
+	ts, _, teardown := startupT(t, func(o *Rest) {
+		o.AllowedAncestors = []string{"'self'", "https://example.com"}
+	})
 
-	for i, tt := range tbl {
-		tt := tt
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
-			w := httptest.NewRecorder()
+	// Test case with frame-ancestors
+	client := http.Client{}
+	resp, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self' https://example.com;")
+	teardown()
 
-			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-			h.ServeHTTP(w, req)
-			resp := w.Result()
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.NoError(t, resp.Body.Close())
-			t.Logf("%+v", resp.Header)
-			assert.Equal(t, tt.header, resp.Header.Get("Content-Security-Policy"))
-		})
-	}
+	// Test case without frame-ancestors
+	ts, _, teardown = startupT(t, func(srv *Rest) {
+		srv.AllowedAncestors = []string{}
+	})
+	defer teardown()
+	resp, err = client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
 }
 
 func TestRest_subscribersOnly(t *testing.T) {
