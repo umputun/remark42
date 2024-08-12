@@ -139,7 +139,7 @@ type ImageProxyGroup struct {
 
 // AppleGroup defines options for Apple auth params
 type AppleGroup struct {
-	CID                string `long:"cid" env:"CID" description:"Apple client ID"`
+	CID                string `long:"cid" env:"CID" description:"Apple client ID (App ID or Services ID)"`
 	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
 	KID                string `long:"kid" env:"KID" description:"Private key ID"`
 	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/srv/var/apple.p8"`
