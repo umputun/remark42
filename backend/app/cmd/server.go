@@ -908,7 +908,6 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 				ClientID:     s.Auth.Apple.CID,
 				TeamID:       s.Auth.Apple.TID,
 				KeyID:        s.Auth.Apple.KID,
-				ResponseMode: "query", // default is form_post which wouldn't work here
 			},
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
