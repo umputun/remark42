@@ -905,9 +905,9 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
-				ClientID:     s.Auth.Apple.CID,
-				TeamID:       s.Auth.Apple.TID,
-				KeyID:        s.Auth.Apple.KID,
+				ClientID: s.Auth.Apple.CID,
+				TeamID:   s.Auth.Apple.TID,
+				KeyID:    s.Auth.Apple.KID,
 			},
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
