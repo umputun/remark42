@@ -139,7 +139,7 @@ type ImageProxyGroup struct {
 
 // AppleGroup defines options for Apple auth params
 type AppleGroup struct {
-	CID                string `long:"cid" env:"CID" description:"Apple client ID"`
+	CID                string `long:"cid" env:"CID" description:"Apple client ID (App ID or Services ID)"`
 	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
 	KID                string `long:"kid" env:"KID" description:"Private key ID"`
 	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/srv/var/apple.p8"`
@@ -905,10 +905,9 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
-				ClientID:     s.Auth.Apple.CID,
-				TeamID:       s.Auth.Apple.TID,
-				KeyID:        s.Auth.Apple.KID,
-				ResponseMode: "query", // default is form_post which wouldn't work here
+				ClientID: s.Auth.Apple.CID,
+				TeamID:   s.Auth.Apple.TID,
+				KeyID:    s.Auth.Apple.KID,
 			},
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
