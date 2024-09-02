@@ -4,7 +4,7 @@ title: Interface Translations
 
 ## Add a New Language to Remark42
 
-Translation files are stored in [/frontend/app/locales](https://github.com/umputun/remark42/tree/master/frontend/app/locales)
+Translation files are stored in [/frontend/apps/remark42/app/locales](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
 directory with `.json` extension and content like following:
 
 ```json
@@ -30,16 +30,16 @@ below to have your translation available to all remark42 users and included in t
     git push
     ```
 
-1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/tasks/supportedLocales.json)
+1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
 1.  Run `npm install` in the `frontend` folder
 1.  Run `npm run translation:extract` in the `frontend` folder
 1.  Run `npm run translation:generate` in the `frontend` folder
 1.  Translate all values in the newly created JSON file in
-    [frontend/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/app/locales)
+    [frontend/apps/remark42/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
 1.  Commit all changes above in your fork
 1.  Test your changes in the interface:
 
-    1.  Uncomment `locale: "ru"` line in [frontend/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/templates/demo.ejs) and replace `ru` with your translation language code
+    1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs) and replace `ru` with your translation language code
     2.  [Run remark42 in Docker](https://github.com/umputun/remark42#development) by issuing the following commands from the root directory of your remark42 fork:
         `shell docker-compose -f compose-dev-frontend.yml build docker-compose -f compose-dev-frontend.yml up `
 
