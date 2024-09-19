@@ -151,7 +151,7 @@ type appleKeySet struct {
 
 // get return Apple public key with specific KeyID (kid)
 func (aks *appleKeySet) get(kid string) (keys *applePublicKey, err error) {
-	if aks.keys == nil || len(aks.keys) == 0 {
+	if len(aks.keys) == 0 {
 		return nil, fmt.Errorf("failed to get key in appleKeySet, key set is nil or empty")
 	}
 
