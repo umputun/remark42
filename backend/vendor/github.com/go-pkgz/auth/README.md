@@ -532,7 +532,7 @@ Follow to next steps for configuring on the Apple side:
 
 After completing the previous steps, you can proceed with configuring the Apple auth provider. Here are the parameters for AppleConfig:
 
-- _ClientID_ (**required**) - Service ID identifier which is used for Sign with Apple
+- _ClientID_ (**required**) - Service ID (or App ID) which is used for Sign with Apple
 - _TeamID_ (**required**) - Identifier a developer account (use as prefix for all App ID)
 - _KeyID_ (**required**) - Identifier a generated key for Sign with Apple
 - _ResponseMode_  - Response Mode, please see [documentation](https://developer.apple.com/documentation/sign_in_with_apple/request_an_authorization_to_the_sign_in_with_apple_server?changes=_1_2#4066168) for reference, default is `form_post`
@@ -541,7 +541,7 @@ After completing the previous steps, you can proceed with configuring the Apple 
     // apple config parameters
 	appleCfg := provider.AppleConfig{
 		TeamID:   os.Getenv("AEXMPL_APPLE_TID"), // developer account identifier
-		ClientID: os.Getenv("AEXMPL_APPLE_CID"), // service identifier
+		ClientID: os.Getenv("AEXMPL_APPLE_CID"), // Service ID (or App ID)
 		KeyID:    os.Getenv("AEXMPL_APPLE_KEYID"), // private key identifier
 	}
 ```

@@ -124,4 +124,4 @@ For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/con
 Optionally, anonymous access can be turned on. In this case, an extra `anonymous` provider will allow logins without any social login with any name satisfying two conditions:
 
 - the name should be at least three characters long
-- the name has to start from the letter and contains letters, numbers, underscores and spaces only
+- the name has contains only letters, numbers, underscores and spaces
