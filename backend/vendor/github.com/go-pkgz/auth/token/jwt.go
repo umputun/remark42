@@ -332,7 +332,7 @@ func (j *Service) Reset(w http.ResponseWriter) {
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 }
 
 // checkAuds verifies if claims.Audience in the list of allowed by audReader
