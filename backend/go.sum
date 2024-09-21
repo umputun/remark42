@@ -66,6 +66,10 @@ github.com/go-pkgz/auth v1.24.1-0.20240919232608-9e446b888187 h1:1oHLySWdk0HfDIF
 github.com/go-pkgz/auth v1.24.1-0.20240919232608-9e446b888187/go.mod h1:xmnzq6g8mhemW1nHnkuByXkBXsHrNf9/qkiVwJugWIs=
 github.com/go-pkgz/auth v1.24.1 h1:izSFGxwNEZ2MujKJWXddKc+lUW+kVP02JBXouQIW8b4=
 github.com/go-pkgz/auth v1.24.1/go.mod h1:xmnzq6g8mhemW1nHnkuByXkBXsHrNf9/qkiVwJugWIs=
+github.com/go-pkgz/auth v1.24.2-0.20240921022538-30916c085e04 h1:DZzcdFb/EzXjQex8lDq/NqubVqwCXeyGxU5swYEVAYk=
+github.com/go-pkgz/auth v1.24.2-0.20240921022538-30916c085e04/go.mod h1:xmnzq6g8mhemW1nHnkuByXkBXsHrNf9/qkiVwJugWIs=
+github.com/go-pkgz/auth v1.24.2 h1:imMjUvTM0c8iOvP/GNGcuNcB/7gF3jFTF9dIPzlAOqI=
+github.com/go-pkgz/auth v1.24.2/go.mod h1:xmnzq6g8mhemW1nHnkuByXkBXsHrNf9/qkiVwJugWIs=
 github.com/go-pkgz/email v0.5.0 h1:fdtMDGJ8NwyBACLR0LYHaCIK/OeUwZHMhH7Q0+oty9U=
 github.com/go-pkgz/email v0.5.0/go.mod h1:BdxglsQnymzhfdbnncEE72a6DrucZHy6I+42LK2jLEc=
 github.com/go-pkgz/expirable-cache v0.1.0/go.mod h1:GTrEl0X+q0mPNqN6dtcQXksACnzCBQ5k/k1SwXJsZKs=
