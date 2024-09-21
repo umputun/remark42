@@ -23,6 +23,9 @@ import (
 	"github.com/go-pkgz/auth/token"
 )
 
+// http.sniffLen is 512 bytes which is how much we need to read to detect content type
+const sniffLen = 512
+
 // Proxy provides http handler for avatars from avatar.Store
 // On user login token will call Put and it will retrieve and save picture locally.
 type Proxy struct {
@@ -100,7 +103,6 @@ func (p *Proxy) load(url string, client *http.Client) (rc io.ReadCloser, err err
 
 // Handler returns token routes for given provider
 func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -136,9 +138,25 @@ func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	w.Header().Set("Content-Type", "image/*")
+	buf := make([]byte, sniffLen)
+	n, err := avReader.Read(buf)
+	if err != nil && err != io.EOF {
+		p.Logf("[WARN] can't read from avatar reader for %s, %s", avatarID, err)
+		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "can't read avatar")
+		return
+	}
 	w.Header().Set("Content-Length", strconv.Itoa(size))
+	contentType := http.DetectContentType(buf)
+	if contentType == "application/octet-stream" {
+		contentType = "image/*"
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(http.StatusOK)
+	if _, err = w.Write(buf[:n]); err != nil {
+		p.Logf("[WARN] can't write response to %s, %s", r.RemoteAddr, err)
+		return
+	}
+	// write the rest of response size if it's bigger than 512 bytes, or nothing as EOF would be sent right away then
 	if _, err = io.Copy(w, avReader); err != nil {
 		p.Logf("[WARN] can't send response to %s, %s", r.RemoteAddr, err)
 	}
