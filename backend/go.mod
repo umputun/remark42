@@ -72,3 +72,5 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/go-pkgz/auth => github.com/mgkbadola/auth v0.0.0-20241002184815-a4b73f98dafe

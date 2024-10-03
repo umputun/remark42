@@ -65,7 +65,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth v1.24.2
+# github.com/go-pkgz/auth v1.24.2 => github.com/mgkbadola/auth v0.0.0-20241002184815-a4b73f98dafe
 ## explicit; go 1.21
 github.com/go-pkgz/auth
 github.com/go-pkgz/auth/avatar
@@ -315,3 +315,4 @@ golang.org/x/text/unicode/norm
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# github.com/go-pkgz/auth => github.com/mgkbadola/auth v0.0.0-20241002184815-a4b73f98dafe

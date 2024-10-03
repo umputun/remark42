@@ -100,6 +100,7 @@ type ServerCommand struct {
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
 		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
+		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Google    AuthGroup  `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup  `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
@@ -313,6 +314,8 @@ func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
 	resetEnv(
 		"SECRET",
+		"AUTH_APPLE_KID",
+		"AUTH_DISCORD_CSEC",
 		"AUTH_GOOGLE_CSEC",
 		"AUTH_GITHUB_CSEC",
 		"AUTH_FACEBOOK_CSEC",
@@ -914,6 +917,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		if err != nil {
 			return err
 		}
+		providersCount++
+	}
+	if s.Auth.Discord.CID != "" && s.Auth.Discord.CSEC != "" {
+		authenticator.AddProvider("discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC)
 		providersCount++
 	}
 	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {

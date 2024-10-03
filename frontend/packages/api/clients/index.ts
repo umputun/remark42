@@ -18,6 +18,7 @@ export interface User {
 
 export type OAuthProvider =
 	| 'apple'
+	| 'discord'
 	| 'facebook'
 	| 'twitter'
 	| 'google'
