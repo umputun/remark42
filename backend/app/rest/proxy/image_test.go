@@ -326,3 +326,54 @@ func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 
 	return ts
 }
+
+func TestImage_Blacklist(t *testing.T) {
+	tbl := []struct {
+		name                 string
+		url                  string
+		blacklist            []string
+		allowPrivateNetworks bool
+		wantStatus           int
+		wantErrMsg           string
+	}{
+		{name: "Public URL", url: "http://example.com/image.jpg", wantStatus: http.StatusOK},
+		{name: "Non-blacklisted similar domain", url: "http://essex.com/image.jpg", blacklist: []string{"sex.com"}, wantStatus: http.StatusOK},
+		{name: "Blacklisted domain", url: "http://example.com/image.jpg", blacklist: []string{"example.com"}, wantStatus: http.StatusForbidden},
+		{name: "Blacklisted subdomain", url: "http://sub.example.com/image.jpg", blacklist: []string{"example.com"}, wantStatus: http.StatusForbidden},
+		{name: "Private URL not allowed", url: "http://192.168.1.1/image.jpg", wantStatus: http.StatusForbidden},
+		{name: "Private URL allowed", url: "http://192.168.1.1/image.jpg", allowPrivateNetworks: true, wantStatus: http.StatusOK},
+		{name: "Blacklisted IP", url: "http://8.8.8.8/image.jpg", blacklist: []string{"8.8.8.8"}, wantStatus: http.StatusForbidden},
+		{name: "Blacklisted CIDR", url: "http://192.168.1.5/image.jpg", blacklist: []string{"192.168.1.0/24"}, wantStatus: http.StatusForbidden},
+		{name: "Public URL, CIDR not matching", url: "http://193.168.1.5/image.jpg", blacklist: []string{"192.168.1.0/24"}, wantStatus: http.StatusOK},
+		{name: "URL without path", url: "http://no-path-url", wantStatus: http.StatusOK},
+		{name: "URL without scheme", url: "example.com/image.jpg", wantStatus: http.StatusOK},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			imageStore := image.StoreMock{
+				LoadFunc: func(string) ([]byte, error) { return []byte("image data"), nil },
+			}
+
+			img := Image{
+				Blacklist:            tt.blacklist,
+				AllowPrivateNetworks: tt.allowPrivateNetworks,
+				ImageService:         image.NewService(&imageStore, image.ServiceParams{}),
+				Timeout:              100,
+			}
+
+			handler := http.HandlerFunc(img.Handler)
+			encodedURL := base64.URLEncoding.EncodeToString([]byte(tt.url))
+			req, err := http.NewRequest("GET", "/?src="+encodedURL, http.NoBody)
+			require.NoError(t, err)
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			assert.Equal(t, tt.wantStatus, rr.Code)
+			if tt.wantErrMsg != "" {
+				assert.Contains(t, rr.Body.String(), tt.wantErrMsg)
+			}
+		})
+	}
+}
