@@ -70,6 +70,7 @@ type Rest struct {
 	SubscribersOnly            bool
 	DisableSignature           bool // prevent signature from being added to headers
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	ExternalImageProxy         bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -205,6 +206,7 @@ func (s *Rest) routes() chi.Router {
 	}
 	router := chi.NewRouter()
 	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
 	}
@@ -224,11 +226,6 @@ func (s *Rest) routes() chi.Router {
 			MaxAge:           300,
 		})
 		router.Use(corsMiddleware.Handler)
-	}
-
-	if len(s.AllowedAncestors) > 0 {
-		log.Printf("[INFO] allowed from %+v only", s.AllowedAncestors)
-		router.Use(frameAncestors(s.AllowedAncestors))
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
@@ -623,19 +620,23 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 	}
 }
 
-// frameAncestors is a middleware setting Content-Security-Policy "frame-ancestors host1 host2 ..."
-// prevents loading of comments widgets from any other origins. In case if the list of allowed empty, ignored.
-func frameAncestors(hosts []string) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			if len(hosts) == 0 {
-				h.ServeHTTP(w, r)
-				return
+// securityHeadersMiddleware sets security-related headers: Content-Security-Policy and Permissions-Policy
+func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			imgSrc := "'self'"
+			if imageProxyEnabled {
+				imgSrc = "*"
 			}
-			w.Header().Set("Content-Security-Policy", "frame-ancestors "+strings.Join(hosts, " ")+";")
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
+			frameAncestors := "*"
+			if len(allowedAncestors) > 0 {
+				log.Printf("[INFO] frame embedding allowed from %+v only", allowedAncestors)
+				frameAncestors = strings.Join(allowedAncestors, " ")
+			}
+			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self'; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
+			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
