@@ -97,6 +97,8 @@ services:
 | auth.twitter.csec              | AUTH_TWITTER_CSEC              |                         | Twitter Consumer API Secret key                          |
 | auth.patreon.cid               | AUTH_PATREON_CID               |                         | Patreon OAuth Client ID                                  |
 | auth.patreon.csec              | AUTH_PATREON_CSEC              |                         | Patreon OAuth Client Secret                              |
+| auth.discord.cid               | AUTH_DISCORD_CID               |                         | Discord OAuth Client ID                                  |
+| auth.discord.csec              | AUTH_DISCORD_CSEC              |                         | Discord OAuth Client Secret                              |
 | auth.telegram                  | AUTH_TELEGRAM                  | `false`                 | Enable Telegram auth (telegram.token must be present)    |
 | auth.yandex.cid                | AUTH_YANDEX_CID                |                         | Yandex OAuth client ID                                   |
 | auth.yandex.csec               | AUTH_YANDEX_CSEC               |                         | Yandex OAuth client secret                               |
