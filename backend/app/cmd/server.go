@@ -107,6 +107,7 @@ type ServerCommand struct {
 		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
 		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
+		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool       `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -320,6 +321,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_TWITTER_CSEC",
 		"AUTH_YANDEX_CSEC",
 		"AUTH_PATREON_CSEC",
+		"AUTH_DISCORD_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -942,6 +944,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Patreon.CID != "" && s.Auth.Patreon.CSEC != "" {
 		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
+		providersCount++
+	}
+	if s.Auth.Discord.CID != "" && s.Auth.Discord.CSEC != "" {
+		authenticator.AddProvider("discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC)
 		providersCount++
 	}
 
