@@ -151,6 +151,8 @@ services:
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images                      |
 | image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
+| image-proxy.blacklist          | IMAGE_PROXY_BLACKLIST          |                         | list of IPs, subnets and domains to exclude from proxy, _multi_ |
+| image-proxy.allow-private-networks | IMAGE_PROXY_ALLOW_PRIVATE_NETWORKS | `false`         | allow proxying private networks                          |
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | minimized UI with basic info only                        |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
