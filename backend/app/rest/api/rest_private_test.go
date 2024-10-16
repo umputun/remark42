@@ -1391,6 +1391,44 @@ func TestRest_TelegramNotification(t *testing.T) {
 	assert.Empty(t, mockDestination.Get()[3].Telegrams)
 }
 
+func TestRest_UserUnauthorised200(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", ts.URL+"/api/v1/user?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
+	assert.NoError(t, err)
+	assert.Equal(t, "Unauthorized\n", string(body))
+
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/user?site=remark42&unauthorised200=true", http.NoBody)
+	require.NoError(t, err)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "should fail but with status code 200 due to the unauthorised200 param set")
+	body, err = io.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
+	assert.NoError(t, err)
+	assert.Equal(t, `{"error":"can't extract user info from the token: user can't be parsed"}`+"\n", string(body))
+
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/user?site=wrong_site&unauthorised200=true", http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode, "should fail due to site mismatch")
+	body, err = io.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
+	assert.NoError(t, err)
+	assert.Contains(t, string(body), "Access denied\n")
+}
+
 func TestRest_UserAllData(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
