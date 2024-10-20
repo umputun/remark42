@@ -83,15 +83,6 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 4. Choose the new project from the top right project dropdown (only if another project is selected)
 5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"** (`AUTH_MICROSOFT_CSEC`)
 
-### Twitter
-
-> **Important**: Twitter developer accounts created after _November 15th 2021_ need "Elevated access" to use the Standard v1.1 API routes required to work properly. Apply for this access from within the Twitter developer portal.
-
-1. Create a new Twitter application https://developer.twitter.com/en/apps
-2. Fill **App name**, **Description** and **URL** of your site
-3. In the field **Callback URLs** enter the correct URL of your callback handler, e.g. domain + `/auth/twitter/callback`
-4. Under **Key and tokens** take note of the **Consumer API Key** and **Consumer API Secret key**. Those will be used as `AUTH_TWITTER_CID` and `AUTH_TWITTER_CSEC`
-
 ### Yandex
 
 1. Create a new **"OAuth App"**: https://oauth.yandex.com/client/new
