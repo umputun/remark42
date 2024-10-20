@@ -15,9 +15,9 @@ All documentation examples show configurations with remark42 on its own subdomai
   - Google Authorized redirect URIs: `https://example.com/remark42/auth/google/callback`
   - GitHub Authorised callback URL: `https://example.com/remark42/auth/github/callback`
 
-### docker-compose configuration
+### Docker Compose configuration
 
-Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in docker-compose.
+Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in Docker Compose configuration file.
 
 Example `docker-compose.yml`:
 

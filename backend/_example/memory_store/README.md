@@ -4,8 +4,8 @@
 
 In order to run remark42 with memory_store copy provided `compose-dev-memstore.yml` to the root directory and run:
 
-1. `docker-compose -f compose-dev-memstore.yml build`
-1. `docker-compose -f compose-dev-memstore.yml up`
+1. `docker compose -f compose-dev-memstore.yml build`
+1. `docker compose -f compose-dev-memstore.yml up`
 
 As usual, demo site will run on http://127.0.0.1:8080/web/
 

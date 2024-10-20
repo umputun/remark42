@@ -29,8 +29,8 @@ yarn build
 Install dependencies and run development server inside Docker:
 
 ```shell
-docker-compose build
-docker-compose up server
+docker compose build
+docker compose up server
 ```
 
 Then serve files from `./build` with your favorite server
@@ -38,7 +38,7 @@ Then serve files from `./build` with your favorite server
 ### Development
 
 ```shell
-docker-compose up --build server
+docker compose up --build server
 ```
 
 Then head to http://localhost:8080
