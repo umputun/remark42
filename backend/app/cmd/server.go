@@ -313,6 +313,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
 	resetEnv(
 		"SECRET",
+		"AUTH_APPLE_KID",
 		"AUTH_GOOGLE_CSEC",
 		"AUTH_GITHUB_CSEC",
 		"AUTH_FACEBOOK_CSEC",
