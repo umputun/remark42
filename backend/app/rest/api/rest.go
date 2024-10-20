@@ -624,9 +624,9 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			imgSrc := "'self'"
+			imgSrc := "*"
 			if imageProxyEnabled {
-				imgSrc = "*"
+				imgSrc = "'self'"
 			}
 			frameAncestors := "*"
 			if len(allowedAncestors) > 0 {
