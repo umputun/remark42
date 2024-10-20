@@ -154,7 +154,7 @@ services:
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | minimized UI with basic info only                        |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
-| allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments            |
+| allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |
 | port                           | REMARK_PORT                    | `8080`                  | web server port                                          |
 | web-root                       | REMARK_WEB_ROOT                | `./web`                 | web server root directory                                |
