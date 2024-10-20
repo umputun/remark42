@@ -610,6 +610,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		SubscribersOnly:            s.SubscribersOnly,
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
+		ExternalImageProxy:         s.ImageProxy.CacheExternal,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
