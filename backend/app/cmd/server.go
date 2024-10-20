@@ -105,7 +105,7 @@ type ServerCommand struct {
 		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
@@ -406,6 +406,12 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	}
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	}
+	if s.Auth.Twitter.CID != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
+	}
+	if s.Auth.Twitter.CSEC != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
 	}
 	return append(result, s.findDeprecatedFlagsCollisions()...)
 }
