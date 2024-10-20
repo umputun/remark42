@@ -201,7 +201,7 @@ Now we have the following templates:
 - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
 
-To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside docker-compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
+To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside Docker Compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
 
 ```yaml
 volumes:
