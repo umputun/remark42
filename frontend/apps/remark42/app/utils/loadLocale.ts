@@ -55,15 +55,16 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
     return import(/* webpackChunkName: "ar" */ '../locales/ar.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'zh-tw') {
-    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json')
-      .then((res) => res.default)
-      .catch(() => enMessages);
+    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'th') {
     return import(/* webpackChunkName: "th" */ '../locales/th.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'cs') {
     return import(/* webpackChunkName: "cs" */ '../locales/cs.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'fa') {
+    return import(/* webpackChunkName: "fa" */ '../locales/fa.json').then((res) => res.default).catch(() => enMessages);
   }
 
   return enMessages;
