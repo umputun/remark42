@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -215,7 +215,9 @@ jobs:
         run: pnpm coverage
         working-directory: ./frontend/apps/remark42
 
-      - name: Submit coverage
-        run: ${{ github.workspace }}/frontend/apps/remark42/node_modules/.bin/codecov
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          working-directory: ./frontend/apps/remark42
+          codecov_yml_path: ./frontend/apps/remark42/codecov.yml

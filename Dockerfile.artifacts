@@ -1,4 +1,4 @@
-FROM node:16.20.2-alpine AS frontend-deps
+FROM node:16-alpine AS frontend-deps
 
 ENV CI=true
 
