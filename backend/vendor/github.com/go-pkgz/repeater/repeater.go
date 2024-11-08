@@ -5,6 +5,7 @@ package repeater
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-pkgz/repeater/strategy"
@@ -12,7 +13,12 @@ import (
 
 // Repeater is the main object, should be made by New or NewDefault, embeds strategy
 type Repeater struct {
-	strategy.Interface
+	Strategy
+}
+
+// Strategy interface for repeater strategy
+type Strategy interface {
+	Start(ctx context.Context) <-chan struct{} // returns channel with repeater ticks
 }
 
 // New repeater with a given strategy. If strategy=nil initializes with FixedDelay 5sec, 10 times.
@@ -20,7 +26,7 @@ func New(strtg strategy.Interface) *Repeater {
 	if strtg == nil {
 		strtg = &strategy.FixedDelay{Repeats: 10, Delay: time.Second * 5}
 	}
-	result := Repeater{Interface: strtg}
+	result := Repeater{Strategy: strtg}
 	return &result
 }
 
@@ -30,14 +36,13 @@ func NewDefault(repeats int, delay time.Duration) *Repeater {
 }
 
 // Do repeats fun till no error. Predefined (optional) errors terminate immediately
-func (r Repeater) Do(ctx context.Context, fun func() error, errors ...error) (err error) {
-
+func (r Repeater) Do(ctx context.Context, fun func() error, errs ...error) (err error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc() // ensure strategy's channel termination
 
 	inErrors := func(err error) bool {
-		for _, e := range errors {
-			if e == err {
+		for _, e := range errs {
+			if errors.Is(err, e) {
 				return true
 			}
 		}

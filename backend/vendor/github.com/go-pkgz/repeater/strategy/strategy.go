@@ -16,7 +16,7 @@ type Interface interface {
 type Once struct{}
 
 // Start returns closed channel with a single element to prevent any repeats
-func (s *Once) Start(ctx context.Context) <-chan struct{} {
+func (s *Once) Start(_ context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
 		ch <- struct{}{}

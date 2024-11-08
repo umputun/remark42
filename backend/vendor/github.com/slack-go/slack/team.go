@@ -74,8 +74,9 @@ type BillingActive struct {
 
 // AccessLogParameters contains all the parameters necessary (including the optional ones) for a GetAccessLogs() request
 type AccessLogParameters struct {
-	Count int
-	Page  int
+	TeamID string
+	Count  int
+	Page   int
 }
 
 // NewAccessLogParameters provides an instance of AccessLogParameters with all the sane default values set
@@ -124,12 +125,14 @@ func (api *Client) teamProfileRequest(ctx context.Context, client httpClient, pa
 	return response, response.Err()
 }
 
-// GetTeamInfo gets the Team Information of the user
+// GetTeamInfo gets the Team Information of the user.
+// For more information see the GetTeamInfoContext documentation.
 func (api *Client) GetTeamInfo() (*TeamInfo, error) {
 	return api.GetTeamInfoContext(context.Background())
 }
 
-// GetOtherTeamInfoContext gets Team information for any team with a custom context
+// GetOtherTeamInfoContext gets Team information for any team with a custom context.
+// Slack API docs: https://api.slack.com/methods/team.info
 func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*TeamInfo, error) {
 	if team == "" {
 		return api.GetTeamInfoContext(ctx)
@@ -145,12 +148,14 @@ func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*T
 	return &response.Team, nil
 }
 
-// GetOtherTeamInfo gets Team information for any team
+// GetOtherTeamInfo gets Team information for any team.
+// For more information see the GetOtherTeamInfoContext documentation.
 func (api *Client) GetOtherTeamInfo(team string) (*TeamInfo, error) {
 	return api.GetOtherTeamInfoContext(context.Background(), team)
 }
 
-// GetTeamInfoContext gets the Team Information of the user with a custom context
+// GetTeamInfoContext gets the Team Information of the user with a custom context.
+// Slack API docs: https://api.slack.com/methods/team.info
 func (api *Client) GetTeamInfoContext(ctx context.Context) (*TeamInfo, error) {
 	values := url.Values{
 		"token": {api.token},
@@ -163,15 +168,20 @@ func (api *Client) GetTeamInfoContext(ctx context.Context) (*TeamInfo, error) {
 	return &response.Team, nil
 }
 
-// GetTeamProfile gets the Team Profile settings of the user
-func (api *Client) GetTeamProfile() (*TeamProfile, error) {
-	return api.GetTeamProfileContext(context.Background())
+// GetTeamProfile gets the Team Profile settings of the user.
+// For more information see the GetTeamProfileContext documentation.
+func (api *Client) GetTeamProfile(teamID ...string) (*TeamProfile, error) {
+	return api.GetTeamProfileContext(context.Background(), teamID...)
 }
 
-// GetTeamProfileContext gets the Team Profile settings of the user with a custom context
-func (api *Client) GetTeamProfileContext(ctx context.Context) (*TeamProfile, error) {
+// GetTeamProfileContext gets the Team Profile settings of the user with a custom context.
+// Slack API docs: https://api.slack.com/methods/team.profile.get
+func (api *Client) GetTeamProfileContext(ctx context.Context, teamID ...string) (*TeamProfile, error) {
 	values := url.Values{
 		"token": {api.token},
+	}
+	if len(teamID) > 0 {
+		values["team_id"] = teamID
 	}
 
 	response, err := api.teamProfileRequest(ctx, api.httpclient, "team.profile.get", values)
@@ -179,18 +189,22 @@ func (api *Client) GetTeamProfileContext(ctx context.Context) (*TeamProfile, err
 		return nil, err
 	}
 	return &response.Profile, nil
-
 }
 
-// GetAccessLogs retrieves a page of logins according to the parameters given
+// GetAccessLogs retrieves a page of logins according to the parameters given.
+// For more information see the GetAccessLogsContext documentation.
 func (api *Client) GetAccessLogs(params AccessLogParameters) ([]Login, *Paging, error) {
 	return api.GetAccessLogsContext(context.Background(), params)
 }
 
-// GetAccessLogsContext retrieves a page of logins according to the parameters given with a custom context
+// GetAccessLogsContext retrieves a page of logins according to the parameters given with a custom context.
+// Slack API docs: https://api.slack.com/methods/team.accessLogs
 func (api *Client) GetAccessLogsContext(ctx context.Context, params AccessLogParameters) ([]Login, *Paging, error) {
 	values := url.Values{
 		"token": {api.token},
+	}
+	if params.TeamID != "" {
+		values.Add("team_id", params.TeamID)
 	}
 	if params.Count != DEFAULT_LOGINS_COUNT {
 		values.Add("count", strconv.Itoa(params.Count))
@@ -206,30 +220,30 @@ func (api *Client) GetAccessLogsContext(ctx context.Context, params AccessLogPar
 	return response.Logins, &response.Paging, nil
 }
 
-// GetBillableInfo ...
-func (api *Client) GetBillableInfo(user string) (map[string]BillingActive, error) {
-	return api.GetBillableInfoContext(context.Background(), user)
+type GetBillableInfoParams struct {
+	User   string
+	TeamID string
 }
 
-// GetBillableInfoContext ...
-func (api *Client) GetBillableInfoContext(ctx context.Context, user string) (map[string]BillingActive, error) {
+// GetBillableInfo gets the billable users information of the team.
+// For more information see the GetBillableInfoContext documentation.
+func (api *Client) GetBillableInfo(params GetBillableInfoParams) (map[string]BillingActive, error) {
+	return api.GetBillableInfoContext(context.Background(), params)
+}
+
+// GetBillableInfoContext gets the billable users information of the team with a custom context.
+// Slack API docs: https://api.slack.com/methods/team.billableInfo
+func (api *Client) GetBillableInfoContext(ctx context.Context, params GetBillableInfoParams) (map[string]BillingActive, error) {
 	values := url.Values{
 		"token": {api.token},
-		"user":  {user},
 	}
 
-	return api.billableInfoRequest(ctx, "team.billableInfo", values)
-}
+	if params.TeamID != "" {
+		values.Add("team_id", params.TeamID)
+	}
 
-// GetBillableInfoForTeam returns the billing_active status of all users on the team.
-func (api *Client) GetBillableInfoForTeam() (map[string]BillingActive, error) {
-	return api.GetBillableInfoForTeamContext(context.Background())
-}
-
-// GetBillableInfoForTeamContext returns the billing_active status of all users on the team with a custom context
-func (api *Client) GetBillableInfoForTeamContext(ctx context.Context) (map[string]BillingActive, error) {
-	values := url.Values{
-		"token": {api.token},
+	if params.User != "" {
+		values.Add("user", params.User)
 	}
 
 	return api.billableInfoRequest(ctx, "team.billableInfo", values)

@@ -40,7 +40,7 @@ func (b *Backoff) Start(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
-		rnd := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+		rnd := rand.New(rand.NewSource(int64(time.Now().Nanosecond()))) //nolint:gosec
 		for i := 0; i < b.Repeats; i++ {
 			select {
 			case <-ctx.Done():
