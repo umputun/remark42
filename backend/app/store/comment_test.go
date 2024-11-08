@@ -209,7 +209,6 @@ func TestComment_Snippet(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			c := Comment{Text: tt.inp}
 			out := c.Snippet(tt.limit)
@@ -245,7 +244,6 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		c := Comment{}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeAsURL(tt.inp))
@@ -276,7 +274,6 @@ func TestComment_sanitizeText(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		c := Comment{}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))

@@ -701,7 +701,6 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 
 	cmd := ServerCommand{}
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.res, cmd.parseSameSite(tt.inp))
 		})
