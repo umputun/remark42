@@ -1,4 +1,4 @@
-FROM umputun/baseimage:buildgo-v1.14.0 as build-backend
+FROM umputun/baseimage:buildgo-v1.14.0 AS build-backend
 
 ADD backend /build/backend
 WORKDIR /build/backend/_example/memory_store
