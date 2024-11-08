@@ -26,8 +26,8 @@ linters-settings:
 linters:
   enable:
     - bodyclose
+    - copyloopvar
     - dupl
-    - exportloopref
     - gochecknoinits
     - gocritic
     - gocyclo

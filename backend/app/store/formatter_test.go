@@ -50,7 +50,6 @@ func TestFormatter_FormatText(t *testing.T) {
 	}
 	f := NewCommentFormatter(mockConverter{})
 	for _, tt := range tbl {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			raw := strings.HasPrefix(tt.in, `no_smartpants`)
 			t.Logf("raw: %v", raw)
@@ -146,7 +145,6 @@ func TestCommentFormatter_lazyImage(t *testing.T) {
 
 	f := NewCommentFormatter(nil)
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.out, f.lazyImage(tt.inp))
 		})

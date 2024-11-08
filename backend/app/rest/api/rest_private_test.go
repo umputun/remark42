@@ -916,7 +916,6 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	client := http.Client{}
 	defer client.CloseIdleConnections()
 	for _, x := range testData {
-		x := x
 		t.Run(x.description, func(t *testing.T) {
 			reqBody := io.NopCloser(strings.NewReader(x.body))
 			if x.body == "" {

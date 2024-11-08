@@ -227,7 +227,6 @@ func Test_URLKey(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -252,7 +251,6 @@ func Test_URLKeyWithUser(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -279,7 +277,6 @@ func TestRest_parseError(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			res := parseError(tt.err, rest.ErrInternal)
 			assert.Equal(t, tt.res, res)
@@ -302,7 +299,6 @@ func TestRest_cacheControl(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.url, http.NoBody)
 			w := httptest.NewRecorder()
@@ -388,7 +384,6 @@ func TestRest_subscribersOnly(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			if tt.setUser {
