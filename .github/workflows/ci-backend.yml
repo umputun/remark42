@@ -32,7 +32,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.23"
 
       - name: test and build backend
         run: |
@@ -54,13 +54,13 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.58
+          version: v1.61.0
           working-directory: backend/app
 
       - name: golangci-lint on example directory
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.58
+          version: v1.61.0
           args: --config ../../.golangci.yml
           working-directory: backend/_example/memory_store
 
