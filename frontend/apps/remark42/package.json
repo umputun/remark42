@@ -25,6 +25,7 @@
     "node": ">=16.15 <=17.*",
     "pnpm": "7.*"
   },
+  "packageManager": "pnpm@7.33.7",
   "dependencies": {
     "@github/markdown-toolbar-element": "^2.1.1",
     "@github/text-expander-element": "^2.2.2",

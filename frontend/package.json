@@ -17,6 +17,7 @@
     "type-check:api": "turbo run type-check --filter=@remark42/api",
     "lint:api": "turbo run lint --filter=@remark42/api"
   },
+  "packageManager": "pnpm@7.33.7",
   "devDependencies": {
     "husky": "^8.0.1",
     "lint-staged": "^13.0.3",
