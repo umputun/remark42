@@ -29,7 +29,7 @@
     "type-check": "tsc --noEmit",
     "lint-staged:lint": "eslint --fix --ext .cjs,.mjs,.ts"
   },
-  "packageManager": "pnpm@7.33.7",
+  "packageManager": "pnpm@8.15.9",
   "devDependencies": {
     "@types/node": "^18.0.5",
     "@typescript-eslint/eslint-plugin": "^5.33.1",

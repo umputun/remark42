@@ -11,7 +11,7 @@ COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
     apk add --no-cache --update git && \
-    npm i -g pnpm@7; \
+    npm i -g pnpm@8; \
   fi
 
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
