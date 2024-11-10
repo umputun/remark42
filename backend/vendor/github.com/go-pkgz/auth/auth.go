@@ -257,6 +257,8 @@ func (s *Service) addProviderByName(name string, p provider.Params) {
 		prov = provider.NewTwitter(p)
 	case "patreon":
 		prov = provider.NewPatreon(p)
+	case "discord":
+		prov = provider.NewDiscord(p)
 	case "dev":
 		prov = provider.NewDev(p)
 	default:
