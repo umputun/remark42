@@ -33,8 +33,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
       clsx:
-        specifier: ^1.1.1
-        version: 1.2.1
+        specifier: ^2.1.1
+        version: 2.1.1
       core-js:
         specifier: ^3.23.3
         version: 3.23.4
@@ -45,29 +45,29 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       node-emoji:
-        specifier: ^1.11.0
-        version: 1.11.0
+        specifier: ^2.1.3
+        version: 2.1.3
       preact:
-        specifier: 10.6.2
-        version: 10.6.2
+        specifier: 10.24.3
+        version: 10.24.3
       react:
         specifier: npm:@preact/compat@^17.1.1
-        version: /@preact/compat@17.1.1(preact@10.6.2)
+        version: /@preact/compat@17.1.1(preact@10.24.3)
       react-dom:
         specifier: npm:@preact/compat@^17.1.1
-        version: /@preact/compat@17.1.1(preact@10.6.2)
+        version: /@preact/compat@17.1.1(preact@10.24.3)
       react-intl:
         specifier: ^6.0.4
         version: 6.0.5(@preact/compat@17.1.1)(typescript@4.7.4)
       react-redux:
-        specifier: ^8.0.2
-        version: 8.0.2(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.0)
+        specifier: ^8.1.3
+        version: 8.1.3(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.1)
       redux:
-        specifier: ^4.2.0
-        version: 4.2.0
+        specifier: ^4.2.1
+        version: 4.2.1
       redux-thunk:
-        specifier: ^2.4.1
-        version: 2.4.1(redux@4.2.0)
+        specifier: ^2.4.2
+        version: 2.4.2(redux@4.2.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.18.6
@@ -95,10 +95,10 @@ importers:
         version: 0.4.3
       '@prefresh/core':
         specifier: ^1.3.4
-        version: 1.3.4(preact@10.6.2)
+        version: 1.3.4(preact@10.24.3)
       '@prefresh/webpack':
         specifier: ^3.3.4
-        version: 3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.6.2)(webpack@5.73.0)
+        version: 3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.24.3)(webpack@5.73.0)
       '@size-limit/file':
         specifier: ^7.0.8
         version: 7.0.8(size-limit@7.0.8)
@@ -113,10 +113,10 @@ importers:
         version: 5.16.4
       '@testing-library/preact':
         specifier: ^3.2.2
-        version: 3.2.2(preact@10.6.2)
+        version: 3.2.2(preact@10.24.3)
       '@testing-library/preact-hooks':
         specifier: ^1.1.0
-        version: 1.1.0(@testing-library/preact@3.2.2)(preact@10.6.2)
+        version: 1.1.0(@testing-library/preact@3.2.2)(preact@10.24.3)
       '@types/enzyme':
         specifier: ^3.10.12
         version: 3.10.12
@@ -185,7 +185,7 @@ importers:
         version: 3.11.0
       enzyme-adapter-preact-pure:
         specifier: ^4.0.1
-        version: 4.0.1(enzyme@3.11.0)(preact@10.6.2)
+        version: 4.0.1(enzyme@3.11.0)(preact@10.24.3)
       eslint:
         specifier: ^8.18.0
         version: 8.19.0
@@ -2841,31 +2841,31 @@ packages:
     resolution: {integrity: sha512-a5Sab1C4/icpTZVzZc5Ghpz88yQtGOyNqYXcZgOssB2uuAr+wF/MvN6bgtW32q7HHrvBki+BsZ0OuNv6EV3K9g==}
     dev: true
 
-  /@preact/compat@17.1.1(preact@10.6.2):
+  /@preact/compat@17.1.1(preact@10.24.3):
     resolution: {integrity: sha512-OjQJ6oVcjFTiKWs4MIoE/cORFFGhqnt1RO0uxGNAFUglBMPNahMDJyX5w+qEOEaOpaNTLM1L3ixc2bFEpxgs3A==}
     peerDependencies:
       preact: '*'
     dependencies:
-      preact: 10.6.2
+      preact: 10.24.3
     dev: false
 
   /@prefresh/babel-plugin@0.4.3:
     resolution: {integrity: sha512-fYAWbU1WDSLn108kKY4eDaaeUcnszFqXjgaGKYXNZ5NLulpRTpsrY+Sbfo9q8LDpWrBpqIgzjrwNnvglWI1xNQ==}
     dev: true
 
-  /@prefresh/core@1.3.4(preact@10.6.2):
+  /@prefresh/core@1.3.4(preact@10.24.3):
     resolution: {integrity: sha512-s7iNsnyJ3lZEUrYIgmVIB/hKtp4U6mdD91a31Zg7Q8M49O0x2KThrbrMQYraoDDrs4STdFB8Zv6bceUguOoX1A==}
     peerDependencies:
       preact: ^10.0.0
     dependencies:
-      preact: 10.6.2
+      preact: 10.24.3
     dev: true
 
   /@prefresh/utils@1.1.3:
     resolution: {integrity: sha512-Mb9abhJTOV4yCfkXrMrcgFiFT7MfNOw8sDa+XyZBdq/Ai2p4Zyxqsb3EgHLOEdHpMj6J9aiZ54W8H6FTam1u+A==}
     dev: true
 
-  /@prefresh/webpack@3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.6.2)(webpack@5.73.0):
+  /@prefresh/webpack@3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.24.3)(webpack@5.73.0):
     resolution: {integrity: sha512-RiXS/hvXDup5cQw/267kxkKie81kxaAB7SFbkr8ppshobDEzwgUN1tbGbHNx6Uari0Ql2XByC6HIgQGpaq2Q7w==}
     peerDependencies:
       '@prefresh/babel-plugin': ^0.4.0
@@ -2873,9 +2873,9 @@ packages:
       webpack: ^4.0.0 || ^5.0.0
     dependencies:
       '@prefresh/babel-plugin': 0.4.3
-      '@prefresh/core': 1.3.4(preact@10.6.2)
+      '@prefresh/core': 1.3.4(preact@10.24.3)
       '@prefresh/utils': 1.1.3
-      preact: 10.6.2
+      preact: 10.24.3
       webpack: 5.73.0(@swc/core@1.2.205)(webpack-cli@4.10.0)
     dev: true
 
@@ -3034,6 +3034,11 @@ packages:
   /@sinclair/typebox@0.24.20:
     resolution: {integrity: sha512-kVaO5aEFZb33nPMTZBxiPEkY+slxiPtqC7QX8f9B3eGOMBvEfuMfxp9DSTTCsRJPumPKjrge4yagyssO4q6qzQ==}
     dev: true
+
+  /@sindresorhus/is@4.6.0:
+    resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
+    engines: {node: '>=10'}
+    dev: false
 
   /@sindresorhus/merge-streams@1.0.0:
     resolution: {integrity: sha512-rUV5WyJrJLoloD4NDN1V1+LDMDWOa4OTsT4yYJwQNpTU6FWxkxHpL7eu4w+DmiH8x/EAM1otkPE1+LaspIbplw==}
@@ -3238,24 +3243,24 @@ packages:
       redent: 3.0.0
     dev: true
 
-  /@testing-library/preact-hooks@1.1.0(@testing-library/preact@3.2.2)(preact@10.6.2):
+  /@testing-library/preact-hooks@1.1.0(@testing-library/preact@3.2.2)(preact@10.24.3):
     resolution: {integrity: sha512-+JIor+NsOHkK3oIrwMDGKGHXTN0JJi462dBJlj4FNbGaDPTlctE6eu2ranWQirh7/FJMkWfzQCP+tk7jmY8ZrQ==}
     peerDependencies:
       '@testing-library/preact': ^2.0.0
       preact: ^10.4.8
     dependencies:
-      '@testing-library/preact': 3.2.2(preact@10.6.2)
-      preact: 10.6.2
+      '@testing-library/preact': 3.2.2(preact@10.24.3)
+      preact: 10.24.3
     dev: true
 
-  /@testing-library/preact@3.2.2(preact@10.6.2):
+  /@testing-library/preact@3.2.2(preact@10.24.3):
     resolution: {integrity: sha512-mMPEp/9TOOqf3QqDHY02ieGFfRbi8fAxZvRifn+vOzrdNcCR1zchwPA6BvqXG3wAweRan4QJioYgEc1cePeC3g==}
     engines: {node: '>= 12'}
     peerDependencies:
       preact: '>=10 || ^10.0.0-alpha.0 || ^10.0.0-beta.0'
     dependencies:
       '@testing-library/dom': 8.16.0
-      preact: 10.6.2
+      preact: 10.24.3
     dev: true
 
   /@tootallnate/once@2.0.0:
@@ -3564,7 +3569,7 @@ packages:
       '@types/hoist-non-react-statics': 3.3.1
       '@types/react': 18.0.15
       hoist-non-react-statics: 3.3.2
-      redux: 4.2.0
+      redux: 4.2.1
     dev: true
 
   /@types/react@18.0.15:
@@ -3577,7 +3582,7 @@ packages:
   /@types/redux-mock-store@1.0.3:
     resolution: {integrity: sha512-Wqe3tJa6x9MxMN4DJnMfZoBRBRak1XTPklqj4qkVm5VBpZnC8PSADf4kLuFQ9NAdHaowfWoEeUMz7NWc2GMtnA==}
     dependencies:
-      redux: 4.2.0
+      redux: 4.2.1
     dev: true
 
   /@types/retry@0.12.0:
@@ -4947,7 +4952,6 @@ packages:
   /char-regex@1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
     engines: {node: '>=10'}
-    dev: true
 
   /chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
@@ -4994,7 +4998,7 @@ packages:
       normalize-path: 3.0.0
       readdirp: 3.6.0
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /chrome-trace-event@1.0.3:
@@ -5098,8 +5102,8 @@ packages:
     engines: {node: '>=0.8'}
     dev: true
 
-  /clsx@1.2.1:
-    resolution: {integrity: sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==}
+  /clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
     dev: false
 
@@ -5902,6 +5906,10 @@ packages:
     resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
     dev: true
 
+  /emojilib@2.4.0:
+    resolution: {integrity: sha512-5U0rVMU5Y2n2+ykNLQqMoqklN9ICBT/KsvC1Gz6vqHbz2AXXGkG+Pm5rMWk/8Vjrr/mY9985Hi8DYzn1F09Nyw==}
+    dev: false
+
   /emojis-list@3.0.0:
     resolution: {integrity: sha512-/kyM18EfinwXZbno9FyUGeFh87KC8HRQBQGildHZbEuRyWFOmv1U10o9BBp8XVZDVNNuQKyIGIu5ZYAAXJ0V2Q==}
     engines: {node: '>= 4'}
@@ -5940,14 +5948,14 @@ packages:
     hasBin: true
     dev: true
 
-  /enzyme-adapter-preact-pure@4.0.1(enzyme@3.11.0)(preact@10.6.2):
+  /enzyme-adapter-preact-pure@4.0.1(enzyme@3.11.0)(preact@10.24.3):
     resolution: {integrity: sha512-bNrUQhj/mHi5hmO0vV3PHfWi+fHAZ04Hrk09UBh1+L8Msm3ihJ2JshBhQg71wMpusNp03B19NPIXL+RSOCTWRg==}
     peerDependencies:
       enzyme: ^3.11.0
       preact: ^10.0.0
     dependencies:
       enzyme: 3.11.0
-      preact: 10.6.2
+      preact: 10.24.3
     dev: true
 
   /enzyme-shallow-equal@1.0.4:
@@ -6985,14 +6993,6 @@ packages:
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
     dev: true
-
-  /fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
-    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
-    os: [darwin]
-    requiresBuild: true
-    dev: true
-    optional: true
 
   /fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -8225,7 +8225,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /jest-haste-map@28.1.3:
@@ -8244,7 +8244,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /jest-leak-detector@28.1.3:
@@ -8922,6 +8922,7 @@ packages:
 
   /lodash@4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+    dev: true
 
   /log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
@@ -9306,10 +9307,14 @@ packages:
       tslib: 2.4.0
     dev: true
 
-  /node-emoji@1.11.0:
-    resolution: {integrity: sha512-wo2DpQkQp7Sjm2A0cq+sN7EHKO6Sl0ctXeBdFZrL9T9+UywORbufTcTZxom8YqpLQt/FqNMUkOpkZrJVYSKD3A==}
+  /node-emoji@2.1.3:
+    resolution: {integrity: sha512-E2WEOVsgs7O16zsURJ/eH8BqhF029wGpEOnv7Urwdo2wmQanOACwJQh0devF9D9RhoZru0+9JXIS0dBXIAz+lA==}
+    engines: {node: '>=18'}
     dependencies:
-      lodash: 4.17.21
+      '@sindresorhus/is': 4.6.0
+      char-regex: 1.0.2
+      emojilib: 2.4.0
+      skin-tone: 2.0.0
     dev: false
 
   /node-fetch@2.6.7:
@@ -10633,8 +10638,8 @@ packages:
       source-map-js: 1.2.1
     dev: true
 
-  /preact@10.6.2:
-    resolution: {integrity: sha512-ppDjurt75nSxyikpyali+uKwRl8CK9N6ntOPovGIEGQagjMLVzEgVqFEsUUyUrqyE9Ch90KE0jmFc9q2QcPLBA==}
+  /preact@10.24.3:
+    resolution: {integrity: sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==}
 
   /prelude-ls@1.1.2:
     resolution: {integrity: sha512-ESF23V4SKG6lVSGZgYNpbsiaAkdab6ZgOxe52p7+Kid3W3u3bxR4Vfd/o21dmN7jSt0IwgZ4v5MUd26FEtXE9w==}
@@ -10820,7 +10825,7 @@ packages:
       '@types/react': 18.0.15
       hoist-non-react-statics: 3.3.2
       intl-messageformat: 10.1.1
-      react: /@preact/compat@17.1.1(preact@10.6.2)
+      react: /@preact/compat@17.1.1(preact@10.24.3)
       tslib: 2.4.0
       typescript: 4.7.4
     dev: false
@@ -10835,15 +10840,15 @@ packages:
   /react-is@18.2.0:
     resolution: {integrity: sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==}
 
-  /react-redux@8.0.2(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.0):
-    resolution: {integrity: sha512-nBwiscMw3NoP59NFCXFf02f8xdo+vSHT/uZ1ldDwF7XaTpzm+Phk97VT4urYBl5TYAPNVaFm12UHAEyzkpNzRA==}
+  /react-redux@8.1.3(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.1):
+    resolution: {integrity: sha512-n0ZrutD7DaX/j9VscF+uTALI3oUPa/pO4Z3soOBIjuRn/FzVu6aehhysxZCLi6y7duMf52WNZGMl7CtuK5EnRw==}
     peerDependencies:
       '@types/react': ^16.8 || ^17.0 || ^18.0
       '@types/react-dom': ^16.8 || ^17.0 || ^18.0
       react: ^16.8 || ^17.0 || ^18.0
       react-dom: ^16.8 || ^17.0 || ^18.0
       react-native: '>=0.59'
-      redux: ^4
+      redux: ^4 || ^5.0.0-beta.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -10860,10 +10865,10 @@ packages:
       '@types/hoist-non-react-statics': 3.3.1
       '@types/use-sync-external-store': 0.0.3
       hoist-non-react-statics: 3.3.2
-      react: /@preact/compat@17.1.1(preact@10.6.2)
-      react-dom: /@preact/compat@17.1.1(preact@10.6.2)
+      react: /@preact/compat@17.1.1(preact@10.24.3)
+      react-dom: /@preact/compat@17.1.1(preact@10.24.3)
       react-is: 18.2.0
-      redux: 4.2.0
+      redux: 4.2.1
       use-sync-external-store: 1.2.0(@preact/compat@17.1.1)
     dev: false
 
@@ -10944,16 +10949,16 @@ packages:
       lodash.isplainobject: 4.0.6
     dev: true
 
-  /redux-thunk@2.4.1(redux@4.2.0):
-    resolution: {integrity: sha512-OOYGNY5Jy2TWvTL1KgAlVy6dcx3siPJ1wTq741EPyUKfn6W6nChdICjZwCd0p8AZBs5kWpZlbkXW2nE/zjUa+Q==}
+  /redux-thunk@2.4.2(redux@4.2.1):
+    resolution: {integrity: sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==}
     peerDependencies:
       redux: ^4
     dependencies:
-      redux: 4.2.0
+      redux: 4.2.1
     dev: false
 
-  /redux@4.2.0:
-    resolution: {integrity: sha512-oSBmcKKIuIR4ME29/AeNUnl5L+hvBq7OaJWzaptTQJAntaPvxIJqfnjbaEiCzzaIz+XmVILfqAM3Ob0aXLPfjA==}
+  /redux@4.2.1:
+    resolution: {integrity: sha512-LAUYz4lc+Do8/g7aeRa8JkyDErK6ekstQaqWQrNRW//MY1TvCEpMtpTWvlQ+FPbWCx+Xixu/6SHt5N0HR+SB4w==}
     dependencies:
       '@babel/runtime': 7.18.6
 
@@ -11447,6 +11452,13 @@ packages:
       nanospinner: 1.1.0
       picocolors: 1.0.0
     dev: true
+
+  /skin-tone@2.0.0:
+    resolution: {integrity: sha512-kUMbT1oBJCpgrnKoSr0o6wPtvRWT9W9UKvGLwfJYO2WuahZRHOpEyL1ckyMGgMWh0UdpmaoFqKKD29WTomNEGA==}
+    engines: {node: '>=8'}
+    dependencies:
+      unicode-emoji-modifier-base: 1.0.0
+    dev: false
 
   /slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
@@ -12527,6 +12539,11 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
+  /unicode-emoji-modifier-base@1.0.0:
+    resolution: {integrity: sha512-yLSH4py7oFH3oG/9K+XWrz1pSi3dfUrWEnInbxMfArOfc1+33BlGPQtLsOYwvdMy11AwUBetYuaRxSPqgkq+8g==}
+    engines: {node: '>=4'}
+    dev: false
+
   /unicode-match-property-ecmascript@2.0.0:
     resolution: {integrity: sha512-5kaZCrbp5mmbz5ulBkDkbY0SsPOjKqVS35VpL9ulMPfSl0J0Xsm+9Evphv9CoIZFwre7aJoa94AY6seMKGVN5Q==}
     engines: {node: '>=4'}
@@ -12604,7 +12621,7 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      react: /@preact/compat@17.1.1(preact@10.6.2)
+      react: /@preact/compat@17.1.1(preact@10.24.3)
     dev: false
 
   /util-deprecate@1.0.2:
