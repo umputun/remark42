@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
     paths:
+      - ".github/workflows/e2e-tests.yml"
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
       - "frontend/Dockerfile.e2e"
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches: [master]
     paths:
+      - ".github/workflows/e2e-tests.yml"
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
       - "frontend/Dockerfile.e2e"

@@ -5,14 +5,14 @@ on:
     branches:
     tags:
     paths:
-      - ".github/workflows/ci-test-backend.yml"
+      - ".github/workflows/ci-backend.yml"
       - "backend/**"
       - "!backend/scripts/**"
       - "!**.md"
   pull_request:
     types: [opened, reopened]
     paths:
-      - ".github/workflows/ci-test-backend.yml"
+      - ".github/workflows/ci-backend.yml"
       - "backend/**"
       - "!backend/scripts/**"
       - "!**.md"
@@ -33,6 +33,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
+          cache-dependency-path: backend
 
       - name: test and build backend
         run: |
