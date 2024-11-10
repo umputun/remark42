@@ -35,7 +35,7 @@ jobs:
         uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -79,7 +79,7 @@ jobs:
         uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -123,7 +123,7 @@ jobs:
         uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -161,7 +161,7 @@ jobs:
         uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - name: Check bundle size
@@ -191,7 +191,7 @@ jobs:
         uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - name: Get pnpm store directory
