@@ -39,15 +39,15 @@ race_test:
 	cd backend/app && go test -race -timeout=60s -count 1 ./...
 
 backend:
-	docker-compose -f compose-dev-backend.yml build
+	docker compose -f compose-dev-backend.yml build
 
 frontend:
-	docker-compose -f compose-dev-frontend.yml build
+	docker compose -f compose-dev-frontend.yml build
 
 rundev:
 	SKIP_BACKEND_TEST=true SKIP_FRONTEND_TEST=true GITHUB_REF=$(GITHUB_REF) GITHUB_SHA=$(GITHUB_SHA) CI=true \
-		docker-compose -f compose-private.yml build
-	docker-compose -f compose-private.yml up
+		docker compose -f compose-private.yml build
+	docker compose -f compose-private.yml up
 
 e2e:
 	docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests

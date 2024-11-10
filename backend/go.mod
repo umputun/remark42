@@ -1,11 +1,13 @@
 module github.com/umputun/remark42/backend
 
-go 1.21
+go 1.23
+
+toolchain go1.23.3
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
-	github.com/PuerkitoBio/goquery v1.9.2
-	github.com/alecthomas/chroma/v2 v2.13.0
+	github.com/PuerkitoBio/goquery v1.10.0
+	github.com/alecthomas/chroma/v2 v2.14.0
 	github.com/didip/tollbooth/v7 v7.0.2
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 	github.com/go-chi/chi/v5 v5.1.0
@@ -15,8 +17,8 @@ require (
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.11.1
-	github.com/go-pkgz/notify v1.1.1
-	github.com/go-pkgz/repeater v1.1.3
+	github.com/go-pkgz/notify v1.2.0
+	github.com/go-pkgz/repeater v1.2.0
 	github.com/go-pkgz/rest v1.19.0
 	github.com/go-pkgz/syncs v1.3.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -26,15 +28,15 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/kyokomi/emoji/v2 v2.2.13
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/rs/xid v1.5.0
+	github.com/rs/xid v1.6.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/stretchr/testify v1.9.0
-	go.etcd.io/bbolt v1.3.10
+	go.etcd.io/bbolt v1.3.11
 	go.uber.org/goleak v1.3.0
-	golang.org/x/crypto v0.25.0
-	golang.org/x/image v0.18.0
-	golang.org/x/net v0.27.0
+	golang.org/x/crypto v0.27.0
+	golang.org/x/image v0.22.0
+	golang.org/x/net v0.29.0
 )
 
 require (
@@ -60,15 +62,15 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/redis/go-redis/v9 v9.4.0 // indirect
 	github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d // indirect
-	github.com/slack-go/slack v0.12.5 // indirect
+	github.com/slack-go/slack v0.14.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.mongodb.org/mongo-driver v1.16.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/sync v0.9.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -865,7 +865,6 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 	// get list of commentID for all user's comment
 	comments := []commentInfo{}
 	for _, postInfo := range posts {
-		postInfo := postInfo
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))

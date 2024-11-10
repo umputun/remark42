@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [ 16 ]
 
     steps:
       - name: Checkout
@@ -32,7 +32,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -44,7 +44,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [ 16 ]
 
     steps:
       - name: Checkout
@@ -76,7 +76,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -88,7 +88,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [ 16 ]
 
     steps:
       - name: Checkout
@@ -120,7 +120,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -132,7 +132,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -147,7 +147,9 @@ jobs:
         run: pnpm coverage:api
         working-directory: ./frontend
 
-      - name: Submit coverage
-        run: ${{ github.workspace }}/frontend/apps/remark42/node_modules/.bin/codecov
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          working-directory: ./frontend
+          codecov_yml_path: ./frontend/apps/remark42/codecov.yml

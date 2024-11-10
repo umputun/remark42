@@ -131,13 +131,16 @@ func (t *Telegram) Send(ctx context.Context, destination, text string) error {
 
 // TelegramSupportedHTML returns HTML with only tags allowed in Telegram HTML message payload, also trims ending newlines
 //
-// https://core.telegram.org/bots/api#html-style
+// https://core.telegram.org/bots/api#html-style, https://core.telegram.org/api/entities#allowed-entities
 func TelegramSupportedHTML(htmlText string) string {
 	adjustedHTMLText := adjustHTMLTags(htmlText)
 	p := bluemonday.NewPolicy()
-	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre")
+	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre", "tg-spoiler", "tg-emoji", "blockquote")
 	p.AllowAttrs("href").OnElements("a")
 	p.AllowAttrs("class").OnElements("code")
+	p.AllowAttrs("title").OnElements("tg-spoiler")
+	p.AllowAttrs("emoji-id").OnElements("tg-emoji")
+	p.AllowAttrs("language").OnElements("pre")
 	return strings.TrimRight(p.Sanitize(adjustedHTMLText), "\n")
 }
 

@@ -227,7 +227,6 @@ func Test_URLKey(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -252,7 +251,6 @@ func Test_URLKeyWithUser(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -279,7 +277,6 @@ func TestRest_parseError(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			res := parseError(tt.err, rest.ErrInternal)
 			assert.Equal(t, tt.res, res)
@@ -302,7 +299,6 @@ func TestRest_cacheControl(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.url, http.NoBody)
 			w := httptest.NewRecorder()
@@ -345,6 +341,31 @@ func TestRest_frameAncestors(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
 }
 
+// check CSP, img-src should be 'self' with proxy enabled and * without it
+func TestRest_securityHeaders(t *testing.T) {
+	ts, _, teardown := startupT(t)
+
+	// with proxy disabled
+	client := http.Client{}
+	resp, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src *;")
+	teardown()
+
+	// check CSP with proxy enabled
+	ts, _, teardown = startupT(t, func(srv *Rest) {
+		srv.ExternalImageProxy = true
+	})
+	defer teardown()
+	resp, err = client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src 'self';")
+}
+
 func TestRest_subscribersOnly(t *testing.T) {
 	paidSubUser := &token.User{}
 	paidSubUser.SetPaidSub(true)
@@ -363,7 +384,6 @@ func TestRest_subscribersOnly(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			if tt.setUser {

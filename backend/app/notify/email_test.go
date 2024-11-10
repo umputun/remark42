@@ -88,7 +88,6 @@ func Test_initTemplatesErr(t *testing.T) {
 	}
 
 	for _, d := range testSet {
-		d := d
 		t.Run(d.name, func(t *testing.T) {
 			e, err := NewEmail(d.emailParams, ntf.SMTPParams{})
 			require.Error(t, err)

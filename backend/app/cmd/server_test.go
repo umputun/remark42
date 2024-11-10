@@ -457,6 +457,8 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--notify.telegram.token=abcd",
 		"--notify.telegram.timeout=3m",
 		"--notify.telegram.api=http://example.org",
+		"--auth.twitter.cid=123",
+		"--auth.twitter.csec=456",
 	}
 	assert.Empty(t, s.SMTP.Host)
 	assert.Empty(t, s.SMTP.Port)
@@ -482,6 +484,8 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
 			{Old: "notify.telegram.api", Version: "1.9"},
+			{Old: "auth.twitter.cid", Version: "1.14"},
+			{Old: "auth.twitter.csec", Version: "1.14"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
@@ -697,7 +701,6 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 
 	cmd := ServerCommand{}
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.res, cmd.parseSameSite(tt.inp))
 		})

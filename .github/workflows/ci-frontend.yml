@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -32,7 +32,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -44,7 +44,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -76,7 +76,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -88,7 +88,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -120,7 +120,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -132,7 +132,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -158,14 +158,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
           run_install: false
 
       - name: Check bundle size
-        uses: andresz1/size-limit-action@7313b26c76b3666c1dc41e2ca05370e201a9b7de
+        uses: andresz1/size-limit-action@94bc357df29c36c8f8d50ea497c3e225c3c95d1d
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           directory: ./frontend/apps/remark42
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [16.20.2]
+        node: [16]
 
     steps:
       - name: Checkout
@@ -188,7 +188,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
+        uses: pnpm/action-setup@v4.0.0
         id: pnpm-install
         with:
           version: 7
@@ -200,7 +200,7 @@ jobs:
           echo "::set-output name=pnpm_cache_dir::$(pnpm store path)"
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -215,7 +215,9 @@ jobs:
         run: pnpm coverage
         working-directory: ./frontend/apps/remark42
 
-      - name: Submit coverage
-        run: ${{ github.workspace }}/frontend/apps/remark42/node_modules/.bin/codecov
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          working-directory: ./frontend/apps/remark42
+          codecov_yml_path: ./frontend/apps/remark42/codecov.yml

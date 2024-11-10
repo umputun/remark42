@@ -93,8 +93,6 @@ services:
 | auth.microsoft.csec            | AUTH_MICROSOFT_CSEC            |                         | Microsoft OAuth client secret                            |
 | auth.github.cid                | AUTH_GITHUB_CID                |                         | GitHub OAuth client ID                                   |
 | auth.github.csec               | AUTH_GITHUB_CSEC               |                         | GitHub OAuth client secret                               |
-| auth.twitter.cid               | AUTH_TWITTER_CID               |                         | Twitter Consumer API Key                                 |
-| auth.twitter.csec              | AUTH_TWITTER_CSEC              |                         | Twitter Consumer API Secret key                          |
 | auth.patreon.cid               | AUTH_PATREON_CID               |                         | Patreon OAuth Client ID                                  |
 | auth.patreon.csec              | AUTH_PATREON_CSEC              |                         | Patreon OAuth Client Secret                              |
 | auth.discord.cid               | AUTH_DISCORD_CID               |                         | Discord OAuth Client ID                                  |
@@ -156,7 +154,7 @@ services:
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | minimized UI with basic info only                        |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
-| allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments            |
+| allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |
 | port                           | REMARK_PORT                    | `8080`                  | web server port                                          |
 | web-root                       | REMARK_WEB_ROOT                | `./web`                 | web server root directory                                |
@@ -192,6 +190,8 @@ The following list of command-line options is deprecated and might be removed in
 | notify.email.notify_admin | notify.admins=email | NOTIFY_EMAIL_ADMIN | NOTIFY_ADMINS=email | |     | 1.9.0               |
 | notify.telegram.token | telegram.token | NOTIFY_TELEGRAM_TOKEN | TELEGRAM_TOKEN | | Telegram token | 1.9.0               |
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | | Telegram timeout | 1.9.0     |
+| auth.twitter.cid    | none        | AUTH_TWITTER_CID      | none         |        | Twitter Consumer API Key | 1.14.0     |                                  |
+| auth.twitter.csec   | none        | AUTH_TWITTER_CSEC     | none         |     | Twitter Consumer API Secret key | 1.14.0 |                           |
 
 </details>
 

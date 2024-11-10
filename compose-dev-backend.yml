@@ -2,8 +2,8 @@
 # starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
 # UI on http://127.0.0.1:8080/web
 #
-# build remark42 docker image - docker-compose -f compose-dev-backend.yml build
-# start remark42 service - docker-compose -f compose-dev-backend.yml up
+# build remark42 docker image - docker compose -f compose-dev-backend.yml build
+# start remark42 service - docker compose -f compose-dev-backend.yml up
 version: "2"
 
 services:
@@ -66,8 +66,6 @@ services:
       - AUTH_GITHUB_CSEC=1111
       - AUTH_FACEBOOK_CID=1111
       - AUTH_FACEBOOK_CSEC=1111
-      - AUTH_TWITTER_CID=1111
-      - AUTH_TWITTER_CSEC=1111
       - AUTH_PATREON_CID=1111
       - AUTH_PATREON_CSEC=1111
       - AUTH_DISCORD_CID=1111

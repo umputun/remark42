@@ -41,7 +41,7 @@ below to have your translation available to all remark42 users and included in t
 
     1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs) and replace `ru` with your translation language code
     2.  [Run remark42 in Docker](https://github.com/umputun/remark42#development) by issuing the following commands from the root directory of your remark42 fork:
-        `shell docker-compose -f compose-dev-frontend.yml build docker-compose -f compose-dev-frontend.yml up `
+        `shell docker compose -f compose-dev-frontend.yml build docker compose -f compose-dev-frontend.yml up `
 
     3.  open <http://127.0.0.1:8080/web/>, log in, make a comment, make a reply to a comment, and make sure your translation looks as you expect it to look
     4.  make a screenshot from <http://127.0.0.1:8080> with your translation in place

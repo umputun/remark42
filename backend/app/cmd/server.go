@@ -85,7 +85,7 @@ type ServerCommand struct {
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
-	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments" env-delim:","`
+	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors''" env-delim:","`
 	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
 	DisableSignature           bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
 	DisableFancyTextFormatting bool          `long:"disable-fancy-text-formatting" env:"DISABLE_FANCY_TEXT_FORMATTING" description:"disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc)"`
@@ -105,7 +105,7 @@ type ServerCommand struct {
 		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
@@ -314,6 +314,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
 	resetEnv(
 		"SECRET",
+		"AUTH_APPLE_KID",
 		"AUTH_GOOGLE_CSEC",
 		"AUTH_GITHUB_CSEC",
 		"AUTH_FACEBOOK_CSEC",
@@ -407,6 +408,12 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	}
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	}
+	if s.Auth.Twitter.CID != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
+	}
+	if s.Auth.Twitter.CSEC != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
 	}
 	return append(result, s.findDeprecatedFlagsCollisions()...)
 }

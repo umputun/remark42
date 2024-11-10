@@ -14,7 +14,7 @@ This documentation describes how to enable the email-related capabilities of Rem
 
 - email notifications for any users except anonymous:
 
-  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
+  GitHub or Google or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
 
   ![Email notifications subscription](images/email_notifications.png)
 
@@ -201,7 +201,7 @@ Now we have the following templates:
 - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
 
-To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside docker-compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
+To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside Docker Compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
 
 ```yaml
 volumes:

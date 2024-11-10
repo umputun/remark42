@@ -4,13 +4,13 @@ cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma/v2 v2.0.0
 ## explicit; go 1.18
 github.com/Depado/bfchroma/v2
-# github.com/PuerkitoBio/goquery v1.9.2
-## explicit; go 1.18
+# github.com/PuerkitoBio/goquery v1.10.0
+## explicit; go 1.23
 github.com/PuerkitoBio/goquery
 # github.com/ajg/form v1.5.1
 ## explicit
 github.com/ajg/form
-# github.com/alecthomas/chroma/v2 v2.13.0
+# github.com/alecthomas/chroma/v2 v2.14.0
 ## explicit; go 1.19
 github.com/alecthomas/chroma/v2
 github.com/alecthomas/chroma/v2/formatters/html
@@ -90,11 +90,11 @@ github.com/go-pkgz/lcw/v2/eventbus
 # github.com/go-pkgz/lgr v0.11.1
 ## explicit; go 1.20
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v1.1.1
+# github.com/go-pkgz/notify v1.2.0
 ## explicit; go 1.21
 github.com/go-pkgz/notify
-# github.com/go-pkgz/repeater v1.1.3
-## explicit; go 1.12
+# github.com/go-pkgz/repeater v1.2.0
+## explicit; go 1.20
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/rest v1.19.0
@@ -173,8 +173,8 @@ github.com/redis/go-redis/v9/internal/util
 # github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d
 ## explicit; go 1.21
 github.com/rrivera/identicon
-# github.com/rs/xid v1.5.0
-## explicit; go 1.12
+# github.com/rs/xid v1.6.0
+## explicit; go 1.16
 github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
@@ -184,7 +184,7 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.12.5
+# github.com/slack-go/slack v0.14.0
 ## explicit; go 1.16
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -207,8 +207,8 @@ github.com/xdg-go/stringprep
 # github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 ## explicit; go 1.17
 github.com/youmark/pkcs8
-# go.etcd.io/bbolt v1.3.10
-## explicit; go 1.21
+# go.etcd.io/bbolt v1.3.11
+## explicit; go 1.22
 go.etcd.io/bbolt
 # go.mongodb.org/mongo-driver v1.16.0
 ## explicit; go 1.18
@@ -264,18 +264,18 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.25.0
+# golang.org/x/crypto v0.27.0
 ## explicit; go 1.20
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/image v0.18.0
+# golang.org/x/image v0.22.0
 ## explicit; go 1.18
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.27.0
+# golang.org/x/net v0.29.0
 ## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -297,16 +297,16 @@ golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 golang.org/x/oauth2/microsoft
 golang.org/x/oauth2/yandex
-# golang.org/x/sync v0.7.0
+# golang.org/x/sync v0.9.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.22.0
+# golang.org/x/sys v0.25.0
 ## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.16.0
+# golang.org/x/text v0.20.0
 ## explicit; go 1.18
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform

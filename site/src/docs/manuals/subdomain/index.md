@@ -8,16 +8,16 @@ All documentation examples show configurations with remark42 on its own subdomai
 
 - The frontend URL looks like this: `s.src = 'https://example.com/remark42/web/embed.js;`
 
-- The backend `REMARK_URL` parameter will be `https://example.com/remark42`
+- The backend `REMARK_URL` parameter will be `https://example.com/remark42`. `ALLOWED_HOSTS="'self'"` and `AUTH_SAME_SITE=strict` to make comments work only from the same domain.
 
-- And you also need to slightly modify the callback URL for the social media login API's:
+- And you also need to slightly modify the callback URL for the social media login APIs:
   - Facebook Valid OAuth Redirect URIs: `https://example.com/remark42/auth/facebook/callback`
   - Google Authorized redirect URIs: `https://example.com/remark42/auth/google/callback`
   - GitHub Authorised callback URL: `https://example.com/remark42/auth/github/callback`
 
-### docker-compose configuration
+### Docker Compose configuration
 
-Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in docker-compose.
+Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in Docker Compose configuration file.
 
 Example `docker-compose.yml`:
 
