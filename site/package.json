@@ -10,7 +10,7 @@
 		"node": ">=20.11.1",
 		"yarn": ">=1.22"
 	},
-  "packageManager": "yarn@1.22.22",
+	"packageManager": "yarn@1.22.22",
 	"scripts": {
 		"start": "npm-run-all dev",
 		"dev": "npm-run-all -l clean build:css -p dev:css dev:11ty",
