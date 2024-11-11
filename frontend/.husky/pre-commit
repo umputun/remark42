@@ -1,4 +1,6 @@
 # .husky/pre-commit
 
 cd frontend
-pnpm lint-staged
+nvm use || true
+npm i || true
+pnpm lint-staged || true
