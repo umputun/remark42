@@ -6,7 +6,7 @@ module.exports = async function getLatestReleaseVersion() {
 		return currentData
 	}
 	try {
-		const fetch = await import('node-fetch')
+		const fetch = (await import('node-fetch')).default;
 		const res = await fetch(
 			'https://api.github.com/repos/umputun/remark42/releases'
 		)

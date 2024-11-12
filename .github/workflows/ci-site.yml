@@ -32,7 +32,7 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
-      - name: build and deploy master image to ghcr.io and dockerhub
+      - name: build and deploy master image to ghcr.io
         if: ${{ github.ref == 'refs/heads/master' }}
         env:
           GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
@@ -44,10 +44,10 @@ jobs:
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo GITHUB_REF - $ref
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64 \
+          docker buildx build --push --no-cache --platform linux/amd64,linux/arm64 \
             -t ghcr.io/umputun/remark42-site:${ref} .
 
-      - name: deploy tagged (latest) to ghcr.io and dockerhub
+      - name: deploy tagged (latest) to ghcr.io
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
@@ -59,7 +59,7 @@ jobs:
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo "GITHUB_REF=$ref, GITHUB_SHA=${GITHUB_SHA}"
           echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64 \
+          docker buildx build --push --no-cache --platform linux/amd64,linux/arm64 \
             -t ghcr.io/umputun/remark42-site:${ref} -t ghcr.io/umputun/remark42-site:latest .
 
       - name: remote site deployment from master

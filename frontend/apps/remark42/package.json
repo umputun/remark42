@@ -22,9 +22,10 @@
     "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {
-    "node": ">=16.15 <=17.*",
-    "pnpm": "7.*"
+    "node": ">=16.15 <=22.*",
+    "pnpm": "8.*"
   },
+  "packageManager": "pnpm@8.15.9",
   "dependencies": {
     "@github/markdown-toolbar-element": "^2.1.1",
     "@github/text-expander-element": "^2.2.2",
