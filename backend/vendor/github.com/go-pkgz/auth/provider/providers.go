@@ -265,3 +265,29 @@ func NewPatreon(p Params) Oauth2Handler {
 		},
 	})
 }
+
+// NewDiscord makes discord oauth2 provider
+func NewDiscord(p Params) Oauth2Handler {
+	return initOauth2Handler(p, Oauth2Handler{
+		name: "discord",
+		// see https://discord.com/developers/docs/topics/oauth2
+		endpoint: oauth2.Endpoint{
+			AuthURL:  "https://discord.com/oauth2/authorize",
+			TokenURL: "https://discord.com/api/oauth2/token",
+		},
+		infoURL: "https://discord.com/api/v10/users/@me",
+		scopes:  []string{"identify"},
+		mapUser: func(data UserData, _ []byte) token.User {
+			userInfo := token.User{
+				ID:      "discord_" + token.HashID(sha1.New(), data.Value("id")),
+				Name:    data.Value("username"),
+				Picture: fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.webp", data.Value("id"), data.Value("avatar")),
+			}
+
+			for k, v := range p.UserAttributes {
+				userInfo.SetStrAttr(v, data.Value(k))
+			}
+			return userInfo
+		},
+	})
+}

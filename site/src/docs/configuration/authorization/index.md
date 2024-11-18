@@ -105,6 +105,13 @@ For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/con
 3. In the field **Redirect URIs** enter the correct URI constructed as domain + `/auth/patreon/callback`, i.e., `https://example.mysite.com/auth/patreon/callback`
 4. Expand client details and note the **Client ID** and **Client Secret**. Those will be used as `AUTH_PATREON_CID` and `AUTH_PATREON_CSEC`
 
+### Discord Auth Provider
+
+1. Click on **New Application** to create Oauth client https://discord.com/developers/applications
+2. After filling **"NAME"**, navigate to **"OAuth2"** option on the left sidebar
+3. Under **"Redirects"** enter the correct url constructed as domain + `/auth/discord/callback`. ie `https://remark42.mysite.com/auth/discord/callback`
+4. Take note of the **CLIENT ID** and **CLIENT SECRET**, as they are values for `AUTH_DISCORD_CID` and `AUTH_DISCORD_CSEC` respectively
+
 ### Telegram
 
 1. Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your bot (call it, for example, "My site auth bot")

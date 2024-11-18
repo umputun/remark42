@@ -79,7 +79,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 10+1, len(providers), "extra auth provider")
+	require.Equal(t, 11+1, len(providers), "extra auth provider")
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -807,6 +807,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Microsoft.CSEC, cmd.Auth.Microsoft.CID = "csec", "cid"
 	cmd.Auth.Twitter.CSEC, cmd.Auth.Twitter.CID = "csec", "cid"
 	cmd.Auth.Patreon.CSEC, cmd.Auth.Patreon.CID = "csec", "cid"
+	cmd.Auth.Discord.CSEC, cmd.Auth.Discord.CID = "csec", "cid"
 	cmd.Auth.Telegram = true
 	cmd.Telegram.Token = "token"
 	cmd.Auth.Email.Enable = true
