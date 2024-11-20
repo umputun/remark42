@@ -21,6 +21,10 @@ services:
     #  - "80:8080"
     #  - "443:8443"
 
+    # uncomment to expose to reverse proxy running on the same host but not in docker
+    #ports:
+    #  - "127.0.0.1:8080:8080"
+
     environment:
       - REMARK_URL
       - SECRET
