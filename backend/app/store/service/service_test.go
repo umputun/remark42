@@ -213,7 +213,6 @@ func TestService_Put(t *testing.T) {
 	assert.Equal(t, "https://radio-t.com", got.Locator.URL, "should be unaltered")
 	assert.Equal(t, "radio-t", got.Locator.SiteID, "should be unaltered")
 	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local), got.Timestamp, "should be unaltered")
-
 }
 
 func TestService_SetTitle(t *testing.T) {

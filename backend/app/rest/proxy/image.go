@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,12 +23,14 @@ import (
 // Image extracts image src from comment's html and provides proxy for them
 // this is needed to keep remark42 running behind of HTTPS serve all images via https
 type Image struct {
-	RemarkURL     string
-	RoutePath     string
-	HTTP2HTTPS    bool
-	CacheExternal bool
-	Timeout       time.Duration
-	ImageService  *image.Service
+	RemarkURL            string
+	RoutePath            string
+	Blacklist            []string
+	HTTP2HTTPS           bool
+	CacheExternal        bool
+	Timeout              time.Duration
+	ImageService         *image.Service
+	AllowPrivateNetworks bool
 }
 
 // Convert img src links to proxied links depends on enabled options
@@ -87,6 +91,19 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	imgURL := string(src)
+
+	// Check if the URL is blacklisted
+	if p.isBlacklisted(imgURL) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("blacklisted URL"), "URL is blacklisted", rest.ErrAssetNotFound)
+		return
+	}
+
+	// Check for private network access
+	if !p.AllowPrivateNetworks && isPrivateURL(imgURL) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("private network access not allowed"), "private network access not allowed", rest.ErrAssetNotFound)
+		return
+	}
+
 	var img []byte
 	imgID, err := image.CachedImgID(imgURL)
 	if err != nil {
@@ -179,4 +196,35 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		return nil, fmt.Errorf("unable to read image body")
 	}
 	return imgData, nil
+}
+
+// isBlacklisted checks if the given URL matches any blacklisted domain, IP, or CIDR
+func (p Image) isBlacklisted(urlStr string) bool {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+
+	host := parsedURL.Hostname()
+	ip := net.ParseIP(host)
+
+	for _, item := range p.Blacklist {
+		// Check for IP address
+		if ip != nil && item == ip.String() {
+			return true
+		}
+
+		// Check for exact domain match or proper subdomain
+		if host == item || (strings.HasSuffix(host, "."+item) && len(host) > len(item)+1) {
+			return true
+		}
+
+		// Check for CIDR
+		_, ipNet, err := net.ParseCIDR(item)
+		if err == nil && ip != nil && ipNet.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
 }
