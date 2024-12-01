@@ -6,7 +6,7 @@ require (
 	github.com/go-pkgz/jrpc v0.3.0
 	github.com/go-pkgz/lgr v0.11.1
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/umputun/remark42/backend v1.1000.0
 )
 
