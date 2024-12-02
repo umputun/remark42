@@ -253,6 +253,15 @@ describe('<Auth/>', () => {
     expect(input).toHaveValue(expected);
   });
 
+  it('should show error when no auth providers are configured', () => {
+    StaticStore.config.auth_providers = [];
+
+    const { container } = render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign In'));
+    expect(container.querySelector('.auth-error')).toBeInTheDocument();
+  });
+
   describe('OAuth providers', () => {
     it('should not set user if unauthorized', async () => {
       StaticStore.config.auth_providers = ['google'];
