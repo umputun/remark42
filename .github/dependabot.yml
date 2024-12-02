@@ -20,13 +20,6 @@ updates:
     groups:
       "Go modules updates":
         dependency-type: "production"
-  - package-ecosystem: "gomod"
-    directory: "/backend/_example/memory_store"
-    schedule:
-      interval: "monthly"
-    groups:
-      "Go modules updates":
-        dependency-type: "production"
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
