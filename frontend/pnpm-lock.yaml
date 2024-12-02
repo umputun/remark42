@@ -21,23 +21,23 @@ importers:
   apps/remark42:
     dependencies:
       '@github/markdown-toolbar-element':
-        specifier: ^2.1.1
-        version: 2.1.1
+        specifier: ^2.2.3
+        version: 2.2.3
       '@github/text-expander-element':
-        specifier: ^2.2.2
-        version: 2.2.2
+        specifier: ^2.8.0
+        version: 2.8.0
       '@ungap/custom-elements':
-        specifier: ^1.1.0
-        version: 1.1.0
+        specifier: ^1.3.0
+        version: 1.3.0
       bem-react-helper:
         specifier: ^1.2.2
         version: 1.2.2
       clsx:
-        specifier: ^1.1.1
-        version: 1.2.1
+        specifier: ^2.1.1
+        version: 2.1.1
       core-js:
-        specifier: ^3.23.3
-        version: 3.23.4
+        specifier: ^3.39.0
+        version: 3.39.0
       intersection-observer:
         specifier: ^0.12.2
         version: 0.12.2
@@ -45,29 +45,29 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       node-emoji:
-        specifier: ^1.11.0
-        version: 1.11.0
+        specifier: ^2.1.3
+        version: 2.1.3
       preact:
-        specifier: 10.6.2
-        version: 10.6.2
+        specifier: 10.25.0
+        version: 10.25.0
       react:
         specifier: npm:@preact/compat@^17.1.1
-        version: /@preact/compat@17.1.1(preact@10.6.2)
+        version: /@preact/compat@17.1.1(preact@10.25.0)
       react-dom:
         specifier: npm:@preact/compat@^17.1.1
-        version: /@preact/compat@17.1.1(preact@10.6.2)
+        version: /@preact/compat@17.1.1(preact@10.25.0)
       react-intl:
-        specifier: ^6.0.4
-        version: 6.0.5(@preact/compat@17.1.1)(typescript@4.7.4)
+        specifier: ^7.0.1
+        version: 7.0.1(@preact/compat@17.1.1)(typescript@4.7.4)
       react-redux:
-        specifier: ^8.0.2
-        version: 8.0.2(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.0)
+        specifier: ^9.1.2
+        version: 9.1.2(@preact/compat@17.1.1)(redux@5.0.1)
       redux:
-        specifier: ^4.2.0
-        version: 4.2.0
+        specifier: ^5.0.1
+        version: 5.0.1
       redux-thunk:
-        specifier: ^2.4.1
-        version: 2.4.1(redux@4.2.0)
+        specifier: ^3.1.0
+        version: 3.1.0(redux@5.0.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.18.6
@@ -95,10 +95,10 @@ importers:
         version: 0.4.3
       '@prefresh/core':
         specifier: ^1.3.4
-        version: 1.3.4(preact@10.6.2)
+        version: 1.3.4(preact@10.25.0)
       '@prefresh/webpack':
         specifier: ^3.3.4
-        version: 3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.6.2)(webpack@5.73.0)
+        version: 3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.25.0)(webpack@5.73.0)
       '@size-limit/file':
         specifier: ^7.0.8
         version: 7.0.8(size-limit@7.0.8)
@@ -113,10 +113,10 @@ importers:
         version: 5.16.4
       '@testing-library/preact':
         specifier: ^3.2.2
-        version: 3.2.2(preact@10.6.2)
+        version: 3.2.2(preact@10.25.0)
       '@testing-library/preact-hooks':
         specifier: ^1.1.0
-        version: 1.1.0(@testing-library/preact@3.2.2)(preact@10.6.2)
+        version: 1.1.0(@testing-library/preact@3.2.2)(preact@10.25.0)
       '@types/enzyme':
         specifier: ^3.10.12
         version: 3.10.12
@@ -133,8 +133,8 @@ importers:
         specifier: ^18.0.1
         version: 18.0.3
       '@types/node-emoji':
-        specifier: ^1.8.1
-        version: 1.8.1
+        specifier: ^2.1.0
+        version: 2.1.0
       '@types/react-redux':
         specifier: ^7.1.24
         version: 7.1.24
@@ -185,7 +185,7 @@ importers:
         version: 3.11.0
       enzyme-adapter-preact-pure:
         specifier: ^4.0.1
-        version: 4.0.1(enzyme@3.11.0)(preact@10.6.2)
+        version: 4.0.1(enzyme@3.11.0)(preact@10.25.0)
       eslint:
         specifier: ^8.18.0
         version: 8.19.0
@@ -1737,6 +1737,7 @@ packages:
     engines: {node: '>=6.9.0'}
     dependencies:
       regenerator-runtime: 0.13.9
+    dev: true
 
   /@babel/template@7.18.6:
     resolution: {integrity: sha512-JoDWzPe+wgBsTTgdnIma3iHNFC7YVJoPssVBDjiHfNlyt4YcunDtcDOUmfVDfCK5MfdsaIoX9PkijPhjH3nYUw==}
@@ -2204,71 +2205,53 @@ packages:
         optional: true
     dev: true
 
-  /@formatjs/ecma402-abstract@1.11.8:
-    resolution: {integrity: sha512-fgLqyWlwmTEuqV/TSLEL/t9JOmHNLFvCdgzXB0jc2w+WOItPCOJ1T0eyN6fQBQKRPfSqqNlu+kWj7ijcOVTVVQ==}
+  /@formatjs/ecma402-abstract@2.2.4:
+    resolution: {integrity: sha512-lFyiQDVvSbQOpU+WFd//ILolGj4UgA/qXrKeZxdV14uKiAUiPAtX6XAn7WBCRi7Mx6I7EybM9E5yYn4BIpZWYg==}
     dependencies:
-      '@formatjs/intl-localematcher': 0.2.28
-      tslib: 2.4.0
+      '@formatjs/fast-memoize': 2.2.3
+      '@formatjs/intl-localematcher': 0.5.8
+      tslib: 2.8.1
     dev: false
 
-  /@formatjs/fast-memoize@1.2.4:
-    resolution: {integrity: sha512-9ARYoLR8AEzXvj2nYrOVHY/h1dDMDWGTnKDLXSISF1uoPakSmfcZuSqjiqZX2wRkEUimPxdwTu/agyozBtZRHA==}
+  /@formatjs/fast-memoize@2.2.3:
+    resolution: {integrity: sha512-3jeJ+HyOfu8osl3GNSL4vVHUuWFXR03Iz9jjgI7RwjG6ysu/Ymdr0JRCPHfF5yGbTE6JCrd63EpvX1/WybYRbA==}
     dependencies:
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: false
 
-  /@formatjs/icu-messageformat-parser@2.1.4:
-    resolution: {integrity: sha512-3PqMvKWV1oyok0BuiXUAHIaotdhdTJw6OICqCZbfUgKT+ZRwRWO4IlCgvXJeCITaKS5p+PY0XXKjf/vUyIpWjQ==}
+  /@formatjs/icu-messageformat-parser@2.9.4:
+    resolution: {integrity: sha512-Tbvp5a9IWuxUcpWNIW6GlMQYEc4rwNHR259uUFoKWNN1jM9obf9Ul0e+7r7MvFOBNcN+13K7NuKCKqQiAn1QEg==}
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/icu-skeleton-parser': 1.3.10
-      tslib: 2.4.0
+      '@formatjs/ecma402-abstract': 2.2.4
+      '@formatjs/icu-skeleton-parser': 1.8.8
+      tslib: 2.8.1
     dev: false
 
-  /@formatjs/icu-skeleton-parser@1.3.10:
-    resolution: {integrity: sha512-kXJmtLDqFF5aLTf8IxdJXnhrIX1Qb4Qp3a9jqRecGDYfzOa9hMhi9U0nKyhrJJ4cXxBzptcgb+LWkyeHL6nlBQ==}
+  /@formatjs/icu-skeleton-parser@1.8.8:
+    resolution: {integrity: sha512-vHwK3piXwamFcx5YQdCdJxUQ1WdTl6ANclt5xba5zLGDv5Bsur7qz8AD7BevaKxITwpgDeU0u8My3AIibW9ywA==}
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      tslib: 2.4.0
+      '@formatjs/ecma402-abstract': 2.2.4
+      tslib: 2.8.1
     dev: false
 
-  /@formatjs/intl-displaynames@6.0.3:
-    resolution: {integrity: sha512-Mxh6W1VOlmiEvO/QPBrBQHlXrIn5VxjJWyyEI0V7ZHNGl0ee8AjSlq7vIJG8GodRJqGUuutF6N3OB/6qFv0YWg==}
+  /@formatjs/intl-localematcher@0.5.8:
+    resolution: {integrity: sha512-I+WDNWWJFZie+jkfkiK5Mp4hEDyRSEvmyfYadflOno/mmKJKcB17fEpEH0oJu/OWhhCJ8kJBDz2YMd/6cDl7Mg==}
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/intl-localematcher': 0.2.28
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: false
 
-  /@formatjs/intl-listformat@7.0.3:
-    resolution: {integrity: sha512-ampNLRGZl/08epHa3i5sRmcHGLneC6JrknexbbgnexYFNSmJ6AbL/dCzgrQzw2Efl+5AZK7UbNFxcDYY3RePvw==}
-    dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/intl-localematcher': 0.2.28
-      tslib: 2.4.0
-    dev: false
-
-  /@formatjs/intl-localematcher@0.2.28:
-    resolution: {integrity: sha512-FLsc6Gifs1np/8HnCn/7Q+lHMmenrD5fuDhRT82yj0gi9O19kfaFwjQUw1gZsyILuRyT93GuzdifHj7TKRhBcw==}
-    dependencies:
-      tslib: 2.4.0
-    dev: false
-
-  /@formatjs/intl@2.3.1(typescript@4.7.4):
-    resolution: {integrity: sha512-f06qZ/ukpeN24gc01qFjh3P+r3FU/ikY4yG+fDJu6dPNvpUQzDy98lYogA1dr6ig2UtrnoEk3xncyFPL1e9cZw==}
+  /@formatjs/intl@3.0.1(typescript@4.7.4):
+    resolution: {integrity: sha512-QzdeMxOnSuGJhF0eWOIXHDtXZgIBwAqBZ4/bgZmPMC+FmYI8X2Akmu/j/ABKKO85GnxPV6KN8hJ8zytLnTJuYQ==}
     peerDependencies:
-      typescript: ^4.5
+      typescript: '5'
     peerDependenciesMeta:
       typescript:
         optional: true
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/fast-memoize': 1.2.4
-      '@formatjs/icu-messageformat-parser': 2.1.4
-      '@formatjs/intl-displaynames': 6.0.3
-      '@formatjs/intl-listformat': 7.0.3
-      intl-messageformat: 10.1.1
-      tslib: 2.4.0
+      '@formatjs/fast-memoize': 2.2.3
+      '@formatjs/icu-messageformat-parser': 2.9.4
+      intl-messageformat: 10.7.7
+      tslib: 2.8.1
       typescript: 4.7.4
     dev: false
 
@@ -2276,14 +2259,15 @@ packages:
     resolution: {integrity: sha512-xVnncEyRjIFKWT1Bw0R51/V/13vwYrqg6v7rc8HNfsa5pstVqHx/L2ai8eX/3iK98uk6JxGJDzm8ryTo86S+nQ==}
     dev: false
 
-  /@github/markdown-toolbar-element@2.1.1:
-    resolution: {integrity: sha512-J++rpd5H9baztabJQB82h26jtueOeBRSTqetk9Cri+Lj/s28ndu6Tovn0uHQaOKtBWDobFunk9b5pP5vcqt7cA==}
+  /@github/markdown-toolbar-element@2.2.3:
+    resolution: {integrity: sha512-AlquKGee+IWiAMYVB0xyHFZRMnu4n3X4HTvJHu79GiVJ1ojTukCWyxMlF5NMsecoLcBKsuBhx3QPv2vkE/zQ0A==}
     dev: false
 
-  /@github/text-expander-element@2.2.2:
-    resolution: {integrity: sha512-rSgPVq+m8UlA22PqbSbGdSuN9uWNBGGfFWNYVQA3ZLH6YL8CWAfmc3U/Pvc0A4sinZdMKUiTLhG6JadYbddkfA==}
+  /@github/text-expander-element@2.8.0:
+    resolution: {integrity: sha512-kkS2rZ/CG8HGKblpLDQ8vcK/K7l/Jsvzi/N4ovwPAsFSOImcIbJh2MgCv9tzqE3wAm/qXlscvh3Ms4Hh1vtZvw==}
     dependencies:
       '@github/combobox-nav': 2.0.2
+      dom-input-range: 1.2.0
     dev: false
 
   /@humanwhocodes/config-array@0.13.0:
@@ -2841,31 +2825,31 @@ packages:
     resolution: {integrity: sha512-a5Sab1C4/icpTZVzZc5Ghpz88yQtGOyNqYXcZgOssB2uuAr+wF/MvN6bgtW32q7HHrvBki+BsZ0OuNv6EV3K9g==}
     dev: true
 
-  /@preact/compat@17.1.1(preact@10.6.2):
+  /@preact/compat@17.1.1(preact@10.25.0):
     resolution: {integrity: sha512-OjQJ6oVcjFTiKWs4MIoE/cORFFGhqnt1RO0uxGNAFUglBMPNahMDJyX5w+qEOEaOpaNTLM1L3ixc2bFEpxgs3A==}
     peerDependencies:
       preact: '*'
     dependencies:
-      preact: 10.6.2
+      preact: 10.25.0
     dev: false
 
   /@prefresh/babel-plugin@0.4.3:
     resolution: {integrity: sha512-fYAWbU1WDSLn108kKY4eDaaeUcnszFqXjgaGKYXNZ5NLulpRTpsrY+Sbfo9q8LDpWrBpqIgzjrwNnvglWI1xNQ==}
     dev: true
 
-  /@prefresh/core@1.3.4(preact@10.6.2):
+  /@prefresh/core@1.3.4(preact@10.25.0):
     resolution: {integrity: sha512-s7iNsnyJ3lZEUrYIgmVIB/hKtp4U6mdD91a31Zg7Q8M49O0x2KThrbrMQYraoDDrs4STdFB8Zv6bceUguOoX1A==}
     peerDependencies:
       preact: ^10.0.0
     dependencies:
-      preact: 10.6.2
+      preact: 10.25.0
     dev: true
 
   /@prefresh/utils@1.1.3:
     resolution: {integrity: sha512-Mb9abhJTOV4yCfkXrMrcgFiFT7MfNOw8sDa+XyZBdq/Ai2p4Zyxqsb3EgHLOEdHpMj6J9aiZ54W8H6FTam1u+A==}
     dev: true
 
-  /@prefresh/webpack@3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.6.2)(webpack@5.73.0):
+  /@prefresh/webpack@3.3.4(@prefresh/babel-plugin@0.4.3)(preact@10.25.0)(webpack@5.73.0):
     resolution: {integrity: sha512-RiXS/hvXDup5cQw/267kxkKie81kxaAB7SFbkr8ppshobDEzwgUN1tbGbHNx6Uari0Ql2XByC6HIgQGpaq2Q7w==}
     peerDependencies:
       '@prefresh/babel-plugin': ^0.4.0
@@ -2873,9 +2857,9 @@ packages:
       webpack: ^4.0.0 || ^5.0.0
     dependencies:
       '@prefresh/babel-plugin': 0.4.3
-      '@prefresh/core': 1.3.4(preact@10.6.2)
+      '@prefresh/core': 1.3.4(preact@10.25.0)
       '@prefresh/utils': 1.1.3
-      preact: 10.6.2
+      preact: 10.25.0
       webpack: 5.73.0(@swc/core@1.2.205)(webpack-cli@4.10.0)
     dev: true
 
@@ -3034,6 +3018,10 @@ packages:
   /@sinclair/typebox@0.24.20:
     resolution: {integrity: sha512-kVaO5aEFZb33nPMTZBxiPEkY+slxiPtqC7QX8f9B3eGOMBvEfuMfxp9DSTTCsRJPumPKjrge4yagyssO4q6qzQ==}
     dev: true
+
+  /@sindresorhus/is@4.6.0:
+    resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
+    engines: {node: '>=10'}
 
   /@sindresorhus/merge-streams@1.0.0:
     resolution: {integrity: sha512-rUV5WyJrJLoloD4NDN1V1+LDMDWOa4OTsT4yYJwQNpTU6FWxkxHpL7eu4w+DmiH8x/EAM1otkPE1+LaspIbplw==}
@@ -3238,24 +3226,24 @@ packages:
       redent: 3.0.0
     dev: true
 
-  /@testing-library/preact-hooks@1.1.0(@testing-library/preact@3.2.2)(preact@10.6.2):
+  /@testing-library/preact-hooks@1.1.0(@testing-library/preact@3.2.2)(preact@10.25.0):
     resolution: {integrity: sha512-+JIor+NsOHkK3oIrwMDGKGHXTN0JJi462dBJlj4FNbGaDPTlctE6eu2ranWQirh7/FJMkWfzQCP+tk7jmY8ZrQ==}
     peerDependencies:
       '@testing-library/preact': ^2.0.0
       preact: ^10.4.8
     dependencies:
-      '@testing-library/preact': 3.2.2(preact@10.6.2)
-      preact: 10.6.2
+      '@testing-library/preact': 3.2.2(preact@10.25.0)
+      preact: 10.25.0
     dev: true
 
-  /@testing-library/preact@3.2.2(preact@10.6.2):
+  /@testing-library/preact@3.2.2(preact@10.25.0):
     resolution: {integrity: sha512-mMPEp/9TOOqf3QqDHY02ieGFfRbi8fAxZvRifn+vOzrdNcCR1zchwPA6BvqXG3wAweRan4QJioYgEc1cePeC3g==}
     engines: {node: '>= 12'}
     peerDependencies:
       preact: '>=10 || ^10.0.0-alpha.0 || ^10.0.0-beta.0'
     dependencies:
       '@testing-library/dom': 8.16.0
-      preact: 10.6.2
+      preact: 10.25.0
     dev: true
 
   /@tootallnate/once@2.0.0:
@@ -3507,8 +3495,11 @@ packages:
     resolution: {integrity: sha512-iiUgKzV9AuaEkZqkOLDIvlQiL6ltuZd9tGcW3gwpnX8JbuiuhFlEGmmFXEXkN50Cvq7Os88IY2v0dkDqXYWVgA==}
     dev: true
 
-  /@types/node-emoji@1.8.1:
-    resolution: {integrity: sha512-0fRfA90FWm6KJfw6P9QGyo0HDTCmthZ7cWaBQndITlaWLTZ6njRyKwrwpzpg+n6kBXBIGKeUHEQuBx7bphGJkA==}
+  /@types/node-emoji@2.1.0:
+    resolution: {integrity: sha512-LBGWP2LL5A+PpcvzrgXCFcHt9N1l5bqQn05ZUQFFM625k/tmc2w9ghT4kUwQN6gIPlX6qnDOfekmJmV9BywV9g==}
+    deprecated: This is a stub types definition. node-emoji provides its own type definitions, so you do not need this installed.
+    dependencies:
+      node-emoji: 2.1.3
     dev: true
 
   /@types/node@18.0.3:
@@ -3921,8 +3912,8 @@ packages:
       eslint-visitor-keys: 3.4.3
     dev: true
 
-  /@ungap/custom-elements@1.1.0:
-    resolution: {integrity: sha512-jPOtG6F8Wfmu3C+SF6lAglg/GsMGeiQCelikCrARXodcCVbH51GjG1Ga2GfM+WsxmRfnenLaUBLrkdxduHSGOA==}
+  /@ungap/custom-elements@1.3.0:
+    resolution: {integrity: sha512-f4q/s76+8nOy+fhrNHyetuoPDR01lmlZB5czfCG+OOnBw/Wf+x48DcCDPmMQY7oL8xYFL8qfenMoiS8DUkKBUw==}
     dev: false
 
   /@ungap/structured-clone@1.2.0:
@@ -4873,7 +4864,7 @@ packages:
     resolution: {integrity: sha512-gxGWBrTT1JuMx6R+o5PTXMmUnhnVzLQ9SNutD4YqKtI6ap897t3tKECYla6gCWEkplXnlNybEkZg9GEGxKFCgw==}
     dependencies:
       pascal-case: 3.1.2
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /camelcase-keys@6.2.2:
@@ -4947,7 +4938,6 @@ packages:
   /char-regex@1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
     engines: {node: '>=10'}
-    dev: true
 
   /chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
@@ -4994,7 +4984,7 @@ packages:
       normalize-path: 3.0.0
       readdirp: 3.6.0
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /chrome-trace-event@1.0.3:
@@ -5098,8 +5088,8 @@ packages:
     engines: {node: '>=0.8'}
     dev: true
 
-  /clsx@1.2.1:
-    resolution: {integrity: sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==}
+  /clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
     dev: false
 
@@ -5265,8 +5255,8 @@ packages:
     requiresBuild: true
     dev: true
 
-  /core-js@3.23.4:
-    resolution: {integrity: sha512-vjsKqRc1RyAJC3Ye2kYqgfdThb3zYnx9CrqoCcjMOENMtQPC7ZViBvlDxwYU/2z2NI/IPuiXw5mT4hWhddqjzQ==}
+  /core-js@3.39.0:
+    resolution: {integrity: sha512-raM0ew0/jJUqkJ0E6e8UDtl+y/7ktFivgWvqw8dNSQeNWoSDLvQ1H/RN3aPXB9tBd4/FhyR4RDPGhsNIMsAn7g==}
     requiresBuild: true
 
   /core-util-is@1.0.3:
@@ -5804,6 +5794,10 @@ packages:
       utila: 0.4.0
     dev: true
 
+  /dom-input-range@1.2.0:
+    resolution: {integrity: sha512-8HVA5Oy5Vt872S7IXsjjp6/5Hqsm5YZLhurxwwQXp80T9qVsj8/mEUH3sQlFujLLUoWfxiaThHHuJ3/q1MHVuA==}
+    dev: false
+
   /dom-serializer@1.4.1:
     resolution: {integrity: sha512-VHwB3KfrcOOkelEG2ZOfxqLZdfkil8PtJi4P8N2MMXucZq2yLp75ClViUlOVwyoHEDjYU433Aq+5zWP61+RGag==}
     dependencies:
@@ -5865,7 +5859,7 @@ packages:
     resolution: {integrity: sha512-Kv5nKlh6yRrdrGvxeJ2e5y2eRUpkUosIW4A2AS38zwSz27zu7ufDwQPi5Jhs3XAlGNetl3bmnGhQsMtkKJnj3w==}
     dependencies:
       no-case: 3.0.4
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /dotenv@16.0.1:
@@ -5901,6 +5895,9 @@ packages:
   /emoji-regex@9.2.2:
     resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
     dev: true
+
+  /emojilib@2.4.0:
+    resolution: {integrity: sha512-5U0rVMU5Y2n2+ykNLQqMoqklN9ICBT/KsvC1Gz6vqHbz2AXXGkG+Pm5rMWk/8Vjrr/mY9985Hi8DYzn1F09Nyw==}
 
   /emojis-list@3.0.0:
     resolution: {integrity: sha512-/kyM18EfinwXZbno9FyUGeFh87KC8HRQBQGildHZbEuRyWFOmv1U10o9BBp8XVZDVNNuQKyIGIu5ZYAAXJ0V2Q==}
@@ -5940,14 +5937,14 @@ packages:
     hasBin: true
     dev: true
 
-  /enzyme-adapter-preact-pure@4.0.1(enzyme@3.11.0)(preact@10.6.2):
+  /enzyme-adapter-preact-pure@4.0.1(enzyme@3.11.0)(preact@10.25.0):
     resolution: {integrity: sha512-bNrUQhj/mHi5hmO0vV3PHfWi+fHAZ04Hrk09UBh1+L8Msm3ihJ2JshBhQg71wMpusNp03B19NPIXL+RSOCTWRg==}
     peerDependencies:
       enzyme: ^3.11.0
       preact: ^10.0.0
     dependencies:
       enzyme: 3.11.0
-      preact: 10.6.2
+      preact: 10.25.0
     dev: true
 
   /enzyme-shallow-equal@1.0.4:
@@ -6230,7 +6227,7 @@ packages:
       ast-metadata-inferer: 0.7.0
       browserslist: 4.21.1
       caniuse-lite: 1.0.30001365
-      core-js: 3.23.4
+      core-js: 3.39.0
       eslint: 8.19.0
       find-up: 5.0.0
       lodash.memoize: 4.1.2
@@ -6986,14 +6983,6 @@ packages:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
     dev: true
 
-  /fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
-    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
-    os: [darwin]
-    requiresBuild: true
-    dev: true
-    optional: true
-
   /fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -7620,13 +7609,13 @@ packages:
     resolution: {integrity: sha512-7m1vEcPCxXYI8HqnL8CKI6siDyD+eIWSwgB3DZA+ZTogxk9I4CDnj4wilt9x/+/QbHI4YG5YZNmC6458/e9Ktg==}
     dev: false
 
-  /intl-messageformat@10.1.1:
-    resolution: {integrity: sha512-FeJne2oooYW6shLPbrqyjRX6hTELVrQ90Dn88z7NomLk/xZBCLxLPAkgaYaTQJBRBV78nZ933d8APHHkTQrD9Q==}
+  /intl-messageformat@10.7.7:
+    resolution: {integrity: sha512-F134jIoeYMro/3I0h08D0Yt4N9o9pjddU/4IIxMMURqbAtI2wu70X8hvG1V48W49zXHXv3RKSF/po+0fDfsGjA==}
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/fast-memoize': 1.2.4
-      '@formatjs/icu-messageformat-parser': 2.1.4
-      tslib: 2.4.0
+      '@formatjs/ecma402-abstract': 2.2.4
+      '@formatjs/fast-memoize': 2.2.3
+      '@formatjs/icu-messageformat-parser': 2.9.4
+      tslib: 2.8.1
     dev: false
 
   /ipaddr.js@1.9.1:
@@ -8225,7 +8214,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /jest-haste-map@28.1.3:
@@ -8244,7 +8233,7 @@ packages:
       micromatch: 4.0.5
       walker: 1.0.8
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /jest-leak-detector@28.1.3:
@@ -8922,6 +8911,7 @@ packages:
 
   /lodash@4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+    dev: true
 
   /log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
@@ -8955,7 +8945,7 @@ packages:
   /lower-case@2.0.2:
     resolution: {integrity: sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==}
     dependencies:
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /lru-cache@10.4.3:
@@ -9303,14 +9293,17 @@ packages:
     resolution: {integrity: sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==}
     dependencies:
       lower-case: 2.0.2
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
-  /node-emoji@1.11.0:
-    resolution: {integrity: sha512-wo2DpQkQp7Sjm2A0cq+sN7EHKO6Sl0ctXeBdFZrL9T9+UywORbufTcTZxom8YqpLQt/FqNMUkOpkZrJVYSKD3A==}
+  /node-emoji@2.1.3:
+    resolution: {integrity: sha512-E2WEOVsgs7O16zsURJ/eH8BqhF029wGpEOnv7Urwdo2wmQanOACwJQh0devF9D9RhoZru0+9JXIS0dBXIAz+lA==}
+    engines: {node: '>=18'}
     dependencies:
-      lodash: 4.17.21
-    dev: false
+      '@sindresorhus/is': 4.6.0
+      char-regex: 1.0.2
+      emojilib: 2.4.0
+      skin-tone: 2.0.0
 
   /node-fetch@2.6.7:
     resolution: {integrity: sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==}
@@ -9690,7 +9683,7 @@ packages:
     resolution: {integrity: sha512-RXlj7zCYokReqWpOPH9oYivUzLYZ5vAPIfEmCTNViosC78F8F0H9y7T7gG2M39ymgutxF5gcFEsyZQSph9Bp3A==}
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /parent-module@1.0.1:
@@ -9750,7 +9743,7 @@ packages:
     resolution: {integrity: sha512-uWlGT3YSnK9x3BQJaOdcZwrnV6hPpd8jFH1/ucpiLRPh/2zCVJKS19E4GvYHvaCcACn3foXZ0cLB9Wrx1KGe5g==}
     dependencies:
       no-case: 3.0.4
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /path-exists@3.0.0:
@@ -10633,8 +10626,8 @@ packages:
       source-map-js: 1.2.1
     dev: true
 
-  /preact@10.6.2:
-    resolution: {integrity: sha512-ppDjurt75nSxyikpyali+uKwRl8CK9N6ntOPovGIEGQagjMLVzEgVqFEsUUyUrqyE9Ch90KE0jmFc9q2QcPLBA==}
+  /preact@10.25.0:
+    resolution: {integrity: sha512-6bYnzlLxXV3OSpUxLdaxBmE7PMOu0aR3pG6lryK/0jmvcDFPlcXGQAt5DpK3RITWiDrfYZRI0druyaK/S9kYLg==}
 
   /prelude-ls@1.1.2:
     resolution: {integrity: sha512-ESF23V4SKG6lVSGZgYNpbsiaAkdab6ZgOxe52p7+Kid3W3u3bxR4Vfd/o21dmN7jSt0IwgZ4v5MUd26FEtXE9w==}
@@ -10802,26 +10795,23 @@ packages:
       unpipe: 1.0.0
     dev: true
 
-  /react-intl@6.0.5(@preact/compat@17.1.1)(typescript@4.7.4):
-    resolution: {integrity: sha512-nDZ3BosuE8WdovcGxsrjj1aIgJZklSL5aORs5oah+5tLQTzUdOEstzJEYQPM+sxl1dkDOu7RCuw0z9oI9ENf9g==}
+  /react-intl@7.0.1(@preact/compat@17.1.1)(typescript@4.7.4):
+    resolution: {integrity: sha512-djq5s6d96mw+84vNh7Zz9/dUa2v2A4VNfpZbQdjvVHrvogGfTRp5WUgacwyWjGNAIrzmcpa8blcjQFps/3gwXw==}
     peerDependencies:
       react: ^16.6.0 || 17 || 18
-      typescript: ^4.5
+      typescript: '5'
     peerDependenciesMeta:
       typescript:
         optional: true
     dependencies:
-      '@formatjs/ecma402-abstract': 1.11.8
-      '@formatjs/icu-messageformat-parser': 2.1.4
-      '@formatjs/intl': 2.3.1(typescript@4.7.4)
-      '@formatjs/intl-displaynames': 6.0.3
-      '@formatjs/intl-listformat': 7.0.3
+      '@formatjs/icu-messageformat-parser': 2.9.4
+      '@formatjs/intl': 3.0.1(typescript@4.7.4)
       '@types/hoist-non-react-statics': 3.3.1
       '@types/react': 18.0.15
       hoist-non-react-statics: 3.3.2
-      intl-messageformat: 10.1.1
-      react: /@preact/compat@17.1.1(preact@10.6.2)
-      tslib: 2.4.0
+      intl-messageformat: 10.7.7
+      react: /@preact/compat@17.1.1(preact@10.25.0)
+      tslib: 2.8.1
       typescript: 4.7.4
     dev: false
 
@@ -10834,36 +10824,23 @@ packages:
 
   /react-is@18.2.0:
     resolution: {integrity: sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==}
+    dev: true
 
-  /react-redux@8.0.2(@preact/compat@17.1.1)(@preact/compat@17.1.1)(redux@4.2.0):
-    resolution: {integrity: sha512-nBwiscMw3NoP59NFCXFf02f8xdo+vSHT/uZ1ldDwF7XaTpzm+Phk97VT4urYBl5TYAPNVaFm12UHAEyzkpNzRA==}
+  /react-redux@9.1.2(@preact/compat@17.1.1)(redux@5.0.1):
+    resolution: {integrity: sha512-0OA4dhM1W48l3uzmv6B7TXPCGmokUU4p1M44DGN2/D9a1FjVPukVjER1PcPX97jIg6aUeLq1XJo1IpfbgULn0w==}
     peerDependencies:
-      '@types/react': ^16.8 || ^17.0 || ^18.0
-      '@types/react-dom': ^16.8 || ^17.0 || ^18.0
-      react: ^16.8 || ^17.0 || ^18.0
-      react-dom: ^16.8 || ^17.0 || ^18.0
-      react-native: '>=0.59'
-      redux: ^4
+      '@types/react': ^18.2.25
+      react: ^18.0
+      redux: ^5.0.0
     peerDependenciesMeta:
       '@types/react':
-        optional: true
-      '@types/react-dom':
-        optional: true
-      react-dom:
-        optional: true
-      react-native:
         optional: true
       redux:
         optional: true
     dependencies:
-      '@babel/runtime': 7.18.6
-      '@types/hoist-non-react-statics': 3.3.1
       '@types/use-sync-external-store': 0.0.3
-      hoist-non-react-statics: 3.3.2
-      react: /@preact/compat@17.1.1(preact@10.6.2)
-      react-dom: /@preact/compat@17.1.1(preact@10.6.2)
-      react-is: 18.2.0
-      redux: 4.2.0
+      react: /@preact/compat@17.1.1(preact@10.25.0)
+      redux: 5.0.1
       use-sync-external-store: 1.2.0(@preact/compat@17.1.1)
     dev: false
 
@@ -10944,18 +10921,23 @@ packages:
       lodash.isplainobject: 4.0.6
     dev: true
 
-  /redux-thunk@2.4.1(redux@4.2.0):
-    resolution: {integrity: sha512-OOYGNY5Jy2TWvTL1KgAlVy6dcx3siPJ1wTq741EPyUKfn6W6nChdICjZwCd0p8AZBs5kWpZlbkXW2nE/zjUa+Q==}
+  /redux-thunk@3.1.0(redux@5.0.1):
+    resolution: {integrity: sha512-NW2r5T6ksUKXCabzhL9z+h206HQw/NJkcLm1GPImRQ8IzfXwRGqjVhKJGauHirT0DAuyy6hjdnMZaRoAcy0Klw==}
     peerDependencies:
-      redux: ^4
+      redux: ^5.0.0
     dependencies:
-      redux: 4.2.0
+      redux: 5.0.1
     dev: false
 
   /redux@4.2.0:
     resolution: {integrity: sha512-oSBmcKKIuIR4ME29/AeNUnl5L+hvBq7OaJWzaptTQJAntaPvxIJqfnjbaEiCzzaIz+XmVILfqAM3Ob0aXLPfjA==}
     dependencies:
       '@babel/runtime': 7.18.6
+    dev: true
+
+  /redux@5.0.1:
+    resolution: {integrity: sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==}
+    dev: false
 
   /regenerate-unicode-properties@10.0.1:
     resolution: {integrity: sha512-vn5DU6yg6h8hP/2OkQo3K7uVILvY4iu0oI4t3HFa81UPkhGJwkRwM10JEc3upjdhHjs/k8GJY1sRBhk5sr69Bw==}
@@ -10970,6 +10952,7 @@ packages:
 
   /regenerator-runtime@0.13.9:
     resolution: {integrity: sha512-p3VT+cOEgxFsRRA9X4lkI1E+k2/CtnKtU4gcxyaCUreilL/vqI6CdZ3wxVUx3UOUg+gnUOQQcRI7BmSI656MYA==}
+    dev: true
 
   /regenerator-transform@0.15.0:
     resolution: {integrity: sha512-LsrGtPmbYg19bcPHwdtmXwbW+TqNvtY4riE3P83foeHRroMbH6/2ddFBfab3t7kbzc7v7p4wbkIecHImqt0QNg==}
@@ -11177,7 +11160,7 @@ packages:
   /rxjs@7.5.6:
     resolution: {integrity: sha512-dnyv2/YsXhnm461G+R/Pe5bWP41Nm6LBXEYWI6eiFP4fiwx6WRI/CD0zbdVAudd9xwLEF2IDcKXLHit0FYjUzw==}
     dependencies:
-      tslib: 2.4.0
+      tslib: 2.8.1
     dev: true
 
   /safe-buffer@5.1.2:
@@ -11447,6 +11430,12 @@ packages:
       nanospinner: 1.1.0
       picocolors: 1.0.0
     dev: true
+
+  /skin-tone@2.0.0:
+    resolution: {integrity: sha512-kUMbT1oBJCpgrnKoSr0o6wPtvRWT9W9UKvGLwfJYO2WuahZRHOpEyL1ckyMGgMWh0UdpmaoFqKKD29WTomNEGA==}
+    engines: {node: '>=8'}
+    dependencies:
+      unicode-emoji-modifier-base: 1.0.0
 
   /slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
@@ -12283,10 +12272,10 @@ packages:
 
   /tslib@2.4.0:
     resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
+    dev: true
 
   /tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-    dev: true
 
   /tsutils@3.21.0(typescript@4.7.4):
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
@@ -12527,6 +12516,10 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
+  /unicode-emoji-modifier-base@1.0.0:
+    resolution: {integrity: sha512-yLSH4py7oFH3oG/9K+XWrz1pSi3dfUrWEnInbxMfArOfc1+33BlGPQtLsOYwvdMy11AwUBetYuaRxSPqgkq+8g==}
+    engines: {node: '>=4'}
+
   /unicode-match-property-ecmascript@2.0.0:
     resolution: {integrity: sha512-5kaZCrbp5mmbz5ulBkDkbY0SsPOjKqVS35VpL9ulMPfSl0J0Xsm+9Evphv9CoIZFwre7aJoa94AY6seMKGVN5Q==}
     engines: {node: '>=4'}
@@ -12604,7 +12597,7 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      react: /@preact/compat@17.1.1(preact@10.6.2)
+      react: /@preact/compat@17.1.1(preact@10.25.0)
     dev: false
 
   /util-deprecate@1.0.2:
