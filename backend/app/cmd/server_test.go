@@ -107,7 +107,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	waitForHTTPServerStart(port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 10+1, len(providers), "extra auth provider for anon")
+	require.Equal(t, 11+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	client := http.Client{Timeout: 10 * time.Second}
@@ -796,7 +796,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.NoError(t, err)
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp/remark42_test", "fs", "/tmp/remark42_test", "/tmp/remark42_test"
-	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 	cmd.Store.Bolt.Timeout = 10 * time.Second
 	cmd.Auth.Apple.CID, cmd.Auth.Apple.KID, cmd.Auth.Apple.TID = "cid", "kid", "tid"
 	cmd.Auth.Apple.PrivateKeyFilePath = "testdata/apple.p8"
@@ -828,7 +827,10 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.RestrictedNames = []string{"umputun", "bobuk"}
 	cmd.emailMsgTemplatePath = "../../templates/email_reply.html.tmpl"
 	cmd.emailVerificationTemplatePath = "../../templates/email_confirmation_subscription.html.tmpl"
+
 	cmd = fn(cmd)
+	// as is uses port, call it after fn which could set it
+	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
 
 	app, ctx, cancel := createAppFromCmd(t, cmd)
 
