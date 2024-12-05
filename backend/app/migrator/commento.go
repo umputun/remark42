@@ -101,6 +101,11 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			}
 		}
 
+		usersMap["anonymous"] = store.User{
+			Name: "Anonymous",
+			ID:   "commento_" + store.EncodeID("anonymous"),
+		}
+
 		for _, comment := range exportedData.Comments {
 			u, ok := usersMap[comment.CommenterHex]
 			if !ok {
