@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-const comment_text_length_limit = 100
+const commentTextLengthLimit = 100
 
 // TelegramParams contain settings for telegram notifications
 type TelegramParams struct {
@@ -147,16 +147,22 @@ func pruneHTML(htmlText string, maxLength int) string {
 			// <token></token>
 			// len(token) * 2 + len("<></>")
 			totalLenToAppend := len(token.Data)*2 + 5
-			if result.Len()+totalLenToAppend+endTokens.Len()+suffixLen > maxLength {
+
+			lengthAfterChange := result.Len() + totalLenToAppend + endTokens.Len() + suffixLen
+
+			if lengthAfterChange > maxLength {
 				return result.String() + suffix + endTokens.String()
 			}
+
 			endTokens.Unshift(fmt.Sprintf("</%s>", token.Data))
 
 		case html.EndTagToken:
 			endTokens.Shift()
 
 		case html.TextToken, html.SelfClosingTagToken:
-			if result.Len()+len(token.String())+endTokens.Len()+suffixLen > maxLength {
+			lengthAfterChange := result.Len() + len(token.String()) + endTokens.Len() + suffixLen
+
+			if lengthAfterChange > maxLength {
 				text := pruneStringToWord(token.String(), maxLength-result.Len()-endTokens.Len()-suffixLen)
 				return result.String() + text + suffix + endTokens.String()
 			}
@@ -179,7 +185,6 @@ func pruneStringToWord(text string, maxLength int) string {
 		if len(result)+len(s) >= maxLength {
 			return strings.TrimRight(result, " ")
 		}
-		// keep last space, it's ok
 		result += s + " "
 	}
 
@@ -196,7 +201,7 @@ func (t *Telegram) buildMessage(req Request) string {
 		msg += fmt.Sprintf(" -> <a href=%q>%s</a>", commentURLPrefix+req.parent.ID, ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), comment_text_length_limit))
+	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
 
 	if req.Comment.ParentID != "" {
 		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", ntf.TelegramSupportedHTML(req.parent.Text))
