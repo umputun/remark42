@@ -121,9 +121,9 @@ func TestMain_WithWebhook(t *testing.T) {
 
 func TestGetDump(t *testing.T) {
 	dump := getDump()
-	assert.True(t, strings.Contains(dump, "goroutine"))
-	assert.True(t, strings.Contains(dump, "[running]"))
-	assert.True(t, strings.Contains(dump, "backend/app/main.go"))
+	assert.Contains(t, dump, "goroutine")
+	assert.Contains(t, dump, "[running]")
+	assert.Contains(t, dump, "backend/app/main.go")
 	t.Logf("\n dump: %s", dump)
 }
 

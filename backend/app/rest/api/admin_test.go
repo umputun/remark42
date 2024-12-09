@@ -803,9 +803,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try bad user
-	badClaims := claims
-	badClaims.User.ID = "no-such-id"
-	tkn, err = srv.Authenticator.TokenService().Token(badClaims)
+	badClaimsUser := claims
+	badClaimsUser.User.ID = "no-such-id"
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsUser)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
 	assert.NoError(t, err)
@@ -814,11 +814,12 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, resp.Status)
+	badClaimsUser.User.ID = "provider1_user1"
 
 	// try without deleteme flag
-	badClaims2 := claims
-	badClaims2.User.SetBoolAttr("delete_me", false)
-	tkn, err = srv.Authenticator.TokenService().Token(badClaims2)
+	badClaimsWithoutDeleteMe := claims
+	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", false)
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsWithoutDeleteMe)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
 	assert.NoError(t, err)
@@ -829,7 +830,25 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.True(t, strings.Contains(string(b), "can't use provided token"))
+	assert.Contains(t, string(b), "can't use provided token")
+	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", true)
+
+	// try with wrong audience
+	badClaimsMultipleAudience := claims
+	badClaimsMultipleAudience.StandardClaims.Audience = "something else"
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsMultipleAudience)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	assert.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Contains(t, string(b), `site \"something else\" not found`)
+	badClaimsMultipleAudience.StandardClaims.Audience = "remark42"
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {
