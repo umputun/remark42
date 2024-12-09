@@ -637,10 +637,10 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
-	// add comment with no-aud claim
-	claimsNoAud := claims
-	claimsNoAud.Audience = ""
-	tkNoAud, err := tkService.Token(claimsNoAud)
+	// try to add comment with no-aud claim
+	badClaimsNoAud := claims
+	badClaimsNoAud.Audience = ""
+	tkNoAud, err := tkService.Token(badClaimsNoAud)
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
@@ -654,6 +654,25 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
+
+	// try to add comment without user set
+	badClaimsNoUser := claims
+	badClaimsNoUser.Audience = "remark"
+	badClaimsNoUser.User = nil
+	tkNoUser, err := tkService.Token(badClaimsNoUser)
+	require.NoError(t, err)
+	t.Logf("no user claims: %s", tkNoUser)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
+	"site": "remark"}}`))
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkNoUser)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without user information rejected, \n"+tkNoUser+"\n"+string(body))
 
 	// block user github_dev as admin
 	req, err = http.NewRequest(http.MethodPut,
