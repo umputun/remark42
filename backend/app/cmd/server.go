@@ -1215,6 +1215,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if c.User == nil {
 				return c
 			}
+			// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
 			if len(c.Audience) != 1 {
 				return c
 			}

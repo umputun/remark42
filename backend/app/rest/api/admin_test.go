@@ -847,7 +847,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	b, err = io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t, string(b), "can't process token, aud is not a single element")
+	assert.Contains(t, string(b), "can't process token, claims.Audience expected to be a single element but it's not")
 	badClaimsMultipleAudience.RegisteredClaims.Audience = jwt.ClaimStrings{"remark42"}
 }
 
