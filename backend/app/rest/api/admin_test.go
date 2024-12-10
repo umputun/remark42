@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
+	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -708,12 +708,12 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
 			ID:      "user1",
@@ -777,12 +777,12 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	// try with bad auth
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "provider1_1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "provider1_1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
 			ID: "provider1_user1",
@@ -835,7 +835,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try with wrong audience
 	badClaimsMultipleAudience := claims
-	badClaimsMultipleAudience.StandardClaims.Audience = "something else"
+	badClaimsMultipleAudience.RegisteredClaims.Audience = jwt.ClaimStrings{"remark42", "something else"}
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsMultipleAudience)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
@@ -847,8 +847,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	b, err = io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t, string(b), `site \"something else\" not found`)
-	badClaimsMultipleAudience.StandardClaims.Audience = "remark42"
+	assert.Contains(t, string(b), "can't process token, claims.Audience expected to be a single element but it's not")
+	badClaimsMultipleAudience.RegisteredClaims.Audience = jwt.ClaimStrings{"remark42"}
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {

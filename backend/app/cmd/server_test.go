@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
-	"github.com/golang-jwt/jwt"
+	"github.com/go-pkgz/auth/v2/token"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
 
@@ -609,11 +609,11 @@ func TestServerAuthHooks(t *testing.T) {
 	tkService.TokenDuration = time.Second
 
 	claims := token.Claims{
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark"},
 			Issuer:    "remark",
-			ExpiresAt: time.Now().Add(time.Second).Unix(),
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
 			ID:   "github_dev",
@@ -639,7 +639,7 @@ func TestServerAuthHooks(t *testing.T) {
 
 	// try to add comment with no-aud claim
 	badClaimsNoAud := claims
-	badClaimsNoAud.Audience = ""
+	badClaimsNoAud.Audience = jwt.ClaimStrings{""}
 	tkNoAud, err := tkService.Token(badClaimsNoAud)
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)
@@ -655,9 +655,27 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
+	// try to add comment with multiple auds
+	badClaimsMultipleAud := claims
+	badClaimsMultipleAud.Audience = jwt.ClaimStrings{"remark", "second_aud"}
+	tkMultipleAuds, err := tkService.Token(badClaimsMultipleAud)
+	require.NoError(t, err)
+	t.Logf("multiple aud claims: %s", tkMultipleAuds)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
+	"site": "remark"}}`))
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkMultipleAuds)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user with multiple auds claim rejected, \n"+tkMultipleAuds+"\n"+string(body))
+
 	// try to add comment without user set
 	badClaimsNoUser := claims
-	badClaimsNoUser.Audience = "remark"
+	badClaimsNoUser.Audience = jwt.ClaimStrings{"remark"}
 	badClaimsNoUser.User = nil
 	tkNoUser, err := tkService.Token(badClaimsNoUser)
 	require.NoError(t, err)
