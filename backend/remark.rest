@@ -5,6 +5,12 @@ GET {{host}}/api/v1/find?site={{site}}&sort=-time&format=tree&url={{url}}
 ### find request with plain
 GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
 
+### find 10 first comments for given URL
+GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}&limit=10
+
+### find 10 comments after given comment ID (3665976683 in this example) for given URL
+GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}&limit=10&after=3665976683
+
 ### find request with plain. dev token for secret=12345, not admin
 GET {{host}}/api/v1/find?site={{site}}&sort=-controversy&format=plain&url={{url}}
 X-JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcmsiLCJleHAiOjE5NzYwNTY3NTYsImp0aSI6IjJlOGJmMTE5OTI0MjQxMDRjYjFhZGRlODllMWYwNGFiMTg4YWZjMzQiLCJpYXQiOjE1NzYwNTY0NTYsImlzcyI6InJlbWFyazQyIiwidXNlciI6eyJuYW1lIjoiZGV2X3VzZXIiLCJpZCI6ImRldl91c2VyIiwicGljdHVyZSI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hcGkvdjEvYXZhdGFyL2NjZmEyYWJkMDE2Njc2MDViNGUxZmM0ZmNiOTFiMWUxYWYzMjMyNDAuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.6Qt5s2enBMRC-Jmsua01yViVYI95Dx6BPBMaNjj36d4
