@@ -80,7 +80,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limitParam := r.URL.Query().Get("limit")
-	var limit int
+	limit := 0
 	if limitParam != "" {
 		if limit, err = strconv.Atoi(limitParam); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "bad limit value", rest.ErrCommentNotFound)
@@ -96,7 +96,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s, since %v, limit %d, offset %s", locator, sort, format, since, limit, offsetID)
+	log.Printf("[DEBUG] get comments for %+v, sort %q, format %q, since %v, limit %d, offset %q", locator, sort, format, since, limit, offsetID)
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
