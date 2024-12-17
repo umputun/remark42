@@ -77,11 +77,11 @@ func TestMigrator_ImportCommento(t *testing.T) {
 		Provider:  "commento",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, size)
+	assert.Equal(t, 3, size)
 
 	last, err := dataStore.Last("test", 10, time.Time{}, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(last), "2 comments imported")
+	assert.Equal(t, 3, len(last), "3 comments imported")
 }
 
 func TestMigrator_ImportNative(t *testing.T) {

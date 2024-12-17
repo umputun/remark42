@@ -27,11 +27,11 @@ func TestCommento_Import(t *testing.T) {
 	require.NoError(t, err)
 	size, err := d.Import(fh, "test")
 	assert.NoError(t, err)
-	assert.Equal(t, 2, size)
+	assert.Equal(t, 3, size)
 
 	last, err := dataStore.Last("test", 10, time.Time{}, adminUser)
 	assert.NoError(t, err)
-	require.Equal(t, 2, len(last), "2 comments imported")
+	require.Equal(t, 3, len(last), "3 comments imported")
 
 	t.Log(last[0])
 
@@ -44,11 +44,24 @@ func TestCommento_Import(t *testing.T) {
 	assert.Equal(t, "commento_35369aeb6ac5255de30410a0f86dc71eb9c6d0ca", c.User.ID)
 	assert.True(t, c.Imported)
 
+	c = last[2] // anonymous comment
+	assert.Equal(t, "Example comment created by user.", c.Text)
+	assert.Equal(t, "e7069a7dfcfaed43caf62300a9b0edb1c124ad79d0f5887c93649c15d7f69945", c.ID)
+	assert.Equal(t, "", c.ParentID)
+	assert.Equal(t, store.Locator{SiteID: "test", URL: "https://example.com/blog/post/2"}, c.Locator)
+	assert.Equal(t, "Anonymous", c.User.Name)
+	assert.Equal(t, "commento_0a92fab3230134cca6eadd9898325b9b2ae67998", c.User.ID)
+	assert.True(t, c.Imported)
+
 	posts, err := dataStore.List("test", 0, 0)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(posts), "1 post")
+	assert.Equal(t, 2, len(posts), "2 posts")
 
 	count, err := dataStore.Count(store.Locator{SiteID: "test", URL: "https://example.com/blog/post/1"})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
+
+	count, err = dataStore.Count(store.Locator{SiteID: "test", URL: "https://example.com/blog/post/2"})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
 }
