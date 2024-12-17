@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+const commentTextLengthLimit = 100
+
 // TelegramParams contain settings for telegram notifications
 type TelegramParams struct {
 	AdminChannelID       string        // unique identifier for the target chat or username of the target channel (in the format @channelusername)
