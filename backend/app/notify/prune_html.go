@@ -7,8 +7,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-const commentTextLengthLimit = 100
-
 type stringArr struct {
 	data []string
 	len  int
