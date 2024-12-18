@@ -110,7 +110,7 @@ func pruneStringToWord(text string, maxLength int) string {
 
 	arr := strings.Split(text, " ")
 	for _, s := range arr {
-		if len(result)+len(s) >= maxLength {
+		if len(result)+len(s) > maxLength {
 			return strings.TrimRight(result, " ")
 		}
 		result += s + " "
