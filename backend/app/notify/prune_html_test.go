@@ -226,7 +226,7 @@ func TestPruneHTML(t *testing.T) {
 			name:      "text exceeding limit",
 			html:      "<p>Hello world, this is a long text</p>",
 			maxLength: 15,
-			expected:  "<p>...</p>",
+			expected:  "<p>Hello...</p>",
 		},
 		{
 			name:      "nested tags within limit",
@@ -279,13 +279,13 @@ func TestPruneStringToWord(t *testing.T) {
 			name:      "exact limit",
 			text:      "hello world",
 			maxLength: 11,
-			expected:  "hello",
+			expected:  "hello world",
 		},
 		{
 			name:      "cut at word boundary",
 			text:      "hello world and more",
 			maxLength: 11,
-			expected:  "hello",
+			expected:  "hello world",
 		},
 		{
 			name:      "zero length",
