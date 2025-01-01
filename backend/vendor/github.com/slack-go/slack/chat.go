@@ -377,6 +377,7 @@ func (t responseURLSender) BuildRequestContext(ctx context.Context) (*http.Reque
 	req, err := jsonReq(ctx, t.endpoint, Msg{
 		Text:            t.values.Get("text"),
 		Timestamp:       t.values.Get("ts"),
+		ThreadTimestamp: t.values.Get("thread_ts"),
 		Attachments:     t.attachments,
 		Blocks:          t.blocks,
 		Metadata:        t.metadata,

@@ -28,3 +28,15 @@ func NewInputBlock(blockID string, label, hint *TextBlockObject, element BlockEl
 		Hint:    hint,
 	}
 }
+
+// WithOptional sets the optional flag on the input block
+func (s *InputBlock) WithOptional(optional bool) *InputBlock {
+	s.Optional = optional
+	return s
+}
+
+// WithDispatchAction sets the dispatch action flag on the input block
+func (s *InputBlock) WithDispatchAction(dispatchAction bool) *InputBlock {
+	s.DispatchAction = dispatchAction
+	return s
+}
