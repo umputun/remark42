@@ -13,10 +13,10 @@ func WithBody(l *Middleware) {
 }
 
 // MaxBodySize sets size of the logged part of the request body.
-func MaxBodySize(max int) Option {
+func MaxBodySize(maximum int) Option {
 	return func(l *Middleware) {
-		if max >= 0 {
-			l.maxBodySize = max
+		if maximum >= 0 {
+			l.maxBodySize = maximum
 		}
 	}
 }

@@ -18,6 +18,7 @@ const (
 	MBTInput    MessageBlockType = "input"
 	MBTHeader   MessageBlockType = "header"
 	MBTRichText MessageBlockType = "rich_text"
+	MBTCall     MessageBlockType = "call"
 	MBTVideo    MessageBlockType = "video"
 )
 
