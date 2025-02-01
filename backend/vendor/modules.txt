@@ -10,7 +10,7 @@ github.com/PuerkitoBio/goquery
 # github.com/ajg/form v1.5.1
 ## explicit
 github.com/ajg/form
-# github.com/alecthomas/chroma/v2 v2.14.0
+# github.com/alecthomas/chroma/v2 v2.15.0
 ## explicit; go 1.19
 github.com/alecthomas/chroma/v2
 github.com/alecthomas/chroma/v2/formatters/html
@@ -43,6 +43,13 @@ github.com/didip/tollbooth/v7/errors
 github.com/didip/tollbooth/v7/internal/time/rate
 github.com/didip/tollbooth/v7/libstring
 github.com/didip/tollbooth/v7/limiter
+# github.com/didip/tollbooth/v8 v8.0.1
+## explicit; go 1.19
+github.com/didip/tollbooth/v8
+github.com/didip/tollbooth/v8/errors
+github.com/didip/tollbooth/v8/internal/time/rate
+github.com/didip/tollbooth/v8/libstring
+github.com/didip/tollbooth/v8/limiter
 # github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 ## explicit; go 1.14
 github.com/didip/tollbooth_chi
@@ -80,8 +87,8 @@ github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache/v3 v3.0.0
 ## explicit; go 1.20
 github.com/go-pkgz/expirable-cache/v3
-# github.com/go-pkgz/jrpc v0.3.0
-## explicit; go 1.16
+# github.com/go-pkgz/jrpc v0.3.1
+## explicit; go 1.23
 github.com/go-pkgz/jrpc
 # github.com/go-pkgz/lcw/v2 v2.0.0
 ## explicit; go 1.21
@@ -265,7 +272,7 @@ go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.31.0
+# golang.org/x/crypto v0.32.0
 ## explicit; go 1.20
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -280,7 +287,7 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.18
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.33.0
+# golang.org/x/net v0.34.0
 ## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -306,7 +313,7 @@ golang.org/x/oauth2/yandex
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.28.0
+# golang.org/x/sys v0.29.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
