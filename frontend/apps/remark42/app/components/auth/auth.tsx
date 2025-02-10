@@ -14,7 +14,7 @@ import { ArrowIcon } from 'components/icons/arrow';
 
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
-import { messages } from './auth.messsages';
+import { messages } from './auth.messages';
 import { useDropdown, useErrorMessage } from './auth.hooks';
 import { getProviders, getTokenInvalidReason, persistEmail } from './auth.utils';
 import {

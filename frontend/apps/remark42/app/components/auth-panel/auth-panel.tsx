@@ -14,7 +14,7 @@ import { Auth } from 'components/auth';
 import { Avatar } from 'components/avatar';
 import { SignOutIcon } from 'components/icons/signout';
 import { IconButton } from 'components/icon-button/icon-button';
-import { messages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 
 import styles from './auth-panel.module.css';
 

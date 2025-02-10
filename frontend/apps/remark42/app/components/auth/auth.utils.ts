@@ -3,7 +3,7 @@ import { StaticStore } from 'common/static-store';
 import type { FormProvider, OAuthProvider } from 'common/types';
 
 import { OAUTH_PROVIDERS } from './components/oauth.consts';
-import { messages } from './auth.messsages';
+import { messages } from './auth.messages';
 import { setItem, getItem } from 'common/local-storage';
 import { LS_EMAIL_KEY } from 'common/constants';
 
