@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { h } from 'preact';
-import { messages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 import { useIntl } from 'react-intl';
 
 import styles from './spinner.module.css';

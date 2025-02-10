@@ -6,7 +6,7 @@ import type { OAuthProvider } from 'common/types';
 import { siteId } from 'common/settings';
 import { useTheme } from 'hooks/useTheme';
 
-import { messages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 
 import { BASE_URL } from 'common/constants.config';
 import { getButtonVariant, getProviderData } from './oauth.utils';
