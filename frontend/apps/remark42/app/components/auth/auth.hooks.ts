@@ -4,7 +4,7 @@ import { useIntl } from 'react-intl';
 import { errorMessages, RequestError } from 'utils/errorUtils';
 import { isObject } from 'utils/is-object';
 import { parseMessage, updateIframeHeight } from 'utils/post-message';
-import { messages } from './auth.messsages';
+import { messages } from './auth.messages';
 
 export function useDropdown(disableClosing?: boolean) {
   const rootRef = useRef<HTMLDivElement>(null);

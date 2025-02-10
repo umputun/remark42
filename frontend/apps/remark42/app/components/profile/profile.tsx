@@ -18,11 +18,12 @@ import { Spinner } from 'components/spinner/spinner';
 import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
 import { Button } from 'components/auth/components/button';
-import { messages as authMessages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 import type { Comment as CommentType, Theme, User } from 'common/types';
 
-import styles from './profile.module.css';
 import { Counter } from './components/counter';
+
+import styles from './profile.module.css';
 
 const COMMENTS_LIMIT = 10;
 
@@ -198,7 +199,7 @@ export function Profile() {
           {isCurrent && (
             <button
               className={clsx('profile-signout', styles.signout)}
-              title={intl.formatMessage(authMessages.signout)}
+              title={intl.formatMessage(messages.signout)}
               onClick={handleClickLogout}
               disabled={isSigningOut}
             >
