@@ -43,7 +43,7 @@ services:
       - ./var/logs:/srv/var/logs
 
   remark42:
-    image: umputun/remark42:master
+    image: ghcr.io/umputun/remark42:master
     container_name: "remark42"
     hostname: "remark42"
     restart: always

@@ -76,5 +76,5 @@ To verify if Remark42 has been properly installed, check a demo page at `${REMAR
 
 ### Build from the source
 
-- to build Docker container - `make docker`. This command will produce container `umputun/remark42`
+- to build Docker container - `make docker`. This command will produce container `ghcr.io/umputun/remark42`
 - to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce an executable `remark42` file with everything embedded
