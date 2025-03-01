@@ -18,7 +18,7 @@ services:
         - CI
         - GITHUB_REF
         - GITHUB_SHA
-    image: umputun/remark42:dev
+    image: ghcr.io/umputun/remark42:dev
     container_name: "remark42-dev"
     hostname: "remark42-dev"
 

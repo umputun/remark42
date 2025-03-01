@@ -5,7 +5,7 @@ services:
     # remove the next line in case you want to use this Docker Compose file separately
     # as otherwise it would complain for absence of Dockerfile
     build: .
-    image: umputun/remark42:latest
+    image: ghcr.io/umputun/remark42:latest
     container_name: "remark42"
     hostname: "remark42"
     restart: always

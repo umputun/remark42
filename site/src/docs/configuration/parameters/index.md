@@ -17,7 +17,7 @@ version: "2"
 
 services:
   remark42:
-    image: umputun/remark42:latest
+    image: ghcr.io/umputun/remark42:latest
     restart: always
     container_name: "remark42"
     environment:

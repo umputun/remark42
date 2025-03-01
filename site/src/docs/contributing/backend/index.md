@@ -36,8 +36,8 @@ In order to have working Remark42 installation you need once to copy frontend st
 
 ```shell
 # frontend files
-docker pull umputun/remark42:master
-docker create -ti --name remark42files umputun/remark42:master sh
+docker pull ghcr.io/umputun/remark42:master
+docker create -ti --name remark42files ghcr.io/umputun/remark42:master sh
 docker cp remark42files:/srv/web/ ./backend/app/cmd/
 docker rm -f remark42files
 # fix frontend files to point to the right URL
