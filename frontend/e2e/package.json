@@ -9,11 +9,11 @@
   "author": "Paul Mineev <paul@mineev.me>",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.25.0",
-    "@types/node": "^22.9.0",
-    "nanoid": "^5.0.8",
-    "playwright": "^1.25.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.6.3"
+    "@playwright/test": "^1.50.1",
+    "@types/node": "^22.13.8",
+    "nanoid": "^5.1.2",
+    "playwright": "^1.50.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }
