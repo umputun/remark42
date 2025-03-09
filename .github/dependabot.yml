@@ -22,6 +22,7 @@ updates:
         dependency-type: "production"
   - package-ecosystem: "npm"
     directory: "/frontend"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
@@ -31,6 +32,7 @@ updates:
         dependency-type: "development"
   - package-ecosystem: "npm"
     directory: "/frontend/packages/api"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
@@ -40,6 +42,7 @@ updates:
         dependency-type: "development"
   - package-ecosystem: "npm"
     directory: "/frontend/e2e"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
@@ -49,6 +52,7 @@ updates:
         dependency-type: "development"
   - package-ecosystem: "npm"
     directory: "/frontend/apps/remark42"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
@@ -58,6 +62,7 @@ updates:
         dependency-type: "development"
   - package-ecosystem: "npm"
     directory: "/site"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
