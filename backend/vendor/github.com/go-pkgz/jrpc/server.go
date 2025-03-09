@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v7"
-	"github.com/didip/tollbooth_chi"
+	"github.com/didip/tollbooth/v8"
+	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -116,7 +116,9 @@ func (s *Server) Run(port int) error {
 	router.Use(logInfoWithBody)
 
 	if s.limits.clientLimit > 0 {
-		router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.limits.clientLimit, nil)))
+		lmt := tollbooth.NewLimiter(s.limits.clientLimit, nil)
+		lmt.SetIPLookup(limiter.IPLookup{Name: "X-Real-IP"})
+		router.Use(tollbooth.HTTPMiddleware(lmt))
 	}
 
 	router.Use(middleware.NoCache)
@@ -243,4 +245,4 @@ type LoggerFunc func(format string, args ...interface{})
 func (f LoggerFunc) Logf(format string, args ...interface{}) { f(format, args...) }
 
 // NoOpLogger logger does nothing
-var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {})
+var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {}) //nolint
