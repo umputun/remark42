@@ -286,7 +286,7 @@ func TestMemData_CountUser(t *testing.T) {
 
 func TestMemData_InfoPost(t *testing.T) {
 	b := prepMem(t)
-	ts := func(min int) time.Time { return time.Date(2017, 12, 20, 15, 18, min, 0, time.Local).In(time.UTC) }
+	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, 18, minute, 0, time.Local).In(time.UTC) }
 
 	// add one more for https://radio-t.com/2
 	comment := store.Comment{
