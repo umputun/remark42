@@ -1,5 +1,6 @@
 import { parseQuery } from 'utils/parse-query';
 import { THEMES, MAX_SHOWN_ROOT_COMMENTS } from './constants';
+import { themeStylingFromUrlSearchParams } from './theme';
 
 function parseNumber(value: unknown) {
   if (typeof value !== 'string') {
@@ -28,3 +29,4 @@ export const url = rawParams.url;
 export const token = rawParams.token;
 export const locale = rawParams.locale || 'en';
 export const noFooter = rawParams.no_footer === 'true';
+export const styling = themeStylingFromUrlSearchParams(rawParams);
