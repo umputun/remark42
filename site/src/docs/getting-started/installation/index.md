@@ -2,6 +2,17 @@
 title: Installation
 ---
 
+## System Requirements
+
+Remark42 is designed to be lightweight and efficient. Based on production usage statistics from busy installations:
+
+- **CPU**: Minimal usage (typically under 0.1%)
+- **Memory**: ~80MiB RAM (less than 4% of 2GB)
+- **Network**: Moderate bandwidth requirements
+- **Disk**: Small footprint (under 200MB for a 5-year-old installation with regular activity)
+
+These requirements make Remark42 suitable for running on small VPS instances, shared hosting environments, or even on Raspberry Pi and similar devices.
+
 ## Setup Remark42 Instance on Your Server
 
 ### Installation in Docker
