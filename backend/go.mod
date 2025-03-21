@@ -1,7 +1,7 @@
 module github.com/umputun/remark42/backend
 
 go 1.23
-toolchain go1.23.3
+toolchain go1.24.1
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
@@ -20,7 +20,7 @@ require (
 	github.com/go-pkgz/repeater v1.2.0
 	github.com/go-pkgz/rest v1.20.2
 	github.com/go-pkgz/syncs v1.3.2
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1
