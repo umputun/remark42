@@ -144,7 +144,7 @@ func (c *Comment) Snippet(limit int) string {
 	if limit <= 0 {
 		limit = snippetLen
 	}
-	cleanText := strings.Replace(c.Text, "\n", " ", -1)
+	cleanText := strings.ReplaceAll(c.Text, "\n", " ")
 	size := len([]rune(cleanText))
 	if size < limit {
 		return cleanText
@@ -179,9 +179,9 @@ func (c *Comment) SanitizeAsURL(inp string) string {
 
 func (c *Comment) escapeHTMLWithSome(inp string) string {
 	res := template.HTMLEscapeString(inp)
-	res = strings.Replace(res, "&amp;", "&", -1)
-	res = strings.Replace(res, "&#34;", "\"", -1)
-	res = strings.Replace(res, "&#39;", "'", -1)
+	res = strings.ReplaceAll(res, "&amp;", "&")
+	res = strings.ReplaceAll(res, "&#34;", "\"")
+	res = strings.ReplaceAll(res, "&#39;", "'")
 	return res
 }
 

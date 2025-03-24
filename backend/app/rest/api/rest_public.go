@@ -129,8 +129,8 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		switch format {
 		case "tree":
 			withInfo := treeWithInfo{Tree: service.MakeTree(comments, sort, limit, offsetID), Info: commentsInfo}
-			withInfo.Info.CountLeft = withInfo.Tree.CountLeft()
-			withInfo.Info.LastComment = withInfo.Tree.LastComment()
+			withInfo.Info.CountLeft = withInfo.CountLeft()
+			withInfo.Info.LastComment = withInfo.LastComment()
 			if withInfo.Nodes == nil { // eliminate json nil serialization
 				withInfo.Nodes = []*service.Node{}
 			}

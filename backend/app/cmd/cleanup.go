@@ -77,7 +77,7 @@ func (cc *CleanupCommand) procSpam(comments []store.Comment) int {
 					log.Printf("[WARN] can't remove comment, %v", err)
 				}
 			}
-			comment.Text = strings.Replace(comment.Text, "\n", " ", -1)
+			comment.Text = strings.ReplaceAll(comment.Text, "\n", " ")
 			log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
 		}
 	}

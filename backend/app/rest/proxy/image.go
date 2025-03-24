@@ -72,7 +72,7 @@ func (p Image) replace(commentHTML string, imgs []string) string {
 	for _, img := range imgs {
 		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(img))
 		resImgURL := p.RemarkURL + p.RoutePath + "?src=" + encodedImgURL
-		commentHTML = strings.Replace(commentHTML, img, resImgURL, -1)
+		commentHTML = strings.ReplaceAll(commentHTML, img, resImgURL)
 	}
 
 	return commentHTML

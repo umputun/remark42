@@ -835,7 +835,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	// try with wrong audience
 	badClaimsMultipleAudience := claims
-	badClaimsMultipleAudience.RegisteredClaims.Audience = jwt.ClaimStrings{"remark42", "something else"}
+	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42", "something else"}
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsMultipleAudience)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
@@ -848,7 +848,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t, string(b), "can't process token, claims.Audience expected to be a single element but it's not")
-	badClaimsMultipleAudience.RegisteredClaims.Audience = jwt.ClaimStrings{"remark42"}
+	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42"}
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {

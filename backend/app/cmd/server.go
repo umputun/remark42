@@ -1357,7 +1357,7 @@ func newAuthRefreshCache() *authRefreshCache {
 
 // Get implements cache getter with key converted to string
 func (c *authRefreshCache) Get(key string) (token.Claims, bool) {
-	return c.LoadingCache.Peek(key)
+	return c.Peek(key)
 }
 
 // Set implements cache setter with key converted to string
