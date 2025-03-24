@@ -31,6 +31,47 @@ _This is the recommended way to run Remark42_
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 - alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
 
+#### Installation as a systemd Service
+
+For a clean persistent setup without lengthy command line parameters:
+
+1. Create an environment file `/etc/remark42.env`:
+   ```
+   SECRET=12345
+   REMARK_URL=http://127.0.0.1:8080
+   ```
+
+1. Create a systemd service file `/etc/systemd/system/remark42.service`:
+   ```
+   [Unit]
+   Description=Remark42 Commenting Server
+   After=syslog.target
+   After=network.target
+
+   [Service]
+   Type=simple
+   EnvironmentFile=/etc/remark42.env
+   ExecStart=/usr/local/bin/remark42 server
+   WorkingDirectory=/var/www/remark42       # directory where data files are stored and automatic backups will be created
+   Restart=on-failure
+   User=nobody                              # another good alternative is `www-data`
+   Group=nogroup                            # another good alternative is `www-data`
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+1. Enable and start the service:
+   ```
+   sudo systemctl enable remark42.service
+   sudo systemctl start remark42.service
+   ```
+
+1. To update configuration, edit the environment file and restart the service:
+   ```
+   sudo systemctl restart remark42.service
+   ```
+
 ## Setup on Your Website
 
 Add config for Remark on a page of your site ([here](/docs/configuration/frontend/) is the full reference):
