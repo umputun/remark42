@@ -659,10 +659,8 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
 	var wrongLinkError error
 	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
-		if len(node.LinkData.Destination) != 0 &&
-			!(strings.HasPrefix(string(node.LinkData.Destination), "http://") ||
-				strings.HasPrefix(string(node.LinkData.Destination), "https://") ||
-				strings.HasPrefix(string(node.LinkData.Destination), "mailto:")) {
+		if len(node.Destination) != 0 &&
+			(!strings.HasPrefix(string(node.Destination), "http://") && !strings.HasPrefix(string(node.Destination), "https://") && !strings.HasPrefix(string(node.Destination), "mailto:")) {
 			wrongLinkError = fmt.Errorf("links should start with mailto:, http:// or https://")
 			return bf.Terminate
 		}
@@ -981,7 +979,7 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 func (s *DataStore) Close() error {
 	errs := new(multierror.Error)
 	if s.repliesCache.LoadingCache != nil {
-		errs = multierror.Append(errs, s.repliesCache.LoadingCache.Close())
+		errs = multierror.Append(errs, s.repliesCache.Close())
 	}
 	if s.TitleExtractor != nil {
 		errs = multierror.Append(errs, s.TitleExtractor.Close())

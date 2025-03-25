@@ -141,9 +141,9 @@ srv, ts := prep(t)
 }
 BKT
 `
-	text = strings.Replace(text, "BKT", "```", -1)
+	text = strings.ReplaceAll(text, "BKT", "```")
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
-	j = strings.Replace(j, "\n", "\\n", -1)
+	j = strings.ReplaceAll(j, "\n", "\\n")
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
@@ -169,9 +169,9 @@ func TestRest_PreviewCode(t *testing.T) {
 func main(aa string) int {return 0}
 BKT
 `
-	text = strings.Replace(text, "BKT", "```", -1)
+	text = strings.ReplaceAll(text, "BKT", "```")
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
-	j = strings.Replace(j, "\n", "\\n", -1)
+	j = strings.ReplaceAll(j, "\n", "\\n")
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)

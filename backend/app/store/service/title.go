@@ -116,7 +116,7 @@ func (t *TitleExtractor) isTitleElement(n *html.Node) bool {
 func (t *TitleExtractor) traverse(n *html.Node) (string, bool) {
 	if t.isTitleElement(n) {
 		title := n.FirstChild.Data
-		title = strings.Replace(title, "\n", "", -1)
+		title = strings.ReplaceAll(title, "\n", "")
 		title = strings.TrimSpace(title)
 		return title, true
 	}

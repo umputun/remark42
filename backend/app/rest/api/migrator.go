@@ -110,10 +110,8 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
 	defer cancel()
-	for {
-		if !m.isBusy(siteID) {
-			break
-		}
+	for m.isBusy(siteID) {
+
 		select {
 		case <-ctx.Done():
 			render.Status(r, http.StatusGatewayTimeout)

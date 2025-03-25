@@ -34,7 +34,7 @@ func TestEmailNew(t *testing.T) {
 	assert.NotNil(t, email, "email returned")
 
 	assert.NotNil(t, email.msgTmpl, "e.template is set")
-	assert.Equal(t, emailParams.From, email.EmailParams.From, "emailParams.From unchanged after creation")
+	assert.Equal(t, emailParams.From, email.From, "emailParams.From unchanged after creation")
 	if smtpParams.TimeOut == 0 {
 		assert.Equal(t, defaultEmailTimeout, email.TimeOut, "empty emailParams.TimeOut changed to default")
 	} else {

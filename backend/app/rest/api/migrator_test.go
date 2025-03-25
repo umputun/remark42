@@ -123,7 +123,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
+	r := strings.NewReader(strings.ReplaceAll(xmlTestWP, "'", "`"))
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	defer client.CloseIdleConnections()

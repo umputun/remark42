@@ -99,7 +99,7 @@ func (f *CommentFormatter) unEscape(txt string) (res string) {
 	}
 	res = txt
 	for _, e := range elems {
-		res = strings.Replace(res, e.from, e.to, -1)
+		res = strings.ReplaceAll(res, e.from, e.to)
 	}
 	return res
 }
