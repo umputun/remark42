@@ -167,7 +167,7 @@ github.com/montanaflynn/stats
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/redis/go-redis/v9 v9.7.0
+# github.com/redis/go-redis/v9 v9.7.3
 ## explicit; go 1.18
 github.com/redis/go-redis/v9
 github.com/redis/go-redis/v9/internal
