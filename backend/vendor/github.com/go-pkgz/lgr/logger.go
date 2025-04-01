@@ -11,8 +11,10 @@ package lgr
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"regexp"
@@ -51,18 +53,19 @@ var (
 // Logger provided simple logger with basic support of levels. Thread safe
 type Logger struct {
 	// set with Option calls
-	stdout, stderr io.Writer // destination writes for out and err
-	sameStream     bool      // stdout and stderr are the same stream
-	dbg            bool      // allows reporting for DEBUG level
-	trace          bool      // allows reporting for TRACE and DEBUG levels
-	callerFile     bool      // reports caller file with line number, i.e. foo/bar.go:89
-	callerFunc     bool      // reports caller function name, i.e. bar.myFunc
-	callerPkg      bool      // reports caller package name
-	levelBraces    bool      // encloses level with [], i.e. [INFO]
-	callerDepth    int       // how many stack frames to skip, relative to the real (reported) frame
-	format         string    // layout template
-	secrets        [][]byte  // sub-strings to secrets by matching
-	mapper         Mapper    // map (alter) output based on levels
+	stdout, stderr io.Writer    // destination writes for out and err
+	sameStream     bool         // stdout and stderr are the same stream
+	dbg            bool         // allows reporting for DEBUG level
+	trace          bool         // allows reporting for TRACE and DEBUG levels
+	callerFile     bool         // reports caller file with line number, i.e. foo/bar.go:89
+	callerFunc     bool         // reports caller function name, i.e. bar.myFunc
+	callerPkg      bool         // reports caller package name
+	levelBraces    bool         // encloses level with [], i.e. [INFO]
+	callerDepth    int          // how many stack frames to skip, relative to the real (reported) frame
+	format         string       // layout template
+	secrets        [][]byte     // sub-strings to secrets by matching
+	mapper         Mapper       // map (alter) output based on levels
+	slogHandler    slog.Handler // optional slog handler to delegate logging
 
 	// internal use
 	now           nowFn
@@ -158,6 +161,25 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		return
 	}
 	if lv == "TRACE" && !l.trace {
+		return
+	}
+
+	// if slog handler is set, use it
+	if l.slogHandler != nil {
+		// use NewRecord for consistency with adapter setup
+		// skip=0 because we don't need caller information from this context
+		record := slog.NewRecord(l.now(), stringToLevel(lv), msg, 0)
+		_ = l.slogHandler.Handle(context.Background(), record)
+
+		// handle FATAL and PANIC levels as they have special behavior
+		if lv == "FATAL" || lv == "PANIC" {
+			if lv == "PANIC" {
+				// print panic stack trace
+				stack := getDump()
+				_, _ = l.stderr.Write([]byte(fmt.Sprintf("\n*** PANIC: %s\n\n%s", msg, stack)))
+			}
+			l.fatal()
+		}
 		return
 	}
 

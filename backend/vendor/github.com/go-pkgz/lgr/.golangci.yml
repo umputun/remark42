@@ -1,8 +1,8 @@
 linters-settings:
   govet:
-    check-shadowing: true
+    shadow: true
   golint:
-    min-confidence: 0
+    min-confidence: 0.6
   gocyclo:
     min-complexity: 15
   maligned:
@@ -24,44 +24,80 @@ linters-settings:
     disabled-checks:
       - wrapperFunc
       - hugeParam
+      - rangeValCopy
 
 linters:
+  disable-all: true
   enable:
-    - megacheck
     - revive
     - govet
     - unconvert
-    - megacheck
-    - gas
-    - gocyclo
-    - dupl
-    - misspell
+    - gosec
     - unparam
     - unused
     - typecheck
     - ineffassign
     - stylecheck
     - gochecknoinits
-    - exportloopref
     - gocritic
     - nakedret
     - gosimple
     - prealloc
+
   fast: false
-  disable-all: true
+
 
 run:
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
+  concurrency: 4
 
 issues:
+  exclude-dirs:
+    - vendor
   exclude-rules:
     - text: "should have a package comment, unless it's in another file for this package"
       linters:
         - golint
+    - text: "exitAfterDefer:"
+      linters:
+        - gocritic
+    - text: "whyNoLint: include an explanation for nolint directive"
+      linters:
+        - gocritic
+    - text: "go.mongodb.org/mongo-driver/bson/primitive.E"
+      linters:
+        - govet
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+    - text: "integer overflow conversion"
+      linters:
+        - gosec
+    - text: "should have a package comment"
+      linters:
+        - revive
     - text: "at least one file in a package should have a package comment"
       linters:
         - stylecheck
+    - text: "commentedOutCode: may want to remove commented-out code"
+      linters:
+        - gocritic
+    - text: "unnamedResult: consider giving a name to these results"
+      linters:
+        - gocritic
+    - text: "var-naming: don't use an underscore in package name"
+      linters:
+        - revive
+    - text: "should not use underscores in package names"
+      linters:
+        - stylecheck
+    - text: "struct literal uses unkeyed fields"
+      linters:
+        - govet
+    - linters:
+        - unparam
+        - unused
+        - revive
+      path: _test\.go$
+      text: "unused-parameter"
   exclude-use-default: false
+

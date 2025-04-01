@@ -18,7 +18,7 @@ type Func func(format string, args ...interface{})
 func (f Func) Logf(format string, args ...interface{}) { f(format, args...) }
 
 // NoOp logger
-var NoOp = Func(func(format string, args ...interface{}) {})
+var NoOp = Func(func(format string, args ...interface{}) {}) //nolint:revive
 
 // Std logger sends to std default logger directly
 var Std = Func(func(format string, args ...interface{}) { stdlog.Printf(format, args...) })
@@ -30,7 +30,7 @@ func Printf(format string, args ...interface{}) {
 
 // Print simplifies replacement of std logger
 func Print(line string) {
-	def.logf(line)
+	def.logf(line) //nolint:govet
 }
 
 // Fatalf simplifies replacement of std logger
