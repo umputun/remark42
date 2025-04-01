@@ -72,7 +72,7 @@ github.com/go-chi/render
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.0.0-20241221172452-ba01339372ba
+# github.com/go-pkgz/auth/v2 v2.0.0
 ## explicit; go 1.21
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
@@ -94,8 +94,8 @@ github.com/go-pkgz/jrpc
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
-# github.com/go-pkgz/lgr v0.11.1
-## explicit; go 1.20
+# github.com/go-pkgz/lgr v0.12.0
+## explicit; go 1.21
 github.com/go-pkgz/lgr
 # github.com/go-pkgz/notify v1.2.0
 ## explicit; go 1.21
@@ -104,7 +104,7 @@ github.com/go-pkgz/notify
 ## explicit; go 1.20
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
-# github.com/go-pkgz/rest v1.20.2
+# github.com/go-pkgz/rest v1.20.3
 ## explicit; go 1.21
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
@@ -115,7 +115,7 @@ github.com/go-pkgz/syncs
 # github.com/golang-jwt/jwt/v5 v5.2.2
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
-# github.com/golang/snappy v0.0.4
+# github.com/golang/snappy v1.0.0
 ## explicit
 github.com/golang/snappy
 # github.com/google/uuid v1.6.0
@@ -290,7 +290,7 @@ golang.org/x/crypto/scrypt
 ## explicit; go 1.23.0
 golang.org/x/image/draw
 golang.org/x/image/math/f64
-# golang.org/x/net v0.37.0
+# golang.org/x/net v0.38.0
 ## explicit; go 1.23.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
