@@ -903,7 +903,7 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 			usersBkt := tx.Bucket([]byte(userBucketName))
 			if usersBkt != nil {
 				if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-					return fmt.Errorf("failed to delete user bucket for %s: %w", userID, err)
+					return fmt.Errorf("failed to delete user bucket for %s: %w", userID, e)
 				}
 			}
 			return nil
