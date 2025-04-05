@@ -20,7 +20,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
@@ -473,8 +472,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	if cnf.Admins == nil { // prevent json serialization to nil
 		cnf.Admins = []string{}
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, cnf)
+	R.RenderJSON(w, cnf)
 }
 
 // serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent

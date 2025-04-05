@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/render"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -58,8 +57,8 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "import request accepted"})
+	w.WriteHeader(http.StatusAccepted)
+	R.RenderJSON(w, R.JSON{"status": "import request accepted"})
 }
 
 // POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
@@ -93,8 +92,8 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "import request accepted"})
+	w.WriteHeader(http.StatusAccepted)
+	R.RenderJSON(w, R.JSON{"status": "import request accepted"})
 }
 
 // GET /wait?site=site-id
@@ -114,14 +113,13 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 
 		select {
 		case <-ctx.Done():
-			render.Status(r, http.StatusGatewayTimeout)
-			render.JSON(w, r, R.JSON{"status": "timeout expired", "site_id": siteID})
+			w.WriteHeader(http.StatusGatewayTimeout)
+			R.RenderJSON(w, R.JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"status": "completed", "site_id": siteID})
+	R.RenderJSON(w, R.JSON{"status": "completed", "site_id": siteID})
 }
 
 // GET /export?site=site-id&secret=12345&?mode=file|stream
@@ -129,6 +127,14 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
+	// Check if export would succeed before setting headers
+	// Use a nil writer for this check to avoid any partial writes
+	if _, err := m.NativeExporter.Export(io.Discard, siteID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+		return
+	}
+
+	// If we got here, the export should succeed, so we can set headers and perform the actual export
 	var writer io.Writer = w
 	if r.URL.Query().Get("mode") == "file" {
 		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
@@ -143,10 +149,8 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		writer = gzWriter
 	}
 
-	if _, err := m.NativeExporter.Export(writer, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
-		return
-	}
+	// Actually perform the export
+	_, _ = m.NativeExporter.Export(writer, siteID)
 }
 
 // POST /remap?site=site-id
@@ -201,8 +205,8 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[DEBUG] convert request completed. site=%s, comments=%d", siteID, size)
 	}()
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "convert request accepted"})
+	w.WriteHeader(http.StatusAccepted)
+	R.RenderJSON(w, R.JSON{"status": "convert request accepted"})
 }
 
 // runImport reads from tmpfile and import for given siteID and provider
