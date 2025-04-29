@@ -6,8 +6,8 @@ toolchain go1.24.2
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
-	github.com/PuerkitoBio/goquery v1.10.2
-	github.com/alecthomas/chroma/v2 v2.15.0
+	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/alecthomas/chroma/v2 v2.17.0
 	github.com/didip/tollbooth/v7 v7.0.2
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 	github.com/go-chi/chi/v5 v5.2.1
@@ -49,7 +49,7 @@ require (
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/didip/tollbooth/v8 v8.0.1 // indirect
-	github.com/dlclark/regexp2 v1.11.4 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.3 // indirect
 	github.com/go-pkgz/email v0.5.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.0.0 // indirect
