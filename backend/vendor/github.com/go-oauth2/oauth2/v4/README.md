@@ -68,6 +68,10 @@ func main() {
 	srv.SetAllowGetAccessRequest(true)
 	srv.SetClientInfoHandler(server.ClientFormHandler)
 
+	srv.UserAuthorizationHandler = func(w http.ResponseWriter, r *http.Request) (userID string, err error) {
+		return "000000", nil
+	}
+
 	srv.SetInternalErrorHandler(func(err error) (re *errors.Response) {
 		log.Println("Internal Error:", err.Error())
 		return

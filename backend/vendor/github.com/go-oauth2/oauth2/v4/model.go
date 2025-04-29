@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"net/url"
 	"time"
 )
 
@@ -56,5 +57,11 @@ type (
 		SetRefreshCreateAt(time.Time)
 		GetRefreshExpiresIn() time.Duration
 		SetRefreshExpiresIn(time.Duration)
+	}
+
+	ExtendableTokenInfo interface {
+		TokenInfo
+		GetExtension() url.Values
+		SetExtension(url.Values)
 	}
 )

@@ -117,6 +117,9 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			Audience: confClaims.Audience,
 		},
 		SessionOnly: sessOnly,
+		AuthProvider: &token.AuthProvider{
+			Name: e.ProviderName,
+		},
 	}
 
 	if _, err = e.TokenService.Set(w, claims); err != nil {
@@ -151,6 +154,9 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 			Issuer:    e.Issuer,
+		},
+		AuthProvider: &token.AuthProvider{
+			Name: e.ProviderName,
 		},
 	}
 

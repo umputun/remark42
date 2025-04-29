@@ -126,6 +126,9 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			Audience: []string{creds.Audience},
 		},
 		SessionOnly: sessOnly,
+		AuthProvider: &token.AuthProvider{
+			Name: p.ProviderName,
+		},
 	}
 
 	if _, err = p.TokenService.Set(w, claims); err != nil {

@@ -93,3 +93,13 @@ func (s *Server) SetAuthorizeScopeHandler(handler AuthorizeScopeHandler) {
 func (s *Server) SetResponseTokenHandler(handler ResponseTokenHandler) {
 	s.ResponseTokenHandler = handler
 }
+
+// SetRefreshTokenResolveHandler refresh token resolver
+func (s *Server) SetRefreshTokenResolveHandler(handler RefreshTokenResolveHandler) {
+	s.RefreshTokenResolveHandler = handler
+}
+
+// SetAccessTokenResolveHandler access token resolver
+func (s *Server) SetAccessTokenResolveHandler(handler AccessTokenResolveHandler) {
+	s.AccessTokenResolveHandler = handler
+}

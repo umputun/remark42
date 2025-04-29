@@ -267,6 +267,9 @@ func (ah *AppleHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
+		AuthProvider: &token.AuthProvider{
+			Name: ah.name,
+		},
 	}
 
 	if _, err = ah.JwtService.Set(w, claims); err != nil {
@@ -337,7 +340,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	// trying to fetch Apple public key (JWK) for verify token signature, it need for verify IDToken received from Apple
 	keySet, err := fetchAppleJWK(r.Context(), ah.conf.jwkURL)
 	if err != nil {
-		ah.L.Logf("[ERROR] failed to fetch JWK from Apple key service: " + err.Error())
+		ah.Logf("[ERROR] failed to fetch JWK from Apple key service: " + err.Error())
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("failed to fetch JWK from Apple key service: %s", resp.Error))
 		return
 	}
@@ -346,7 +349,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	tokenClaims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(resp.IDToken, tokenClaims, keySet.keyFunc)
 	if err != nil {
-		ah.L.Logf("[ERROR] failed to get claims: " + err.Error())
+		ah.Logf("[ERROR] failed to get claims: " + err.Error())
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("failed to token validation, key is invalid: %s", resp.Error))
 		return
 	}
@@ -376,6 +379,9 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 			Audience: oauthClaims.Audience,
 		},
 		SessionOnly: false,
+		AuthProvider: &token.AuthProvider{
+			Name: ah.name,
+		},
 	}
 
 	if _, err = ah.JwtService.Set(w, claims); err != nil {
@@ -445,7 +451,7 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 
 	defer func() {
 		if err = res.Body.Close(); err != nil {
-			ah.L.Logf("[ERROR] close request body failed when get access token: %v", err)
+			ah.Logf("[ERROR] close request body failed when get access token: %v", err)
 		}
 	}()
 
@@ -498,7 +504,7 @@ func (ah *AppleHandler) parseUserData(user *token.User, jUser string) {
 
 	// Catch error for log only. No need break flow if user name doesn't exist
 	if err := json.Unmarshal([]byte(jUser), &userData); err != nil {
-		ah.L.Logf("[DEBUG] failed to parse user data %s: %v", user, err)
+		ah.Logf("[DEBUG] failed to parse user data %s: %v", user, err)
 		user.Name = "noname_" + user.ID[6:12] // paste noname if user name failed to parse
 		return
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-oauth2/oauth2/v4"
@@ -25,8 +24,10 @@ func NewServer(cfg *Config, manager oauth2.Manager) *Server {
 		Manager: manager,
 	}
 
-	// default handler
+	// default handlers
 	srv.ClientInfoHandler = ClientBasicHandler
+	srv.RefreshTokenResolveHandler = RefreshTokenFormResolveHandler
+	srv.AccessTokenResolveHandler = AccessTokenDefaultResolveHandler
 
 	srv.UserAuthorizationHandler = func(w http.ResponseWriter, r *http.Request) (string, error) {
 		return "", errors.ErrAccessDenied
@@ -56,6 +57,8 @@ type Server struct {
 	AccessTokenExpHandler        AccessTokenExpHandler
 	AuthorizeScopeHandler        AuthorizeScopeHandler
 	ResponseTokenHandler         ResponseTokenHandler
+	RefreshTokenResolveHandler   RefreshTokenResolveHandler
+	AccessTokenResolveHandler    AccessTokenResolveHandler
 }
 
 func (s *Server) handleError(w http.ResponseWriter, req *AuthorizeRequest, err error) error {
@@ -367,10 +370,10 @@ func (s *Server) ValidationTokenRequest(r *http.Request) (oauth2.GrantType, *oau
 	case oauth2.ClientCredentials:
 		tgr.Scope = r.FormValue("scope")
 	case oauth2.Refreshing:
-		tgr.Refresh = r.FormValue("refresh_token")
+		tgr.Refresh, err = s.RefreshTokenResolveHandler(r)
 		tgr.Scope = r.FormValue("scope")
-		if tgr.Refresh == "" {
-			return "", nil, errors.ErrInvalidRequest
+		if err != nil {
+			return "", nil, err
 		}
 	}
 	return gt, tgr, nil
@@ -569,27 +572,12 @@ func (s *Server) GetErrorData(err error) (map[string]interface{}, int, http.Head
 	return data, statusCode, re.Header
 }
 
-// BearerAuth parse bearer token
-func (s *Server) BearerAuth(r *http.Request) (string, bool) {
-	auth := r.Header.Get("Authorization")
-	prefix := "Bearer "
-	token := ""
-
-	if auth != "" && strings.HasPrefix(auth, prefix) {
-		token = auth[len(prefix):]
-	} else {
-		token = r.FormValue("access_token")
-	}
-
-	return token, token != ""
-}
-
 // ValidationBearerToken validation the bearer tokens
 // https://tools.ietf.org/html/rfc6750
 func (s *Server) ValidationBearerToken(r *http.Request) (oauth2.TokenInfo, error) {
 	ctx := r.Context()
 
-	accessToken, ok := s.BearerAuth(r)
+	accessToken, ok := s.AccessTokenResolveHandler(r)
 	if !ok {
 		return nil, errors.ErrInvalidAccessToken
 	}
