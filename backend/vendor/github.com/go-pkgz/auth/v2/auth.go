@@ -4,6 +4,8 @@ package auth
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -270,8 +272,40 @@ func (s *Service) addProviderByName(name string, p provider.Params) {
 }
 
 func (s *Service) addProvider(prov provider.Provider) {
+	if !s.isValidProviderName(prov.Name()) {
+		return
+	}
 	s.providers = append(s.providers, provider.NewService(prov))
 	s.authMiddleware.Providers = s.providers
+}
+
+func (s *Service) isValidProviderName(name string) bool {
+	if strings.TrimSpace(name) == "" {
+		s.logger.Logf("[ERROR] provider has been ignored because its name is empty")
+		return false
+	}
+
+	formatForbidden := func(name string) string {
+		return fmt.Sprintf("provider has been ignored because its name contains forbidden characters: '%s'", name)
+	}
+
+	path, err := url.PathUnescape(name)
+	if err != nil || path != name {
+		s.logger.Logf("[ERROR] %s", formatForbidden(name))
+		return false
+	}
+	if name != url.PathEscape(name) {
+		s.logger.Logf("[ERROR] %s", formatForbidden(name))
+		return false
+	}
+	// net/url package does not escape everything (https://github.com/golang/go/issues/5684)
+	// It is better to reject all reserved characters from https://datatracker.ietf.org/doc/html/rfc3986#section-2.2
+	if regexp.MustCompile(`[:/?#\[\]@!$&'\(\)*+,;=]`).MatchString(name) {
+		s.logger.Logf("[ERROR] %s", formatForbidden(name))
+		return false
+	}
+
+	return true
 }
 
 // AddProvider adds provider for given name

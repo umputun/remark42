@@ -129,7 +129,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 				}
 
 				// check if user provider is allowed
-				if !a.isProviderAllowed(claims.User.ID) {
+				if !a.isProviderAllowed(&claims) {
 					onError(h, w, r, fmt.Errorf("user %s/%s provider is not allowed", claims.User.Name, claims.User.ID))
 					a.JWTService.Reset(w)
 					return
@@ -153,13 +153,24 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 	return f
 }
 
-// isProviderAllowed checks if user provider is allowed, user id looks like "provider_1234567890"
-// this check is needed to reject users from providers what are used to be allowed but not anymore.
+// isProviderAllowed checks if user provider is allowed.
+// If provider name is explicitly set in the token claims, then that provider is checked.
+//
+// If user id looks like "provider_1234567890",
+// then there is an attempt to extract provider name from that user ID.
+// Note that such read can fail if user id has multiple "_" separator symbols.
+//
+// This check is needed to reject users from providers what are used to be allowed but not anymore.
 // Such users made token before the provider was disabled and should not be allowed to login anymore.
-func (a *Authenticator) isProviderAllowed(userID string) bool {
-	userProvider := strings.Split(userID, "_")[0]
+func (a *Authenticator) isProviderAllowed(claims *token.Claims) bool {
+	// TODO: remove this read when old tokens expire and all new tokens have a provider name in them
+	userIDProvider := strings.Split(claims.User.ID, "_")[0]
 	for _, p := range a.Providers {
-		if p.Name() == userProvider {
+		name := p.Name()
+		if claims.AuthProvider != nil && claims.AuthProvider.Name == name {
+			return true
+		}
+		if name == userIDProvider {
 			return true
 		}
 	}

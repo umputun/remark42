@@ -118,6 +118,9 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		NoAva: r.URL.Query().Get("noava") == "1",
+		AuthProvider: &token.AuthProvider{
+			Name: p.name,
+		},
 	}
 
 	if _, err := p.JwtService.Set(w, claims); err != nil {
@@ -215,6 +218,9 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		SessionOnly: oauthClaims.SessionOnly,
 		NoAva:       oauthClaims.NoAva,
+		AuthProvider: &token.AuthProvider{
+			Name: p.name,
+		},
 	}
 
 	if _, err = p.JwtService.Set(w, claims); err != nil {
