@@ -17,6 +17,7 @@
 }
 
 .select {
+  background-color: rgb(var(--primary-background-color));
   position: absolute;
   top: 0;
   left: 0;
