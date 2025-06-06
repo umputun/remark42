@@ -164,7 +164,7 @@ describe('<Profile />', () => {
     expect(container.querySelector('profile-footer')).not.toBeInTheDocument();
   });
 
-  it('load more button should dissapear if there no more comments to fetch', async () => {
+  it('load more button should disappear if there no more comments to fetch', async () => {
     jest
       .spyOn(api, 'getUserComments')
       .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
