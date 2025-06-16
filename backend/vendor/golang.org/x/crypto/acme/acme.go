@@ -353,6 +353,10 @@ func (c *Client) authorize(ctx context.Context, typ, val string) (*Authorization
 	if _, err := c.Discover(ctx); err != nil {
 		return nil, err
 	}
+	if c.dir.AuthzURL == "" {
+		// Pre-Authorization is unsupported
+		return nil, errPreAuthorizationNotSupported
+	}
 
 	type authzID struct {
 		Type  string `json:"type"`
