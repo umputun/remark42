@@ -10,7 +10,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.15.0
 	github.com/didip/tollbooth/v7 v7.0.2
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
 	github.com/go-pkgz/auth/v2 v2.0.1-0.20250415030422-4f9f2c5e3b0d
