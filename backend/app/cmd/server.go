@@ -96,7 +96,7 @@ type ServerCommand struct {
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 
-		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
+		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
 		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
