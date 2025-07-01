@@ -253,7 +253,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 
 func (l *Logger) hideSecrets(data []byte) []byte {
 	for _, h := range l.secrets {
-		data = bytes.Replace(data, h, secretReplacement, -1)
+		data = bytes.ReplaceAll(data, h, secretReplacement)
 	}
 	return data
 }

@@ -31,9 +31,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/big"
@@ -353,6 +351,10 @@ func (c *Client) authorize(ctx context.Context, typ, val string) (*Authorization
 	if _, err := c.Discover(ctx); err != nil {
 		return nil, err
 	}
+	if c.dir.AuthzURL == "" {
+		// Pre-Authorization is unsupported
+		return nil, errPreAuthorizationNotSupported
+	}
 
 	type authzID struct {
 		Type  string `json:"type"`
@@ -467,7 +469,7 @@ func (c *Client) WaitAuthorization(ctx context.Context, url string) (*Authorizat
 		// while waiting for a final authorization status.
 		d := retryAfter(res.Header.Get("Retry-After"))
 		if d == 0 {
-			// Given that the fastest challenges TLS-SNI and HTTP-01
+			// Given that the fastest challenges TLS-ALPN and HTTP-01
 			// require a CA to make at least 1 network round trip
 			// and most likely persist a challenge state,
 			// this default delay seems reasonable.
@@ -568,44 +570,21 @@ func (c *Client) HTTP01ChallengePath(token string) string {
 }
 
 // TLSSNI01ChallengeCert creates a certificate for TLS-SNI-01 challenge response.
+// Always returns an error.
 //
-// Deprecated: This challenge type is unused in both draft-02 and RFC versions of the ACME spec.
-func (c *Client) TLSSNI01ChallengeCert(token string, opt ...CertOption) (cert tls.Certificate, name string, err error) {
-	ka, err := keyAuth(c.Key.Public(), token)
-	if err != nil {
-		return tls.Certificate{}, "", err
-	}
-	b := sha256.Sum256([]byte(ka))
-	h := hex.EncodeToString(b[:])
-	name = fmt.Sprintf("%s.%s.acme.invalid", h[:32], h[32:])
-	cert, err = tlsChallengeCert([]string{name}, opt)
-	if err != nil {
-		return tls.Certificate{}, "", err
-	}
-	return cert, name, nil
+// Deprecated: This challenge type was only present in pre-standardized ACME
+// protocol drafts and is insecure for use in shared hosting environments.
+func (c *Client) TLSSNI01ChallengeCert(token string, opt ...CertOption) (tls.Certificate, string, error) {
+	return tls.Certificate{}, "", errPreRFC
 }
 
 // TLSSNI02ChallengeCert creates a certificate for TLS-SNI-02 challenge response.
+// Always returns an error.
 //
-// Deprecated: This challenge type is unused in both draft-02 and RFC versions of the ACME spec.
-func (c *Client) TLSSNI02ChallengeCert(token string, opt ...CertOption) (cert tls.Certificate, name string, err error) {
-	b := sha256.Sum256([]byte(token))
-	h := hex.EncodeToString(b[:])
-	sanA := fmt.Sprintf("%s.%s.token.acme.invalid", h[:32], h[32:])
-
-	ka, err := keyAuth(c.Key.Public(), token)
-	if err != nil {
-		return tls.Certificate{}, "", err
-	}
-	b = sha256.Sum256([]byte(ka))
-	h = hex.EncodeToString(b[:])
-	sanB := fmt.Sprintf("%s.%s.ka.acme.invalid", h[:32], h[32:])
-
-	cert, err = tlsChallengeCert([]string{sanA, sanB}, opt)
-	if err != nil {
-		return tls.Certificate{}, "", err
-	}
-	return cert, sanA, nil
+// Deprecated: This challenge type was only present in pre-standardized ACME
+// protocol drafts and is insecure for use in shared hosting environments.
+func (c *Client) TLSSNI02ChallengeCert(token string, opt ...CertOption) (tls.Certificate, string, error) {
+	return tls.Certificate{}, "", errPreRFC
 }
 
 // TLSALPN01ChallengeCert creates a certificate for TLS-ALPN-01 challenge response.
@@ -769,7 +748,7 @@ func defaultTLSChallengeCertTemplate() *x509.Certificate {
 	}
 }
 
-// tlsChallengeCert creates a temporary certificate for TLS-SNI challenges
+// tlsChallengeCert creates a temporary certificate for TLS-ALPN challenges
 // with the given SANs and auto-generated public/private key pair.
 // The Subject Common Name is set to the first SAN to aid debugging.
 // To create a cert with a custom key pair, specify WithKey option.
@@ -810,12 +789,6 @@ func tlsChallengeCert(san []string, opt []CertOption) (tls.Certificate, error) {
 		Certificate: [][]byte{der},
 		PrivateKey:  key,
 	}, nil
-}
-
-// encodePEM returns b encoded as PEM with block of type typ.
-func encodePEM(typ string, b []byte) []byte {
-	pb := &pem.Block{Type: typ, Bytes: b}
-	return pem.EncodeToMemory(pb)
 }
 
 // timeNow is time.Now, except in tests which can mess with it.
