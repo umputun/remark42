@@ -79,7 +79,7 @@ services:
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                   | height of a resized image                                |
 | auth.ttl.jwt                   | AUTH_TTL_JWT                   | `5m`                    | JWT TTL                                                  |
 | auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                  | cookie TTL                                               |
-| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | send JWT as a header instead of a cookie                 |
+| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | send JWT as a header instead of a server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie. [See security considerations](#security-considerations-for-auth.send-jwt-header). |
 | auth.same-site                 | AUTH_SAME_SITE                 | `default`               | set same site policy for cookies (`default`, `none`, `lax` or `strict`) |
 | auth.apple.cid                 | AUTH_APPLE_CID                 |                         | Apple client ID (App ID or Services ID)                  |
 | auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple service ID                                         |
@@ -168,6 +168,23 @@ services:
 - command-line parameters are long-form `--<key>=value`, i.e., `--site=https://demo.remark42.com`
 - _multi_ parameters separated by `,` in the environment or repeated with command-line keys, like `--site=s1 --site=s2 ...`
 - _required_ parameters have to be presented in the environment or provided in the command-line
+
+### Security Considerations for auth.send-jwt-header
+
+When `auth.send-jwt-header=true` is enabled:
+
+- **Security Impact**: JWT tokens are stored in client-accessible cookies that can be accessed by JavaScript
+- **Vulnerability**: This increases vulnerability to XSS attacks compared to server-set HttpOnly cookies
+- **Implementation Mitigations**:
+  - SameSite=Strict cookies to prevent CSRF attacks
+  - Secure flag automatically added on HTTPS connections
+  - __Host- prefix added on HTTPS to prevent subdomain attacks
+  - Double Submit Cookie pattern with XSRF token matching the JWT ID
+
+This configuration should only be used when:
+1. You need cross-domain authentication support
+2. You understand and accept the increased XSS risk
+3. You have implemented strong XSS protections on your site
 
 ### Deprecated parameters
 

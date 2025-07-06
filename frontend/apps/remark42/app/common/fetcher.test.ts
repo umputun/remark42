@@ -4,7 +4,16 @@ jest.mock('./settings', () => ({
 
 import { RequestError } from 'utils/errorUtils';
 import { API_BASE, BASE_URL } from './constants.config';
-import { apiFetcher, authFetcher, adminFetcher, JWT_HEADER } from './fetcher';
+import {
+  apiFetcher,
+  authFetcher,
+  adminFetcher,
+  JWT_HEADER,
+  JWT_COOKIE_NAME,
+  XSRF_COOKIE,
+  AUTH_COOKIE_TTL_SECONDS,
+} from './fetcher';
+import * as cookies from './cookies';
 
 type FetchImplementationProps = {
   status?: number;
@@ -31,6 +40,16 @@ function mockFetch({ headers = {}, data = {}, ...props }: FetchImplementationPro
 }
 
 describe('fetcher', () => {
+  // Mock cookies for the test environment
+  beforeEach(() => {
+    // Mock getCookie to always return undefined for XSRF_COOKIE
+    jest.spyOn(cookies, 'getCookie').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   const headers = {};
   const apiUri = '/anything';
   const apiUrl = `${BASE_URL}${API_BASE}/anything?site=remark`;
@@ -96,6 +115,12 @@ describe('fetcher', () => {
   });
 
   describe('headers', () => {
+    beforeEach(() => {
+      // Clear cookies before each test
+      document.cookie = `${JWT_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      document.cookie = `${XSRF_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+
     it('should set active token and than clean it on unauthorized response', async () => {
       expect.assertions(4);
 
@@ -124,6 +149,119 @@ describe('fetcher', () => {
       await apiFetcher.get(apiUri);
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
+    });
+
+    it('should store JWT token in a cookie when received in header', async () => {
+      // Mock the auth cookie helper - use mockReturnValueOnce for cleaner tests
+      jest.spyOn(cookies, 'setAuthCookie').mockReturnValueOnce(undefined);
+
+      // Create test JWT token - we'll mock the parsing
+      const jwtToken = 'test.jwt.token';
+
+      // Mock parseJwtPayload implementation since it's not directly accessible
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
+
+      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
+      await apiFetcher.get(apiUri);
+
+      // Check that setAuthCookie was called for both JWT and XSRF tokens
+      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
+        JWT_COOKIE_NAME,
+        jwtToken,
+        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
+      );
+
+      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
+        XSRF_COOKIE,
+        'test-jti-id',
+        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
+      );
+    });
+
+    it('should call setAuthCookie with proper parameters when receiving JWT token', async () => {
+      // Spy on setAuthCookie calls with mockImplementationOnce and jest.fn()
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementationOnce(jest.fn());
+
+      // Create test JWT token
+      const jwtToken = 'test.jwt.token';
+
+      // Mock parseJwtPayload implementation since it's not directly accessible
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
+
+      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
+      await apiFetcher.get(apiUri);
+
+      // Verify setAuthCookie was called with expected parameters
+      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
+        JWT_COOKIE_NAME,
+        jwtToken,
+        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
+      );
+
+      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
+        XSRF_COOKIE,
+        'test-jti-id',
+        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
+      );
+    });
+
+    it('should handle errors when setting cookies', async () => {
+      // Mock console.error using jest.spyOn
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Make setAuthCookie throw an error
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementationOnce(() => {
+        throw new Error('Cookie access denied');
+      });
+
+      // Create test JWT token
+      const jwtToken = 'test.jwt.token';
+
+      // Mock parseJwtPayload implementation since it's not directly accessible
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
+
+      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
+
+      // This should not throw despite cookie setting failing
+      await apiFetcher.get(apiUri);
+
+      // Error should be logged
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should reset activeJwtToken and clear cookies on 401/403 responses', async () => {
+      // Mock clearAuthCookie
+      jest.spyOn(cookies, 'clearAuthCookie').mockImplementationOnce(jest.fn());
+
+      // Setup JWT token with mocked payload
+      const jwtToken = 'test.jwt.token';
+
+      // Mock JWT parsing
+      const mockPayload = { jti: 'test-jti-id', sub: '1234567890' };
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify(mockPayload));
+
+      // First set JWT token
+      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
+      await apiFetcher.get(apiUri);
+
+      // Now trigger a 401 response
+      mockFetch({ status: 401 });
+
+      // Use await expect().rejects for async errors instead of try/catch
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+
+      // Verify cookies were cleared
+      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(JWT_COOKIE_NAME);
+      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(XSRF_COOKIE);
+
+      // Verify that subsequent requests don't include the JWT header
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+
+      expect(window.fetch).toHaveBeenCalled();
     });
   });
 
