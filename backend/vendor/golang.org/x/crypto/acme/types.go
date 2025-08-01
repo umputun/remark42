@@ -56,6 +56,10 @@ var (
 
 	// ErrNoAccount indicates that the Client's key has not been registered with the CA.
 	ErrNoAccount = errors.New("acme: account does not exist")
+
+	// errPreAuthorizationNotSupported indicates that the server does not
+	// support pre-authorization of identifiers.
+	errPreAuthorizationNotSupported = errors.New("acme: pre-authorization is not supported")
 )
 
 // A Subproblem describes an ACME subproblem as reported in an Error.
@@ -615,7 +619,7 @@ func (*certOptKey) privateCertOpt() {}
 //
 // In TLS ChallengeCert methods, the template is also used as parent,
 // resulting in a self-signed certificate.
-// The DNSNames field of t is always overwritten for tls-sni challenge certs.
+// The DNSNames or IPAddresses fields of t are always overwritten for tls-alpn challenge certs.
 func WithTemplate(t *x509.Certificate) CertOption {
 	return (*certOptTemplate)(t)
 }
