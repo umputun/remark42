@@ -58,7 +58,9 @@ const ImageMimeRegex = /image\//i;
 export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
-  static textareaId = 0;
+  static textareaCounter = 0;
+  /** unique textarea ID for this instance */
+  textareaId: string;
 
   state = {
     preview: null,
@@ -75,7 +77,8 @@ export class CommentForm extends Component<Props, State> {
 
     const savedComment = getPersistedComment(props.id);
     this.state.text = props.value ?? savedComment ?? '';
-    CommentForm.textareaId += 1;
+    CommentForm.textareaCounter += 1;
+    this.textareaId = `textarea_${CommentForm.textareaCounter}`;
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -416,7 +419,6 @@ export class CommentForm extends Component<Props, State> {
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
-    const textareaId = `textarea_${CommentForm.textareaId}`;
     const label = buttonText || Labels[mode || 'main'];
     const placeholderMessage = intl.formatMessage(messages.placeholder);
     const isSimpleView = StaticStore.config.simple_view;
@@ -443,14 +445,14 @@ export class CommentForm extends Component<Props, State> {
               intl={intl}
               allowUpload={Boolean(uploadImage)}
               uploadImages={this.uploadImages}
-              textareaId={textareaId}
+              textareaId={this.textareaId}
             />
           </div>
         )}
         <div className="comment-form__field-wrapper">
           <TextExpander>
             <TextareaAutosize
-              id={textareaId}
+              id={this.textareaId}
               ref={this.textareaRef}
               onPaste={this.onPaste}
               className="comment-form__field"
