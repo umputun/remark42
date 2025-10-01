@@ -227,7 +227,7 @@ func (l *Middleware) getBody(r *http.Request) string {
 	r.Body = io.NopCloser(reader)
 
 	if body != "" {
-		body = strings.Replace(body, "\n", " ", -1)
+		body = strings.ReplaceAll(body, "\n", " ")
 		body = reMultWhtsp.ReplaceAllString(body, " ")
 	}
 
