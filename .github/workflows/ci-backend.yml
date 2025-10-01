@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: debug if needed
         run: if [[ "$DEBUG" == "true" ]]; then env; fi
@@ -30,7 +30,7 @@ jobs:
           DEBUG: ${{secrets.DEBUG}}
 
       - name: install go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.23"
           cache-dependency-path: backend
@@ -53,13 +53,13 @@ jobs:
           TZ: "America/Chicago"
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: "v1.64.7"
           working-directory: backend/app
 
       - name: golangci-lint on example directory
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: "v1.64.7"
           args: --config ../../.golangci.yml
