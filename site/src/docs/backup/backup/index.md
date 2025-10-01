@@ -18,3 +18,5 @@ This command creates `userbackup-{site ID}-{timestamp}.gz` file by default.
 ## Backup format
 
 The backup file is a text file with all exported comments separated by EOL. Each backup record is a valid JSON with all key/value unmarshaled from the `Comment` struct (see [here](https://remark42.com/docs/contributing/api/#commenting)).
+
+Avatars and images are stored separately. By default avatars are stored in `./var/avatars` and images in `./var/pictures` and need to be backed up, as well. For more information, check the [technical details of the backend documentation](https://remark42.com/docs/contributing/backend/#technical-details).
