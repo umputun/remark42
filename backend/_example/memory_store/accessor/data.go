@@ -391,10 +391,7 @@ func (m *MemData) checkFlag(req engine.FlagRequest) (val bool) {
 
 func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 
-	status := false
-	if req.Update == engine.FlagTrue {
-		status = true
-	}
+	status := req.Update == engine.FlagTrue
 
 	switch req.Flag {
 
