@@ -102,7 +102,9 @@ func TestService_Many(t *testing.T) {
 		time.Sleep(time.Millisecond * time.Duration(rand.Int31n(20)))
 	}
 	s.Close()
-	time.Sleep(time.Millisecond * 10)
+
+	// wait for destinations to close
+	assert.Eventually(t, func() bool { return d1.closed && d2.closed }, 100*time.Millisecond, 10*time.Millisecond)
 
 	assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
 	assert.NotEqual(t, 10, len(d1.GetVerify()), "some verifications dropped from d1")

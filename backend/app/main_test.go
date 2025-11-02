@@ -98,9 +98,6 @@ func TestMain_WithWebhook(t *testing.T) {
 	finished := make(chan struct{})
 	go func() {
 		main()
-		assert.Eventually(t, func() bool {
-			return atomic.LoadInt32(&webhookSent) == int32(1)
-		}, time.Second, 100*time.Millisecond, "webhook was not sent")
 		close(finished)
 	}()
 
@@ -117,6 +114,11 @@ func TestMain_WithWebhook(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// wait for webhook to be sent before shutting down
+	assert.Eventually(t, func() bool {
+		return atomic.LoadInt32(&webhookSent) == int32(1)
+	}, time.Second, 100*time.Millisecond, "webhook was not sent")
 }
 
 func TestGetDump(t *testing.T) {
