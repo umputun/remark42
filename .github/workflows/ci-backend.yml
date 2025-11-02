@@ -53,15 +53,15 @@ jobs:
           TZ: "America/Chicago"
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: "v1.64.7"
+          version: "v2.6.0"
           working-directory: backend/app
 
       - name: golangci-lint on example directory
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: "v1.64.7"
+          version: "v2.6.0"
           args: --config ../../.golangci.yml
           working-directory: backend/_example/memory_store
 
