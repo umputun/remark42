@@ -1,6 +1,6 @@
 module github.com/umputun/remark42/backend
 
-go 1.24
+go 1.25
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
