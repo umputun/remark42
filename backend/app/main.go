@@ -28,7 +28,8 @@ type Opts struct {
 	// SharedSecret is only used in server command, but defined for all commands for historical reasons
 	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"the shared secret key used to sign JWT, should be a random, long, hard-to-guess string"`
 
-	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Dbg           bool   `long:"dbg" env:"DEBUG" description:"debug mode"`
+	Premoderation string `long:"premoderation" env:"PREMODERATION" description:"use comments premoderation. Possible values: 'none', 'first', 'all'"`
 }
 
 var revision = "unknown"
@@ -42,12 +43,15 @@ func main() {
 		setupLog(opts.Dbg)
 		// commands implements CommonOptionsCommander to allow passing set of extra options defined for all commands
 		c := command.(cmd.CommonOptionsCommander)
+
 		c.SetCommon(cmd.CommonOpts{
-			RemarkURL:    opts.RemarkURL,
-			SharedSecret: opts.SharedSecret,
-			Revision:     revision,
+			RemarkURL:     opts.RemarkURL,
+			SharedSecret:  opts.SharedSecret,
+			Revision:      revision,
+			Premoderation: opts.Premoderation,
 		})
 		logDeprecatedParams(c.HandleDeprecatedFlags())
+
 		err := c.Execute(args)
 		if err != nil {
 			log.Printf("[ERROR] failed with %+v", err)

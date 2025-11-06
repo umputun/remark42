@@ -45,6 +45,7 @@ type private struct {
 	remarkURL                  string
 	anonVote                   bool
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	premoderation              Premoderation
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -151,6 +152,12 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	comment, err := s.handlePremoderation(comment, user)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "error handling premoderation", rest.ErrPremoderationFailure)
+		return
+	}
+
 	id, err := s.dataService.Create(comment)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
@@ -178,6 +185,39 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, &finalComment)
+}
+
+func (s *private) handlePremoderation(comment store.Comment, user store.User) (store.Comment, error) {
+	// admin messages are approved by default
+	if user.Admin {
+		comment.Approved = true
+		return comment, nil
+	}
+
+	// if previous comments were approved and the strategy is "first" approve other comments by default
+	switch s.premoderation {
+	case PremoderationFirst:
+		prevComments, err := s.dataService.User(user.SiteID, user.ID, 100, 0, user) // FIXME: check the usage of limit/skip
+		if err != nil {
+			if strings.Contains(err.Error(), "no comments") { // it seems we error out if we don't have comments for the user
+				comment.Approved = false // this is the first message for this user
+				return comment, nil
+			}
+			return store.Comment{}, fmt.Errorf("error accessing user's comments: %s", err.Error())
+		}
+		// if there is a previously approved comment then approve the new comment
+		for _, c := range prevComments {
+			if c.Approved {
+				comment.Approved = true
+				return comment, nil
+			}
+		}
+	case PremoderationAll: // we need to approve every single comment
+		comment.Approved = false
+	default: // if no premoderation is applied we mark new comments as approved
+		comment.Approved = true
+	}
+	return comment, nil
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment

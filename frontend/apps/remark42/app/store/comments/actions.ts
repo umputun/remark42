@@ -54,6 +54,13 @@ export const updateComment =
     dispatch(editComments(comment));
   };
 
+export const approveComment =
+  (id: Comment['id'], text: string, approved: boolean): StoreAction<Promise<void>> =>
+  async (dispatch) => {
+    const comment = await api.approveComment({ id, text, approved });
+    dispatch(patchComment({ ...comment, approved: comment.approved }));
+  };
+
 /** edits comment in tree */
 export const setPinState =
   (id: Comment['id'], value: boolean): StoreAction<Promise<void>> =>

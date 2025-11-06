@@ -10,6 +10,7 @@ function getProps(): Props {
     admin: false,
     currentUser: false,
     copied: false,
+    approved: true,
     bannedUser: false,
     readOnly: false,
     editing: false,
@@ -25,6 +26,7 @@ function getProps(): Props {
     onDisableEditing: jest.fn(),
     editable: false,
     editDeadline: undefined,
+    onToggleApprove: jest.fn(),
   };
 }
 describe('<CommentActions/>', () => {
@@ -148,8 +150,9 @@ describe('<CommentActions/>', () => {
       expect(screen.getByTestId('comment-actions-additional').children[0]).toHaveTextContent('Hide');
       expect(screen.getByTestId('comment-actions-additional').children[1]).toHaveTextContent('Copy');
       expect(screen.getByTestId('comment-actions-additional').children[2]).toHaveTextContent('Pin');
-      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Block');
-      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Delete');
+      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Disapprove'); // we set approved = true in the props
+      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Block');
+      expect(screen.getByTestId('comment-actions-additional').children[5]).toHaveTextContent('Delete');
     });
 
     it('calls `onToggleEditing` when edit button is pressed', () => {

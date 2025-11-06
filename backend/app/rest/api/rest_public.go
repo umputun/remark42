@@ -31,6 +31,7 @@ type public struct {
 	readOnlyAge      int
 	commentFormatter *store.CommentFormatter
 	imageService     *image.Service
+	premoderation    Premoderation
 }
 
 type pubStore interface {
@@ -100,10 +101,17 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
-		comments, e := s.dataService.FindSince(locator, sort, rest.GetUserOrEmpty(r), since)
+		user := rest.GetUserOrEmpty(r)
+		comments, e := s.dataService.FindSince(locator, sort, user, since)
 		if e != nil {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
+
+		if s.premoderation != PremoderationNone && !user.Admin {
+			log.Printf("[DEBUG] premoderation enabled and user is not admin. Hiding unapproved comments")
+			comments = filterComments(comments, func(c store.Comment) bool { return c.Approved })
+		}
+
 		comments = s.applyView(comments, view)
 
 		var commentsInfo store.PostInfo
@@ -125,6 +133,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			commentsInfo.ReadOnly = true
 		}
 
+		// TODO: here the count is returned. Need to start debugging here.
 		var b []byte
 		switch format {
 		case "tree":
@@ -204,9 +213,18 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return nil, e
 		}
+
 		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
-		filterDeleted := filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
-		return encodeJSONWithHTML(filterDeleted)
+		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
+		filters := []func(c store.Comment) bool{deleteFilter}
+		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
+			approvedFilter := func(c store.Comment) bool { return c.Approved }
+			filters = append(filters, approvedFilter)
+		}
+		// we don't want to leak unapproved comments
+		filteredComments := filterComments(comments, filters...)
+
+		return encodeJSONWithHTML(filteredComments)
 	})
 
 	if err != nil {
@@ -271,12 +289,22 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			}
 			return nil, e
 		}
-		comments = filterComments(comments, func(c store.Comment) bool { return !c.Deleted })
+
+		// filter deleted from last comments view. Blocked marked as deleted and will sneak in without
+		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
+		filters := []func(c store.Comment) bool{deleteFilter}
+		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
+			approvedFilter := func(c store.Comment) bool { return c.Approved }
+			filters = append(filters, approvedFilter)
+		}
+		// we don't want to leak unapproved comments
+		filteredComments := filterComments(comments, filters...)
+
 		count, e := s.dataService.UserCount(siteID, userID)
 		if e != nil {
 			return nil, e
 		}
-		resp.Comments, resp.Count = comments, count
+		resp.Comments, resp.Count = filteredComments, count
 		return encodeJSONWithHTML(resp)
 	})
 
