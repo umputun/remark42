@@ -133,7 +133,6 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			commentsInfo.ReadOnly = true
 		}
 
-		// TODO: here the count is returned. Need to start debugging here.
 		var b []byte
 		switch format {
 		case "tree":

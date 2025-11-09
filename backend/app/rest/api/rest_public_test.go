@@ -769,18 +769,13 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.params, func(t *testing.T) {
 			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
-			t.Logf("Calling URL::: %s", url)
 			body, code := get(t, url)
 			expectedStatus := http.StatusOK
 			if strings.Contains(tc.params, "=bad") {
 				expectedStatus = http.StatusBadRequest
 			}
 			assert.Equal(t, expectedStatus, code)
-			assert.Contains(t, body, tc.expectedBody) // NOTE this is a contain
-			t.Logf("Params:::%s", tc.params)
-			t.Logf("Found:::%s", body)
-			t.Logf("Expected:::: %s", tc.expectedBody)
-			t.Log("----------------------------------------------")
+			assert.Contains(t, body, tc.expectedBody)
 			// prevent hit limiter from engaging
 			time.Sleep(80 * time.Millisecond)
 		})

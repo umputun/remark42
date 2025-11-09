@@ -625,8 +625,8 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 		return comment, err
 	}
 
-	weAreDeApproving := comment.Approved // we are deapproving as the current state of the triggering comment is approved
-	// we want to deapprove a single comment, not all of them.
+	weAreDeApproving := comment.Approved // we are disapproving as the current state of the triggering comment is approved
+	// we want to disapprove a single comment, not all of them.
 	if !approvePrevious || weAreDeApproving {
 		comment.Approved = !comment.Approved // we always want to approve the one the method was called against
 		err = s.Engine.Update(comment)
