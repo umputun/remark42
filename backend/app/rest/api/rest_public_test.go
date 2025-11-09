@@ -757,7 +757,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[4]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[7]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=1&offset_id=%s", uuid.New().String()), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
-		// // test sort
+		// test sort
 		{"format=tree&limit=1&sort=+time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
 		{"format=tree&limit=1&sort=-time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
 		{"format=tree&limit=1&sort=+score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
