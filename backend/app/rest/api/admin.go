@@ -253,7 +253,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 
-// PUT /comment/{id}/approve?site=siteID&url=post-url - removes comment
+// PUT /comment/{id}/approve?site=siteID&url=post-url - approves comment
 func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}

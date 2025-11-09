@@ -40,7 +40,7 @@ const (
 	ErrAssetNotFound        = 18 // requested file not found
 	ErrCommentRestrictWords = 19 // restricted words in a comment
 	ErrImgNotFound          = 20 // posted image not found in the storage
-	ErrPremoderationFailure = 21 // posted image not found in the storage
+	ErrPremoderationFailure = 21 // unable to promote comment
 )
 
 // errTmplData store data for error message
