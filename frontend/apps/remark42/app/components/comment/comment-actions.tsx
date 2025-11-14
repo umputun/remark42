@@ -103,9 +103,8 @@ export function CommentActions({
             <Button kind="link" size="sm" onClick={onTogglePin}>
               {intl.formatMessage(pinned ? messages.unpin : messages.pin)}
             </Button>
-            <Button kind="link" size="sm" onClick={onToggleApprove} disabled={copied}>
-              {/* {intl.formatMessage(copied ? messages.copied : messages.copy)} */}
-              {approved ? 'Disapprove' : 'Approve'}
+            <Button kind="link" size="sm" onClick={onToggleApprove}>
+              {intl.formatMessage(approved ? messages.disapprove : messages.approve)}
             </Button>
             {bannedUser ? (
               <Button kind="link" size="sm" onClick={onUnblockUser}>
@@ -139,5 +138,7 @@ const messages = defineMessages({
   editCountdown: { id: 'comment.edit-countdown', defaultMessage: 'Edit will be disabled' },
   copied: { id: 'comment.copied', defaultMessage: 'Copied!' },
   copy: { id: 'comment.copy', defaultMessage: 'Copy' },
+  approve: { id: 'comment.approve', defaultMessage: 'Approve' },
+  disapprove: { id: 'comment.disapprove', defaultMessage: 'Disapprove' },
   blockingPeriod: { id: 'comment.blocking-period', defaultMessage: 'Blocking period' },
 });
