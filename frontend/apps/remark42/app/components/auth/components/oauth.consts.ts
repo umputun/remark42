@@ -7,7 +7,13 @@ export const OAUTH_DATA = {
     },
   },
   facebook: require('assets/social/facebook.svg').default as string,
-  twitter: require('assets/social/twitter.svg').default as string,
+  twitter: {
+    name: 'X',
+    icons: {
+      light: require('assets/social/twitter-light.svg').default as string,
+      dark: require('assets/social/twitter-dark.svg').default as string,
+    },
+  },
   patreon: require('assets/social/patreon.svg').default as string,
   discord: require('assets/social/discord.svg').default as string,
   google: require('assets/social/google.svg').default as string,
