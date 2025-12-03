@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/go-chi/render"
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
 
@@ -67,20 +66,36 @@ func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, e
 	tmplstr := MustRead("error_response.html.tmpl")
 	tmpl := template.Must(template.New("error").Parse(tmplstr))
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
-	render.Status(r, httpStatusCode)
+
 	msg := bytes.Buffer{}
 	MustExecute(tmpl, &msg, errTmplData{
 		Error:   err.Error(),
 		Details: details,
 	})
-	render.HTML(w, r, msg.String())
+
+	HTMLResponse(w, httpStatusCode, msg.String())
 }
 
 // SendErrorJSON makes {error: blah, details: blah, code: 42} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
-	render.Status(r, httpStatusCode)
-	render.JSON(w, r, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(httpStatusCode)
+	rest.RenderJSON(w, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
+}
+
+// HTMLResponse writes HTML content with the given status code
+func HTMLResponse(w http.ResponseWriter, status int, html string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(html))
+}
+
+// PlainTextResponse writes plain text content with the given status code
+func PlainTextResponse(w http.ResponseWriter, status int, text string) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(text))
 }
 
 func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details string, errCode int) string {
