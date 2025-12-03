@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1" // nolint
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -232,7 +232,6 @@ func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
 	}
-	render.Status(r, http.StatusOK)
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
 		log.Printf("[WARN] can't render last comments for url=%s, id=%s", url, id)
@@ -297,7 +296,7 @@ func (s *public) countCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count", rest.ErrPostNotFound)
 		return
 	}
-	render.JSON(w, r, R.JSON{"count": count, "locator": locator})
+	R.RenderJSON(w, R.JSON{"count": count, "locator": locator})
 }
 
 // POST /counts?site=siteID - get number of comments for posts from post body
@@ -305,7 +304,7 @@ func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	const countBodyLimit int64 = 1024 * 128 // count request can be big for some site because it lists all urls
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, countBodyLimit), &posts); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, countBodyLimit)).Decode(&posts); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request", rest.ErrSiteNotFound)
 		return
 	}
@@ -393,13 +392,14 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /robots.txt
-func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) robotsCtrl(w http.ResponseWriter, _ *http.Request) {
 	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/user",
 		"/img", "/avatar", "/picture"}
 	for i := range allowed {
 		allowed[i] = "Allow: /api/v1" + allowed[i]
 	}
-	render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
+	responseText := fmt.Sprintf("User-agent: *\nDisallow: /auth/\nDisallow: /api/\n%s\n", strings.Join(allowed, "\n"))
+	rest.PlainTextResponse(w, http.StatusOK, responseText)
 }
 
 // GET /qr/telegram - generates QR for provided URL, used for Telegram auth and notifications subscription. The first

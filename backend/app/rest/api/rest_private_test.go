@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/v2/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -970,7 +969,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	parentComment := store.Comment{}
-	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
+	require.NoError(t, json.Unmarshal(body, &parentComment))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.Get()))
@@ -1220,7 +1219,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	parentComment := store.Comment{}
-	require.NoError(t, render.DecodeJSON(strings.NewReader(string(body)), &parentComment))
+	require.NoError(t, json.Unmarshal(body, &parentComment))
 	// wait for mock notification Submit to kick off
 	time.Sleep(time.Millisecond * 30)
 	require.Equal(t, 1, len(mockDestination.Get()))
