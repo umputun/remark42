@@ -55,9 +55,7 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
     return import(/* webpackChunkName: "ar" */ '../locales/ar.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'zh-tw') {
-    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json')
-      .then((res) => res.default)
-      .catch(() => enMessages);
+    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'th') {
     return import(/* webpackChunkName: "th" */ '../locales/th.json').then((res) => res.default).catch(() => enMessages);
@@ -70,6 +68,9 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
   }
   if (locale === 'mk') {
     return import(/* webpackChunkName: "mk" */ '../locales/mk.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'ro') {
+    return import(/* webpackChunkName: "ro" */ '../locales/ro.json').then((res) => res.default).catch(() => enMessages);
   }
 
   return enMessages;
