@@ -10,7 +10,6 @@ require (
 	github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
-	github.com/go-chi/render v1.0.3
 	github.com/go-pkgz/auth/v2 v2.0.1-0.20250415030422-4f9f2c5e3b0d
 	github.com/go-pkgz/jrpc v0.3.1
 	github.com/go-pkgz/lcw/v2 v2.0.0
@@ -48,6 +47,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/didip/tollbooth/v8 v8.0.1 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
+	github.com/go-chi/render v1.0.3 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.3 // indirect
 	github.com/go-pkgz/email v0.5.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.0.0 // indirect
