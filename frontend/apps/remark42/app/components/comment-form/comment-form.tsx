@@ -58,9 +58,10 @@ const ImageMimeRegex = /image\//i;
 export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
+  /** global counter for generating unique textarea IDs across all instances */
   static textareaCounter = 0;
   /** unique textarea ID for this instance */
-  textareaId: string;
+  readonly textareaId: string;
 
   state = {
     preview: null,
