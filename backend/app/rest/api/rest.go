@@ -628,7 +628,6 @@ func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string
 			}
 			frameAncestors := "*"
 			if len(allowedAncestors) > 0 {
-				log.Printf("[INFO] frame embedding allowed from %+v only", allowedAncestors)
 				frameAncestors = strings.Join(allowedAncestors, " ")
 			}
 			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
