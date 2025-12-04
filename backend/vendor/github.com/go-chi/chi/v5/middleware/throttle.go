@@ -83,12 +83,23 @@ func ThrottleWithOpts(opts ThrottleOpts) func(http.Handler) http.Handler {
 				return
 
 			case btok := <-t.backlogTokens:
-				timer := time.NewTimer(t.backlogTimeout)
-
 				defer func() {
 					t.backlogTokens <- btok
 				}()
 
+				// Try to get a processing token immediately first
+				select {
+				case tok := <-t.tokens:
+					defer func() {
+						t.tokens <- tok
+					}()
+					next.ServeHTTP(w, r)
+					return
+				default:
+					// No immediate token available, need to wait with timer
+				}
+
+				timer := time.NewTimer(t.backlogTimeout)
 				select {
 				case <-timer.C:
 					t.setRetryAfterHeaderIfNeeded(w, false)
@@ -126,9 +137,9 @@ type token struct{}
 type throttler struct {
 	tokens         chan token
 	backlogTokens  chan token
+	retryAfterFn   func(ctxDone bool) time.Duration
 	backlogTimeout time.Duration
 	statusCode     int
-	retryAfterFn   func(ctxDone bool) time.Duration
 }
 
 // setRetryAfterHeaderIfNeeded sets Retry-After HTTP header if corresponding retryAfterFn option of throttler is initialized.

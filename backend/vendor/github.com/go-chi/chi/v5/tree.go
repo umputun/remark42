@@ -650,11 +650,9 @@ func (n *node) routes() []Route {
 				if h.handler == nil {
 					continue
 				}
-				m := methodTypString(mt)
-				if m == "" {
-					continue
+				if m, ok := reverseMethodMap[mt]; ok {
+					hs[m] = h.handler
 				}
-				hs[m] = h.handler
 			}
 
 			rt := Route{subroutes, hs, p}
@@ -730,11 +728,9 @@ func patNextSegment(pattern string) (nodeTyp, string, string, byte, int, int) {
 			tail = pattern[pe]
 		}
 
-		var rexpat string
-		if idx := strings.Index(key, ":"); idx >= 0 {
+		key, rexpat, isRegexp := strings.Cut(key, ":")
+		if isRegexp {
 			nt = ntRegexp
-			rexpat = key[idx+1:]
-			key = key[:idx]
 		}
 
 		if len(rexpat) > 0 {
@@ -788,15 +784,6 @@ func longestPrefix(k1, k2 string) int {
 		}
 	}
 	return i
-}
-
-func methodTypString(method methodTyp) string {
-	for s, t := range methodMap {
-		if method == t {
-			return s
-		}
-	}
-	return ""
 }
 
 type nodes []*node
