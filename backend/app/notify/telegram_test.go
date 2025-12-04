@@ -61,7 +61,7 @@ some text
 	res = tb.buildMessage(Request{Comment: c})
 	assert.Equal(t, `<a href="#remark42__comment-"></a>
 
-<b>Lorem ipsum <i>dolor sit amet</i>, consectetur adipiscing <code>elit, sed do...</code></b>`, res)
+<b>Lorem ipsum <i>dolor sit amet</i>, consectetur adipiscing <code>elit, sed do eiusmod tempor incididunt</code> ut...</b>`, res)
 }
 
 func TestTelegram_SendVerification(t *testing.T) {

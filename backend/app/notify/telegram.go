@@ -90,7 +90,7 @@ func (t *Telegram) buildMessage(req Request) string {
 	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", ntf.TelegramSupportedHTML(req.parent.Text))
+		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(ntf.TelegramSupportedHTML(req.parent.Text), commentTextLengthLimit))
 	}
 
 	if req.Comment.PostTitle != "" {
