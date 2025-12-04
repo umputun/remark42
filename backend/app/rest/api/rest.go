@@ -34,6 +34,25 @@ import (
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
+type Premoderation string
+
+const (
+	PremoderationNone  Premoderation = "none"
+	PremoderationFirst Premoderation = "first"
+	PremoderationAll   Premoderation = "all"
+)
+
+func NewPremoderationStrategy(str string) Premoderation {
+	switch strings.ToLower(str) {
+	case string(PremoderationFirst):
+		return PremoderationFirst
+	case string(PremoderationAll):
+		return PremoderationAll
+	default:
+		return PremoderationNone
+	}
+}
+
 // Rest is a rest access server
 type Rest struct {
 	Version string
@@ -70,6 +89,7 @@ type Rest struct {
 	DisableSignature           bool // prevent signature from being added to headers
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 	ExternalImageProxy         bool
+	Premoderation              Premoderation
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
@@ -304,6 +324,7 @@ func (s *Rest) routes() chi.Router {
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
 			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
+			radmin.Put("/comment/{id}/approve", s.adminRest.approveCommentCtrl)
 			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
 			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
 			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
@@ -373,6 +394,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		imageService:     s.ImageService,
 		commentFormatter: s.CommentFormatter,
 		readOnlyAge:      s.ReadOnlyAge,
+		premoderation:    s.Premoderation,
 	}
 
 	privGrp := private{
@@ -387,6 +409,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		remarkURL:                  s.RemarkURL,
 		anonVote:                   s.AnonVote,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
+		premoderation:              s.Premoderation,
 	}
 
 	admGrp := admin{
@@ -395,6 +418,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		premoderation: s.Premoderation,
 	}
 
 	rssGrp := rss{
@@ -514,10 +538,19 @@ func encodeJSONWithHTML(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []store.Comment {
+// filterComments applies multiple filters to the comments slice.
+// The returned slice contains only those elements that passed all filters.
+func filterComments(comments []store.Comment, funcs ...func(c store.Comment) bool) []store.Comment {
 	filtered := []store.Comment{}
 	for _, c := range comments {
-		if fn(c) {
+		passedAll := true
+		for _, fn := range funcs {
+			if !fn(c) {
+				passedAll = false
+				break
+			}
+		}
+		if passedAll {
 			filtered = append(filtered, c)
 		}
 	}
