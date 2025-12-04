@@ -9,11 +9,17 @@ type SectionBlock struct {
 	BlockID   string             `json:"block_id,omitempty"`
 	Fields    []*TextBlockObject `json:"fields,omitempty"`
 	Accessory *Accessory         `json:"accessory,omitempty"`
+	Expand    bool               `json:"expand,omitempty"`
 }
 
 // BlockType returns the type of the block
 func (s SectionBlock) BlockType() MessageBlockType {
 	return s.Type
+}
+
+// ID returns the ID of the block
+func (s SectionBlock) ID() string {
+	return s.BlockID
 }
 
 // SectionBlockOption allows configuration of options for a new section block
@@ -22,6 +28,15 @@ type SectionBlockOption func(*SectionBlock)
 func SectionBlockOptionBlockID(blockID string) SectionBlockOption {
 	return func(block *SectionBlock) {
 		block.BlockID = blockID
+	}
+}
+
+// SectionBlockOptionExpand allows long text to be auto-expanded when displaying
+//
+// @see https://api.slack.com/reference/block-kit/blocks#section
+func SectionBlockOptionExpand(shouldExpand bool) SectionBlockOption {
+	return func(block *SectionBlock) {
+		block.Expand = shouldExpand
 	}
 }
 

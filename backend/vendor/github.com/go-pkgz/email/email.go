@@ -13,10 +13,12 @@ import (
 	"mime/quotedprintable"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/smtp"
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,10 +32,10 @@ type Sender struct {
 	logger             Logger
 	host               string     // SMTP host
 	port               int        // SMTP port
-	contentType        string     // Content type, optional. Will trigger MIME and Content-Type headers
+	contentType        string     // content type, optional. Will trigger MIME and Content-Type headers
 	tls                bool       // TLS auth
-	starttls           bool       // StartTLS
-	insecureSkipVerify bool       // Insecure Skip Verify
+	starttls           bool       // startTLS
+	insecureSkipVerify bool       // insecure Skip Verify
 	smtpUserName       string     // username
 	smtpPassword       string     // password
 	authMethod         authMethod // auth method
@@ -44,12 +46,12 @@ type Sender struct {
 
 // Params contains all user-defined parameters to send emails
 type Params struct {
-	From            string   // From email field
-	To              []string // From email field
-	Subject         string   // Email subject
+	From            string   // from email field
+	To              []string // from email field
+	Subject         string   // email subject
 	UnsubscribeLink string   // POST, https://support.google.com/mail/answer/81126 -> "Use one-click unsubscribe"
-	InReplyTo       string   // Identifier for email group (category), used for email grouping
-	Attachments     []string // Attachments path
+	InReplyTo       string   // identifier for email group (category), used for email grouping
+	Attachments     []string // attachments path
 	InlineImages    []string // InlineImages images path
 }
 
@@ -130,12 +132,12 @@ func (em *Sender) Send(text string, params Params) error {
 		}
 	}
 
-	if err := client.Mail(params.From); err != nil {
+	if err := client.Mail(extractEmailAddress(params.From)); err != nil {
 		return fmt.Errorf("bad from address %q: %w", params.From, err)
 	}
 
 	for _, rcpt := range params.To {
-		if err := client.Rcpt(rcpt); err != nil {
+		if err := client.Rcpt(extractEmailAddress(rcpt)); err != nil {
 			return fmt.Errorf("bad to address %q: %w", params.To, err)
 		}
 	}
@@ -165,13 +167,24 @@ func (em *Sender) Send(text string, params Params) error {
 	return nil
 }
 
+// extractEmailAddress extracts the email address from a string that may contain a display name.
+// For example, it converts `"John Doe" <john@example.com>` to `john@example.com`.
+// If parsing fails, it returns the original string unchanged.
+func extractEmailAddress(from string) string {
+	addr, err := mail.ParseAddress(strings.TrimSpace(from))
+	if err != nil {
+		return from
+	}
+	return addr.Address
+}
+
 func (em *Sender) String() string {
 	return fmt.Sprintf("smtp://%s:%d, auth:%v, tls:%v, starttls:%v, insecureSkipVerify:%v, timeout:%v, content-type:%q, charset:%q",
 		em.host, em.port, em.smtpUserName != "", em.tls, em.starttls, em.insecureSkipVerify, em.timeOut, em.contentType, em.contentCharset)
 }
 
 func (em *Sender) client() (c *smtp.Client, err error) {
-	srvAddress := fmt.Sprintf("%s:%d", em.host, em.port)
+	srvAddress := net.JoinHostPort(em.host, strconv.Itoa(em.port))
 	// #nosec G402
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: em.insecureSkipVerify, // #nosec G402
@@ -366,4 +379,4 @@ func (em *Sender) writeFiles(mp *multipart.Writer, files []string, disposition s
 
 type nopLogger struct{}
 
-func (nopLogger) Logf(format string, args ...interface{}) {}
+func (nopLogger) Logf(_ string, _ ...interface{}) {}

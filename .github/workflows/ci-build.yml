@@ -41,6 +41,13 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
+      - name: free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          docker system prune -af
+
       - name: build docker image without pushing (only outside master)
         if: ${{ github.ref != 'refs/heads/master' }}
         run: |

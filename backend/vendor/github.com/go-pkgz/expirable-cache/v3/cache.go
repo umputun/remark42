@@ -94,13 +94,12 @@ func (c *cacheImpl[K, V]) Set(key K, value V, ttl time.Duration) {
 // Returns false if there was no eviction: the item was already in the cache,
 // or the size was not exceeded.
 func (c *cacheImpl[K, V]) addWithTTL(key K, value V, ttl time.Duration) (evicted bool) {
-	c.Lock()
-	defer c.Unlock()
-	now := time.Now()
 	if ttl == 0 {
 		ttl = c.ttl
 	}
-
+	now := time.Now()
+	c.Lock()
+	defer c.Unlock()
 	// Check for existing item
 	if ent, ok := c.items[key]; ok {
 		c.evictList.MoveToFront(ent)
@@ -117,7 +116,10 @@ func (c *cacheImpl[K, V]) addWithTTL(key K, value V, ttl time.Duration) (evicted
 
 	// Remove the oldest entry if it is expired, only in case of non-default TTL.
 	if c.ttl != noEvictionTTL || ttl != noEvictionTTL {
-		c.removeOldestIfExpired()
+		ent := c.evictList.Back()
+		if ent != nil && now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
+			c.removeElement(ent)
+		}
 	}
 
 	evict := c.maxKeys > 0 && len(c.items) > c.maxKeys
@@ -197,15 +199,14 @@ func (c *cacheImpl[K, V]) Keys() []K {
 // Values returns a slice of the values in the cache, from oldest to newest.
 // Expired entries are filtered out.
 func (c *cacheImpl[K, V]) Values() []V {
-	c.Lock()
-	defer c.Unlock()
 	values := make([]V, 0, len(c.items))
 	now := time.Now()
+	c.Lock()
+	defer c.Unlock()
 	for ent := c.evictList.Back(); ent != nil; ent = ent.Prev() {
-		if now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
-			continue
+		if !now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
+			values = append(values, ent.Value.(*cacheItem[K, V]).value)
 		}
-		values = append(values, ent.Value.(*cacheItem[K, V]).value)
 	}
 	return values
 }
@@ -291,11 +292,14 @@ func (c *cacheImpl[K, V]) GetOldest() (key K, value V, ok bool) {
 
 // DeleteExpired clears cache of expired items
 func (c *cacheImpl[K, V]) DeleteExpired() {
+	now := time.Now()
 	c.Lock()
 	defer c.Unlock()
-	for _, key := range c.keys() {
-		if time.Now().After(c.items[key].Value.(*cacheItem[K, V]).expiresAt) {
-			c.removeElement(c.items[key])
+	var nextEnt *list.Element
+	for ent := c.evictList.Back(); ent != nil; ent = nextEnt {
+		nextEnt = ent.Prev()
+		if now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
+			c.removeElement(ent)
 		}
 	}
 }
@@ -340,14 +344,6 @@ func (c *cacheImpl[K, V]) keys() []K {
 func (c *cacheImpl[K, V]) removeOldest() {
 	ent := c.evictList.Back()
 	if ent != nil {
-		c.removeElement(ent)
-	}
-}
-
-// removeOldest removes the oldest item from the cache in case it's already expired. Has to be called with lock!
-func (c *cacheImpl[K, V]) removeOldestIfExpired() {
-	ent := c.evictList.Back()
-	if ent != nil && time.Now().After(ent.Value.(*cacheItem[K, V]).expiresAt) {
 		c.removeElement(ent)
 	}
 }

@@ -428,13 +428,16 @@ type Team struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Domain string `json:"domain"`
+	Icons  *Icons `json:"icon,omitempty"`
 }
 
 // Icons XXX: needs further investigation
 type Icons struct {
-	Image36 string `json:"image_36,omitempty"`
-	Image48 string `json:"image_48,omitempty"`
-	Image72 string `json:"image_72,omitempty"`
+	Image36  string `json:"image_36,omitempty"`
+	Image48  string `json:"image_48,omitempty"`
+	Image72  string `json:"image_72,omitempty"`
+	Image132 string `json:"image_132,omitempty"`
+	Image230 string `json:"image_230,omitempty"`
 }
 
 // Info contains various details about the authenticated user and team.

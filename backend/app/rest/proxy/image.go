@@ -12,7 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/v2"
 
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store/image"
@@ -151,7 +151,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	client := http.Client{Timeout: 30 * time.Second}
 	defer client.CloseIdleConnections()
 	var resp *http.Response
-	err := repeater.NewDefault(5, time.Second).Do(ctx, func() error {
+	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
 		var e error
 		req, e := http.NewRequest("GET", imgURL, http.NoBody)
 		if e != nil {

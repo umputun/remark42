@@ -130,6 +130,7 @@ type User struct {
 	IsStranger        bool           `json:"is_stranger"`
 	IsAppUser         bool           `json:"is_app_user"`
 	IsInvitedUser     bool           `json:"is_invited_user"`
+	IsEmailConfirmed  bool           `json:"is_email_confirmed"`
 	Has2FA            bool           `json:"has_2fa"`
 	TwoFactorType     *string        `json:"two_factor_type"`
 	HasFiles          bool           `json:"has_files"`

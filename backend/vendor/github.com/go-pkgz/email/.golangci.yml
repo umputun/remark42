@@ -1,57 +1,53 @@
+version: "2"
 run:
   timeout: 5m
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
-
-linters-settings:
-  govet:
-    check-shadowing: true
-  maligned:
-    suggest-new: true
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - hugeParam
-      - rangeValCopy
-      - singleCaseSwitch
-      - ifElseChain
-
+  concurrency: 4
 linters:
+  default: none
   enable:
     - dupl
-    - exportloopref
-    - gas
     - gochecknoinits
     - gocritic
     - gocyclo
-    - gosimple
+    - gosec
     - govet
     - ineffassign
-    - megacheck
     - misspell
     - nakedret
     - prealloc
     - revive
-    - stylecheck
-    - typecheck
+    - staticcheck
     - unconvert
     - unparam
     - unused
-  fast: false
-  disable-all: true
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - wrapperFunc
+        - hugeParam
+        - rangeValCopy
+        - singleCaseSwitch
+        - ifElseChain
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
 
-issues:
-  exclude-use-default: false
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - third_party
+      - builtin
+      - examples
