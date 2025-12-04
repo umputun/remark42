@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+const commentTextLengthLimit = 100
+
 // TelegramParams contain settings for telegram notifications
 type TelegramParams struct {
 	AdminChannelID       string        // unique identifier for the target chat or username of the target channel (in the format @channelusername)
@@ -85,10 +87,10 @@ func (t *Telegram) buildMessage(req Request) string {
 		msg += fmt.Sprintf(" -> <a href=%q>%s</a>", commentURLPrefix+req.parent.ID, ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", ntf.TelegramSupportedHTML(req.Comment.Text))
+	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", ntf.TelegramSupportedHTML(req.parent.Text))
+		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(ntf.TelegramSupportedHTML(req.parent.Text), commentTextLengthLimit))
 	}
 
 	if req.Comment.PostTitle != "" {

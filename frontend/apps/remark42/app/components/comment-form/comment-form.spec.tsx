@@ -40,7 +40,7 @@ function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeo
 describe('<CommentForm />', () => {
   afterEach(() => {
     // reset textarea id in order to have `textarea_1` for every test
-    CommentForm.textareaId = 0;
+    CommentForm.textareaCounter = 0;
     localStorage.clear();
   });
 

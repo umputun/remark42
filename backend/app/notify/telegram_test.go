@@ -53,6 +53,15 @@ some text
 
 <b>Hello</b><i><b>World</b></i>`,
 		res)
+
+	// prune string keeping HTML closing tags
+	c = store.Comment{
+		Text: "<b>Lorem ipsum <i>dolor sit amet</i>, consectetur adipiscing <code>elit, sed do eiusmod tempor incididunt</code> ut labore et dolore magna aliqua.</b>",
+	}
+	res = tb.buildMessage(Request{Comment: c})
+	assert.Equal(t, `<a href="#remark42__comment-"></a>
+
+<b>Lorem ipsum <i>dolor sit amet</i>, consectetur adipiscing <code>elit, sed do eiusmod tempor incididunt</code> ut...</b>`, res)
 }
 
 func TestTelegram_SendVerification(t *testing.T) {
