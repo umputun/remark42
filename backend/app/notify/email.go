@@ -10,7 +10,7 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/v2"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark42/backend/app/templates"
@@ -161,7 +161,7 @@ func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email stri
 		return err
 	}
 
-	return repeater.NewDefault(5, time.Millisecond*250).Do(
+	return repeater.NewFixed(5, time.Millisecond*250).Do(
 		ctx,
 		func() error {
 			return e.Email.Send(
@@ -196,7 +196,7 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 		return err
 	}
 
-	return repeater.NewDefault(5, time.Millisecond*250).Do(
+	return repeater.NewFixed(5, time.Millisecond*250).Do(
 		ctx,
 		func() error {
 			return e.Email.Send(

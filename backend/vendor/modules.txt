@@ -1,5 +1,5 @@
-# cloud.google.com/go/compute/metadata v0.6.0
-## explicit; go 1.21
+# cloud.google.com/go/compute/metadata v0.9.0
+## explicit; go 1.24.0
 cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma/v2 v2.0.0
 ## explicit; go 1.18
@@ -33,16 +33,13 @@ github.com/dghubble/oauth1/twitter
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 ## explicit
 github.com/dgryski/go-rendezvous
-# github.com/didip/tollbooth/v7 v7.0.2
+# github.com/didip/tollbooth/v8 v8.0.1
 ## explicit; go 1.19
-github.com/didip/tollbooth/v7
-github.com/didip/tollbooth/v7/errors
-github.com/didip/tollbooth/v7/internal/time/rate
-github.com/didip/tollbooth/v7/libstring
-github.com/didip/tollbooth/v7/limiter
-# github.com/didip/tollbooth_chi v0.0.0-20220719025231-d662a7f6928f
-## explicit; go 1.14
-github.com/didip/tollbooth_chi
+github.com/didip/tollbooth/v8
+github.com/didip/tollbooth/v8/errors
+github.com/didip/tollbooth/v8/internal/time/rate
+github.com/didip/tollbooth/v8/libstring
+github.com/didip/tollbooth/v8/limiter
 # github.com/dlclark/regexp2 v1.11.5
 ## explicit; go 1.13
 github.com/dlclark/regexp2
@@ -54,13 +51,13 @@ github.com/go-chi/chi/v5/middleware
 # github.com/go-chi/cors v1.2.2
 ## explicit; go 1.14
 github.com/go-chi/cors
-# github.com/go-oauth2/oauth2/v4 v4.5.3
-## explicit; go 1.13
+# github.com/go-oauth2/oauth2/v4 v4.5.4
+## explicit; go 1.21
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.0.1-0.20250415030422-4f9f2c5e3b0d
-## explicit; go 1.23.0
+# github.com/go-pkgz/auth/v2 v2.1.0
+## explicit; go 1.24.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
 github.com/go-pkgz/auth/v2/logger
@@ -68,10 +65,10 @@ github.com/go-pkgz/auth/v2/middleware
 github.com/go-pkgz/auth/v2/provider
 github.com/go-pkgz/auth/v2/provider/sender
 github.com/go-pkgz/auth/v2/token
-# github.com/go-pkgz/email v0.5.0
+# github.com/go-pkgz/email v0.6.0
 ## explicit; go 1.19
 github.com/go-pkgz/email
-# github.com/go-pkgz/expirable-cache/v3 v3.0.0
+# github.com/go-pkgz/expirable-cache/v3 v3.1.0
 ## explicit; go 1.20
 github.com/go-pkgz/expirable-cache/v3
 # github.com/go-pkgz/jrpc v0.4.0
@@ -84,13 +81,16 @@ github.com/go-pkgz/lcw/v2/eventbus
 # github.com/go-pkgz/lgr v0.12.1
 ## explicit; go 1.21
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v1.2.0
-## explicit; go 1.21
+# github.com/go-pkgz/notify v1.3.0
+## explicit; go 1.24.0
 github.com/go-pkgz/notify
 # github.com/go-pkgz/repeater v1.2.0
 ## explicit; go 1.20
 github.com/go-pkgz/repeater
 github.com/go-pkgz/repeater/strategy
+# github.com/go-pkgz/repeater/v2 v2.2.0
+## explicit; go 1.23
+github.com/go-pkgz/repeater/v2
 # github.com/go-pkgz/rest v1.20.4
 ## explicit; go 1.23.0
 github.com/go-pkgz/rest
@@ -135,8 +135,8 @@ github.com/hashicorp/golang-lru/v2/simplelru
 # github.com/jessevdk/go-flags v1.6.1
 ## explicit; go 1.20
 github.com/jessevdk/go-flags
-# github.com/klauspost/compress v1.18.0
-## explicit; go 1.22
+# github.com/klauspost/compress v1.18.2
+## explicit; go 1.23
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
@@ -158,16 +158,22 @@ github.com/montanaflynn/stats
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/redis/go-redis/v9 v9.7.3
+# github.com/redis/go-redis/v9 v9.17.2
 ## explicit; go 1.18
 github.com/redis/go-redis/v9
+github.com/redis/go-redis/v9/auth
 github.com/redis/go-redis/v9/internal
+github.com/redis/go-redis/v9/internal/auth/streaming
 github.com/redis/go-redis/v9/internal/hashtag
 github.com/redis/go-redis/v9/internal/hscan
+github.com/redis/go-redis/v9/internal/interfaces
+github.com/redis/go-redis/v9/internal/maintnotifications/logs
 github.com/redis/go-redis/v9/internal/pool
 github.com/redis/go-redis/v9/internal/proto
 github.com/redis/go-redis/v9/internal/rand
 github.com/redis/go-redis/v9/internal/util
+github.com/redis/go-redis/v9/maintnotifications
+github.com/redis/go-redis/v9/push
 # github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d
 ## explicit; go 1.21
 github.com/rrivera/identicon
@@ -182,8 +188,8 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.15.0
-## explicit; go 1.16
+# github.com/slack-go/slack v0.17.3
+## explicit; go 1.22
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
@@ -197,8 +203,8 @@ github.com/stretchr/testify/require
 # github.com/xdg-go/pbkdf2 v1.0.0
 ## explicit; go 1.9
 github.com/xdg-go/pbkdf2
-# github.com/xdg-go/scram v1.1.2
-## explicit; go 1.11
+# github.com/xdg-go/scram v1.2.0
+## explicit; go 1.18
 github.com/xdg-go/scram
 # github.com/xdg-go/stringprep v1.0.4
 ## explicit; go 1.11
@@ -212,7 +218,7 @@ go.etcd.io/bbolt
 go.etcd.io/bbolt/errors
 go.etcd.io/bbolt/internal/common
 go.etcd.io/bbolt/internal/freelist
-# go.mongodb.org/mongo-driver v1.17.3
+# go.mongodb.org/mongo-driver v1.17.6
 ## explicit; go 1.18
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
@@ -286,8 +292,8 @@ golang.org/x/image/math/f64
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/idna
-# golang.org/x/oauth2 v0.29.0
-## explicit; go 1.23.0
+# golang.org/x/oauth2 v0.33.0
+## explicit; go 1.24.0
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
 golang.org/x/oauth2/endpoints

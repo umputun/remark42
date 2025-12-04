@@ -1,62 +1,68 @@
-run:
-  timeout: 5m
-
-linters-settings:
-  govet:
-    check-shadowing: true
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - hugeParam
-      - rangeValCopy
-      - singleCaseSwitch
-      - ifElseChain
-
+version: "2"
 linters:
+  default: none
   enable:
-    - revive
-    - govet
-    - unconvert
-    - staticcheck
-    - gosec
-    - unused
-    - gocyclo
+    - bodyclose
+    - copyloopvar
     - dupl
-    - misspell
-    - unparam
-    - typecheck
-    - ineffassign
-    - stylecheck
     - gochecknoinits
-    - exportloopref
+    - gocognit
     - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
     - nakedret
-    - gosimple
+    - nolintlint
     - prealloc
-    - whitespace
-  fast: false
-  disable-all: true
-
-issues:
-  exclude-rules:
-    - text: "at least one file in a package should have a package comment"
-      linters:
-        - stylecheck
-    - path: _test\.go
-      linters:
-        - gosec
-        - dupl
-  exclude-use-default: false
-  exclude-dirs:
-    - vendor
+    - revive
+    - staticcheck
+    - testifylint
+    - unconvert
+    - unparam
+    - unused
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: unused-receiver
+          disabled: true
+        - name: line-length-limit
+          disabled: true
+        - name: add-constant
+          disabled: true
+        - name: cognitive-complexity
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: cyclomatic
+          disabled: true
+        - name: nested-structs
+          disabled: true
+    gocritic:
+      disabled-checks:
+        - hugeParam
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    govet:
+      enable:
+        - shadow
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

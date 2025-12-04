@@ -11,3 +11,8 @@ type UnknownBlock struct {
 func (b UnknownBlock) BlockType() MessageBlockType {
 	return b.Type
 }
+
+// ID returns the ID of the block
+func (s UnknownBlock) ID() string {
+	return s.BlockID
+}

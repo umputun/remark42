@@ -25,6 +25,9 @@ const (
 // StartRTM calls the "rtm.start" endpoint and returns the provided URL and the full Info block.
 //
 // To have a fully managed Websocket connection, use `NewRTM`, and call `ManageConnection()` on it.
+//
+// Deprecated: Use [ConnectRTM] instead.
+// For more details, see: https://api.slack.com/changelog/2021-10-rtm-start-to-stop
 func (api *Client) StartRTM() (info *Info, websocketURL string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), websocketDefaultTimeout)
 	defer cancel()
@@ -35,6 +38,9 @@ func (api *Client) StartRTM() (info *Info, websocketURL string, err error) {
 // StartRTMContext calls the "rtm.start" endpoint and returns the provided URL and the full Info block with a custom context.
 //
 // To have a fully managed Websocket connection, use `NewRTM`, and call `ManageConnection()` on it.
+//
+// Deprecated: Use [ConnectRTMContext] instead.
+// For more details, see: https://api.slack.com/changelog/2021-10-rtm-start-to-stop
 func (api *Client) StartRTMContext(ctx context.Context) (info *Info, websocketURL string, err error) {
 	response := &infoResponseFull{}
 	err = api.postMethod(ctx, "rtm.start", url.Values{"token": {api.token}}, response)

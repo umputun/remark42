@@ -51,7 +51,7 @@ func (a *loginAuth) Start(server *smtp.ServerInfo) (proto string, toServer []byt
 	return "LOGIN", []byte(a.user), nil
 }
 
-func (a *loginAuth) Next(fromServer []byte, more bool) (toServer []byte, err error) {
+func (a *loginAuth) Next(_ []byte, more bool) (toServer []byte, err error) {
 	if more {
 		return []byte(a.password), nil
 	}

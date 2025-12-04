@@ -116,7 +116,7 @@ func (api *Client) accessLogsRequest(ctx context.Context, path string, values ur
 	return response, response.Err()
 }
 
-func (api *Client) teamProfileRequest(ctx context.Context, client httpClient, path string, values url.Values) (*TeamProfileResponse, error) {
+func (api *Client) teamProfileRequest(ctx context.Context, path string, values url.Values) (*TeamProfileResponse, error) {
 	response := &TeamProfileResponse{}
 	err := api.postMethod(ctx, path, values, response)
 	if err != nil {
@@ -184,7 +184,7 @@ func (api *Client) GetTeamProfileContext(ctx context.Context, teamID ...string) 
 		values["team_id"] = teamID
 	}
 
-	response, err := api.teamProfileRequest(ctx, api.httpclient, "team.profile.get", values)
+	response, err := api.teamProfileRequest(ctx, "team.profile.get", values)
 	if err != nil {
 		return nil, err
 	}

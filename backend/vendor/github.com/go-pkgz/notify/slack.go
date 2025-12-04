@@ -93,9 +93,9 @@ func (s *Slack) findChannelIDByName(name string) (string, error) {
 			return "", err
 		}
 
-		for _, channel := range channels {
-			if channel.Name == name {
-				return channel.ID, nil
+		for i := range channels {
+			if channels[i].Name == name {
+				return channels[i].ID, nil
 			}
 		}
 

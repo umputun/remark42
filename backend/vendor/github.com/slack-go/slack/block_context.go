@@ -15,6 +15,11 @@ func (s ContextBlock) BlockType() MessageBlockType {
 	return s.Type
 }
 
+// ID returns the ID of the block
+func (s ContextBlock) ID() string {
+	return s.BlockID
+}
+
 type ContextElements struct {
 	Elements []MixedElement
 }

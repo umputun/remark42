@@ -1,0 +1,84 @@
+version: "2"
+run:
+  concurrency: 4
+linters:
+  default: none
+  enable:
+    - contextcheck
+    - copyloopvar
+    - decorder
+    - errorlint
+    - exptostd
+    - gochecknoglobals
+    - gochecknoinits
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - nakedret
+    - nilerr
+    - prealloc
+    - predeclared
+    - revive
+    - staticcheck
+    - testifylint
+    - thelper
+    - unconvert
+    - unparam
+    - unused
+    - nestif
+    - wrapcheck
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - wrapperFunc
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - gosec
+        text: 'G114: Use of net/http serve function that has no support for setting timeouts'
+      - linters:
+          - revive
+          - unparam
+        path: _test\.go$
+        text: unused-parameter
+      - linters:
+          - prealloc
+        path: _test\.go$
+        text: Consider pre-allocating
+      - linters:
+          - gosec
+          - intrange
+        path: _test\.go$
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
