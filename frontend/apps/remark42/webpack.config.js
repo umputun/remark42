@@ -87,6 +87,7 @@ module.exports = (_, { mode, analyze }) => {
     counter: './app/counter.ts',
     deleteme: './app/deleteme.ts',
     'last-comments': [...preactDebug, CUSTOM_PROPERTIES_PATH, './app/last-comments.tsx'],
+    'pending-comments': [...preactDebug, CUSTOM_PROPERTIES_PATH, './app/pending-comments.tsx'],
     remark: [...preactDebug, CUSTOM_PROPERTIES_PATH, './app/remark.tsx'],
   };
 
@@ -328,6 +329,14 @@ module.exports = (_, { mode, analyze }) => {
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/last-comments.ejs'),
         filename: 'last-comments.html',
+        inject: false,
+        env: mode,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/pending-comments.ejs'),
+        filename: 'pending-comments.html',
         inject: false,
         env: mode,
         REMARK_URL,

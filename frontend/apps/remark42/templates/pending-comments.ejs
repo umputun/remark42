@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Pending comments (Admin)</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 40px;
+      }
+
+      .pending-comments__title {
+        margin-bottom: 20px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      .pending-comments__empty,
+      .pending-comments__error {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #666;
+      }
+
+      .pending-comments__error {
+        color: #c00;
+      }
+    </style>
+    <% if (htmlWebpackPlugin.options.env === 'production') { %>
+    <link rel="stylesheet" href="pending-comments.css" />
+    <% } %>
+  </head>
+  <body>
+    <div class="container">
+      <div class="remark42__pending-comments"></div>
+    </div>
+    <script>
+      var remark_config = {
+        site_id: 'remark',
+        host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+        components: ['pending-comments'],
+      };
+
+      (function (c, d) {
+        var r = d.head || d.body;
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          var m = 'noModule' in s;
+          var e = m ? '.mjs' : '.js';
+          m && (s.type = 'module');
+          s.async = true;
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + e;
+          r.appendChild(s);
+        }
+      })(remark_config.components || ['embed'], document);
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

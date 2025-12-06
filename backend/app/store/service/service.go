@@ -1007,6 +1007,24 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 	return comments, nil
 }
 
+// Unapproved gets unapproved comments for site, cross-post. Limited by count.
+// This is for admin use only to see pending comments.
+func (s *DataStore) Unapproved(siteID string, limit int) ([]store.Comment, error) {
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Sort: "-time"}
+	comments, err := s.Engine.Find(req)
+	if err != nil {
+		return comments, err
+	}
+	// filter to only include unapproved comments
+	result := make([]store.Comment, 0)
+	for _, c := range comments {
+		if c.Unapproved && !c.Deleted {
+			result = append(result, c)
+		}
+	}
+	return result, nil
+}
+
 // Close store service
 func (s *DataStore) Close() error {
 	errs := new(multierror.Error)
