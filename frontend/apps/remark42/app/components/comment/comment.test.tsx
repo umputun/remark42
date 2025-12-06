@@ -255,4 +255,36 @@ describe('<Comment />', () => {
       expect(screen.getByText('Edit')).toBeVisible();
     });
   });
+
+  describe('approval', () => {
+    it('should render approve button for admin on unapproved comment', () => {
+      props.user!.admin = true;
+      props.data.approved = false;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.getByText('Approve')).toBeVisible();
+    });
+
+    it('should render disapprove button for admin on approved comment', () => {
+      props.user!.admin = true;
+      props.data.approved = true;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.getByText('Disapprove')).toBeVisible();
+    });
+
+    it('should not render approve/disapprove button for non-admin users', () => {
+      props.user!.admin = false;
+      props.data.approved = false;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('Disapprove')).not.toBeInTheDocument();
+    });
+
+    it('should not render approve/disapprove button when user is null', () => {
+      props.user = null;
+      props.data.approved = false;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('Disapprove')).not.toBeInTheDocument();
+    });
+  });
 });

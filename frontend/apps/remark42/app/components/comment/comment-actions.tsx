@@ -14,6 +14,7 @@ export type Props = {
   admin: boolean | undefined;
   currentUser: boolean | undefined;
   pinned: boolean | undefined;
+  approved: boolean | undefined;
   copied: boolean | undefined;
   bannedUser: boolean | undefined;
   readOnly: boolean | undefined;
@@ -25,6 +26,7 @@ export type Props = {
   onToggleEditing(): void;
   onDelete(): void;
   onTogglePin(): void;
+  onToggleApproval(): void;
   onToggleReplying(): void;
   onHideUser(): void;
   onBlockUser(ttl: BlockTTL): void;
@@ -35,6 +37,7 @@ export type Props = {
 export function CommentActions({
   admin,
   pinned,
+  approved,
   copied,
   readOnly,
   editable,
@@ -47,6 +50,7 @@ export function CommentActions({
   onToggleEditing,
   onDelete,
   onTogglePin,
+  onToggleApproval,
   onToggleReplying,
   onDisableEditing,
   onHideUser,
@@ -99,6 +103,9 @@ export function CommentActions({
             <Button kind="link" size="sm" onClick={onTogglePin}>
               {intl.formatMessage(pinned ? messages.unpin : messages.pin)}
             </Button>
+            <Button kind="link" size="sm" onClick={onToggleApproval}>
+              {intl.formatMessage(approved ? messages.disapprove : messages.approve)}
+            </Button>
             {bannedUser ? (
               <Button kind="link" size="sm" onClick={onUnblockUser}>
                 {intl.formatMessage(messages.unblock)}
@@ -123,6 +130,8 @@ const messages = defineMessages({
   unblock: { id: 'comment.unblock', defaultMessage: 'Unblock' },
   pin: { id: 'comment.pin', defaultMessage: 'Pin' },
   unpin: { id: 'comment.unpin', defaultMessage: 'Unpin' },
+  approve: { id: 'comment.approve', defaultMessage: 'Approve' },
+  disapprove: { id: 'comment.disapprove', defaultMessage: 'Disapprove' },
   hide: { id: 'comment.hide', defaultMessage: 'Hide' },
   cancel: { id: 'comment.cancel', defaultMessage: 'Cancel' },
   edit: { id: 'comment.edit', defaultMessage: 'Edit' },

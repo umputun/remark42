@@ -310,6 +310,7 @@ func (s *Rest) routes() chi.Router {
 			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
 			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
 			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
+			radmin.Put("/approve/{id}", s.adminRest.setApprovedCtrl)
 			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
 			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
 			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)

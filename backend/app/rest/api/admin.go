@@ -39,6 +39,7 @@ type adminStore interface {
 	SetVerified(siteID, userID string, status bool) error
 	SetReadOnly(locator store.Locator, status bool) error
 	SetPin(locator store.Locator, commentID string, status bool) error
+	SetApproved(locator store.Locator, commentID string, status bool) error
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -243,4 +244,19 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+}
+
+// PUT /approve/{id}?site=siteID&url=post-url&approved=1
+// approve/unapprove comment for moderation
+func (a *admin) setApprovedCtrl(w http.ResponseWriter, r *http.Request) {
+	commentID := chi.URLParam(r, "id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	approvedStatus := r.URL.Query().Get("approved") == "1"
+
+	if err := a.dataService.SetApproved(locator, commentID, approvedStatus); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set approved status", rest.ErrActionRejected)
+		return
+	}
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
+	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "approved": approvedStatus})
 }
