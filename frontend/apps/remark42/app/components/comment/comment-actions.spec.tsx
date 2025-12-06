@@ -8,6 +8,7 @@ function getProps(): Props {
   return {
     pinned: false,
     unapproved: false,
+    needApproval: false,
     admin: false,
     currentUser: false,
     copied: false,
@@ -146,6 +147,7 @@ describe('<CommentActions/>', () => {
 
     it('should render admin actions in right order', () => {
       props.admin = true;
+      props.needApproval = true;
       render(<CommentActions {...props} />);
       expect(screen.getByTestId('comment-actions-additional').children[0]).toHaveTextContent('Hide');
       expect(screen.getByTestId('comment-actions-additional').children[1]).toHaveTextContent('Copy');

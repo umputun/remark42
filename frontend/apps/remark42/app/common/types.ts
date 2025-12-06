@@ -124,6 +124,7 @@ export interface Config {
   email_notifications: boolean;
   telegram_notifications: boolean;
   emoji_enabled: boolean;
+  need_approval: boolean;
 }
 
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';

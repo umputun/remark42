@@ -258,6 +258,7 @@ describe('<Comment />', () => {
 
   describe('approval', () => {
     it('should render approve button for admin on unapproved comment', () => {
+      StaticStore.config.need_approval = true;
       props.user!.admin = true;
       props.data.unapproved = true;
       render(<CommentWithIntl {...props} />);
@@ -265,6 +266,7 @@ describe('<Comment />', () => {
     });
 
     it('should render disapprove button for admin on approved comment', () => {
+      StaticStore.config.need_approval = true;
       props.user!.admin = true;
       props.data.unapproved = false;
       render(<CommentWithIntl {...props} />);
@@ -272,6 +274,7 @@ describe('<Comment />', () => {
     });
 
     it('should not render approve/disapprove button for non-admin users', () => {
+      StaticStore.config.need_approval = true;
       props.user!.admin = false;
       props.data.unapproved = true;
       render(<CommentWithIntl {...props} />);
@@ -280,7 +283,17 @@ describe('<Comment />', () => {
     });
 
     it('should not render approve/disapprove button when user is null', () => {
+      StaticStore.config.need_approval = true;
       props.user = null;
+      props.data.unapproved = true;
+      render(<CommentWithIntl {...props} />);
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('Disapprove')).not.toBeInTheDocument();
+    });
+
+    it('should not render approve/disapprove button when need_approval is false', () => {
+      StaticStore.config.need_approval = false;
+      props.user!.admin = true;
       props.data.unapproved = true;
       render(<CommentWithIntl {...props} />);
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();

@@ -499,6 +499,7 @@ export class Comment extends Component<CommentProps, State> {
               admin={isAdmin}
               pinned={props.data.pin}
               unapproved={props.data.unapproved}
+              needApproval={StaticStore.config.need_approval}
               copied={state.isCopied}
               editing={isEditing}
               replying={isReplying}
