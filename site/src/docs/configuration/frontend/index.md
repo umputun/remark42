@@ -8,11 +8,12 @@ title: Frontend Configuration
 - **`site_id`**`: string` (optional, `remark` by default) – the `SITE` that you passed to Remark42 instance on start of backend.
 - **`url`**`: string` (optional, `window.location.origin + window.location.pathname` by default) – url to the page with comments, it is used as unique identificator for comments thread
   Note that if you use query parameters as significant part of URL (the one that actually changes content on page) you will have to configure URL manually to keep query params, as `window.location.origin + window.location.pathname` doesn't contain query params and hash. For example, default URL for `https://example/com/example-post?id=1#hash` would be `https://example/com/example-post`
-- **`components`**`: ['embed' | 'last-comments' | 'counter']` (optional, `['embed']` by default) – an array of widgets that should be rendered on a page. You may use more than one widget on a page.
+- **`components`**`: ['embed' | 'last-comments' | 'counter' | 'pending-comments']` (optional, `['embed']` by default) – an array of widgets that should be rendered on a page. You may use more than one widget on a page.
   Available components are:
   - `'embed'` – basic comments widget
   - `'last-comments'` – last comments widget, see [Last Comments](#last-comments-widget) section below
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
+  - `'pending-comments'` – pending comments widget for admins, see [Pending Comments](#pending-comments-widget) section below
 - **`max_shown_comments`**`: number` (optional, `15` by default) – maximum number of comments that is rendered on mobile version
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
@@ -111,6 +112,32 @@ And then add this node in the place where you want to see last comments widget:
 ```
 
 `data-max` sets the max amount of comments (default: `15`).
+
+### Pending comments widget
+
+This widget is for administrators only. It shows comments that are waiting for approval when the `NEED_APPROVAL` setting is enabled. Regular users cannot access this widget.
+
+Add this snippet to the bottom of web page, or adjust already present `remark_config` to have `pending-comments` in `components` list:
+
+```html
+<script>
+	var remark_config = {
+		host: "REMARK_URL",
+		site_id: "YOUR_SITE_ID",
+		components: ["pending-comments"],
+	}
+</script>
+```
+
+::: note 💡
+**Note:** You must be logged in as an admin to see the pending comments. Make sure `NEED_APPROVAL=true` is set in your backend configuration.
+:::
+
+And then add this node in the place where you want to see the pending comments widget:
+
+```html
+<div class="remark42__pending-comments"></div>
+```
 
 ### Counter widget
 

@@ -40,6 +40,7 @@ type DataStore struct {
 	RestrictedWordsMatcher *RestrictedWordsMatcher
 	ImageService           *image.Service
 	AdminEdits             bool // allow admin unlimited edits
+	NeedApproval           bool // require admin approval for new comments to be visible
 
 	// granular locks
 	scopedLocks struct {
@@ -138,6 +139,11 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 			}
 		}
 		comments[i] = s.alterComment(c, user)
+	}
+
+	// filter unapproved comments for non-admin users when NeedApproval is enabled
+	if s.NeedApproval && !user.Admin {
+		comments = s.filterUnapproved(comments, user)
 	}
 
 	// resort commits if altered
@@ -304,6 +310,10 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
+	// set unapproved if moderation is required
+	if s.NeedApproval {
+		comment.Unapproved = true
+	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
 	secret, err := s.getSecret(comment.Locator.SiteID)
@@ -327,6 +337,18 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 		return err
 	}
 	comment.Pin = status
+	comment.Locator = locator
+	return s.Engine.Update(comment)
+}
+
+// SetApproved approve/unapprove comment for moderation
+// When approved=true, we set Unapproved=false; when approved=false, we set Unapproved=true
+func (s *DataStore) SetApproved(locator store.Locator, commentID string, approved bool) error {
+	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	if err != nil {
+		return err
+	}
+	comment.Unapproved = !approved
 	comment.Locator = locator
 	return s.Engine.Update(comment)
 }
@@ -956,7 +978,12 @@ func (s *DataStore) User(siteID, userID string, limit, skip int, user store.User
 	if err != nil {
 		return comments, err
 	}
-	return s.alterComments(comments, user), nil
+	comments = s.alterComments(comments, user)
+	// filter unapproved comments for non-admin users when NeedApproval is enabled
+	if s.NeedApproval && !user.Admin {
+		comments = s.filterUnapproved(comments, user)
+	}
+	return comments, nil
 }
 
 // UserCount is comments count by user
@@ -972,7 +999,30 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 	if err != nil {
 		return comments, err
 	}
-	return s.alterComments(comments, user), nil
+	comments = s.alterComments(comments, user)
+	// filter unapproved comments for non-admin users when NeedApproval is enabled
+	if s.NeedApproval && !user.Admin {
+		comments = s.filterUnapproved(comments, user)
+	}
+	return comments, nil
+}
+
+// Unapproved gets unapproved comments for site, cross-post. Limited by count.
+// This is for admin use only to see pending comments.
+func (s *DataStore) Unapproved(siteID string, limit int) ([]store.Comment, error) {
+	req := engine.FindRequest{Locator: store.Locator{SiteID: siteID}, Limit: limit, Sort: "-time"}
+	comments, err := s.Engine.Find(req)
+	if err != nil {
+		return comments, err
+	}
+	// filter to only include unapproved comments
+	result := make([]store.Comment, 0)
+	for _, c := range comments {
+		if c.Unapproved && !c.Deleted {
+			result = append(result, c)
+		}
+	}
+	return result, nil
 }
 
 // Close store service
@@ -1080,4 +1130,17 @@ func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 		return "", fmt.Errorf("site %s disabled", siteID)
 	}
 	return secret, nil
+}
+
+// filterUnapproved removes unapproved comments from non-admin users
+// Users can see their own unapproved comments
+func (s *DataStore) filterUnapproved(comments []store.Comment, user store.User) []store.Comment {
+	result := make([]store.Comment, 0, len(comments))
+	for _, c := range comments {
+		// show approved comments (Unapproved=false), or user's own unapproved comments
+		if !c.Unapproved || c.User.ID == user.ID {
+			result = append(result, c)
+		}
+	}
+	return result
 }

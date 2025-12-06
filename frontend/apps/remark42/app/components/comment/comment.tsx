@@ -162,6 +162,19 @@ export class Comment extends Component<CommentProps, State> {
     }
   };
 
+  toggleApproval = () => {
+    // If unapproved, we want to approve (value=true); if approved, we want to disapprove (value=false)
+    const value = this.props.data.unapproved === true;
+    const intl = this.props.intl;
+    const promptMessage = value
+      ? intl.formatMessage(messages.approveComment)
+      : intl.formatMessage(messages.disapproveComment);
+
+    if (window.confirm(promptMessage)) {
+      this.props.setApprovalState!(this.props.data.id, value);
+    }
+  };
+
   toggleVerify = () => {
     const value = !this.props.data.user.verified;
     const userId = this.props.data.user.id;
@@ -485,6 +498,8 @@ export class Comment extends Component<CommentProps, State> {
             <CommentActions
               admin={isAdmin}
               pinned={props.data.pin}
+              unapproved={props.data.unapproved}
+              needApproval={StaticStore.config.need_approval}
               copied={state.isCopied}
               editing={isEditing}
               replying={isReplying}
@@ -497,6 +512,7 @@ export class Comment extends Component<CommentProps, State> {
               bannedUser={props.isUserBanned}
               onCopy={this.copyComment}
               onTogglePin={this.togglePin}
+              onToggleApproval={this.toggleApproval}
               onToggleEditing={this.toggleEditing}
               onDelete={this.deleteComment}
               onHideUser={this.hideUser}
@@ -578,6 +594,14 @@ const messages = defineMessages({
   unpinComment: {
     id: 'comment.unpin-comment',
     defaultMessage: 'Do you want to unpin this comment?',
+  },
+  approveComment: {
+    id: 'comment.approve-comment',
+    defaultMessage: 'Do you want to approve this comment?',
+  },
+  disapproveComment: {
+    id: 'comment.disapprove-comment',
+    defaultMessage: 'Do you want to disapprove this comment?',
   },
   verifyUser: {
     id: 'comment.verify-user',
