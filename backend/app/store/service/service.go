@@ -142,7 +142,6 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 	}
 
 	// filter unapproved comments for non-admin users when NeedApproval is enabled
-	// admins see all comments, users see approved comments + their own unapproved comments
 	if s.NeedApproval && !user.Admin {
 		comments = s.filterUnapproved(comments, user)
 	}
@@ -311,6 +310,10 @@ func (s *DataStore) prepareNewComment(comment store.Comment) (store.Comment, err
 	if comment.Votes == nil {
 		comment.Votes = make(map[string]bool)
 	}
+	// set unapproved if moderation is required
+	if s.NeedApproval {
+		comment.Unapproved = true
+	}
 	comment.Sanitize() // clear potentially dangerous js from all parts of comment
 
 	secret, err := s.getSecret(comment.Locator.SiteID)
@@ -339,12 +342,13 @@ func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool)
 }
 
 // SetApproved approve/unapprove comment for moderation
-func (s *DataStore) SetApproved(locator store.Locator, commentID string, status bool) error {
+// When approved=true, we set Unapproved=false; when approved=false, we set Unapproved=true
+func (s *DataStore) SetApproved(locator store.Locator, commentID string, approved bool) error {
 	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
 	}
-	comment.Approved = status
+	comment.Unapproved = !approved
 	comment.Locator = locator
 	return s.Engine.Update(comment)
 }
@@ -1115,8 +1119,8 @@ func (s *DataStore) getSecret(siteID string) (secret string, err error) {
 func (s *DataStore) filterUnapproved(comments []store.Comment, user store.User) []store.Comment {
 	result := make([]store.Comment, 0, len(comments))
 	for _, c := range comments {
-		// show approved comments, or user's own unapproved comments
-		if c.Approved || c.User.ID == user.ID {
+		// show approved comments (Unapproved=false), or user's own unapproved comments
+		if !c.Unapproved || c.User.ID == user.ID {
 			result = append(result, c)
 		}
 	}

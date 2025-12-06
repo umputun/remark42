@@ -813,20 +813,23 @@ func TestService_Approved(t *testing.T) {
 	t.Logf("%+v", res[0])
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(res))
-	assert.Equal(t, false, res[0].Approved)
+	// Existing comments have Unapproved=false (default), so they are approved
+	assert.Equal(t, false, res[0].Unapproved)
 
-	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
+	// Disapprove the comment (set Unapproved=true)
+	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, false)
 	assert.NoError(t, err)
 
 	c, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
-	assert.Equal(t, true, c.Approved)
+	assert.Equal(t, true, c.Unapproved)
 
-	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, false)
+	// Approve the comment (set Unapproved=false)
+	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
 	assert.NoError(t, err)
 	c, err = b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
 	assert.NoError(t, err)
-	assert.Equal(t, false, c.Approved)
+	assert.Equal(t, false, c.Unapproved)
 }
 
 func TestService_FilterUnapproved(t *testing.T) {
@@ -841,9 +844,12 @@ func TestService_FilterUnapproved(t *testing.T) {
 	assert.NoError(t, err)
 	require.True(t, len(allComments) > 0)
 
-	// Approve only the first comment
-	err = b.SetApproved(locator, allComments[0].ID, true)
-	assert.NoError(t, err)
+	// Existing comments are approved by default (Unapproved=false)
+	// Disapprove all except the first comment
+	for i := 1; i < len(allComments); i++ {
+		err = b.SetApproved(locator, allComments[i].ID, false)
+		assert.NoError(t, err)
+	}
 
 	// Admin should see all comments
 	adminComments, err := b.Find(locator, "-time", adminUser)
@@ -855,7 +861,7 @@ func TestService_FilterUnapproved(t *testing.T) {
 	regularComments, err := b.Find(locator, "-time", regularUser)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(regularComments))
-	assert.True(t, regularComments[0].Approved)
+	assert.False(t, regularComments[0].Unapproved)
 
 	// Comment author should see their own unapproved comments
 	commentAuthor := store.User{ID: allComments[1].User.ID}
