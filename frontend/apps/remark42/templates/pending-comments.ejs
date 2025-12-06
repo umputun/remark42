@@ -14,21 +14,6 @@
         max-width: 600px;
         margin: 40px;
       }
-
-      .pending-comments__title {
-        margin-bottom: 20px;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-
-      .pending-comments__empty,
-      .pending-comments__error {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        color: #666;
-      }
-
-      .pending-comments__error {
-        color: #c00;
-      }
     </style>
     <% if (htmlWebpackPlugin.options.env === 'production') { %>
     <link rel="stylesheet" href="pending-comments.css" />
