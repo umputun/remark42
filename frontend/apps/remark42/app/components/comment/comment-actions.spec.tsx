@@ -7,6 +7,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/preact';
 function getProps(): Props {
   return {
     pinned: false,
+    approved: false,
     admin: false,
     currentUser: false,
     copied: false,
@@ -18,6 +19,7 @@ function getProps(): Props {
     onDelete: jest.fn(),
     onToggleEditing: jest.fn(),
     onTogglePin: jest.fn(),
+    onToggleApproval: jest.fn(),
     onToggleReplying: jest.fn(),
     onHideUser: jest.fn(),
     onBlockUser: jest.fn(),
@@ -148,8 +150,9 @@ describe('<CommentActions/>', () => {
       expect(screen.getByTestId('comment-actions-additional').children[0]).toHaveTextContent('Hide');
       expect(screen.getByTestId('comment-actions-additional').children[1]).toHaveTextContent('Copy');
       expect(screen.getByTestId('comment-actions-additional').children[2]).toHaveTextContent('Pin');
-      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Block');
-      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Delete');
+      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Approve');
+      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Block');
+      expect(screen.getByTestId('comment-actions-additional').children[5]).toHaveTextContent('Delete');
     });
 
     it('calls `onToggleEditing` when edit button is pressed', () => {
