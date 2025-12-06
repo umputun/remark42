@@ -78,7 +78,8 @@ export const setApprovalState =
       await api.disapproveComment(id);
     }
     let comment = getState().comments.allComments[id];
-    comment = { ...comment, approved: value, edit: { summary: '', time: new Date().toISOString() } };
+    // value=true means approved, so unapproved=false; value=false means disapproved, so unapproved=true
+    comment = { ...comment, unapproved: !value, edit: { summary: '', time: new Date().toISOString() } };
     dispatch(editComments(comment));
   };
 

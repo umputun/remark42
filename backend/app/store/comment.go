@@ -29,7 +29,7 @@ type Comment struct {
 	Deleted     bool                   `json:"delete,omitempty" bson:"delete"`
 	Imported    bool                   `json:"imported,omitempty" bson:"imported"`
 	PostTitle   string                 `json:"title,omitempty" bson:"title"`
-	Approved    bool                   `json:"approved,omitempty" bson:"approved"` // moderation status, true if approved by admin
+	Unapproved  bool                   `json:"unapproved,omitempty" bson:"unapproved"` // moderation status, true if pending admin approval
 }
 
 // Locator keeps site and url of the post
@@ -94,7 +94,7 @@ func (c *Comment) PrepareUntrusted() {
 	c.Pin = false
 	c.Deleted = false
 	c.Imported = false
-	c.Approved = false // new comments need approval when NeedApproval is enabled
+	c.Unapproved = false // reset moderation status, will be set by service if NeedApproval is enabled
 }
 
 // SetDeleted clears comment info, reset to deleted state. hard flag will clear all user info as well

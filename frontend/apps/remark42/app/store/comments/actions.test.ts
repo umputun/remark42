@@ -29,7 +29,7 @@ describe('setApprovalState', () => {
   const mockComment = {
     id: commentId,
     text: 'test comment',
-    approved: false,
+    unapproved: true,
     user: {
       id: 'user-1',
       name: 'Test User',
@@ -56,7 +56,8 @@ describe('setApprovalState', () => {
     expect(approveCommentSpy).toHaveBeenCalledWith(commentId);
     const actions = store.getActions();
     expect(actions[0].type).toBe(COMMENTS_EDIT);
-    expect(actions[0].comment.approved).toBe(true);
+    // value=true means approved, so unapproved should be false
+    expect(actions[0].comment.unapproved).toBe(false);
   });
 
   it('should call disapproveComment API when value is false', async () => {
@@ -64,7 +65,7 @@ describe('setApprovalState', () => {
     const store = mockStore({
       comments: {
         allComments: {
-          [commentId]: { ...mockComment, approved: true },
+          [commentId]: { ...mockComment, unapproved: false },
         },
       },
       hiddenUsers: {},
@@ -75,7 +76,8 @@ describe('setApprovalState', () => {
     expect(disapproveCommentSpy).toHaveBeenCalledWith(commentId);
     const actions = store.getActions();
     expect(actions[0].type).toBe(COMMENTS_EDIT);
-    expect(actions[0].comment.approved).toBe(false);
+    // value=false means disapproved, so unapproved should be true
+    expect(actions[0].comment.unapproved).toBe(true);
   });
 
   it('should update the comment edit time', async () => {

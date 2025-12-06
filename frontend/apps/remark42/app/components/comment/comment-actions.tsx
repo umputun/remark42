@@ -14,7 +14,7 @@ export type Props = {
   admin: boolean | undefined;
   currentUser: boolean | undefined;
   pinned: boolean | undefined;
-  approved: boolean | undefined;
+  unapproved: boolean | undefined;
   copied: boolean | undefined;
   bannedUser: boolean | undefined;
   readOnly: boolean | undefined;
@@ -37,7 +37,7 @@ export type Props = {
 export function CommentActions({
   admin,
   pinned,
-  approved,
+  unapproved,
   copied,
   readOnly,
   editable,
@@ -104,7 +104,7 @@ export function CommentActions({
               {intl.formatMessage(pinned ? messages.unpin : messages.pin)}
             </Button>
             <Button kind="link" size="sm" onClick={onToggleApproval}>
-              {intl.formatMessage(approved ? messages.disapprove : messages.approve)}
+              {intl.formatMessage(unapproved ? messages.approve : messages.disapprove)}
             </Button>
             {bannedUser ? (
               <Button kind="link" size="sm" onClick={onUnblockUser}>

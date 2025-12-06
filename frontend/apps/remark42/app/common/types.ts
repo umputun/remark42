@@ -63,8 +63,8 @@ export interface Comment {
   delete?: boolean;
   /** post title */
   title?: string;
-  /** approved status for moderation, read only */
-  approved?: boolean;
+  /** unapproved status for moderation (pending approval), read only */
+  unapproved?: boolean;
   /**
    * @ClientOnly defines whether comments was hidden (deleted)
    *

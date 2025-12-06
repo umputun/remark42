@@ -163,7 +163,8 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleApproval = () => {
-    const value = !this.props.data.approved;
+    // If unapproved, we want to approve (value=true); if approved, we want to disapprove (value=false)
+    const value = this.props.data.unapproved === true;
     const intl = this.props.intl;
     const promptMessage = value
       ? intl.formatMessage(messages.approveComment)
@@ -497,7 +498,7 @@ export class Comment extends Component<CommentProps, State> {
             <CommentActions
               admin={isAdmin}
               pinned={props.data.pin}
-              approved={props.data.approved}
+              unapproved={props.data.unapproved}
               copied={state.isCopied}
               editing={isEditing}
               replying={isReplying}

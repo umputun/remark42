@@ -58,8 +58,8 @@ export interface Comment {
 	delete?: boolean
 	/** page title */
 	title?: string
-	/** approved status for moderation */
-	approved?: boolean
+	/** unapproved status for moderation (pending approval) */
+	unapproved?: boolean
 }
 
 export interface CommentsTree {

@@ -7,7 +7,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/preact';
 function getProps(): Props {
   return {
     pinned: false,
-    approved: false,
+    unapproved: false,
     admin: false,
     currentUser: false,
     copied: false,
@@ -150,7 +150,8 @@ describe('<CommentActions/>', () => {
       expect(screen.getByTestId('comment-actions-additional').children[0]).toHaveTextContent('Hide');
       expect(screen.getByTestId('comment-actions-additional').children[1]).toHaveTextContent('Copy');
       expect(screen.getByTestId('comment-actions-additional').children[2]).toHaveTextContent('Pin');
-      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Approve');
+      // unapproved=false (default) means comment is approved, so button shows "Disapprove"
+      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Disapprove');
       expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Block');
       expect(screen.getByTestId('comment-actions-additional').children[5]).toHaveTextContent('Delete');
     });
