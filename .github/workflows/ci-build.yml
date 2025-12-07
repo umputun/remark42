@@ -68,9 +68,6 @@ jobs:
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
             artifact-name: linux-arm64
-          - platform: linux/arm/v7
-            runner: ubuntu-24.04-arm
-            artifact-name: linux-arm-v7
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -106,8 +103,8 @@ jobs:
           echo "ref=${ref}" >> $GITHUB_OUTPUT
           echo "GITHUB_REF=${GITHUB_REF}, GITHUB_SHA=${GITHUB_SHA}, GIT_BRANCH=${ref}"
 
-      - name: build and push by digest
-        id: build
+      - name: build and push to ghcr.io
+        id: build-ghcr
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -121,17 +118,42 @@ jobs:
             GITHUB_REF=${{ github.ref }}
           outputs: type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
 
-      - name: export digest
-        run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+      - name: build and push to Docker Hub
+        id: build-dockerhub
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            SKIP_BACKEND_TEST=true
+            SKIP_FRONTEND_TEST=true
+            CI=github
+            GITHUB_SHA=${{ github.sha }}
+            GIT_BRANCH=${{ steps.prep.outputs.ref }}
+            GITHUB_REF=${{ github.ref }}
+          outputs: type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
 
-      - name: upload digest
+      - name: export digests
+        run: |
+          mkdir -p /tmp/digests/ghcr /tmp/digests/dockerhub
+          digest_ghcr="${{ steps.build-ghcr.outputs.digest }}"
+          digest_dockerhub="${{ steps.build-dockerhub.outputs.digest }}"
+          touch "/tmp/digests/ghcr/${digest_ghcr#sha256:}"
+          touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
+
+      - name: upload ghcr digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.artifact-name }}
-          path: /tmp/digests/*
+          name: digests-ghcr-${{ matrix.artifact-name }}
+          path: /tmp/digests/ghcr/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: upload dockerhub digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-dockerhub-${{ matrix.artifact-name }}
+          path: /tmp/digests/dockerhub/*
           if-no-files-found: error
           retention-days: 1
 
@@ -142,23 +164,32 @@ jobs:
     needs: build-push
 
     steps:
-      - name: download digests
+      - name: download ghcr digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
-          pattern: digests-*
+          path: /tmp/digests/ghcr
+          pattern: digests-ghcr-*
+          merge-multiple: true
+
+      - name: download dockerhub digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/dockerhub
+          pattern: digests-dockerhub-*
           merge-multiple: true
 
       - name: verify all digests present
         run: |
-          expected=3
-          actual=$(ls /tmp/digests | wc -l)
-          if [ "$actual" -ne "$expected" ]; then
-            echo "Expected $expected digests, found $actual"
-            ls -la /tmp/digests
-            exit 1
-          fi
-          echo "All $expected digests present"
+          for registry in ghcr dockerhub; do
+            expected=2
+            actual=$(ls /tmp/digests/${registry} | wc -l)
+            if [ "$actual" -ne "$expected" ]; then
+              echo "Expected $expected digests for ${registry}, found $actual"
+              ls -la /tmp/digests/${registry}
+              exit 1
+            fi
+            echo "All $expected digests present for ${registry}"
+          done
 
       - name: set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -182,22 +213,31 @@ jobs:
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           echo "ref=${ref}" >> $GITHUB_OUTPUT
 
-          # For master branch, tag with branch name
+          # for master branch, tag with branch name only
           if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
-            echo "tags=-t ghcr.io/umputun/remark42:${ref} -t umputun/remark42:${ref}" >> $GITHUB_OUTPUT
+            echo "ghcr_tags=-t ghcr.io/umputun/remark42:${ref}" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=-t umputun/remark42:${ref}" >> $GITHUB_OUTPUT
           fi
 
-          # For tags, include both version and latest
+          # for tags, include both version and latest
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "tags=-t ghcr.io/umputun/remark42:${ref} -t ghcr.io/umputun/remark42:latest -t umputun/remark42:${ref} -t umputun/remark42:latest" >> $GITHUB_OUTPUT
+            echo "ghcr_tags=-t ghcr.io/umputun/remark42:${ref} -t ghcr.io/umputun/remark42:latest" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=-t umputun/remark42:${ref} -t umputun/remark42:latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: create manifest and push
-        working-directory: /tmp/digests
+      - name: create ghcr manifest and push
+        working-directory: /tmp/digests/ghcr
         run: |
           docker buildx imagetools create \
-            ${{ steps.prep.outputs.tags }} \
+            ${{ steps.prep.outputs.ghcr_tags }} \
             $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
+
+      - name: create dockerhub manifest and push
+        working-directory: /tmp/digests/dockerhub
+        run: |
+          docker buildx imagetools create \
+            ${{ steps.prep.outputs.dockerhub_tags }} \
+            $(printf 'umputun/remark42@sha256:%s ' *)
 
       - name: remote deployment to remark42.com from master
         if: ${{ github.ref == 'refs/heads/master' }}
