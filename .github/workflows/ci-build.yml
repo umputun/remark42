@@ -24,22 +24,16 @@ on:
       - "!**.md"
 
 jobs:
-  build-images:
-    name: Build Docker images
-    runs-on: ubuntu-latest
-
+  # Build without pushing for PRs and non-master branches
+  build-test:
+    name: Build test (non-master)
+    if: ${{ github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
 
-      - name: set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: set up Docker Buildx
-        id: buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: available platforms
-        run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: free disk space
         run: |
@@ -48,58 +42,202 @@ jobs:
           sudo rm -rf /usr/local/share/boost
           docker system prune -af
 
-      - name: build docker image without pushing (only outside master)
-        if: ${{ github.ref != 'refs/heads/master' }}
+      - name: build docker image without pushing
         run: |
           docker buildx build \
               --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
-              --platform linux/amd64 .
+              --platform linux/arm64 .
 
-      - name: build example docker image without pushing (only outside master)
-        if: ${{ github.ref != 'refs/heads/master' }}
+      - name: build example docker image without pushing
         run: |
           docker buildx build \
               --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
-              --platform linux/amd64 -f backend/_example/memory_store/Dockerfile .
+              --platform linux/arm64 -f backend/_example/memory_store/Dockerfile .
 
-      - name: build and deploy master image to ghcr.io and dockerhub
-        if: ${{ github.ref == 'refs/heads/master' }}
-        env:
-          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
-          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          USERNAME: ${{ github.actor }}
-          GITHUB_SHA: ${{ github.sha}}
-          GITHUB_REF: ${{ github.ref}}
+  # Build and push for master and tags using native runners
+  build-push:
+    name: Build ${{ matrix.platform }}
+    if: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            artifact-name: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact-name: linux-arm64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          docker system prune -af
+
+      - name: login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.PKG_TOKEN }}
+
+      - name: login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: umputun
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: prepare build args
+        id: prep
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
+          echo "ref=${ref}" >> $GITHUB_OUTPUT
           echo "GITHUB_REF=${GITHUB_REF}, GITHUB_SHA=${GITHUB_SHA}, GIT_BRANCH=${ref}"
-          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          echo ${DOCKER_HUB_TOKEN} | docker login -u umputun --password-stdin
-          docker buildx build --push \
-              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github \
-              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} --build-arg GITHUB_REF=${GITHUB_REF} \
-              --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/umputun/remark42:${ref} -t umputun/remark42:${ref} .
 
-      - name: deploy tagged (latest) to ghcr.io and dockerhub
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        env:
-          GITHUB_PACKAGE_TOKEN: ${{ secrets.PKG_TOKEN }}
-          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          USERNAME: ${{ github.actor }}
-          GITHUB_SHA: ${{ github.sha}}
-          GITHUB_REF: ${{ github.ref}}
+      - name: build and push to ghcr.io
+        id: build-ghcr
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            SKIP_BACKEND_TEST=true
+            SKIP_FRONTEND_TEST=true
+            CI=github
+            GITHUB_SHA=${{ github.sha }}
+            GIT_BRANCH=${{ steps.prep.outputs.ref }}
+            GITHUB_REF=${{ github.ref }}
+          outputs: type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
+
+      - name: build and push to Docker Hub
+        id: build-dockerhub
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            SKIP_BACKEND_TEST=true
+            SKIP_FRONTEND_TEST=true
+            CI=github
+            GITHUB_SHA=${{ github.sha }}
+            GIT_BRANCH=${{ steps.prep.outputs.ref }}
+            GITHUB_REF=${{ github.ref }}
+          outputs: type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
+
+      - name: export digests
+        run: |
+          mkdir -p /tmp/digests/ghcr /tmp/digests/dockerhub
+          digest_ghcr="${{ steps.build-ghcr.outputs.digest }}"
+          digest_dockerhub="${{ steps.build-dockerhub.outputs.digest }}"
+          touch "/tmp/digests/ghcr/${digest_ghcr#sha256:}"
+          touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
+
+      - name: upload ghcr digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-ghcr-${{ matrix.artifact-name }}
+          path: /tmp/digests/ghcr/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: upload dockerhub digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-dockerhub-${{ matrix.artifact-name }}
+          path: /tmp/digests/dockerhub/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Merge digests and create multi-arch manifest
+  merge-push:
+    name: Create multi-arch manifest
+    runs-on: ubuntu-latest
+    needs: build-push
+
+    steps:
+      - name: download ghcr digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/ghcr
+          pattern: digests-ghcr-*
+          merge-multiple: true
+
+      - name: download dockerhub digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/dockerhub
+          pattern: digests-dockerhub-*
+          merge-multiple: true
+
+      - name: verify all digests present
+        run: |
+          for registry in ghcr dockerhub; do
+            expected=2
+            actual=$(ls /tmp/digests/${registry} | wc -l)
+            if [ "$actual" -ne "$expected" ]; then
+              echo "Expected $expected digests for ${registry}, found $actual"
+              ls -la /tmp/digests/${registry}
+              exit 1
+            fi
+            echo "All $expected digests present for ${registry}"
+          done
+
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.PKG_TOKEN }}
+
+      - name: login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: umputun
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: prepare tags
+        id: prep
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
-          echo "GITHUB_REF=${GITHUB_REF}, GITHUB_SHA=${GITHUB_SHA}, GIT_BRANCH=${ref}"
-          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
-          echo ${DOCKER_HUB_TOKEN} | docker login -u umputun --password-stdin
-          docker buildx build --push \
-              --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true --build-arg CI=github \
-              --build-arg GITHUB_SHA=${GITHUB_SHA} --build-arg GIT_BRANCH=${ref} --build-arg GITHUB_REF=${GITHUB_REF} \
-              --platform linux/amd64,linux/arm/v7,linux/arm64 \
-              -t ghcr.io/umputun/remark42:${ref} -t ghcr.io/umputun/remark42:latest \
-              -t umputun/remark42:${ref} -t umputun/remark42:latest .
+          echo "ref=${ref}" >> $GITHUB_OUTPUT
+
+          # for master branch, tag with branch name only
+          if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+            echo "ghcr_tags=-t ghcr.io/umputun/remark42:${ref}" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=-t umputun/remark42:${ref}" >> $GITHUB_OUTPUT
+          fi
+
+          # for tags, include both version and latest
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "ghcr_tags=-t ghcr.io/umputun/remark42:${ref} -t ghcr.io/umputun/remark42:latest" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=-t umputun/remark42:${ref} -t umputun/remark42:latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: create ghcr manifest and push
+        working-directory: /tmp/digests/ghcr
+        run: |
+          docker buildx imagetools create \
+            ${{ steps.prep.outputs.ghcr_tags }} \
+            $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
+
+      - name: create dockerhub manifest and push
+        working-directory: /tmp/digests/dockerhub
+        run: |
+          docker buildx imagetools create \
+            ${{ steps.prep.outputs.dockerhub_tags }} \
+            $(printf 'umputun/remark42@sha256:%s ' *)
 
       - name: remote deployment to remark42.com from master
         if: ${{ github.ref == 'refs/heads/master' }}
