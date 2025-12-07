@@ -54,6 +54,45 @@ jobs:
               --build-arg SKIP_BACKEND_TEST=true --build-arg SKIP_FRONTEND_TEST=true \
               --platform linux/amd64 -f backend/_example/memory_store/Dockerfile .
 
+  # Build on native runners for PRs (no push, for speed testing)
+  build-test-native:
+    name: Build ${{ matrix.platform }} (test)
+    if: ${{ github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - platform: linux/arm/v7
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          docker system prune -af
+
+      - name: build docker image without pushing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+          build-args: |
+            SKIP_BACKEND_TEST=true
+            SKIP_FRONTEND_TEST=true
+
   # Build and push for master and tags using native runners
   build-push:
     name: Build ${{ matrix.platform }}
