@@ -18,13 +18,17 @@ jobs:
   translations-check:
     name: Translations check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [16]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
@@ -61,13 +65,17 @@ jobs:
   type-check:
     name: Type check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [16]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
@@ -104,13 +112,17 @@ jobs:
   lint:
     name: Eslint & Stylelint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [16]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
@@ -148,11 +160,16 @@ jobs:
     name: Size limit
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4.2.0
@@ -171,13 +188,17 @@ jobs:
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [16]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6

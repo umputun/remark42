@@ -18,13 +18,17 @@ jobs:
   type-check:
     name: Type check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [ 16 ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
@@ -61,13 +65,17 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [ 16 ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
@@ -104,13 +112,17 @@ jobs:
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: [ 16 ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install node
         uses: actions/setup-node@v6
