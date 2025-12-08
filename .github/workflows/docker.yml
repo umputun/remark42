@@ -211,4 +211,4 @@ jobs:
       - name: trigger deployment
         env:
           UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
-        run: curl -sf https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
+        run: curl -s https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
