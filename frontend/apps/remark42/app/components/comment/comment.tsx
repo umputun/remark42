@@ -52,6 +52,7 @@ export type CommentProps = {
   getPreview?: typeof getPreview;
   uploadImage?: typeof uploadImage;
   intl: IntlShape;
+  approved?: boolean;
 } & Partial<typeof boundActions>;
 
 export interface State {
@@ -231,6 +232,12 @@ export class Comment extends Component<CommentProps, State> {
     this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
+  toggleApproveComment = () => {
+    // TODO: maybe align with updateComment???
+    this.props.approveComment!(this.props.data.id, this.props.data.text, !this.props.data.approved);
+    // this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
+  };
+
   scrollToParent = (evt: Event) => {
     const { pid } = this.props.data;
     const parentCommentNode = document.getElementById(`${COMMENT_NODE_CLASSNAME_PREFIX}${pid}`);
@@ -383,6 +390,7 @@ export class Comment extends Component<CommentProps, State> {
       <article
         className={b('comment', { mix: this.props.mix }, defaultMods)}
         id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
+        style={{ border: this.props.data.approved ? '' : '1px solid red' }}
       >
         {props.view === 'user' && o.title && (
           <div className="comment__title">
@@ -486,6 +494,7 @@ export class Comment extends Component<CommentProps, State> {
               admin={isAdmin}
               pinned={props.data.pin}
               copied={state.isCopied}
+              approved={this.props.data.approved}
               editing={isEditing}
               replying={isReplying}
               editable={props.repliesCount === 0 && state.editDeadline !== undefined}
@@ -502,6 +511,7 @@ export class Comment extends Component<CommentProps, State> {
               onHideUser={this.hideUser}
               onBlockUser={this.blockUser}
               onUnblockUser={this.unblockUser}
+              onToggleApprove={this.toggleApproveComment}
             />
           )}
         </div>
