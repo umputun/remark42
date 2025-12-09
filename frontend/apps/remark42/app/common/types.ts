@@ -63,6 +63,8 @@ export interface Comment {
   delete?: boolean;
   /** post title */
   title?: string;
+  /** unapproved status for moderation (pending approval), read only */
+  unapproved?: boolean;
   /**
    * @ClientOnly defines whether comments was hidden (deleted)
    *
@@ -122,6 +124,7 @@ export interface Config {
   email_notifications: boolean;
   telegram_notifications: boolean;
   emoji_enabled: boolean;
+  need_approval: boolean;
 }
 
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';

@@ -136,6 +136,12 @@ export const pinComment = (id: Comment['id']): Promise<void> => adminFetcher.put
 
 export const unpinComment = (id: Comment['id']): Promise<void> => adminFetcher.put(`/pin/${id}`, { url, pin: 0 });
 
+export const approveComment = (id: Comment['id']): Promise<void> =>
+  adminFetcher.put(`/approve/${id}`, { url, approved: 1 });
+
+export const disapproveComment = (id: Comment['id']): Promise<void> =>
+  adminFetcher.put(`/approve/${id}`, { url, approved: 0 });
+
 export const setVerifiedStatus = (id: User['id']): Promise<void> => adminFetcher.put(`/verify/${id}`, { verified: 1 });
 
 export const removeVerifiedStatus = (id: User['id']): Promise<void> =>

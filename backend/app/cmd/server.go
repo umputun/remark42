@@ -61,6 +61,7 @@ type ServerCommand struct {
 
 	Sites                      []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
 	AnonymousVote              bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
+	NeedApproval               bool          `long:"need-approval" env:"NEED_APPROVAL" description:"require admin approval for new comments to be visible"`
 	AdminPasswd                string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
 	BackupLocation             string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
 	MaxBackupFiles             int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
@@ -520,6 +521,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		ImageService:           imageService,
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
+		NeedApproval:           s.NeedApproval,
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
 	dataService.RestrictSameIPVotes.Duration = s.DurationVoteIP

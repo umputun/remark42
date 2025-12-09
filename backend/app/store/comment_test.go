@@ -124,6 +124,7 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 		Votes:       map[string]bool{"uu": true},
 		Controversy: 123,
 		Imported:    true,
+		Unapproved:  true, // should be reset to false
 	}
 
 	comment.PrepareUntrusted()
@@ -139,6 +140,7 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 	assert.Equal(t, User{ID: "username"}, comment.User)
 	assert.Equal(t, 0., comment.Controversy)
 	assert.Equal(t, false, comment.Imported)
+	assert.Equal(t, false, comment.Unapproved) // PrepareUntrusted resets moderation status
 }
 
 func TestComment_SetDeleted(t *testing.T) {

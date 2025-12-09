@@ -8,7 +8,14 @@ import './styles';
 import { h, FunctionComponent } from 'preact';
 
 import { useAppSelector } from 'store';
-import { addComment, removeComment, updateComment, setPinState, setCommentMode } from 'store/comments/actions';
+import {
+  addComment,
+  removeComment,
+  updateComment,
+  setPinState,
+  setCommentMode,
+  setApprovalState,
+} from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
 import { Comment, CommentProps } from './comment';
@@ -38,6 +45,7 @@ export const boundActions = bindActions({
   removeComment,
   setReplyEditState: setCommentMode,
   setPinState,
+  setApprovalState,
   blockUser,
   unblockUser,
   hideUser,

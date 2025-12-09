@@ -68,6 +68,21 @@ export const setPinState =
     dispatch(editComments(comment));
   };
 
+/** sets approval state for comment (moderation) */
+export const setApprovalState =
+  (id: Comment['id'], value: boolean): StoreAction<Promise<void>> =>
+  async (dispatch, getState) => {
+    if (value) {
+      await api.approveComment(id);
+    } else {
+      await api.disapproveComment(id);
+    }
+    let comment = getState().comments.allComments[id];
+    // value=true means approved, so unapproved=false; value=false means disapproved, so unapproved=true
+    comment = { ...comment, unapproved: !value, edit: { summary: '', time: new Date().toISOString() } };
+    dispatch(editComments(comment));
+  };
+
 /** edits comment in tree */
 export const removeComment =
   (id: Comment['id']): StoreAction<Promise<void>> =>

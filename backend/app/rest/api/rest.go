@@ -310,6 +310,8 @@ func (s *Rest) routes() chi.Router {
 			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
 			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
 			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
+			radmin.Put("/approve/{id}", s.adminRest.setApprovedCtrl)
+			radmin.Get("/pending", s.adminRest.pendingCommentsCtrl)
 			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
 			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
 			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
@@ -442,6 +444,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		SimpleView            bool     `json:"simple_view"`
 		SendJWTHeader         bool     `json:"send_jwt_header"`
 		SubscribersOnly       bool     `json:"subscribers_only"`
+		NeedApproval          bool     `json:"need_approval"`
 	}{
 		Version:               s.Version,
 		EditDuration:          int(s.DataService.EditDuration.Seconds()),
@@ -462,6 +465,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		SimpleView:            s.SimpleView,
 		SendJWTHeader:         s.SendJWTHeader,
 		SubscribersOnly:       s.SubscribersOnly,
+		NeedApproval:          s.DataService.NeedApproval,
 	}
 
 	cnf.Auth = []string{}
