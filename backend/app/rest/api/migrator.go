@@ -59,8 +59,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	w.WriteHeader(http.StatusAccepted)
-	R.RenderJSON(w, R.JSON{"status": "import request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
 }
 
 // POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
@@ -94,8 +93,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	w.WriteHeader(http.StatusAccepted)
-	R.RenderJSON(w, R.JSON{"status": "import request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
 }
 
 // GET /wait?site=site-id
@@ -115,8 +113,7 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 
 		select {
 		case <-ctx.Done():
-			w.WriteHeader(http.StatusGatewayTimeout)
-			R.RenderJSON(w, R.JSON{"status": "timeout expired", "site_id": siteID})
+			_ = R.EncodeJSON(w, http.StatusGatewayTimeout, R.JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):
 		}
@@ -210,8 +207,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[DEBUG] convert request completed. site=%s, comments=%d", siteID, size)
 	}()
 
-	w.WriteHeader(http.StatusAccepted)
-	R.RenderJSON(w, R.JSON{"status": "convert request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "convert request accepted"})
 }
 
 // runImport reads from tmpfile and import for given siteID and provider
