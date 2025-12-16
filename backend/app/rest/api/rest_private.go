@@ -174,8 +174,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] created comment %+v", finalComment)
 
-	w.WriteHeader(http.StatusCreated)
-	R.RenderJSON(w, &finalComment)
+	_ = R.EncodeJSON(w, http.StatusCreated, &finalComment)
 }
 
 // PUT /comment/{id}?site=siteID&url=post-url - update comment
