@@ -189,7 +189,7 @@ func (a *Authenticator) refreshExpiredToken(w http.ResponseWriter, claims token.
 	}
 
 	claims.ExpiresAt = nil                // this will cause now+duration for refreshed token
-	c, err := a.JWTService.Set(w, claims) // Set changes token
+	c, err := a.JWTService.Set(w, claims) // set changes token
 	if err != nil {
 		return token.Claims{}, err
 	}

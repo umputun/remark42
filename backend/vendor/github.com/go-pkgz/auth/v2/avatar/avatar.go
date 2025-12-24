@@ -194,7 +194,7 @@ func (p *Proxy) resize(reader io.Reader, limit int) io.Reader {
 		newW, newH = limit, h*limit/w
 	}
 	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	// Slower than `draw.ApproxBiLinear.Scale()` but better quality.
+	// slower than `draw.ApproxBiLinear.Scale()` but better quality.
 	draw.BiLinear.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
 
 	var out bytes.Buffer

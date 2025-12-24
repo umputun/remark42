@@ -49,22 +49,22 @@ const (
 
 // appleVerificationResponse is based on https://developer.apple.com/documentation/signinwithapplerestapi/tokenresponse
 type appleVerificationResponse struct {
-	// A token used to access allowed user data, but now not implemented public interface for it.
+	// a token used to access allowed user data, but now not implemented public interface for it.
 	AccessToken string `json:"access_token"`
 
-	// Access token type, always equal the "bearer".
+	// access token type, always equal the "bearer".
 	TokenType string `json:"token_type"`
 
-	// Access token expires time in seconds. Always equal 3600 seconds (1 hour)
+	// access token expires time in seconds. Always equal 3600 seconds (1 hour)
 	ExpiresIn int `json:"expires_in"`
 
-	// The refresh token used to regenerate new access tokens.
+	// the refresh token used to regenerate new access tokens.
 	RefreshToken string `json:"refresh_token"`
 
-	// Main JSON Web Token that contains the user’s identity information.
+	// main JSON Web Token that contains the user’s identity information.
 	IDToken string `json:"id_token"`
 
-	// Used to capture any error returned in response. Always check error for empty
+	// used to capture any error returned in response. Always check error for empty
 	Error string `json:"error"`
 }
 
@@ -443,7 +443,7 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 		return err
 	}
 
-	// Trying to decode (unmarshal json) data of response
+	// trying to decode (unmarshal json) data of response
 	err = json.NewDecoder(res.Body).Decode(result)
 	if err != nil {
 		return fmt.Errorf("unmarshalling data from apple service response failed: %w", err)
@@ -455,8 +455,8 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 		}
 	}()
 
-	// If above operation done successfully checking a response code and error descriptions, if one exist.
-	// Apple service will response either 200 (OK) or 400 (any error).
+	// if above operation done successfully checking a response code and error descriptions, if one exist.
+	// apple service will response either 200 (OK) or 400 (any error).
 	if res.StatusCode != http.StatusOK || result.Error != "" {
 		return fmt.Errorf("apple token service error: %s", result.Error)
 	}
@@ -471,7 +471,7 @@ func (ah *AppleHandler) createClientSecret() (string, error) {
 	if ah.conf.privateKey == nil {
 		return "", fmt.Errorf("private key can't be empty")
 	}
-	// Create a claims
+	// create a claims
 	now := time.Now()
 	exp := now.Add(time.Minute * 30) // default value
 
@@ -502,7 +502,7 @@ func (ah *AppleHandler) parseUserData(user *token.User, jUser string) {
 
 	var userData UserData
 
-	// Catch error for log only. No need break flow if user name doesn't exist
+	// catch error for log only. No need break flow if user name doesn't exist
 	if err := json.Unmarshal([]byte(jUser), &userData); err != nil {
 		ah.Logf("[DEBUG] failed to parse user data %s: %v", user, err)
 		user.Name = "noname_" + user.ID[6:12] // paste noname if user name failed to parse

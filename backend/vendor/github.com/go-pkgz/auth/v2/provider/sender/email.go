@@ -20,14 +20,14 @@ type Email struct {
 type EmailParams struct {
 	Host        string // SMTP host
 	Port        int    // SMTP port
-	From        string // From email field
-	Subject     string // Email subject
-	ContentType string // Content type
+	From        string // from email field
+	Subject     string // email subject
+	ContentType string // content type
 
 	TLS                bool          // TLS auth
-	StartTLS           bool          // StartTLS auth
-	InsecureSkipVerify bool          // Skip certificate verification
-	Charset            string        // Character set
+	StartTLS           bool          // startTLS auth
+	InsecureSkipVerify bool          // skip certificate verification
+	Charset            string        // character set
 	LoginAuth          bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
 	SMTPUserName       string        // username
 	SMTPPassword       string        // password

@@ -231,7 +231,7 @@ func (j *Service) validate(claims *Claims) error {
 		return nil
 	}
 
-	// Ignore "ErrTokenExpired" if it is the only error.
+	// ignore "ErrTokenExpired" if it is the only error.
 	if errors.Is(err, jwt.ErrTokenExpired) {
 		if uw, ok := err.(interface{ Unwrap() []error }); ok && len(uw.Unwrap()) == 1 {
 			return nil
@@ -266,7 +266,8 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 
 	if j.SendJWTHeader {
 		w.Header().Set(j.JWTHeaderKey, tokenString)
-		return claims, nil
+		// don't return here - fall through to also set cookies
+		// cookies are needed for OAuth redirect flows where headers don't survive redirects
 	}
 
 	cookieExpiration := 0 // session cookie

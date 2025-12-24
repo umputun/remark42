@@ -1,66 +1,63 @@
+version: "2"
 run:
   timeout: 5m
   tests: false
-
-linters-settings:
-  govet:
-    enable:
-      - shadow
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - hugeParam
-      - rangeValCopy
-      - singleCaseSwitch
-      - ifElseChain
-
+  concurrency: 4
 linters:
+  default: none
   enable:
-    - revive
-    - govet
-    - unconvert
-    - staticcheck
-    - unused
-    - gosec
     - dupl
-    - misspell
-    - unparam
-    - typecheck
-    - ineffassign
-    - stylecheck
     - gochecknoinits
-    - copyloopvar
     - gocritic
+    - govet
+    - ineffassign
+    - misspell
     - nakedret
-    - gosimple
     - prealloc
-  fast: false
-  disable-all: true
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - wrapperFunc
+        - hugeParam
+        - rangeValCopy
+        - singleCaseSwitch
+        - ifElseChain
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
 
-issues:
-  exclude-dirs:
-    - vendor
-  exclude-rules:
-    - text: "at least one file in a package should have a package comment"
-      linters:
-        - stylecheck
-    - text: "should have a package comment"
-      linters:
-        - revive
-    - path: _test\.go
-      linters:
-        - gosec
-        - dupl
-  exclude-use-default: false
-
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - staticcheck
+        text: "at least one file in a package should have a package comment"
+      - linters:
+          - revive
+        text: "should have a package comment"
+      - linters:
+          - gosec
+          - dupl
+        path: _test\.go
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$

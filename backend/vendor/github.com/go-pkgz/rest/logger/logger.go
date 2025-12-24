@@ -220,8 +220,8 @@ func (l *Middleware) getBody(r *http.Request) string {
 
 	// "The Server will close the request body. The ServeHTTP Handler does not need to."
 	// https://golang.org/pkg/net/http/#Request
-	// So we can use ioutil.NopCloser() to make io.ReadCloser.
-	// Note that below assignment is not approved by the docs:
+	// so we can use ioutil.NopCloser() to make io.ReadCloser.
+	// note that below assignment is not approved by the docs:
 	// "Except for reading the body, handlers should not modify the provided Request."
 	// https://golang.org/pkg/net/http/#Handler
 	r.Body = io.NopCloser(reader)
@@ -355,5 +355,5 @@ func (c *customResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hj, ok := c.ResponseWriter.(http.Hijacker); ok {
 		return hj.Hijack()
 	}
-	return nil, nil, fmt.Errorf("ResponseWriter does not implement the Hijacker interface") //nolint:golint //capital letter is OK here
+	return nil, nil, fmt.Errorf("ResponseWriter does not implement the Hijacker interface")
 }

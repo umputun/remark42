@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/v2"
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
 
@@ -63,7 +63,7 @@ var expiredCleanupInterval = time.Minute * 5 // interval to check and clean up e
 // Run starts processing login requests sent in Telegram
 // Blocks caller
 func (th *TelegramHandler) Run(ctx context.Context) error {
-	// Initialization
+	// initialization
 	atomic.AddInt32(&th.run, 1)
 	info, err := th.Telegram.BotInfo(ctx)
 	if err != nil {
@@ -168,7 +168,7 @@ func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegram
 
 		th.requests.RLock()
 		authRequest, ok := th.requests.data[token]
-		if !ok { // No such token
+		if !ok { // no such token
 			th.requests.RUnlock()
 			err := th.Telegram.Send(ctx, update.Message.Chat.ID, th.ErrorMsg)
 			if err != nil {
@@ -256,7 +256,7 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 	queryToken := r.URL.Query().Get("token")
 	if queryToken == "" {
 		// GET /login (No token supplied)
-		// Generate and send token
+		// generate and send token
 		token, err := randToken()
 		if err != nil {
 			rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to generate code")
@@ -322,7 +322,7 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 
 	rest.RenderJSON(w, claims.User)
 
-	// Delete request
+	// delete request
 	th.requests.Lock()
 	defer th.requests.Unlock()
 	delete(th.requests.data, queryToken)
@@ -342,8 +342,8 @@ type tgAPI struct {
 	token  string
 	client *http.Client
 
-	// Identifier of the first update to be requested.
-	// Should be equal to LastSeenUpdateID + 1
+	// identifier of the first update to be requested.
+	// should be equal to LastSeenUpdateID + 1
 	// See https://core.telegram.org/bots/api#getupdates
 	updateOffset int
 }
@@ -387,7 +387,7 @@ func (tg *tgAPI) Send(ctx context.Context, id int, msg string) error {
 
 // Avatar returns URL to user avatar
 func (tg *tgAPI) Avatar(ctx context.Context, id int) (string, error) {
-	// Get profile pictures
+	// get profile pictures
 	url := fmt.Sprintf(`getUserProfilePhotos?user_id=%d`, id)
 
 	var profilePhotos = struct {
@@ -402,12 +402,12 @@ func (tg *tgAPI) Avatar(ctx context.Context, id int) (string, error) {
 		return "", err
 	}
 
-	// User does not have profile picture set or it is hidden in privacy settings
+	// user does not have profile picture set or it is hidden in privacy settings
 	if len(profilePhotos.Result.Photos) == 0 || len(profilePhotos.Result.Photos[0]) == 0 {
 		return "", nil
 	}
 
-	// Get max possible picture size
+	// get max possible picture size
 	last := len(profilePhotos.Result.Photos[0]) - 1
 	fileID := profilePhotos.Result.Photos[0][last].ID
 	url = fmt.Sprintf(`getFile?file_id=%s`, fileID)
@@ -450,7 +450,7 @@ func (tg *tgAPI) BotInfo(ctx context.Context) (*botInfo, error) {
 }
 
 func (tg *tgAPI) request(ctx context.Context, method string, data interface{}) error {
-	return repeater.NewDefault(3, time.Millisecond*50).Do(ctx, func() error {
+	return repeater.NewFixed(3, time.Millisecond*50).Do(ctx, func() error {
 		url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.token, method)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)

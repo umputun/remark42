@@ -68,12 +68,14 @@ func NewFileServer(public, local string, options ...FsOpt) (*FS, error) {
 }
 
 // FileServer is a shortcut for making FS with listing disabled and the custom noFound reader (can be nil).
+//
 // Deprecated: the method is for back-compatibility only and user should use the universal NewFileServer instead
 func FileServer(public, local string, notFound io.Reader) (http.Handler, error) {
 	return NewFileServer(public, local, FsOptCustom404(notFound))
 }
 
 // FileServerSPA is a shortcut for making FS with SPA-friendly handling of 404, listing disabled and the custom noFound reader (can be nil).
+//
 // Deprecated: the method is for back-compatibility only and user should use the universal NewFileServer instead
 func FileServerSPA(public, local string, notFound io.Reader) (http.Handler, error) {
 	return NewFileServer(public, local, FsOptCustom404(notFound), FsOptSPA)

@@ -19,7 +19,6 @@ func Wrap(handler http.Handler, mws ...func(http.Handler) http.Handler) http.Han
 	return handler
 }
 
-
 // AppInfo adds custom app-info to the response header
 func AppInfo(app, author, version string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
@@ -82,12 +81,11 @@ func Health(path string, checkers ...func(ctx context.Context) (name string, err
 				}
 				resp = append(resp, hh)
 			}
+			status := http.StatusOK
 			if anyError {
-				w.WriteHeader(http.StatusServiceUnavailable)
-			} else {
-				w.WriteHeader(http.StatusOK)
+				status = http.StatusServiceUnavailable
 			}
-			RenderJSON(w, resp)
+			_ = EncodeJSON(w, status, resp)
 		}
 		return http.HandlerFunc(fn)
 	}
@@ -147,13 +145,19 @@ func Maybe(mw func(http.Handler) http.Handler, maybeFn func(r *http.Request) boo
 	}
 }
 
-// RealIP is a middleware that sets a http.Request's RemoteAddr to the results
-// of parsing either the X-Forwarded-For or X-Real-IP headers.
+// RealIP is a middleware that sets a http.Request's RemoteAddr to the client's real IP.
+// It checks headers in the following priority order:
+//  1. X-Real-IP - trusted proxy (nginx/reproxy) sets this to actual client
+//  2. CF-Connecting-IP - Cloudflare's header for original client
+//  3. X-Forwarded-For - leftmost public IP (original client in CDN/proxy chain)
+//  4. RemoteAddr - fallback for direct connections
+//
+// Only public IPs are accepted from headers; private/loopback/link-local IPs are skipped.
 //
 // This middleware should only be used if user can trust the headers sent with request.
 // If reverse proxies are configured to pass along arbitrary header values from the client,
 // or if this middleware used without a reverse proxy, malicious clients could set anything
-// as X-Forwarded-For header and attack the server in various ways.
+// as these headers and spoof their IP address.
 func RealIP(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if rip, err := realip.Get(r); err == nil {
