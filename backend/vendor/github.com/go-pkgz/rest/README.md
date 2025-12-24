@@ -97,16 +97,22 @@ example: `019/03/05 17:26:12.976 [INFO] GET - /api/v1/find?site=remark - 8e228e9
 ### Recoverer middleware
 
 Recoverer is a middleware that recovers from panics, logs the panic (and a backtrace), 
-and returns an HTTP 500 (Internal Server Error) status if possible.
+and returns an HTTP 500 (Internal Server Error) status if possible. 
+It prevents server crashes in case of panic in one of the controllers.
 
 ### OnlyFrom middleware
 
-OnlyFrom middleware allows access for limited list of source IPs.
-Such IPs can be defined as complete ip (like 192.168.1.12), prefix (129.168.) or CIDR (192.168.0.0/16)
+OnlyFrom middleware allows access from a limited list of source IPs.
+Such IPs can be defined as complete ip (like 192.168.1.12), prefix (129.168.) or CIDR (192.168.0.0/16).
+The middleware will respond with `StatusForbidden` (403) if the request comes from a different IP. 
+It supports both IPv4 and IPv6 and checks the usual headers like `X-Forwarded-For` and `X-Real-IP` and the remote address.
+
+_Note: headers should be trusted and set by a proxy, otherwise it is possible to spoof them._
 
 ### Metrics middleware
 
-Metrics middleware responds to GET /metrics with list of [expvar](https://golang.org/pkg/expvar/). Optionally allows restricting list of source ips.
+Metrics middleware responds to GET /metrics with list of [expvar](https://golang.org/pkg/expvar/). 
+Optionally allows a restricted list of source ips.
 
 ### BlackWords middleware
 
@@ -118,14 +124,13 @@ SizeLimit middleware checks if body size is above the limit and returns `StatusR
 
 ### Trace middleware
 
-It looks for `X-Request-ID` header and makes it as a random id
- (if not found), then populates it to the result's header
-    and to the request's context.
+The `Trace` middleware is designed to add request tracing functionality. It looks for the `X-Request-ID` header in 
+the incoming HTTP request. If not found, a random ID is generated. This trace ID is then set in the response headers
+and added to the request's context.
 
 ### Deprecation middleware
 
-Adds the HTTP Deprecation response header, see [draft-dalal-deprecation-header-00](https://tools.ietf.org/id/draft-dalal-deprecation-header-00.html
-) 
+Adds the HTTP Deprecation response header, see [draft-ietf-httpapi-deprecation-header-02](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02) 
 
 ### BasicAuth middleware
 
@@ -134,7 +139,9 @@ BasicAuth middleware requires basic auth and matches user & passwd with client-p
 
 ### Rewrite middleware
 
-Rewrites requests with from->to rule. Supports regex (like nginx) and prevents multiple rewrites. For example `Rewrite("^/sites/(.*)/settings/$", "/sites/settings/$1")` will change request's URL from `/sites/id1/settings/` to `/sites/settings/id1`
+The `Rewrite` middleware is designed to rewrite the URL path based on a given rule, similar to how URL rewriting is done in nginx. It supports regular expressions for pattern matching and prevents multiple rewrites.
+
+For example, `Rewrite("^/sites/(.*)/settings/$", "/sites/settings/$1")` will change request's URL from `/sites/id1/settings/` to `/sites/settings/id1`
 
 ### NoCache middleware
 
@@ -150,18 +157,25 @@ Compresses response with gzip.
 
 ### RealIP middleware
 
-RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing either the X-Forwarded-For or X-Real-IP headers.
+RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing various headers that contain the client's real IP address. It checks headers in the following priority order:
+
+1. `X-Real-IP` - trusted proxy (nginx/reproxy) sets this to actual client
+2. `CF-Connecting-IP` - Cloudflare's header for original client
+3. `X-Forwarded-For` - leftmost public IP (original client in CDN/proxy chain)
+4. `RemoteAddr` - fallback for direct connections
+
+Only public IPs are accepted from headers; private/loopback/link-local IPs are skipped. This makes the middleware compatible with CDN setups like Cloudflare where the leftmost IP in `X-Forwarded-For` is the actual client.
 
 ### Maybe middleware
 
-Maybe middleware will allow you to change the flow of the middleware stack execution depending on return
-value of maybeFn(request). This is useful for example if you'd like to skip a middleware handler if
-a request does not satisfy the maybeFn logic.
+Maybe middleware allows changing the flow of the middleware stack execution depending on the return
+value of maybeFn(request). This is useful, for example, to skip a middleware handler if a request does not satisfy the maybeFn logic.
 
 ### Reject middleware
 
 Reject is a middleware that rejects requests with a given status code and message based on a user-defined function.
-This is useful for example if you'd like to reject requests to a particular resource based on a request header, or want to implement a conditional request handler based on service parameters.
+This is useful, for example, to reject requests to a particular resource based on a request header, 
+or to implement a conditional request handler based on service parameters.
 
 example with chi router:
 
@@ -175,11 +189,66 @@ example with chi router:
 	router.Use(rest.Reject(http.StatusBadRequest, "X-Request-Id header is required", rejectFn))
 ```
 
+### BasicAuth middleware family
+
+The package provides several BasicAuth middleware implementations for different authentication needs:
+
+#### BasicAuth
+The base middleware that requires basic auth and matches user & passwd with a client-provided checker function.
+```go
+checkFn := func(user, passwd string) bool {
+    return user == "admin" && passwd == "secret"
+}
+router.Use(rest.BasicAuth(checkFn))
+```
+
+#### BasicAuthWithUserPasswd
+A simpler version comparing user & password with provided values directly.
+```go
+router.Use(rest.BasicAuthWithUserPasswd("admin", "secret"))
+```
+
+#### BasicAuthWithBcryptHash
+Matches username and bcrypt-hashed password. Useful when storing hashed passwords.
+```go
+hash, err := rest.GenerateBcryptHash("secret")
+if err != nil {
+    // handle error
+}
+router.Use(rest.BasicAuthWithBcryptHash("admin", hash))
+```
+
+#### BasicAuthWithArgon2Hash
+Similar to bcrypt version but uses Argon2id hash with a separate salt. Both hash and salt are base64 encoded.
+```go
+hash, salt, err := rest.GenerateArgon2Hash("secret")
+if err != nil {
+    // handle error
+}
+router.Use(rest.BasicAuthWithArgon2Hash("admin", hash, salt))
+```
+
+#### BasicAuthWithPrompt
+Similar to BasicAuthWithUserPasswd but adds browser's authentication prompt by setting the WWW-Authenticate header.
+```go
+router.Use(rest.BasicAuthWithPrompt("admin", "secret"))
+```
+
+All BasicAuth middlewares:
+- Return `StatusUnauthorized` (401) if no auth header provided
+- Return `StatusForbidden` (403) if credentials check failed
+- Add IsAuthorized flag to the request context, retrievable with `rest.IsAuthorized(r.Context())`
+- Use constant-time comparison to prevent timing attacks
+- Support secure password hashing with bcrypt and Argon2id
+
 ### Benchmarks middleware
 
-Benchmarks middleware allows to measure the time of request handling, number of request per second and report aggregated metrics. This middleware keeps track of the request in the memory and keep up to 900 points (15 minutes, data-point per second).
+Benchmarks middleware allows measuring the time of request handling, number of requests per second and report aggregated metrics. 
+This middleware keeps track of the request in the memory and keep up to 900 points (15 minutes, data-point per second).
 
-In order to retrieve the data user should call `Stats(d duration)` method. duration is the time window for which the benchmark data should be returned. It can be any duration from 1s to 15m. Note: all the time data is in microseconds.
+To retrieve the data user should call `Stats(d duration)` method. 
+The `duration` is the time window for which the benchmark data should be returned. 
+It can be any duration from 1s to 15m. Note: all the time data is in microseconds.
 
 example with chi router:
 
@@ -214,10 +283,12 @@ example with chi router:
 - `rest.FileServer` - creates a file server for static assets with directory listing disabled
 - `realip.Get` - returns client's IP address
 - `rest.ParseFromTo` - parses "from" and "to" request's query params with various formats
+- `rest.DecodeJSON` - decodes request body to the provided struct
+- `rest.EncodeJSON` - encodes response body from the provided struct, sets `Content-Type` to `application/json` and sends the status code
 
 ## Profiler
 
-Profiler is a convenient subrouter used for mounting net/http/pprof, i.e.
+Profiler is a convenient sub-router used for mounting net/http/pprof, i.e.
 
 ```go
  func MyService() http.Handler {

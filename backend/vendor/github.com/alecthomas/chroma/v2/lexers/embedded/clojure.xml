@@ -3,9 +3,12 @@
     <name>Clojure</name>
     <alias>clojure</alias>
     <alias>clj</alias>
+    <alias>edn</alias>
     <filename>*.clj</filename>
+    <filename>*.edn</filename>
     <mime_type>text/x-clojure</mime_type>
     <mime_type>application/x-clojure</mime_type>
+    <mime_type>application/edn</mime_type>
   </config>
   <rules>
     <state name="root">

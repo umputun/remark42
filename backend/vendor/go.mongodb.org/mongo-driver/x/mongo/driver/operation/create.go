@@ -20,6 +20,7 @@ import (
 
 // Create represents a create operation.
 type Create struct {
+	authenticator                driver.Authenticator
 	capped                       *bool
 	collation                    bsoncore.Document
 	changeStreamPreAndPostImages bsoncore.Document
@@ -77,8 +78,8 @@ func (c *Create) Execute(ctx context.Context) error {
 		Selector:          c.selector,
 		WriteConcern:      c.writeConcern,
 		ServerAPI:         c.serverAPI,
+		Authenticator:     c.authenticator,
 	}.Execute(ctx)
-
 }
 
 func (c *Create) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
@@ -398,5 +399,15 @@ func (c *Create) ClusteredIndex(ci bsoncore.Document) *Create {
 	}
 
 	c.clusteredIndex = ci
+	return c
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (c *Create) Authenticator(authenticator driver.Authenticator) *Create {
+	if c == nil {
+		c = new(Create)
+	}
+
+	c.authenticator = authenticator
 	return c
 }

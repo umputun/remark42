@@ -11,7 +11,7 @@ cp compose-dev-backend.yml compose-private.yml
 # now, edit / debug `compose-private.yml` to your heart's content
 
 # build and run
-docker-compose -f compose-private.yml up --build
+docker compose -f compose-private.yml up --build
 ```
 
 It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To access the UI demo page go to <http://127.0.0.1:8080/web/>. By default, you would be logged in as `dev_user`, defined as admin. You can tweak any of the [supported parameters](https://remark42.com/docs/configuration/parameters/) in corresponded yml file.
@@ -36,8 +36,8 @@ In order to have working Remark42 installation you need once to copy frontend st
 
 ```shell
 # frontend files
-docker pull umputun/remark42:master
-docker create -ti --name remark42files umputun/remark42:master sh
+docker pull ghcr.io/umputun/remark42:master
+docker create -ti --name remark42files ghcr.io/umputun/remark42:master sh
 docker cp remark42files:/srv/web/ ./backend/app/cmd/
 docker rm -f remark42files
 # fix frontend files to point to the right URL
@@ -55,7 +55,7 @@ To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --u
 
 Data stored in [boltdb](https://github.com/etcd-io/bbolt) (embedded key/value database) files under `STORE_BOLT_PATH`. Each site is stored in a separate boltdb file.
 
-To migrate/move Remark42 to another host, boltdb files and avatars directory `AVATAR_FS_PATH` should be transferred. Optionally, boltdb can be used to store avatars as well.
+To migrate/move Remark42 to another host, these boltdb files must be transferred. Additionally, the avatars directory `AVATAR_FS_PATH` (default `./var/avatars`) and images directory `IMAGE_FS_PATH` (default `./var/pictures`) must be transferred. As an alternative to storing avatars and images in the file system, boltdb can be used by setting `AVATAR_TYPE` or `IMAGE_TYPE` to `bolt`. Files in the `IMAGE_FS_STAGING` directory can be safely ignored because they are moved to the image store between app restarts.
 
 The automatic backup process runs every 24h and exports all content in JSON-like format to `backup-remark-YYYYMMDD.gz`.
 

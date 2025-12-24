@@ -28,10 +28,9 @@ func TestTitle_GetTitle(t *testing.T) {
 		{`<html><body> 2222</body></html>`, false, ""},
 	}
 
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
 	defer ex.Close()
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(fmt.Sprintf("check-%d", i), func(t *testing.T) {
 			title, ok := ex.getTitle(strings.NewReader(tt.page))
 			assert.Equal(t, tt.ok, ok)
@@ -41,7 +40,7 @@ func TestTitle_GetTitle(t *testing.T) {
 }
 
 func TestTitle_Get(t *testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +74,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	for n := 0; n < 1000; n++ {
 		body += "something something blah blah\n"
 	}
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -104,10 +103,10 @@ func TestTitle_GetConcurrent(t *testing.T) {
 }
 
 func TestTitle_GetFailed(t *testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
 	var hits int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(404)
 	}))
@@ -124,9 +123,9 @@ func TestTitle_GetFailed(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")
 }
 
-func TestTitle_DoubleClosed(*testing.T) {
-	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second})
-	ex.Close()
+func TestTitle_DoubleClosed(t *testing.T) {
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
+	assert.NoError(t, ex.Close())
 	// second call should not result in panic
-	ex.Close()
+	assert.NoError(t, ex.Close())
 }

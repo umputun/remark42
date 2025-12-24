@@ -14,7 +14,7 @@ This documentation describes how to enable the email-related capabilities of Rem
 
 - email notifications for any users except anonymous:
 
-  GitHub or Google or Twitter or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
+  GitHub or Google or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
 
   ![Email notifications subscription](images/email_notifications.png)
 
@@ -26,6 +26,7 @@ To enable any email functionality, you need to set up an email (SMTP) server con
 SMTP_HOST
 SMTP_PORT
 SMTP_TLS
+SMTP_INSECURE_SKIP_VERIFY
 SMTP_STARTTLS
 SMTP_USERNAME
 SMTP_PASSWORD
@@ -40,7 +41,7 @@ Here is the list of variables that affect user email notifications:
 
 ```yaml
 NOTIFY_USERS=email
-NOTIFY_EMAIL_FROM=notify@example.com
+NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
 ```
 
@@ -50,7 +51,7 @@ Admin would receive a message for each new comment on your site. Here is the lis
 
 ```yaml
 NOTIFY_ADMINS=email
-NOTIFY_EMAIL_FROM=notify@example.com
+NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ADMIN_SHARED_EMAIL=admin@example.com
 ```
 
@@ -64,8 +65,8 @@ Here is an example of a configuration using the [Mailgun](https://www.mailgun.co
 - SMTP_TLS=true
 - SMTP_USERNAME=postmaster@mg.example.com
 - SMTP_PASSWORD=secretpassword
-- AUTH_EMAIL_FROM=notify@example.com
-- NOTIFY_EMAIL_FROM=notify@example.com
+- AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
+- NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ```
 
 ### SendGrid
@@ -78,8 +79,8 @@ Here is an example of a configuration using the [SendGrid](https://sendgrid.com/
 - SMTP_TLS=true
 - SMTP_USERNAME=apikey
 - SMTP_PASSWORD=key-123456789
-- AUTH_EMAIL_FROM=notify@example.com
-- NOTIFY_EMAIL_FROM=notify@example.com
+- AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
+- NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ```
 
 ### Mailgun or SendGrid without exposing your server's IP
@@ -140,16 +141,16 @@ sendgrid:
 
 ### Gmail
 
-Configuration example for Gmail:
+If 2FA is enabled for your account, separate [app password](https://support.google.com/accounts/answer/185833?hl=en) has to be generated. Configuration example for Gmail:
 
 ```yaml
 - SMTP_HOST=smtp.gmail.com
 - SMTP_PORT=465
 - SMTP_TLS=true
 - SMTP_USERNAME=example.user@gmail.com
-- SMTP_PASSWORD=secretpassword
-- AUTH_EMAIL_FROM=example.user@gmail.com
-- NOTIFY_EMAIL_FROM=example.user@gmail.com
+- SMTP_PASSWORD=aaaa bbbb cccc dddd
+- AUTH_EMAIL_FROM="Remark42 login"<example.user@gmail.com>
+- NOTIFY_EMAIL_FROM="Remark42 notifications"<example.user@gmail.com>
 ```
 
 ### Amazon SES
@@ -162,8 +163,8 @@ Configuration example for [Amazon SES](https://aws.amazon.com/ses/) (us-east-1 r
 - SMTP_TLS=true
 - SMTP_USERNAME=access_key_id
 - SMTP_PASSWORD=secret_access_key
-- AUTH_EMAIL_FROM=notify@example.com
-- NOTIFY_EMAIL_FROM=notify@example.com
+- AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
+- NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ```
 
 You must first [verify](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html) a domain or email you will use in `AUTH_EMAIL_FROM` or `NOTIFY_EMAIL_FROM`.
@@ -185,7 +186,7 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 
 ```yaml
 - AUTH_EMAIL_ENABLE=true
-- AUTH_EMAIL_FROM=notify@example.com
+- AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
 ```
 
 ## HTML templates for emails and error messages
@@ -200,16 +201,16 @@ Now we have the following templates:
 - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
 
-To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside docker-compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
+To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside Docker Compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
 
 ```yaml
-    volumes:
-      - ./var:/srv/var
-      - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
-      - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
-      - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
-      - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
-      - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
+volumes:
+  - ./var:/srv/var
+  - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
+  - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
+  - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
+  - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
+  - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
 ```
 
 The easiest way to test it is to mount `error_response.html.tmpl`, and then head to <http://127.0.0.1:8080/email/unsubscribe.html>, where you are supposed to see the page like the following:

@@ -1,8 +1,0 @@
-.auth-panel__readonly-label {
-  margin-right: 0.3rem;
-}
-
-.auth-panel__readonly-label::after {
-  content: '•';
-  margin-left: 0.3rem;
-}

@@ -32,11 +32,19 @@
   display: inline-flex;
   height: 1rem;
   width: 1rem;
-  color: var(--color35);
+  color: var(--color1);
   justify-content: center;
   align-items: center;
 
   &:hover {
     color: var(--color29);
+  }
+}
+
+:global(.dark) .threadStarterAnchor {
+  color: var(--color11);
+
+  &:hover {
+    color: var(--color41);
   }
 }

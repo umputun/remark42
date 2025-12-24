@@ -46,4 +46,17 @@ If all goes fine, you should be able to see the following message on your Slack 
 
 You need to set `NOTIFY_ADMINS=webhook` to enable WebHook notifications on all new comments and set at least `NOTIFY_WEBHOOK_URL` for them to start working.
 
-Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": "{{.Text}}"}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`.
+Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": {{.Text | escapeJSONString}}}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`.
+
+Here are some additional common variables that you can use with your template:
+
+| Variable      | Type        | Description                                                                                           |
+|---------------|-------------|-------------------------------------------------------------------------------------------------------|
+| `ID`          | `string`    |                                                                                                       |
+| `Text`        | `string`    |                                                                                                       |
+| `User.Name`   | `string`    | [Full struct defined here](https://github.com/umputun/remark42/blob/master/backend/app/store/user.go) |
+| `Locator.URL` | `string`    | Post URL                                                                                              |
+| `Score`       | `int`       |                                                                                                       |
+| `Timestamp`   | `time.Time` |                                                                                                       |
+
+All possible variables are available in the [`Comment struct`](https://github.com/umputun/remark42/blob/master/backend/app/store/comment.go)

@@ -35,7 +35,6 @@ func (s *RPC) imgResetClnTimerHndl(id uint64, params json.RawMessage) (rr jrpc.R
 	}
 	err := s.img.ResetCleanupTimer(fileID)
 	return jrpc.EncodeResponse(id, nil, err)
-
 }
 
 func (s *RPC) imgLoadHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
@@ -45,6 +44,16 @@ func (s *RPC) imgLoadHndl(id uint64, params json.RawMessage) (rr jrpc.Response) 
 	}
 	value, err := s.img.Load(fileID)
 	return jrpc.EncodeResponse(id, value, err)
+}
+
+func (s *RPC) imgDeleteHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
+	var fileID string
+	if err := json.Unmarshal(params, &fileID); err != nil {
+		return jrpc.Response{Error: err.Error()}
+	}
+	err := s.img.Delete(fileID)
+	return jrpc.EncodeResponse(id, nil, err)
+
 }
 
 func (s *RPC) imgCommitHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {

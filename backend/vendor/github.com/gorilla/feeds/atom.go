@@ -89,15 +89,16 @@ type Atom struct {
 
 func newAtomEntry(i *Item) *AtomEntry {
 	id := i.Id
-	// assume the description is html
-	s := &AtomSummary{Content: i.Description, Type: "html"}
-
+	link := i.Link
+	if link == nil {
+		link = &Link{}
+	}
 	if len(id) == 0 {
 		// if there's no id set, try to create one, either from data or just a uuid
-		if len(i.Link.Href) > 0 && (!i.Created.IsZero() || !i.Updated.IsZero()) {
+		if len(link.Href) > 0 && (!i.Created.IsZero() || !i.Updated.IsZero()) {
 			dateStr := anyTimeFormat("2006-01-02", i.Updated, i.Created)
-			host, path := i.Link.Href, "/invalid.html"
-			if url, err := url.Parse(i.Link.Href); err == nil {
+			host, path := link.Href, "/invalid.html"
+			if url, err := url.Parse(link.Href); err == nil {
 				host, path = url.Host, url.Path
 			}
 			id = fmt.Sprintf("tag:%s,%s:%s", host, dateStr, path)
@@ -110,16 +111,20 @@ func newAtomEntry(i *Item) *AtomEntry {
 		name, email = i.Author.Name, i.Author.Email
 	}
 
-	link_rel := i.Link.Rel
+	link_rel := link.Rel
 	if link_rel == "" {
 		link_rel = "alternate"
 	}
 	x := &AtomEntry{
 		Title:   i.Title,
-		Links:   []AtomLink{{Href: i.Link.Href, Rel: link_rel, Type: i.Link.Type}},
+		Links:   []AtomLink{{Href: link.Href, Rel: link_rel, Type: link.Type}},
 		Id:      id,
 		Updated: anyTimeFormat(time.RFC3339, i.Updated, i.Created),
-		Summary: s,
+	}
+
+	// if there's a description, assume it's html
+	if len(i.Description) > 0 {
+		x.Summary = &AtomSummary{Content: i.Description, Type: "html"}
 	}
 
 	// if there's a content, assume it's html
@@ -140,12 +145,16 @@ func newAtomEntry(i *Item) *AtomEntry {
 // create a new AtomFeed with a generic Feed struct's data
 func (a *Atom) AtomFeed() *AtomFeed {
 	updated := anyTimeFormat(time.RFC3339, a.Updated, a.Created)
+	link := a.Link
+	if link == nil {
+		link = &Link{}
+	}
 	feed := &AtomFeed{
 		Xmlns:    ns,
 		Title:    a.Title,
-		Link:     &AtomLink{Href: a.Link.Href, Rel: a.Link.Rel},
+		Link:     &AtomLink{Href: link.Href, Rel: link.Rel},
 		Subtitle: a.Description,
-		Id:       a.Link.Href,
+		Id:       link.Href,
 		Updated:  updated,
 		Rights:   a.Copyright,
 	}

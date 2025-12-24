@@ -2,6 +2,9 @@ package notify
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -32,6 +35,32 @@ func TestWebhook_NewWebhook(t *testing.T) {
 	assert.Nil(t, wh)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to parse webhook template")
+}
+
+// https://github.com/umputun/remark42/issues/1791
+func TestWebhook_ReceiveValidJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.URL.Path, "/webhook-notify")
+		assert.Equal(t, "POST", r.Method)
+		body, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		t.Log("received body", string(body))
+		assert.JSONEq(t, `{"text": "<p>testme</p>\n"}`, string(body))
+	}))
+	defer ts.Close()
+
+	wh, err := NewWebhook(WebhookParams{
+		URL:     ts.URL + "/webhook-notify",
+		Headers: []string{"Content-Type:application/json,text/plain"},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, wh)
+
+	f := store.NewCommentFormatter()
+	c := store.Comment{Text: f.FormatText("testme", false), ParentID: "1", ID: "999"}
+
+	err = wh.Send(context.Background(), Request{Comment: c})
+	assert.NoError(t, err)
 }
 
 func TestWebhook_Send(t *testing.T) {

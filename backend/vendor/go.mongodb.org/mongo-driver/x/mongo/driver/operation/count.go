@@ -14,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -24,6 +25,7 @@ import (
 
 // Count represents a count operation.
 type Count struct {
+	authenticator  driver.Authenticator
 	maxTime        *time.Duration
 	query          bsoncore.Document
 	session        *session.Client
@@ -126,6 +128,8 @@ func (c *Count) Execute(ctx context.Context) error {
 		Selector:          c.selector,
 		ServerAPI:         c.serverAPI,
 		Timeout:           c.timeout,
+		Name:              driverutil.CountOp,
+		Authenticator:     c.authenticator,
 	}.Execute(ctx)
 
 	// Swallow error if NamespaceNotFound(26) is returned from aggregate on non-existent namespace
@@ -138,7 +142,7 @@ func (c *Count) Execute(ctx context.Context) error {
 	return err
 }
 
-func (c *Count) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (c *Count) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "count", c.collection)
 	if c.query != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "query", c.query)
@@ -307,5 +311,15 @@ func (c *Count) Timeout(timeout *time.Duration) *Count {
 	}
 
 	c.timeout = timeout
+	return c
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (c *Count) Authenticator(authenticator driver.Authenticator) *Count {
+	if c == nil {
+		c = new(Count)
+	}
+
+	c.authenticator = authenticator
 	return c
 }

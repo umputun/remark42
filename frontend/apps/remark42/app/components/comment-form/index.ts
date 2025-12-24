@@ -1,5 +1,3 @@
-import 'components/raw-content';
-
 import './comment-form.css';
 
 import './__actions/comment-form__actions.css';

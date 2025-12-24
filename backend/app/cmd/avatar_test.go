@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-pkgz/auth/avatar"
+	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

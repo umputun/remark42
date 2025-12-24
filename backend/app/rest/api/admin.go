@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
-	"github.com/go-pkgz/auth"
-	cache "github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/auth/v2"
+	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 
@@ -54,8 +53,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
@@ -69,8 +67,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID})
+	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID})
 }
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
@@ -84,8 +81,7 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, ucomments[0].User)
+	R.RenderJSON(w, ucomments[0].User)
 }
 
 // GET /deleteme?token=jwt - delete all user comments and details by user's request. Gets info about deleted used from provided token
@@ -107,13 +103,21 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.dataService.DeleteUserDetail(claims.Audience, claims.User.ID, engine.AllUserDetails); err != nil {
+	// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+	if len(claims.Audience) != 1 {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("bad request"), "can't process token, claims.Audience expected to be a single element but it's not", rest.ErrActionRejected)
+		return
+	}
+
+	audience := claims.Audience[0]
+
+	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)
 		return
 	}
 
-	if err = a.dataService.DeleteUser(claims.Audience, claims.User.ID, store.HardDelete); err != nil {
+	if err = a.dataService.DeleteUser(audience, claims.User.ID, store.HardDelete); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
@@ -126,9 +130,8 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	a.cache.Flush(cache.Flusher(claims.Audience).Scopes(claims.Audience, claims.User.ID, lastCommentsScope))
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
+	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
+	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
@@ -156,7 +159,7 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
-	render.JSON(w, r, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
 }
 
 // GET /blocked?site=siteID - list blocked users
@@ -167,7 +170,7 @@ func (a *admin) blockedUsersCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get blocked users", rest.ErrSiteNotFound)
 		return
 	}
-	render.JSON(w, r, users)
+	R.RenderJSON(w, users)
 }
 
 // PUT /readonly?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
@@ -194,7 +197,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, locator.SiteID))
-	render.JSON(w, r, R.JSON{"locator": locator, "read-only": roStatus})
+	R.RenderJSON(w, R.JSON{"locator": locator, "read-only": roStatus})
 }
 
 // PUT /title/{id}?site=siteID&url=post-url - set comment PostTitle to page's title
@@ -210,8 +213,7 @@ func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] set comment's title %s to %q", id, c.PostTitle)
 
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"id": id, "locator": locator})
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
 // PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
@@ -225,7 +227,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(siteID, userID))
-	render.JSON(w, r, R.JSON{"user": userID, "verified": verifyStatus})
+	R.RenderJSON(w, R.JSON{"user": userID, "verified": verifyStatus})
 }
 
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
@@ -240,5 +242,5 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
-	render.JSON(w, r, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }

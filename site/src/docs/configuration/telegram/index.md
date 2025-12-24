@@ -39,7 +39,7 @@ For a description of the Bot API, see this page: https://core.telegram.org/bots/
 
 ## Authentication
 
-To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=true`.
+To enable Telegram authentication for the users, set the variable `AUTH_TELEGRAM=true`.
 
 ## Notifications
 
@@ -48,19 +48,29 @@ To enable Telegram authentication for the users, set variable `AUTH_TELEGRAM=tru
 To integrate notifications about any comment on your sites with remark42 with [Telegram](https://telegram.org)
 
 1. Set `NOTIFY_ADMINS=telegram`
-2. Make [a channel](https://telegram.org/faq_channels), **add your bot as Administrator** into it and add channel ID to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
-  * "Post messages" permission is enough for bot to be able to post messages in your channel, others are unnecessary;
-  * To obtain a public channel ID, forward any message from it to [@JsonDumpBot](https://t.me/JsonDumpBot): look for `id` in `forward_from_chat`;
-  * If you want to use a private channel or chat, use [these instructions](https://github.com/GabrielRF/telegram-id#web-channel-id) to obtain the ID.
+2. Set up your notification destination and add its ID to remark42 configuration as `NOTIFY_TELEGRAM_CHAN`
+
+   Notifications can be sent to:
+   - **Channels**: Create [a channel](https://telegram.org/faq_channels) and **add your bot as Administrator**
+   - **Groups**: Create a group and add your bot to it
+   - **Individual users**: Use the user's Telegram ID
+
+   For the ID, you can use:
+   - **Public channels/groups**: Use the username without the @ symbol (e.g., `mygroup` instead of `@mygroup`)
+   - **Private channels/groups**: Use the numeric ID
+   - **Users**: Use the user's numeric Telegram ID
+
+   To obtain IDs:
+   - For public channel/group ID: Forward any message from it to [@JsonDumpBot](https://t.me/JsonDumpBot) and look for `id` in `forward_from_chat`
+   - For private channels/groups: Use [these instructions](https://github.com/GabrielRF/telegram-id#web-channel-id) or [@myidbot](https://t.me/myidbot)
+   - For user ID: Users can get their ID from [@myidbot](https://t.me/myidbot)
+
+   Note: When using channels or groups, ensure the bot has "Post messages" permission.
 
 ### Notifications for users
-
-**IMPORTANT: It doesn't work as of 30.01.2022, will be working after [this](https://github.com/umputun/remark42/issues/830) issue resolution** (waits for frontend support).
 
 Enabling Telegram user notifications allows users to sign up for notifications about replies to their messages. To do it, set the variable `NOTIFY_USERS=telegram`.
 
 ### Technical details
 
-Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram.
-
-The only way to improve the formatting of the messages would be to replace unsupported tags with supported ones, [like](https://github.com/umputun/remark42/issues/1202) `h1`-`h6` with `<b>`.
+Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram. To mitigate this, `h1`-`h6` are replaced with supported `<b>` tag.

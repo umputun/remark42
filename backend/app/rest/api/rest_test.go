@@ -16,10 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/auth"
-	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
+	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/token"
+	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,13 +41,15 @@ import (
 // To generate a token, enter one of the tokens here into https://jwt.io, change the secret to one you're using in your test
 // ("secret" in case of startupT), and alter the fields you want to be changed.
 
-var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6ImRldiIsInBpY3R1cmUiOiJodHRwOi8vZXhhbXBsZS5jb20vcGljLnBuZyIsImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJtZUBleGFtcGxlLmNvbSJ9fQ.aKUAXiZxXypgV7m1wEOgUcyPOvUDXHDi3A06YWKbcLg`
+var devToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6InByb3ZpZGVyMV9kZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.dirTS_ahSF6375sdO2iodm2K2UmRTzQNQMFiHuTQCVs`
+
+var dev2Token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImRldmVsb3BlciBvbmUiLCJpZCI6InByb3ZpZGVyMV9kZXYyIiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn19.qsR_PupfjIq7uw0eAuyGV8nsUoMx9v541c9olnRInRQ`
 
 var anonToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6ImFub255bW91cyB0ZXN0IHVzZXIiLCJpZCI6ImFub255bW91c190ZXN0X3VzZXIiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoiYW5vbkBleGFtcGxlLmNvbSJ9fQ.gAae2WMxZNZE5ebVboptPEyQ7Nk6EQxciNnGJ_mPOuU`
 
 var emailUserToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6Mzc4OTE5MTgyMiwianRpIjoicmFuZG9tIGlkIiwiaXNzIjoicmVtYXJrNDIiLCJuYmYiOjE1MjE4ODQyMjIsInVzZXIiOnsibmFtZSI6Imdvb2RAZXhhbXBsZS5jb20gdGVzdCB1c2VyIiwiaWQiOiJlbWFpbF9mNWRmZTlkMmU2YmQ3NWZjNzRlYTVmYWJmMjczYjQ1YjViYWViMTk1IiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Imdvb2RAZXhhbXBsZS5jb20ifX0.vH2HN1JpuXL8okTJq1A-zGHQ-l2ILcwxvDDEmu2zwks`
 
-var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJkZXYiLCJwaWN0dXJlIjoiaHR0cDovL2V4YW1wbGUuY29tL3BpYy5wbmciLCJpcCI6IjEyNy4wLjAuMSIsImVtYWlsIjoibWVAZXhhbXBsZS5jb20ifX0.FuTTocVtcxr4VjpfIICvU2yOb3su28VkDzj94H9Q3xY`
+var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0Ml9iYWQiLCJleHAiOjM3ODkxOTE4MjIsImp0aSI6InJhbmRvbSBpZCIsImlzcyI6InJlbWFyazQyIiwibmJmIjoxNTIxODg0MjIyLCJ1c2VyIjp7Im5hbWUiOiJkZXZlbG9wZXIgb25lIiwiaWQiOiJwcm92aWRlcjFfZGV2IiwicGljdHVyZSI6Imh0dHA6Ly9leGFtcGxlLmNvbS9waWMucG5nIiwiaXAiOiIxMjcuMC4wLjEiLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn19.X-lvnHvBz6VfEbVV4f-bjcZuLY5pYtvEansk_TQMrX8`
 
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
@@ -125,7 +128,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 
 	client := http.Client{
 		// prevent http redirect
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 
@@ -175,7 +178,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 
 	client := http.Client{
 		// prevent http redirect
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -191,7 +194,7 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {
-	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(fakeAuth(rejectAnonUser(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "Hello")
 	}))))
 	defer ts.Close()
@@ -224,7 +227,6 @@ func Test_URLKey(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -249,7 +251,6 @@ func Test_URLKeyWithUser(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
@@ -276,7 +277,6 @@ func TestRest_parseError(t *testing.T) {
 	}
 
 	for n, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			res := parseError(tt.err, rest.ErrInternal)
 			assert.Equal(t, tt.res, res)
@@ -299,12 +299,11 @@ func TestRest_cacheControl(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", tt.url, nil)
+			req := httptest.NewRequest("GET", tt.url, http.NoBody)
 			w := httptest.NewRecorder()
 
-			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -317,30 +316,54 @@ func TestRest_cacheControl(t *testing.T) {
 }
 
 func TestRest_frameAncestors(t *testing.T) {
-	tbl := []struct {
-		hosts  []string
-		header string
-	}{
-		{[]string{"http://example.com"}, "frame-ancestors http://example.com;"},
-		{[]string{}, ""},
-		{[]string{"http://example.com", "http://example2.com"}, "frame-ancestors http://example.com http://example2.com;"},
-	}
+	ts, _, teardown := startupT(t, func(o *Rest) {
+		o.AllowedAncestors = []string{"'self'", "https://example.com"}
+	})
 
-	for i, tt := range tbl {
-		tt := tt
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", nil)
-			w := httptest.NewRecorder()
+	// Test case with frame-ancestors
+	client := http.Client{}
+	resp, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self' https://example.com;")
+	teardown()
 
-			h := frameAncestors(tt.hosts)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-			h.ServeHTTP(w, req)
-			resp := w.Result()
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.NoError(t, resp.Body.Close())
-			t.Logf("%+v", resp.Header)
-			assert.Equal(t, tt.header, resp.Header.Get("Content-Security-Policy"))
-		})
-	}
+	// Test case without frame-ancestors
+	ts, _, teardown = startupT(t, func(srv *Rest) {
+		srv.AllowedAncestors = []string{}
+	})
+	defer teardown()
+	resp, err = client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
+}
+
+// check CSP, img-src should be 'self' with proxy enabled and * without it
+func TestRest_securityHeaders(t *testing.T) {
+	ts, _, teardown := startupT(t)
+
+	// with proxy disabled
+	client := http.Client{}
+	resp, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src *;")
+	teardown()
+
+	// check CSP with proxy enabled
+	ts, _, teardown = startupT(t, func(srv *Rest) {
+		srv.ExternalImageProxy = true
+	})
+	defer teardown()
+	resp, err = client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src 'self';")
 }
 
 func TestRest_subscribersOnly(t *testing.T) {
@@ -361,14 +384,13 @@ func TestRest_subscribersOnly(t *testing.T) {
 	}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://example.com", nil)
+			req := httptest.NewRequest("GET", "http://example.com", http.NoBody)
 			if tt.setUser {
 				req = token.SetUserInfo(req, tt.user)
 			}
 			w := httptest.NewRecorder()
-			h := subscribersOnly(tt.subsOnly)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := subscribersOnly(tt.subsOnly)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
@@ -400,7 +422,7 @@ func Test_validEmailAuth(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com"+tt.req, http.NoBody)
 			w := httptest.NewRecorder()
-			h := validEmailAuth()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			h := validEmailAuth()(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			h.ServeHTTP(w, req)
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
@@ -435,7 +457,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "remark42"})
 	require.NoError(t, err)
 
-	memCache := cache.NewScache(cache.NewNopCache())
+	memCache := cache.NewScache[[]byte](cache.NewNopCache[[]byte]())
 
 	astore := adminstore.NewStaticStore("123456", []string{"remark42"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	restrictedWordsMatcher := service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"duck"}})
@@ -455,7 +477,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		DataService: dataStore,
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
-			SecretReader: token.SecretFunc(func(aud string) (string, error) { return "secret", nil }),
+			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
 		}),
 		Cache:     memCache,
@@ -484,16 +506,26 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			Cache:             memCache,
 			KeyStore:          astore,
 		},
-		NotifyService: notify.NopService,
-		EmojiEnabled:  true,
+		NotifyService:    notify.NopService,
+		EmojiEnabled:     true,
+		openRouteLimiter: 100,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
+
+	// add some providers. Needed because we don't allow users with unlisted providers to authenticate
+	providers := []string{"provider1", "anonymous", "github", "email"}
+	for _, p := range providers {
+		srv.Authenticator.AddDirectProvider(p, provider.CredCheckerFunc(func(_, _ string) (ok bool, err error) {
+			return true, nil
+		}))
+	}
 
 	for _, h := range srvHook {
 		h(srv)
 	}
 
-	ts = httptest.NewServer(srv.routes())
+	routes := srv.routes()
+	ts = httptest.NewServer(routes)
 
 	teardown = func() {
 		ts.Close()
@@ -552,6 +584,20 @@ func getWithDevAuth(t *testing.T, url string) (body string, code int) {
 	return string(b), r.StatusCode
 }
 
+func getWithDev2Auth(t *testing.T, url string) (body string, code int) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url, http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", dev2Token)
+	r, err := client.Do(req)
+	require.NoError(t, err)
+	b, err := io.ReadAll(r.Body)
+	assert.NoError(t, err)
+	require.NoError(t, r.Body.Close())
+	return string(b), r.StatusCode
+}
+
 func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
@@ -574,7 +620,7 @@ func post(t *testing.T, url, body string) (*http.Response, error) {
 	return client.Do(req)
 }
 
-func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
+func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server) (id string, created time.Time) {
 	b, err := json.Marshal(c)
 	require.NoError(t, err, "can't marshal comment %+v", c)
 
@@ -594,7 +640,14 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	err = json.Unmarshal(b, &crResp)
 	require.NoError(t, err)
 	time.Sleep(time.Nanosecond * 10)
-	return crResp["id"].(string)
+	created, err = time.Parse(time.RFC3339, crResp["time"].(string))
+	require.NoError(t, err)
+	return crResp["id"].(string), created
+}
+
+func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
+	id, _ := addCommentGetCreatedTime(t, c, ts)
+	return id
 }
 
 func requireAdminOnly(t *testing.T, req *http.Request) {
@@ -633,5 +686,9 @@ func waitForHTTPSServerStart(port int) {
 }
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(
+		m,
+		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
+		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+	)
 }

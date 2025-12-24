@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1" // nolint
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,10 +13,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
+	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 
 	"github.com/umputun/remark42/backend/app/rest"
@@ -48,8 +49,18 @@ type pubStore interface {
 	Counts(siteID string, postIDs []string) ([]store.PostInfo, error)
 }
 
-// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy]&view=[user|all]&since=unix_ts_msec
-// find comments for given post. Returns in tree or plain formats, sorted
+// GET /find?site=siteID&url=post-url&format=[tree|plain]&sort=[+/-time|+/-score|+/-controversy]&view=[user|all]&since=unix_ts_msec&limit=100&offset_id={id}
+// find comments for given post. Returns in tree or plain formats, sorted.
+//
+// When `url` parameter is not set (e.g. request is for site-wide comments), does not return deleted comments.
+//
+// When `limit` is set, first {limit} comments are returned. When `offset_id` is set, comments are returned starting
+// after the comment with the given id.
+// format="tree" limits comments by top-level comments and all their replies,
+// and never returns parent comment with only part of replies.
+//
+// `count` in the response refers to total number of non-deleted comments,
+// `count_left` to amount of comments left to be returned _including deleted_.
 func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	sort := r.URL.Query().Get("sort")
@@ -68,7 +79,24 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		since = time.Time{} // since doesn't make sense for tree
 	}
 
-	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s, since %v", locator, sort, format, since)
+	limitParam := r.URL.Query().Get("limit")
+	var limit int
+	if limitParam != "" {
+		if limit, err = strconv.Atoi(limitParam); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "bad limit value", rest.ErrCommentNotFound)
+			return
+		}
+	}
+
+	offsetID := r.URL.Query().Get("offset_id")
+	if offsetID != "" {
+		if _, err = uuid.Parse(offsetID); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "bad offset_id value", rest.ErrCommentNotFound)
+			return
+		}
+	}
+
+	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s, since %v, limit %d, offset %s", locator, sort, format, since, limit, offsetID)
 
 	key := cache.NewKey(locator.SiteID).ID(URLKeyWithUser(r)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
@@ -77,22 +105,44 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 		comments = s.applyView(comments, view)
+
+		var commentsInfo store.PostInfo
+		if info, ee := s.dataService.Info(locator, s.readOnlyAge); ee == nil {
+			commentsInfo = info
+		}
+
+		if !since.IsZero() { // if since is set, number of comments can be different from total in the DB
+			commentsInfo.Count = 0
+			for _, c := range comments {
+				if !c.Deleted {
+					commentsInfo.Count++
+				}
+			}
+		}
+
+		// post might be readonly without any comments, Info call will fail then and ReadOnly flag should be checked separately
+		if !commentsInfo.ReadOnly && locator.URL != "" && s.dataService.IsReadOnly(locator) {
+			commentsInfo.ReadOnly = true
+		}
+
 		var b []byte
 		switch format {
 		case "tree":
-			tree := service.MakeTree(comments, sort, s.readOnlyAge)
-			if tree.Nodes == nil { // eliminate json nil serialization
-				tree.Nodes = []*service.Node{}
+			withInfo := treeWithInfo{Tree: service.MakeTree(comments, sort, limit, offsetID), Info: commentsInfo}
+			withInfo.Info.CountLeft = withInfo.CountLeft()
+			withInfo.Info.LastComment = withInfo.LastComment()
+			if withInfo.Nodes == nil { // eliminate json nil serialization
+				withInfo.Nodes = []*service.Node{}
 			}
-			if s.dataService.IsReadOnly(locator) {
-				tree.Info.ReadOnly = true
-			}
-			b, e = encodeJSONWithHTML(tree)
+			b, e = encodeJSONWithHTML(withInfo)
 		default:
-			withInfo := commentsWithInfo{Comments: comments}
-			if info, ee := s.dataService.Info(locator, s.readOnlyAge); ee == nil {
-				withInfo.Info = info
+			if limit > 0 || offsetID != "" {
+				comments, commentsInfo.CountLeft = limitComments(comments, limit, offsetID)
 			}
+			if limit > 0 && len(comments) > 0 {
+				commentsInfo.LastComment = comments[len(comments)-1].ID
+			}
+			withInfo := commentsWithInfo{Comments: comments, Info: commentsInfo}
 			b, e = encodeJSONWithHTML(withInfo)
 		}
 		return b, e
@@ -182,7 +232,6 @@ func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get comment by id", rest.ErrCommentNotFound)
 		return
 	}
-	render.Status(r, http.StatusOK)
 
 	if err = R.RenderJSONWithHTML(w, r, comment); err != nil {
 		log.Printf("[WARN] can't render last comments for url=%s, id=%s", url, id)
@@ -247,7 +296,7 @@ func (s *public) countCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get count", rest.ErrPostNotFound)
 		return
 	}
-	render.JSON(w, r, R.JSON{"count": count, "locator": locator})
+	R.RenderJSON(w, R.JSON{"count": count, "locator": locator})
 }
 
 // POST /counts?site=siteID - get number of comments for posts from post body
@@ -255,7 +304,7 @@ func (s *public) countMultiCtrl(w http.ResponseWriter, r *http.Request) {
 	const countBodyLimit int64 = 1024 * 128 // count request can be big for some site because it lists all urls
 	siteID := r.URL.Query().Get("site")
 	posts := []string{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, countBodyLimit), &posts); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, countBodyLimit)).Decode(&posts); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get list of posts from request", rest.ErrSiteNotFound)
 		return
 	}
@@ -343,13 +392,14 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /robots.txt
-func (s *public) robotsCtrl(w http.ResponseWriter, r *http.Request) {
+func (s *public) robotsCtrl(w http.ResponseWriter, _ *http.Request) {
 	allowed := []string{"/find", "/last", "/id", "/count", "/counts", "/list", "/config", "/user",
 		"/img", "/avatar", "/picture"}
 	for i := range allowed {
 		allowed[i] = "Allow: /api/v1" + allowed[i]
 	}
-	render.PlainText(w, r, "User-agent: *\nDisallow: /auth/\nDisallow: /api/\n"+strings.Join(allowed, "\n")+"\n")
+	responseText := fmt.Sprintf("User-agent: *\nDisallow: /auth/\nDisallow: /api/\n%s\n", strings.Join(allowed, "\n"))
+	rest.PlainTextResponse(w, http.StatusOK, responseText)
 }
 
 // GET /qr/telegram - generates QR for provided URL, used for Telegram auth and notifications subscription. The first
@@ -415,4 +465,26 @@ func (s *public) parseSince(r *http.Request) (time.Time, error) {
 		sinceTS = time.Unix(unixTS/1000, 1000000*(unixTS%1000)) // since param in msec timestamp
 	}
 	return sinceTS, nil
+}
+
+// limitComments returns limited list of comments and count of comments left after limit.
+// If offsetID is provided, the list will be sliced starting from the comment with this ID.
+// If offsetID is not found, the full list will be returned.
+// It's used for only "
+func limitComments(c []store.Comment, limit int, offsetID string) (comments []store.Comment, countLeft int) {
+	if offsetID != "" {
+		for i, comment := range c {
+			if comment.ID == offsetID {
+				c = c[i+1:]
+				break
+			}
+		}
+	}
+
+	if limit > 0 && len(c) > limit {
+		countLeft = len(c) - limit
+		c = c[:limit]
+	}
+
+	return c, countLeft
 }

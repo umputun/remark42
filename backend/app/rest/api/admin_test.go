@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/auth/v2/token"
+	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -111,7 +111,7 @@ func TestAdmin_Title(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second})
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/post1" {
 			_, err := w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
@@ -348,7 +348,7 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
 	assert.False(t, comments.Comments[2].Deleted, "not deleted")
 
-	srv.pubRest.cache = cache.NewScache(cache.NewNopCache()) // TODO: with lru cache it won't be refreshed and invalidated for long
+	srv.pubRest.cache = cache.NewScache[[]byte](cache.NewNopCache[[]byte]()) // TODO: with lru cache it won't be refreshed and invalidated for long
 	// time
 	time.Sleep(50 * time.Millisecond)
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
@@ -513,9 +513,20 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	_, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Error(t, err)
 
+	// test format "tree"
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
+	assert.True(t, comments.Info.ReadOnly)
+	t.Logf("%+v", comments)
+
+	// test format "plain"
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+	assert.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
@@ -697,12 +708,12 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
 			ID:      "user1",
@@ -743,9 +754,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "provider1_user1"}}
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1", Locator: store.Locator{SiteID: "remark42",
-		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "user2"}}
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user2", ID: "provider1_user2"}}
 
 	_, err := srv.DataService.Create(c1)
 	assert.NoError(t, err)
@@ -766,15 +777,15 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	// try with bad auth
 	claims := token.Claims{
 		SessionOnly: true,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "remark42",
-			Id:        "1234567",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "provider1_1234567",
 			Issuer:    "remark42",
-			NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
-			ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		},
 		User: &token.User{
-			ID: "user1",
+			ID: "provider1_user1",
 			Attributes: map[string]interface{}{
 				"delete_me": true,
 			},
@@ -792,9 +803,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try bad user
-	badClaims := claims
-	badClaims.User.ID = "no-such-id"
-	tkn, err = srv.Authenticator.TokenService().Token(badClaims)
+	badClaimsUser := claims
+	badClaimsUser.User.ID = "no-such-id"
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsUser)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
 	assert.NoError(t, err)
@@ -803,11 +814,12 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, resp.Status)
+	badClaimsUser.User.ID = "provider1_user1"
 
 	// try without deleteme flag
-	badClaims2 := claims
-	badClaims2.User.SetBoolAttr("delete_me", false)
-	tkn, err = srv.Authenticator.TokenService().Token(badClaims2)
+	badClaimsWithoutDeleteMe := claims
+	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", false)
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsWithoutDeleteMe)
 	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
 	assert.NoError(t, err)
@@ -818,7 +830,25 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.True(t, strings.Contains(string(b), "can't use provided token"))
+	assert.Contains(t, string(b), "can't use provided token")
+	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", true)
+
+	// try with wrong audience
+	badClaimsMultipleAudience := claims
+	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42", "something else"}
+	tkn, err = srv.Authenticator.TokenService().Token(badClaimsMultipleAudience)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	assert.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Contains(t, string(b), "can't process token, claims.Audience expected to be a single element but it's not")
+	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42"}
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {

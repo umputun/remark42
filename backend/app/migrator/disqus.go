@@ -175,7 +175,7 @@ func (d *Disqus) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 
 func (*Disqus) cleanText(text string) string {
 	text = strings.TrimSpace(text)
-	text = strings.Replace(text, "\n", "", -1)
-	text = strings.Replace(text, "\t", "", -1)
+	text = strings.ReplaceAll(text, "\n", "")
+	text = strings.ReplaceAll(text, "\t", "")
 	return text
 }

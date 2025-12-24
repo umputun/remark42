@@ -4,29 +4,37 @@ on:
   push:
     branches: [master]
     paths:
+      - ".github/workflows/e2e-tests.yml"
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
+      - "frontend/Dockerfile.e2e"
 
   pull_request:
     branches: [master]
     paths:
+      - ".github/workflows/e2e-tests.yml"
       - "frontend/apps/remark42/**"
       - "frontend/e2e/**"
+      - "frontend/Dockerfile.e2e"
 
 jobs:
   tests:
     name: Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Build & run containers
         id: tests
         run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: playwright-report

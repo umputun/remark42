@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"github.com/slack-go/slack/slackutilsx"
@@ -29,14 +30,14 @@ const (
 
 type chatResponseFull struct {
 	Channel            string `json:"channel"`
-	Timestamp          string `json:"ts"`                             //Regular message timestamp
-	MessageTimeStamp   string `json:"message_ts"`                     //Ephemeral message timestamp
-	ScheduledMessageID string `json:"scheduled_message_id,omitempty"` //Scheduled message id
+	Timestamp          string `json:"ts"`                             // Regular message timestamp
+	MessageTimeStamp   string `json:"message_ts"`                     // Ephemeral message timestamp
+	ScheduledMessageID string `json:"scheduled_message_id,omitempty"` // Scheduled message id
 	Text               string `json:"text"`
 	SlackResponse
 }
 
-// getMessageTimestamp will inspect the `chatResponseFull` to ruturn a timestamp value
+// getMessageTimestamp will inspect the `chatResponseFull` to return a timestamp value
 // in `chat.postMessage` its under `ts`
 // in `chat.postEphemeral` its under `message_ts`
 func (c chatResponseFull) getMessageTimestamp() string {
@@ -67,6 +68,9 @@ type PostMessageParameters struct {
 
 	// chat metadata support
 	MetaData SlackMetadata `json:"metadata"`
+
+	// file_ids support
+	FileIDs []string `json:"file_ids,omitempty"`
 }
 
 // NewPostMessageParameters provides an instance of PostMessageParameters with all the sane default values set
@@ -87,12 +91,14 @@ func NewPostMessageParameters() PostMessageParameters {
 	}
 }
 
-// DeleteMessage deletes a message in a channel
+// DeleteMessage deletes a message in a channel.
+// For more details, see DeleteMessageContext documentation.
 func (api *Client) DeleteMessage(channel, messageTimestamp string) (string, string, error) {
 	return api.DeleteMessageContext(context.Background(), channel, messageTimestamp)
 }
 
-// DeleteMessageContext deletes a message in a channel with a custom context
+// DeleteMessageContext deletes a message in a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.delete
 func (api *Client) DeleteMessageContext(ctx context.Context, channel, messageTimestamp string) (string, string, error) {
 	respChannel, respTimestamp, _, err := api.SendMessageContext(
 		ctx,
@@ -105,32 +111,33 @@ func (api *Client) DeleteMessageContext(ctx context.Context, channel, messageTim
 // ScheduleMessage sends a message to a channel.
 // Message is escaped by default according to https://api.slack.com/docs/formatting
 // Use http://davestevens.github.io/slack-message-builder/ to help crafting your message.
+// For more details, see ScheduleMessageContext documentation.
 func (api *Client) ScheduleMessage(channelID, postAt string, options ...MsgOption) (string, string, error) {
 	return api.ScheduleMessageContext(context.Background(), channelID, postAt, options...)
 }
 
-// ScheduleMessageContext sends a message to a channel with a custom context
-//
-// For more details, see ScheduleMessage documentation.
+// ScheduleMessageContext sends a message to a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.scheduleMessage
 func (api *Client) ScheduleMessageContext(ctx context.Context, channelID, postAt string, options ...MsgOption) (string, string, error) {
-	respChannel, respTimestamp, _, err := api.SendMessageContext(
+	respChannel, scheduledMessageId, _, err := api.SendMessageContext(
 		ctx,
 		channelID,
 		MsgOptionSchedule(postAt),
 		MsgOptionCompose(options...),
 	)
-	return respChannel, respTimestamp, err
+	return respChannel, scheduledMessageId, err
 }
 
 // PostMessage sends a message to a channel.
 // Message is escaped by default according to https://api.slack.com/docs/formatting
 // Use http://davestevens.github.io/slack-message-builder/ to help crafting your message.
+// For more details, see PostMessageContext documentation.
 func (api *Client) PostMessage(channelID string, options ...MsgOption) (string, string, error) {
 	return api.PostMessageContext(context.Background(), channelID, options...)
 }
 
-// PostMessageContext sends a message to a channel with a custom context
-// For more details, see PostMessage documentation.
+// PostMessageContext sends a message to a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.postMessage
 func (api *Client) PostMessageContext(ctx context.Context, channelID string, options ...MsgOption) (string, string, error) {
 	respChannel, respTimestamp, _, err := api.SendMessageContext(
 		ctx,
@@ -144,12 +151,13 @@ func (api *Client) PostMessageContext(ctx context.Context, channelID string, opt
 // PostEphemeral sends an ephemeral message to a user in a channel.
 // Message is escaped by default according to https://api.slack.com/docs/formatting
 // Use http://davestevens.github.io/slack-message-builder/ to help crafting your message.
+// For more details, see PostEphemeralContext documentation.
 func (api *Client) PostEphemeral(channelID, userID string, options ...MsgOption) (string, error) {
 	return api.PostEphemeralContext(context.Background(), channelID, userID, options...)
 }
 
-// PostEphemeralContext sends an ephemeal message to a user in a channel with a custom context
-// For more details, see PostEphemeral documentation
+// PostEphemeralContext sends an ephemeral message to a user in a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.postEphemeral
 func (api *Client) PostEphemeralContext(ctx context.Context, channelID, userID string, options ...MsgOption) (timestamp string, err error) {
 	_, timestamp, _, err = api.SendMessageContext(
 		ctx,
@@ -160,12 +168,14 @@ func (api *Client) PostEphemeralContext(ctx context.Context, channelID, userID s
 	return timestamp, err
 }
 
-// UpdateMessage updates a message in a channel
+// UpdateMessage updates a message in a channel.
+// For more details, see UpdateMessageContext documentation.
 func (api *Client) UpdateMessage(channelID, timestamp string, options ...MsgOption) (string, string, string, error) {
 	return api.UpdateMessageContext(context.Background(), channelID, timestamp, options...)
 }
 
-// UpdateMessageContext updates a message in a channel
+// UpdateMessageContext updates a message in a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.update
 func (api *Client) UpdateMessageContext(ctx context.Context, channelID, timestamp string, options ...MsgOption) (string, string, string, error) {
 	return api.SendMessageContext(
 		ctx,
@@ -175,39 +185,39 @@ func (api *Client) UpdateMessageContext(ctx context.Context, channelID, timestam
 	)
 }
 
-// UnfurlMessage unfurls a message in a channel
+// UnfurlMessage unfurls a message in a channel.
+// For more details, see UnfurlMessageContext documentation.
 func (api *Client) UnfurlMessage(channelID, timestamp string, unfurls map[string]Attachment, options ...MsgOption) (string, string, string, error) {
 	return api.UnfurlMessageContext(context.Background(), channelID, timestamp, unfurls, options...)
 }
 
-// UnfurlMessageContext unfurls a message in a channel with a custom context
+// UnfurlMessageContext unfurls a message in a channel with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.unfurl
 func (api *Client) UnfurlMessageContext(ctx context.Context, channelID, timestamp string, unfurls map[string]Attachment, options ...MsgOption) (string, string, string, error) {
 	return api.SendMessageContext(ctx, channelID, MsgOptionUnfurl(timestamp, unfurls), MsgOptionCompose(options...))
 }
 
-// UnfurlMessageWithAuthURL sends an unfurl request containing an
-// authentication URL.
-// For more details see:
-// https://api.slack.com/reference/messaging/link-unfurling#authenticated_unfurls
+// UnfurlMessageWithAuthURL sends an unfurl request containing an authentication URL.
+// For more details, see UnfurlMessageWithAuthURLContext documentation.
 func (api *Client) UnfurlMessageWithAuthURL(channelID, timestamp string, userAuthURL string, options ...MsgOption) (string, string, string, error) {
 	return api.UnfurlMessageWithAuthURLContext(context.Background(), channelID, timestamp, userAuthURL, options...)
 }
 
-// UnfurlMessageWithAuthURLContext sends an unfurl request containing an
-// authentication URL.
-// For more details see:
-// https://api.slack.com/reference/messaging/link-unfurling#authenticated_unfurls
+// UnfurlMessageWithAuthURLContext sends an unfurl request containing an authentication URL with a custom context.
+// For more details see: https://api.slack.com/reference/messaging/link-unfurling#authenticated_unfurls
 func (api *Client) UnfurlMessageWithAuthURLContext(ctx context.Context, channelID, timestamp string, userAuthURL string, options ...MsgOption) (string, string, string, error) {
 	return api.SendMessageContext(ctx, channelID, MsgOptionUnfurlAuthURL(timestamp, userAuthURL), MsgOptionCompose(options...))
 }
 
 // SendMessage more flexible method for configuring messages.
+// For more details, see SendMessageContext documentation.
 func (api *Client) SendMessage(channel string, options ...MsgOption) (string, string, string, error) {
 	return api.SendMessageContext(context.Background(), channel, options...)
 }
 
 // SendMessageContext more flexible method for configuring messages with a custom context.
-func (api *Client) SendMessageContext(ctx context.Context, channelID string, options ...MsgOption) (_channel string, _timestamp string, _text string, err error) {
+// Slack API docs: https://api.slack.com/methods/chat.postMessage
+func (api *Client) SendMessageContext(ctx context.Context, channelID string, options ...MsgOption) (_channel string, _timestampOrScheduledMessageId string, _text string, err error) {
 	var (
 		req      *http.Request
 		parser   func(*chatResponseFull) responseParser
@@ -219,19 +229,37 @@ func (api *Client) SendMessageContext(ctx context.Context, channelID string, opt
 	}
 
 	if api.Debug() {
-		reqBody, err := ioutil.ReadAll(req.Body)
+		reqBody, err := io.ReadAll(req.Body)
 		if err != nil {
 			return "", "", "", err
 		}
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
-		api.Debugf("Sending request: %s", string(reqBody))
+		req.Body = io.NopCloser(bytes.NewBuffer(reqBody))
+		api.Debugf("Sending request: %s", redactToken(reqBody))
 	}
 
-	if err = doPost(ctx, api.httpclient, req, parser(&response), api); err != nil {
+	if err = doPost(api.httpclient, req, parser(&response), api); err != nil {
 		return "", "", "", err
 	}
 
-	return response.Channel, response.getMessageTimestamp(), response.Text, response.Err()
+	if response.ScheduledMessageID != "" {
+		return response.Channel, response.ScheduledMessageID, response.Text, response.Err()
+	} else {
+		return response.Channel, response.getMessageTimestamp(), response.Text, response.Err()
+	}
+}
+
+func redactToken(b []byte) []byte {
+	// See https://api.slack.com/authentication/token-types
+	// and https://api.slack.com/authentication/rotation
+	re, err := regexp.Compile(`(token=x[a-z.]+)-[0-9A-Za-z-]+`)
+	if err != nil {
+		// The regular expression above should never result in errors,
+		// but just in case, do no harm.
+		return b
+	}
+	// Keep "token=" and the first element of the token, which identifies its type
+	// (this could be useful for debugging, e.g. when using a wrong token).
+	return re.ReplaceAll(b, []byte("$1-REDACTED"))
 }
 
 // UnsafeApplyMsgOptions utility function for debugging/testing chat requests.
@@ -356,6 +384,7 @@ func (t responseURLSender) BuildRequestContext(ctx context.Context) (*http.Reque
 	req, err := jsonReq(ctx, t.endpoint, Msg{
 		Text:            t.values.Get("text"),
 		Timestamp:       t.values.Get("ts"),
+		ThreadTimestamp: t.values.Get("thread_ts"),
 		Attachments:     t.attachments,
 		Blocks:          t.blocks,
 		Metadata:        t.metadata,
@@ -681,6 +710,31 @@ func MsgOptionMetadata(metadata SlackMetadata) MsgOption {
 	}
 }
 
+// MsgOptionLinkNames finds and links user groups. Does not support linking individual users
+func MsgOptionLinkNames(linkName bool) MsgOption {
+	return func(config *sendConfig) error {
+		config.values.Set("link_names", strconv.FormatBool(linkName))
+		return nil
+	}
+}
+
+// MsgOptionFileIDs sets file IDs for the message
+func MsgOptionFileIDs(fileIDs []string) MsgOption {
+	return func(config *sendConfig) error {
+		if len(fileIDs) == 0 {
+			return nil
+		}
+
+		fileIDsBytes, err := json.Marshal(fileIDs)
+		if err != nil {
+			return err
+		}
+
+		config.values.Set("file_ids", string(fileIDsBytes))
+		return nil
+	}
+}
+
 // UnsafeMsgOptionEndpoint deliver the message to the specified endpoint.
 // NOTE: USE AT YOUR OWN RISK: No issues relating to the use of this Option
 // will be supported by the library, it is subject to change without notice that
@@ -744,26 +798,29 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 			config.values.Set("reply_broadcast", "true")
 		}
 
+		if len(params.FileIDs) > 0 {
+			return MsgOptionFileIDs(params.FileIDs)(config)
+		}
+
 		return nil
 	}
 }
 
-// PermalinkParameters are the parameters required to get a permalink to a
-// message. Slack documentation can be found here:
-// https://api.slack.com/methods/chat.getPermalink
+// PermalinkParameters are the parameters required to get a permalink to a message.
 type PermalinkParameters struct {
 	Channel string
 	Ts      string
 }
 
-// GetPermalink returns the permalink for a message. It takes
-// PermalinkParameters and returns a string containing the permalink. It
-// returns an error if unable to retrieve the permalink.
+// GetPermalink returns the permalink for a message. It takes PermalinkParameters and returns a string containing the
+// permalink. It returns an error if unable to retrieve the permalink.
+// For more details, see GetPermalinkContext documentation.
 func (api *Client) GetPermalink(params *PermalinkParameters) (string, error) {
 	return api.GetPermalinkContext(context.Background(), params)
 }
 
 // GetPermalinkContext returns the permalink for a message using a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.getPermalink
 func (api *Client) GetPermalinkContext(ctx context.Context, params *PermalinkParameters) (string, error) {
 	values := url.Values{
 		"channel":    {params.Channel},
@@ -784,24 +841,30 @@ func (api *Client) GetPermalinkContext(ctx context.Context, params *PermalinkPar
 
 type GetScheduledMessagesParameters struct {
 	Channel string
+	TeamID  string
 	Cursor  string
 	Latest  string
 	Limit   int
 	Oldest  string
 }
 
-// GetScheduledMessages returns the list of scheduled messages based on params
+// GetScheduledMessages returns the list of scheduled messages based on params.
+// For more details, see GetScheduledMessagesContext documentation.
 func (api *Client) GetScheduledMessages(params *GetScheduledMessagesParameters) (channels []ScheduledMessage, nextCursor string, err error) {
 	return api.GetScheduledMessagesContext(context.Background(), params)
 }
 
-// GetScheduledMessagesContext returns the list of scheduled messages in a Slack team with a custom context
+// GetScheduledMessagesContext returns the list of scheduled messages based on params with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.getScheduledMessages.list
 func (api *Client) GetScheduledMessagesContext(ctx context.Context, params *GetScheduledMessagesParameters) (channels []ScheduledMessage, nextCursor string, err error) {
 	values := url.Values{
 		"token": {api.token},
 	}
 	if params.Channel != "" {
 		values.Add("channel", params.Channel)
+	}
+	if params.TeamID != "" {
+		values.Add("team_id", params.TeamID)
 	}
 	if params.Cursor != "" {
 		values.Add("cursor", params.Cursor)
@@ -835,12 +898,14 @@ type DeleteScheduledMessageParameters struct {
 	AsUser             bool
 }
 
-// DeleteScheduledMessage returns the list of scheduled messages based on params
+// DeleteScheduledMessage deletes a pending scheduled message.
+// For more details, see DeleteScheduledMessageContext documentation.
 func (api *Client) DeleteScheduledMessage(params *DeleteScheduledMessageParameters) (bool, error) {
 	return api.DeleteScheduledMessageContext(context.Background(), params)
 }
 
-// DeleteScheduledMessageContext returns the list of scheduled messages in a Slack team with a custom context
+// DeleteScheduledMessageContext deletes a pending scheduled message with a custom context.
+// Slack API docs: https://api.slack.com/methods/chat.deleteScheduledMessage
 func (api *Client) DeleteScheduledMessageContext(ctx context.Context, params *DeleteScheduledMessageParameters) (bool, error) {
 	values := url.Values{
 		"token":                {api.token},

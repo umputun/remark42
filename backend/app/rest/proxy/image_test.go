@@ -77,7 +77,6 @@ func TestImage_Extract(t *testing.T) {
 	img := Image{HTTP2HTTPS: true}
 
 	for i, tt := range tbl {
-		tt := tt
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			res, err := img.extract(tt.inp, func(src string) bool { return strings.HasPrefix(src, "http://") })
 			assert.NoError(t, err)
@@ -95,7 +94,7 @@ func TestImage_Replace(t *testing.T) {
 
 func TestImage_Routes(t *testing.T) {
 	// no image supposed to be cached
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		HTTP2HTTPS:   true,
 		RemarkURL:    "https://demo.remark42.com",
@@ -108,31 +107,45 @@ func TestImage_Routes(t *testing.T) {
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
-	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
+	t.Run("valid image", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/img1.png"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "1462", resp.Header["Content-Length"][0])
+		assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+	})
 
-	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "1462", resp.Header["Content-Length"][0])
-	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
+	t.Run("no image", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image/no-such-image.png"))
-	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	t.Run("bad encoding", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		assert.Equal(t, 2, len(imageStore.LoadCalls()))
+	})
 
-	encodedImgURL = base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "bad encoding"))
-	resp, err = http.Get(ts.URL + "/?src=" + encodedImgURL)
-	require.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Equal(t, 2, len(imageStore.LoadCalls()))
+	t.Run("non-image reference", func(t *testing.T) {
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte("https://google.com"))
+		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		assert.Equal(t, 3, len(imageStore.LoadCalls()))
+	})
 }
 
 func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		RemarkURL:    "https://demo.remark42.com",
 		RoutePath:    "/api/v1/proxy",
@@ -158,10 +171,10 @@ func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 
 func TestImage_RoutesCachingImage(t *testing.T) {
 	imageStore := image.StoreMock{
-		LoadFunc: func(id string) ([]byte, error) {
+		LoadFunc: func(string) ([]byte, error) {
 			return nil, nil
 		},
-		SaveFunc: func(id string, img []byte) error {
+		SaveFunc: func(string, []byte) error {
 			return nil
 		},
 	}
@@ -196,7 +209,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	// In order to validate that cached data used cache "will return" some other data from what http server would
 	testImage := []byte(fmt.Sprintf("%256s", "X"))
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) {
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 		return testImage, nil
 	}}
 	img := Image{
@@ -226,7 +239,7 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 
 func TestImage_RoutesTimedOut(t *testing.T) {
 	// no image supposed to be cached
-	imageStore := image.StoreMock{LoadFunc: func(id string) ([]byte, error) { return nil, nil }}
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
 	img := Image{
 		HTTP2HTTPS:   true,
 		RemarkURL:    "https://demo.remark42.com",
@@ -249,7 +262,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	t.Log(string(b))
-	assert.True(t, strings.Contains(string(b), "deadline exceeded"))
+	assert.Contains(t, string(b), "deadline exceeded")
 	assert.Equal(t, 1, len(imageStore.LoadCalls()))
 }
 

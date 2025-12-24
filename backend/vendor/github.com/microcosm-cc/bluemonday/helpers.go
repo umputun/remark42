@@ -222,11 +222,7 @@ func (p *Policy) AllowDataURIImages() {
 			}
 
 			_, err := base64.StdEncoding.DecodeString(url.Opaque[len(matched):])
-			if err != nil {
-				return false
-			}
-
-			return true
+			return err == nil
 		},
 	)
 }

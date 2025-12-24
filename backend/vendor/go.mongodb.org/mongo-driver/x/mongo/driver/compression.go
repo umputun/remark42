@@ -26,19 +26,94 @@ type CompressionOpts struct {
 	UncompressedSize int32
 }
 
-var zstdEncoders = &sync.Map{}
-
-func getZstdEncoder(l zstd.EncoderLevel) (*zstd.Encoder, error) {
-	v, ok := zstdEncoders.Load(l)
-	if ok {
-		return v.(*zstd.Encoder), nil
+// mustZstdNewWriter creates a zstd.Encoder with the given level and a nil
+// destination writer. It panics on any errors and should only be used at
+// package initialization time.
+func mustZstdNewWriter(lvl zstd.EncoderLevel) *zstd.Encoder {
+	enc, err := zstd.NewWriter(
+		nil,
+		zstd.WithWindowSize(8<<20), // Set window size to 8MB.
+		zstd.WithEncoderLevel(lvl),
+	)
+	if err != nil {
+		panic(err)
 	}
-	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(l))
+	return enc
+}
+
+var zstdEncoders = [zstd.SpeedBestCompression + 1]*zstd.Encoder{
+	0:                           nil, // zstd.speedNotSet
+	zstd.SpeedFastest:           mustZstdNewWriter(zstd.SpeedFastest),
+	zstd.SpeedDefault:           mustZstdNewWriter(zstd.SpeedDefault),
+	zstd.SpeedBetterCompression: mustZstdNewWriter(zstd.SpeedBetterCompression),
+	zstd.SpeedBestCompression:   mustZstdNewWriter(zstd.SpeedBestCompression),
+}
+
+func getZstdEncoder(level zstd.EncoderLevel) (*zstd.Encoder, error) {
+	if zstd.SpeedFastest <= level && level <= zstd.SpeedBestCompression {
+		return zstdEncoders[level], nil
+	}
+	// The level is outside the expected range, return an error.
+	return nil, fmt.Errorf("invalid zstd compression level: %d", level)
+}
+
+// zlibEncodersOffset is the offset into the zlibEncoders array for a given
+// compression level.
+const zlibEncodersOffset = -zlib.HuffmanOnly // HuffmanOnly == -2
+
+var zlibEncoders [zlib.BestCompression + zlibEncodersOffset + 1]sync.Pool
+
+func getZlibEncoder(level int) (*zlibEncoder, error) {
+	if zlib.HuffmanOnly <= level && level <= zlib.BestCompression {
+		if enc, _ := zlibEncoders[level+zlibEncodersOffset].Get().(*zlibEncoder); enc != nil {
+			return enc, nil
+		}
+		writer, err := zlib.NewWriterLevel(nil, level)
+		if err != nil {
+			return nil, err
+		}
+		enc := &zlibEncoder{writer: writer, level: level}
+		return enc, nil
+	}
+	// The level is outside the expected range, return an error.
+	return nil, fmt.Errorf("invalid zlib compression level: %d", level)
+}
+
+func putZlibEncoder(enc *zlibEncoder) {
+	if enc != nil {
+		zlibEncoders[enc.level+zlibEncodersOffset].Put(enc)
+	}
+}
+
+type zlibEncoder struct {
+	writer *zlib.Writer
+	buf    bytes.Buffer
+	level  int
+}
+
+func (e *zlibEncoder) Encode(dst, src []byte) ([]byte, error) {
+	defer putZlibEncoder(e)
+
+	e.buf.Reset()
+	e.writer.Reset(&e.buf)
+
+	_, err := e.writer.Write(src)
 	if err != nil {
 		return nil, err
 	}
-	zstdEncoders.Store(l, encoder)
-	return encoder, nil
+	err = e.writer.Close()
+	if err != nil {
+		return nil, err
+	}
+	dst = append(dst[:0], e.buf.Bytes()...)
+	return dst, nil
+}
+
+var zstdBufPool = sync.Pool{
+	New: func() interface{} {
+		s := make([]byte, 0)
+		return &s
+	},
 }
 
 // CompressPayload takes a byte slice and compresses it according to the options passed
@@ -49,29 +124,33 @@ func CompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 	case wiremessage.CompressorSnappy:
 		return snappy.Encode(nil, in), nil
 	case wiremessage.CompressorZLib:
-		var b bytes.Buffer
-		w, err := zlib.NewWriterLevel(&b, opts.ZlibLevel)
+		encoder, err := getZlibEncoder(opts.ZlibLevel)
 		if err != nil {
 			return nil, err
 		}
-		_, err = w.Write(in)
-		if err != nil {
-			return nil, err
-		}
-		err = w.Close()
-		if err != nil {
-			return nil, err
-		}
-		return b.Bytes(), nil
+		return encoder.Encode(nil, in)
 	case wiremessage.CompressorZstd:
 		encoder, err := getZstdEncoder(zstd.EncoderLevelFromZstd(opts.ZstdLevel))
 		if err != nil {
 			return nil, err
 		}
-		return encoder.EncodeAll(in, nil), nil
+		ptr := zstdBufPool.Get().(*[]byte)
+		b := encoder.EncodeAll(in, *ptr)
+		dst := make([]byte, len(b))
+		copy(dst, b)
+		*ptr = b[:0]
+		zstdBufPool.Put(ptr)
+		return dst, nil
 	default:
 		return nil, fmt.Errorf("unknown compressor ID %v", opts.Compressor)
 	}
+}
+
+var zstdReaderPool = sync.Pool{
+	New: func() interface{} {
+		r, _ := zstd.NewReader(nil)
+		return r
+	},
 }
 
 // DecompressPayload takes a byte slice that has been compressed and undoes it according to the options passed
@@ -80,31 +159,35 @@ func DecompressPayload(in []byte, opts CompressionOpts) ([]byte, error) {
 	case wiremessage.CompressorNoOp:
 		return in, nil
 	case wiremessage.CompressorSnappy:
-		uncompressed := make([]byte, opts.UncompressedSize)
-		return snappy.Decode(uncompressed, in)
+		l, err := snappy.DecodedLen(in)
+		if err != nil {
+			return nil, fmt.Errorf("decoding compressed length %w", err)
+		} else if int32(l) != opts.UncompressedSize {
+			return nil, fmt.Errorf("unexpected decompression size, expected %v but got %v", opts.UncompressedSize, l)
+		}
+		out := make([]byte, opts.UncompressedSize)
+		return snappy.Decode(out, in)
 	case wiremessage.CompressorZLib:
-		decompressor, err := zlib.NewReader(bytes.NewReader(in))
+		r, err := zlib.NewReader(bytes.NewReader(in))
 		if err != nil {
 			return nil, err
 		}
-		uncompressed := make([]byte, opts.UncompressedSize)
-		_, err = io.ReadFull(decompressor, uncompressed)
-		if err != nil {
+		out := make([]byte, opts.UncompressedSize)
+		if _, err := io.ReadFull(r, out); err != nil {
 			return nil, err
 		}
-		return uncompressed, nil
+		if err := r.Close(); err != nil {
+			return nil, err
+		}
+		return out, nil
 	case wiremessage.CompressorZstd:
-		r, err := zstd.NewReader(bytes.NewBuffer(in))
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		uncompressed := make([]byte, opts.UncompressedSize)
-		_, err = io.ReadFull(r, uncompressed)
-		if err != nil {
-			return nil, err
-		}
-		return uncompressed, nil
+		buf := make([]byte, 0, opts.UncompressedSize)
+		// Using a pool here is about ~20% faster
+		// than using a single global zstd.Reader
+		r := zstdReaderPool.Get().(*zstd.Decoder)
+		out, err := r.DecodeAll(in, buf)
+		zstdReaderPool.Put(r)
+		return out, err
 	default:
 		return nil, fmt.Errorf("unknown compressor ID %v", opts.Compressor)
 	}

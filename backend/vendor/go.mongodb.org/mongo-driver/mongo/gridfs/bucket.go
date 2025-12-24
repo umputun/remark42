@@ -16,7 +16,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/csot"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -257,11 +257,11 @@ func (b *Bucket) Delete(fileID interface{}) error {
 //
 // Use the context parameter to time-out or cancel the delete operation. The deadline set by SetWriteDeadline is ignored.
 func (b *Bucket) DeleteContext(ctx context.Context, fileID interface{}) error {
-	// If no deadline is set on the passed-in context, Timeout is set on the Client, and context is
-	// not already a Timeout context, honor Timeout in new Timeout context for operation execution to
+	// If Timeout is set on the Client and context is not already a Timeout
+	// context, honor Timeout in new Timeout context for operation execution to
 	// be shared by both delete operations.
-	if _, deadlineSet := ctx.Deadline(); !deadlineSet && b.db.Client().Timeout() != nil && !internal.IsTimeoutContext(ctx) {
-		newCtx, cancelFunc := internal.MakeTimeoutContext(ctx, *b.db.Client().Timeout())
+	if b.db.Client().Timeout() != nil && !csot.IsTimeoutContext(ctx) {
+		newCtx, cancelFunc := csot.MakeTimeoutContext(ctx, *b.db.Client().Timeout())
 		// Redefine ctx to be the new timeout-derived context.
 		ctx = newCtx
 		// Cancel the timeout-derived context at the end of Execute to avoid a context leak.
@@ -384,11 +384,11 @@ func (b *Bucket) Drop() error {
 //
 // Use the context parameter to time-out or cancel the drop operation. The deadline set by SetWriteDeadline is ignored.
 func (b *Bucket) DropContext(ctx context.Context) error {
-	// If no deadline is set on the passed-in context, Timeout is set on the Client, and context is
-	// not already a Timeout context, honor Timeout in new Timeout context for operation execution to
+	// If Timeout is set on the Client and context is not already a Timeout
+	// context, honor Timeout in new Timeout context for operation execution to
 	// be shared by both drop operations.
-	if _, deadlineSet := ctx.Deadline(); !deadlineSet && b.db.Client().Timeout() != nil && !internal.IsTimeoutContext(ctx) {
-		newCtx, cancelFunc := internal.MakeTimeoutContext(ctx, *b.db.Client().Timeout())
+	if b.db.Client().Timeout() != nil && !csot.IsTimeoutContext(ctx) {
+		newCtx, cancelFunc := csot.MakeTimeoutContext(ctx, *b.db.Client().Timeout())
 		// Redefine ctx to be the new timeout-derived context.
 		ctx = newCtx
 		// Cancel the timeout-derived context at the end of Execute to avoid a context leak.
@@ -429,7 +429,7 @@ func (b *Bucket) openDownloadStream(filter interface{}, opts ...*options.FindOpt
 	// in the File type. After parsing it, use RawValue.Unmarshal to ensure File.ID is set to the appropriate value.
 	var foundFile File
 	if err = cursor.Decode(&foundFile); err != nil {
-		return nil, fmt.Errorf("error decoding files collection document: %v", err)
+		return nil, fmt.Errorf("error decoding files collection document: %w", err)
 	}
 
 	if foundFile.Length == 0 {
@@ -534,7 +534,7 @@ func numericalIndexDocsEqual(expected, actual bsoncore.Document) (bool, error) {
 		actualInt, actualOK := actualVal.AsInt64OK()
 		expectedInt, expectedOK := expectedVal.AsInt64OK()
 
-		//GridFS indexes always have numeric values
+		// GridFS indexes always have numeric values
 		if !actualOK || !expectedOK {
 			return false, nil
 		}
@@ -593,8 +593,8 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 
 	docRes := cloned.FindOne(ctx, bson.D{}, options.FindOne().SetProjection(bson.D{{"_id", 1}}))
 
-	_, err = docRes.DecodeBytes()
-	if err != mongo.ErrNoDocuments {
+	_, err = docRes.Raw()
+	if !errors.Is(err, mongo.ErrNoDocuments) {
 		// nil, or error that occurred during the FindOne operation
 		return err
 	}
@@ -620,11 +620,7 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 	if err = createNumericalIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
 		return err
 	}
-	if err = createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
-		return err
-	}
-
-	return nil
+	return createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel)
 }
 
 func (b *Bucket) checkFirstWrite(ctx context.Context) error {
@@ -654,6 +650,8 @@ func (b *Bucket) parseUploadOptions(opts ...*options.UploadOptions) (*Upload, er
 		uo.Registry = bson.DefaultRegistry
 	}
 	if uo.Metadata != nil {
+		// TODO(GODRIVER-2726): Replace with marshal() and unmarshal() once the
+		// TODO gridfs package is merged into the mongo package.
 		raw, err := bson.MarshalWithRegistry(uo.Registry, uo.Metadata)
 		if err != nil {
 			return nil, err

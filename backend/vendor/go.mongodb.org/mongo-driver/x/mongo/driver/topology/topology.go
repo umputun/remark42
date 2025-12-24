@@ -4,10 +4,19 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-// Package topology contains types that handles the discovery, monitoring, and selection
-// of servers. This package is designed to expose enough inner workings of service discovery
-// and monitoring to allow low level applications to have fine grained control, while hiding
-// most of the detailed implementation of the algorithms.
+// Package topology is intended for internal use only. It is made available to
+// facilitate use cases that require access to internal MongoDB driver
+// functionality and state. The API of this package is not stable and there is
+// no backward compatibility guarantee.
+//
+// WARNING: THIS PACKAGE IS EXPERIMENTAL AND MAY BE MODIFIED OR REMOVED WITHOUT
+// NOTICE! USE WITH EXTREME CAUTION!
+//
+// Package topology contains types that handles the discovery, monitoring, and
+// selection of servers. This package is designed to expose enough inner
+// workings of service discovery and monitoring to allow low level applications
+// to have fine grained control, while hiding most of the detailed
+// implementation of the algorithms.
 package topology // import "go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 
 import (
@@ -15,7 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,11 +32,13 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/internal/randutil"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/dns"
 )
 
@@ -85,6 +96,8 @@ type Topology struct {
 	rescanSRVInterval time.Duration
 	pollHeartbeatTime atomic.Value // holds a bool
 
+	hosts []string
+
 	updateCallback updateTopologyCallback
 	fsm            *fsm
 
@@ -96,7 +109,7 @@ type Topology struct {
 	subscriptionsClosed bool
 	subLock             sync.Mutex
 
-	// We should redesign how we Connect and handle individal servers. This is
+	// We should redesign how we Connect and handle individual servers. This is
 	// too difficult to maintain and it's rather easy to accidentally access
 	// the servers without acquiring the lock or checking if the servers are
 	// closed. This lock should also be an RWMutex.
@@ -107,8 +120,10 @@ type Topology struct {
 	id primitive.ObjectID
 }
 
-var _ driver.Deployment = &Topology{}
-var _ driver.Subscriber = &Topology{}
+var (
+	_ driver.Deployment = &Topology{}
+	_ driver.Subscriber = &Topology{}
+)
 
 type serverSelectionState struct {
 	selector    description.ServerSelector
@@ -149,12 +164,151 @@ func New(cfg *Config) (*Topology, error) {
 	}
 
 	if t.cfg.URI != "" {
-		t.pollingRequired = strings.HasPrefix(t.cfg.URI, "mongodb+srv://") && !t.cfg.LoadBalanced
+		connStr, err := connstring.Parse(t.cfg.URI)
+		if err != nil {
+			return nil, err
+		}
+		t.pollingRequired = (connStr.Scheme == connstring.SchemeMongoDBSRV) && !t.cfg.LoadBalanced
+		t.hosts = connStr.RawHosts
 	}
 
 	t.publishTopologyOpeningEvent()
 
 	return t, nil
+}
+
+func mustLogTopologyMessage(topo *Topology, level logger.Level) bool {
+	return topo.cfg.logger != nil && topo.cfg.logger.LevelComponentEnabled(
+		level, logger.ComponentTopology)
+}
+
+func logTopologyMessage(topo *Topology, level logger.Level, msg string, keysAndValues ...interface{}) {
+	topo.cfg.logger.Print(level,
+		logger.ComponentTopology,
+		msg,
+		logger.SerializeTopology(logger.Topology{
+			ID:      topo.id,
+			Message: msg,
+		}, keysAndValues...)...)
+}
+
+func logTopologyThirdPartyUsage(topo *Topology, parsedHosts []string) {
+	thirdPartyMessages := [2]string{
+		`You appear to be connected to a CosmosDB cluster. For more information regarding feature compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb`,
+		`You appear to be connected to a DocumentDB cluster. For more information regarding feature compatibility and support please visit https://www.mongodb.com/supportability/documentdb`,
+	}
+
+	thirdPartySuffixes := map[string]int{
+		".cosmos.azure.com":            0,
+		".docdb.amazonaws.com":         1,
+		".docdb-elastic.amazonaws.com": 1,
+	}
+
+	hostSet := make([]bool, len(thirdPartyMessages))
+	for _, host := range parsedHosts {
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		for suffix, env := range thirdPartySuffixes {
+			if !strings.HasSuffix(host, suffix) {
+				continue
+			}
+			if hostSet[env] {
+				break
+			}
+			hostSet[env] = true
+			logTopologyMessage(topo, logger.LevelInfo, thirdPartyMessages[env])
+		}
+	}
+}
+
+func mustLogServerSelection(topo *Topology, level logger.Level) bool {
+	return topo.cfg.logger != nil && topo.cfg.logger.LevelComponentEnabled(
+		level, logger.ComponentServerSelection)
+}
+
+func logServerSelection(
+	ctx context.Context,
+	topo *Topology,
+	level logger.Level,
+	msg string,
+	srvSelector description.ServerSelector,
+	keysAndValues ...interface{},
+) {
+	var srvSelectorString string
+
+	selectorStringer, ok := srvSelector.(fmt.Stringer)
+	if ok {
+		srvSelectorString = selectorStringer.String()
+	}
+
+	operationName, _ := logger.OperationName(ctx)
+	operationID, _ := logger.OperationID(ctx)
+
+	topo.cfg.logger.Print(level,
+		logger.ComponentServerSelection,
+		msg,
+		logger.SerializeServerSelection(logger.ServerSelection{
+			Selector:            srvSelectorString,
+			Operation:           operationName,
+			OperationID:         &operationID,
+			TopologyDescription: topo.String(),
+		}, keysAndValues...)...)
+}
+
+func logServerSelectionSucceeded(
+	ctx context.Context,
+	topo *Topology,
+	srvSelector description.ServerSelector,
+	server *SelectedServer,
+) {
+	host, port, err := net.SplitHostPort(server.address.String())
+	if err != nil {
+		host = server.address.String()
+		port = ""
+	}
+
+	portInt64, _ := strconv.ParseInt(port, 10, 32)
+
+	logServerSelection(ctx, topo, logger.LevelDebug, logger.ServerSelectionSucceeded, srvSelector,
+		logger.KeyServerHost, host,
+		logger.KeyServerPort, portInt64)
+}
+
+func logServerSelectionFailed(
+	ctx context.Context,
+	topo *Topology,
+	srvSelector description.ServerSelector,
+	err error,
+) {
+	logServerSelection(ctx, topo, logger.LevelDebug, logger.ServerSelectionFailed, srvSelector,
+		logger.KeyFailure, err.Error())
+}
+
+// logUnexpectedFailure is a defer-recover function for logging unexpected
+// failures encountered while maintaining a topology.
+//
+// Most topology maintenance actions, such as updating a server, should not take
+// down a client's application. This function provides a best-effort to log
+// unexpected failures. If the logger passed to this function is nil, then the
+// recovery will be silent.
+func logUnexpectedFailure(log *logger.Logger, msg string, callbacks ...func()) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	defer func() {
+		for _, clbk := range callbacks {
+			clbk()
+		}
+	}()
+
+	if log == nil {
+		return
+	}
+
+	log.Print(logger.LevelInfo, logger.ComponentTopology, fmt.Sprintf("%s: %v", msg, r))
 }
 
 // Connect initializes a Topology and starts the monitoring process. This function
@@ -218,8 +372,12 @@ func (t *Topology) Connect() error {
 		// server monitoring goroutines.
 
 		newDesc := description.Topology{
-			Kind:                  t.fsm.Kind,
-			Servers:               t.fsm.Servers,
+			Kind:                     t.fsm.Kind,
+			Servers:                  t.fsm.Servers,
+			SessionTimeoutMinutesPtr: t.fsm.SessionTimeoutMinutesPtr,
+
+			// TODO(GODRIVER-2885): This field can be removed once
+			// legacy SessionTimeoutMinutes is removed.
 			SessionTimeoutMinutes: t.fsm.SessionTimeoutMinutes,
 		}
 		t.desc.Store(newDesc)
@@ -235,22 +393,21 @@ func (t *Topology) Connect() error {
 	}
 
 	t.serversLock.Unlock()
+	if mustLogTopologyMessage(t, logger.LevelInfo) {
+		logTopologyThirdPartyUsage(t, t.hosts)
+	}
 	if t.pollingRequired {
-		uri, err := url.Parse(t.cfg.URI)
-		if err != nil {
-			return err
-		}
 		// sanity check before passing the hostname to resolver
-		if parsedHosts := strings.Split(uri.Host, ","); len(parsedHosts) != 1 {
+		if len(t.hosts) != 1 {
 			return fmt.Errorf("URI with SRV must include one and only one hostname")
 		}
-		_, _, err = net.SplitHostPort(uri.Host)
+		_, _, err = net.SplitHostPort(t.hosts[0])
 		if err == nil {
 			// we were able to successfully extract a port from the host,
 			// but should not be able to when using SRV
 			return fmt.Errorf("URI with srv must not include a port number")
 		}
-		go t.pollSRVRecords(uri.Host)
+		go t.pollSRVRecords(t.hosts[0])
 		t.pollingwg.Add(1)
 	}
 
@@ -380,6 +537,10 @@ func (t *Topology) RequestImmediateCheck() {
 // parent context is done.
 func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelector) (driver.Server, error) {
 	if atomic.LoadInt64(&t.state) != topologyConnected {
+		if mustLogServerSelection(t, logger.LevelDebug) {
+			logServerSelectionFailed(ctx, t, ss, ErrTopologyClosed)
+		}
+
 		return nil, ErrTopologyClosed
 	}
 	var ssTimeoutCh <-chan time.Time
@@ -393,11 +554,18 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 	var doneOnce bool
 	var sub *driver.Subscription
 	selectionState := newServerSelectionState(ss, ssTimeoutCh)
+
+	// Record the start time.
+	startTime := time.Now()
 	for {
 		var suitable []description.Server
 		var selectErr error
 
 		if !doneOnce {
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelection(ctx, t, logger.LevelDebug, logger.ServerSelectionStarted, ss)
+			}
+
 			// for the first pass, select a server from the current description.
 			// this improves selection speed for up-to-date topology descriptions.
 			suitable, selectErr = t.selectServerFromDescription(t.Description(), selectionState)
@@ -409,19 +577,35 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 				var err error
 				sub, err = t.Subscribe()
 				if err != nil {
+					if mustLogServerSelection(t, logger.LevelDebug) {
+						logServerSelectionFailed(ctx, t, ss, err)
+					}
+
 					return nil, err
 				}
-				defer t.Unsubscribe(sub)
+				defer func() { _ = t.Unsubscribe(sub) }()
 			}
 
 			suitable, selectErr = t.selectServerFromSubscription(ctx, sub.Updates, selectionState)
 		}
 		if selectErr != nil {
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionFailed(ctx, t, ss, selectErr)
+			}
+
 			return nil, selectErr
 		}
 
 		if len(suitable) == 0 {
 			// try again if there are no servers available
+			if mustLogServerSelection(t, logger.LevelInfo) {
+				elapsed := time.Since(startTime)
+				remainingTimeMS := t.cfg.ServerSelectionTimeout - elapsed
+
+				logServerSelection(ctx, t, logger.LevelInfo, logger.ServerSelectionWaiting, ss,
+					logger.KeyRemainingTimeMS, remainingTimeMS.Milliseconds())
+			}
+
 			continue
 		}
 
@@ -430,11 +614,20 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 		if len(suitable) == 1 {
 			server, err := t.FindServer(suitable[0])
 			if err != nil {
+				if mustLogServerSelection(t, logger.LevelDebug) {
+					logServerSelectionFailed(ctx, t, ss, err)
+				}
+
 				return nil, err
 			}
 			if server == nil {
 				continue
 			}
+
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionSucceeded(ctx, t, ss, server)
+			}
+
 			return server, nil
 		}
 
@@ -443,10 +636,18 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 		desc1, desc2 := pick2(suitable)
 		server1, err := t.FindServer(desc1)
 		if err != nil {
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionFailed(ctx, t, ss, err)
+			}
+
 			return nil, err
 		}
 		server2, err := t.FindServer(desc2)
 		if err != nil {
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionFailed(ctx, t, ss, err)
+			}
+
 			return nil, err
 		}
 
@@ -458,9 +659,18 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 			if server1 == nil && server2 == nil {
 				continue
 			}
+
 			if server1 != nil {
+				if mustLogServerSelection(t, logger.LevelDebug) {
+					logServerSelectionSucceeded(ctx, t, ss, server1)
+				}
 				return server1, nil
 			}
+
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionSucceeded(ctx, t, ss, server2)
+			}
+
 			return server2, nil
 		}
 
@@ -468,7 +678,15 @@ func (t *Topology) SelectServer(ctx context.Context, ss description.ServerSelect
 		// We use in-use connections as an analog for in-progress operations because they are almost
 		// always the same value for a given server.
 		if server1.OperationCount() < server2.OperationCount() {
+			if mustLogServerSelection(t, logger.LevelDebug) {
+				logServerSelectionSucceeded(ctx, t, ss, server1)
+			}
+
 			return server1, nil
+		}
+
+		if mustLogServerSelection(t, logger.LevelDebug) {
+			logServerSelectionSucceeded(ctx, t, ss, server2)
 		}
 		return server2, nil
 	}
@@ -558,11 +776,16 @@ func (t *Topology) selectServerFromDescription(desc description.Topology,
 		return desc.Servers, nil
 	}
 
-	var allowed []description.Server
-	for _, s := range desc.Servers {
+	allowedIndexes := make([]int, 0, len(desc.Servers))
+	for i, s := range desc.Servers {
 		if s.Kind != description.Unknown {
-			allowed = append(allowed, s)
+			allowedIndexes = append(allowedIndexes, i)
 		}
+	}
+
+	allowed := make([]description.Server, len(allowedIndexes))
+	for i, idx := range allowedIndexes {
+		allowed[i] = desc.Servers[idx]
 	}
 
 	suitable, err := selectionState.selector.SelectServer(desc, allowed)
@@ -582,12 +805,11 @@ func (t *Topology) pollSRVRecords(hosts string) {
 	defer pollTicker.Stop()
 	t.pollHeartbeatTime.Store(false)
 	var doneOnce bool
-	defer func() {
-		//  ¯\_(ツ)_/¯
-		if r := recover(); r != nil && !doneOnce {
+	defer logUnexpectedFailure(t.cfg.logger, "Encountered unexpected failure polling SRV records", func() {
+		if !doneOnce {
 			<-t.pollingDone
 		}
-	}()
+	})
 
 	for {
 		select {
@@ -674,10 +896,14 @@ func (t *Topology) processSRVResults(parsedHosts []string) bool {
 		t.fsm.addServer(addr)
 	}
 
-	//store new description
+	// store new description
 	newDesc := description.Topology{
-		Kind:                  t.fsm.Kind,
-		Servers:               t.fsm.Servers,
+		Kind:                     t.fsm.Kind,
+		Servers:                  t.fsm.Servers,
+		SessionTimeoutMinutesPtr: t.fsm.SessionTimeoutMinutesPtr,
+
+		// TODO(GODRIVER-2885): This field can be removed once legacy
+		// SessionTimeoutMinutes is removed.
 		SessionTimeoutMinutes: t.fsm.SessionTimeoutMinutes,
 	}
 	t.desc.Store(newDesc)
@@ -813,6 +1039,20 @@ func (t *Topology) publishServerClosedEvent(addr address.Address) {
 	if t.cfg.ServerMonitor != nil && t.cfg.ServerMonitor.ServerClosed != nil {
 		t.cfg.ServerMonitor.ServerClosed(serverClosed)
 	}
+
+	if mustLogTopologyMessage(t, logger.LevelDebug) {
+		serverHost, serverPort, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			serverHost = addr.String()
+			serverPort = ""
+		}
+
+		portInt64, _ := strconv.ParseInt(serverPort, 10, 32)
+
+		logTopologyMessage(t, logger.LevelDebug, logger.TopologyServerClosed,
+			logger.KeyServerHost, serverHost,
+			logger.KeyServerPort, portInt64)
+	}
 }
 
 // publishes a TopologyDescriptionChangedEvent to indicate the topology description has changed
@@ -826,6 +1066,12 @@ func (t *Topology) publishTopologyDescriptionChangedEvent(prev description.Topol
 	if t.cfg.ServerMonitor != nil && t.cfg.ServerMonitor.TopologyDescriptionChanged != nil {
 		t.cfg.ServerMonitor.TopologyDescriptionChanged(topologyDescriptionChanged)
 	}
+
+	if mustLogTopologyMessage(t, logger.LevelDebug) {
+		logTopologyMessage(t, logger.LevelDebug, logger.TopologyDescriptionChanged,
+			logger.KeyPreviousDescription, prev.String(),
+			logger.KeyNewDescription, current.String())
+	}
 }
 
 // publishes a TopologyOpeningEvent to indicate the topology is being initialized
@@ -837,6 +1083,10 @@ func (t *Topology) publishTopologyOpeningEvent() {
 	if t.cfg.ServerMonitor != nil && t.cfg.ServerMonitor.TopologyOpening != nil {
 		t.cfg.ServerMonitor.TopologyOpening(topologyOpening)
 	}
+
+	if mustLogTopologyMessage(t, logger.LevelDebug) {
+		logTopologyMessage(t, logger.LevelDebug, logger.TopologyOpening)
+	}
 }
 
 // publishes a TopologyClosedEvent to indicate the topology has been closed
@@ -847,5 +1097,9 @@ func (t *Topology) publishTopologyClosedEvent() {
 
 	if t.cfg.ServerMonitor != nil && t.cfg.ServerMonitor.TopologyClosed != nil {
 		t.cfg.ServerMonitor.TopologyClosed(topologyClosed)
+	}
+
+	if mustLogTopologyMessage(t, logger.LevelDebug) {
+		logTopologyMessage(t, logger.LevelDebug, logger.TopologyClosed)
 	}
 }

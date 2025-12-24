@@ -1,16 +1,43 @@
 import { errorMessages, RequestError } from 'utils/errorUtils';
 
 import { siteId } from './settings';
-import { getCookie } from './cookies';
+import { getCookie, setAuthCookie, clearAuthCookie } from './cookies';
 import { StaticStore } from './static-store';
 import { BASE_URL, API_BASE } from './constants';
 
 /** Header name for JWT token */
 export const JWT_HEADER = 'X-JWT';
+/** Cookie name for JWT token when using AUTH_SEND_JWT_HEADER */
+export const JWT_COOKIE_NAME = 'JWT';
 /** Header name for XSRF token */
 export const XSRF_HEADER = 'X-XSRF-TOKEN';
 /** Cookie field with XSRF token */
 export const XSRF_COOKIE = 'XSRF-TOKEN';
+/**
+ * Cookie TTL in seconds - matches backend's auth.ttl.cookie default of 200 hours
+ * The JWT token itself expires in 5 minutes, but the cookie persists longer
+ * to match server-side behavior when not using AUTH_SEND_JWT_HEADER
+ */
+export const AUTH_COOKIE_TTL_SECONDS = 200 * 60 * 60;
+
+/**
+ * Safely parses JWT payload with proper base64url handling
+ * @param token - JWT token string
+ * @returns parsed payload or null if parsing fails
+ */
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const rawPayload = window.atob(base64);
+    return JSON.parse(rawPayload);
+  } catch (e) {
+    console.error('Failed to parse JWT payload', e);
+    return null;
+  }
+}
 
 type QueryParams = Record<string, string | number | undefined>;
 type Payload = BodyInit | Record<string, unknown> | null;
@@ -59,7 +86,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       params.body = body;
     } else if (typeof body === 'object' && body !== null) {
       headers['Content-Type'] = 'application/json';
-      params.body = JSON.stringify(body);
+      params.body = JSON.stringify({ ...body, site: siteId });
     } else {
       params.body = body;
     }
@@ -74,10 +101,30 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       // backend could update jwt in any time. so, we should handle it
       if (res.headers.has(JWT_HEADER)) {
         activeJwtToken = res.headers.get(JWT_HEADER) as string;
+
+        // Store the JWT token in cookies for persistence across page reloads
+        try {
+          const payload = parseJwtPayload(activeJwtToken);
+          if (payload && payload.jti) {
+            // Set XSRF cookie with the JWT ID using enhanced security
+            setAuthCookie(XSRF_COOKIE, payload.jti as string, {
+              expires: AUTH_COOKIE_TTL_SECONDS,
+            });
+
+            // Store the JWT in cookie for persistence with enhanced security
+            setAuthCookie(JWT_COOKIE_NAME, activeJwtToken, {
+              expires: AUTH_COOKIE_TTL_SECONDS,
+            });
+          }
+        } catch (e) {
+          console.error('Failed to process JWT token', e);
+        }
       }
 
       if ([401, 403].includes(res.status)) {
         activeJwtToken = undefined;
+        clearAuthCookie(JWT_COOKIE_NAME);
+        clearAuthCookie(XSRF_COOKIE);
       }
 
       if (res.status >= 400) {

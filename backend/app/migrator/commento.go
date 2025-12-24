@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -100,6 +101,11 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 			}
 		}
 
+		usersMap["anonymous"] = store.User{
+			Name: "Anonymous",
+			ID:   "commento_" + store.EncodeID("anonymous"),
+		}
+
 		for _, comment := range exportedData.Comments {
 			u, ok := usersMap[comment.CommenterHex]
 			if !ok {
@@ -110,16 +116,28 @@ func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
 				continue
 			}
 
+			parentID := comment.ParentHex
+			// comments with ParentHex == "root" are top-level comments
+			if parentID == "root" {
+				parentID = ""
+			}
+
+			commentURL, e := url.JoinPath("https://", comment.Domain, comment.Path)
+			if e != nil {
+				log.Printf("[WARN] can't construct comment URL in commento import, %s", err.Error())
+			}
+			log.Printf("[ERROR] commentoURL: %s", commentURL)
+
 			c := store.Comment{
 				ID: comment.CommentHex,
 				Locator: store.Locator{
-					URL:    comment.Path,
+					URL:    commentURL,
 					SiteID: siteID,
 				},
 				User:      u,
 				Text:      comment.Markdown,
 				Timestamp: comment.CreationDate,
-				ParentID:  comment.ParentHex,
+				ParentID:  parentID,
 				Imported:  true,
 			}
 

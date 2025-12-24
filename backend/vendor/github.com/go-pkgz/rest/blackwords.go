@@ -17,11 +17,10 @@ func BlackWords(words ...string) func(http.Handler) http.Handler {
 				body := strings.ToLower(string(content))
 				r.Body = io.NopCloser(bytes.NewReader(content))
 
-				if len(body) > 0 {
+				if body != "" {
 					for _, word := range words {
 						if strings.Contains(body, strings.ToLower(word)) {
-							w.WriteHeader(http.StatusForbidden)
-							RenderJSON(w, JSON{"error": "one of blacklisted words detected"})
+							_ = EncodeJSON(w, http.StatusForbidden, JSON{"error": "one of blacklisted words detected"})
 							return
 						}
 					}

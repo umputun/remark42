@@ -1,6 +1,7 @@
 package chroma
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -76,8 +77,8 @@ func (r Rules) Merge(rules Rules) Rules {
 }
 
 // MustNewLexer creates a new Lexer with deferred rules generation or panics.
-func MustNewLexer(config *Config, rulesFunc func() Rules) *RegexLexer {
-	lexer, err := NewLexer(config, rulesFunc)
+func MustNewLexer(config *Config, rules func() Rules) *RegexLexer {
+	lexer, err := NewLexer(config, rules)
 	if err != nil {
 		panic(err)
 	}
@@ -135,9 +136,18 @@ func NewLexer(config *Config, rulesFunc func() Rules) (*RegexLexer, error) {
 }
 
 // Trace enables debug tracing.
+//
+// Deprecated: Use SetTracing instead.
 func (r *RegexLexer) Trace(trace bool) *RegexLexer {
 	r.trace = trace
 	return r
+}
+
+// SetTracing enables debug tracing.
+//
+// This complies with the [TracingLexer] interface.
+func (r *RegexLexer) SetTracing(trace bool) {
+	r.trace = trace
 }
 
 // A CompiledRule is a Rule with a pre-compiled regex.
@@ -185,6 +195,7 @@ func (l *LexerState) Get(key interface{}) interface{} {
 
 // Iterator returns the next Token from the lexer.
 func (l *LexerState) Iterator() Token { // nolint: gocognit
+	trace := json.NewEncoder(os.Stderr)
 	end := len(l.Text)
 	if l.newlineAdded {
 		end--
@@ -194,6 +205,9 @@ func (l *LexerState) Iterator() Token { // nolint: gocognit
 		for len(l.iteratorStack) > 0 {
 			n := len(l.iteratorStack) - 1
 			t := l.iteratorStack[n]()
+			if t.Type == Ignore {
+				continue
+			}
 			if t == EOF {
 				l.iteratorStack = l.iteratorStack[:n]
 				continue
@@ -202,14 +216,33 @@ func (l *LexerState) Iterator() Token { // nolint: gocognit
 		}
 
 		l.State = l.Stack[len(l.Stack)-1]
-		if l.Lexer.trace {
-			fmt.Fprintf(os.Stderr, "%s: pos=%d, text=%q\n", l.State, l.Pos, string(l.Text[l.Pos:]))
-		}
 		selectedRule, ok := l.Rules[l.State]
 		if !ok {
 			panic("unknown state " + l.State)
 		}
+		var start time.Time
+		if l.Lexer.trace {
+			start = time.Now()
+		}
 		ruleIndex, rule, groups, namedGroups := matchRules(l.Text, l.Pos, selectedRule)
+		if l.Lexer.trace {
+			var length int
+			if groups != nil {
+				length = len(groups[0])
+			} else {
+				length = -1
+			}
+			_ = trace.Encode(Trace{ //nolint
+				Lexer:   l.Lexer.config.Name,
+				State:   l.State,
+				Rule:    ruleIndex,
+				Pattern: rule.Pattern,
+				Pos:     l.Pos,
+				Length:  length,
+				Elapsed: float64(time.Since(start)) / float64(time.Millisecond),
+			})
+			// fmt.Fprintf(os.Stderr, "%s: pos=%d, text=%q, elapsed=%s\n", l.State, l.Pos, string(l.Text[l.Pos:]), time.Since(start))
+		}
 		// No match.
 		if groups == nil {
 			// From Pygments :\
@@ -243,6 +276,9 @@ func (l *LexerState) Iterator() Token { // nolint: gocognit
 	for len(l.iteratorStack) > 0 {
 		n := len(l.iteratorStack) - 1
 		t := l.iteratorStack[n]()
+		if t.Type == Ignore {
+			continue
+		}
 		if t == EOF {
 			l.iteratorStack = l.iteratorStack[:n]
 			continue
@@ -298,11 +334,12 @@ func (r *RegexLexer) SetAnalyser(analyser func(text string) float32) Lexer {
 	return r
 }
 
-func (r *RegexLexer) AnalyseText(text string) float32 { // nolint
+// AnalyseText scores how likely a fragment of text is to match this lexer, between 0.0 and 1.0.
+func (r *RegexLexer) AnalyseText(text string) float32 {
 	if r.analyser != nil {
 		return r.analyser(text)
 	}
-	return 0.0
+	return 0
 }
 
 // SetConfig replaces the Config for this Lexer.
@@ -311,7 +348,8 @@ func (r *RegexLexer) SetConfig(config *Config) *RegexLexer {
 	return r
 }
 
-func (r *RegexLexer) Config() *Config { // nolint
+// Config returns the Config for this Lexer.
+func (r *RegexLexer) Config() *Config {
 	return r.config
 }
 
@@ -330,7 +368,7 @@ func (r *RegexLexer) maybeCompile() (err error) {
 					pattern = "(?" + rule.flags + ")" + pattern
 				}
 				pattern = `\G` + pattern
-				rule.Regexp, err = regexp2.Compile(pattern, regexp2.RE2)
+				rule.Regexp, err = regexp2.Compile(pattern, 0)
 				if err != nil {
 					return fmt.Errorf("failed to compile rule %s.%d: %s", state, i, err)
 				}
@@ -341,7 +379,7 @@ func (r *RegexLexer) maybeCompile() (err error) {
 restart:
 	seen := map[LexerMutator]bool{}
 	for state := range r.rules {
-		for i := 0; i < len(r.rules[state]); i++ {
+		for i := range len(r.rules[state]) {
 			rule := r.rules[state][i]
 			if compile, ok := rule.Mutator.(LexerMutator); ok {
 				if seen[compile] {
@@ -355,6 +393,17 @@ restart:
 				//
 				// This sounds bad, but shouldn't be significant in practice.
 				goto restart
+			}
+		}
+	}
+	// Validate emitters
+	for state := range r.rules {
+		for i := range len(r.rules[state]) {
+			rule := r.rules[state][i]
+			if validate, ok := rule.Type.(ValidatingEmitter); ok {
+				if err := validate.ValidateEmitter(rule); err != nil {
+					return fmt.Errorf("%s: %s: %s: %w", r.config.Name, state, rule.Pattern, err)
+				}
 			}
 		}
 	}
@@ -406,7 +455,8 @@ func (r *RegexLexer) needRules() error {
 	return err
 }
 
-func (r *RegexLexer) Tokenise(options *TokeniseOptions, text string) (Iterator, error) { // nolint
+// Tokenise text using lexer, returning an iterator.
+func (r *RegexLexer) Tokenise(options *TokeniseOptions, text string) (Iterator, error) {
 	err := r.needRules()
 	if err != nil {
 		return nil, err
@@ -465,7 +515,7 @@ func matchRules(text []rune, pos int, rules []*CompiledRule) (int, *CompiledRule
 func ensureLF(text string) string {
 	buf := make([]byte, len(text))
 	var j int
-	for i := 0; i < len(text); i++ {
+	for i := range len(text) {
 		c := text[i]
 		if c == '\r' {
 			if i < len(text)-1 && text[i+1] == '\n' {

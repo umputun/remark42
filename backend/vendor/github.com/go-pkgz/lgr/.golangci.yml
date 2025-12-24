@@ -1,67 +1,104 @@
-linters-settings:
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
-  gocyclo:
-    min-complexity: 15
-  maligned:
-    suggest-new: true
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - hugeParam
-
+version: "2"
+run:
+  concurrency: 4
 linters:
+  default: none
   enable:
-    - megacheck
-    - revive
+    - gochecknoinits
+    - gocritic
+    - gosec
     - govet
+    - ineffassign
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
     - unconvert
-    - megacheck
-    - gas
-    - gocyclo
-    - dupl
-    - misspell
     - unparam
     - unused
-    - typecheck
-    - ineffassign
-    - stylecheck
-    - gochecknoinits
-    - exportloopref
-    - gocritic
-    - nakedret
-    - gosimple
-    - prealloc
-  fast: false
-  disable-all: true
-
-run:
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
-
-issues:
-  exclude-rules:
-    - text: "should have a package comment, unless it's in another file for this package"
-      linters:
-        - golint
-    - text: "at least one file in a package should have a package comment"
-      linters:
-        - stylecheck
-  exclude-use-default: false
+    - nestif
+    - testifylint
+  settings:
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - wrapperFunc
+        - hugeParam
+        - rangeValCopy
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable:
+        - shadow
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - golint
+        text: should have a package comment, unless it's in another file for this package
+      - linters:
+          - gocritic
+        text: 'exitAfterDefer:'
+      - linters:
+          - gocritic
+        text: 'whyNoLint: include an explanation for nolint directive'
+      - linters:
+          - govet
+        text: go.mongodb.org/mongo-driver/bson/primitive.E
+      - linters:
+          - gosec
+        text: weak cryptographic primitive
+      - linters:
+          - gosec
+        text: integer overflow conversion
+      - linters:
+          - revive
+        text: should have a package comment
+      - linters:
+          - staticcheck
+        text: at least one file in a package should have a package comment
+      - linters:
+          - gocritic
+        text: 'commentedOutCode: may want to remove commented-out code'
+      - linters:
+          - gocritic
+        text: 'unnamedResult: consider giving a name to these results'
+      - linters:
+          - revive
+        text: 'var-naming: don''t use an underscore in package name'
+      - linters:
+          - staticcheck
+        text: should not use underscores in package names
+      - linters:
+          - govet
+        text: struct literal uses unkeyed fields
+      - linters:
+          - revive
+          - unparam
+          - unused
+        path: _test\.go$
+        text: unused-parameter
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

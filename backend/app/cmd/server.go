@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,19 +16,19 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
-	"github.com/go-pkgz/lcw/eventbus"
+	"github.com/go-pkgz/lcw/v2/eventbus"
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/go-pkgz/auth"
-	"github.com/go-pkgz/auth/avatar"
-	"github.com/go-pkgz/auth/provider"
-	"github.com/go-pkgz/auth/provider/sender"
-	"github.com/go-pkgz/auth/token"
-	cache "github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
+	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/provider/sender"
+	"github.com/go-pkgz/auth/v2/token"
+	cache "github.com/go-pkgz/lcw/v2"
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
@@ -58,34 +59,36 @@ type ServerCommand struct {
 	SSL        SSLGroup        `group:"ssl" namespace:"ssl" env-namespace:"SSL"`
 	ImageProxy ImageProxyGroup `group:"image-proxy" namespace:"image-proxy" env-namespace:"IMAGE_PROXY"`
 
-	Sites            []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
-	AnonymousVote    bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
-	AdminPasswd      string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
-	BackupLocation   string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
-	MaxBackupFiles   int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
-	LegacyImageProxy bool          `long:"img-proxy" env:"IMG_PROXY" description:"[deprecated, use image-proxy.http2https] enable image proxy"`
-	MaxCommentSize   int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
-	MaxVotes         int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
-	RestrictVoteIP   bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
-	DurationVoteIP   time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
-	LowScore         int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
-	CriticalScore    int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
-	PositiveScore    bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
-	ReadOnlyAge      int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration     time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
-	AdminEdit        bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
-	Port             int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
-	Address          string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
-	WebRoot          string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
-	UpdateLimit      float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
-	RestrictedWords  []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
-	RestrictedNames  []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
-	EnableEmoji      bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
-	SimpleView       bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
-	ProxyCORS        bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
-	AllowedHosts     []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments" env-delim:","`
-	SubscribersOnly  bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
-	DisableSignature bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
+	Sites                      []string      `long:"site" env:"SITE" default:"remark" description:"site names" env-delim:","`
+	AnonymousVote              bool          `long:"anon-vote" env:"ANON_VOTE" description:"enable anonymous votes (works only with VOTES_IP enabled)"`
+	AdminPasswd                string        `long:"admin-passwd" env:"ADMIN_PASSWD" default:"" description:"admin basic auth password"`
+	BackupLocation             string        `long:"backup" env:"BACKUP_PATH" default:"./var/backup" description:"backups location"`
+	MaxBackupFiles             int           `long:"max-back" env:"MAX_BACKUP_FILES" default:"10" description:"max backups to keep"`
+	LegacyImageProxy           bool          `long:"img-proxy" env:"IMG_PROXY" description:"[deprecated, use image-proxy.http2https] enable image proxy"`
+	MinCommentSize             int           `long:"min-comment" env:"MIN_COMMENT_SIZE" default:"0" description:"min comment size"`
+	MaxCommentSize             int           `long:"max-comment" env:"MAX_COMMENT_SIZE" default:"2048" description:"max comment size"`
+	MaxVotes                   int           `long:"max-votes" env:"MAX_VOTES" default:"-1" description:"maximum number of votes per comment"`
+	RestrictVoteIP             bool          `long:"votes-ip" env:"VOTES_IP" description:"restrict votes from the same ip"`
+	DurationVoteIP             time.Duration `long:"votes-ip-time" env:"VOTES_IP_TIME" default:"5m" description:"same ip vote duration"`
+	LowScore                   int           `long:"low-score" env:"LOW_SCORE" default:"-5" description:"low score threshold"`
+	CriticalScore              int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
+	PositiveScore              bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
+	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
+	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
+	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
+	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
+	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
+	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
+	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
+	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors''" env-delim:","`
+	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
+	DisableSignature           bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
+	DisableFancyTextFormatting bool          `long:"disable-fancy-text-formatting" env:"DISABLE_FANCY_TEXT_FORMATTING" description:"disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc)"`
 
 	Auth struct {
 		TTL struct {
@@ -93,7 +96,7 @@ type ServerCommand struct {
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 
-		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of cookie"`
+		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
 		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
@@ -102,8 +105,9 @@ type ServerCommand struct {
 		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"Twitter OAuth"`
+		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
+		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool       `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -136,7 +140,7 @@ type ImageProxyGroup struct {
 
 // AppleGroup defines options for Apple auth params
 type AppleGroup struct {
-	CID                string `long:"cid" env:"CID" description:"Apple client ID"`
+	CID                string `long:"cid" env:"CID" description:"Apple client ID (App ID or Services ID)"`
 	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
 	KID                string `long:"kid" env:"KID" description:"Private key ID"`
 	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/srv/var/apple.p8"`
@@ -217,14 +221,15 @@ type TelegramGroup struct {
 
 // SMTPGroup defines options for SMTP server connection, used in auth and notify modules
 type SMTPGroup struct {
-	Host      string        `long:"host" env:"HOST" description:"SMTP host"`
-	Port      int           `long:"port" env:"PORT" description:"SMTP port"`
-	Username  string        `long:"username" env:"USERNAME" description:"SMTP user name"`
-	Password  string        `long:"password" env:"PASSWORD" description:"SMTP password"`
-	TLS       bool          `long:"tls" env:"TLS" description:"enable TLS"`
-	LoginAuth bool          `long:"login_auth" env:"LOGIN_AUTH" description:"enable LOGIN auth instead of PLAIN"`
-	StartTLS  bool          `long:"starttls" env:"STARTTLS" description:"enable StartTLS"`
-	TimeOut   time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
+	Host               string        `long:"host" env:"HOST" description:"SMTP host"`
+	Port               int           `long:"port" env:"PORT" description:"SMTP port"`
+	Username           string        `long:"username" env:"USERNAME" description:"SMTP user name"`
+	Password           string        `long:"password" env:"PASSWORD" description:"SMTP password"`
+	TLS                bool          `long:"tls" env:"TLS" description:"enable TLS"`
+	InsecureSkipVerify bool          `long:"insecure_skip_verify" env:"INSECURE_SKIP_VERIFY" description:"skip certificate verification"`
+	LoginAuth          bool          `long:"login_auth" env:"LOGIN_AUTH" description:"enable LOGIN auth instead of PLAIN"`
+	StartTLS           bool          `long:"starttls" env:"STARTTLS" description:"enable StartTLS"`
+	TimeOut            time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"SMTP TCP connection timeout"`
 }
 
 // NotifyGroup defines options for notification
@@ -309,6 +314,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
 	resetEnv(
 		"SECRET",
+		"AUTH_APPLE_KID",
 		"AUTH_GOOGLE_CSEC",
 		"AUTH_GITHUB_CSEC",
 		"AUTH_FACEBOOK_CSEC",
@@ -316,6 +322,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_TWITTER_CSEC",
 		"AUTH_YANDEX_CSEC",
 		"AUTH_PATREON_CSEC",
+		"AUTH_DISCORD_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -401,6 +408,12 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	}
 	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	}
+	if s.Auth.Twitter.CID != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
+	}
+	if s.Auth.Twitter.CSEC != "" {
+		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
 	}
 	return append(result, s.findDeprecatedFlagsCollisions()...)
 }
@@ -500,11 +513,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		EditDuration:           s.EditDuration,
 		AdminEdits:             s.AdminEdit,
 		AdminStore:             adminStore,
+		MinCommentSize:         s.MinCommentSize,
 		MaxCommentSize:         s.MaxCommentSize,
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
@@ -525,7 +539,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 
 	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
-	telegramService, telegramBotUsername := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	telegramService := s.startTelegramAuthAndNotify(ctx, telegramAuth)
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
@@ -540,7 +554,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Cache:             loadingCache,
 		NativeImporter:    &migrator.Native{DataStore: dataService},
 		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
-		WordPressImporter: &migrator.WordPress{DataStore: dataService},
+		WordPressImporter: &migrator.WordPress{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting},
 		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
 		URLMapperMaker:    migrator.NewURLMapper,
@@ -575,33 +589,35 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}
 
 	srv := &api.Rest{
-		Version:             s.Revision,
-		DataService:         dataService,
-		WebRoot:             s.WebRoot,
-		WebFS:               webFS,
-		RemarkURL:           s.RemarkURL,
-		ImageProxy:          imgProxy,
-		CommentFormatter:    commentFormatter,
-		Migrator:            migr,
-		ReadOnlyAge:         s.ReadOnlyAge,
-		SharedSecret:        s.SharedSecret,
-		Authenticator:       authenticator,
-		Cache:               loadingCache,
-		NotifyService:       notifyService,
-		TelegramService:     telegramService,
-		SSLConfig:           sslConfig,
-		UpdateLimiter:       s.UpdateLimit,
-		ImageService:        imageService,
-		EmailNotifications:  contains("email", s.Notify.Users),
-		TelegramBotUsername: telegramBotUsername,
-		EmojiEnabled:        s.EnableEmoji,
-		AnonVote:            s.AnonymousVote && s.RestrictVoteIP,
-		SimpleView:          s.SimpleView,
-		ProxyCORS:           s.ProxyCORS,
-		AllowedAncestors:    s.AllowedHosts,
-		SendJWTHeader:       s.Auth.SendJWTHeader,
-		SubscribersOnly:     s.SubscribersOnly,
-		DisableSignature:    s.DisableSignature,
+		Version:                    s.Revision,
+		DataService:                dataService,
+		WebRoot:                    s.WebRoot,
+		WebFS:                      webFS,
+		RemarkURL:                  s.RemarkURL,
+		ImageProxy:                 imgProxy,
+		CommentFormatter:           commentFormatter,
+		Migrator:                   migr,
+		ReadOnlyAge:                s.ReadOnlyAge,
+		SharedSecret:               s.SharedSecret,
+		Authenticator:              authenticator,
+		Cache:                      loadingCache,
+		NotifyService:              notifyService,
+		TelegramService:            telegramService,
+		SSLConfig:                  sslConfig,
+		UpdateLimiter:              s.UpdateLimit,
+		ImageService:               imageService,
+		EmailNotifications:         contains("email", s.Notify.Users),
+		TelegramNotifications:      contains("telegram", s.Notify.Users) && telegramService != nil,
+		EmojiEnabled:               s.EnableEmoji,
+		AnonVote:                   s.AnonymousVote && s.RestrictVoteIP,
+		SimpleView:                 s.SimpleView,
+		ProxyCORS:                  s.ProxyCORS,
+		AllowedAncestors:           s.AllowedHosts,
+		SendJWTHeader:              s.Auth.SendJWTHeader,
+		SubscribersOnly:            s.SubscribersOnly,
+		DisableSignature:           s.DisableSignature,
+		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
+		ExternalImageProxy:         s.ImageProxy.CacheExternal,
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -631,6 +647,47 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		terminated:       make(chan struct{}),
 		authRefreshCache: authRefreshCache,
 	}, nil
+}
+
+// Extract domains from s.AllowedHosts and second level domain from s.RemarkURL.
+// It can be and IP like http://127.0.0.1 in which case we need to use whole IP as domain
+// Beware, if s.RemarkURL is in third-level domain like https://example.co.uk, co.uk will be returned.
+func (s *ServerCommand) getAllowedDomains() []string {
+	rawDomains := s.AllowedHosts
+	rawDomains = append(rawDomains, s.RemarkURL)
+	allowedDomains := []string{}
+	for _, rawURL := range rawDomains {
+		// case of 'self' AllowedHosts, which is not a valid rawURL name
+		if rawURL == "self" || rawURL == "'self'" || rawURL == "\"self\"" {
+			continue
+		}
+		// AllowedHosts usually don't have https:// prefix, so we're adding it just to make parsing below work the same way as for RemarkURL
+		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+			rawURL = "https://" + rawURL
+		}
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			log.Printf("[WARN] failed to parse URL %s for TitleExtract whitelist: %v", rawURL, err)
+			continue
+		}
+		domain := parsedURL.Hostname()
+
+		if domain == "" || // don't add empty domain as it will allow everything to be extracted
+			(len(strings.Split(domain, ".")) < 2 && // don't allow single-word domains like "com"
+				domain != "localhost") { // localhost is an exceptional single-word domain which is allowed
+			continue
+		}
+
+		// Only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
+		// For AllowedHosts we don't do this as they are exact list of domains which can host comments, but
+		// RemarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
+		if rawURL == s.RemarkURL && net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
+			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
+		}
+
+		allowedDomains = append(allowedDomains, domain)
+	}
+	return allowedDomains
 }
 
 // Run all application objects
@@ -822,27 +879,28 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 
 func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
+	o := cache.NewOpts[[]byte]()
 	switch s.Cache.Type {
 	case "redis_pub_sub":
 		redisPubSub, err := eventbus.NewRedisPubSub(s.Cache.RedisAddr, "remark42-cache")
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization, redis PubSub initialisation: %w", err)
 		}
-		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items), cache.EventBus(redisPubSub))
+		backend, err := cache.NewLruCache(o.MaxCacheSize(s.Cache.Max.Size), o.MaxValSize(s.Cache.Max.Value),
+			o.MaxKeys(s.Cache.Max.Items), o.EventBus(redisPubSub))
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
-		return cache.NewScache(backend), nil
+		return cache.NewScache[[]byte](backend), nil
 	case "mem":
-		backend, err := cache.NewLruCache(cache.MaxCacheSize(s.Cache.Max.Size), cache.MaxValSize(s.Cache.Max.Value),
-			cache.MaxKeys(s.Cache.Max.Items))
+		backend, err := cache.NewLruCache(o.MaxCacheSize(s.Cache.Max.Size), o.MaxValSize(s.Cache.Max.Value),
+			o.MaxKeys(s.Cache.Max.Items))
 		if err != nil {
 			return nil, fmt.Errorf("cache backend initialization: %w", err)
 		}
-		return cache.NewScache(backend), nil
+		return cache.NewScache[[]byte](backend), nil
 	case "none":
-		return cache.NewScache(&cache.Nop{}), nil
+		return cache.NewScache[[]byte](&cache.Nop[[]byte]{}), nil
 	}
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
@@ -857,10 +915,9 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
-				ClientID:     s.Auth.Apple.CID,
-				TeamID:       s.Auth.Apple.TID,
-				KeyID:        s.Auth.Apple.KID,
-				ResponseMode: "query", // default is form_post which wouldn't work here
+				ClientID: s.Auth.Apple.CID,
+				TeamID:   s.Auth.Apple.TID,
+				KeyID:    s.Auth.Apple.KID,
 			},
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
@@ -897,6 +954,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
 		providersCount++
 	}
+	if s.Auth.Discord.CID != "" && s.Auth.Discord.CSEC != "" {
+		authenticator.AddProvider("discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC)
+		providersCount++
+	}
 
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
@@ -910,18 +971,19 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Email.Enable {
 		params := sender.EmailParams{
-			Host:         s.SMTP.Host,
-			Port:         s.SMTP.Port,
-			SMTPUserName: s.SMTP.Username,
-			SMTPPassword: s.SMTP.Password,
-			TimeOut:      s.SMTP.TimeOut,
-			StartTLS:     s.SMTP.StartTLS,
-			LoginAuth:    s.SMTP.LoginAuth,
-			TLS:          s.SMTP.TLS,
-			Charset:      "UTF-8",
-			From:         s.Auth.Email.From,
-			Subject:      s.Auth.Email.Subject,
-			ContentType:  s.Auth.Email.ContentType,
+			Host:               s.SMTP.Host,
+			Port:               s.SMTP.Port,
+			SMTPUserName:       s.SMTP.Username,
+			SMTPPassword:       s.SMTP.Password,
+			TimeOut:            s.SMTP.TimeOut,
+			StartTLS:           s.SMTP.StartTLS,
+			LoginAuth:          s.SMTP.LoginAuth,
+			TLS:                s.SMTP.TLS,
+			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,
+			Charset:            "UTF-8",
+			From:               s.Auth.Email.From,
+			Subject:            s.Auth.Email.Subject,
+			ContentType:        s.Auth.Email.ContentType,
 		}
 		sndr := sender.NewEmailClient(params, log.Default())
 		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
@@ -1047,10 +1109,10 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
-					StandardClaims: jwt.StandardClaims{
-						Audience:  site,
-						ExpiresAt: time.Now().Add(100 * 365 * 24 * time.Hour).Unix(),
-						NotBefore: time.Now().Add(-1 * time.Minute).Unix(),
+					RegisteredClaims: jwt.RegisteredClaims{
+						Audience:  jwt.ClaimStrings{site},
+						ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour)),
+						NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 						Issuer:    "remark42",
 					},
 				}
@@ -1065,16 +1127,17 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			emailParams.AdminEmails = s.Admin.Shared.Email
 		}
 		smtpParams := ntf.SMTPParams{
-			Host:        s.SMTP.Host,
-			Port:        s.SMTP.Port,
-			TLS:         s.SMTP.TLS,
-			StartTLS:    s.SMTP.StartTLS,
-			LoginAuth:   s.SMTP.LoginAuth,
-			Username:    s.SMTP.Username,
-			Password:    s.SMTP.Password,
-			TimeOut:     s.SMTP.TimeOut,
-			ContentType: "text/html",
-			Charset:     "UTF-8",
+			Host:               s.SMTP.Host,
+			Port:               s.SMTP.Port,
+			TLS:                s.SMTP.TLS,
+			StartTLS:           s.SMTP.StartTLS,
+			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,
+			LoginAuth:          s.SMTP.LoginAuth,
+			Username:           s.SMTP.Username,
+			Password:           s.SMTP.Password,
+			TimeOut:            s.SMTP.TimeOut,
+			ContentType:        "text/html",
+			Charset:            "UTF-8",
 		}
 		emailService, err := notify.NewEmail(emailParams, smtpParams)
 		if err != nil {
@@ -1152,10 +1215,16 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if c.User == nil {
 				return c
 			}
-			c.User.SetAdmin(ds.IsAdmin(c.Audience, c.User.ID))
-			c.User.SetBoolAttr("blocked", ds.IsBlocked(c.Audience, c.User.ID))
+			// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+			if len(c.Audience) != 1 {
+				return c
+			}
+			audience := c.Audience[0]
+
+			c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
+			c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
 			var err error
-			c.User.Email, err = ds.GetUserEmail(c.Audience, c.User.ID)
+			c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
 			if err != nil {
 				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
 			}
@@ -1175,7 +1244,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			return c
 		}),
 		AdminPasswd: s.AdminPasswd,
-		Validator: token.ValidatorFunc(func(token string, claims token.Claims) bool { // check on each auth call (in middleware)
+		Validator: token.ValidatorFunc(func(_ string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false
 			}
@@ -1212,20 +1281,15 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 
 // startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
 // Does nothing if telegram auth and notifications are disabled.
-// Doesn't return telegram bot username if user notifications are disabled, as that is the way frontend knows they are enabled.
-func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram, telegramBotUsername string) {
+func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram) {
 	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
-		return nil, ""
+		return nil
 	}
 
 	var err error
 	if tg, err = s.makeTelegramNotify(); err != nil {
 		log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		return nil, ""
-	}
-
-	if contains("telegram", s.Notify.Users) {
-		telegramBotUsername = tg.GetBotUsername()
+		return nil
 	}
 
 	telegramReceivers := []providers.TGUpdatesReceiver{tg}
@@ -1235,7 +1299,7 @@ func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegram
 	// start bot messages receiver for both notify and auth services
 	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
 
-	return tg, telegramBotUsername
+	return tg
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.
@@ -1282,20 +1346,21 @@ func splitAtCommas(s string) []string {
 
 // authRefreshCache used by authenticator to minimize repeatable token refreshes
 type authRefreshCache struct {
-	cache.LoadingCache
+	cache.LoadingCache[token.Claims]
 }
 
 func newAuthRefreshCache() *authRefreshCache {
-	expirableCache, _ := cache.NewExpirableCache(cache.TTL(5 * time.Minute))
+	o := cache.NewOpts[token.Claims]()
+	expirableCache, _ := cache.NewExpirableCache(o.TTL(5 * time.Minute))
 	return &authRefreshCache{LoadingCache: expirableCache}
 }
 
 // Get implements cache getter with key converted to string
-func (c *authRefreshCache) Get(key interface{}) (interface{}, bool) {
-	return c.LoadingCache.Peek(key.(string))
+func (c *authRefreshCache) Get(key string) (token.Claims, bool) {
+	return c.Peek(key)
 }
 
 // Set implements cache setter with key converted to string
-func (c *authRefreshCache) Set(key, value interface{}) {
-	_, _ = c.LoadingCache.Get(key.(string), func() (interface{}, error) { return value, nil })
+func (c *authRefreshCache) Set(key string, value token.Claims) {
+	_, _ = c.LoadingCache.Get(key, func() (token.Claims, error) { return value, nil })
 }

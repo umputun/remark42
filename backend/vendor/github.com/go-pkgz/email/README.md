@@ -23,6 +23,7 @@ err := client.Send("<html>some content, foo bar</html>",
 - `Port`: SMTP port (default: 25)
 - `TLS`: Use TLS SMTP (default: false)
 - `STARTTLS`: Use STARTTLS (default: false)
+- `InsecureSkipVerify`: skip certificate verification (default: false)
 - `Auth(user, password)`: Username and password for SMTP authentication (default: empty, no authentication)
 - `LoginAuth`: Use [LOGIN mechanism](https://www.ietf.org/archive/id/draft-murchison-sasl-login-00.txt) instead of PLAIN mechanism for SMTP authentication, e.g. this is relevant for Office 365 and Outlook.com
 - `ContentType`: Content type for the email (default: "text/plain")

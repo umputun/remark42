@@ -58,7 +58,7 @@ function animateDisappear(): Promise<void> {
       if (!root || !iframe) {
         return;
       }
-      setStyles(root, styles.rootDissapear);
+      setStyles(root, styles.rootDisappear);
       root.addEventListener('transitionend', handleTransitionEnd);
     });
   });
@@ -111,7 +111,7 @@ const styles = {
   rootAppear: {
     opacity: '1',
   },
-  rootDissapear: {
+  rootDisappear: {
     opacity: '0',
     transition: 'opacity 0.3s ease-out',
   },

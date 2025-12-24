@@ -35,14 +35,16 @@ func NewCommentFormatter(converters ...CommentConverter) *CommentFormatter {
 }
 
 // Format comment fields
-func (f *CommentFormatter) Format(c Comment) Comment {
-	c.Text = f.FormatText(c.Text)
+func (f *CommentFormatter) Format(c Comment, raw bool) Comment {
+	c.Text = f.FormatText(c.Text, raw)
 	return c
 }
 
 // FormatText converts text with markdown processor, applies external converters and shortens links
-func (f *CommentFormatter) FormatText(txt string) (res string) {
-	mdExt, rend := GetMdExtensionsAndRenderer()
+//
+// raw=true disables SmartyPants for HTML rendering (replacement of quotes, dashes, fractions, etc).
+func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
+	mdExt, rend := GetMdExtensionsAndRenderer(raw)
 	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
 	res = f.unEscape(res)
 
@@ -55,14 +57,14 @@ func (f *CommentFormatter) FormatText(txt string) (res string) {
 }
 
 // Shortens all the automatic links in HTML: auto link has equal "href" and "text" attributes.
-func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTML string) {
+func (f *CommentFormatter) shortenAutoLinks(commentHTML string, maximum int) (resHTML string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
 	if err != nil {
 		return commentHTML
 	}
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		if href, ok := s.Attr("href"); ok {
-			if href != s.Text() || len(href) < max+3 || max < 3 {
+			if href != s.Text() || len(href) < maximum+3 || maximum < 3 {
 				return
 			}
 			commentURL, e := url.Parse(href)
@@ -75,7 +77,7 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, max int) (resHTM
 				return
 			}
 
-			short := string([]rune(href)[:max-3])
+			short := string([]rune(href)[:maximum-3])
 			if len(short) < len(host) {
 				short = host
 			}
@@ -97,7 +99,7 @@ func (f *CommentFormatter) unEscape(txt string) (res string) {
 	}
 	res = txt
 	for _, e := range elems {
-		res = strings.Replace(res, e.from, e.to, -1)
+		res = strings.ReplaceAll(res, e.from, e.to)
 	}
 	return res
 }
@@ -108,7 +110,7 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 	if err != nil {
 		return commentHTML
 	}
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		s.SetAttr("loading", "lazy")
 	})
 	resHTML, err = doc.Find("body").Html()
@@ -120,14 +122,19 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 
 // GetMdExtensionsAndRenderer returns blackfriday extensions and renderer used for rendering markdown
 // within store module.
-func GetMdExtensionsAndRenderer() (bf.Extensions, *bfchroma.Renderer) {
+//
+// raw=true disables SmartyPants for HTML rendering (replacement of quotes, dashes, fractions, etc).
+func GetMdExtensionsAndRenderer(raw bool) (bf.Extensions, *bfchroma.Renderer) {
 	mdExt := bf.NoIntraEmphasis | bf.Tables | bf.FencedCode |
 		bf.Strikethrough | bf.SpaceHeadings | bf.HardLineBreak |
 		bf.BackslashLineBreak | bf.Autolink
 
-	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{
-		Flags: bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes,
-	})
+	flags := bf.HTMLFlags(0)
+	if !raw {
+		flags = bf.Smartypants | bf.SmartypantsFractions | bf.SmartypantsDashes | bf.SmartypantsAngledQuotes
+	}
+
+	rend := bf.NewHTMLRenderer(bf.HTMLRendererParameters{Flags: flags})
 
 	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses(true)))
 	return mdExt, extRend

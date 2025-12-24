@@ -11,6 +11,7 @@ import (
 	"errors"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -20,15 +21,16 @@ import (
 
 // DropDatabase performs a dropDatabase operation
 type DropDatabase struct {
-	session      *session.Client
-	clock        *session.ClusterClock
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	serverAPI    *driver.ServerAPIOptions
+	authenticator driver.Authenticator
+	session       *session.Client
+	clock         *session.ClusterClock
+	monitor       *event.CommandMonitor
+	crypt         driver.Crypt
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	writeConcern  *writeconcern.WriteConcern
+	serverAPI     *driver.ServerAPIOptions
 }
 
 // NewDropDatabase constructs and returns a new DropDatabase.
@@ -53,11 +55,13 @@ func (dd *DropDatabase) Execute(ctx context.Context) error {
 		Selector:       dd.selector,
 		WriteConcern:   dd.writeConcern,
 		ServerAPI:      dd.serverAPI,
+		Name:           driverutil.DropDatabaseOp,
+		Authenticator:  dd.authenticator,
 	}.Execute(ctx)
 
 }
 
-func (dd *DropDatabase) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (dd *DropDatabase) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 
 	dst = bsoncore.AppendInt32Element(dst, "dropDatabase", 1)
 	return dst, nil
@@ -150,5 +154,15 @@ func (dd *DropDatabase) ServerAPI(serverAPI *driver.ServerAPIOptions) *DropDatab
 	}
 
 	dd.serverAPI = serverAPI
+	return dd
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (dd *DropDatabase) Authenticator(authenticator driver.Authenticator) *DropDatabase {
+	if dd == nil {
+		dd = new(DropDatabase)
+	}
+
+	dd.authenticator = authenticator
 	return dd
 }

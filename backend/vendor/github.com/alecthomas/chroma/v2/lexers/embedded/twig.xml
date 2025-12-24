@@ -2,6 +2,7 @@
   <config>
     <name>Twig</name>
     <alias>twig</alias>
+    <filename>*.twig</filename>
     <mime_type>application/x-twig</mime_type>
     <dot_all>true</dot_all>
   </config>

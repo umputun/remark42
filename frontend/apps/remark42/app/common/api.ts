@@ -1,6 +1,16 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
-import { Config, Comment, Tree, User, BlockedUser, Sorting, BlockTTL, Image } from './types';
+import {
+  Config,
+  Comment,
+  Tree,
+  User,
+  BlockedUser,
+  Sorting,
+  BlockTTL,
+  Image,
+  EmailSubVerificationStatus,
+} from './types';
 import { apiFetcher, adminFetcher } from './fetcher';
 
 /* API methods */
@@ -69,17 +79,45 @@ export const uploadImage = (image: File): Promise<Image> => {
 /* Subscription methods */
 
 /**
+ * Start process of telegram subscription to updates
+ */
+export const telegramSubscribe = (): Promise<{
+  bot: string;
+  token: string;
+}> => apiFetcher.get('/telegram/subscribe');
+
+/**
+ * Start process of telegram subscription to updates
+ * Example of error response: {"code":0,"details":"can't set telegram for user","error":"request is not verified yet"}
+ * Example of success response: {"address":"223211010","updated":true}
+ */
+export const telegramCurrentSubscribtion = ({
+  token,
+}: {
+  token: string;
+}): Promise<{
+  address: string;
+  updated: boolean;
+}> => apiFetcher.get('/telegram/subscribe', { tkn: token });
+
+/**
+ * Start process of telegram subscription to updates
+ * Example of success response: {"deleted":true}
+ */
+export const telegramUnsubcribe = (): Promise<{ deleted: boolean }> => apiFetcher.delete('/telegram');
+
+/**
  * Start process of email subscription to updates
  * @param emailAddress email for subscription
  */
-export const emailVerificationForSubscribe = (emailAddress: string) =>
-  apiFetcher.post('/email/subscribe', { address: emailAddress });
+export const emailVerificationForSubscribe = (emailAddress: string): Promise<EmailSubVerificationStatus> =>
+  apiFetcher.post('/email/subscribe', {}, { address: emailAddress, autoConfirm: true });
 
 /**
  * Confirmation of email subscription to updates
  * @param token confirmation token from email
  */
-export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', { tkn: token });
+export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', {}, { token });
 
 /**
  * Decline current subscription to updates

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/internal/codecutil"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
@@ -51,7 +52,7 @@ func replaceErrors(err error) error {
 		return nil
 	}
 
-	if err == topology.ErrTopologyClosed {
+	if errors.Is(err, topology.ErrTopologyClosed) {
 		return ErrClientDisconnected
 	}
 	if de, ok := err.(driver.Error); ok {
@@ -87,52 +88,69 @@ func replaceErrors(err error) error {
 		return MongocryptError{Code: me.Code, Message: me.Message}
 	}
 
+	if errors.Is(err, codecutil.ErrNilValue) {
+		return ErrNilValue
+	}
+
+	if marshalErr, ok := err.(codecutil.MarshalError); ok {
+		return MarshalError{
+			Value: marshalErr.Value,
+			Err:   marshalErr.Err,
+		}
+	}
+
 	return err
 }
 
-// IsDuplicateKeyError returns true if err is a duplicate key error
+// IsDuplicateKeyError returns true if err is a duplicate key error.
 func IsDuplicateKeyError(err error) bool {
-	// handles SERVER-7164 and SERVER-11493
-	for ; err != nil; err = unwrap(err) {
-		if e, ok := err.(ServerError); ok {
-			return e.HasErrorCode(11000) || e.HasErrorCode(11001) || e.HasErrorCode(12582) ||
-				e.HasErrorCodeWithMessage(16460, " E11000 ")
-		}
+	if se := ServerError(nil); errors.As(err, &se) {
+		return se.HasErrorCode(11000) || // Duplicate key error.
+			se.HasErrorCode(11001) || // Duplicate key error on update.
+			// Duplicate key error in a capped collection. See SERVER-7164.
+			se.HasErrorCode(12582) ||
+			// Mongos insert error caused by a duplicate key error. See
+			// SERVER-11493.
+			se.HasErrorCodeWithMessage(16460, " E11000 ")
 	}
 	return false
 }
 
-// IsTimeout returns true if err is from a timeout
+// timeoutErrs is a list of error values that indicate a timeout happened.
+var timeoutErrs = [...]error{
+	context.DeadlineExceeded,
+	driver.ErrDeadlineWouldBeExceeded,
+	topology.ErrServerSelectionTimeout,
+}
+
+// IsTimeout returns true if err was caused by a timeout. For error chains,
+// IsTimeout returns true if any error in the chain was caused by a timeout.
 func IsTimeout(err error) bool {
-	for ; err != nil; err = unwrap(err) {
-		// check unwrappable errors together
-		if err == context.DeadlineExceeded {
+	// Check if the error chain contains any of the timeout error values.
+	for _, target := range timeoutErrs {
+		if errors.Is(err, target) {
 			return true
 		}
-		if err == driver.ErrDeadlineWouldBeExceeded {
+	}
+
+	// Check if the error chain contains any error types that can indicate
+	// timeout.
+	if errors.As(err, &topology.WaitQueueTimeoutError{}) {
+		return true
+	}
+	if ce := (CommandError{}); errors.As(err, &ce) && ce.IsMaxTimeMSExpiredError() {
+		return true
+	}
+	if we := (WriteException{}); errors.As(err, &we) && we.WriteConcernError != nil && we.WriteConcernError.IsMaxTimeMSExpiredError() {
+		return true
+	}
+	if ne := net.Error(nil); errors.As(err, &ne) {
+		return ne.Timeout()
+	}
+	// Check timeout error labels.
+	if le := LabeledError(nil); errors.As(err, &le) {
+		if le.HasErrorLabel("NetworkTimeoutError") || le.HasErrorLabel("ExceededTimeLimitError") {
 			return true
-		}
-		if err == topology.ErrServerSelectionTimeout {
-			return true
-		}
-		if _, ok := err.(topology.WaitQueueTimeoutError); ok {
-			return true
-		}
-		if ce, ok := err.(CommandError); ok && ce.IsMaxTimeMSExpiredError() {
-			return true
-		}
-		if we, ok := err.(WriteException); ok && we.WriteConcernError != nil &&
-			we.WriteConcernError.IsMaxTimeMSExpiredError() {
-			return true
-		}
-		if ne, ok := err.(net.Error); ok {
-			return ne.Timeout()
-		}
-		//timeout error labels
-		if le, ok := err.(labeledError); ok {
-			if le.HasErrorLabel("NetworkTimeoutError") || le.HasErrorLabel("ExceededTimeLimitError") {
-				return true
-			}
 		}
 	}
 
@@ -153,7 +171,7 @@ func unwrap(err error) error {
 // errorHasLabel returns true if err contains the specified label
 func errorHasLabel(err error, label string) bool {
 	for ; err != nil; err = unwrap(err) {
-		if le, ok := err.(labeledError); ok && le.HasErrorLabel(label) {
+		if le, ok := err.(LabeledError); ok && le.HasErrorLabel(label) {
 			return true
 		}
 	}
@@ -207,7 +225,8 @@ func (e MongocryptdError) Unwrap() error {
 	return e.Wrapped
 }
 
-type labeledError interface {
+// LabeledError is an interface for errors with labels.
+type LabeledError interface {
 	error
 	// HasErrorLabel returns true if the error contains the specified label.
 	HasErrorLabel(string) bool
@@ -216,11 +235,9 @@ type labeledError interface {
 // ServerError is the interface implemented by errors returned from the server. Custom implementations of this
 // interface should not be used in production.
 type ServerError interface {
-	error
+	LabeledError
 	// HasErrorCode returns true if the error has the specified code.
 	HasErrorCode(int) bool
-	// HasErrorLabel returns true if the error contains the specified label.
-	HasErrorLabel(string) bool
 	// HasErrorMessage returns true if the error contains the specified message.
 	HasErrorMessage(string) bool
 	// HasErrorCodeWithMessage returns true if any of the contained errors have the specified code and message.
@@ -321,7 +338,7 @@ func (we WriteError) HasErrorCode(code int) bool {
 
 // HasErrorLabel returns true if the error contains the specified label. WriteErrors do not contain labels,
 // so we always return false.
-func (we WriteError) HasErrorLabel(label string) bool {
+func (we WriteError) HasErrorLabel(string) bool {
 	return false
 }
 
@@ -613,7 +630,7 @@ const (
 // WriteConcernError will be returned over WriteErrors if both are present.
 func processWriteError(err error) (returnResult, error) {
 	switch {
-	case err == driver.ErrUnacknowledgedWrite:
+	case errors.Is(err, driver.ErrUnacknowledgedWrite):
 		return rrAll, ErrUnacknowledgedWrite
 	case err != nil:
 		switch tt := err.(type) {

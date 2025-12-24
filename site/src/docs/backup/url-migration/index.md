@@ -29,7 +29,7 @@ If running in a docker container, the command becomes (`ADMIN_PASSWD` will be ta
 docker exec -it remark42 remap -s <your site ID> -f var/rules
 ```
 
-The command above sends a *request* to start the remap job. You can see the job execution logs by running:
+The command above sends a _request_ to start the remap job. You can see the job execution logs by running:
 
 ```shell
 docker logs <container>

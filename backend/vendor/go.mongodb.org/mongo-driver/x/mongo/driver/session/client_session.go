@@ -82,13 +82,16 @@ func (s TransactionState) String() string {
 type LoadBalancedTransactionConnection interface {
 	// Functions copied over from driver.Connection.
 	WriteWireMessage(context.Context, []byte) error
-	ReadWireMessage(ctx context.Context, dst []byte) ([]byte, error)
+	ReadWireMessage(ctx context.Context) ([]byte, error)
 	Description() description.Server
 	Close() error
 	ID() string
-	ServerConnectionID() *int32
+	ServerConnectionID() *int64
+	DriverConnectionID() uint64 // TODO(GODRIVER-2824): change type to int64.
 	Address() address.Address
 	Stale() bool
+	OIDCTokenGenID() uint64
+	SetOIDCTokenGenID(uint64)
 
 	// Functions copied over from driver.PinnedConnection that are not part of Connection or Expirable.
 	PinToCursor() error
@@ -157,13 +160,14 @@ func MaxClusterTime(ct1, ct2 bson.Raw) bson.Raw {
 	epoch1, ord1 := getClusterTime(ct1)
 	epoch2, ord2 := getClusterTime(ct2)
 
-	if epoch1 > epoch2 {
+	switch {
+	case epoch1 > epoch2:
 		return ct1
-	} else if epoch1 < epoch2 {
+	case epoch1 < epoch2:
 		return ct2
-	} else if ord1 > ord2 {
+	case ord1 > ord2:
 		return ct1
-	} else if ord1 < ord2 {
+	case ord1 < ord2:
 		return ct2
 	}
 
@@ -330,9 +334,10 @@ func (c *Client) ClearPinnedResources() error {
 	return nil
 }
 
-// UnpinConnection gracefully unpins the connection associated with the session if there is one. This is done via
-// the pinned connection's UnpinFromTransaction function.
-func (c *Client) UnpinConnection() error {
+// unpinConnection gracefully unpins the connection associated with the session
+// if there is one. This is done via the pinned connection's
+// UnpinFromTransaction function.
+func (c *Client) unpinConnection() error {
 	if c == nil || c.PinnedConnection == nil {
 		return nil
 	}
@@ -352,6 +357,12 @@ func (c *Client) EndSession() {
 		return
 	}
 	c.Terminated = true
+
+	// Ignore the error when unpinning the connection because we can't do
+	// anything about it if it doesn't work. Typically the only errors that can
+	// happen here indicate that something went wrong with the connection state,
+	// like it wasn't marked as pinned or attempted to return to the wrong pool.
+	_ = c.unpinConnection()
 	c.pool.ReturnSession(c.Server)
 }
 
@@ -468,11 +479,12 @@ func (c *Client) UpdateCommitTransactionWriteConcern() {
 // CheckAbortTransaction checks to see if allowed to abort transaction and returns
 // an error if not allowed.
 func (c *Client) CheckAbortTransaction() error {
-	if c.TransactionState == None {
+	switch {
+	case c.TransactionState == None:
 		return ErrNoTransactStarted
-	} else if c.TransactionState == Committed {
+	case c.TransactionState == Committed:
 		return ErrAbortAfterCommit
-	} else if c.TransactionState == Aborted {
+	case c.TransactionState == Aborted:
 		return ErrAbortTwice
 	}
 	return nil

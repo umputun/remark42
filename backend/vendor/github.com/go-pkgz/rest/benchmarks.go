@@ -55,10 +55,10 @@ func NewBenchmarks() *Benchmarks {
 // Default is 15 minutes. The increase of this range will change memory utilization as each second of the range
 // kept as benchData aggregate. The default means 15*60 = 900 seconds of data aggregate.
 // Larger range allows for longer time periods to be benchmarked.
-func (b *Benchmarks) WithTimeRange(max time.Duration) *Benchmarks {
+func (b *Benchmarks) WithTimeRange(maximum time.Duration) *Benchmarks {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	b.maxTimeRange = max
+	b.maxTimeRange = maximum
 	return b
 }
 
@@ -124,13 +124,18 @@ func (b *Benchmarks) Stats(interval time.Duration) BenchmarkStats {
 		respTime time.Duration
 	)
 
+	now := b.nowFn().Truncate(time.Second)
+	cutoff := now.Add(-interval)
 	stInterval, fnInterval := time.Time{}, time.Time{}
 	var minRespTime, maxRespTime time.Duration
-	for e := b.data.Back(); e != nil; e = e.Prev() { // reverse order
+	count := 0
+
+	for e := b.data.Back(); e != nil && count < int(interval.Seconds()); e = e.Prev() { // reverse order
 		bd := e.Value.(benchData)
-		if bd.ts.Before(b.nowFn().Add(-interval)) {
+		if bd.ts.Before(cutoff) {
 			break
 		}
+
 		if minRespTime == 0 || bd.minRespTime < minRespTime {
 			minRespTime = bd.minRespTime
 		}
@@ -143,15 +148,22 @@ func (b *Benchmarks) Stats(interval time.Duration) BenchmarkStats {
 			fnInterval = bd.ts.Add(time.Second)
 		}
 		stInterval = bd.ts
+		count++
 	}
 
 	if requests == 0 {
 		return BenchmarkStats{}
 	}
 
+	// ensure we calculate rate based on actual interval
+	actualInterval := fnInterval.Sub(stInterval)
+	if actualInterval < time.Second {
+		actualInterval = time.Second
+	}
+
 	return BenchmarkStats{
 		Requests:        requests,
-		RequestsSec:     float64(requests) / (fnInterval.Sub(stInterval).Seconds()),
+		RequestsSec:     float64(requests) / actualInterval.Seconds(),
 		AverageRespTime: respTime.Microseconds() / int64(requests),
 		MinRespTime:     minRespTime.Microseconds(),
 		MaxRespTime:     maxRespTime.Microseconds(),

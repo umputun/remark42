@@ -5,8 +5,7 @@ from subprocess import check_output
 
 README_FILE = "README.md"
 
-
-lines = check_output(["go", "run", "./cmd/chroma/main.go", "--list"]).decode("utf-8").splitlines()
+lines = check_output(["chroma", "--list"]).decode("utf-8").splitlines()
 lines = [line.strip() for line in lines if line.startswith("  ") and not line.startswith("   ")]
 lines = sorted(lines, key=lambda l: l.lower())
 

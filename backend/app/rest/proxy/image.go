@@ -12,7 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/v2"
 
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store/image"
@@ -57,7 +57,7 @@ func (p Image) extract(commentHTML string, imgSrcPred func(string) bool) ([]stri
 		return nil, fmt.Errorf("can't create document: %w", err)
 	}
 	result := []string{}
-	doc.Find("img").Each(func(i int, s *goquery.Selection) {
+	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		if im, ok := s.Attr("src"); ok {
 			if imgSrcPred(im) {
 				result = append(result, im)
@@ -72,7 +72,7 @@ func (p Image) replace(commentHTML string, imgs []string) string {
 	for _, img := range imgs {
 		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(img))
 		resImgURL := p.RemarkURL + p.RoutePath + "?src=" + encodedImgURL
-		commentHTML = strings.Replace(commentHTML, img, resImgURL, -1)
+		commentHTML = strings.ReplaceAll(commentHTML, img, resImgURL)
 	}
 
 	return commentHTML
@@ -98,6 +98,10 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	if img == nil {
 		img, err = p.downloadImage(context.Background(), imgURL)
 		if err != nil {
+			if strings.Contains(err.Error(), "invalid content type") {
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid content type", rest.ErrImgNotFound)
+				return
+			}
 			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "can't get image "+imgURL, rest.ErrAssetNotFound)
 			return
 		}
@@ -147,7 +151,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	client := http.Client{Timeout: 30 * time.Second}
 	defer client.CloseIdleConnections()
 	var resp *http.Response
-	err := repeater.NewDefault(5, time.Second).Do(ctx, func() error {
+	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
 		var e error
 		req, e := http.NewRequest("GET", imgURL, http.NoBody)
 		if e != nil {
@@ -163,6 +167,11 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got unsuccessful response status %d while fetching %s", resp.StatusCode, imgURL)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, fmt.Errorf("invalid content type %s", contentType)
 	}
 
 	imgData, err := io.ReadAll(resp.Body)

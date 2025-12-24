@@ -57,6 +57,26 @@ type Config struct {
 	//
 	// If this is 0 it will be treated as a default of 1.
 	Priority float32 `xml:"priority,omitempty"`
+
+	// Analyse is a list of regexes to match against the input.
+	//
+	// If a match is found, the score is returned if single attribute is set to true,
+	// otherwise the sum of all the score of matching patterns will be
+	// used as the final score.
+	Analyse *AnalyseConfig `xml:"analyse,omitempty"`
+}
+
+// AnalyseConfig defines the list of regexes analysers.
+type AnalyseConfig struct {
+	Regexes []RegexConfig `xml:"regex,omitempty"`
+	// If true, the first matching score is returned.
+	First bool `xml:"first,attr"`
+}
+
+// RegexConfig defines a single regex pattern and its score in case of match.
+type RegexConfig struct {
+	Pattern string  `xml:"pattern,attr"`
+	Score   float32 `xml:"score,attr"`
 }
 
 // Token output to formatter.
@@ -108,6 +128,23 @@ type Lexer interface {
 	// AnalyseText scores how likely a fragment of text is to match
 	// this lexer, between 0.0 and 1.0. A value of 1 indicates high confidence.
 	AnalyseText(text string) float32
+}
+
+// Trace is the trace of a tokenisation process.
+type Trace struct {
+	Lexer   string  `json:"lexer"`
+	State   string  `json:"state"`
+	Rule    int     `json:"rule"`
+	Pattern string  `json:"pattern"`
+	Pos     int     `json:"pos"`
+	Length  int     `json:"length"`
+	Elapsed float64 `json:"elapsedMs"` // Elapsed time spent matching for this rule.
+}
+
+// TracingLexer is a Lexer that can trace its tokenisation process.
+type TracingLexer interface {
+	Lexer
+	SetTracing(enable bool)
 }
 
 // Lexers is a slice of lexers sortable by name.

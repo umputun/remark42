@@ -1,4 +1,3 @@
-version: '2'
 services:
   # Runs dev env for the site
   server:

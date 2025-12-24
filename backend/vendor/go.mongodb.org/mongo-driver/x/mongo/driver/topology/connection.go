@@ -9,6 +9,7 @@ package topology
 import (
 	"context"
 	"crypto/tls"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/csot"
 	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -54,7 +55,7 @@ type connection struct {
 	nc                   net.Conn // When nil, the connection is closed.
 	addr                 address.Address
 	idleTimeout          time.Duration
-	idleDeadline         atomic.Value // Stores a time.Time
+	idleStart            atomic.Value // Stores a time.Time
 	readTimeout          time.Duration
 	writeTimeout         time.Duration
 	desc                 description.Server
@@ -70,12 +71,22 @@ type connection struct {
 	currentlyStreaming   bool
 	connectContextMutex  sync.Mutex
 	cancellationListener cancellationListener
-	serverConnectionID   *int32 // the server's ID for this client's connection
+	serverConnectionID   *int64 // the server's ID for this client's connection
 
 	// pool related fields
-	pool       *pool
-	poolID     uint64
-	generation uint64
+	pool *pool
+
+	// TODO(GODRIVER-2824): change driverConnectionID type to int64.
+	driverConnectionID uint64
+	generation         uint64
+
+	// awaitRemainingBytes indicates the size of server response that was not completely
+	// read before returning the connection to the pool.
+	awaitRemainingBytes *int32
+
+	// oidcTokenGenID is the monotonic generation ID for OIDC tokens, used to invalidate
+	// accessTokens in the OIDC authenticator cache.
+	oidcTokenGenID uint64
 }
 
 // newConnection handles the creation of a connection. It does not connect the connection.
@@ -93,7 +104,7 @@ func newConnection(addr address.Address, opts ...ConnectionOption) *connection {
 		connectDone:          make(chan struct{}),
 		config:               cfg,
 		connectContextMade:   make(chan struct{}),
-		cancellationListener: internal.NewCancellationListener(),
+		cancellationListener: newCancellListener(),
 	}
 	// Connections to non-load balanced deployments should eagerly set the generation numbers so errors encountered
 	// at any point during connection establishment can be processed without the connection being considered stale.
@@ -124,6 +135,39 @@ func (c *connection) hasGenerationNumber() bool {
 	// For LB clusters, we set the generation after the initial handshake, so we know it's set if the connection
 	// description has been updated to reflect that it's behind an LB.
 	return c.desc.LoadBalanced()
+}
+
+func configureTLS(ctx context.Context,
+	tlsConnSource tlsConnectionSource,
+	nc net.Conn,
+	addr address.Address,
+	config *tls.Config,
+	ocspOpts *ocsp.VerifyOptions,
+) (net.Conn, error) {
+	// Ensure config.ServerName is always set for SNI.
+	if config.ServerName == "" {
+		hostname := addr.String()
+		colonPos := strings.LastIndex(hostname, ":")
+		if colonPos == -1 {
+			colonPos = len(hostname)
+		}
+
+		hostname = hostname[:colonPos]
+		config.ServerName = hostname
+	}
+
+	client := tlsConnSource.Client(nc, config)
+	if err := clientHandshake(ctx, client); err != nil {
+		return nil, err
+	}
+
+	// Only do OCSP verification if TLS verification is requested.
+	if !config.InsecureSkipVerify {
+		if ocspErr := ocsp.Verify(ctx, client.ConnectionState(), ocspOpts); ocspErr != nil {
+			return nil, ocspErr
+		}
+	}
+	return client, nil
 }
 
 // connect handles the I/O for a connection. It will dial, configure TLS, and perform initialization
@@ -301,14 +345,18 @@ func (c *connection) closeConnectContext() {
 	}
 }
 
+func (c *connection) cancellationListenerCallback() {
+	_ = c.close()
+}
+
 func transformNetworkError(ctx context.Context, originalError error, contextDeadlineUsed bool) error {
 	if originalError == nil {
 		return nil
 	}
 
 	// If there was an error and the context was cancelled, we assume it happened due to the cancellation.
-	if ctx.Err() == context.Canceled {
-		return context.Canceled
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ctx.Err()
 	}
 
 	// If there was a timeout error and the context deadline was used, we convert the error into
@@ -317,20 +365,19 @@ func transformNetworkError(ctx context.Context, originalError error, contextDead
 		return originalError
 	}
 	if netErr, ok := originalError.(net.Error); ok && netErr.Timeout() {
-		return context.DeadlineExceeded
+		return fmt.Errorf("%w: %s", context.DeadlineExceeded, originalError.Error())
 	}
 
 	return originalError
 }
 
-func (c *connection) cancellationListenerCallback() {
-	_ = c.close()
-}
-
 func (c *connection) writeWireMessage(ctx context.Context, wm []byte) error {
 	var err error
 	if atomic.LoadInt64(&c.state) != connConnected {
-		return ConnectionError{ConnectionID: c.id, message: "connection is closed"}
+		return ConnectionError{
+			ConnectionID: c.id,
+			message:      "connection is closed",
+		}
 	}
 
 	var deadline time.Time
@@ -379,9 +426,12 @@ func (c *connection) write(ctx context.Context, wm []byte) (err error) {
 }
 
 // readWireMessage reads a wiremessage from the connection. The dst parameter will be overwritten.
-func (c *connection) readWireMessage(ctx context.Context, dst []byte) ([]byte, error) {
+func (c *connection) readWireMessage(ctx context.Context) ([]byte, error) {
 	if atomic.LoadInt64(&c.state) != connConnected {
-		return dst, ConnectionError{ConnectionID: c.id, message: "connection is closed"}
+		return nil, ConnectionError{
+			ConnectionID: c.id,
+			message:      "connection is closed",
+		}
 	}
 
 	var deadline time.Time
@@ -399,15 +449,19 @@ func (c *connection) readWireMessage(ctx context.Context, dst []byte) ([]byte, e
 		return nil, ConnectionError{ConnectionID: c.id, Wrapped: err, message: "failed to set read deadline"}
 	}
 
-	dst, errMsg, err := c.read(ctx, dst)
+	dst, errMsg, err := c.read(ctx)
 	if err != nil {
-		// We closeConnection the connection because we don't know if there are other bytes left to read.
-		c.close()
+		if c.awaitRemainingBytes == nil {
+			// If the connection was not marked as awaiting response, use the
+			// pre-CSOT behavior and close the connection because we don't know
+			// if there are other bytes left to read.
+			c.close()
+		}
 		message := errMsg
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			message = "socket was unexpectedly closed"
 		}
-		return dst, ConnectionError{
+		return nil, ConnectionError{
 			ConnectionID: c.id,
 			Wrapped:      transformNetworkError(ctx, err, contextDeadlineUsed),
 			message:      message,
@@ -417,7 +471,27 @@ func (c *connection) readWireMessage(ctx context.Context, dst []byte) ([]byte, e
 	return dst, nil
 }
 
-func (c *connection) read(ctx context.Context, dst []byte) (bytesRead []byte, errMsg string, err error) {
+func (c *connection) parseWmSizeBytes(wmSizeBytes [4]byte) (int32, error) {
+	// read the length as an int32
+	size := int32(binary.LittleEndian.Uint32(wmSizeBytes[:]))
+
+	if size < 4 {
+		return 0, fmt.Errorf("malformed message length: %d", size)
+	}
+	// In the case of a hello response where MaxMessageSize has not yet been set, use the hard-coded
+	// defaultMaxMessageSize instead.
+	maxMessageSize := c.desc.MaxMessageSize
+	if maxMessageSize == 0 {
+		maxMessageSize = defaultMaxMessageSize
+	}
+	if uint32(size) > maxMessageSize {
+		return 0, errResponseTooLarge
+	}
+
+	return size, nil
+}
+
+func (c *connection) read(ctx context.Context) (bytesRead []byte, errMsg string, err error) {
 	go c.cancellationListener.Listen(ctx, c.cancellationListenerCallback)
 	defer func() {
 		// If the context is cancelled after we finish reading the server response, the cancellation listener could fire
@@ -430,6 +504,15 @@ func (c *connection) read(ctx context.Context, dst []byte) (bytesRead []byte, er
 		}
 	}()
 
+	isCSOTTimeout := func(err error) bool {
+		// If the error was a timeout error and CSOT is enabled, instead of
+		// closing the connection mark it as awaiting response so the pool
+		// can read the response before making it available to other
+		// operations.
+		nerr := net.Error(nil)
+		return errors.As(err, &nerr) && nerr.Timeout() && csot.IsTimeoutContext(ctx)
+	}
+
 	// We use an array here because it only costs 4 bytes on the stack and means we'll only need to
 	// reslice dst once instead of twice.
 	var sizeBuf [4]byte
@@ -437,35 +520,27 @@ func (c *connection) read(ctx context.Context, dst []byte) (bytesRead []byte, er
 	// We do a ReadFull into an array here instead of doing an opportunistic ReadAtLeast into dst
 	// because there might be more than one wire message waiting to be read, for example when
 	// reading messages from an exhaust cursor.
-	_, err = io.ReadFull(c.nc, sizeBuf[:])
+	n, err := io.ReadFull(c.nc, sizeBuf[:])
 	if err != nil {
-		return dst, "incomplete read of message header", err
+		if l := int32(n); l == 0 && isCSOTTimeout(err) {
+			c.awaitRemainingBytes = &l
+		}
+		return nil, "incomplete read of message header", err
+	}
+	size, err := c.parseWmSizeBytes(sizeBuf)
+	if err != nil {
+		return nil, err.Error(), err
 	}
 
-	// read the length as an int32
-	size := (int32(sizeBuf[0])) | (int32(sizeBuf[1]) << 8) | (int32(sizeBuf[2]) << 16) | (int32(sizeBuf[3]) << 24)
-
-	// In the case of a hello response where MaxMessageSize has not yet been set, use the hard-coded
-	// defaultMaxMessageSize instead.
-	maxMessageSize := c.desc.MaxMessageSize
-	if maxMessageSize == 0 {
-		maxMessageSize = defaultMaxMessageSize
-	}
-	if uint32(size) > maxMessageSize {
-		return dst, errResponseTooLarge.Error(), errResponseTooLarge
-	}
-
-	if int(size) > cap(dst) {
-		// Since we can't grow this slice without allocating, just allocate an entirely new slice.
-		dst = make([]byte, 0, size)
-	}
-	// We need to ensure we don't accidentally read into a subsequent wire message, so we set the
-	// size to read exactly this wire message.
-	dst = dst[:size]
+	dst := make([]byte, size)
 	copy(dst, sizeBuf[:])
 
-	_, err = io.ReadFull(c.nc, dst[4:])
+	n, err = io.ReadFull(c.nc, dst[4:])
 	if err != nil {
+		remainingBytes := size - 4 - int32(n)
+		if remainingBytes > 0 && isCSOTTimeout(err) {
+			c.awaitRemainingBytes = &remainingBytes
+		}
 		return dst, "incomplete read of full message", err
 	}
 
@@ -486,34 +561,28 @@ func (c *connection) close() error {
 	return err
 }
 
+// closed returns true if the connection has been closed by the driver.
 func (c *connection) closed() bool {
 	return atomic.LoadInt64(&c.state) == connDisconnected
 }
 
 func (c *connection) idleTimeoutExpired() bool {
-	now := time.Now()
-	if c.idleTimeout > 0 {
-		idleDeadline, ok := c.idleDeadline.Load().(time.Time)
-		if ok && now.After(idleDeadline) {
-			return true
-		}
+	if c.idleTimeout == 0 {
+		return false
 	}
 
-	return false
+	idleStart, ok := c.idleStart.Load().(time.Time)
+	return ok && idleStart.Add(c.idleTimeout).Before(time.Now())
 }
 
-func (c *connection) bumpIdleDeadline() {
+func (c *connection) bumpIdleStart() {
 	if c.idleTimeout > 0 {
-		c.idleDeadline.Store(time.Now().Add(c.idleTimeout))
+		c.idleStart.Store(time.Now())
 	}
 }
 
 func (c *connection) setCanStream(canStream bool) {
 	c.canStream = canStream
-}
-
-func (c initConnection) supportsStreaming() bool {
-	return c.canStream
 }
 
 func (c *connection) setStreaming(streaming bool) {
@@ -529,12 +598,26 @@ func (c *connection) setSocketTimeout(timeout time.Duration) {
 	c.writeTimeout = timeout
 }
 
+// DriverConnectionID returns the driver connection ID.
+// TODO(GODRIVER-2824): change return type to int64.
+func (c *connection) DriverConnectionID() uint64 {
+	return c.driverConnectionID
+}
+
 func (c *connection) ID() string {
 	return c.id
 }
 
-func (c *connection) ServerConnectionID() *int32 {
+func (c *connection) ServerConnectionID() *int64 {
 	return c.serverConnectionID
+}
+
+func (c *connection) OIDCTokenGenID() uint64 {
+	return c.oidcTokenGenID
+}
+
+func (c *connection) SetOIDCTokenGenID(genID uint64) {
+	c.oidcTokenGenID = genID
 }
 
 // initConnection is an adapter used during connection initialization. It has the minimum
@@ -564,8 +647,8 @@ func (c initConnection) LocalAddress() address.Address {
 func (c initConnection) WriteWireMessage(ctx context.Context, wm []byte) error {
 	return c.writeWireMessage(ctx, wm)
 }
-func (c initConnection) ReadWireMessage(ctx context.Context, dst []byte) ([]byte, error) {
-	return c.readWireMessage(ctx, dst)
+func (c initConnection) ReadWireMessage(ctx context.Context) ([]byte, error) {
+	return c.readWireMessage(ctx)
 }
 func (c initConnection) SetStreaming(streaming bool) {
 	c.setStreaming(streaming)
@@ -574,7 +657,7 @@ func (c initConnection) CurrentlyStreaming() bool {
 	return c.getCurrentlyStreaming()
 }
 func (c initConnection) SupportsStreaming() bool {
-	return c.supportsStreaming()
+	return c.canStream
 }
 
 // Connection implements the driver.Connection interface to allow reading and writing wire
@@ -584,6 +667,8 @@ type Connection struct {
 	connection    *connection
 	refCount      int
 	cleanupPoolFn func()
+
+	oidcTokenGenID uint64
 
 	// cleanupServerFn resets the server state when a connection is returned to the connection pool
 	// via Close() or expired via Expire().
@@ -608,13 +693,13 @@ func (c *Connection) WriteWireMessage(ctx context.Context, wm []byte) error {
 
 // ReadWireMessage handles reading a wire message from the underlying connection. The dst parameter
 // will be overwritten with the new wire message.
-func (c *Connection) ReadWireMessage(ctx context.Context, dst []byte) ([]byte, error) {
+func (c *Connection) ReadWireMessage(ctx context.Context) ([]byte, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if c.connection == nil {
-		return dst, ErrConnectionClosed
+		return nil, ErrConnectionClosed
 	}
-	return c.connection.readWireMessage(ctx, dst)
+	return c.connection.readWireMessage(ctx)
 }
 
 // CompressWireMessage handles compressing the provided wire message using the underlying
@@ -714,7 +799,7 @@ func (c *Connection) ID() string {
 }
 
 // ServerConnectionID returns the server connection ID of this connection.
-func (c *Connection) ServerConnectionID() *int32 {
+func (c *Connection) ServerConnectionID() *int64 {
 	if c.connection == nil {
 		return nil
 	}
@@ -800,35 +885,62 @@ func (c *Connection) unpin(reason string) error {
 	return nil
 }
 
-func configureTLS(ctx context.Context,
-	tlsConnSource tlsConnectionSource,
-	nc net.Conn,
-	addr address.Address,
-	config *tls.Config,
-	ocspOpts *ocsp.VerifyOptions,
-) (net.Conn, error) {
-	// Ensure config.ServerName is always set for SNI.
-	if config.ServerName == "" {
-		hostname := addr.String()
-		colonPos := strings.LastIndex(hostname, ":")
-		if colonPos == -1 {
-			colonPos = len(hostname)
+// DriverConnectionID returns the driver connection ID.
+// TODO(GODRIVER-2824): change return type to int64.
+func (c *Connection) DriverConnectionID() uint64 {
+	return c.connection.DriverConnectionID()
+}
+
+// OIDCTokenGenID returns the OIDC token generation ID.
+func (c *Connection) OIDCTokenGenID() uint64 {
+	return c.oidcTokenGenID
+}
+
+// SetOIDCTokenGenID sets the OIDC token generation ID.
+func (c *Connection) SetOIDCTokenGenID(genID uint64) {
+	c.oidcTokenGenID = genID
+}
+
+// TODO: Naming?
+
+// cancellListener listens for context cancellation and notifies listeners via a
+// callback function.
+type cancellListener struct {
+	aborted bool
+	done    chan struct{}
+}
+
+// newCancellListener constructs a cancellListener.
+func newCancellListener() *cancellListener {
+	return &cancellListener{
+		done: make(chan struct{}),
+	}
+}
+
+// Listen blocks until the provided context is cancelled or listening is aborted
+// via the StopListening function. If this detects that the context has been
+// cancelled (i.e. errors.Is(ctx.Err(), context.Canceled), the provided callback is
+// called to abort in-progress work. Even if the context expires, this function
+// will block until StopListening is called.
+func (c *cancellListener) Listen(ctx context.Context, abortFn func()) {
+	c.aborted = false
+
+	select {
+	case <-ctx.Done():
+		if errors.Is(ctx.Err(), context.Canceled) {
+			c.aborted = true
+			abortFn()
 		}
 
-		hostname = hostname[:colonPos]
-		config.ServerName = hostname
+		<-c.done
+	case <-c.done:
 	}
+}
 
-	client := tlsConnSource.Client(nc, config)
-	if err := clientHandshake(ctx, client); err != nil {
-		return nil, err
-	}
-
-	// Only do OCSP verification if TLS verification is requested.
-	if !config.InsecureSkipVerify {
-		if ocspErr := ocsp.Verify(ctx, client.ConnectionState(), ocspOpts); ocspErr != nil {
-			return nil, ocspErr
-		}
-	}
-	return client, nil
+// StopListening stops the in-progress Listen call. This blocks if there is no
+// in-progress Listen call. This function will return true if the provided abort
+// callback was called when listening for cancellation on the previous context.
+func (c *cancellListener) StopListening() bool {
+	c.done <- struct{}{}
+	return c.aborted
 }

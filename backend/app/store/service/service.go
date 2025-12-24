@@ -5,12 +5,13 @@ package service
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -27,6 +28,7 @@ type DataStore struct {
 	Engine              engine.Interface
 	EditDuration        time.Duration
 	AdminStore          admin.Store
+	MinCommentSize      int
 	MaxCommentSize      int
 	MaxVotes            int
 	RestrictSameIPVotes struct {
@@ -47,7 +49,7 @@ type DataStore struct {
 	}
 
 	repliesCache struct {
-		lcw.LoadingCache
+		lcw.LoadingCache[struct{}]
 		once sync.Once
 	}
 }
@@ -69,7 +71,7 @@ type PostMetaData struct {
 	ReadOnly bool   `json:"read_only"`
 }
 
-const defaultCommentMaxSize = 2000
+const defaultCommentMaxSize = 2048
 const maxLastCommentsReply = 5000
 
 // UnlimitedVotes doesn't restrict MaxVotes
@@ -279,7 +281,7 @@ func (s *DataStore) submitImages(comment store.Comment) {
 
 	var err error
 	if comment.Imported {
-		err = s.ImageService.SubmitAndCommit(idsFn)
+		err = s.ImageService.Commit(idsFn)
 	} else {
 		s.ImageService.Submit(idsFn)
 	}
@@ -532,7 +534,8 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 func (s *DataStore) HasReplies(comment store.Comment) bool {
 	s.repliesCache.once.Do(func() {
 		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
-		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache(lcw.TTL(5 * time.Minute))
+		o := lcw.NewOpts[struct{}]()
+		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache[struct{}](o.TTL(5 * time.Minute))
 	})
 
 	if _, found := s.repliesCache.Peek(comment.ID); found {
@@ -552,7 +555,7 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 				// When this code is reached, key "comment.ID" is not in cache.
 				// Calling cache.Get on it will put it in cache with 5 minutes TTL.
 				// We call it with empty struct as value as we care about keys and not values.
-				_, _ = s.repliesCache.Get(comment.ID, func() (interface{}, error) { return struct{}{}, nil })
+				_, _ = s.repliesCache.Get(comment.ID, func() (struct{}, error) { return struct{}{}, nil })
 				return true
 			}
 		}
@@ -639,21 +642,25 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	if c.Orig == "" {
 		return fmt.Errorf("empty comment text")
 	}
-	if len([]rune(c.Orig)) > maxSize {
-		return fmt.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, len([]rune(c.Orig)))
+	commentLength := len([]rune(c.Orig))
+	if commentLength > maxSize {
+		return fmt.Errorf("comment text exceeded max allowed size %d (%d)", maxSize, commentLength)
+	}
+	if s.MinCommentSize > 0 && commentLength < s.MinCommentSize {
+		return fmt.Errorf("comment text is smaller than min allowed size %d (%d)", s.MinCommentSize, commentLength)
 	}
 	if c.User.ID == "" || c.User.Name == "" {
 		return fmt.Errorf("empty user info")
 	}
 
-	mdExt, rend := store.GetMdExtensionsAndRenderer()
+	// for validation purposes it's not important if SmartyPants formatting is disabled or enabled,
+	// while for storing the comment that flag is set based on user preference
+	mdExt, rend := store.GetMdExtensionsAndRenderer(false)
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
 	var wrongLinkError error
-	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
-		if len(node.LinkData.Destination) != 0 &&
-			!(strings.HasPrefix(string(node.LinkData.Destination), "http://") ||
-				strings.HasPrefix(string(node.LinkData.Destination), "https://") ||
-				strings.HasPrefix(string(node.LinkData.Destination), "mailto:")) {
+	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
+		if len(node.Destination) != 0 &&
+			(!strings.HasPrefix(string(node.Destination), "http://") && !strings.HasPrefix(string(node.Destination), "https://") && !strings.HasPrefix(string(node.Destination), "mailto:")) {
 			wrongLinkError = fmt.Errorf("links should start with mailto:, http:// or https://")
 			return bf.Terminate
 		}
@@ -754,7 +761,23 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 	if len(res) == 0 {
 		return store.PostInfo{}, fmt.Errorf("post %+v not found", locator)
 	}
-	return res[0], nil
+	// URL request
+	if locator.URL != "" {
+		return res[0], nil
+	}
+	// site-wide request which returned multiple store.PostInfo, so that URL and ReadOnly flags don't make sense
+	var info store.PostInfo
+	for _, i := range res {
+		info.Count += i.Count
+		if info.FirstTS.IsZero() || i.FirstTS.Before(info.FirstTS) {
+			info.FirstTS = i.FirstTS
+		}
+		if info.LastTS.IsZero() || i.LastTS.After(info.LastTS) {
+			info.LastTS = i.LastTS
+		}
+	}
+	return info, nil
+
 }
 
 // Delete comment by id
@@ -773,6 +796,34 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		s.repliesCache.Delete(commentID)
 		s.repliesCache.Delete(comment.ParentID)
 	}
+
+	// delete images from the comment if they are not reused elsewhere in comments to the same page
+	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
+		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
+		if e != nil {
+			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, err)
+			return nil
+		}
+		var imgIDs = []string{}
+		for _, cc := range comments {
+			// exclude the comment we are deleting
+			if cc.ID != commentID {
+				imgIDs = append(imgIDs, s.ImageService.ExtractPictures(cc.Text)...)
+			}
+		}
+		return imgIDs
+	}
+	commentImgIDs := s.ImageService.ExtractPictures(comment.Text)
+	pageImgIDs := idsFn()
+	for _, id := range commentImgIDs {
+		if !slices.Contains(pageImgIDs, id) {
+			if err := s.ImageService.Delete(id); err != nil {
+				log.Printf("[WARN] failed to delete image %s on comment %s deletion, %v", id, commentID, err)
+			}
+		}
+	}
+	log.Printf("[ERROR] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
+
 	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)
 }
@@ -928,7 +979,7 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 func (s *DataStore) Close() error {
 	errs := new(multierror.Error)
 	if s.repliesCache.LoadingCache != nil {
-		errs = multierror.Append(errs, s.repliesCache.LoadingCache.Close())
+		errs = multierror.Append(errs, s.repliesCache.Close())
 	}
 	if s.TitleExtractor != nil {
 		errs = multierror.Append(errs, s.TitleExtractor.Close())

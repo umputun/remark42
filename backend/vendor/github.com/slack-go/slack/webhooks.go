@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -21,9 +20,11 @@ type WebhookMessage struct {
 	Parse           string       `json:"parse,omitempty"`
 	Blocks          *Blocks      `json:"blocks,omitempty"`
 	ResponseType    string       `json:"response_type,omitempty"`
-	ReplaceOriginal bool         `json:"replace_original,omitempty"`
-	DeleteOriginal  bool         `json:"delete_original,omitempty"`
+	ReplaceOriginal bool         `json:"replace_original"`
+	DeleteOriginal  bool         `json:"delete_original"`
 	ReplyBroadcast  bool         `json:"reply_broadcast,omitempty"`
+	UnfurlLinks     bool         `json:"unfurl_links,omitempty"`
+	UnfurlMedia     bool         `json:"unfurl_media,omitempty"`
 }
 
 func PostWebhook(url string, msg *WebhookMessage) error {
@@ -55,7 +56,7 @@ func PostWebhookCustomHTTPContext(ctx context.Context, url string, httpClient *h
 		return fmt.Errorf("failed to post webhook: %w", err)
 	}
 	defer func() {
-		io.Copy(ioutil.Discard, resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}()
 

@@ -45,11 +45,13 @@ type Edit struct {
 
 // PostInfo holds summary for given post url
 type PostInfo struct {
-	URL      string    `json:"url"`
-	Count    int       `json:"count"`
-	ReadOnly bool      `json:"read_only,omitempty" bson:"read_only,omitempty"`
-	FirstTS  time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
-	LastTS   time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
+	URL         string    `json:"url,omitempty"` // can be attached to site-wide comments but won't be set then
+	Count       int       `json:"count"`
+	CountLeft   int       `json:"count_left"`                                     // used only with returning search results limited by number, otherwise zero
+	LastComment string    `json:"last_comment,omitempty"`                         // used only with returning search results limited by number
+	ReadOnly    bool      `json:"read_only,omitempty" bson:"read_only,omitempty"` // can be attached to site-wide comments but won't be set then
+	FirstTS     time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
+	LastTS      time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
 }
 
 // BlockedUser holds id and ts for blocked user
@@ -98,6 +100,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Text = ""
 	c.Orig = ""
 	c.Score = 0
+	c.Controversy = 0
 	c.Votes = map[string]bool{}
 	c.VotedIPs = make(map[string]VotedIPInfo)
 	c.Edit = nil
@@ -141,18 +144,22 @@ func (c *Comment) Snippet(limit int) string {
 	if limit <= 0 {
 		limit = snippetLen
 	}
-	cleanText := strings.Replace(c.Text, "\n", " ", -1)
+	cleanText := strings.ReplaceAll(c.Text, "\n", " ")
 	size := len([]rune(cleanText))
 	if size < limit {
 		return cleanText
 	}
-	snippet := []rune(cleanText)[:size]
+	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
 	for i := len(snippet) - 1; i >= 0; i-- {
 		if snippet[i] == ' ' {
 			snippet = snippet[:i]
 			break
 		}
+	}
+	// Don't add a space if comment is just a one single word which has been truncated.
+	if len(snippet) == limit {
+		return string(snippet) + "..."
 	}
 	return string(snippet) + " ..."
 }
@@ -172,14 +179,14 @@ func (c *Comment) SanitizeAsURL(inp string) string {
 
 func (c *Comment) escapeHTMLWithSome(inp string) string {
 	res := template.HTMLEscapeString(inp)
-	res = strings.Replace(res, "&amp;", "&", -1)
-	res = strings.Replace(res, "&#34;", "\"", -1)
-	res = strings.Replace(res, "&#39;", "'", -1)
+	res = strings.ReplaceAll(res, "&amp;", "&")
+	res = strings.ReplaceAll(res, "&#34;", "\"")
+	res = strings.ReplaceAll(res, "&#39;", "'")
 	return res
 }
 
-// SanitizeText used to sanitize any input string
+// SanitizeText used to sanitize any input string, and removes any HTML tags
 func (c *Comment) SanitizeText(inp string) string {
-	clean := bluemonday.UGCPolicy().Sanitize(inp)
-	return c.escapeHTMLWithSome(clean)
+	clean := bluemonday.StrictPolicy().Sanitize(inp)
+	return strings.TrimSpace(c.escapeHTMLWithSome(clean))
 }

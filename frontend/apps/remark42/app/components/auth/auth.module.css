@@ -195,13 +195,3 @@
   color: var(--error-color);
   line-height: 1.2;
 }
-
-.telegramQR {
-  display: block;
-  margin: 12px auto;
-  width: 75%;
-}
-
-.telegram {
-  margin-bottom: 0;
-}

@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/httputil"
 )
 
 // ClientEncryptionOptions represents all possible options used to configure a ClientEncryption instance.
@@ -25,7 +25,7 @@ type ClientEncryptionOptions struct {
 // ClientEncryption creates a new ClientEncryptionOptions instance.
 func ClientEncryption() *ClientEncryptionOptions {
 	return &ClientEncryptionOptions{
-		HTTPClient: internal.DefaultHTTPClient,
+		HTTPClient: httputil.DefaultHTTPClient,
 	}
 }
 
@@ -122,6 +122,9 @@ func BuildTLSConfig(tlsOpts map[string]interface{}) (*tls.Config, error) {
 }
 
 // MergeClientEncryptionOptions combines the argued ClientEncryptionOptions in a last-one wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeClientEncryptionOptions(opts ...*ClientEncryptionOptions) *ClientEncryptionOptions {
 	ceo := ClientEncryption()
 	for _, opt := range opts {

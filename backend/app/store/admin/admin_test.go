@@ -6,6 +6,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStaticStore_StoreWithoutSites(t *testing.T) {
+	var ks Store = NewStaticKeyStore("key123")
+	enabled, err := ks.Enabled("any")
+	assert.NoError(t, err)
+	assert.True(t, enabled, "on empty store all sites are enabled")
+	assert.NoError(t, ks.OnEvent("test", EvCreate), "static store does nothing OnEvent")
+
+	// empty key
+	ks = NewStaticKeyStore("")
+	key, err := ks.Key("any")
+	assert.Error(t, err, "empty key")
+	assert.Empty(t, key)
+}
+
 func TestStaticStore_Get(t *testing.T) {
 	var ks Store = NewStaticStore("key123", []string{"s1", "s2", "s3"},
 		[]string{"123", "xyz"}, "aa@example.com")

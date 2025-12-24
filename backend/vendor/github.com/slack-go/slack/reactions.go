@@ -67,10 +67,11 @@ const (
 
 // ListReactionsParameters is the inputs to find all reactions by a user.
 type ListReactionsParameters struct {
-	User  string
-	Count int
-	Page  int
-	Full  bool
+	User   string
+	TeamID string
+	Count  int
+	Page   int
+	Full   bool
 }
 
 // NewListReactionsParameters initializes the inputs to find all reactions
@@ -128,11 +129,13 @@ func (res listReactionsResponseFull) extractReactedItems() []ReactedItem {
 }
 
 // AddReaction adds a reaction emoji to a message, file or file comment.
+// For more details, see AddReactionContext documentation.
 func (api *Client) AddReaction(name string, item ItemRef) error {
 	return api.AddReactionContext(context.Background(), name, item)
 }
 
 // AddReactionContext adds a reaction emoji to a message, file or file comment with a custom context.
+// Slack API docs: https://api.slack.com/methods/reactions.add
 func (api *Client) AddReactionContext(ctx context.Context, name string, item ItemRef) error {
 	values := url.Values{
 		"token": {api.token},
@@ -162,11 +165,13 @@ func (api *Client) AddReactionContext(ctx context.Context, name string, item Ite
 }
 
 // RemoveReaction removes a reaction emoji from a message, file or file comment.
+// For more details, see RemoveReactionContext documentation.
 func (api *Client) RemoveReaction(name string, item ItemRef) error {
 	return api.RemoveReactionContext(context.Background(), name, item)
 }
 
 // RemoveReactionContext removes a reaction emoji from a message, file or file comment with a custom context.
+// Slack API docs: https://api.slack.com/methods/reactions.remove
 func (api *Client) RemoveReactionContext(ctx context.Context, name string, item ItemRef) error {
 	values := url.Values{
 		"token": {api.token},
@@ -196,11 +201,13 @@ func (api *Client) RemoveReactionContext(ctx context.Context, name string, item 
 }
 
 // GetReactions returns details about the reactions on an item.
+// For more details, see GetReactionsContext documentation.
 func (api *Client) GetReactions(item ItemRef, params GetReactionsParameters) ([]ItemReaction, error) {
 	return api.GetReactionsContext(context.Background(), item, params)
 }
 
-// GetReactionsContext returns details about the reactions on an item with a custom context
+// GetReactionsContext returns details about the reactions on an item with a custom context.
+// Slack API docs: https://api.slack.com/methods/reactions.get
 func (api *Client) GetReactionsContext(ctx context.Context, item ItemRef, params GetReactionsParameters) ([]ItemReaction, error) {
 	values := url.Values{
 		"token": {api.token},
@@ -234,17 +241,22 @@ func (api *Client) GetReactionsContext(ctx context.Context, item ItemRef, params
 }
 
 // ListReactions returns information about the items a user reacted to.
+// For more details, see ListReactionsContext documentation.
 func (api *Client) ListReactions(params ListReactionsParameters) ([]ReactedItem, *Paging, error) {
 	return api.ListReactionsContext(context.Background(), params)
 }
 
 // ListReactionsContext returns information about the items a user reacted to with a custom context.
+// Slack API docs: https://api.slack.com/methods/reactions.list
 func (api *Client) ListReactionsContext(ctx context.Context, params ListReactionsParameters) ([]ReactedItem, *Paging, error) {
 	values := url.Values{
 		"token": {api.token},
 	}
 	if params.User != DEFAULT_REACTIONS_USER {
 		values.Add("user", params.User)
+	}
+	if params.TeamID != "" {
+		values.Add("team_id", params.TeamID)
 	}
 	if params.Count != DEFAULT_REACTIONS_COUNT {
 		values.Add("count", strconv.Itoa(params.Count))

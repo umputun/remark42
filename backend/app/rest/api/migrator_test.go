@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,22 @@ func TestMigrator_Import(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
 }
 
 func TestMigrator_ImportForm(t *testing.T) {
@@ -84,13 +101,29 @@ func TestMigrator_ImportForm(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
 }
 
 func TestMigrator_ImportFromWP(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	r := strings.NewReader(strings.Replace(xmlTestWP, "'", "`", -1))
+	r := strings.NewReader(strings.ReplaceAll(xmlTestWP, "'", "`"))
 
 	client := &http.Client{Timeout: 1 * time.Second}
 	defer client.CloseIdleConnections()
@@ -108,6 +141,22 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://realmenweardress.es/2010/07/do-you-rp/")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 3, comments.Info.Count)
+	require.Equal(t, 3, len(comments.Comments))
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://realmenweardress.es/2010/07/do-you-rp/")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 3, comments.Info.Count)
+	require.Equal(t, 2, len(comments.Comments), "2 comments with 1 reply")
 }
 
 func TestMigrator_ImportFromCommento(t *testing.T) {
@@ -115,7 +164,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 	defer teardown()
 
 	r := strings.NewReader(`{"version":1,"comments":[{"commentHex":"7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
-"domain":"example.com","url":"https://example.com/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
+"domain":"example.com","url":"/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
 "markdown":"Example content","html":"","parentHex":"root","score":0,"state":"approved","creationDate":"2021-03-17T12:09:47.722181Z",
 "direction":0,"deleted":false}],"commenters":[{"commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
 "email":"somegreatmail@gmail.com","name":"User5276","link":"https://example.com/profile/257","photo":"https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",
@@ -137,6 +186,63 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://example.com/blog/post/1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://example.com/blog/post/1")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
+}
+
+func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	r, err := os.Open("testdata/commento.json")
+	require.NoError(t, err)
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
+	assert.NoError(t, err)
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "{\"status\":\"import request accepted\"}\n", string(b))
+	assert.NoError(t, resp.Body.Close())
+
+	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://example.com/example")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 7, comments.Info.Count)
+	require.Equal(t, 7, len(comments.Comments))
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://example.com/example")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 7, comments.Info.Count)
+	require.Equal(t, 5, len(comments.Comments), "five comments with two replies")
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
@@ -197,6 +303,20 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 50, comments.Info.Count)
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 50, comments.Info.Count)
 }
 
 func TestMigrator_ImportWaitExpired(t *testing.T) {
@@ -236,6 +356,14 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
 
 	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://example.com/example")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 0, comments.Info.Count)
+	require.Equal(t, 0, len(comments.Comments))
 }
 
 func TestMigrator_Export(t *testing.T) {
@@ -262,6 +390,16 @@ func TestMigrator_Export(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
+
+	// export wrong site, should result in error
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", http.NoBody)
@@ -339,6 +477,7 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 2, comments.Info.Count)
+	require.Equal(t, 2, len(comments.Comments))
 	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
@@ -347,6 +486,7 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
 	require.True(t, comments.Info.ReadOnly)
 
 	// we want remap urls to another domain - www.remark42.com
@@ -364,6 +504,16 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 2, comments.Info.Count)
+	require.Equal(t, 2, len(comments.Comments))
+	require.False(t, comments.Info.ReadOnly)
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://www.remark42.com/demo/")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 2, comments.Info.Count)
+	require.Equal(t, 2, len(comments.Comments))
 	require.False(t, comments.Info.ReadOnly)
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://www.remark42.com/demo-another/")
@@ -372,6 +522,16 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
+	require.True(t, comments.Info.ReadOnly)
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://www.remark42.com/demo-another/")
+	require.Equal(t, http.StatusOK, code)
+	comments = commentsWithInfo{}
+	err = json.Unmarshal([]byte(res), &comments)
+	require.NoError(t, err)
+	require.Equal(t, 1, comments.Info.Count)
+	require.Equal(t, 1, len(comments.Comments))
 	require.True(t, comments.Info.ReadOnly)
 
 	// should find nothing from previous url
@@ -381,6 +541,7 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
+	require.Equal(t, 0, len(comments.Comments))
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://remark42.com/demo-another/")
 	require.Equal(t, http.StatusOK, code)
@@ -388,6 +549,7 @@ func TestMigrator_Remap(t *testing.T) {
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
+	require.Equal(t, 0, len(comments.Comments))
 }
 
 func TestMigrator_RemapReject(t *testing.T) {

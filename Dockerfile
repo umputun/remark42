@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:16.15.1-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:16.20-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
@@ -11,7 +11,7 @@ COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
     apk add --no-cache --update git && \
-    npm i -g pnpm@7; \
+    npm i -g pnpm@8; \
   fi
 
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
@@ -45,7 +45,7 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM umputun/baseimage:buildgo-v1.17.0 AS build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -54,14 +54,14 @@ ARG GIT_BRANCH
 ARG SKIP_BACKEND_TEST
 ARG BACKEND_TEST_TIMEOUT
 
+# install gcc in order to be able to go test package with -race
+RUN apk --no-cache add gcc libc-dev
+
 ADD backend /build/backend
 # to embed the frontend files statically into Remark42 binary
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
 RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 WORKDIR /build/backend
-
-# install gcc in order to be able to go test package with -race
-RUN apk --no-cache add gcc libc-dev
 
 RUN echo go version: `go version`
 
@@ -81,7 +81,7 @@ RUN \
     echo "version=$version" && \
     go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
 
-FROM umputun/baseimage:app-v1.9.2
+FROM umputun/baseimage:app-v1.17.0
 
 ARG GITHUB_SHA
 
@@ -89,7 +89,7 @@ LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
       org.opencontainers.image.description="Remark42 comment engine" \
       org.opencontainers.image.documentation="https://remark42.com/docs/getting-started/" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/umputun/remark42.git" \
+      org.opencontainers.image.source="https://github.com/umputun/remark42" \
       org.opencontainers.image.title="Remark42" \
       org.opencontainers.image.url="https://remark42.com/" \
       org.opencontainers.image.revision="${GITHUB_SHA}"

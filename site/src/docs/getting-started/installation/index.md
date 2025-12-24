@@ -2,6 +2,17 @@
 title: Installation
 ---
 
+## System Requirements
+
+Remark42 is designed to be lightweight and efficient. Based on production usage statistics from busy installations:
+
+- **CPU**: Minimal usage (typically under 0.1%)
+- **Memory**: ~80MiB RAM (less than 4% of 2GB)
+- **Network**: Moderate bandwidth requirements
+- **Disk**: Small footprint (under 200MB for a 5-year-old installation with regular activity)
+
+These requirements make Remark42 suitable for running on small VPS instances, shared hosting environments, or even on Raspberry Pi and similar devices.
+
 ## Setup Remark42 Instance on Your Server
 
 ### Installation in Docker
@@ -10,8 +21,8 @@ _This is the recommended way to run Remark42_
 
 - copy provided [`docker-compose.yml`](https://github.com/umputun/remark42/blob/master/docker-compose.yml) and customize for your needs
 - make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
-- pull prepared images from the Docker Hub and start - `docker-compose pull && docker-compose up -d`
-- alternatively, compile from the sources - `docker-compose build && docker-compose up -d`
+- pull prepared images from the Docker Hub and start - `docker compose pull && docker compose up -d`
+- alternatively, compile from the sources - `docker compose build && docker compose up -d`
 
 ### Installation with Binary
 
@@ -19,6 +30,47 @@ _This is the recommended way to run Remark42_
 - unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 - alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`
+
+#### Installation as a systemd Service
+
+For a clean persistent setup without lengthy command line parameters:
+
+1. Create an environment file `/etc/remark42.env`:
+   ```
+   SECRET=12345
+   REMARK_URL=http://127.0.0.1:8080
+   ```
+
+1. Create a systemd service file `/etc/systemd/system/remark42.service`:
+   ```
+   [Unit]
+   Description=Remark42 Commenting Server
+   After=syslog.target
+   After=network.target
+
+   [Service]
+   Type=simple
+   EnvironmentFile=/etc/remark42.env
+   ExecStart=/usr/local/bin/remark42 server
+   WorkingDirectory=/var/www/remark42       # directory where data files are stored and automatic backups will be created
+   Restart=on-failure
+   User=nobody                              # another good alternative is `www-data`
+   Group=nogroup                            # another good alternative is `www-data`
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+1. Enable and start the service:
+   ```
+   sudo systemctl enable remark42.service
+   sudo systemctl start remark42.service
+   ```
+
+1. To update configuration, edit the environment file and restart the service:
+   ```
+   sudo systemctl restart remark42.service
+   ```
 
 ## Setup on Your Website
 
@@ -29,10 +81,10 @@ Add config for Remark on a page of your site ([here](/docs/configuration/fronten
 
 ```html
 <script>
-  var remark_config = {
-    host: 'REMARK_URL',
-    site_id: 'YOUR_SITE_ID',
-  }
+	var remark_config = {
+		host: "REMARK_URL",
+		site_id: "YOUR_SITE_ID",
+	}
 </script>
 ```
 
@@ -40,10 +92,10 @@ For example:
 
 ```html
 <script>
-  var remark_config = {
-    host: 'https://demo.remark42.com',
-    site_id: 'remark',
-  }
+	var remark_config = {
+		host: "https://demo.remark42.com",
+		site_id: "remark",
+	}
 </script>
 ```
 
@@ -76,5 +128,5 @@ To verify if Remark42 has been properly installed, check a demo page at `${REMAR
 
 ### Build from the source
 
-* to build Docker container - `make docker`. This command will produce container `umputun/remark42`
-* to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce an executable `remark42` file with everything embedded
+- to build Docker container - `make docker`. This command will produce container `ghcr.io/umputun/remark42`
+- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This step will produce an executable `remark42` file with everything embedded

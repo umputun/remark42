@@ -18,6 +18,7 @@ import { persistEmail } from 'components/auth/auth.utils';
 import enMessages from 'locales/en.json';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
+import { RequestError } from '../../../utils/errorUtils';
 
 const emailVerificationForSubscribeMock = emailVerificationForSubscribe as unknown as jest.Mock<
   ReturnType<typeof emailVerificationForSubscribe>
@@ -28,6 +29,8 @@ const emailConfirmationForSubscribeMock = emailConfirmationForSubscribe as unkno
 const unsubscribeFromEmailUpdatesMock = unsubscribeFromEmailUpdates as unknown as jest.Mock<
   ReturnType<typeof unsubscribeFromEmailUpdates>
 >;
+
+emailVerificationForSubscribeMock.mockImplementation((email) => Promise.resolve({ address: email, updated: false }));
 
 const initialStore = {
   user,
@@ -104,7 +107,7 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
   });
 
-  it('should pass throw subscribe process', async () => {
+  it('should pass through subscribe process', async () => {
     const wrapper = createWrapper();
 
     const input = wrapper.find('input');
@@ -138,6 +141,47 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
   });
 
+  it('should handle http error 409: already subscribed', async () => {
+    emailVerificationForSubscribeMock.mockImplementationOnce(() => Promise.reject(new RequestError('', 409)));
+
+    const wrapper = createWrapper();
+
+    const input = wrapper.find('input');
+    const form = wrapper.find('form');
+
+    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
+    input.simulate('input');
+    form.simulate('submit');
+
+    await sleep();
+    wrapper.update();
+
+    expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
+  });
+
+  it('should pass through subscribe process without confirmation', async () => {
+    emailVerificationForSubscribeMock.mockImplementationOnce((email) =>
+      Promise.resolve({ address: email, updated: true })
+    );
+
+    const wrapper = createWrapper();
+
+    const input = wrapper.find('input');
+    const form = wrapper.find('form');
+
+    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
+    input.simulate('input');
+    form.simulate('submit');
+
+    expect(emailVerificationForSubscribeMock).toHaveBeenCalledWith('some@email.com');
+
+    await sleep();
+    wrapper.update();
+
+    expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+  });
+
   it('should fill in email from local storage', async () => {
     const expected = 'someone@email.com';
     persistEmail(expected);
@@ -149,7 +193,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
   it('should send form by paste valid token', async () => {
     const wrapper = createWrapper();
-    const onInputEmail = wrapper.find(Input).prop('onInput');
+    const onInputEmail = wrapper.find(Input).prop('onInput') as Function;
     const form = wrapper.find('form');
 
     expect(typeof onInputEmail === 'function').toBe(true);
@@ -176,7 +220,7 @@ describe('<SubscribeByEmailForm/>', () => {
   it('should pass throw unsubscribe process', async () => {
     const store = mockStore({ ...initialStore, user: { email_subscription: true } });
     const wrapper = createWrapper(store);
-    const onClick = wrapper.find(Button).prop('onClick');
+    const onClick = wrapper.find(Button).prop('onClick') as Function;
 
     expect(typeof onClick === 'function').toBe(true);
 

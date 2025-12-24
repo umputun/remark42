@@ -2,7 +2,7 @@ import { h, Component, createRef, Fragment } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import b, { Mix } from 'bem-react-helper';
 
-import { User, Theme, Image, ApiError } from 'common/types';
+import { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
@@ -14,6 +14,7 @@ import { TextareaAutosize } from 'components/textarea-autosize';
 import { Auth } from 'components/auth';
 
 import { SubscribeByEmail } from './__subscribe-by-email';
+import { SubscribeByTelegram } from './__subscribe-by-telegram';
 import { SubscribeByRSS } from './__subscribe-by-rss';
 
 import { MarkdownToolbar } from './markdown-toolbar';
@@ -57,7 +58,10 @@ const ImageMimeRegex = /image\//i;
 export class CommentForm extends Component<Props, State> {
   /** reference to textarea element */
   textareaRef = createRef<HTMLTextAreaElement>();
-  static textareaId = 0;
+  /** global counter for generating unique textarea IDs across all instances */
+  static textareaCounter = 0;
+  /** unique textarea ID for this instance */
+  readonly textareaId: string;
 
   state = {
     preview: null,
@@ -74,7 +78,8 @@ export class CommentForm extends Component<Props, State> {
 
     const savedComment = getPersistedComment(props.id);
     this.state.text = props.value ?? savedComment ?? '';
-    CommentForm.textareaId += 1;
+    CommentForm.textareaCounter += 1;
+    this.textareaId = `textarea_${CommentForm.textareaCounter}`;
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -155,12 +160,11 @@ export class CommentForm extends Component<Props, State> {
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
       await this.props.onSubmit(text, settings.pageTitle || document.title);
-    } catch (e) {
+    } catch (err) {
       this.setState({
         isDisabled: false,
         isErrorShown: true,
-        // @ts-ignore
-        errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+        errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
       });
       return;
     }
@@ -179,8 +183,8 @@ export class CommentForm extends Component<Props, State> {
     this.props
       .getPreview(text)
       .then((preview) => this.setState({ preview }))
-      .catch(() => {
-        this.setState({ isErrorShown: true, errorMessage: null });
+      .catch((err) => {
+        this.setState({ isErrorShown: true, errorMessage: extractErrorMessageFromResponse(err, this.props.intl) });
       });
   };
 
@@ -259,13 +263,13 @@ export class CommentForm extends Component<Props, State> {
   }
 
   /** wrapper with error handling for props.uploadImage */
-  uploadImage = (file: File): Promise<Image | Error> => {
+  uploadImage = async (file: File): Promise<Image | Error> => {
     const intl = this.props.intl;
-    return this.props.uploadImage!(file).catch((e: ApiError | string) => {
+    return this.props.uploadImage!(file).catch((err) => {
       return new Error(
         intl.formatMessage(messages.uploadFileFail, {
           fileName: file.name,
-          errorMessage: extractErrorMessageFromResponse(e, this.props.intl),
+          errorMessage: extractErrorMessageFromResponse(err, this.props.intl),
         })
       );
     });
@@ -376,9 +380,11 @@ export class CommentForm extends Component<Props, State> {
   renderSubscribeButtons = () => {
     const isEmailNotifications = StaticStore.config.email_notifications;
     const isEmailSubscription = isEmailNotifications && settings.isEmailSubscription;
-    const { isRssSubscription } = settings;
+    const isTelegramNotificationsEnabledOnBackend = StaticStore.config.telegram_notifications;
+    const isTelegramSubscription = isTelegramNotificationsEnabledOnBackend && settings.isTelegramSubscription;
 
-    if (!isRssSubscription && !isEmailSubscription) {
+    const { isRssSubscription } = settings;
+    if (!isRssSubscription && !isEmailSubscription && !isTelegramSubscription) {
       return null;
     }
 
@@ -393,6 +399,13 @@ export class CommentForm extends Component<Props, State> {
           </>
         )}
         {isEmailSubscription && <SubscribeByEmail />}
+        {(isRssSubscription && isTelegramSubscription) || (isEmailSubscription && isTelegramSubscription) ? (
+          <>
+            {' '}
+            <FormattedMessage id="commentForm.subscribe-or" defaultMessage="or" />{' '}
+          </>
+        ) : null}
+        {isTelegramSubscription && <SubscribeByTelegram />}
       </>
     );
   };
@@ -407,7 +420,6 @@ export class CommentForm extends Component<Props, State> {
       edit: <FormattedMessage id="commentForm.save" defaultMessage="Save" />,
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
-    const textareaId = `textarea_${CommentForm.textareaId}`;
     const label = buttonText || Labels[mode || 'main'];
     const placeholderMessage = intl.formatMessage(messages.placeholder);
     const isSimpleView = StaticStore.config.simple_view;
@@ -434,14 +446,14 @@ export class CommentForm extends Component<Props, State> {
               intl={intl}
               allowUpload={Boolean(uploadImage)}
               uploadImages={this.uploadImages}
-              textareaId={textareaId}
+              textareaId={this.textareaId}
             />
           </div>
         )}
         <div className="comment-form__field-wrapper">
           <TextExpander>
             <TextareaAutosize
-              id={textareaId}
+              id={this.textareaId}
               ref={this.textareaRef}
               onPaste={this.onPaste}
               className="comment-form__field"
@@ -452,6 +464,7 @@ export class CommentForm extends Component<Props, State> {
               disabled={isDisabled}
               autofocus={!!autofocus}
               spellcheck={true}
+              dir="auto"
             />
           </TextExpander>
           {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
@@ -506,11 +519,10 @@ export class CommentForm extends Component<Props, State> {
           !!preview && (
             <div className="comment-form__preview-wrapper">
               <div
-                className={b('comment-form__preview', {
-                  mix: b('raw-content', {}, { theme }),
-                })}
+                className="comment-form__preview raw-content"
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
+                dir="auto"
               />
             </div>
           )

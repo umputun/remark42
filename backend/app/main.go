@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -23,7 +24,8 @@ type Opts struct {
 	CleanupCmd cmd.CleanupCommand `command:"cleanup"`
 	RemapCmd   cmd.RemapCommand   `command:"remap"`
 
-	RemarkURL    string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
+	RemarkURL string `long:"url" env:"REMARK_URL" required:"true" description:"url to remark"`
+	// SharedSecret is only used in server command, but defined for all commands for historical reasons
 	SharedSecret string `long:"secret" env:"SECRET" required:"true" description:"the shared secret key used to sign JWT, should be a random, long, hard-to-guess string"`
 
 	Dbg bool `long:"dbg" env:"DEBUG" description:"debug mode"`
@@ -54,7 +56,8 @@ func main() {
 	}
 
 	if _, err := p.Parse(); err != nil {
-		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
+		var flagsErr *flags.Error
+		if errors.As(err, &flagsErr) && flagsErr.Type == flags.ErrHelp {
 			os.Exit(0)
 		}
 		os.Exit(1)
@@ -96,7 +99,7 @@ func getDump() string {
 	return string(stacktrace[:length])
 }
 
-// nolint:gochecknoinits // can't avoid it in this place
+//nolint:gochecknoinits // can't avoid it in this place
 func init() {
 	// catch SIGQUIT and print stack traces
 	sigChan := make(chan os.Signal, 1)

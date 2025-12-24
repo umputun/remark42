@@ -2,8 +2,8 @@
 # starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
 # UI on http://127.0.0.1:8080/web
 #
-# build remark42 docker image - docker-compose -f compose-dev-frontend.yml build
-# start remark42 service - docker-compose -f compose-dev-frontend.yml up
+# build remark42 docker image - docker compose -f compose-dev-frontend.yml build
+# start remark42 service - docker compose -f compose-dev-frontend.yml up
 version: "2"
 
 services:
@@ -16,7 +16,7 @@ services:
         - SKIP_FRONTEND_BUILD=true
         # - NODE_ENV=development
 
-    image: umputun/remark42:dev
+    image: ghcr.io/umputun/remark42:dev
     container_name: "remark42-dev"
     hostname: "remark42-dev"
 

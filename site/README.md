@@ -4,8 +4,8 @@
 
 Requirements:
 
-* [Node.js v14](https://nodejs.org/en/) or higher - install from package or with Homebrew
-* Yarn 1.22 or higher - once you have Node.js, run `npm i -g yarn`
+- [Node.js v20](https://nodejs.org/en/) or higher - install from package or with Homebrew
+- Yarn 1.22 or higher - once you have Node.js, run `npm i -g yarn`
 
 ### Development
 
@@ -29,8 +29,8 @@ yarn build
 Install dependencies and run development server inside Docker:
 
 ```shell
-docker-compose build
-docker-compose up server
+docker compose build
+docker compose up server
 ```
 
 Then serve files from `./build` with your favorite server
@@ -38,7 +38,7 @@ Then serve files from `./build` with your favorite server
 ### Development
 
 ```shell
-docker-compose up --build server
+docker compose up --build server
 ```
 
 Then head to http://localhost:8080

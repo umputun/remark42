@@ -45,6 +45,12 @@ type UpdateOptions struct {
 	// Values must be constant or closed expressions that do not reference document fields. Parameters can then be
 	// accessed as variables in an aggregate expression context (e.g. "$$var").
 	Let interface{}
+
+	// If true, the server accepts empty Timestamp as a literal rather than replacing it with the current time.
+	//
+	// Deprecated: This option is for internal use only and should not be set. It may be changed or removed in any
+	// release.
+	BypassEmptyTsReplacement *bool
 }
 
 // Update creates a new UpdateOptions instance.
@@ -95,6 +101,9 @@ func (uo *UpdateOptions) SetLet(l interface{}) *UpdateOptions {
 }
 
 // MergeUpdateOptions combines the given UpdateOptions instances into a single UpdateOptions in a last-one-wins fashion.
+//
+// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
+// single options struct instead.
 func MergeUpdateOptions(opts ...*UpdateOptions) *UpdateOptions {
 	uOpts := Update()
 	for _, uo := range opts {
@@ -121,6 +130,9 @@ func MergeUpdateOptions(opts ...*UpdateOptions) *UpdateOptions {
 		}
 		if uo.Let != nil {
 			uOpts.Let = uo.Let
+		}
+		if uo.BypassEmptyTsReplacement != nil {
+			uOpts.BypassEmptyTsReplacement = uo.BypassEmptyTsReplacement
 		}
 	}
 

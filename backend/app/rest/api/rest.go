@@ -15,14 +15,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v7"
-	"github.com/didip/tollbooth_chi"
+	"github.com/didip/tollbooth/v8"
+	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/go-chi/render"
-	"github.com/go-pkgz/auth"
-	"github.com/go-pkgz/lcw"
+	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
@@ -59,26 +58,29 @@ type Rest struct {
 		Low      int
 		Critical int
 	}
-	UpdateLimiter       float64
-	EmailNotifications  bool
-	TelegramBotUsername string
-	EmojiEnabled        bool
-	SimpleView          bool
-	ProxyCORS           bool
-	SendJWTHeader       bool
-	AllowedAncestors    []string // sets Content-Security-Policy "frame-ancestors ..."
-	SubscribersOnly     bool
-	DisableSignature    bool // prevent signature from being added to headers
+	UpdateLimiter              float64
+	EmailNotifications         bool
+	TelegramNotifications      bool
+	EmojiEnabled               bool
+	SimpleView                 bool
+	ProxyCORS                  bool
+	SendJWTHeader              bool
+	AllowedAncestors           []string // sets Content-Security-Policy "frame-ancestors ..."
+	SubscribersOnly            bool
+	DisableSignature           bool // prevent signature from being added to headers
+	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	ExternalImageProxy         bool
 
 	SSLConfig   SSLConfig
 	httpsServer *http.Server
 	httpServer  *http.Server
 	lock        sync.Mutex
 
-	pubRest   public
-	privRest  private
-	adminRest admin
-	rssRest   rss
+	pubRest          public
+	privRest         private
+	adminRest        admin
+	rssRest          rss
+	openRouteLimiter float64
 }
 
 // LoadingCache defines interface for caching
@@ -89,12 +91,17 @@ type LoadingCache interface {
 }
 
 const hardBodyLimit = 1024 * 64 // limit size of body
-
+const openRouteLimiter = 10     // limit for open routes
 const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info,omitempty"`
+}
+
+type treeWithInfo struct {
+	*service.Tree
+	Info store.PostInfo `json:"info,omitempty"`
 }
 
 // Run the lister and request's router, activate rest server
@@ -192,8 +199,13 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 }
 
 func (s *Rest) routes() chi.Router {
+	if s.openRouteLimiter == 0 {
+		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
+		s.openRouteLimiter = openRouteLimiter
+	}
 	router := chi.NewRouter()
 	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
 	}
@@ -215,11 +227,6 @@ func (s *Rest) routes() chi.Router {
 		router.Use(corsMiddleware.Handler)
 	}
 
-	if len(s.AllowedAncestors) > 0 {
-		log.Printf("[INFO] allowed from %+v only", s.AllowedAncestors)
-		router.Use(frameAncestors(s.AllowedAncestors))
-	}
-
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
 	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
 
@@ -227,14 +234,14 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(2, nil)), middleware.NoCache)
+		r.Use(logInfoWithBody, rateLimiter(2), middleware.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+		r.Use(rateLimiter(100))
 		r.Mount("/avatar", avatarHandler)
 	})
 
@@ -244,14 +251,14 @@ func (s *Rest) routes() chi.Router {
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(middleware.Timeout(5 * time.Second))
-			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+			rava.Use(rateLimiter(100))
 			rava.Mount("/avatar", avatarHandler)
 		})
 
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(rateLimiter(s.openRouteLimiter))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Get("/find", s.pubRest.findCommentsCtrl)
@@ -274,7 +281,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes, cached
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(rateLimiter(10))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
 			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
@@ -283,7 +290,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(30 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rauth.Use(rateLimiter(10))
 			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.privRest.userInfoCtrl)
 			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
@@ -292,7 +299,7 @@ func (s *Rest) routes() chi.Router {
 		// admin routes, require auth and admin users only
 		rapi.Route("/admin", func(radmin chi.Router) {
 			radmin.Use(middleware.Timeout(30 * time.Second))
-			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			radmin.Use(rateLimiter(10))
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
@@ -318,7 +325,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(rateLimiter(s.updateLimiter()))
 			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 			rauth.Use(middleware.NoCache, logInfoWithBody)
 
@@ -338,7 +345,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, anonymous rejected
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(rateLimiter(s.updateLimiter()))
 			rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/picture", s.privRest.savePictureCtrl)
@@ -348,7 +355,7 @@ func (s *Rest) routes() chi.Router {
 	// open routes on root level
 	router.Group(func(rroot chi.Router) {
 		rroot.Use(middleware.Timeout(10 * time.Second))
-		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
+		rroot.Use(rateLimiter(50))
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
 		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
@@ -369,16 +376,17 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 	}
 
 	privGrp := private{
-		dataService:      s.DataService,
-		cache:            s.Cache,
-		imageService:     s.ImageService,
-		commentFormatter: s.CommentFormatter,
-		readOnlyAge:      s.ReadOnlyAge,
-		authenticator:    s.Authenticator,
-		notifyService:    s.NotifyService,
-		telegramService:  s.TelegramService,
-		remarkURL:        s.RemarkURL,
-		anonVote:         s.AnonVote,
+		dataService:                s.DataService,
+		cache:                      s.Cache,
+		imageService:               s.ImageService,
+		commentFormatter:           s.CommentFormatter,
+		readOnlyAge:                s.ReadOnlyAge,
+		authenticator:              s.Authenticator,
+		notifyService:              s.NotifyService,
+		telegramService:            s.TelegramService,
+		remarkURL:                  s.RemarkURL,
+		anonVote:                   s.AnonVote,
+		disableFancyTextFormatting: s.DisableFancyTextFormatting,
 	}
 
 	admGrp := admin{
@@ -414,44 +422,46 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	emails, _ := s.DataService.AdminStore.Email(siteID)
 
 	cnf := struct {
-		Version             string   `json:"version"`
-		EditDuration        int      `json:"edit_duration"`
-		AdminEdit           bool     `json:"admin_edit"`
-		MaxCommentSize      int      `json:"max_comment_size"`
-		Admins              []string `json:"admins"`
-		AdminEmail          string   `json:"admin_email"`
-		Auth                []string `json:"auth_providers"`
-		AnonVote            bool     `json:"anon_vote"`
-		LowScore            int      `json:"low_score"`
-		CriticalScore       int      `json:"critical_score"`
-		PositiveScore       bool     `json:"positive_score"`
-		ReadOnlyAge         int      `json:"readonly_age"`
-		MaxImageSize        int      `json:"max_image_size"`
-		EmailNotifications  bool     `json:"email_notifications"`
-		TelegramBotUsername string   `json:"telegram_bot_username"`
-		EmojiEnabled        bool     `json:"emoji_enabled"`
-		SimpleView          bool     `json:"simple_view"`
-		SendJWTHeader       bool     `json:"send_jwt_header"`
-		SubscribersOnly     bool     `json:"subscribers_only"`
+		Version               string   `json:"version"`
+		EditDuration          int      `json:"edit_duration"`
+		AdminEdit             bool     `json:"admin_edit"`
+		MinCommentSize        int      `json:"min_comment_size"`
+		MaxCommentSize        int      `json:"max_comment_size"`
+		Admins                []string `json:"admins"`
+		AdminEmail            string   `json:"admin_email"`
+		Auth                  []string `json:"auth_providers"`
+		AnonVote              bool     `json:"anon_vote"`
+		LowScore              int      `json:"low_score"`
+		CriticalScore         int      `json:"critical_score"`
+		PositiveScore         bool     `json:"positive_score"`
+		ReadOnlyAge           int      `json:"readonly_age"`
+		MaxImageSize          int      `json:"max_image_size"`
+		EmailNotifications    bool     `json:"email_notifications"`
+		TelegramNotifications bool     `json:"telegram_notifications"`
+		EmojiEnabled          bool     `json:"emoji_enabled"`
+		SimpleView            bool     `json:"simple_view"`
+		SendJWTHeader         bool     `json:"send_jwt_header"`
+		SubscribersOnly       bool     `json:"subscribers_only"`
 	}{
-		Version:             s.Version,
-		EditDuration:        int(s.DataService.EditDuration.Seconds()),
-		AdminEdit:           s.DataService.AdminEdits,
-		MaxCommentSize:      s.DataService.MaxCommentSize,
-		Admins:              admins,
-		AdminEmail:          emails,
-		LowScore:            s.ScoreThresholds.Low,
-		CriticalScore:       s.ScoreThresholds.Critical,
-		PositiveScore:       s.DataService.PositiveScore,
-		ReadOnlyAge:         s.ReadOnlyAge,
-		MaxImageSize:        s.ImageService.MaxSize,
-		EmailNotifications:  s.EmailNotifications,
-		TelegramBotUsername: s.TelegramBotUsername,
-		EmojiEnabled:        s.EmojiEnabled,
-		AnonVote:            s.AnonVote,
-		SimpleView:          s.SimpleView,
-		SendJWTHeader:       s.SendJWTHeader,
-		SubscribersOnly:     s.SubscribersOnly,
+		Version:               s.Version,
+		EditDuration:          int(s.DataService.EditDuration.Seconds()),
+		AdminEdit:             s.DataService.AdminEdits,
+		MinCommentSize:        s.DataService.MinCommentSize,
+		MaxCommentSize:        s.DataService.MaxCommentSize,
+		Admins:                admins,
+		AdminEmail:            emails,
+		LowScore:              s.ScoreThresholds.Low,
+		CriticalScore:         s.ScoreThresholds.Critical,
+		PositiveScore:         s.DataService.PositiveScore,
+		ReadOnlyAge:           s.ReadOnlyAge,
+		MaxImageSize:          s.ImageService.MaxSize,
+		EmailNotifications:    s.EmailNotifications,
+		TelegramNotifications: s.TelegramNotifications,
+		EmojiEnabled:          s.EmojiEnabled,
+		AnonVote:              s.AnonVote,
+		SimpleView:            s.SimpleView,
+		SendJWTHeader:         s.SendJWTHeader,
+		SubscribersOnly:       s.SubscribersOnly,
 	}
 
 	cnf.Auth = []string{}
@@ -462,8 +472,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	if cnf.Admins == nil { // prevent json serialization to nil
 		cnf.Admins = []string{}
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, cnf)
+	R.RenderJSON(w, cnf)
 }
 
 // serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
@@ -482,7 +491,7 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	webFS = http.StripPrefix("/web", webFS)
 	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
-	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)),
+	r.With(rateLimiter(20),
 		middleware.Timeout(10*time.Second),
 		cacheControl(time.Hour, version),
 	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
@@ -609,19 +618,22 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 	}
 }
 
-// frameAncestors is a middleware setting Content-Security-Policy "frame-ancestors host1 host2 ..."
-// prevents loading of comments widgets from any other origins. In case if the list of allowed empty, ignored.
-func frameAncestors(hosts []string) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			if len(hosts) == 0 {
-				h.ServeHTTP(w, r)
-				return
+// securityHeadersMiddleware sets security-related headers: Content-Security-Policy and Permissions-Policy
+func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			imgSrc := "*"
+			if imageProxyEnabled {
+				imgSrc = "'self'"
 			}
-			w.Header().Set("Content-Security-Policy", "frame-ancestors "+strings.Join(hosts, " ")+";")
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
+			frameAncestors := "*"
+			if len(allowedAncestors) > 0 {
+				frameAncestors = strings.Join(allowedAncestors, " ")
+			}
+			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
+			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
@@ -714,4 +726,17 @@ func parseError(err error, defaultCode int) (code int) {
 	}
 
 	return code
+}
+
+// rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
+// tollbooth v8 requires explicit IP lookup method to be set.
+// uses RemoteAddr which is set by chi's middleware.RealIP to the real client IP
+// from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
+func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
+	lmt := tollbooth.NewLimiter(maxReq, nil)
+	lmt.SetIPLookup(limiter.IPLookup{
+		Name:           "RemoteAddr",
+		IndexFromRight: 0,
+	})
+	return tollbooth.HTTPMiddleware(lmt)
 }

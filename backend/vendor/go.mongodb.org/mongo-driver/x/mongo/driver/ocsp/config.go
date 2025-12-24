@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/httputil"
 	"golang.org/x/crypto/ocsp"
 )
 
@@ -33,7 +33,7 @@ func newConfig(certChain []*x509.Certificate, opts *VerifyOptions) (config, erro
 	}
 
 	if cfg.httpClient == nil {
-		cfg.httpClient = internal.DefaultHTTPClient
+		cfg.httpClient = httputil.DefaultHTTPClient
 	}
 
 	if len(certChain) == 0 {
@@ -57,11 +57,11 @@ func newConfig(certChain []*x509.Certificate, opts *VerifyOptions) (config, erro
 	var err error
 	cfg.ocspRequestBytes, err = ocsp.CreateRequest(cfg.serverCert, cfg.issuer, nil)
 	if err != nil {
-		return cfg, fmt.Errorf("error creating OCSP request: %v", err)
+		return cfg, fmt.Errorf("error creating OCSP request: %w", err)
 	}
 	cfg.ocspRequest, err = ocsp.ParseRequest(cfg.ocspRequestBytes)
 	if err != nil {
-		return cfg, fmt.Errorf("error parsing OCSP request bytes: %v", err)
+		return cfg, fmt.Errorf("error parsing OCSP request bytes: %w", err)
 	}
 
 	return cfg, nil

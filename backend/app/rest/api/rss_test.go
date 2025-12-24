@@ -271,10 +271,7 @@ func TestServer_RssReplies(t *testing.T) {
 }
 
 func waitOnSecChange() {
-	for {
-		if time.Now().Nanosecond() < 100000000 {
-			break
-		}
+	for time.Now().Nanosecond() >= 100000000 {
 		time.Sleep(10 * time.Nanosecond)
 	}
 }
@@ -283,11 +280,11 @@ func waitOnSecChange() {
 func cleanRssFormatting(expected, actual string) (cleanExp, cleanAct string) {
 	reSpaces := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
 
-	expected = strings.Replace(expected, "\n", " ", -1)
-	expected = strings.Replace(expected, "\t", " ", -1)
+	expected = strings.ReplaceAll(expected, "\n", " ")
+	expected = strings.ReplaceAll(expected, "\t", " ")
 	expected = reSpaces.ReplaceAllString(expected, " ")
 
-	actual = strings.Replace(actual, "\n", " ", -1)
+	actual = strings.ReplaceAll(actual, "\n", " ")
 	actual = reSpaces.ReplaceAllString(actual, " ")
 	return expected, actual
 }

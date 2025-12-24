@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	cache "github.com/go-pkgz/lcw"
+	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -76,13 +79,31 @@ func TestRest_Preview(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat`,
 	)
 	assert.Contains(t,
 		string(b),
 		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
 	)
+
+	// test quotes with and without smartypants
+	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, "<p>«quoted» text</p>\n", string(b))
+
+	srv.privRest.disableFancyTextFormatting = true
+	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	b, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, "<p>&#34;quoted&#34; text</p>\n", string(b))
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {
@@ -97,8 +118,8 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Contains(t,
 		string(b),
-		"{\"code\":20,\"details\":\"can't renew staged picture cleanup timer\","+
-			"\"error\":\"can't get image stats for dev_user/bad_picture: stat ",
+		`{"code":20,"details":"can't load picture from the comment",`+
+			`"error":"can't get image stats for dev_user/bad_picture: stat `,
 	)
 	assert.Contains(t,
 		string(b),
@@ -120,9 +141,9 @@ srv, ts := prep(t)
 }
 BKT
 `
-	text = strings.Replace(text, "BKT", "```", -1)
+	text = strings.ReplaceAll(text, "BKT", "```")
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
-	j = strings.Replace(j, "\n", "\\n", -1)
+	j = strings.ReplaceAll(j, "\n", "\\n")
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
@@ -131,10 +152,10 @@ BKT
 	assert.NoError(t, err)
 	assert.Equal(t,
 		`<h1>h1</h1>
-<pre class="chroma"><code><span class="line"><span class="cl">func TestRest_Preview(t *testing.T) {
-</span></span><span class="line"><span class="cl">srv, ts := prep(t)
-</span></span><span class="line"><span class="cl">  require.NotNil(t, srv)
-</span></span><span class="line"><span class="cl">}
+<pre class="chroma"><code><span class="line"><span class="cl"><span class="k">func</span> <span class="n">TestRest_Preview</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="n">srv</span><span class="p">,</span> <span class="n">ts</span> <span class="p">:</span><span class="o">=</span> <span class="n">prep</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="n">require</span><span class="o">.</span><span class="n">NotNil</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">srv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
 </span></span></code></pre>`,
 		string(b))
 	assert.NoError(t, resp.Body.Close())
@@ -148,17 +169,17 @@ func TestRest_PreviewCode(t *testing.T) {
 func main(aa string) int {return 0}
 BKT
 `
-	text = strings.Replace(text, "BKT", "```", -1)
+	text = strings.ReplaceAll(text, "BKT", "```")
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
-	j = strings.Replace(j, "\n", "\\n", -1)
+	j = strings.ReplaceAll(j, "\n", "\\n")
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", j)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.Equal(t, `<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
-</span></span></code></pre>`, string(b))
+	assert.Equal(t, `<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="nx">aa</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span><span class="w">
+</span></span></span></code></pre>`, string(b))
 	assert.NoError(t, resp.Body.Close())
 }
 
@@ -209,7 +230,7 @@ func TestRest_Find(t *testing.T) {
 	assert.Equal(t, id2, comments.Comments[0].ID)
 
 	// get in tree mode
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -235,7 +256,7 @@ func TestRest_FindAge(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	require.NoError(t, err)
 
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
@@ -278,7 +299,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 
-	tree := service.Tree{}
+	tree := treeWithInfo{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -286,7 +307,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 	assert.Equal(t, "https://radio-t.com/blah1", tree.Info.URL)
 	assert.True(t, tree.Info.ReadOnly, "post is ro")
 
-	tree = service.Tree{}
+	tree = treeWithInfo{}
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah2&format=tree")
 	assert.Equal(t, http.StatusOK, code)
 	err = json.Unmarshal([]byte(res), &tree)
@@ -325,8 +346,8 @@ func TestRest_FindUserView(t *testing.T) {
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
-	assert.Equal(t, "dev", comments.Comments[0].User.ID)
-	assert.Equal(t, "dev", comments.Comments[1].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[0].User.ID)
+	assert.Equal(t, "provider1_dev", comments.Comments[1].User.ID)
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.Equal(t, "", comments.Comments[1].Text)
 
@@ -440,7 +461,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	assert.Equal(t, http.StatusOK, code, "noting for user blah")
 	assert.Equal(t, `{"comments":[],"count":0}`+"\n", comments)
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -459,7 +480,7 @@ func TestRest_FindUserComments(t *testing.T) {
 	}
 
 	{
-		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=dev&skip=1&limit=2")
+		res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev&skip=1&limit=2")
 		assert.Equal(t, http.StatusOK, code)
 
 		resp := struct {
@@ -477,6 +498,288 @@ func TestRest_FindUserComments(t *testing.T) {
 	}
 }
 
+func TestRest_FindUserComments_CWE_918(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"radio-t.com"}) // required for extracting the title, bad URL test
+	defer srv.DataService.TitleExtractor.Close()
+	defer teardown()
+
+	backendRequestedArbitraryServer := false
+	arbitraryServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		t.Logf("request received: %+v", r)
+		backendRequestedArbitraryServer = true
+	}))
+	defer arbitraryServer.Close()
+
+	arbitraryURLComment := store.Comment{Text: "arbitrary URL request test",
+		Locator: store.Locator{SiteID: "remark42", URL: arbitraryServer.URL}}
+
+	assert.False(t, backendRequestedArbitraryServer)
+	addComment(t, arbitraryURLComment, ts)
+	assert.False(t, backendRequestedArbitraryServer,
+		"no request is expected to the test server as it's not in the list of the allowed domains for the title extractor")
+
+	res, code := get(t, ts.URL+"/api/v1/comments?site=remark42&user=provider1_dev")
+	assert.Equal(t, http.StatusOK, code)
+
+	resp := struct {
+		Comments []store.Comment
+		Count    int
+	}{}
+
+	err := json.Unmarshal([]byte(res), &resp)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resp.Comments), "should have 2 comments")
+
+	assert.Equal(t, "", resp.Comments[0].PostTitle, "empty from the first post")
+	assert.Equal(t, arbitraryServer.URL, resp.Comments[0].Locator.URL, "arbitrary URL provided by the request")
+}
+
+func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
+	// test that comment counting is consistent between tree and plain formats
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	commentLocator := store.Locator{URL: "test-url", SiteID: "remark42"}
+
+	// vote for comment multiple times
+	setScore := func(locator store.Locator, id string, val int) {
+		abs := func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		}
+		for i := 0; i < abs(val); i++ {
+			_, err := srv.DataService.Vote(service.VoteReq{
+				Locator:   locator,
+				CommentID: id,
+				// unique user ID is needed for correct counting of controversial votes
+				UserID: "user" + strconv.Itoa(val) + strconv.Itoa(i),
+				Val:    val > 0,
+			})
+			require.NoError(t, err)
+		}
+	}
+
+	// Adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
+	// With sleep so that at least few millisecond pass between each comment
+	// and later we would be able to use that in "since" filter with millisecond precision
+	ids := make([]string, 9)
+	timestamps := make([]time.Time, 9)
+	c1 := store.Comment{Text: "top-level comment 1", Locator: commentLocator}
+	ids[0], timestamps[0] = addCommentGetCreatedTime(t, c1, ts)
+	// #3 by score
+	setScore(commentLocator, ids[0], 1)
+	time.Sleep(time.Millisecond * 5)
+
+	c2 := store.Comment{Text: "top-level comment 2", Locator: commentLocator}
+	ids[1], timestamps[1] = addCommentGetCreatedTime(t, c2, ts)
+	// #2 by score
+	setScore(commentLocator, ids[1], 2)
+	time.Sleep(time.Millisecond * 5)
+
+	c3 := store.Comment{Text: "second-level comment 1", ParentID: ids[0], Locator: commentLocator}
+	ids[2], timestamps[2] = addCommentGetCreatedTime(t, c3, ts)
+	// #1 by score
+	setScore(commentLocator, ids[2], 10)
+	time.Sleep(time.Millisecond * 5)
+
+	c4 := store.Comment{Text: "third-level comment 1", ParentID: ids[2], Locator: commentLocator}
+	ids[3], timestamps[3] = addCommentGetCreatedTime(t, c4, ts)
+	// #5 by score, #1 by controversy
+	setScore(commentLocator, ids[3], 4)
+	setScore(commentLocator, ids[3], -4)
+	time.Sleep(time.Millisecond * 5)
+
+	c5 := store.Comment{Text: "second-level comment 2", ParentID: ids[1], Locator: commentLocator}
+	ids[4], timestamps[4] = addCommentGetCreatedTime(t, c5, ts)
+	// #5 by score, #2 by controversy
+	setScore(commentLocator, ids[4], 2)
+	setScore(commentLocator, ids[4], -3)
+	time.Sleep(time.Millisecond * 5)
+
+	c6 := store.Comment{Text: "deleted third-level comment 2", ParentID: ids[4], Locator: commentLocator}
+	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
+	// deleted later so not visible in site-wide requests
+	setScore(commentLocator, ids[5], 10)
+	setScore(commentLocator, ids[5], -10)
+	time.Sleep(time.Millisecond * 5)
+
+	c7 := store.Comment{Text: "top-level comment 3", Locator: commentLocator}
+	ids[6], timestamps[6] = addCommentGetCreatedTime(t, c7, ts)
+	// #6 by score, #4 by controversy
+	setScore(commentLocator, ids[6], -3)
+	setScore(commentLocator, ids[6], 1)
+	time.Sleep(time.Millisecond * 5)
+
+	c8 := store.Comment{Text: "deleted second-level comment 3", ParentID: ids[6], Locator: commentLocator}
+	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
+	// deleted later so not visible in site-wide requests
+	setScore(commentLocator, ids[7], -20)
+
+	c9 := store.Comment{Text: "comment to post 2", Locator: store.Locator{URL: "another-url", SiteID: "remark42"}}
+	ids[8], timestamps[8] = addCommentGetCreatedTime(t, c9, ts)
+	// #7 by score
+	setScore(store.Locator{URL: "another-url", SiteID: "remark42"}, ids[8], -25)
+
+	// delete two comments bringing the total from 9 to 6
+	err := srv.DataService.Delete(commentLocator, ids[7], store.SoftDelete)
+	assert.NoError(t, err)
+	err = srv.DataService.Delete(commentLocator, ids[5], store.HardDelete)
+	assert.NoError(t, err)
+	srv.Cache.Flush(cache.FlusherRequest{})
+
+	commentLocator.URL = "readonly-test"
+	// set post without comments to read-only
+	assert.NoError(t, srv.DataService.SetReadOnly(commentLocator, true))
+
+	sinceTenSecondsAgo := strconv.FormatInt(time.Now().Add(-time.Second*10).UnixNano()/1000000, 10)
+	sinceTS := make([]string, 9)
+	formattedTS := make([]string, 9)
+	for i, created := range timestamps {
+		sinceTS[i] = strconv.FormatInt(created.UnixNano()/1000000, 10)
+		formattedTS[i] = created.Format(time.RFC3339Nano)
+	}
+	t.Logf("last timestamp: %v", timestamps[7])
+
+	testCases := []struct {
+		params       string
+		expectedBody string
+	}{
+		// test parameters url, format, since, sort
+		{"", fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"format=plain", fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"format=plain&url=test-url", fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTenSecondsAgo, fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[0], fmt.Sprintf(`"info":{"count":7,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[0], fmt.Sprintf(`"info":{"url":"test-url","count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[1], fmt.Sprintf(`"info":{"count":6,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[1], fmt.Sprintf(`"info":{"url":"test-url","count":5,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"since=" + sinceTS[4], fmt.Sprintf(`"info":{"count":3,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[8])},
+		{"url=test-url&since=" + sinceTS[4], fmt.Sprintf(`"info":{"url":"test-url","count":2,"count_left":0,"first_time":%q,"last_time":%q}`, formattedTS[0], formattedTS[7])},
+		{"format=tree", `"info":{"count":7`},
+		{"format=tree&url=test-url", `"info":{"url":"test-url","count":6`},
+		{"format=tree&sort=+time", `"info":{"count":7`},
+		{"format=tree&url=test-url&sort=+time", `"info":{"url":"test-url","count":6`},
+		{"format=tree&sort=-score", `"info":{"count":7`},
+		{"format=tree&url=test-url&sort=-score", `"info":{"url":"test-url","count":6`},
+		{"sort=+time", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-time", fmt.Sprintf(`"score":1,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[0])},
+		{"sort=+score", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[2])},
+		{"sort=+score&url=test-url", fmt.Sprintf(`"score":10,"vote":0,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[2])},
+		{"sort=-score", fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":7`, formattedTS[8])},
+		{"sort=-score&url=test-url", fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":6`, formattedTS[6])},
+		{"sort=-time&since=" + sinceTS[4], fmt.Sprintf(`"score":-1,"vote":0,"controversy":2.924017738212866,"time":%q}],"info":{"count":3`, formattedTS[4])},
+		{"sort=-score&since=" + sinceTS[3], fmt.Sprintf(`"score":-25,"vote":0,"time":%q}],"info":{"count":4`, formattedTS[8])},
+		{"sort=-score&url=test-url&since=" + sinceTS[3], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":3`, formattedTS[6])},
+		{"sort=+controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":-2,"vote":0,"controversy":1.5874010519681994,"time":%q}],"info":{"url":"test-url","count":1`, formattedTS[6])},
+		// three comments of which last one deleted and doesn't have controversy so returned last
+		{"sort=-controversy&url=test-url&since=" + sinceTS[5], fmt.Sprintf(`"score":0,"vote":0,"time":%q,"delete":true}],"info":{"url":"test-url","count":1`, formattedTS[7])},
+		// test readonly status for the post without comments
+		{"url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
+		{"format=tree&url=readonly-test", `"info":{"count":0,"count_left":0,"read_only":true`},
+
+		// test parameters limit, offset_id for format=plain
+		{"limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
+		{"offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"limit=2", `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
+		{"limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
+		{"limit=2&url=test-url", `"info":{"url":"test-url","count":6,"count_left":6,"last_comment":"` + ids[1]},
+		{"limit=6&url=test-url", `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=7&url=test-url", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[2]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[4]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[3]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[4]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[8]), `"info":{"count":7,"count_left":0`},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[2]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[4]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[3]), `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[4]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("limit=1&url=test-url&offset_id=%s", ids[6]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[7]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[8]), `"info":{"url":"test-url","count":6,"count_left":6,`},
+		// deleted comment, offset is ignored in site-wide request but not for particular URL
+		{fmt.Sprintf("limit=2&offset_id=%s", ids[5]), `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
+		{fmt.Sprintf("limit=2&url=test-url&offset_id=%s", ids[5]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[7]},
+		// non-existing comment, offset is ignored, deleted comments included into request with "url"
+		{fmt.Sprintf("limit=1&offset_id=%s", uuid.New().String()), `"info":{"count":7,"count_left":6,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("limit=1&url=test-url&offset_id=%s", uuid.New().String()), `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		// since is ignored for tree format, so we test it only for plain
+		{"limit=6&since=" + sinceTenSecondsAgo, `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&since=" + sinceTS[4], `"info":{"count":3,"count_left":2,"last_comment":"` + ids[4]},
+		{"limit=6&url=test-url&since=" + sinceTenSecondsAgo, `"info":{"url":"test-url","count":6,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=1&url=test-url&since=" + sinceTS[4], `"info":{"url":"test-url","count":2,"count_left":3,"last_comment":"` + ids[4]},
+		// start with deleted comment timestamp
+		{"limit=1&since=" + sinceTS[5], `"info":{"count":2,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&since=" + sinceTS[6], `"info":{"count":2,"count_left":1,"last_comment":"` + ids[6]},
+		{"limit=1&url=test-url&since=" + sinceTS[5], `"info":{"url":"test-url","count":1,"count_left":2,"last_comment":"` + ids[5]},
+		{"limit=1&url=test-url&since=" + sinceTS[6], `"info":{"url":"test-url","count":1,"count_left":1,"last_comment":"` + ids[6]},
+		// test sort
+		{"limit=1&sort=+time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		{"limit=1&sort=-time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[7]},
+		{"limit=1&sort=+score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[6]},
+		{"limit=1&sort=-score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[2]},
+		{"limit=1&sort=+controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[0]},
+		{"limit=1&sort=-controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":7,"last_comment":"` + ids[3]},
+
+		// test parameters limit, offset_id for format=tree
+		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
+		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{"format=tree&limit=6", `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
+		{"format=tree&limit=7", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&url=test-url&limit=2", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		{"format=tree&url=test-url&limit=7", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
+		// start after first top-level comment
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[0]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[0]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		// start after second top-level comment
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[1]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
+		// start after third top-level comment, so expect comment to post 2, or no comments on post 1 if "url" is set
+		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=1&offset_id=%s", ids[6]), `"info":{"url":"test-url","count":6,"count_left":0`},
+		// non-root comment IDs or non-existing IDs are ignored
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[2]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[3]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[4]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[7]), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", uuid.New().String()), `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[2]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[3]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[4]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[7]), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{fmt.Sprintf("format=tree&url=test-url&limit=1&offset_id=%s", uuid.New().String()), `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		// test sort
+		{"format=tree&limit=1&sort=+time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&limit=1&sort=-time&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
+		{"format=tree&limit=1&sort=+score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
+		{"format=tree&limit=1&sort=-score&url=test-url", `"info":{"url":"test-url","count":6,"count_left":4,"last_comment":"` + ids[1]},
+		{"format=tree&limit=1&sort=+controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
+		{"format=tree&limit=1&sort=-controversy&url=test-url", `"info":{"url":"test-url","count":6,"count_left":5,"last_comment":"` + ids[6]},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.params, func(t *testing.T) {
+			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
+			body, code := get(t, url)
+			expectedStatus := http.StatusOK
+			if strings.Contains(tc.params, "=bad") {
+				expectedStatus = http.StatusBadRequest
+			}
+			assert.Equal(t, expectedStatus, code)
+			assert.Contains(t, body, tc.expectedBody)
+			t.Log(body)
+			// prevent hit limiter from engaging
+			time.Sleep(80 * time.Millisecond)
+		})
+	}
+}
+
 func TestRest_UserInfo(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -486,7 +789,7 @@ func TestRest_UserInfo(t *testing.T) {
 	user := store.User{}
 	err := json.Unmarshal([]byte(body), &user)
 	assert.NoError(t, err)
-	assert.Equal(t, store.User{Name: "developer one", ID: "dev", Picture: "http://example.com/pic.png",
+	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -23,6 +24,7 @@ import (
 
 // Distinct performs a distinct operation.
 type Distinct struct {
+	authenticator  driver.Authenticator
 	collation      bsoncore.Document
 	key            *string
 	maxTime        *time.Duration
@@ -57,8 +59,7 @@ func buildDistinctResult(response bsoncore.Document) (DistinctResult, error) {
 	}
 	dr := DistinctResult{}
 	for _, element := range elements {
-		switch element.Key() {
-		case "values":
+		if element.Key() == "values" {
 			dr.Values = element.Value()
 		}
 	}
@@ -105,6 +106,8 @@ func (d *Distinct) Execute(ctx context.Context) error {
 		Selector:          d.selector,
 		ServerAPI:         d.serverAPI,
 		Timeout:           d.timeout,
+		Name:              driverutil.DistinctOp,
+		Authenticator:     d.authenticator,
 	}.Execute(ctx)
 
 }
@@ -307,5 +310,15 @@ func (d *Distinct) Timeout(timeout *time.Duration) *Distinct {
 	}
 
 	d.timeout = timeout
+	return d
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (d *Distinct) Authenticator(authenticator driver.Authenticator) *Distinct {
+	if d == nil {
+		d = new(Distinct)
+	}
+
+	d.authenticator = authenticator
 	return d
 }

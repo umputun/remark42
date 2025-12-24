@@ -2,10 +2,10 @@ version: "2"
 
 services:
   remark:
-    # remove the next line in case you want to use this docker-compose separately
+    # remove the next line in case you want to use this Docker Compose file separately
     # as otherwise it would complain for absence of Dockerfile
     build: .
-    image: umputun/remark42:latest
+    image: ghcr.io/umputun/remark42:latest
     container_name: "remark42"
     hostname: "remark42"
     restart: always
@@ -20,6 +20,10 @@ services:
     #ports:
     #  - "80:8080"
     #  - "443:8443"
+
+    # uncomment to expose to reverse proxy running on the same host but not in docker
+    #ports:
+    #  - "127.0.0.1:8080:8080"
 
     environment:
       - REMARK_URL

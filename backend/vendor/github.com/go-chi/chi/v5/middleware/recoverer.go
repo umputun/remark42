@@ -36,7 +36,9 @@ func Recoverer(next http.Handler) http.Handler {
 					PrintPrettyStack(rvr)
 				}
 
-				w.WriteHeader(http.StatusInternalServerError)
+				if r.Header.Get("Connection") != "Upgrade" {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			}
 		}()
 
@@ -111,15 +113,14 @@ func (s prettyStack) decorateLine(line string, useColor bool, num int) (string, 
 	line = strings.TrimSpace(line)
 	if strings.HasPrefix(line, "\t") || strings.Contains(line, ".go:") {
 		return s.decorateSourceLine(line, useColor, num)
-	} else if strings.HasSuffix(line, ")") {
-		return s.decorateFuncCallLine(line, useColor, num)
-	} else {
-		if strings.HasPrefix(line, "\t") {
-			return strings.Replace(line, "\t", "      ", 1), nil
-		} else {
-			return fmt.Sprintf("    %s\n", line), nil
-		}
 	}
+	if strings.HasSuffix(line, ")") {
+		return s.decorateFuncCallLine(line, useColor, num)
+	}
+	if strings.HasPrefix(line, "\t") {
+		return strings.Replace(line, "\t", "      ", 1), nil
+	}
+	return fmt.Sprintf("    %s\n", line), nil
 }
 
 func (s prettyStack) decorateFuncCallLine(line string, useColor bool, num int) (string, error) {

@@ -4,7 +4,7 @@ title: Configure with Reproxy
 
 ## How to configure remark42 with [Reproxy](https://reproxy.io)
 
-Example of Reproxy configuration (reverse proxy) running remark42 service on remark42.example.com with docker compose. Reproxy handles SSL termination with LE and gzip all the responses.
+Example of Reproxy configuration (reverse proxy) running remark42 service on remark42.example.com with Docker Compose. Reproxy handles SSL termination with LE and gzip all the responses.
 
 ```yaml
 version: "3.4"
@@ -43,7 +43,7 @@ services:
       - ./var/logs:/srv/var/logs
 
   remark42:
-    image: umputun/remark42:master
+    image: ghcr.io/umputun/remark42:master
     container_name: "remark42"
     hostname: "remark42"
     restart: always

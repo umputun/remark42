@@ -1,4 +1,4 @@
-FROM node:16.15.1-alpine AS frontend-deps
+FROM node:16-alpine AS frontend-deps
 
 ENV CI=true
 
@@ -7,7 +7,7 @@ WORKDIR /srv/frontend
 COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend/
 COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/package.json
 
-RUN apk add --no-cache --update git && npm i -g pnpm@7
+RUN apk add --no-cache --update git && npm i -g pnpm@8
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 pnpm i
 
 FROM frontend-deps AS build-frontend
@@ -19,7 +19,7 @@ WORKDIR /srv/frontend/apps/remark42/
 COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
 RUN pnpm build
 
-FROM umputun/baseimage:buildgo-v1.9.2 as build-backend
+FROM umputun/baseimage:buildgo-v1.17.0 AS build-backend
 
 ARG GITHUB_TOKEN
 ARG GITHUB_REF

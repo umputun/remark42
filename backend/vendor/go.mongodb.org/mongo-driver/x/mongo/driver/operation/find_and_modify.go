@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -24,7 +25,8 @@ import (
 
 // FindAndModify performs a findAndModify operation.
 type FindAndModify struct {
-	arrayFilters             bsoncore.Document
+	authenticator            driver.Authenticator
+	arrayFilters             bsoncore.Array
 	bypassDocumentValidation *bool
 	collation                bsoncore.Document
 	comment                  bsoncore.Value
@@ -50,6 +52,7 @@ type FindAndModify struct {
 	serverAPI                *driver.ServerAPIOptions
 	let                      bsoncore.Document
 	timeout                  *time.Duration
+	bypassEmptyTsReplacement *bool
 
 	result FindAndModifyResult
 }
@@ -143,6 +146,8 @@ func (fam *FindAndModify) Execute(ctx context.Context) error {
 		Crypt:          fam.crypt,
 		ServerAPI:      fam.serverAPI,
 		Timeout:        fam.timeout,
+		Name:           driverutil.FindAndModifyOp,
+		Authenticator:  fam.authenticator,
 	}.Execute(ctx)
 
 }
@@ -210,12 +215,15 @@ func (fam *FindAndModify) command(dst []byte, desc description.SelectedServer) (
 	if fam.let != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "let", fam.let)
 	}
+	if fam.bypassEmptyTsReplacement != nil {
+		dst = bsoncore.AppendBooleanElement(dst, "bypassEmptyTsReplacement", *fam.bypassEmptyTsReplacement)
+	}
 
 	return dst, nil
 }
 
 // ArrayFilters specifies an array of filter documents that determines which array elements to modify for an update operation on an array field.
-func (fam *FindAndModify) ArrayFilters(arrayFilters bsoncore.Document) *FindAndModify {
+func (fam *FindAndModify) ArrayFilters(arrayFilters bsoncore.Array) *FindAndModify {
 	if fam == nil {
 		fam = new(FindAndModify)
 	}
@@ -473,5 +481,25 @@ func (fam *FindAndModify) Timeout(timeout *time.Duration) *FindAndModify {
 	}
 
 	fam.timeout = timeout
+	return fam
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (fam *FindAndModify) Authenticator(authenticator driver.Authenticator) *FindAndModify {
+	if fam == nil {
+		fam = new(FindAndModify)
+	}
+
+	fam.authenticator = authenticator
+	return fam
+}
+
+// BypassEmptyTsReplacement sets the bypassEmptyTsReplacement to use for this operation.
+func (fam *FindAndModify) BypassEmptyTsReplacement(bypassEmptyTsReplacement bool) *FindAndModify {
+	if fam == nil {
+		fam = new(FindAndModify)
+	}
+
+	fam.bypassEmptyTsReplacement = &bypassEmptyTsReplacement
 	return fam
 }

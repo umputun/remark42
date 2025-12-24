@@ -5,6 +5,7 @@
     <alias>ex</alias>
     <alias>exs</alias>
     <filename>*.ex</filename>
+    <filename>*.eex</filename>
     <filename>*.exs</filename>
     <mime_type>text/x-elixir</mime_type>
   </config>

@@ -27,18 +27,18 @@ Example with all of the params:
 
 ```html
 <script>
-  var remark_config = {
-    host: 'https://remark42.example.com',
-    site_id: 'my_site',
-    components: ['embed', 'last-comments']
-    max_shown_comments: 100,
-    theme: 'dark',
-    page_title: 'My custom title for a page',
-    locale: 'es',
-    show_email_subscription: false,
-    simple_view: true,
-    no_footer: false
-  }
+	var remark_config = {
+		host: 'https://remark42.example.com',
+		site_id: 'my_site',
+		components: ['embed', 'last-comments'],
+		max_shown_comments: 100,
+		theme: 'dark',
+		page_title: 'My custom title for a page',
+		locale: 'es',
+		show_email_subscription: false,
+		simple_view: true,
+		no_footer: false
+	}
 </script>
 ```
 
@@ -92,11 +92,11 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
 
 ```html
 <script>
-  var remark_config = {
-    host: "REMARK_URL",
-    site_id: "YOUR_SITE_ID",
-    components: ["last-comments"],
-  }
+	var remark_config = {
+		host: "REMARK_URL",
+		site_id: "YOUR_SITE_ID",
+		components: ["last-comments"],
+	}
 </script>
 ```
 
@@ -119,11 +119,11 @@ Add this snippet to the bottom of web page, or adjust already present `remark_co
 
 ```html
 <script>
-  var remark_config = {
-    host: "REMARK_URL",
-    site_id: "YOUR_SITE_ID",
-    components: ["counter"],
-  }
+	var remark_config = {
+		host: "REMARK_URL",
+		site_id: "YOUR_SITE_ID",
+		components: ["counter"],
+	}
 </script>
 ```
 
@@ -135,8 +135,8 @@ And then add a node like this in the place where you want to see a number of com
 
 ```html
 <span
-  class="remark42__counter"
-  data-url="https://domain.com/path/to/article/"
+	class="remark42__counter"
+	data-url="https://domain.com/path/to/article/"
 ></span>
 ```
 

@@ -41,6 +41,12 @@ func (r *RPC) Load(id string) ([]byte, error) {
 	return io.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawImg)))
 }
 
+// Delete image from storage
+func (r *RPC) Delete(id string) error {
+	_, err := r.Call("image.delete", id)
+	return err
+}
+
 // Commit file stored in staging location by moving it to permanent location
 func (r *RPC) Commit(id string) error {
 	_, err := r.Call("image.commit", id)

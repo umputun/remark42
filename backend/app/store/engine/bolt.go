@@ -170,7 +170,7 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 				return e
 			}
 
-			return bucket.ForEach(func(k, v []byte) error {
+			return bucket.ForEach(func(_, v []byte) error {
 				comment := store.Comment{}
 				if e = json.Unmarshal(v, &comment); e != nil {
 					return fmt.Errorf("failed to unmarshal: %w", e)
@@ -306,9 +306,8 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 		})
 
 		// set read-only from age and manual bucket
-		readOnlyAge := req.ReadOnlyAge
-		info.ReadOnly = readOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, readOnlyAge).Before(time.Now())
-		if b.checkFlag(FlagRequest{Locator: req.Locator, Flag: ReadOnly}) {
+		info.ReadOnly = req.ReadOnlyAge > 0 && !info.FirstTS.IsZero() && info.FirstTS.AddDate(0, 0, req.ReadOnlyAge).Before(time.Now())
+		if !info.ReadOnly && b.checkFlag(FlagRequest{Locator: req.Locator, Flag: ReadOnly}) {
 			info.ReadOnly = true
 		}
 		return []store.PostInfo{info}, err
@@ -425,11 +424,11 @@ func (b *BoltDB) Close() error {
 }
 
 // Last returns up to max last comments for given siteID
-func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments []store.Comment, err error) {
+func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 
-	if max > lastLimit || max == 0 {
-		max = lastLimit
+	if maximum > lastLimit || maximum == 0 {
+		maximum = lastLimit
 	}
 
 	bdb, err := b.db(siteID)
@@ -467,7 +466,7 @@ func (b *BoltDB) lastComments(siteID string, max int, since time.Time) (comments
 				continue
 			}
 			comments = append(comments, comment)
-			if len(comments) >= max {
+			if len(comments) >= maximum {
 				break
 			}
 		}
@@ -725,7 +724,7 @@ func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err e
 	err = bdb.View(func(tx *bolt.Tx) error {
 		var entry UserDetailEntry
 		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		return bucket.ForEach(func(userID, value []byte) error {
+		return bucket.ForEach(func(_, value []byte) error {
 			if err = json.Unmarshal(value, &entry); err != nil {
 				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
@@ -866,11 +865,10 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 	// get list of commentID for all user's comment
 	comments := []commentInfo{}
 	for _, postInfo := range posts {
-		postInfo := postInfo
 		err = bdb.View(func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
 			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
-			err = postBkt.ForEach(func(postURL []byte, commentVal []byte) error {
+			err = postBkt.ForEach(func(_ []byte, commentVal []byte) error {
 				comment := store.Comment{}
 				if err = json.Unmarshal(commentVal, &comment); err != nil {
 					return fmt.Errorf("failed to unmarshal: %w", err)

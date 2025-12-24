@@ -20,4 +20,6 @@
   <entry type="LiteralNumber"       style="#D19A66"/>
   <entry type="Operator"            style="#56B6C2"/>
   <entry type="Comment"             style="#7F848E"/>
+  <entry type="GenericDeleted"      style="#E06C75"/>
+  <entry type="GenericInserted"     style="bold #98C379"/>
 </style>

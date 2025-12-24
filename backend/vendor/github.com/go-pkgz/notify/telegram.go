@@ -131,13 +131,16 @@ func (t *Telegram) Send(ctx context.Context, destination, text string) error {
 
 // TelegramSupportedHTML returns HTML with only tags allowed in Telegram HTML message payload, also trims ending newlines
 //
-// https://core.telegram.org/bots/api#html-style
+// https://core.telegram.org/bots/api#html-style, https://core.telegram.org/api/entities#allowed-entities
 func TelegramSupportedHTML(htmlText string) string {
 	adjustedHTMLText := adjustHTMLTags(htmlText)
 	p := bluemonday.NewPolicy()
-	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre")
+	p.AllowElements("b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre", "tg-spoiler", "tg-emoji", "blockquote")
 	p.AllowAttrs("href").OnElements("a")
 	p.AllowAttrs("class").OnElements("code")
+	p.AllowAttrs("title").OnElements("tg-spoiler")
+	p.AllowAttrs("emoji-id").OnElements("tg-emoji")
+	p.AllowAttrs("language").OnElements("pre")
 	return strings.TrimRight(p.Sanitize(adjustedHTMLText), "\n")
 }
 
@@ -167,23 +170,23 @@ func adjustHTMLTags(htmlText string) string {
 			switch token.Data {
 			case "h1", "h2", "h3":
 				if token.Type == html.StartTagToken {
-					buff.WriteString("<b>")
+					_, _ = buff.WriteString("<b>")
 				}
 				if token.Type == html.EndTagToken {
-					buff.WriteString("</b>")
+					_, _ = buff.WriteString("</b>")
 				}
 			case "h4", "h5", "h6":
 				if token.Type == html.StartTagToken {
-					buff.WriteString("<i><b>")
+					_, _ = buff.WriteString("<i><b>")
 				}
 				if token.Type == html.EndTagToken {
-					buff.WriteString("</b></i>")
+					_, _ = buff.WriteString("</b></i>")
 				}
 			default:
-				buff.WriteString(token.String())
+				_, _ = buff.WriteString(token.String())
 			}
 		default:
-			buff.WriteString(token.String())
+			_, _ = buff.WriteString(token.String())
 		}
 	}
 }
@@ -432,7 +435,7 @@ func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
 }
 
 // Request makes a request to the Telegram API and return the result
-func (t *Telegram) Request(ctx context.Context, method string, b []byte, data interface{}) error {
+func (t *Telegram) Request(ctx context.Context, method string, b []byte, data any) error {
 	return repeater.NewDefault(3, time.Millisecond*250).Do(ctx, func() error {
 		url := fmt.Sprintf("%s%s/%s", t.apiPrefix, t.Token, method)
 

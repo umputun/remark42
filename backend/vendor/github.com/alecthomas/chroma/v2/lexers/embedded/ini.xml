@@ -9,12 +9,20 @@
     <filename>*.inf</filename>
     <filename>*.service</filename>
     <filename>*.socket</filename>
+    <filename>*.container</filename>
+    <filename>*.network</filename>
+    <filename>*.build</filename>
+    <filename>*.pod</filename>
+    <filename>*.kube</filename>
+    <filename>*.volume</filename>
+    <filename>*.image</filename>
     <filename>.gitconfig</filename>
     <filename>.editorconfig</filename>
     <filename>pylintrc</filename>
     <filename>.pylintrc</filename>
     <mime_type>text/x-ini</mime_type>
     <mime_type>text/inf</mime_type>
+    <priority>0.1</priority> <!-- higher priority than Inform 6 -->
   </config>
   <rules>
     <state name="root">

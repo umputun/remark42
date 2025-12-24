@@ -10,7 +10,7 @@ import (
 )
 
 // JSON is a map alias, just for convenience
-type JSON map[string]interface{}
+type JSON map[string]any
 
 // RenderJSON sends data as json
 func RenderJSON(w http.ResponseWriter, data interface{}) {
@@ -96,4 +96,22 @@ func ParseFromTo(r *http.Request) (from, to time.Time, err error) {
 		return from, to, fmt.Errorf("incorrect to time: %w", err)
 	}
 	return from, to, nil
+}
+
+// DecodeJSON decodes json request from http.Request to given type
+func DecodeJSON[T any](r *http.Request, res *T) error {
+	if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
+		return fmt.Errorf("decode json: %w", err)
+	}
+	return nil
+}
+
+// EncodeJSON encodes given type to http.ResponseWriter and sets status code and content type header
+func EncodeJSON[T any](w http.ResponseWriter, status int, v T) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		return fmt.Errorf("encode json: %w", err)
+	}
+	return nil
 }

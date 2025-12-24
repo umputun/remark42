@@ -8,13 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v7"
-	"github.com/didip/tollbooth_chi"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
+	"github.com/go-pkgz/routegroup"
 )
 
 // Server is json-rpc server with an optional basic auth
@@ -96,33 +92,35 @@ func (s *Server) Run(port int) error {
 		return fmt.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
 
-	router := chi.NewRouter()
+	router := routegroup.New(http.NewServeMux())
 
 	if s.limits.serverThrottle > 0 {
-		router.Use(middleware.Throttle(s.limits.serverThrottle))
+		router.Use(rest.Throttle(int64(s.limits.serverThrottle)))
 	}
 
-	router.Use(middleware.RealIP, rest.Ping, rest.Recoverer(s.logger))
+	router.Use(rest.RealIP, rest.Ping, rest.Recoverer(s.logger))
 
 	if s.signature.version != "" || s.signature.author != "" || s.signature.appName != "" {
 		router.Use(rest.AppInfo(s.signature.appName, s.signature.author, s.signature.version))
 	}
 
 	if s.timeouts.CallTimeout > 0 {
-		router.Use(middleware.Timeout(s.timeouts.CallTimeout))
+		router.Use(timeout(s.timeouts.CallTimeout))
 	}
 
 	logInfoWithBody := logger.New(logger.Log(s.logger), logger.WithBody, logger.Prefix("[DEBUG]")).Handler
 	router.Use(logInfoWithBody)
 
 	if s.limits.clientLimit > 0 {
-		router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.limits.clientLimit, nil)))
+		router.Use(rateLimitByIP(s.limits.clientLimit))
 	}
 
-	router.Use(middleware.NoCache)
+	router.Use(rest.NoCache)
 	router.Use(s.basicAuth)
-	router.Use(s.customMiddlewares...)
-	router.Post(s.api, s.handler)
+	for _, mw := range s.customMiddlewares {
+		router.Use(mw)
+	}
+	router.HandleFunc("POST "+s.api, s.handler)
 
 	s.httpServer.Lock()
 	s.httpServer.Server = &http.Server{
@@ -201,7 +199,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		params = *req.Params
 	}
 
-	render.JSON(w, r, fn(req.ID, params))
+	rest.RenderJSON(w, fn(req.ID, params))
 }
 
 // basicAuth middleware. enabled only if both AuthUser and AuthPasswd defined.
@@ -231,6 +229,17 @@ func getDefaultTimeouts() Timeouts {
 	}
 }
 
+// timeout middleware cancels context after given duration
+func timeout(dt time.Duration) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), dt)
+			defer cancel()
+			h.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 // L defined logger interface used for an optional rest logging
 type L interface {
 	Logf(format string, args ...interface{})
@@ -243,4 +252,50 @@ type LoggerFunc func(format string, args ...interface{})
 func (f LoggerFunc) Logf(format string, args ...interface{}) { f(format, args...) }
 
 // NoOpLogger logger does nothing
-var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {})
+var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {}) //nolint
+
+// rateLimitByIP returns middleware that limits requests per second for each client IP.
+// Uses X-Real-IP header (set by rest.RealIP middleware) for client identification.
+func rateLimitByIP(reqPerSec float64) func(http.Handler) http.Handler {
+	type clientState struct {
+		sync.Mutex
+		tokens    float64
+		lastCheck time.Time
+	}
+	var (
+		clients sync.Map
+		maxReq  = reqPerSec
+	)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := r.Header.Get("X-Real-IP")
+			if ip == "" {
+				ip = r.RemoteAddr
+			}
+
+			now := time.Now()
+			val, _ := clients.LoadOrStore(ip, &clientState{tokens: maxReq, lastCheck: now})
+			state := val.(*clientState)
+
+			state.Lock()
+			// token bucket algorithm: refill tokens based on elapsed time
+			elapsed := now.Sub(state.lastCheck).Seconds()
+			state.tokens += elapsed * reqPerSec
+			if state.tokens > maxReq {
+				state.tokens = maxReq
+			}
+			state.lastCheck = now
+
+			if state.tokens < 1 {
+				state.Unlock()
+				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+			state.tokens--
+			state.Unlock()
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

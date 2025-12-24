@@ -74,9 +74,9 @@ type RssItem struct {
 	Category    string `xml:"category,omitempty"`
 	Comments    string `xml:"comments,omitempty"`
 	Enclosure   *RssEnclosure
-	Guid        string `xml:"guid,omitempty"`    // Id used
-	PubDate     string `xml:"pubDate,omitempty"` // created or updated
-	Source      string `xml:"source,omitempty"`
+	Guid        *RssGuid // Id used
+	PubDate     string   `xml:"pubDate,omitempty"` // created or updated
+	Source      string   `xml:"source,omitempty"`
 }
 
 type RssEnclosure struct {
@@ -87,6 +87,13 @@ type RssEnclosure struct {
 	Type    string   `xml:"type,attr"`
 }
 
+type RssGuid struct {
+	//RSS 2.0 <guid isPermaLink="true">http://inessential.com/2002/09/01.php#a2</guid>
+	XMLName     xml.Name `xml:"guid"`
+	Id          string   `xml:",chardata"`
+	IsPermaLink string   `xml:"isPermaLink,attr,omitempty"` // "true", "false", or an empty string
+}
+
 type Rss struct {
 	*Feed
 }
@@ -95,10 +102,14 @@ type Rss struct {
 func newRssItem(i *Item) *RssItem {
 	item := &RssItem{
 		Title:       i.Title,
-		Link:        i.Link.Href,
 		Description: i.Description,
-		Guid:        i.Id,
 		PubDate:     anyTimeFormat(time.RFC1123Z, i.Created, i.Updated),
+	}
+	if i.Id != "" {
+		item.Guid = &RssGuid{Id: i.Id, IsPermaLink: i.IsPermaLink}
+	}
+	if i.Link != nil {
+		item.Link = i.Link.Href
 	}
 	if len(i.Content) > 0 {
 		item.Content = &RssContent{Content: i.Content}
@@ -135,9 +146,13 @@ func (r *Rss) RssFeed() *RssFeed {
 		image = &RssImage{Url: r.Image.Url, Title: r.Image.Title, Link: r.Image.Link, Width: r.Image.Width, Height: r.Image.Height}
 	}
 
+	var href string
+	if r.Link != nil {
+		href = r.Link.Href
+	}
 	channel := &RssFeed{
 		Title:          r.Title,
-		Link:           r.Link.Href,
+		Link:           href,
 		Description:    r.Description,
 		ManagingEditor: author,
 		PubDate:        pub,

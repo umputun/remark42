@@ -1,4 +1,5 @@
 import { IntlShape, defineMessages } from 'react-intl';
+import { ApiError } from '../common/types';
 
 export const errorMessages = defineMessages<string | number>({
   'fetch-error': {
@@ -97,6 +98,10 @@ export const errorMessages = defineMessages<string | number>({
     id: 'errors.forbidden',
     defaultMessage: 'Forbidden.',
   },
+  409: {
+    id: 'errors.conflict',
+    defaultMessage: 'Conflict.',
+  },
   429: {
     id: 'errors.to-many-request',
     defaultMessage: 'You have reached maximum request limit.',
@@ -107,25 +112,14 @@ export const errorMessages = defineMessages<string | number>({
   },
 });
 
-export type FetcherError =
-  | string
-  | {
-      /**
-       * Error code, that is part of server error response.
-       *
-       * Note that -1 is reserved for error where `error` field shall be used directly
-       */
-      code?: number;
-      details?: string;
-      error: string;
-    };
+export type FetcherError = string | ApiError | RequestError | unknown;
 
 export function extractErrorMessageFromResponse(response: FetcherError, intl: IntlShape): string {
   if (typeof response === 'string') {
     return response;
   }
 
-  if (typeof response.code === 'number' && errorMessages[response.code]) {
+  if (response instanceof RequestError) {
     return intl.formatMessage(errorMessages[response.code]);
   }
 

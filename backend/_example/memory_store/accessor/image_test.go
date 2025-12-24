@@ -18,7 +18,7 @@ import (
 )
 
 // gopher png for test, from https://golang.org/src/image/png/example_test.go
-const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwUVRzHf2" +
+const rawGopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwUVRzHf2" +
 	"+OPbo9d7tsWyiyaZti6eWGAhISoIGKECEKCAiJJkYTiUgTMYSIosYYBBIUIxoSPIINEBDi2VhwkQrVsj1ESgu9doHWdrul7ba" +
 	"73WNm3vOPtsseM9MdwvvrzTs+8/t95ze/33sI5BqiabU6m9En8oNjduLnAEDLUsQXFF8tQ5oxK3vmnNmDSMtrncks9Hhtt" +
 	"/qeWZapHb1ha3UqYSWVl2ZmpWgaXMXGohQAvmeop3bjTRtv6SgaK/Pb9/bFzUrYslbFAmHPp+3WhAYdr+7GN/YnpN46Opv55VDs" +
@@ -38,7 +38,9 @@ const gopher = "iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 	"1y98c3D27eppUjsZ6fql3jcd5rUe7+ZIlLNQny3Rd+E5Tct3WVhTM5RBCEdiEK0b6B+/ca2gYU393nFj/n1AygRQxPIUA043M42u85+z2S" +
 	"nssKrPl8Mx76NL3E6eXc3be7OD+H4WHbJkKI8AU8irbITQjZ+0hQcPEgId/Fn/pl9crKH02+5o2b9T/eMx7pKoskYgAAAABJRU5ErkJggg=="
 
-func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
+func gopherPNG() io.Reader {
+	return base64.NewDecoder(base64.StdEncoding, strings.NewReader(rawGopher))
+}
 
 func TestMemImage_LoadAfterSave(t *testing.T) {
 	svc := NewMemImageStore()
@@ -57,7 +59,8 @@ func TestMemImage_LoadAfterSave(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, gopher, img)
 
-	svc.ResetCleanupTimer(id)
+	err = svc.ResetCleanupTimer(id)
+	assert.NoError(t, err)
 
 	err = svc.Commit(id)
 	assert.NoError(t, err)
@@ -68,6 +71,26 @@ func TestMemImage_LoadAfterSave(t *testing.T) {
 	img, err = svc.Load(id)
 	assert.NoError(t, err)
 	assert.Equal(t, gopher, img)
+}
+
+func TestMemImage_LoadAfterDelete(t *testing.T) {
+	svc := NewMemImageStore()
+	gopher, err := io.ReadAll(gopherPNG())
+	assert.NoError(t, err)
+
+	id := "test_img"
+	err = svc.Save(id, gopher)
+	assert.NoError(t, err)
+
+	err = svc.Delete(id)
+	assert.NoError(t, err)
+
+	img, err := svc.Load(id)
+	assert.EqualError(t, err, "image test_img not found")
+	assert.Empty(t, img)
+
+	err = svc.ResetCleanupTimer(id)
+	assert.EqualError(t, err, "image test_img not found")
 }
 
 func TestMemImage_CommitFail(t *testing.T) {
