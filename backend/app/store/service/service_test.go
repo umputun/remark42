@@ -802,6 +802,121 @@ func TestService_Pin(t *testing.T) {
 	assert.Equal(t, false, c.Pin)
 }
 
+func TestService_Approved(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), NeedApproval: true}
+
+	// Use admin user to see all comments including unapproved ones
+	adminUser := store.User{ID: "admin", Admin: true}
+	res, err := b.Last("radio-t", 0, time.Time{}, adminUser)
+	t.Logf("%+v", res[0])
+	assert.NoError(t, err)
+	require.Equal(t, 2, len(res))
+	// Existing comments have Unapproved=false (default), so they are approved
+	assert.Equal(t, false, res[0].Unapproved)
+
+	// Disapprove the comment (set Unapproved=true)
+	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, false)
+	assert.NoError(t, err)
+
+	c, err := b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
+	assert.NoError(t, err)
+	assert.Equal(t, true, c.Unapproved)
+
+	// Approve the comment (set Unapproved=false)
+	err = b.SetApproved(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID, true)
+	assert.NoError(t, err)
+	c, err = b.Engine.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
+	assert.NoError(t, err)
+	assert.Equal(t, false, c.Unapproved)
+}
+
+func TestService_FilterUnapproved(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), NeedApproval: true}
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	// Get all comments as admin
+	adminUser := store.User{ID: "admin", Admin: true}
+	allComments, err := b.Find(locator, "-time", adminUser)
+	assert.NoError(t, err)
+	require.True(t, len(allComments) > 0)
+
+	// Existing comments are approved by default (Unapproved=false)
+	// Disapprove all except the first comment
+	for i := 1; i < len(allComments); i++ {
+		err = b.SetApproved(locator, allComments[i].ID, false)
+		assert.NoError(t, err)
+	}
+
+	// Admin should see all comments
+	adminComments, err := b.Find(locator, "-time", adminUser)
+	assert.NoError(t, err)
+	assert.Equal(t, len(allComments), len(adminComments))
+
+	// Regular user should only see approved comments
+	regularUser := store.User{ID: "regular-user"}
+	regularComments, err := b.Find(locator, "-time", regularUser)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(regularComments))
+	assert.False(t, regularComments[0].Unapproved)
+
+	// Comment author should see their own unapproved comments
+	commentAuthor := store.User{ID: allComments[1].User.ID}
+	authorComments, err := b.Find(locator, "-time", commentAuthor)
+	assert.NoError(t, err)
+	// Author sees approved + their own unapproved
+	assert.True(t, len(authorComments) >= 1)
+}
+
+func TestService_Unapproved(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), NeedApproval: true}
+	defer b.Close()
+
+	locator := store.Locator{SiteID: "radio-t", URL: "https://radio-t.com/unapproved-test"}
+
+	// Create several comments - they will be marked as unapproved because NeedApproval is true
+	c1ID, err := b.Create(store.Comment{Text: "comment 1", Locator: locator, User: store.User{ID: "user1", Name: "user1"}})
+	require.NoError(t, err)
+
+	c2ID, err := b.Create(store.Comment{Text: "comment 2", Locator: locator, User: store.User{ID: "user2", Name: "user2"}})
+	require.NoError(t, err)
+
+	// Verify comments are unapproved
+	adminUser := store.User{Admin: true}
+	allComments, err := b.Find(locator, "-time", adminUser)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(allComments))
+	assert.True(t, allComments[0].Unapproved)
+	assert.True(t, allComments[1].Unapproved)
+
+	// Approve one comment
+	err = b.SetApproved(locator, c1ID, true)
+	require.NoError(t, err)
+
+	// Get unapproved comments - includes all unapproved from site
+	unapproved, err := b.Unapproved("radio-t", 100)
+	require.NoError(t, err)
+	// Find our unapproved comment
+	found := false
+	for _, c := range unapproved {
+		if c.ID == c2ID {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "should find our unapproved comment")
+
+	// Verify approved comment is not in the list
+	for _, c := range unapproved {
+		assert.NotEqual(t, c1ID, c.ID, "approved comment should not be in unapproved list")
+	}
+}
+
 func TestService_EditComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()

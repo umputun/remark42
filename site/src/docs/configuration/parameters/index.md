@@ -146,6 +146,7 @@ services:
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
+| need-approval                  | NEED_APPROVAL                  | `false`                 | enable comment moderation: new comments require admin approval before being visible to other users |
 | edit-time                      | EDIT_TIME                      | `5m`                    | edit window                                              |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
