@@ -104,14 +104,14 @@ jobs:
           touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
 
       - name: upload ghcr digest
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: digests-ghcr-${{ matrix.artifact }}
           path: /tmp/digests/ghcr/*
           retention-days: 1
 
       - name: upload dockerhub digest
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: digests-dockerhub-${{ matrix.artifact }}
           path: /tmp/digests/dockerhub/*
@@ -127,14 +127,14 @@ jobs:
 
     steps:
       - name: download ghcr digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests/ghcr
           pattern: digests-ghcr-*
           merge-multiple: true
 
       - name: download dockerhub digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests/dockerhub
           pattern: digests-dockerhub-*
