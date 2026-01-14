@@ -509,6 +509,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		NotifyService:    notify.NopService,
 		EmojiEnabled:     true,
 		openRouteLimiter: 100,
+		Premoderation:    NewPremoderationStrategy(""),
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 

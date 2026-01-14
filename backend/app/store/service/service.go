@@ -474,7 +474,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		if req.Admin && s.AdminEdits {
 			return nil
 		}
-
 		// edit allowed in editDuration window only
 		if s.EditDuration > 0 && time.Now().After(comment.Timestamp.Add(s.EditDuration)) {
 			return fmt.Errorf("too late to edit %s", commentID)
@@ -491,6 +490,7 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, err
 	}
 
+	log.Printf("[INFO] editing comment, %v", comment)
 	if err = editAllowed(comment); err != nil { //nolint gocritic
 		return comment, err
 	}
@@ -617,6 +617,44 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 	comment.Locator = locator
 	err = s.Engine.Update(comment)
 	return comment, err
+}
+
+func (s *DataStore) ApproveComments(locator store.Locator, commentID string, approvePrevious bool) (comment store.Comment, err error) {
+	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	if err != nil {
+		return comment, err
+	}
+
+	weAreDeApproving := comment.Approved // we are disapproving as the current state of the triggering comment is approved
+	// we want to disapprove a single comment, not all of them.
+	if !approvePrevious || weAreDeApproving {
+		comment.Approved = !comment.Approved // we always want to approve the one the method was called against
+		err = s.Engine.Update(comment)
+		return comment, err
+	}
+
+	// grab the user and all his messages
+	user := comment.User
+	comments, err := s.Find(locator, "-time", user)
+	if err != nil {
+		return comment, err
+	}
+
+	// approve the unapproved ones including the one this method was called against
+	for _, c := range comments {
+		if !c.Approved {
+			c.Approved = true
+			err = s.Engine.Update(c)
+			if err != nil {
+				return store.Comment{}, err // FIXME: we might want to ignore/collect errors?
+			}
+			// send back the new modified comment
+			if c.ID == commentID {
+				comment = c
+			}
+		}
+	}
+	return comment, nil
 }
 
 // Counts returns postID+count list for given comments
