@@ -157,7 +157,14 @@ Compresses response with gzip.
 
 ### RealIP middleware
 
-RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing either the X-Forwarded-For or X-Real-IP headers.
+RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing various headers that contain the client's real IP address. It checks headers in the following priority order:
+
+1. `X-Real-IP` - trusted proxy (nginx/reproxy) sets this to actual client
+2. `CF-Connecting-IP` - Cloudflare's header for original client
+3. `X-Forwarded-For` - leftmost public IP (original client in CDN/proxy chain)
+4. `RemoteAddr` - fallback for direct connections
+
+Only public IPs are accepted from headers; private/loopback/link-local IPs are skipped. This makes the middleware compatible with CDN setups like Cloudflare where the leftmost IP in `X-Forwarded-For` is the actual client.
 
 ### Maybe middleware
 

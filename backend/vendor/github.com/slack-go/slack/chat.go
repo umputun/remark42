@@ -68,6 +68,9 @@ type PostMessageParameters struct {
 
 	// chat metadata support
 	MetaData SlackMetadata `json:"metadata"`
+
+	// file_ids support
+	FileIDs []string `json:"file_ids,omitempty"`
 }
 
 // NewPostMessageParameters provides an instance of PostMessageParameters with all the sane default values set
@@ -116,13 +119,13 @@ func (api *Client) ScheduleMessage(channelID, postAt string, options ...MsgOptio
 // ScheduleMessageContext sends a message to a channel with a custom context.
 // Slack API docs: https://api.slack.com/methods/chat.scheduleMessage
 func (api *Client) ScheduleMessageContext(ctx context.Context, channelID, postAt string, options ...MsgOption) (string, string, error) {
-	respChannel, respTimestamp, _, err := api.SendMessageContext(
+	respChannel, scheduledMessageId, _, err := api.SendMessageContext(
 		ctx,
 		channelID,
 		MsgOptionSchedule(postAt),
 		MsgOptionCompose(options...),
 	)
-	return respChannel, respTimestamp, err
+	return respChannel, scheduledMessageId, err
 }
 
 // PostMessage sends a message to a channel.
@@ -214,7 +217,7 @@ func (api *Client) SendMessage(channel string, options ...MsgOption) (string, st
 
 // SendMessageContext more flexible method for configuring messages with a custom context.
 // Slack API docs: https://api.slack.com/methods/chat.postMessage
-func (api *Client) SendMessageContext(ctx context.Context, channelID string, options ...MsgOption) (_channel string, _timestamp string, _text string, err error) {
+func (api *Client) SendMessageContext(ctx context.Context, channelID string, options ...MsgOption) (_channel string, _timestampOrScheduledMessageId string, _text string, err error) {
 	var (
 		req      *http.Request
 		parser   func(*chatResponseFull) responseParser
@@ -234,11 +237,15 @@ func (api *Client) SendMessageContext(ctx context.Context, channelID string, opt
 		api.Debugf("Sending request: %s", redactToken(reqBody))
 	}
 
-	if err = doPost(ctx, api.httpclient, req, parser(&response), api); err != nil {
+	if err = doPost(api.httpclient, req, parser(&response), api); err != nil {
 		return "", "", "", err
 	}
 
-	return response.Channel, response.getMessageTimestamp(), response.Text, response.Err()
+	if response.ScheduledMessageID != "" {
+		return response.Channel, response.ScheduledMessageID, response.Text, response.Err()
+	} else {
+		return response.Channel, response.getMessageTimestamp(), response.Text, response.Err()
+	}
 }
 
 func redactToken(b []byte) []byte {
@@ -711,6 +718,23 @@ func MsgOptionLinkNames(linkName bool) MsgOption {
 	}
 }
 
+// MsgOptionFileIDs sets file IDs for the message
+func MsgOptionFileIDs(fileIDs []string) MsgOption {
+	return func(config *sendConfig) error {
+		if len(fileIDs) == 0 {
+			return nil
+		}
+
+		fileIDsBytes, err := json.Marshal(fileIDs)
+		if err != nil {
+			return err
+		}
+
+		config.values.Set("file_ids", string(fileIDsBytes))
+		return nil
+	}
+}
+
 // UnsafeMsgOptionEndpoint deliver the message to the specified endpoint.
 // NOTE: USE AT YOUR OWN RISK: No issues relating to the use of this Option
 // will be supported by the library, it is subject to change without notice that
@@ -772,6 +796,10 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 		}
 		if params.ReplyBroadcast != DEFAULT_MESSAGE_REPLY_BROADCAST {
 			config.values.Set("reply_broadcast", "true")
+		}
+
+		if len(params.FileIDs) > 0 {
+			return MsgOptionFileIDs(params.FileIDs)(config)
 		}
 
 		return nil

@@ -14,7 +14,12 @@ func (s CallBlock) BlockType() MessageBlockType {
 	return s.Type
 }
 
-// NewFileBlock returns a new instance of a file block
+// ID returns the ID of the block
+func (s CallBlock) ID() string {
+	return s.BlockID
+}
+
+// NewCallBlock returns a new instance of a call block
 func NewCallBlock(callID string) *CallBlock {
 	return &CallBlock{
 		Type:   MBTCall,

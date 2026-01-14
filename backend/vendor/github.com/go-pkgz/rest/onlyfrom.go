@@ -21,8 +21,7 @@ func OnlyFrom(onlyIps ...string) func(http.Handler) http.Handler {
 			}
 			matched, ip, err := matchSourceIP(r, onlyIps)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				RenderJSON(w, JSON{"error": fmt.Sprintf("can't get realip: %s", err)})
+				_ = EncodeJSON(w, http.StatusInternalServerError, JSON{"error": fmt.Sprintf("can't get realip: %s", err)})
 				return
 			}
 			if matched {
@@ -31,8 +30,7 @@ func OnlyFrom(onlyIps ...string) func(http.Handler) http.Handler {
 				return
 			}
 
-			w.WriteHeader(http.StatusForbidden)
-			RenderJSON(w, JSON{"error": fmt.Sprintf("ip %q rejected", ip)})
+			_ = EncodeJSON(w, http.StatusForbidden, JSON{"error": fmt.Sprintf("ip %q rejected", ip)})
 		}
 		return http.HandlerFunc(fn)
 	}

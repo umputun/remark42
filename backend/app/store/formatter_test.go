@@ -43,8 +43,8 @@ func TestFormatter_FormatText(t *testing.T) {
 		{`no_smartpants «quoted» text`, "<p>no_smartpants «quoted» text</p>\n!converted", "French guillemets without smartpants"},
 		{`«quoted» text`, "<p>«quoted» text</p>\n!converted", "French guillemets with smartpants"},
 		{"smth\n```go\nfunc main(aa string) int {return 0}\n```", `<p>smth</p>
-<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">(</span><span class="nx">aa</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span><span class="k">return</span> <span class="mi">0</span><span class="p">}</span>
-</span></span></code></pre>!converted`, "code with language"},
+<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="nx">aa</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span><span class="w">
+</span></span></span></code></pre>!converted`, "code with language"},
 		{"```\ntest_code\n```", `<pre class="chroma"><code><span class="line"><span class="cl">test_code
 </span></span></code></pre>!converted`, "code without language"},
 	}

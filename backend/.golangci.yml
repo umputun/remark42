@@ -49,6 +49,9 @@ linters:
           - revive
         text: 'package-comments: should have a package comment'
       - linters:
+          - revive
+        text: 'var-naming: avoid meaningless package names'
+      - linters:
           - dupl
           - gosec
         path: _test\.go

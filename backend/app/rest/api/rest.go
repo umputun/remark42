@@ -15,12 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v7"
-	"github.com/didip/tollbooth_chi"
+	"github.com/didip/tollbooth/v8"
+	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
@@ -255,14 +254,14 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, tollbooth_chi.LimitHandler(tollbooth.NewLimiter(2, nil)), middleware.NoCache)
+		r.Use(logInfoWithBody, rateLimiter(2), middleware.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+		r.Use(rateLimiter(100))
 		r.Mount("/avatar", avatarHandler)
 	})
 
@@ -272,14 +271,14 @@ func (s *Rest) routes() chi.Router {
 	router.Route("/api/v1", func(rapi chi.Router) {
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(middleware.Timeout(5 * time.Second))
-			rava.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(100, nil)))
+			rava.Use(rateLimiter(100))
 			rava.Mount("/avatar", avatarHandler)
 		})
 
 		// open routes
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.openRouteLimiter, nil)))
+			ropen.Use(rateLimiter(s.openRouteLimiter))
 			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Get("/find", s.pubRest.findCommentsCtrl)
@@ -302,7 +301,7 @@ func (s *Rest) routes() chi.Router {
 		// open routes, cached
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			ropen.Use(rateLimiter(10))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
 			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
@@ -311,7 +310,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, require auth
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(30 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rauth.Use(rateLimiter(10))
 			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.privRest.userInfoCtrl)
 			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
@@ -320,7 +319,7 @@ func (s *Rest) routes() chi.Router {
 		// admin routes, require auth and admin users only
 		rapi.Route("/admin", func(radmin chi.Router) {
 			radmin.Use(middleware.Timeout(30 * time.Second))
-			radmin.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			radmin.Use(rateLimiter(10))
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
 			radmin.Use(middleware.NoCache, logInfoWithBody)
 
@@ -347,7 +346,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(rateLimiter(s.updateLimiter()))
 			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 			rauth.Use(middleware.NoCache, logInfoWithBody)
 
@@ -367,7 +366,7 @@ func (s *Rest) routes() chi.Router {
 		// protected routes, anonymous rejected
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(s.updateLimiter(), nil)))
+			rauth.Use(rateLimiter(s.updateLimiter()))
 			rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
 			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 			rauth.Post("/picture", s.privRest.savePictureCtrl)
@@ -377,7 +376,7 @@ func (s *Rest) routes() chi.Router {
 	// open routes on root level
 	router.Group(func(rroot chi.Router) {
 		rroot.Use(middleware.Timeout(10 * time.Second))
-		rroot.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
+		rroot.Use(rateLimiter(50))
 		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
 		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
@@ -497,8 +496,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	if cnf.Admins == nil { // prevent json serialization to nil
 		cnf.Admins = []string{}
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, cnf)
+	R.RenderJSON(w, cnf)
 }
 
 // serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
@@ -517,7 +515,7 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	webFS = http.StripPrefix("/web", webFS)
 	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
-	r.With(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(20, nil)),
+	r.With(rateLimiter(20),
 		middleware.Timeout(10*time.Second),
 		cacheControl(time.Hour, version),
 	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
@@ -663,10 +661,9 @@ func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string
 			}
 			frameAncestors := "*"
 			if len(allowedAncestors) > 0 {
-				log.Printf("[INFO] frame embedding allowed from %+v only", allowedAncestors)
 				frameAncestors = strings.Join(allowedAncestors, " ")
 			}
-			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self'; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
+			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
 			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
 			next.ServeHTTP(w, r)
 		})
@@ -762,4 +759,17 @@ func parseError(err error, defaultCode int) (code int) {
 	}
 
 	return code
+}
+
+// rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
+// tollbooth v8 requires explicit IP lookup method to be set.
+// uses RemoteAddr which is set by chi's middleware.RealIP to the real client IP
+// from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
+func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
+	lmt := tollbooth.NewLimiter(maxReq, nil)
+	lmt.SetIPLookup(limiter.IPLookup{
+		Name:           "RemoteAddr",
+		IndexFromRight: 0,
+	})
+	return tollbooth.HTTPMiddleware(lmt)
 }

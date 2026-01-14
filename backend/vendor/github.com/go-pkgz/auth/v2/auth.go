@@ -172,8 +172,7 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		// allow logout without specifying provider
 		if elems[len(elems)-1] == "logout" {
 			if len(s.providers) == 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				rest.RenderJSON(w, rest.JSON{"error": "providers not defined"})
+				_ = rest.EncodeJSON(w, http.StatusBadRequest, rest.JSON{"error": "providers not defined"})
 				return
 			}
 			s.providers[0].Handler(w, r)
@@ -184,12 +183,11 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		if elems[len(elems)-1] == "user" {
 			claims, _, err := s.jwtService.Get(r)
 			if err != nil || claims.User == nil {
-				w.WriteHeader(http.StatusUnauthorized)
 				msg := "user is nil"
 				if err != nil {
 					msg = err.Error()
 				}
-				rest.RenderJSON(w, rest.JSON{"error": msg})
+				_ = rest.EncodeJSON(w, http.StatusUnauthorized, rest.JSON{"error": msg})
 				return
 			}
 			rest.RenderJSON(w, claims.User)
@@ -211,8 +209,7 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 		provName := elems[len(elems)-2]
 		p, err := s.Provider(provName)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			rest.RenderJSON(w, rest.JSON{"error": fmt.Sprintf("provider %s not supported", provName)})
+			_ = rest.EncodeJSON(w, http.StatusBadRequest, rest.JSON{"error": fmt.Sprintf("provider %s not supported", provName)})
 			return
 		}
 		p.Handler(w, r)
@@ -347,7 +344,7 @@ func (s *Service) AddAppleProvider(appleConfig provider.AppleConfig, privKeyLoad
 		L:           s.logger,
 	}
 
-	// Error checking at create need for catch one when apple private key init
+	// error checking at create need for catch one when apple private key init
 	appleProvider, err := provider.NewApple(p, appleConfig, privKeyLoader)
 	if err != nil {
 		return fmt.Errorf("an AppleProvider creating failed: %w", err)

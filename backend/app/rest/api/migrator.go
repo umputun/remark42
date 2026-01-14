@@ -1,16 +1,17 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
-	"github.com/go-chi/render"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -58,8 +59,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "import request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
 }
 
 // POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
@@ -93,8 +93,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile) // import runs in background and sets busy flag for site
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "import request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
 }
 
 // GET /wait?site=site-id
@@ -114,14 +113,12 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 
 		select {
 		case <-ctx.Done():
-			render.Status(r, http.StatusGatewayTimeout)
-			render.JSON(w, r, R.JSON{"status": "timeout expired", "site_id": siteID})
+			_ = R.EncodeJSON(w, http.StatusGatewayTimeout, R.JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, R.JSON{"status": "completed", "site_id": siteID})
+	R.RenderJSON(w, R.JSON{"status": "completed", "site_id": siteID})
 }
 
 // GET /export?site=site-id&secret=12345&?mode=file|stream
@@ -129,23 +126,32 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
-	var writer io.Writer = w
 	if r.URL.Query().Get("mode") == "file" {
+		// buffer to memory to handle errors before committing to response
+		var buf bytes.Buffer
+		gzWriter := gzip.NewWriter(&buf)
+		if _, err := m.NativeExporter.Export(gzWriter, siteID); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+			return
+		}
+		if err := gzWriter.Close(); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+			return
+		}
+
 		exportFile := fmt.Sprintf("%s-%s.json.gz", siteID, time.Now().Format("20060102"))
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
-		gzWriter := gzip.NewWriter(w)
-		defer func() {
-			if e := gzWriter.Close(); e != nil {
-				log.Printf("[WARN] can't close gzip writer, %s", e)
-			}
-		}()
-		writer = gzWriter
+		w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+		if _, err := io.Copy(w, &buf); err != nil {
+			log.Printf("[WARN] failed to write export response: %v", err)
+		}
+		return
 	}
 
-	if _, err := m.NativeExporter.Export(writer, siteID); err != nil {
+	// stream mode - write directly to response
+	if _, err := m.NativeExporter.Export(w, siteID); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
-		return
 	}
 }
 
@@ -201,8 +207,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[DEBUG] convert request completed. site=%s, comments=%d", siteID, size)
 	}()
 
-	render.Status(r, http.StatusAccepted)
-	render.JSON(w, r, R.JSON{"status": "convert request accepted"})
+	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "convert request accepted"})
 }
 
 // runImport reads from tmpfile and import for given siteID and provider

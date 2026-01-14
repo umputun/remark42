@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
@@ -78,7 +77,7 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
 	comment := store.Comment{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
 		return
 	}
@@ -101,14 +100,13 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	render.HTML(w, r, comment.Text)
+	rest.HTMLResponse(w, http.StatusOK, comment.Text)
 }
 
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	comment := store.Comment{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &comment); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&comment); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't bind comment", rest.ErrDecode)
 		return
 	}
@@ -183,8 +181,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] created comment %+v", finalComment)
 
-	render.Status(r, http.StatusCreated)
-	render.JSON(w, r, &finalComment)
+	_ = R.EncodeJSON(w, http.StatusCreated, &finalComment)
 }
 
 func (s *private) handlePremoderation(comment store.Comment, user store.User) (store.Comment, error) {
@@ -228,7 +225,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Delete  bool
 	}{}
 
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &edit); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&edit); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't read comment details from body", rest.ErrDecode)
 		return
 	}
@@ -273,7 +270,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
-	render.JSON(w, r, res)
+	R.RenderJSON(w, res)
 }
 
 // GET /user?site=siteID - returns user info
@@ -291,7 +288,7 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	render.JSON(w, r, user)
+	R.RenderJSON(w, user)
 }
 
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
@@ -332,7 +329,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
-	render.JSON(w, r, R.JSON{"id": comment.ID, "score": comment.Score})
+	R.RenderJSON(w, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
 // getEmailCtrl gets email address for authenticated user.
@@ -345,7 +342,7 @@ func (s *private) getEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, err)
 	}
 
-	render.JSON(w, r, R.JSON{"user": user, "address": address})
+	R.RenderJSON(w, R.JSON{"user": user, "address": address})
 }
 
 // sendEmailConfirmationCtrl gets address and siteID from query, makes confirmation token and sends it to user.
@@ -362,7 +359,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		Address     string
 		autoConfirm bool
 	}{autoConfirm: true}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &subscribe); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&subscribe); err != nil {
 		if err != io.EOF {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse request body", rest.ErrDecode)
 			return
@@ -425,7 +422,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 		},
 	)
 
-	render.JSON(w, r, R.JSON{"user": user, "address": subscribe.Address, "updated": false})
+	R.RenderJSON(w, R.JSON{"user": user, "address": subscribe.Address, "updated": false})
 }
 
 // telegramSubscribeCtrl generates and verifies telegram notification request
@@ -463,7 +460,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 
 		s.telegramService.AddToken(tkn, user.ID, siteID, expires)
 
-		render.JSON(w, r, R.JSON{"token": tkn, "bot": s.telegramService.GetBotUsername()})
+		R.RenderJSON(w, R.JSON{"token": tkn, "bot": s.telegramService.GetBotUsername()})
 
 		return
 	}
@@ -485,7 +482,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	render.JSON(w, r, R.JSON{"updated": true, "address": val})
+	R.RenderJSON(w, R.JSON{"updated": true, "address": val})
 }
 
 // setConfirmedEmailCtrl uses provided token parameter (generated by sendEmailConfirmationCtrl) to set email and add it to user token
@@ -497,7 +494,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		Site  string
 		Token string
 	}{}
-	if err := render.DecodeJSON(http.MaxBytesReader(w, r.Body, hardBodyLimit), &confirm); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&confirm); err != nil {
 		if err != io.EOF {
 			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse request body", rest.ErrDecode)
 			return
@@ -553,7 +550,7 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 		return
 	}
-	render.JSON(w, r, R.JSON{"updated": true, "address": val})
+	R.RenderJSON(w, R.JSON{"updated": true, "address": val})
 }
 
 // POST/GET /email/unsubscribe.html?site=siteID&tkn=jwt - unsubscribe the user in token from email notifications
@@ -637,7 +634,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.New("unsubscribe").Parse(tmplstr))
 	msg := bytes.Buffer{}
 	MustExecute(tmpl, &msg, nil)
-	render.HTML(w, r, msg.String())
+	rest.HTMLResponse(w, http.StatusOK, msg.String())
 }
 
 // DELETE /email?site=siteID - removes user's email
@@ -664,7 +661,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	render.JSON(w, r, R.JSON{"deleted": true})
+	R.RenderJSON(w, R.JSON{"deleted": true})
 }
 
 // DELETE /telegram?site=siteID - removes user's telegram
@@ -678,7 +675,7 @@ func (s *private) deleteTelegramCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete telegram for user", code)
 		return
 	}
-	render.JSON(w, r, R.JSON{"deleted": true})
+	R.RenderJSON(w, R.JSON{"deleted": true})
 }
 
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
@@ -766,7 +763,7 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.remarkURL, tokenStr)
-	render.JSON(w, r, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
+	R.RenderJSON(w, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
 // POST /image - save image with form request
@@ -791,7 +788,7 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, R.JSON{"id": id})
+	R.RenderJSON(w, R.JSON{"id": id})
 }
 
 func (s *private) isReadOnly(locator store.Locator) bool {

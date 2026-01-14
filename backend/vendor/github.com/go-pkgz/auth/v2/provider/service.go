@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/token"
 )
 
@@ -71,15 +72,15 @@ func (p Service) Handler(w http.ResponseWriter, r *http.Request) {
 
 // setAvatar saves avatar and puts proxied URL to u.Picture
 func setAvatar(ava AvatarSaver, u token.User, client *http.Client) (token.User, error) {
-	if ava != nil {
-		avatarURL, e := ava.Put(u, client)
-		if e != nil {
-			return u, fmt.Errorf("failed to save avatar for: %w", e)
-		}
-		u.Picture = avatarURL
-		return u, nil
+	if ava == nil || ava == (*avatar.Proxy)(nil) {
+		return u, nil // empty AvatarSaver ok, just skipped
 	}
-	return u, nil // empty AvatarSaver ok, just skipped
+	avatarURL, e := ava.Put(u, client)
+	if e != nil {
+		return u, fmt.Errorf("failed to save avatar for: %w", e)
+	}
+	u.Picture = avatarURL
+	return u, nil
 }
 
 func randToken() (string, error) {

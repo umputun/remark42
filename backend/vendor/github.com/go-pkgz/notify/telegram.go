@@ -170,23 +170,23 @@ func adjustHTMLTags(htmlText string) string {
 			switch token.Data {
 			case "h1", "h2", "h3":
 				if token.Type == html.StartTagToken {
-					buff.WriteString("<b>")
+					_, _ = buff.WriteString("<b>")
 				}
 				if token.Type == html.EndTagToken {
-					buff.WriteString("</b>")
+					_, _ = buff.WriteString("</b>")
 				}
 			case "h4", "h5", "h6":
 				if token.Type == html.StartTagToken {
-					buff.WriteString("<i><b>")
+					_, _ = buff.WriteString("<i><b>")
 				}
 				if token.Type == html.EndTagToken {
-					buff.WriteString("</b></i>")
+					_, _ = buff.WriteString("</b></i>")
 				}
 			default:
-				buff.WriteString(token.String())
+				_, _ = buff.WriteString(token.String())
 			}
 		default:
-			buff.WriteString(token.String())
+			_, _ = buff.WriteString(token.String())
 		}
 	}
 }
@@ -435,7 +435,7 @@ func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
 }
 
 // Request makes a request to the Telegram API and return the result
-func (t *Telegram) Request(ctx context.Context, method string, b []byte, data interface{}) error {
+func (t *Telegram) Request(ctx context.Context, method string, b []byte, data any) error {
 	return repeater.NewDefault(3, time.Millisecond*250).Do(ctx, func() error {
 		url := fmt.Sprintf("%s%s/%s", t.apiPrefix, t.Token, method)
 

@@ -13,17 +13,17 @@ import (
 
 // SMTPParams contain settings for smtp server connection
 type SMTPParams struct {
-	Host        string        // SMTP host
-	Port        int           // SMTP port
-	TLS         bool          // TLS auth
-	StartTLS    bool          // StartTLS auth
-	InsecureSkipVerify bool	  // skip certificate verification
-	ContentType string        // Content type
-	Charset     string        // Character set
-	LoginAuth   bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
-	Username    string        // username
-	Password    string        // password
-	TimeOut     time.Duration // TCP connection timeout
+	Host               string        // SMTP host
+	Port               int           // SMTP port
+	TLS                bool          // TLS auth
+	StartTLS           bool          // StartTLS auth
+	InsecureSkipVerify bool          // skip certificate verification
+	ContentType        string        // Content type
+	Charset            string        // Character set
+	LoginAuth          bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
+	Username           string        // username
+	Password           string        // password
+	TimeOut            time.Duration // TCP connection timeout
 }
 
 // Email notifications client
