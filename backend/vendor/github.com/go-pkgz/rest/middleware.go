@@ -36,14 +36,17 @@ func AppInfo(app, author, version string) func(http.Handler) http.Handler {
 	return f
 }
 
-// Ping middleware response with pong to /ping. Stops chain if ping request detected
+// Ping middleware response with pong to /ping. Stops chain if ping request detected.
+// Handles both GET and HEAD methods - HEAD returns headers only without body,
+// which is useful for lightweight health checks by monitoring tools.
 func Ping(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-
-		if r.Method == "GET" && strings.HasSuffix(strings.ToLower(r.URL.Path), "/ping") {
+		if (r.Method == "GET" || r.Method == "HEAD") && strings.HasSuffix(strings.ToLower(r.URL.Path), "/ping") {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("pong"))
+			if r.Method == "GET" {
+				_, _ = w.Write([]byte("pong"))
+			}
 			return
 		}
 		next.ServeHTTP(w, r)

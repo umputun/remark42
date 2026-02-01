@@ -20,7 +20,7 @@ var gzDefaultContentTypes = []string{
 }
 
 var gzPool = sync.Pool{
-	New: func() interface{} { return gzip.NewWriter(io.Discard) },
+	New: func() any { return gzip.NewWriter(io.Discard) },
 }
 
 type gzipResponseWriter struct {

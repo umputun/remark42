@@ -13,7 +13,7 @@ import (
 type JSON map[string]any
 
 // RenderJSON sends data as json
-func RenderJSON(w http.ResponseWriter, data interface{}) {
+func RenderJSON(w http.ResponseWriter, data any) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
@@ -35,9 +35,8 @@ func RenderJSONFromBytes(w http.ResponseWriter, r *http.Request, data []byte) er
 }
 
 // RenderJSONWithHTML allows html tags and forces charset=utf-8
-func RenderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) error {
-
-	encodeJSONWithHTML := func(v interface{}) ([]byte, error) {
+func RenderJSONWithHTML(w http.ResponseWriter, r *http.Request, v any) error {
+	encodeJSONWithHTML := func(v any) ([]byte, error) {
 		buf := &bytes.Buffer{}
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(false)
@@ -55,7 +54,7 @@ func RenderJSONWithHTML(w http.ResponseWriter, r *http.Request, v interface{}) e
 }
 
 // renderJSONWithStatus sends data as json and enforces status code
-func renderJSONWithStatus(w http.ResponseWriter, data interface{}, code int) {
+func renderJSONWithStatus(w http.ResponseWriter, data any, code int) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
