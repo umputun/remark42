@@ -32,7 +32,7 @@ type Middleware struct {
 
 // Backend is logging backend
 type Backend interface {
-	Logf(format string, args ...interface{})
+	Logf(format string, args ...any)
 }
 
 type logParts struct {
@@ -51,7 +51,7 @@ type logParts struct {
 
 type stdBackend struct{}
 
-func (s stdBackend) Logf(format string, args ...interface{}) {
+func (s stdBackend) Logf(format string, args ...any) {
 	log.Printf(format, args...)
 }
 

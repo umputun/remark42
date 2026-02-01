@@ -156,10 +156,7 @@ func (b *Benchmarks) Stats(interval time.Duration) BenchmarkStats {
 	}
 
 	// ensure we calculate rate based on actual interval
-	actualInterval := fnInterval.Sub(stInterval)
-	if actualInterval < time.Second {
-		actualInterval = time.Second
-	}
+	actualInterval := max(fnInterval.Sub(stInterval), time.Second)
 
 	return BenchmarkStats{
 		Requests:        requests,

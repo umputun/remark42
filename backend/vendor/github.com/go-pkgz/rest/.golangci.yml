@@ -19,6 +19,8 @@ linters:
     - unconvert
     - unparam
     - unused
+    - modernize
+    - testifylint
   settings:
     goconst:
       min-len: 2
