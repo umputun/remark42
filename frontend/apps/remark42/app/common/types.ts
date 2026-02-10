@@ -109,6 +109,7 @@ export interface Config {
   version: string;
   auth_providers: Provider[];
   edit_duration: number;
+  admin_edit: boolean;
   max_comment_size: number;
   admins: string[];
   admin_email: string;

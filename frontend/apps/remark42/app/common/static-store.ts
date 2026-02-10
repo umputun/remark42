@@ -15,6 +15,7 @@ export const StaticStore: StaticStoreType = {
   config: {
     version: '',
     edit_duration: 5000,
+    admin_edit: false,
     max_comment_size: 5000,
     admins: [],
     admin_email: '',
