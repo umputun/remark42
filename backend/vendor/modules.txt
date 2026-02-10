@@ -56,7 +56,7 @@ github.com/go-chi/cors
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.1.1
+# github.com/go-pkgz/auth/v2 v2.1.2-0.20260211003156-fbba7f2baa6b
 ## explicit; go 1.24.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar

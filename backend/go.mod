@@ -9,7 +9,7 @@ require (
 	github.com/didip/tollbooth/v8 v8.0.1
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/cors v1.2.2
-	github.com/go-pkgz/auth/v2 v2.1.1
+	github.com/go-pkgz/auth/v2 v2.1.2-0.20260211003156-fbba7f2baa6b
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.12.1

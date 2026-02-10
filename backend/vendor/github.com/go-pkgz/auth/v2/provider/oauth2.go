@@ -44,6 +44,8 @@ type Params struct {
 
 	Port int    // relevant for providers supporting port customization, for example dev oauth2
 	Host string // relevant for providers supporting host customization, for example dev oauth2
+
+	MicrosoftTenant string // tenant for microsoft provider, default "common"
 }
 
 // UserData is type for user information returned from oauth2 providers /info API method

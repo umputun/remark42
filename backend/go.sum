@@ -50,6 +50,12 @@ github.com/go-oauth2/oauth2/v4 v4.5.4 h1:YjI0tmGW8oxVhn9QSBIxlr641QugWrJY5UWa6Xm
 github.com/go-oauth2/oauth2/v4 v4.5.4/go.mod h1:BXiOY+QZtZy2ewbsGk2B5P8TWmtz/Rf7ES5ZttQFxfQ=
 github.com/go-pkgz/auth/v2 v2.1.1 h1:CBH3Z6ovLT51Nx9TkBcu2L8Dd/xwL6CgJcgqUnC2isQ=
 github.com/go-pkgz/auth/v2 v2.1.1/go.mod h1:9LwzESczjMavmXNZo1XhYpfYdKWtoCbXt/ZIi0GTvF0=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260119213210-5ff800f4c064 h1:+7XirxGV7RV0VzStWbyP6c0edbfaCXB69JeZh6uVpE0=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260119213210-5ff800f4c064/go.mod h1:9LwzESczjMavmXNZo1XhYpfYdKWtoCbXt/ZIi0GTvF0=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260210234152-7e1ed2cedf71 h1:FxzoRgUemfWKBt0iw9J9Qck5nHB6bNlhmUJneMNL/C8=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260210234152-7e1ed2cedf71/go.mod h1:9LwzESczjMavmXNZo1XhYpfYdKWtoCbXt/ZIi0GTvF0=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260211003156-fbba7f2baa6b h1:N8iS/o/LgbSL4NLabOuLgfmROjtMLW2Qc3EsMmdYNGs=
+github.com/go-pkgz/auth/v2 v2.1.2-0.20260211003156-fbba7f2baa6b/go.mod h1:9LwzESczjMavmXNZo1XhYpfYdKWtoCbXt/ZIi0GTvF0=
 github.com/go-pkgz/email v0.6.0 h1:snZnXldjeF4PgKSjnx9Fa25mtOgFpAOEeWvnQvrxjLE=
 github.com/go-pkgz/email v0.6.0/go.mod h1:+wgi4x7S33IuCzfcCM5euN0GwQG6XvO/PBLxrNffYLI=
 github.com/go-pkgz/expirable-cache/v3 v3.1.0 h1:s05P851/O6QJ6Mc+7o2bh9aGtD3romB1SxDTXifdoqc=

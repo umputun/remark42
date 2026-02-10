@@ -68,17 +68,17 @@ type Opts struct {
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
 	UseGravatar       bool         // for email based auth (verified provider) use gravatar service
 
-	AdminPasswd      string                   // if presented, allows basic auth with user admin and given password
-	BasicAuthChecker middleware.BasicAuthFunc // user custom checker for basic auth, if one defined then "AdminPasswd" will ignored
-	AudienceReader   token.Audience           // list of allowed aud values, default (empty) allows any
-	AudSecrets       bool                     // allow multiple secrets (secret per aud)
-	Logger           logger.L                 // logger interface, default is no logging at all
-	RefreshCache     middleware.RefreshCache  // optional cache to keep refreshed tokens
+	AdminPasswd      string                      // if presented, allows basic auth with user admin and given password
+	BasicAuthChecker middleware.BasicAuthFunc    // user custom checker for basic auth, if one defined then "AdminPasswd" will ignored
+	AudienceReader   token.Audience              // list of allowed aud values, default (empty) allows any
+	AudSecrets       bool                        // allow multiple secrets (secret per aud)
+	Logger           logger.L                    // logger interface, default is no logging at all
+	RefreshCache     middleware.RefreshCache     // optional cache to keep refreshed tokens
+	ErrorHandler     middleware.ErrorHandlerFunc // custom error handler for auth failures
 }
 
 // NewService initializes everything
 func NewService(opts Opts) (res *Service) {
-
 	res = &Service{
 		opts:   opts,
 		logger: opts.Logger,
@@ -87,6 +87,7 @@ func NewService(opts Opts) (res *Service) {
 			AdminPasswd:      opts.AdminPasswd,
 			BasicAuthChecker: opts.BasicAuthChecker,
 			RefreshCache:     opts.RefreshCache,
+			ErrorHandler:     opts.ErrorHandler,
 		},
 		issuer:      opts.Issuer,
 		useGravatar: opts.UseGravatar,
@@ -318,6 +319,25 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 		UserAttributes: map[string]string{},
 	}
 	s.addProviderByName(name, p)
+}
+
+// AddMicrosoftProvider adds microsoft provider with a configurable tenant.
+// If tenant is empty, "common" is used. For single-tenant Entra ID apps,
+// pass the directory (tenant) ID or domain name.
+// For advanced configuration (e.g., UserAttributes), construct provider.Params directly.
+func (s *Service) AddMicrosoftProvider(cid, csecret, tenant string) {
+	p := provider.Params{
+		URL:             s.opts.URL,
+		JwtService:      s.jwtService,
+		Issuer:          s.issuer,
+		AvatarSaver:     s.avatarProxy,
+		Cid:             cid,
+		Csecret:         csecret,
+		L:               s.logger,
+		UserAttributes:  map[string]string{},
+		MicrosoftTenant: tenant,
+	}
+	s.addProvider(provider.NewMicrosoft(p))
 }
 
 // AddDevProvider with a custom host and port
