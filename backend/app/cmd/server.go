@@ -103,7 +103,7 @@ type ServerCommand struct {
 		Google    AuthGroup  `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
 		Github    AuthGroup  `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
 		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
-		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
+		Microsoft MicrosoftAuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
 		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
@@ -150,6 +150,13 @@ type AppleGroup struct {
 type AuthGroup struct {
 	CID  string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC string `long:"csec" env:"CSEC" description:"OAuth client secret"`
+}
+
+// MicrosoftAuthGroup defines options group for Microsoft auth params
+type MicrosoftAuthGroup struct {
+	CID    string `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC   string `long:"csec" env:"CSEC" description:"OAuth client secret"`
+	Tenant string `long:"tenant" env:"TENANT" description:"Azure AD tenant ID, domain, or 'common' (default)" default:"common"`
 }
 
 // StoreGroup defines options group for store params
@@ -939,7 +946,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		providersCount++
 	}
 	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
-		authenticator.AddProvider("microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC)
+		authenticator.AddMicrosoftProvider(s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC, s.Auth.Microsoft.Tenant)
 		providersCount++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {

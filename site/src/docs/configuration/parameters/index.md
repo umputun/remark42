@@ -91,6 +91,7 @@ services:
 | auth.facebook.csec             | AUTH_FACEBOOK_CSEC             |                         | Facebook OAuth client secret                             |
 | auth.microsoft.cid             | AUTH_MICROSOFT_CID             |                         | Microsoft OAuth client ID                                |
 | auth.microsoft.csec            | AUTH_MICROSOFT_CSEC            |                         | Microsoft OAuth client secret                            |
+| auth.microsoft.tenant          | AUTH_MICROSOFT_TENANT          | `common`                | Azure AD tenant ID, domain, or "common"                  |
 | auth.github.cid                | AUTH_GITHUB_CID                |                         | GitHub OAuth client ID                                   |
 | auth.github.csec               | AUTH_GITHUB_CSEC               |                         | GitHub OAuth client secret                               |
 | auth.patreon.cid               | AUTH_PATREON_CID               |                         | Patreon OAuth Client ID                                  |

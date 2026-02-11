@@ -82,6 +82,7 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 3. In **"Overview"** take note of the **Application (client) ID** (`AUTH_MICROSOFT_CID`)
 4. Choose the new project from the top right project dropdown (only if another project is selected)
 5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"** (`AUTH_MICROSOFT_CSEC`)
+6. For single-tenant Entra ID applications, set `AUTH_MICROSOFT_TENANT` to your tenant ID or domain name. The default value is `common`, which works for multi-tenant applications.
 
 ### Yandex
 

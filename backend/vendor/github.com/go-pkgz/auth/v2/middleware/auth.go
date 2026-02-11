@@ -24,6 +24,7 @@ type Authenticator struct {
 	AdminPasswd      string
 	BasicAuthChecker BasicAuthFunc
 	RefreshCache     RefreshCache
+	ErrorHandler     ErrorHandlerFunc // custom error handler for auth failures
 }
 
 // RefreshCache defines interface storing and retrieving refreshed tokens
@@ -44,6 +45,13 @@ type TokenService interface {
 // BasicAuthFunc type is an adapter to allow the use of ordinary functions as BasicAuth.
 // The second return parameter `User` need for add user claims into context of request.
 type BasicAuthFunc func(user, passwd string) (ok bool, userInfo token.User, err error)
+
+// ErrorHandlerFunc type is an adapter to allow custom error handling for auth failures.
+// It receives the suggested HTTP status code and the error that caused the auth failure.
+// The handler can respond with custom status codes, HTML pages, redirects, or JSON responses.
+// Status codes are typically http.StatusUnauthorized (401) for auth failures
+// or http.StatusForbidden (403) for permission denied.
+type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, statusCode int, err error)
 
 // adminUser sets claims for an optional basic auth
 var adminUser = token.User{
@@ -73,7 +81,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 			return
 		}
 		a.Logf("[DEBUG] auth failed, %v", err)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		a.errResponse(w, r, http.StatusUnauthorized, err)
 	}
 
 	f := func(h http.Handler) http.Handler {
@@ -208,12 +216,12 @@ func (a *Authenticator) AdminOnly(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user, err := token.GetUserInfo(r)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			a.errResponse(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
 		if !user.IsAdmin() {
-			http.Error(w, "Access denied", http.StatusForbidden)
+			a.errResponse(w, r, http.StatusForbidden, fmt.Errorf("user %s is not admin", user.Name))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -242,6 +250,21 @@ func (a *Authenticator) basicAdminUser(r *http.Request) bool {
 	return true
 }
 
+// errResponse calls ErrorHandler if set, otherwise returns default http error
+func (a *Authenticator) errResponse(w http.ResponseWriter, r *http.Request, code int, err error) {
+	if a.ErrorHandler != nil {
+		a.ErrorHandler(w, r, code, err)
+		return
+	}
+	// preserve original error messages for backward compatibility
+	switch code {
+	case http.StatusForbidden:
+		http.Error(w, "Access denied", code)
+	default:
+		http.Error(w, "Unauthorized", code)
+	}
+}
+
 // RBAC middleware allows role based control for routes
 // this handler internally wrapped with auth(true) to avoid situation if RBAC defined without prior Auth
 func (a *Authenticator) RBAC(roles ...string) func(http.Handler) http.Handler {
@@ -250,7 +273,7 @@ func (a *Authenticator) RBAC(roles ...string) func(http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			user, err := token.GetUserInfo(r)
 			if err != nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				a.errResponse(w, r, http.StatusUnauthorized, err)
 				return
 			}
 
@@ -262,7 +285,7 @@ func (a *Authenticator) RBAC(roles ...string) func(http.Handler) http.Handler {
 				}
 			}
 			if !matched {
-				http.Error(w, "Access denied", http.StatusForbidden)
+				a.errResponse(w, r, http.StatusForbidden, fmt.Errorf("user %s role %s not in allowed roles", user.Name, user.Role))
 				return
 			}
 			h.ServeHTTP(w, r)
