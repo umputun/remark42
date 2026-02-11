@@ -73,13 +73,15 @@ export function CommentActions({
           <Button kind="link" size="sm" onClick={onToggleEditing}>
             {intl.formatMessage(editing ? messages.cancel : messages.edit)}
           </Button>
-          <span
-            role="timer"
-            title={intl.formatMessage(messages.editCountdown)}
-            className={clsx('comment-actions-countdown', styles.countdown)}
-          >
-            <Countdown timestamp={editDeadline} onTimePassed={onDisableEditing} />
-          </span>
+          {Number.isFinite(editDeadline) && (
+            <span
+              role="timer"
+              title={intl.formatMessage(messages.editCountdown)}
+              className={clsx('comment-actions-countdown', styles.countdown)}
+            >
+              <Countdown timestamp={editDeadline} onTimePassed={onDisableEditing} />
+            </span>
+          )}
         </>
       )}
       <div
