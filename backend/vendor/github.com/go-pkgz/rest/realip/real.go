@@ -58,8 +58,7 @@ func Get(r *http.Request) (string, error) {
 
 	// check X-Forwarded-For, find leftmost public IP
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		addresses := strings.Split(xff, ",")
-		for _, addr := range addresses {
+		for addr := range strings.SplitSeq(xff, ",") {
 			ip := strings.TrimSpace(addr)
 			if parsedIP := net.ParseIP(ip); isPublicIP(parsedIP) {
 				return ip, nil
