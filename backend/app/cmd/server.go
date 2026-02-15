@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/avatar"
@@ -99,18 +101,19 @@ type ServerCommand struct {
 		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
-		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
-		Google    AuthGroup  `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
-		Github    AuthGroup  `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
-		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Apple     AppleGroup         `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
+		Google    AuthGroup          `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
+		Github    AuthGroup          `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
+		Facebook  AuthGroup          `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft MicrosoftAuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
-		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
-		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
-		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
-		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
-		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
-		Anonymous bool       `long:"anon" env:"ANON" description:"enable anonymous login"`
+		Yandex    AuthGroup          `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
+		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
+		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
+		Custom    CustomAuthGroup    `group:"custom" namespace:"custom" env-namespace:"CUSTOM" description:"Custom OAuth2 provider"`
+		Telegram  bool               `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
+		Dev       bool               `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
+		Anonymous bool               `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
 			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
 			From         string        `long:"from" env:"FROM" description:"from email address"`
@@ -157,6 +160,21 @@ type MicrosoftAuthGroup struct {
 	CID    string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC   string `long:"csec" env:"CSEC" description:"OAuth client secret"`
 	Tenant string `long:"tenant" env:"TENANT" description:"Azure AD tenant ID, domain, or 'common' (default)" default:"common"`
+}
+
+// CustomAuthGroup defines options group for custom OAuth2 provider params
+type CustomAuthGroup struct {
+	Name         string   `long:"name" env:"NAME" description:"custom provider name used in auth route"`
+	CID          string   `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC         string   `long:"csec" env:"CSEC" description:"OAuth client secret"`
+	AuthURL      string   `long:"auth-url" env:"AUTH_URL" description:"OAuth authorization endpoint"`
+	TokenURL     string   `long:"token-url" env:"TOKEN_URL" description:"OAuth token endpoint"`
+	InfoURL      string   `long:"info-url" env:"INFO_URL" description:"OAuth user info endpoint"`
+	Scopes       []string `long:"scopes" env:"SCOPES" env-delim:"," description:"OAuth scopes"`
+	IDField      string   `long:"id-field" env:"ID_FIELD" default:"sub" description:"user info field used as unique id"`
+	NameField    string   `long:"name-field" env:"NAME_FIELD" default:"name" description:"user info field used as display name"`
+	PictureField string   `long:"picture-field" env:"PICTURE_FIELD" default:"picture" description:"user info field used as avatar url"`
+	EmailField   string   `long:"email-field" env:"EMAIL_FIELD" default:"email" description:"user info field used as email"`
 }
 
 // StoreGroup defines options group for store params
@@ -330,6 +348,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_YANDEX_CSEC",
 		"AUTH_PATREON_CSEC",
 		"AUTH_DISCORD_CSEC",
+		"AUTH_CUSTOM_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -485,6 +504,34 @@ func contains(s string, a []string) bool {
 		}
 	}
 	return false
+}
+
+func (c CustomAuthGroup) isConfigured() bool {
+	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
+		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
+}
+
+func (c CustomAuthGroup) missingRequired() []string {
+	missing := []string{}
+	if c.Name == "" {
+		missing = append(missing, "AUTH_CUSTOM_NAME")
+	}
+	if c.CID == "" {
+		missing = append(missing, "AUTH_CUSTOM_CID")
+	}
+	if c.CSEC == "" {
+		missing = append(missing, "AUTH_CUSTOM_CSEC")
+	}
+	if c.AuthURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_AUTH_URL")
+	}
+	if c.TokenURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_TOKEN_URL")
+	}
+	if c.InfoURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_INFO_URL")
+	}
+	return missing
 }
 
 // newServerApp prepares application and return it with all active parts
@@ -963,6 +1010,49 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 	if s.Auth.Discord.CID != "" && s.Auth.Discord.CSEC != "" {
 		authenticator.AddProvider("discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC)
+		providersCount++
+	}
+
+	if s.Auth.Custom.isConfigured() {
+		missing := s.Auth.Custom.missingRequired()
+		if len(missing) > 0 {
+			return fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
+		}
+
+		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
+		if customName == "email" || customName == "anonymous" {
+			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
+		}
+
+		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  s.Auth.Custom.AuthURL,
+				TokenURL: s.Auth.Custom.TokenURL,
+			},
+			InfoURL: s.Auth.Custom.InfoURL,
+			Scopes:  s.Auth.Custom.Scopes,
+			MapUserFn: func(data provider.UserData, _ []byte) token.User {
+				sourceID := data.Value(s.Auth.Custom.IDField)
+				if sourceID == "" {
+					sourceID = data.Value(s.Auth.Custom.EmailField)
+				}
+				if sourceID == "" {
+					sourceID = data.Value(s.Auth.Custom.NameField)
+				}
+
+				hashID := token.HashID(sha256.New(), sourceID)
+				user := token.User{
+					ID:      customName + "_" + hashID,
+					Name:    data.Value(s.Auth.Custom.NameField),
+					Picture: data.Value(s.Auth.Custom.PictureField),
+					Email:   data.Value(s.Auth.Custom.EmailField),
+				}
+				if user.Name == "" {
+					user.Name = "noname_" + hashID[:4]
+				}
+				return user
+			},
+		})
 		providersCount++
 	}
 
