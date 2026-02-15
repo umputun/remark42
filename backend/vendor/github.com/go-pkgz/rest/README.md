@@ -143,6 +143,22 @@ The `Rewrite` middleware is designed to rewrite the URL path based on a given ru
 
 For example, `Rewrite("^/sites/(.*)/settings/$", "/sites/settings/$1")` will change request's URL from `/sites/id1/settings/` to `/sites/settings/id1`
 
+### CleanPath middleware
+
+Cleans double slashes from URL path. For example, requests to `/users//1` or `//users////1` will be cleaned to `/users/1` before routing. Trailing slashes are preserved: `/api//v1/` becomes `/api/v1/`. Note: dot segments (`.` and `..`) are intentionally not cleaned to preserve routing semantics.
+
+```go
+router.Use(rest.CleanPath)
+```
+
+### StripSlashes middleware
+
+Removes trailing slashes from URL path. For example, `/users/` becomes `/users`. The root path `/` is preserved.
+
+```go
+router.Use(rest.StripSlashes)
+```
+
 ### NoCache middleware
 
 Sets a number of HTTP headers to prevent a router (handler's) response from being cached by an upstream proxy and/or client.
@@ -165,6 +181,131 @@ RealIP is a middleware that sets a http.Request's RemoteAddr to the results of p
 4. `RemoteAddr` - fallback for direct connections
 
 Only public IPs are accepted from headers; private/loopback/link-local IPs are skipped. This makes the middleware compatible with CDN setups like Cloudflare where the leftmost IP in `X-Forwarded-For` is the actual client.
+
+### CORS middleware
+
+Handles Cross-Origin Resource Sharing, allowing controlled access from different origins.
+
+```go
+// allow all origins (default)
+router.Use(rest.CORS())
+
+// specific origins with credentials
+router.Use(rest.CORS(
+    rest.CorsAllowedOrigins("https://app.example.com", "https://admin.example.com"),
+    rest.CorsAllowCredentials(true),
+    rest.CorsMaxAge(86400),
+))
+
+// full configuration
+router.Use(rest.CORS(
+    rest.CorsAllowedOrigins("https://app.example.com"),
+    rest.CorsAllowedMethods("GET", "POST", "PUT", "DELETE"),
+    rest.CorsAllowedHeaders("Authorization", "Content-Type", "X-Custom-Header"),
+    rest.CorsExposedHeaders("X-Request-Id", "X-Total-Count"),
+    rest.CorsAllowCredentials(true),
+    rest.CorsMaxAge(3600),
+))
+```
+
+Features:
+- Automatic preflight (OPTIONS) handling
+- Origin validation with case-insensitive matching
+- Credentials support (reflects origin instead of `*`)
+- Configurable cache duration for preflight results
+
+Available options:
+- `CorsAllowedOrigins(origins...)` - allowed origins (default: `*`)
+- `CorsAllowedMethods(methods...)` - allowed HTTP methods (default: GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD)
+- `CorsAllowedHeaders(headers...)` - allowed request headers (default: Accept, Content-Type, Authorization, X-Requested-With)
+- `CorsExposedHeaders(headers...)` - headers exposed to client
+- `CorsAllowCredentials(bool)` - enable credentials (cookies, auth headers)
+- `CorsMaxAge(seconds)` - preflight cache duration
+
+### Secure middleware
+
+Adds security headers to responses. By default sets: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `X-XSS-Protection`, and `Strict-Transport-Security` (for HTTPS only).
+
+```go
+// with sensible defaults
+router.Use(rest.Secure())
+
+// with full security headers for web apps (adds CSP and Permissions-Policy)
+router.Use(rest.Secure(rest.SecAllHeaders()))
+
+// with custom options
+router.Use(rest.Secure(
+    rest.SecFrameOptions("SAMEORIGIN"),
+    rest.SecReferrerPolicy("no-referrer"),
+    rest.SecHSTS(86400, true, true),
+    rest.SecContentSecurityPolicy("default-src 'self'"),
+    rest.SecPermissionsPolicy("geolocation=(), camera=()"),
+))
+```
+
+Default headers:
+- `X-Frame-Options: DENY` - prevents clickjacking
+- `X-Content-Type-Options: nosniff` - prevents MIME-type sniffing
+- `Referrer-Policy: strict-origin-when-cross-origin` - controls referrer information
+- `X-XSS-Protection: 1; mode=block` - enables XSS filtering (legacy browsers)
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains` - enforces HTTPS (only sent over HTTPS)
+
+Available options:
+- `SecFrameOptions(value)` - set X-Frame-Options (DENY, SAMEORIGIN)
+- `SecContentTypeNosniff(enable)` - enable/disable nosniff
+- `SecReferrerPolicy(policy)` - set Referrer-Policy
+- `SecContentSecurityPolicy(policy)` - set Content-Security-Policy
+- `SecPermissionsPolicy(policy)` - set Permissions-Policy
+- `SecHSTS(maxAge, includeSubdomains, preload)` - configure HSTS
+- `SecXSSProtection(value)` - set X-XSS-Protection
+- `SecAllHeaders()` - convenience option that sets CSP and Permissions-Policy with restrictive defaults
+
+### CSRF middleware
+
+Provides Cross-Site Request Forgery protection using modern browser Fetch metadata headers (`Sec-Fetch-Site`, `Origin`). For Go 1.25+, this wraps the stdlib's `http.CrossOriginProtection`. For earlier versions, a compatible custom implementation is used.
+
+```go
+// basic protection
+protection := rest.NewCrossOriginProtection()
+router.Use(protection.Handler)
+
+// with trusted origins for cross-origin requests
+protection := rest.NewCrossOriginProtection()
+if err := protection.AddTrustedOrigin("https://mobile.example.com"); err != nil {
+    log.Fatal(err)
+}
+if err := protection.AddTrustedOrigin("https://admin.example.com"); err != nil {
+    log.Fatal(err)
+}
+router.Use(protection.Handler)
+
+// with bypass patterns for webhooks or OAuth
+protection := rest.NewCrossOriginProtection()
+protection.AddBypassPattern("/api/webhook")
+protection.AddBypassPattern("/oauth/")
+router.Use(protection.Handler)
+
+// with custom deny handler
+protection := rest.NewCrossOriginProtection()
+protection.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    http.Error(w, "CSRF validation failed", http.StatusForbidden)
+}))
+router.Use(protection.Handler)
+```
+
+How it works:
+- Safe methods (GET, HEAD, OPTIONS) are always allowed
+- Checks `Sec-Fetch-Site` header for "same-origin" or "none"
+- Falls back to comparing `Origin` header with request `Host`
+- Requests without these headers are assumed same-origin (non-browser clients)
+
+Available methods:
+- `NewCrossOriginProtection()` - creates new CSRF protection middleware
+- `AddTrustedOrigin(origin)` - adds origin allowed for cross-origin requests (format: "scheme://host[:port]")
+- `AddBypassPattern(pattern)` - adds URL pattern that bypasses protection (for webhooks, OAuth, etc.)
+- `SetDenyHandler(handler)` - sets custom handler for rejected requests (default: 403 Forbidden)
+- `Check(request)` - manually validates a request, returns error if blocked
+- `Handler(handler)` - wraps an http.Handler with CSRF protection
 
 ### Maybe middleware
 
