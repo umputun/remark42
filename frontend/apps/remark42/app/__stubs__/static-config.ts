@@ -19,5 +19,6 @@ beforeEach(() => {
     email_notifications: false,
     telegram_notifications: false,
     emoji_enabled: true,
+    need_approval: false,
   };
 });

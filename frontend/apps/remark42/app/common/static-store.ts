@@ -30,5 +30,6 @@ export const StaticStore: StaticStoreType = {
     email_notifications: false,
     telegram_notifications: false,
     emoji_enabled: false,
+    need_approval: false,
   },
 };

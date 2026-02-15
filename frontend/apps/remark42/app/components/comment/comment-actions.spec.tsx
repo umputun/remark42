@@ -7,6 +7,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/preact';
 function getProps(): Props {
   return {
     pinned: false,
+    unapproved: false,
+    needApproval: false,
     admin: false,
     currentUser: false,
     copied: false,
@@ -18,6 +20,7 @@ function getProps(): Props {
     onDelete: jest.fn(),
     onToggleEditing: jest.fn(),
     onTogglePin: jest.fn(),
+    onToggleApproval: jest.fn(),
     onToggleReplying: jest.fn(),
     onHideUser: jest.fn(),
     onBlockUser: jest.fn(),
@@ -144,12 +147,15 @@ describe('<CommentActions/>', () => {
 
     it('should render admin actions in right order', () => {
       props.admin = true;
+      props.needApproval = true;
       render(<CommentActions {...props} />);
       expect(screen.getByTestId('comment-actions-additional').children[0]).toHaveTextContent('Hide');
       expect(screen.getByTestId('comment-actions-additional').children[1]).toHaveTextContent('Copy');
       expect(screen.getByTestId('comment-actions-additional').children[2]).toHaveTextContent('Pin');
-      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Block');
-      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Delete');
+      // unapproved=false (default) means comment is approved, so button shows "Disapprove"
+      expect(screen.getByTestId('comment-actions-additional').children[3]).toHaveTextContent('Disapprove');
+      expect(screen.getByTestId('comment-actions-additional').children[4]).toHaveTextContent('Block');
+      expect(screen.getByTestId('comment-actions-additional').children[5]).toHaveTextContent('Delete');
     });
 
     it('calls `onToggleEditing` when edit button is pressed', () => {
