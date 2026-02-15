@@ -8,7 +8,7 @@ Most of the parameters have sane defaults and don't require customization. There
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string
 2. `REMARK_URL` - URL pointing to your Remark42 server, i.e., `https://demo.remark42.com`
-3. At least one pair of `AUTH_<PROVIDER>_CID` and `AUTH_<PROVIDER>_CSEC` defining OAuth2 provider(s)
+3. At least one OAuth2 provider, either via `AUTH_<PROVIDER>_CID` + `AUTH_<PROVIDER>_CSEC` or via `AUTH_CUSTOM_*`
 
 The minimal `docker-compose.yml` has to include all required parameters:
 
@@ -98,6 +98,17 @@ services:
 | auth.patreon.csec              | AUTH_PATREON_CSEC              |                         | Patreon OAuth Client Secret                              |
 | auth.discord.cid               | AUTH_DISCORD_CID               |                         | Discord OAuth Client ID                                  |
 | auth.discord.csec              | AUTH_DISCORD_CSEC              |                         | Discord OAuth Client Secret                              |
+| auth.custom.name               | AUTH_CUSTOM_NAME               |                         | custom OAuth provider name (used in `/auth/<name>/...`) |
+| auth.custom.cid                | AUTH_CUSTOM_CID                |                         | custom OAuth client ID                                   |
+| auth.custom.csec               | AUTH_CUSTOM_CSEC               |                         | custom OAuth client secret                               |
+| auth.custom.auth-url           | AUTH_CUSTOM_AUTH_URL           |                         | custom OAuth authorization endpoint                      |
+| auth.custom.token-url          | AUTH_CUSTOM_TOKEN_URL          |                         | custom OAuth token endpoint                              |
+| auth.custom.info-url           | AUTH_CUSTOM_INFO_URL           |                         | custom OAuth user info endpoint                          |
+| auth.custom.scopes             | AUTH_CUSTOM_SCOPES             | none                    | custom OAuth scopes, comma-separated                     |
+| auth.custom.id-field           | AUTH_CUSTOM_ID_FIELD           | `sub`                   | user info field used as unique id                        |
+| auth.custom.name-field         | AUTH_CUSTOM_NAME_FIELD         | `name`                  | user info field used as display name                     |
+| auth.custom.picture-field      | AUTH_CUSTOM_PICTURE_FIELD      | `picture`               | user info field used as avatar URL                       |
+| auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field used as email                            |
 | auth.telegram                  | AUTH_TELEGRAM                  | `false`                 | Enable Telegram auth (telegram.token must be present)    |
 | auth.yandex.cid                | AUTH_YANDEX_CID                |                         | Yandex OAuth client ID                                   |
 | auth.yandex.csec               | AUTH_YANDEX_CSEC               |                         | Yandex OAuth client secret                               |

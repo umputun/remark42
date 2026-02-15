@@ -389,6 +389,18 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: an AppleProvider creating failed: "+
 			"provided private key is not ECDSA")
 	t.Log(err)
+
+	// incomplete custom oauth config
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.name=oidc", "--auth.custom.cid=123"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
+			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
+	t.Log(err)
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
