@@ -60,8 +60,16 @@ export const removeMyComment = (id: Comment['id']): Promise<void> =>
 
 export const getPreview = (text: string): Promise<string> => apiFetcher.post('/preview', {}, { text });
 
-export function getUser(): Promise<User | null> {
-  return apiFetcher.get<User | null>('/user').catch(() => null);
+export function getUser(unauthorised200= true): Promise<User | null> {
+  return apiFetcher
+    .get<User | null>('/user', { unauthorised200: String(unauthorised200) })
+    .then((response) => {
+      if (unauthorised200 && response && 'error' in response) {
+        return null;
+      }
+      return response;
+    })
+    .catch(() => null);
 }
 
 export const uploadImage = (image: File): Promise<Image> => {
