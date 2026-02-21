@@ -13,7 +13,9 @@ import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
-import { locale, theme, rawParams } from 'common/settings';
+import { locale, theme, rawParams, styling } from 'common/settings';
+import { isThemeStyling, setThemeStyling } from 'common/theme';
+import { Theme } from 'common/types';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -37,18 +39,21 @@ async function init(): Promise<void> {
 
   window.addEventListener('message', (evt) => {
     const data = parseMessage(evt);
-
-    if (data.theme === 'light') {
-      document.body.classList.remove('dark');
+    if (data.theme) {
+      setTheme(data.theme);
     }
-
-    if (data.theme === 'dark') {
-      document.body.classList.add('dark');
+    if (isThemeStyling(data.styling)) {
+      setThemeStyling(data.styling);
+      store.dispatch({ type: 'STYLING/SET', styling: data.styling });
     }
   });
 
-  if (theme === 'dark') {
-    document.body.classList.add('dark');
+  if (theme) {
+    setTheme(theme);
+  }
+  if (styling) {
+    setThemeStyling(styling);
+    store.dispatch({ type: 'STYLING/SET', styling });
   }
 
   boundActions.fetchHiddenUsers();
@@ -67,3 +72,12 @@ async function init(): Promise<void> {
     node
   );
 }
+
+const setTheme = (theme: Theme) => {
+  if (theme === 'light') {
+    document.body.classList.remove('dark');
+  }
+  if (theme === 'dark') {
+    document.body.classList.add('dark');
+  }
+};
