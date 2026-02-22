@@ -87,8 +87,9 @@ const Comments = ({ location }) => {
 	return (
 		<>
 			<h2>Comments</h2>
-			{/* This div is the target for actual comments insertion */}
-			<div id="remark42"></div>
+			{/* This div is the target for actual comments insertion.
+			    Any content inside is automatically removed once the widget loads. */}
+			<div id="remark42">Comments loading...</div>
 		</>
 	)
 }
@@ -194,8 +195,9 @@ export function Comments({ location }: CommentsProps) {
 	return (
 		<Fragment>
 			<h2>Comments</h2>
-			{/* This div is the target for actual comments insertion */}
-			<div id="remark42" />
+			{/* This div is the target for actual comments insertion.
+			    Any content inside is automatically removed once the widget loads. */}
+			<div id="remark42">Comments loading...</div>
 		</Fragment>
 	)
 }

@@ -66,6 +66,12 @@ Add following snippet in the place where you want to see Remark42 widget. The co
 **Note:** The initialization script should be placed after the code mentioned above.
 :::
 
+You can place any placeholder content inside the `remark42` div — it will be automatically removed once the comments widget has loaded. This is useful for showing a loading indicator or message while the widget initialises:
+
+```html
+<div id="remark42">Comments loading...</div>
+```
+
 If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/spa/).
 
 #### Themes
