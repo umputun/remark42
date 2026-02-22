@@ -147,7 +147,7 @@ services:
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
-| edit-time                      | EDIT_TIME                      | `5m`                    | edit window                                              |
+| edit-time                      | EDIT_TIME                      | `5m`                    | edit window; set to `0` to disable comment editing and staged image cleanup |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images                      |
