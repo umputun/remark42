@@ -135,7 +135,7 @@ Callback URL format:
 
 Notes:
 
-- `AUTH_CUSTOM_NAME` must be URL-safe and should not be `email` or `anonymous`.
+- `AUTH_CUSTOM_NAME` must be URL-safe and should not conflict with built-in providers: `email`, `anonymous`, `google`, `github`, `facebook`, `yandex`, `microsoft`, `patreon`, `discord`, `telegram`, `dev`, `apple`.
 - If any required custom variable is missing, Remark42 will fail to start.
 
 ### Telegram

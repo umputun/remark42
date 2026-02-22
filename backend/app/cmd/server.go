@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/sha1"
 	"embed"
 	"fmt"
 	"net"
@@ -504,6 +504,26 @@ func contains(s string, a []string) bool {
 		}
 	}
 	return false
+}
+
+var reservedCustomProviderNames = map[string]struct{}{
+	"email":     {},
+	"anonymous": {},
+	"google":    {},
+	"github":    {},
+	"facebook":  {},
+	"yandex":    {},
+	"microsoft": {},
+	"patreon":   {},
+	"discord":   {},
+	"telegram":  {},
+	"dev":       {},
+	"apple":     {},
+}
+
+func isReservedCustomProviderName(name string) bool {
+	_, ok := reservedCustomProviderNames[name]
+	return ok
 }
 
 func (c CustomAuthGroup) isConfigured() bool {
@@ -1020,7 +1040,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		}
 
 		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
-		if customName == "email" || customName == "anonymous" {
+		if isReservedCustomProviderName(customName) {
 			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 
@@ -1040,7 +1060,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 					sourceID = data.Value(s.Auth.Custom.NameField)
 				}
 
-				hashID := token.HashID(sha256.New(), sourceID)
+				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
 				user := token.User{
 					ID:      customName + "_" + hashID,
 					Name:    data.Value(s.Auth.Custom.NameField),
