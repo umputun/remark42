@@ -76,7 +76,7 @@ type ServerCommand struct {
 	CriticalScore              int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	PositiveScore              bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
 	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window; set to 0 to disable comment editing and staged image cleanup"`
 	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
 	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
