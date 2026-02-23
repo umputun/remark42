@@ -95,6 +95,30 @@ func TestServerApp_DevMode(t *testing.T) {
 	app.Wait()
 }
 
+func TestServerApp_CustomOAuthProvider(t *testing.T) {
+	port := chooseRandomUnusedPort()
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Custom.Name = "oidc"
+		o.Auth.Custom.CID = "cid"
+		o.Auth.Custom.CSEC = "csec"
+		o.Auth.Custom.AuthURL = "https://example.com/oauth2/authorize"
+		o.Auth.Custom.TokenURL = "https://example.com/oauth2/token"
+		o.Auth.Custom.InfoURL = "https://example.com/oauth2/userinfo"
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(port)
+
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
+
+	cancel()
+	app.Wait()
+}
+
 func TestServerApp_AnonMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
@@ -401,6 +425,21 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
 			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
 	t.Log(err)
+}
+
+func TestIsReservedCustomProviderName(t *testing.T) {
+	reserved := []string{
+		"email", "anonymous", "google", "github", "facebook", "yandex",
+		"microsoft", "patreon", "discord", "telegram", "dev", "apple",
+	}
+
+	for _, name := range reserved {
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, isReservedCustomProviderName(name))
+		})
+	}
+
+	assert.False(t, isReservedCustomProviderName("oidc"))
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
