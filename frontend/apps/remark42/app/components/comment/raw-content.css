@@ -1,5 +1,5 @@
 .raw-content {
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 
   & > *:first-child {
     margin-top: 0;
