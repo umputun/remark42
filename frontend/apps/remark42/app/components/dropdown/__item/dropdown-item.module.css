@@ -1,7 +1,7 @@
 .root {
   & > button,
   & > a,
-  & > :global(.dropdown) {
+  & > [data-dropdown] {
     display: inline-block;
     text-align: left;
     padding: 5px;

@@ -22,7 +22,7 @@
 - **Backend**: Formatting with golangci-lint, strict error handling
 - **Frontend**: TypeScript with ESLint, Stylelint and Prettier
 - **Imports**: Group stdlib, external packages, then internal packages
-- **CSS**: CSS Modules for new components (`component.module.css`)
+- **CSS**: CSS Modules (`component.module.css`) for all new and migrated components; remaining BEM components are being migrated incrementally. Class naming: BEM block = `.root`, elements = camelCase, modifiers = camelCase. Use `clsx` for conditional class composition (replaces `b()` from `bem-react-helper`)
 
 ## Key Backend Packages
 - **Web/API**: `github.com/go-chi/chi/v5`, `github.com/go-pkgz/rest`

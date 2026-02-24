@@ -1,4 +1,16 @@
-.thread__collapse {
+.root {
+  position: relative;
+}
+
+.indented {
+  margin-left: 17px;
+}
+
+.level6 .level6 {
+  margin-left: 0;
+}
+
+.collapse {
   height: calc(100% - 50px);
   width: 11px;
   position: absolute;
@@ -23,7 +35,8 @@
   }
 }
 
-.thread__collapse_collapsed {
+.collapsed {
+  composes: collapse;
   width: 18px;
   height: 18px;
   top: 12px;
@@ -45,28 +58,40 @@
   &:hover::after {
     transform: translateX(0);
   }
-}
 
-.thread__collapse_collapsed > div {
-  position: relative;
-  top: 6px;
-  left: 3px;
-  width: 12px;
-  height: 2px;
-  border-bottom: 2px solid;
-
-  &::before,
-  &::after {
-    content: '';
-    width: 100%;
+  & > div {
+    position: relative;
+    top: 6px;
+    left: 3px;
+    width: 12px;
     height: 2px;
     border-bottom: 2px solid;
-    position: absolute;
-    top: -4px;
-    left: 0;
-  }
 
-  &::after {
-    top: 4px !important;
+    &::before,
+    &::after {
+      content: '';
+      width: 100%;
+      height: 2px;
+      border-bottom: 2px solid;
+      position: absolute;
+      top: -4px;
+      left: 0;
+    }
+
+    &::after {
+      top: 4px !important;
+    }
+  }
+}
+
+.themeDark {
+  & .collapse {
+    &::after {
+      border-color: var(--color36);
+    }
+
+    &:hover::after {
+      border-color: var(--color6);
+    }
   }
 }
