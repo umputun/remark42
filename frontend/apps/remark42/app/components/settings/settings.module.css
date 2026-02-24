@@ -1,0 +1,79 @@
+.root {
+  padding: 10px 0;
+}
+
+.section + .section {
+  margin-top: 2em;
+}
+
+.action {
+  margin-left: 8px;
+  font-weight: 700;
+  color: var(--color9);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color33);
+  }
+
+  &::before {
+    content: '•';
+    margin-right: 8px;
+  }
+}
+
+.list {
+  padding: 0 0 0 20px;
+}
+
+.listItem {
+  cursor: default;
+  position: relative;
+  margin-bottom: 0.5em;
+
+  @media (hover: hover) {
+    & .action {
+      opacity: 0;
+    }
+
+    &:hover {
+      & .action {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.username {
+  font-weight: 700;
+}
+
+.userId {
+  font-style: italic;
+  font-size: 0.8em;
+  word-break: break-all;
+}
+
+.invisible {
+  opacity: 0.4;
+}
+
+.dimmed {
+  opacity: 0.5;
+}
+
+.themeDark {
+  & .action {
+    &::before {
+      color: var(--color20);
+    }
+  }
+}
+
+.themeLight {
+  & .action {
+    &::before {
+      color: var(--color10);
+    }
+  }
+}

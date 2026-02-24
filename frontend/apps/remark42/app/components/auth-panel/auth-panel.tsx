@@ -1,6 +1,5 @@
 import { h, Component } from 'preact';
 import { FormattedMessage, IntlShape, useIntl } from 'react-intl';
-import b from 'bem-react-helper';
 import clsx from 'clsx';
 
 import { User, Theme, PostInfo } from 'common/types';
@@ -60,18 +59,18 @@ class AuthPanelComponent extends Component<Props, State> {
 
   renderAuthorized = (user: User) => {
     return (
-      <div className={clsx('user', styles.user)}>
+      <div className={styles.user}>
         <button
-          className={clsx('user-profile-button', styles.userButton)}
+          className={styles.userButton}
           onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
-          <div className={clsx('user-avatar', styles.userAvatar)}>
+          <div className={styles.userAvatar}>
             <Avatar url={user.picture} />
           </div>
           {user.name}
         </button>{' '}
-        <div className={clsx('user-logout-button', styles.userLogoutButton)}>
+        <div className={styles.userLogoutButton}>
           <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
             <SignOutIcon size="14" />
           </IconButton>
@@ -83,13 +82,12 @@ class AuthPanelComponent extends Component<Props, State> {
   renderThirdPartyWarning = () => {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
-      <div className="auth-panel__column">
+      <div className={styles.column}>
         <FormattedMessage
           id="authPanel.disabled-cookies"
           defaultMessage="Disable third-party cookies blocking to login or open comments in"
         />{' '}
         <a
-          className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
           rel="noreferrer"
@@ -105,7 +103,7 @@ class AuthPanelComponent extends Component<Props, State> {
       return null;
     }
     return (
-      <div className="auth-panel__column">
+      <div className={styles.column}>
         <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />
       </div>
     );
@@ -115,7 +113,7 @@ class AuthPanelComponent extends Component<Props, State> {
     return (
       <Button
         kind="link"
-        mix="auth-panel__admin-action"
+        className={styles.adminAction}
         {...getHandleClickProps(this.toggleBlockedVisibility)}
         role="link"
       >
@@ -133,7 +131,7 @@ class AuthPanelComponent extends Component<Props, State> {
     return (
       <Button
         kind="link"
-        mix="auth-panel__admin-action"
+        className={styles.adminAction}
         {...getHandleClickProps(this.toggleCommentsAvailability)}
         role="link"
       >
@@ -146,17 +144,17 @@ class AuthPanelComponent extends Component<Props, State> {
     );
   };
 
-  render({ user, postInfo, theme }: Props, { isBlockedVisible }: State) {
+  render({ user, postInfo }: Props, { isBlockedVisible }: State) {
     const { read_only } = postInfo;
     const isAdmin = user && user.admin;
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
-      <div className={b('auth-panel', {}, { theme, loggedIn: !!user })}>
-        <div className="auth-panel__column">{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
+      <div className={styles.root}>
+        <div className={styles.column}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
-        <div className="auth-panel__column auth-panel__column_separated">
+        <div className={clsx(styles.column, styles.columnSeparated)}>
           {isSettingsLabelVisible && <span>{this.renderSettingsLabel()}</span>}
           {isAdmin && <span>{this.renderReadOnlySwitch()}</span>}
           {!isAdmin && read_only && (
