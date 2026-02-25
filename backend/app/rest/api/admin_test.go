@@ -880,3 +880,87 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	_, code = getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=remark42&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, http.StatusBadRequest, code, "no info about user")
 }
+
+func TestAdmin_ApproveComments(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.Premoderation = PremoderationAll
+	})
+	defer teardown()
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+
+	id1, err := srv.DataService.Create(c1)
+	assert.NoError(t, err)
+	assert.Equal(t, false, c1.Approved)
+
+	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
+	require.NoError(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	if err != nil {
+		t.Logf("Error in the response: %s", err.Error())
+	}
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	var c store.Comment
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&c)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, true, c.Approved)
+	t.Logf("Approve comment response: %+v", c)
+}
+
+func TestAdmin_ApprovePreviousComments(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.Premoderation = PremoderationFirst
+	})
+	defer teardown()
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c2 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+	c3 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
+
+	id1, err := srv.DataService.Create(c1)
+	assert.NoError(t, err)
+	id2, err := srv.DataService.Create(c2)
+	assert.NoError(t, err)
+	id3, err := srv.DataService.Create(c3)
+	assert.NoError(t, err)
+
+	assert.Equal(t, false, c1.Approved)
+	assert.Equal(t, false, c2.Approved)
+	assert.Equal(t, false, c3.Approved)
+
+	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
+	require.NoError(t, err)
+	requireAdminOnly(t, req)
+	resp, err := sendReq(t, req, adminUmputunToken)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	var c store.Comment
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&c)
+	assert.NoError(t, err)
+	assert.NoError(t, resp.Body.Close())
+	assert.Equal(t, true, c.Approved)
+	t.Logf("Approve comment response: %+v", c)
+
+	c2, err = srv.pubRest.dataService.Get(c2.Locator, id2, c2.User)
+	t.Logf("c2: %+v", c2)
+	assert.NoError(t, err)
+	assert.Equal(t, true, c2.Approved)
+
+	c3, err = srv.pubRest.dataService.Get(c3.Locator, id3, c3.User)
+	t.Logf("c3: %+v", c3)
+	assert.NoError(t, err)
+	assert.Equal(t, true, c3.Approved)
+}

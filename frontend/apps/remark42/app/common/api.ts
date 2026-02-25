@@ -165,3 +165,13 @@ export const getBlocked = (): Promise<BlockedUser[] | null> => adminFetcher.get(
 export const disableComments = (): Promise<void> => adminFetcher.put('/readonly', { url, ro: 1 });
 
 export const enableComments = (): Promise<void> => adminFetcher.put('/readonly', { url, ro: 0 });
+
+export const approveComment = ({
+  approved,
+  id,
+  text,
+}: {
+  approved: boolean;
+  id: Comment['id'];
+  text: string;
+}): Promise<Comment> => adminFetcher.put(`/comment/${id}/approve`, { url }, { approved, text });
