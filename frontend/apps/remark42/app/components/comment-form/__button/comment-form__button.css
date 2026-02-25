@@ -1,8 +1,0 @@
-.comment-form__button {
-  margin-right: 8px;
-  align-self: flex-start;
-
-  &:last-child {
-    margin-right: 20px;
-  }
-}

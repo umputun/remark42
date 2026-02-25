@@ -1,9 +1,9 @@
-.comment-form__toolbar {
+.toolbar {
   display: block;
   float: right;
 }
 
-.comment-form__toolbar-file-input {
+.fileInput {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -11,7 +11,7 @@
   clip: rect(0 0 0 0);
 }
 
-.comment-form__toolbar-item {
+.item {
   background: none;
   border: 0;
   color: var(--color37);
@@ -28,16 +28,24 @@
   }
 }
 
-.comment-form__toolbar-icon {
+.icon {
   display: inline-block;
   fill: currentColor;
 }
 
-.comment-form__toolbar-group {
+.group {
   display: inline-block;
   margin-left: 20px;
+
+  &:first-child {
+    margin-left: 0;
+  }
 }
 
-.comment-form__toolbar-group:first-child {
-  margin-left: 0;
+:global(.dark) .item {
+  color: var(--color20);
+
+  &:hover {
+    color: var(--color9);
+  }
 }

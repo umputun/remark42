@@ -19,6 +19,7 @@ import enMessages from 'locales/en.json';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
 import { RequestError } from '../../../utils/errorUtils';
+import styles from './subscribe-by-email.module.css';
 
 const emailVerificationForSubscribeMock = emailVerificationForSubscribe as unknown as jest.Mock<
   ReturnType<typeof emailVerificationForSubscribe>
@@ -91,7 +92,7 @@ describe('<SubscribeByEmailForm/>', () => {
   it('should render email form by default', () => {
     const store = mockStore(initialStore);
     const wrapper = createWrapper(store);
-    const title = wrapper.find('.comment-form__subscribe-by-email__title');
+    const title = wrapper.find(`.${styles.title}`);
     const button = wrapper.find(Button);
 
     expect(title.text()).toEqual('Subscribe to replies');
@@ -103,7 +104,7 @@ describe('<SubscribeByEmailForm/>', () => {
     const store = mockStore({ ...initialStore, user: { email_subscription: true } });
     const wrapper = createWrapper(store);
 
-    expect(wrapper.find('.comment-form__subscribe-by-email_subscribed')).toHaveLength(1);
+    expect(wrapper.find(`.${styles.subscribed}`)).toHaveLength(1);
     expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
   });
 

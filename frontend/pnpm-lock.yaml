@@ -29,9 +29,6 @@ importers:
       '@ungap/custom-elements':
         specifier: ^1.1.0
         version: 1.1.0
-      bem-react-helper:
-        specifier: ^1.2.2
-        version: 1.2.2
       clsx:
         specifier: ^1.1.1
         version: 1.2.1
@@ -4700,10 +4697,6 @@ packages:
   /batch@0.6.1:
     resolution: {integrity: sha512-x+VAiMRL6UPkx+kudNvxTl6hB2XNNCG2r+7wixVfIYwu/2HKRXimwQyaumLjMveWvT2Hkd/cAJw+QBMfJ/EKVw==}
     dev: true
-
-  /bem-react-helper@1.2.2:
-    resolution: {integrity: sha512-D1f8LBwd5BXQtJ9y/n0tZU4vvIipsYrNCec5U8jlvTGG9RNJcKILxXGuSNQ+C/A/HKvWJHM4cU+ARqL+JhmYsA==}
-    dev: false
 
   /big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
