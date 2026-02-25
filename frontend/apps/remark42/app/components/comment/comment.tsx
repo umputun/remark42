@@ -1,6 +1,5 @@
 import { h, JSX, Component, createRef, ComponentType } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
-import b from 'bem-react-helper';
 import clsx from 'clsx';
 
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
@@ -283,7 +282,6 @@ export class Comment extends Component<CommentProps, State> {
 
   render(props: CommentProps, state: State): JSX.Element {
     const isAdmin = this.isAdmin();
-    const isGuest = this.isGuest();
     const isCurrentUser = this.isCurrentUser();
 
     const isReplying = props.editMode === CommentMode.Reply;
@@ -316,49 +314,58 @@ export class Comment extends Component<CommentProps, State> {
       user: props.data.user,
     };
 
-    const defaultMods = {
-      disabled: props.disabled,
-      pinned: props.data.pin,
-      // TODO: we also have critical_score, so we need to collapse comments with it in future
-      useless:
-        !!props.isUserBanned ||
-        !!props.data.delete ||
-        (props.view !== 'preview' &&
-          props.data.score < StaticStore.config.low_score &&
-          !props.data.pin &&
-          !props.disabled),
-      // TODO: add default view mod or don't?
-      guest: isGuest,
-      view: props.view === 'main' || props.view === 'pinned' ? props.data.user.admin && 'admin' : props.view,
-      replying: props.view === 'main' && isReplying,
-      editing: props.view === 'main' && isEditing,
-      theme: props.view === 'preview' ? undefined : props.theme,
-      level: props.level,
-      collapsed: props.collapsed,
-    };
+    // TODO: we also have critical_score, so we need to collapse comments with it in future
+    const isUseless =
+      !!props.isUserBanned ||
+      !!props.data.delete ||
+      (props.view !== 'preview' &&
+        props.data.score < StaticStore.config.low_score &&
+        !props.data.pin &&
+        !props.disabled);
+
+    let viewClass: string | undefined;
+    if (props.view === 'main' || props.view === 'pinned') {
+      viewClass = props.data.user.admin ? styles.viewAdmin : undefined;
+    } else if (props.view === 'user') {
+      viewClass = styles.viewUser;
+    } else if (props.view === 'preview') {
+      viewClass = styles.viewPreview;
+    }
+
+    const rootClassName = clsx(
+      styles.root,
+      props.view !== 'preview' && (props.theme === 'dark' ? styles.themeDark : styles.themeLight),
+      viewClass,
+      isUseless && styles.useless,
+      props.view === 'main' && isReplying && styles.replying,
+      props.view === 'main' && isEditing && styles.editing,
+      props.level === 6 && styles.level6,
+      props.collapsed && styles.collapsed,
+      props.mix
+    );
 
     if (props.view === 'preview') {
       return (
-        <article className={b('comment', { mix: props.mix }, defaultMods)}>
-          <div className="comment__body" dir="auto">
+        <article className={rootClassName}>
+          <div className={styles.body} dir="auto">
             {!!o.title && (
-              <div className="comment__title">
-                <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+              <div className={styles.title}>
+                <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
                   {o.title}
                 </a>
               </div>
             )}
-            <div className="comment__info">
+            <div className={styles.info}>
               {!!o.title && o.user.name}
 
               {!o.title && (
-                <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__username">
+                <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.username}>
                   {o.user.name}
                 </a>
               )}
             </div>{' '}
             <div
-              className="comment__text raw-content"
+              className={clsx(styles.text, 'raw-content')}
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
             />
@@ -384,27 +391,24 @@ export class Comment extends Component<CommentProps, State> {
     const goToParentMessage = intl.formatMessage(messages.goToParent);
 
     return (
-      <article
-        className={b('comment', { mix: this.props.mix }, defaultMods)}
-        id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
-      >
+      <article className={rootClassName} id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
         {props.view === 'user' && o.title && (
-          <div className="comment__title">
-            <a className="comment__title-link" href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
+          <div className={styles.title}>
+            <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
               {o.title}
             </a>
           </div>
         )}
-        <div className="comment__info">
+        <div className={styles.info}>
           {props.view !== 'user' && !props.collapsed && (
-            <div className="comment__avatar">
+            <div className={styles.avatar}>
               <Avatar url={o.user.picture} />
             </div>
           )}
 
           <div className={styles.user}>
             {props.view !== 'user' && (
-              <button onClick={() => this.toggleUserInfoVisibility()} className="comment__username">
+              <button onClick={() => this.toggleUserInfoVisibility()} className={styles.username}>
                 {o.user.name}
               </button>
             )}
@@ -433,7 +437,7 @@ export class Comment extends Component<CommentProps, State> {
             )}
           </div>
 
-          <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className="comment__time">
+          <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.time}>
             {getLocalDatetime(this.props.intl, o.time)}
           </a>
 
@@ -454,13 +458,13 @@ export class Comment extends Component<CommentProps, State> {
           )}
 
           {props.isUserBanned && props.view !== 'user' && (
-            <span className="comment__status">
+            <span className={styles.status}>
               <FormattedMessage id="comment.blocked-user" defaultMessage="Blocked" />
             </span>
           )}
 
           {isAdmin && !props.isUserBanned && props.data.delete && (
-            <span className="comment__status">
+            <span className={styles.status}>
               <FormattedMessage id="comment.deleted-user" defaultMessage="Deleted" />
             </span>
           )}
@@ -474,10 +478,10 @@ export class Comment extends Component<CommentProps, State> {
             />
           )}
         </div>
-        <div className="comment__body">
+        <div className={styles.body}>
           {(!props.collapsed || props.view === 'pinned') && (
             <div
-              className="comment__text raw-content"
+              className={clsx(styles.text, 'raw-content')}
               ref={this.textNode}
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
@@ -520,7 +524,7 @@ export class Comment extends Component<CommentProps, State> {
             user={props.user}
             theme={props.theme}
             mode="reply"
-            mix="comment__input"
+            mix={styles.input}
             onSubmit={(text: string, title: string) => this.addComment(text, title, o.id)}
             onCancel={this.toggleReplying}
             getPreview={this.props.getPreview!}
@@ -537,7 +541,7 @@ export class Comment extends Component<CommentProps, State> {
             theme={props.theme}
             value={o.orig}
             mode="edit"
-            mix="comment__input"
+            mix={styles.input}
             onSubmit={(text: string) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}
             getPreview={this.props.getPreview!}
