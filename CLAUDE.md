@@ -22,7 +22,7 @@
 - **Backend**: Formatting with golangci-lint, strict error handling
 - **Frontend**: TypeScript with ESLint, Stylelint and Prettier
 - **Imports**: Group stdlib, external packages, then internal packages
-- **CSS**: CSS Modules (`component.module.css`) for all new and migrated components; remaining BEM components are being migrated incrementally. Class naming: BEM block = `.root`, elements = camelCase, modifiers = camelCase. Use `clsx` for conditional class composition (replaces `b()` from `bem-react-helper`)
+- **CSS**: All components use CSS Modules (`component.module.css`). Class naming: BEM block = `.root`, elements = camelCase, modifiers = camelCase. Use `clsx` for conditional class composition. `raw-content.css` is the only global CSS file (syntax highlighting utility). Root wrapper keeps bare `.dark`/`.light` theme class — 8+ module CSS files depend on `:global(.dark)` ancestor. `comment_highlighting` uses `:global()` for imperative `classList` usage in root.tsx
 
 ## Key Backend Packages
 - **Web/API**: `github.com/go-chi/chi/v5`, `github.com/go-pkgz/rest`
