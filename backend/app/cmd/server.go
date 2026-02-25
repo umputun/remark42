@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
 	"fmt"
 	"net"
