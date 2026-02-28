@@ -103,7 +103,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+	// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
 	if len(claims.Audience) != 1 {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("bad request"), "can't process token, claims.Audience expected to be a single element but it's not", rest.ErrActionRejected)
 		return

@@ -157,7 +157,7 @@ func (c *Comment) Snippet(limit int) string {
 			break
 		}
 	}
-	// Don't add a space if comment is just a one single word which has been truncated.
+	// don't add a space if comment is just a one single word which has been truncated.
 	if len(snippet) == limit {
 		return string(snippet) + "..."
 	}

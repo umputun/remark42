@@ -72,7 +72,7 @@ func TestWordPress_Convert(t *testing.T) {
 	wp := WordPress{}
 	ch := wp.convert(strings.NewReader(xmlTestWP), "testWP")
 
-	comments := []store.Comment{}
+	comments := make([]store.Comment, 0, 3)
 	for c := range ch {
 		comments = append(comments, c)
 	}
@@ -100,7 +100,7 @@ func TestWP_Convert_MD(t *testing.T) {
 	wp := WordPress{}
 	ch := wp.convert(strings.NewReader(xmlTestWPmd), "siteID")
 
-	comments := []store.Comment{}
+	comments := make([]store.Comment, 0, 3)
 	for c := range ch {
 		comments = append(comments, c)
 	}

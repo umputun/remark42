@@ -27,8 +27,8 @@ type TGUpdatesReceiver interface {
 // DispatchTelegramUpdates dispatches telegram updates to provided list of receivers
 // Blocks caller
 func DispatchTelegramUpdates(ctx context.Context, requester tgRequester, receivers []TGUpdatesReceiver, period time.Duration) {
-	// Identifier of the first update to be requested.
-	// Should be equal to LastSeenUpdateID + 1
+	// identifier of the first update to be requested.
+	// should be equal to LastSeenUpdateID + 1
 	// See https://core.telegram.org/bots/api#getupdates
 	var updateOffset int
 
