@@ -113,6 +113,31 @@ For more details refer to [Yandex OAuth](https://yandex.com/dev/oauth/doc/dg/con
 3. Under **"Redirects"** enter the correct url constructed as domain + `/auth/discord/callback`. ie `https://remark42.mysite.com/auth/discord/callback`
 4. Take note of the **CLIENT ID** and **CLIENT SECRET**, as they are values for `AUTH_DISCORD_CID` and `AUTH_DISCORD_CSEC` respectively
 
+### Custom OAuth2 Provider
+
+You can configure any OAuth2-compatible provider by setting these variables:
+
+- `AUTH_CUSTOM_NAME` - provider name used in auth routes
+- `AUTH_CUSTOM_CID` - OAuth client ID
+- `AUTH_CUSTOM_CSEC` - OAuth client secret
+- `AUTH_CUSTOM_AUTH_URL` - authorization endpoint
+- `AUTH_CUSTOM_TOKEN_URL` - token endpoint
+- `AUTH_CUSTOM_INFO_URL` - user info endpoint
+- `AUTH_CUSTOM_SCOPES` - optional scopes, comma-separated
+- `AUTH_CUSTOM_ID_FIELD` - optional user info field used as unique id (default `sub`)
+- `AUTH_CUSTOM_NAME_FIELD` - optional user info field used as display name (default `name`)
+- `AUTH_CUSTOM_PICTURE_FIELD` - optional user info field used as avatar URL (default `picture`)
+- `AUTH_CUSTOM_EMAIL_FIELD` - optional user info field used as email (default `email`)
+
+Callback URL format:
+
+`https://<remark42-url>/auth/<AUTH_CUSTOM_NAME>/callback`
+
+Notes:
+
+- `AUTH_CUSTOM_NAME` must be URL-safe and should not conflict with built-in providers: `email`, `anonymous`, `google`, `github`, `facebook`, `yandex`, `microsoft`, `patreon`, `discord`, `telegram`, `dev`, `apple`.
+- If any required custom variable is missing, Remark42 will fail to start.
+
 ### Telegram
 
 1. Contact [@BotFather](https://t.me/botfather) and follow his instructions to create your bot (call it, for example, "My site auth bot")

@@ -90,7 +90,7 @@ export interface Tree {
   info: PostInfo;
 }
 
-export type OAuthProvider =
+export type DefaultOAuthProvider =
   | 'apple'
   | 'facebook'
   | 'twitter'
@@ -102,6 +102,7 @@ export type OAuthProvider =
   | 'discord'
   | 'telegram'
   | 'dev';
+export type OAuthProvider = DefaultOAuthProvider | (string & {});
 export type FormProvider = 'email' | 'anonymous';
 export type Provider = OAuthProvider | FormProvider;
 
