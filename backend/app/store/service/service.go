@@ -552,9 +552,9 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 	for _, c := range comments {
 		if c.ParentID != "" && !c.Deleted {
 			if c.ParentID == comment.ID {
-				// When this code is reached, key "comment.ID" is not in cache.
-				// Calling cache.Get on it will put it in cache with 5 minutes TTL.
-				// We call it with empty struct as value as we care about keys and not values.
+				// when this code is reached, key "comment.ID" is not in cache.
+				// calling cache.Get on it will put it in cache with 5 minutes TTL.
+				// we call it with empty struct as value as we care about keys and not values.
 				_, _ = s.repliesCache.Get(comment.ID, func() (struct{}, error) { return struct{}{}, nil })
 				return true
 			}
@@ -611,7 +611,7 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 	// set title, overwrite the current one
 	title, e := s.TitleExtractor.Get(comment.Locator.URL)
 	if e != nil {
-		return comment, err
+		return comment, e
 	}
 	comment.PostTitle = title
 	comment.Locator = locator
@@ -743,7 +743,7 @@ func (s *DataStore) SetBlock(siteID, userID string, status bool, ttl time.Durati
 func (s *DataStore) BlockedUsers(siteID string) (res []store.BlockedUser, err error) {
 	blocked, e := s.Engine.ListFlags(engine.FlagRequest{Locator: store.Locator{SiteID: siteID}, Flag: engine.Blocked})
 	if e != nil {
-		return nil, fmt.Errorf("can't get list of blocked users for %s: %w", siteID, err)
+		return nil, fmt.Errorf("can't get list of blocked users for %s: %w", siteID, e)
 	}
 	for _, v := range blocked {
 		res = append(res, v.(store.BlockedUser))
@@ -801,7 +801,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
 		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
 		if e != nil {
-			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, err)
+			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, e)
 			return nil
 		}
 		var imgIDs = []string{}
@@ -822,7 +822,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 			}
 		}
 	}
-	log.Printf("[ERROR] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
+	log.Printf("[DEBUG] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
 
 	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
 	return s.Engine.Delete(req)

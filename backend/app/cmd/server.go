@@ -752,9 +752,9 @@ func (s *ServerCommand) getAllowedDomains() []string {
 			continue
 		}
 
-		// Only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
-		// For AllowedHosts we don't do this as they are exact list of domains which can host comments, but
-		// RemarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
+		// only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
+		// for AllowedHosts we don't do this as they are exact list of domains which can host comments, but
+		// remarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
 		if rawURL == s.RemarkURL && net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
 			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
 		}
@@ -1137,7 +1137,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			}
 			return true, nil
 		}),
-			// Custom user ID generator, used to distinguish anonymous users with the same login
+			// custom user ID generator, used to distinguish anonymous users with the same login
 			// coming from different IPs
 			func(user string, r *http.Request) string {
 				return user + r.RemoteAddr
@@ -1222,7 +1222,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			VerificationSubject: s.Notify.Email.VerificationSubject,
 			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
 			// TODO: uncomment after #560 frontend part is ready and URL is known
-			// SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
+			// subscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
@@ -1332,7 +1332,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if c.User == nil {
 				return c
 			}
-			// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+			// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
 			if len(c.Audience) != 1 {
 				return c
 			}

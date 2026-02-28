@@ -4,8 +4,9 @@
 package engine
 
 import (
-	store "github.com/umputun/remark42/backend/app/store"
 	"sync"
+
+	store "github.com/umputun/remark42/backend/app/store"
 )
 
 // Ensure, that InterfaceMock does implement Interface.

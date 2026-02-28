@@ -562,8 +562,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		}
 	}
 
-	// Adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
-	// With sleep so that at least few millisecond pass between each comment
+	// adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
+	// with sleep so that at least few millisecond pass between each comment
 	// and later we would be able to use that in "since" filter with millisecond precision
 	ids := make([]string, 9)
 	timestamps := make([]time.Time, 9)

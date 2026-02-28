@@ -619,13 +619,13 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 }
 
 // securityHeadersMiddleware sets security-related headers:
-// - Content-Security-Policy: controls which resources the browser is allowed to load
-// - Permissions-Policy: disables browser features (camera, mic, etc.) not needed by a comment widget
-// - X-Content-Type-Options: prevents browsers from MIME-sniffing responses away from the declared type,
-//   stopping e.g. a user-uploaded image from being reinterpreted as executable HTML/JS
-// - Referrer-Policy: controls how much URL information leaks in the Referer header on cross-origin
-//   requests; "strict-origin-when-cross-origin" sends only the origin (no path) to other domains
-//   and nothing at all on HTTPS→HTTP downgrades
+//   - Content-Security-Policy: controls which resources the browser is allowed to load
+//   - Permissions-Policy: disables browser features (camera, mic, etc.) not needed by a comment widget
+//   - X-Content-Type-Options: prevents browsers from MIME-sniffing responses away from the declared type,
+//     stopping e.g. a user-uploaded image from being reinterpreted as executable HTML/JS
+//   - Referrer-Policy: controls how much URL information leaks in the Referer header on cross-origin
+//     requests; "strict-origin-when-cross-origin" sends only the origin (no path) to other domains
+//     and nothing at all on HTTPS→HTTP downgrades
 func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

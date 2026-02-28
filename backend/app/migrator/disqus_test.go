@@ -122,7 +122,7 @@ func TestDisqus_Convert(t *testing.T) {
 	require.NoError(t, err)
 	ch := d.convert(fh, "test")
 
-	res := []store.Comment{}
+	res := make([]store.Comment, 0, 4)
 	for comment := range ch {
 		res = append(res, comment)
 	}
