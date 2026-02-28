@@ -26,7 +26,7 @@ type EmailParams struct {
 	SubscribeURL             string   // full subscribe handler URL
 	UnsubscribeURL           string   // full unsubscribe handler URL
 
-	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
+	TokenGenFn func(userID, email, site string) (string, error) // unsubscribe token generation function
 }
 
 // Email implements notify.Destination for email

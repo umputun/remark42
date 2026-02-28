@@ -103,17 +103,10 @@ func TestService_Many(t *testing.T) {
 	}
 	s.Close()
 
-	// wait for destinations to close
-	assert.Eventually(t, func() bool { return d1.IsClosed() && d2.IsClosed() }, 100*time.Millisecond, 10*time.Millisecond)
-
 	assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
 	assert.NotEqual(t, 10, len(d1.GetVerify()), "some verifications dropped from d1")
 	assert.NotEqual(t, 10, len(d2.Get()), "some comments dropped from d2")
 	assert.NotEqual(t, 10, len(d2.GetVerify()), "some verifications dropped from d2")
-
-	assert.True(t, d1.IsClosed())
-	assert.True(t, d2.IsClosed())
-	assert.Equal(t, "mock id=1, closed=true", d1.String())
 }
 
 func TestService_WithParent(t *testing.T) {

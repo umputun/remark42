@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+
 	// support gif and jpeg images decoding
 	_ "image/gif"
 	_ "image/jpeg"
