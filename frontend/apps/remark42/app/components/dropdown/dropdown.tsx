@@ -1,15 +1,16 @@
 import { h, Component, createRef, RenderableProps } from 'preact';
-import b from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { Theme } from 'common/types';
 import { sleep } from 'utils/sleep';
 import { Button } from 'components/button';
 import { parseMessage } from 'utils/post-message';
 
+import styles from './dropdown.module.css';
+
 type Props = RenderableProps<{
   title: string;
   titleClass?: string;
-  heading?: string;
   isActive?: boolean;
   disabled?: boolean;
   buttonTitle?: string;
@@ -27,6 +28,7 @@ interface State {
 
 export class Dropdown extends Component<Props, State> {
   rootNode = createRef<HTMLDivElement>();
+  contentRef = createRef<HTMLDivElement>();
   storedDocumentHeight: string | null = null;
   storedDocumentHeightSet = false;
   checkInterval: number | undefined = undefined;
@@ -75,7 +77,7 @@ export class Dropdown extends Component<Props, State> {
       if (!this.rootNode.current) return false;
       let parent = this.rootNode.current.parentElement!;
       while (parent !== document.body) {
-        if (parent.classList.contains('dropdown')) return true;
+        if (parent.hasAttribute('data-dropdown')) return true;
         parent = parent.parentElement!;
       }
       return false;
@@ -91,8 +93,7 @@ export class Dropdown extends Component<Props, State> {
       if (!this.rootNode.current || !this.state.isActive) return;
       const windowHeight = window.innerHeight;
       const dcBottom = (() => {
-        // TODO: use ref
-        const dc = Array.from(this.rootNode.current.children).find((c) => c.classList.contains('dropdown__content'));
+        const dc = this.contentRef.current;
         if (!dc) return 0;
         const rect = dc.getBoundingClientRect();
         return window.scrollY + Math.abs(rect.top) + dc.scrollHeight + 10;
@@ -114,8 +115,7 @@ export class Dropdown extends Component<Props, State> {
 
   async __adjustDropDownContent() {
     if (!this.rootNode.current) return;
-    // TODO: use ref
-    const dc = this.rootNode.current.querySelector<HTMLDivElement>('.dropdown__content');
+    const dc = this.contentRef.current;
     if (!dc) return;
     await sleep(0);
     const rect = dc.getBoundingClientRect();
@@ -177,15 +177,24 @@ export class Dropdown extends Component<Props, State> {
     window.removeEventListener('message', this.receiveMessage);
   }
 
-  render({ title, titleClass = '', heading, children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
+  render({ title, titleClass = '', children, mix, theme, disabled, buttonTitle }: Props, { isActive }: State) {
     return (
-      <div className={b('dropdown', { mix }, { theme, active: isActive })} ref={this.rootNode}>
+      <div
+        className={clsx(
+          styles.root,
+          isActive && styles.active,
+          theme === 'dark' ? styles.themeDark : styles.themeLight,
+          mix
+        )}
+        ref={this.rootNode}
+        data-dropdown
+      >
         <Button
           aria-haspopup="listbox"
           aria-expanded={isActive && 'true'}
           onClick={this.onTitleClick}
           theme={theme}
-          mix={['dropdown__title', titleClass]}
+          mix={[styles.title, titleClass]}
           kind="link"
           disabled={disabled}
           title={buttonTitle}
@@ -194,13 +203,13 @@ export class Dropdown extends Component<Props, State> {
         </Button>
         {isActive && (
           <div
-            className="dropdown__content"
+            className={styles.content}
+            ref={this.contentRef}
             tabIndex={-1}
             role="listbox"
             style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
           >
-            {heading && <div className="dropdown__heading">{heading}</div>}
-            <div className="dropdown__items">{children}</div>
+            <div className={styles.items}>{children}</div>
           </div>
         )}
       </div>
