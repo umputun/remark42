@@ -115,39 +115,15 @@ type slogLgrAdapter struct {
 
 // Logf implements lgr.L interface
 func (a *slogLgrAdapter) Logf(format string, args ...interface{}) {
-	// parse log level from the beginning of the message
 	msg := fmt.Sprintf(format, args...)
 	level, msg := extractLevel(msg)
 
-	// create a record with caller information
-	// skip level is critical:
-	// - 0 = this line
-	// - 1 = this function (Logf)
-	// - 2 = caller of Logf (user code)
-	//
-	// note: We use PC=0 to ensure slog.Record.PC() returns 0,
-	// which causes slog to skip obtaining the caller info itself
-	record := slog.NewRecord(time.Now(), stringToLevel(level), msg, 2)
+	// get the caller's PC so slog handlers can resolve source info when AddSource is enabled
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip runtime.Callers and Logf
+	record := slog.NewRecord(time.Now(), stringToLevel(level), msg, pcs[0])
 
-	// we need to manually add the source information ourselves, since
-	// slog.Handler might have AddSource=true but won't get the caller
-	// right due to how we're adapting lgr → slog
-	pc, file, line, ok := runtime.Caller(2) // skip to caller of Logf
-	if ok {
-		// only add source info if we can find it
-		funcName := runtime.FuncForPC(pc).Name()
-		record.AddAttrs(
-			slog.Group("source",
-				slog.String("function", funcName),
-				slog.String("file", file),
-				slog.Int("line", line),
-			),
-		)
-	}
-
-	// handle the record
 	if err := a.handler.Handle(context.Background(), record); err != nil {
-		// if handling fails, fallback to stderr
 		fmt.Fprintf(os.Stderr, "slog handler error: %v\n", err)
 	}
 }

@@ -1,6 +1,6 @@
 module github.com/umputun/remark42/backend
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
@@ -12,7 +12,7 @@ require (
 	github.com/go-pkgz/auth/v2 v2.1.2-0.20260211003156-fbba7f2baa6b
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
-	github.com/go-pkgz/lgr v0.12.1
+	github.com/go-pkgz/lgr v0.12.2
 	github.com/go-pkgz/notify v1.3.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.21.0
@@ -32,7 +32,7 @@ require (
 	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.48.0
 	golang.org/x/image v0.36.0
-	golang.org/x/net v0.49.0
+	golang.org/x/net v0.51.0
 )
 
 require (
