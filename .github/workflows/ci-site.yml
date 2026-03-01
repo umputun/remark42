@@ -70,7 +70,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: upload digest
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: site-digests-${{ matrix.artifact }}
           path: /tmp/digests/*
@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: site-digests-*
