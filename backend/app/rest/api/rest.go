@@ -292,8 +292,15 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.Timeout(30 * time.Second))
 			rauth.Use(rateLimiter(10))
 			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
-			rauth.Get("/user", s.privRest.userInfoCtrl)
 			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
+		})
+
+		// protected routes, user is set but checked inside the handlers
+		rapi.Group(func(rauthOptional chi.Router) {
+			rauthOptional.Use(middleware.Timeout(30 * time.Second))
+			rauthOptional.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(10, nil)))
+			rauthOptional.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
+			rauthOptional.Get("/user", s.privRest.userInfoCtrl)
 		})
 
 		// admin routes, require auth and admin users only
