@@ -76,7 +76,7 @@
   --transparent: transparent;
 }
 
-:root .dark {
+:root body.dark {
   --line-color: var(--color36);
   --primary-color: 0, 153, 153;
   --primary-brighter-color: 0, 170, 170;
