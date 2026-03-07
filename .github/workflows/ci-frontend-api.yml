@@ -30,29 +30,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
         with:
           version: 8
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm i
@@ -77,29 +66,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
         with:
           version: 8
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm i
@@ -124,29 +102,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
         with:
           version: 8
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm i
