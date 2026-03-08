@@ -21,7 +21,7 @@
   padding: 2px;
   opacity: 0.4;
   color: var(--color13);
-  transition: opacity 0.15s color 0.15s;
+  transition: opacity 0.15s, color 0.15s;
 }
 
 .root:hover .voteButton {

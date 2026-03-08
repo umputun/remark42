@@ -35,7 +35,7 @@
   font-size: 12px;
   text-transform: uppercase;
   font-weight: bold;
-  color: rgb(rgb(var(--secondary-text-color)));
+  color: rgb(var(--secondary-text-color));
   text-align: center;
 }
 
