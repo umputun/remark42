@@ -320,7 +320,7 @@ func TestRest_frameAncestors(t *testing.T) {
 		o.AllowedAncestors = []string{"'self'", "https://example.com"}
 	})
 
-	// Test case with frame-ancestors
+	// test case with frame-ancestors
 	client := http.Client{}
 	resp, err := client.Get(ts.URL + "/web/index.html")
 	require.NoError(t, err)
@@ -329,7 +329,7 @@ func TestRest_frameAncestors(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self' https://example.com;")
 	teardown()
 
-	// Test case without frame-ancestors
+	// test case without frame-ancestors
 	ts, _, teardown = startupT(t, func(srv *Rest) {
 		srv.AllowedAncestors = []string{}
 	})
@@ -352,6 +352,8 @@ func TestRest_securityHeaders(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src *;")
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, "strict-origin-when-cross-origin", resp.Header.Get("Referrer-Policy"))
 	teardown()
 
 	// check CSP with proxy enabled
@@ -364,6 +366,8 @@ func TestRest_securityHeaders(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src 'self';")
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, "strict-origin-when-cross-origin", resp.Header.Get("Referrer-Policy"))
 }
 
 func TestRest_subscribersOnly(t *testing.T) {

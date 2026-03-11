@@ -103,11 +103,15 @@ export class Comment extends Component<CommentProps, State> {
 
     // set comment edit timer
     if (this.isCurrentUser()) {
-      const editDuration = StaticStore.config.edit_duration;
-      const timeDiff = StaticStore.serverClientTimeDiff || 0;
-      const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
+      if (this.isAdmin() && StaticStore.config.admin_edit) {
+        newState.editDeadline = Infinity;
+      } else {
+        const editDuration = StaticStore.config.edit_duration;
+        const timeDiff = StaticStore.serverClientTimeDiff || 0;
+        const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
 
-      newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
+        newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
+      }
     }
 
     return newState;
@@ -497,7 +501,10 @@ export class Comment extends Component<CommentProps, State> {
               approved={this.props.data.approved}
               editing={isEditing}
               replying={isReplying}
-              editable={props.repliesCount === 0 && state.editDeadline !== undefined}
+              editable={
+                state.editDeadline !== undefined &&
+                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit))
+              }
               editDeadline={state.editDeadline}
               readOnly={props.post_info?.read_only}
               onToggleReplying={this.toggleReplying}

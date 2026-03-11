@@ -114,10 +114,10 @@ After that place the code snippet right after config.
 Put the next code snippet on a page of your site where you want to have comments:
 
 ```html
-<div id="remark42"></div>
+<div id="remark42">Comments loading...</div>
 ```
 
-After that widget will be rendered inside this node.
+After that widget will be rendered inside this node. Any content you place inside the div (such as "Comments loading..." above) is automatically removed once the widget initialises, so you can use it as a loading placeholder.
 
 For more information about frontend configuration please [learn about other parameters here](https://remark42.com/docs/configuration/frontend/)
 If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/spa/).

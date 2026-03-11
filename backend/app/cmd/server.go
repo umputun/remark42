@@ -74,7 +74,7 @@ type ServerCommand struct {
 	CriticalScore              int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	PositiveScore              bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
 	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window"`
+	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window; set to 0 to disable comment editing and staged image cleanup"`
 	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
 	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
@@ -99,18 +99,18 @@ type ServerCommand struct {
 		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
-		Apple     AppleGroup `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
-		Google    AuthGroup  `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
-		Github    AuthGroup  `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
-		Facebook  AuthGroup  `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
-		Microsoft AuthGroup  `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
-		Yandex    AuthGroup  `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup  `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
-		Patreon   AuthGroup  `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
-		Discord   AuthGroup  `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
-		Telegram  bool       `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
-		Dev       bool       `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
-		Anonymous bool       `long:"anon" env:"ANON" description:"enable anonymous login"`
+		Apple     AppleGroup         `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
+		Google    AuthGroup          `group:"google" namespace:"google" env-namespace:"GOOGLE" description:"Google OAuth"`
+		Github    AuthGroup          `group:"github" namespace:"github" env-namespace:"GITHUB" description:"Github OAuth"`
+		Facebook  AuthGroup          `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
+		Microsoft MicrosoftAuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
+		Yandex    AuthGroup          `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
+		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
+		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
+		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
+		Telegram  bool               `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
+		Dev       bool               `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
+		Anonymous bool               `long:"anon" env:"ANON" description:"enable anonymous login"`
 		Email     struct {
 			Enable       bool          `long:"enable" env:"ENABLE" description:"enable auth via email"`
 			From         string        `long:"from" env:"FROM" description:"from email address"`
@@ -150,6 +150,13 @@ type AppleGroup struct {
 type AuthGroup struct {
 	CID  string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC string `long:"csec" env:"CSEC" description:"OAuth client secret"`
+}
+
+// MicrosoftAuthGroup defines options group for Microsoft auth params
+type MicrosoftAuthGroup struct {
+	CID    string `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC   string `long:"csec" env:"CSEC" description:"OAuth client secret"`
+	Tenant string `long:"tenant" env:"TENANT" description:"Azure AD tenant ID, domain, or 'common' (default)" default:"common"`
 }
 
 // StoreGroup defines options group for store params
@@ -679,9 +686,9 @@ func (s *ServerCommand) getAllowedDomains() []string {
 			continue
 		}
 
-		// Only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
-		// For AllowedHosts we don't do this as they are exact list of domains which can host comments, but
-		// RemarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
+		// only for RemarkURL if domain is not IP and has more than two levels, extract second level domain.
+		// for AllowedHosts we don't do this as they are exact list of domains which can host comments, but
+		// remarkURL might be on a subdomain and we must allow parent domain to be used for TitleExtract.
 		if rawURL == s.RemarkURL && net.ParseIP(domain) == nil && len(strings.Split(domain, ".")) > 2 {
 			domain = strings.Join(strings.Split(domain, ".")[len(strings.Split(domain, "."))-2:], ".")
 		}
@@ -940,7 +947,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		providersCount++
 	}
 	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
-		authenticator.AddProvider("microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC)
+		authenticator.AddMicrosoftProvider(s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC, s.Auth.Microsoft.Tenant)
 		providersCount++
 	}
 	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
@@ -1021,7 +1028,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			}
 			return true, nil
 		}),
-			// Custom user ID generator, used to distinguish anonymous users with the same login
+			// custom user ID generator, used to distinguish anonymous users with the same login
 			// coming from different IPs
 			func(user string, r *http.Request) string {
 				return user + r.RemoteAddr
@@ -1106,7 +1113,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			VerificationSubject: s.Notify.Email.VerificationSubject,
 			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
 			// TODO: uncomment after #560 frontend part is ready and URL is known
-			// SubscribeURL:        s.RemarkURL + "/subscribe.html?token=",
+			// subscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
@@ -1216,7 +1223,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if c.User == nil {
 				return c
 			}
-			// Audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+			// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
 			if len(c.Audience) != 1 {
 				return c
 			}

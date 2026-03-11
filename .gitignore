@@ -26,3 +26,6 @@ compose-private.yml
 http-client.env.json
 /playwright-report/
 /backend/app/cmd/var
+
+# ralphex progress logs
+.ralphex/progress/

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -100,6 +101,7 @@ func TestImage_Routes(t *testing.T) {
 		RemarkURL:    "https://demo.remark42.com",
 		RoutePath:    "/api/v1/proxy",
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+		Transport:    http.DefaultTransport,
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
@@ -150,6 +152,7 @@ func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 		RemarkURL:    "https://demo.remark42.com",
 		RoutePath:    "/api/v1/proxy",
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+		Transport:    http.DefaultTransport,
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
@@ -183,6 +186,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 		RemarkURL:     "https://demo.remark42.com",
 		RoutePath:     "/api/v1/proxy",
 		ImageService:  image.NewService(&imageStore, image.ServiceParams{MaxSize: 1500}),
+		Transport:     http.DefaultTransport,
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
@@ -207,7 +211,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 }
 
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
-	// In order to validate that cached data used cache "will return" some other data from what http server would
+	// in order to validate that cached data used cache "will return" some other data from what http server would
 	testImage := []byte(fmt.Sprintf("%256s", "X"))
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 		return testImage, nil
@@ -246,6 +250,7 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 		RoutePath:    "/api/v1/proxy",
 		Timeout:      50 * time.Millisecond,
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+		Transport:    http.DefaultTransport,
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
@@ -262,7 +267,8 @@ func TestImage_RoutesTimedOut(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	t.Log(string(b))
-	assert.Contains(t, string(b), "deadline exceeded")
+	assert.Contains(t, string(b), "failed to fetch")
+	assert.NotContains(t, string(b), "deadline exceeded", "should not leak transport details")
 	assert.Equal(t, 1, len(imageStore.LoadCalls()))
 }
 
@@ -302,6 +308,152 @@ func TestImage_ConvertCachingMode(t *testing.T) {
 	img = Image{CacheExternal: true, HTTP2HTTPS: true, RoutePath: "/img", RemarkURL: "https://remark42.com"}
 	r = img.Convert(`<img src="http://radio-t.com/img3.png"/> xyz <img src="http://images.pexels.com/67636/img4.jpeg">`)
 	assert.Equal(t, `<img src="https://remark42.com/img?src=aHR0cDovL3JhZGlvLXQuY29tL2ltZzMucG5n"/> xyz <img src="https://remark42.com/img?src=aHR0cDovL2ltYWdlcy5wZXhlbHMuY29tLzY3NjM2L2ltZzQuanBlZw==">`, r)
+}
+
+func TestImage_PrivateIPBlocking(t *testing.T) {
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
+	img := Image{
+		HTTP2HTTPS:   true,
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		Timeout:      100 * time.Millisecond,
+		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+		// no Transport override — uses SSRF-safe transport
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
+
+	tbl := []struct {
+		name string
+		url  string
+	}{
+		{"loopback", "http://127.0.0.1/image.png"},
+		{"rfc1918 10.x", "http://10.0.0.1/image.png"},
+		{"rfc1918 172.16.x", "http://172.16.0.1/image.png"},
+		{"rfc1918 192.168.x", "http://192.168.1.1/image.png"},
+		{"link-local", "http://169.254.1.1/image.png"},
+		{"ipv6 loopback", "http://[::1]/image.png"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			encodedImgURL := base64.URLEncoding.EncodeToString([]byte(tt.url))
+			resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			assert.NoError(t, resp.Body.Close())
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+			assert.NotContains(t, string(b), "private address", "should not leak private IP check details")
+			assert.Contains(t, string(b), "failed to fetch")
+		})
+	}
+}
+
+func TestImage_ErrorSanitization(t *testing.T) {
+	// server that immediately closes connections to simulate transport errors
+	httpSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		conn, _, _ := hj.Hijack()
+		conn.Close() // forcefully close to trigger transport error
+	}))
+	defer httpSrv.Close()
+
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
+	img := Image{
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		Timeout:      2 * time.Second,
+		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
+		Transport:    http.DefaultTransport,
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
+
+	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image.png"))
+	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Contains(t, string(b), "failed to fetch")
+	assert.NotContains(t, string(b), "EOF", "should not leak transport details")
+	assert.NotContains(t, string(b), "connection", "should not leak transport details")
+}
+
+func TestImage_ResponseSizeLimit(t *testing.T) {
+	// create a test server that returns a large image
+	largeImg := make([]byte, 2000)
+	for i := range largeImg {
+		largeImg[i] = 0xFF
+	}
+	httpSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(largeImg)
+	}))
+	defer httpSrv.Close()
+
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
+	img := Image{
+		RemarkURL:    "https://demo.remark42.com",
+		RoutePath:    "/api/v1/proxy",
+		ImageService: image.NewService(&imageStore, image.ServiceParams{MaxSize: 1000}),
+		Transport:    http.DefaultTransport,
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	defer ts.Close()
+
+	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/big-image.png"))
+	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	assert.NoError(t, resp.Body.Close())
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Contains(t, string(b), "failed to fetch")
+}
+
+func TestIsPrivateIP(t *testing.T) {
+	tbl := []struct {
+		ip      string
+		private bool
+	}{
+		{"127.0.0.1", true},
+		{"10.0.0.1", true},
+		{"10.255.255.255", true},
+		{"172.16.0.1", true},
+		{"172.31.255.255", true},
+		{"192.168.0.1", true},
+		{"192.168.255.255", true},
+		{"169.254.1.1", true},
+		{"100.64.0.1", true},
+		{"100.127.255.255", true},
+		{"::1", true},
+		{"fc00::1", true},
+		{"fe80::1", true},
+		{"0.0.0.0", true},
+		{"::", true},
+		{"8.8.8.8", false},
+		{"203.0.113.1", false},
+		{"1.1.1.1", false},
+		{"2001:db8::1", false},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.ip, func(t *testing.T) {
+			ip := net.ParseIP(tt.ip)
+			require.NotNil(t, ip)
+			assert.Equal(t, tt.private, isPrivateIP(ip))
+		})
+	}
 }
 
 func imgHTTPTestsServer(t *testing.T) *httptest.Server {

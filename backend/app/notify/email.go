@@ -26,7 +26,7 @@ type EmailParams struct {
 	SubscribeURL             string   // full subscribe handler URL
 	UnsubscribeURL           string   // full unsubscribe handler URL
 
-	TokenGenFn func(userID, email, site string) (string, error) // Unsubscribe token generation function
+	TokenGenFn func(userID, email, site string) (string, error) // unsubscribe token generation function
 }
 
 // Email implements notify.Destination for email
@@ -168,7 +168,7 @@ func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email stri
 				ctx,
 				fmt.Sprintf("mailto:%s?from=%s&unsubscribeLink=%s&subject=%s",
 					email,
-					e.From,
+					url.QueryEscape(e.From),
 					url.QueryEscape(msg.unsubscribeLink),
 					url.QueryEscape(msg.subject),
 				),
@@ -203,7 +203,7 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 				ctx,
 				fmt.Sprintf("mailto:%s?from=%s&subject=%s",
 					req.Email,
-					e.From,
+					url.QueryEscape(e.From),
 					url.QueryEscape(e.VerificationSubject),
 				),
 				msg,

@@ -642,7 +642,7 @@ func TestDataStore_AdminStoreErrors(t *testing.T) {
 		User:      store.User{ID: "user2", Name: "user name 2"},
 	}
 
-	// Key call error
+	// key call error
 	id, err := b.Create(comment)
 	assert.ErrorContainsf(t, err, "mock key err", "should fail with mock error")
 	assert.Empty(t, id)
@@ -650,7 +650,7 @@ func TestDataStore_AdminStoreErrors(t *testing.T) {
 	assert.Equal(t, len(as.EnabledCalls()), 0)
 	assert.Equal(t, len(as.OnEventCalls()), 0)
 
-	// Enabled call error
+	// enabled call error
 	badKey = false
 	id, err = b.Create(comment)
 	assert.ErrorContains(t, err, "mock enabled err", "should fail with mock error")
@@ -676,7 +676,7 @@ func TestDataStore_AdminStoreErrors(t *testing.T) {
 	assert.Equal(t, len(as.EnabledCalls()), 3)
 	assert.Equal(t, len(as.OnEventCalls()), 2)
 
-	// Admins error
+	// admins error
 	isAdmin := b.IsAdmin("radio-t", "user2")
 	assert.False(t, isAdmin)
 	assert.Equal(t, len(as.AdminsCalls()), 1)
@@ -1808,7 +1808,7 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
 	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
-	// One call without error and one with error
+	// one call without error and one with error
 	err := b.ResubmitStagingImages([]string{"site1", "site2"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "problem finding comments for site site2: mockError")

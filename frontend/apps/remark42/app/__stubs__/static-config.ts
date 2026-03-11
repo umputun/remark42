@@ -8,6 +8,7 @@ beforeEach(() => {
     critical_score: -15,
     low_score: -5,
     edit_duration: 300,
+    admin_edit: false,
     max_comment_size: 3000,
     max_image_size: 5000,
     positive_score: false,

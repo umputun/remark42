@@ -40,7 +40,7 @@ While Astro supports numerous front-end framework [integrations](https://docs.as
   </script>
 </svelte:head>
 
-<div id="remark42" />
+<div id="remark42">Comments loading...</div>
 ```
 
 ### Astro Layout (Page)
@@ -231,8 +231,9 @@ export function Comments() {
 			<p>
 				There are <span className="remark42__counter"></span> comments.
 			</p>
-			{/* The div where Remark42 will embed the comments. */}
-			<div id="remark42"></div>
+			{/* The div where Remark42 will embed the comments.
+			    Any content inside is automatically removed once the widget loads. */}
+			<div id="remark42">Comments loading...</div>
 		</>
 	)
 }

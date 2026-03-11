@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+
 	// support gif and jpeg images decoding
 	_ "image/gif"
 	_ "image/jpeg"
@@ -154,6 +155,12 @@ func (s *Service) ExtractNonProxiedPictures(commentHTML string) (ids []string) {
 
 // Cleanup runs periodic cleanup with 1.5*ServiceParams.EditDuration. Blocking loop, should be called inside of goroutine by consumer
 func (s *Service) Cleanup(ctx context.Context) {
+	if s.EditDuration <= 0 {
+		log.Printf("[INFO] pictures cleanup disabled, edit duration is %v", s.EditDuration)
+		<-ctx.Done()
+		return
+	}
+
 	cleanupTTL := s.EditDuration * 15 / 10 // cleanup images older than 1.5 * EditDuration
 	log.Printf("[INFO] start pictures cleanup, staging ttl=%v", cleanupTTL)
 

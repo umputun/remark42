@@ -79,6 +79,11 @@ function createInstance(config: typeof window.remark_config) {
     }
 
     if (data.inited === true) {
+      // remove placeholder content added by the user before comments loaded
+      Array.from(root!.childNodes)
+        .filter((node) => node !== iframe)
+        .forEach((node) => node.remove());
+
       postHashToIframe();
       postTitleToIframe(document.title);
     }

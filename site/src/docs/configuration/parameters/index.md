@@ -91,6 +91,7 @@ services:
 | auth.facebook.csec             | AUTH_FACEBOOK_CSEC             |                         | Facebook OAuth client secret                             |
 | auth.microsoft.cid             | AUTH_MICROSOFT_CID             |                         | Microsoft OAuth client ID                                |
 | auth.microsoft.csec            | AUTH_MICROSOFT_CSEC            |                         | Microsoft OAuth client secret                            |
+| auth.microsoft.tenant          | AUTH_MICROSOFT_TENANT          | `common`                | Azure AD tenant ID, domain, or "common"                  |
 | auth.github.cid                | AUTH_GITHUB_CID                |                         | GitHub OAuth client ID                                   |
 | auth.github.csec               | AUTH_GITHUB_CSEC               |                         | GitHub OAuth client secret                               |
 | auth.patreon.cid               | AUTH_PATREON_CID               |                         | Patreon OAuth Client ID                                  |
@@ -146,7 +147,7 @@ services:
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
-| edit-time                      | EDIT_TIME                      | `5m`                    | edit window                                              |
+| edit-time                      | EDIT_TIME                      | `5m`                    | edit window; set to `0` to disable comment editing and staged image cleanup |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images                      |

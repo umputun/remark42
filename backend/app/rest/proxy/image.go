@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ type Image struct {
 	CacheExternal bool
 	Timeout       time.Duration
 	ImageService  *image.Service
+	Transport     http.RoundTripper // if nil, uses SSRF-safe transport blocking private IPs
 }
 
 // Convert img src links to proxied links depends on enabled options
@@ -90,7 +92,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	var img []byte
 	imgID, err := image.CachedImgID(imgURL)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse image url "+imgURL, rest.ErrAssetNotFound)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid image url"), "can't parse image url", rest.ErrAssetNotFound)
 		return
 	}
 	// try to load from cache for case it was saved when CacheExternal was enabled
@@ -98,11 +100,12 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	if img == nil {
 		img, err = p.downloadImage(context.Background(), imgURL)
 		if err != nil {
+			log.Printf("[WARN] failed to download image: %v", err)
 			if strings.Contains(err.Error(), "invalid content type") {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid content type", rest.ErrImgNotFound)
+				rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid content type"), "invalid content type", rest.ErrImgNotFound)
 				return
 			}
-			rest.SendErrorJSON(w, r, http.StatusNotFound, err, "can't get image "+imgURL, rest.ErrAssetNotFound)
+			rest.SendErrorJSON(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
 			return
 		}
 		if p.CacheExternal {
@@ -148,7 +151,14 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	client := http.Client{Timeout: 30 * time.Second}
+	transport := p.Transport
+	if transport == nil {
+		transport = ssrfSafeTransport()
+	}
+	client := http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}
 	defer client.CloseIdleConnections()
 	var resp *http.Response
 	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
@@ -157,7 +167,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		if e != nil {
 			return fmt.Errorf("failed to make request for %s: %w", imgURL, e)
 		}
-		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose // need a refactor to fix that
+		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; SSRF mitigated by ssrfSafeTransport
 		return e
 	})
 	if err != nil {
@@ -174,9 +184,86 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		return nil, fmt.Errorf("invalid content type %s", contentType)
 	}
 
-	imgData, err := io.ReadAll(resp.Body)
+	maxSize := 5 * 1024 * 1024 // 5MB default
+	if p.ImageService != nil && p.ImageService.MaxSize > 0 {
+		maxSize = p.ImageService.MaxSize
+	}
+	lr := io.LimitReader(resp.Body, int64(maxSize)+1)
+	imgData, err := io.ReadAll(lr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read image body")
+		return nil, fmt.Errorf("unable to read image body: %w", err)
+	}
+	if len(imgData) > maxSize {
+		return nil, fmt.Errorf("image is too large")
 	}
 	return imgData, nil
+}
+
+// ssrfSafeTransport returns an http.Transport with a dialer that blocks connections to private IP addresses.
+// it resolves the host, validates all IPs, then dials using the resolved IP to prevent DNS rebinding attacks.
+// tries each resolved IP in order to handle dual-stack hosts where the first IP may be unreachable.
+func ssrfSafeTransport() *http.Transport {
+	dialer := &net.Dialer{Timeout: 30 * time.Second}
+	return &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid address %s: %w", addr, err)
+			}
+
+			// resolve the host to IP addresses
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
+			}
+			if len(ips) == 0 {
+				return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
+			}
+
+			for _, ip := range ips {
+				if isPrivateIP(ip.IP) {
+					return nil, fmt.Errorf("access to private address is not allowed")
+				}
+			}
+
+			// try each resolved IP to handle dual-stack hosts where some IPs may be unreachable
+			var lastErr error
+			for _, ip := range ips {
+				conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+				if dialErr == nil {
+					return conn, nil
+				}
+				lastErr = dialErr
+			}
+			return nil, fmt.Errorf("can't connect to %s: %w", host, lastErr)
+		},
+	}
+}
+
+// privateCIDRs holds pre-parsed private/reserved CIDR blocks for SSRF protection.
+var privateCIDRs = func() []*net.IPNet {
+	cidrs := []string{
+		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+		"100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
+		"::1/128", "fc00::/7", "fe80::/10",
+	}
+	blocks := make([]*net.IPNet, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		_, block, _ := net.ParseCIDR(cidr)
+		blocks = append(blocks, block)
+	}
+	return blocks
+}()
+
+// isPrivateIP checks if the given IP belongs to a private/reserved range.
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsUnspecified() {
+		return true
+	}
+	for _, block := range privateCIDRs {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

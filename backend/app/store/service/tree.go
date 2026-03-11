@@ -185,7 +185,7 @@ func (t *Tree) limit(limit int, offsetID string) {
 		}
 	}
 
-	if start == len(t.Nodes) { // If the start index is beyond the available nodes, clear the nodes
+	if start == len(t.Nodes) { // if the start index is beyond the available nodes, clear the nodes
 		t.Nodes = []*Node{}
 		return
 	}
@@ -198,28 +198,28 @@ func (t *Tree) limit(limit int, offsetID string) {
 		return
 	}
 
-	// Traverse and limit the number of top-level nodes, including their replies
+	// traverse and limit the number of top-level nodes, including their replies
 	limitedNodes := []*Node{}
 	commentsCount := 0
 
 	for _, node := range t.Nodes {
-		repliesCount := countReplies(node) + 1 // Count this node and its replies
+		repliesCount := countReplies(node) + 1 // count this node and its replies
 
-		// If the limit is already reached or exceeded, calculate countLeft and move to the next node
+		// if the limit is already reached or exceeded, calculate countLeft and move to the next node
 		if commentsCount >= limit {
 			t.countLeft += repliesCount
 			continue
 		}
 
-		// Check if we just exceeded the limit and there are already some nodes in the list,
+		// check if we just exceeded the limit and there are already some nodes in the list,
 		// as otherwise we would have to return the first node with all its replies even if it exceeds the limit.
 		if commentsCount+repliesCount >= limit && len(limitedNodes) > 0 {
 			t.countLeft += repliesCount
-			commentsCount = limit // Adjust commentsCount to stop checking limit for the next nodes
+			commentsCount = limit // adjust commentsCount to stop checking limit for the next nodes
 			continue
 		}
 
-		// Add the node and its replies to the list
+		// add the node and its replies to the list
 		limitedNodes = append(limitedNodes, node)
 		commentsCount += repliesCount
 	}
@@ -232,8 +232,8 @@ func (t *Tree) limit(limit int, offsetID string) {
 func countReplies(node *Node) int {
 	count := 0
 	for _, reply := range node.Replies {
-		count++                      // Count the reply itself
-		count += countReplies(reply) // Recursively count its replies
+		count++                      // count the reply itself
+		count += countReplies(reply) // recursively count its replies
 	}
 	return count
 }

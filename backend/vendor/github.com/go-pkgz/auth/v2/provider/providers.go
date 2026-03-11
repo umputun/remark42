@@ -5,6 +5,7 @@ import (
 	"crypto/sha1" //nolint
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/dghubble/oauth1"
 	"github.com/dghubble/oauth1/twitter"
@@ -192,9 +193,13 @@ func NewBattlenet(p Params) Oauth2Handler {
 
 // NewMicrosoft makes microsoft azure oauth2 provider
 func NewMicrosoft(p Params) Oauth2Handler {
+	tenant := p.MicrosoftTenant
+	if tenant == "" || strings.ContainsAny(tenant, "/?# \t\n\r") || strings.Contains(tenant, "..") {
+		tenant = "common"
+	}
 	return initOauth2Handler(p, Oauth2Handler{
 		name:     "microsoft",
-		endpoint: microsoft.AzureADEndpoint("common"),
+		endpoint: microsoft.AzureADEndpoint(tenant),
 		scopes:   []string{"User.Read"},
 		infoURL:  "https://graph.microsoft.com/v1.0/me",
 		// non-beta doesn't provide photo for consumers yet

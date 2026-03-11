@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -121,7 +122,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	comment.PrepareUntrusted() // clean all fields user not supposed to set
 	comment.User = user
-	comment.User.IP = strings.Split(r.RemoteAddr, ":")[0]
+	comment.User.IP = extractIP(r.RemoteAddr)
 
 	comment.Orig = comment.Text // original comment text, prior to md render
 	if err := s.dataService.ValidateComment(&comment); err != nil {
@@ -319,7 +320,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		Locator:   locator,
 		CommentID: id,
 		UserID:    user.ID,
-		UserIP:    strings.Split(r.RemoteAddr, ":")[0],
+		UserIP:    extractIP(r.RemoteAddr),
 		Val:       vote,
 	}
 	comment, err := s.dataService.Vote(req)
@@ -450,7 +451,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 				fmt.Errorf("already subscribed"), "telegram subscription is already set for this user, delete if first to re-subscribe", rest.ErrActionRejected)
 			return
 		}
-		// Generate and send token
+		// generate and send token
 		tkn, err := randToken()
 		if err != nil {
 			rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to generate verification token", rest.ErrInternal)
@@ -519,7 +520,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Handshake.ID is user.ID + "::" + address
+	// handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 || elems[0] != user.ID {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
@@ -573,7 +574,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handshake.ID is user.ID + "::" + address
+	// handshake.ID is user.ID + "::" + address
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
 		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
@@ -811,4 +812,14 @@ func randToken() (string, error) {
 		return "", fmt.Errorf("can't write randoms to sha1: %w", err)
 	}
 	return fmt.Sprintf("%x", s.Sum(nil)), nil
+}
+
+// extractIP returns the IP portion of the remote address, handling both IPv4 and IPv6 formats.
+// supports "ip:port", "[ip]:port", and bare "ip" formats.
+func extractIP(remoteAddr string) string {
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr // already a bare IP (no port)
+	}
+	return ip
 }

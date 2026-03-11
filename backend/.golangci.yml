@@ -23,6 +23,12 @@ linters:
     goconst:
       min-len: 2
       min-occurrences: 2
+    gosec:
+      excludes:
+        - G117 # false positive: struct field name matches "secret" pattern
+        - G703 # false positive: path traversal via taint analysis
+        - G704 # false positive: SSRF via taint analysis
+        - G705 # false positive: XSS via taint analysis
     gocritic:
       disabled-checks:
         - wrapperFunc
@@ -51,6 +57,9 @@ linters:
       - linters:
           - revive
         text: 'var-naming: avoid meaningless package names'
+      - linters:
+          - revive
+        text: 'var-naming: avoid package names that conflict with Go standard library package names'
       - linters:
           - dupl
           - gosec
