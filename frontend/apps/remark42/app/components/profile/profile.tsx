@@ -146,18 +146,20 @@ export function Profile() {
           </div>
         )}
       </div>
-      {comments.map((comment) => (
-        <Comment
-          key={comment.id}
-          user={null}
-          intl={intl}
-          data={comment}
-          level={0}
-          view="user"
-          isCommentsDisabled={false}
-          theme={(user.theme as Theme) || 'light'}
-        />
-      ))}
+      {comments.map((comment) => {
+        return (
+          <Comment
+            key={comment.id}
+            user={null}
+            intl={intl}
+            data={comment}
+            level={0}
+            view="user"
+            isCommentsDisabled={false}
+            theme={(user.theme as Theme) || 'light'}
+          />
+        );
+      })}
       {isLoadMoreVisible && (
         <div className={styles.loadMoreWrapper}>
           {isCommentsLoading ? (
