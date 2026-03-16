@@ -1925,6 +1925,54 @@ func TestService_DoubleClose_Static(t *testing.T) {
 	assert.NoError(t, b.Close())
 }
 
+func TestService_ApproveComments(t *testing.T) {
+	c1 := store.Comment{
+		ID:        "id-1",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+		Approved:  false,
+	}
+	c2 := store.Comment{
+		ID:        "id-2",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 25, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+		Approved:  false,
+	}
+	c3 := store.Comment{
+		ID:        "id-3",
+		Text:      `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 28, 22, 0, time.Local),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "user1", Name: "user name"},
+		Approved:  false,
+	}
+	engineMock := engine.InterfaceMock{
+		// Get single comment by id so that I can grab the user
+		GetFunc: func(engine.GetRequest) (store.Comment, error) {
+			return c1, nil
+		},
+		// Grab all user messages
+		FindFunc: func(engine.FindRequest) ([]store.Comment, error) {
+			return []store.Comment{c1, c2, c3}, nil
+		},
+		// update those comments
+		UpdateFunc: func(c store.Comment) error {
+			return nil
+		},
+		FlagFunc: func(engine.FlagRequest) (bool, error) {
+			return false, nil
+		},
+	}
+	svc := DataStore{Engine: &engineMock}
+	c, err := svc.ApproveComments(store.Locator{URL: "myURl", SiteID: "myId"}, "id-1", true)
+	assert.NoError(t, err)
+	assert.Equal(t, true, c.Approved)
+}
+
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	testDBLoc, err := os.MkdirTemp("", "test_image_r42")
