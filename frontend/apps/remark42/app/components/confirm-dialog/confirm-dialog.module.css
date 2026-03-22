@@ -9,7 +9,7 @@
   border: 1px solid rgba(var(--primary-color), 0.2);
   font-size: 13px;
   color: rgb(var(--primary-text-color));
-  animation: slideIn 0.15s ease-out;
+  animation: slide-in 0.15s ease-out;
 }
 
 .message {
@@ -50,11 +50,12 @@
   background: rgba(var(--primary-text-color), 0.05);
 }
 
-@keyframes slideIn {
+@keyframes slide-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
