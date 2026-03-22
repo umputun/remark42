@@ -3,6 +3,7 @@ import b from 'bem-react-helper';
 
 import { User, BlockedUser, Theme, BlockTTL } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
+import { inlineConfirm } from 'common/settings';
 import { StoreState } from 'store';
 import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
 import { useTheme } from 'hooks/useTheme';
@@ -62,19 +63,36 @@ class SettingsComponent extends Component<Props, State> {
     };
   }
 
+  confirmWithMessage = (message: string, action: () => void) => {
+    if (inlineConfirm) {
+      // For settings page, use inline confirm by replacing the action with a pending state
+      // For simplicity in settings context, we still use window.confirm as fallback
+      // since settings page is not inside an iframe
+      if (window.confirm(message)) {
+        action();
+      }
+    } else if (window.confirm(message)) {
+      action();
+    }
+  };
+
   block = (user: BlockedUser) => {
-    if (!window.confirm(this.props.intl.formatMessage(messages.blockUser, { userName: user.name }))) return;
-    this.setState({
-      unblockedUsers: this.state.unblockedUsers.filter((x) => x !== user.id),
+    const message = this.props.intl.formatMessage(messages.blockUser, { userName: user.name });
+    this.confirmWithMessage(message, () => {
+      this.setState({
+        unblockedUsers: this.state.unblockedUsers.filter((x) => x !== user.id),
+      });
+      this.props.blockUser(user.id, user.name, 'permanently');
     });
-    this.props.blockUser(user.id, user.name, 'permanently');
   };
 
   unblock = (user: BlockedUser) => {
-    if (!window.confirm(this.props.intl.formatMessage(messages.unblockUser, { userName: user.name }))) return;
-    this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
-    this.props.unblockUser(user.id);
-    this.props.onUnblockSomeone();
+    const message = this.props.intl.formatMessage(messages.unblockUser, { userName: user.name });
+    this.confirmWithMessage(message, () => {
+      this.setState({ unblockedUsers: this.state.unblockedUsers.concat([user.id]) });
+      this.props.unblockUser(user.id);
+      this.props.onUnblockSomeone();
+    });
   };
 
   hide = (user: User) => {

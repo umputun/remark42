@@ -38,6 +38,11 @@ type RemarkConfig = {
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
   no_footer?: boolean;
+  // Optional, 'false' by default. Uses inline confirmation dialogs instead of window.confirm().
+  // This fixes issues on iOS Safari where window.confirm() is blocked inside iframes.
+  inline_confirm?: boolean;
+  // Optional, 'false' by default. Shows comment actions (copy, pin, block, delete) without hovering.
+  actions_always_visible?: boolean;
   __colors__?: Record<string, string>;
 };
 

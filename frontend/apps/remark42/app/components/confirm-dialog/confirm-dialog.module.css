@@ -1,0 +1,62 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: rgba(var(--primary-color), 0.08);
+  border: 1px solid rgba(var(--primary-color), 0.2);
+  font-size: 13px;
+  color: rgb(var(--primary-text-color));
+  animation: slideIn 0.15s ease-out;
+}
+
+.message {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.confirmButton {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 3px;
+  background: var(--color9, rgb(var(--primary-color)));
+  color: rgb(var(--primary-background-color));
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.confirmButton:hover {
+  opacity: 0.85;
+}
+
+.cancelButton {
+  padding: 4px 12px;
+  border: 1px solid rgba(var(--primary-text-color), 0.2);
+  border-radius: 3px;
+  background: transparent;
+  color: rgb(var(--secondary-text-color));
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cancelButton:hover {
+  background: rgba(var(--primary-text-color), 0.05);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
