@@ -45,6 +45,30 @@ RUN \
     echo 'Skip frontend build'; \
   fi
 
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build-admin-ui
+
+ARG SKIP_ADMIN_BUILD
+
+RUN apk add --no-cache git
+
+RUN \
+  if [ -z "$SKIP_ADMIN_BUILD" ]; then \
+    git clone --depth 1 https://github.com/lauralesteves/remark42-admin-ui.git /app; \
+  else \
+    mkdir -p /app/build; \
+    echo 'Skip admin UI clone'; \
+  fi
+
+WORKDIR /app
+
+RUN \
+  if [ -z "$SKIP_ADMIN_BUILD" ]; then \
+    npm ci --legacy-peer-deps && \
+    PUBLIC_URL=/admin npm run build; \
+  else \
+    echo 'Skip admin UI build'; \
+  fi
+
 FROM umputun/baseimage:buildgo-v1.17.0 AS build-backend
 
 ARG CI
@@ -61,6 +85,8 @@ ADD backend /build/backend
 # to embed the frontend files statically into Remark42 binary
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
 RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
+# to embed the admin UI files statically into Remark42 binary
+COPY --from=build-admin-ui /app/build/ /build/backend/app/cmd/admin/
 WORKDIR /build/backend
 
 RUN echo go version: `go version`
@@ -104,6 +130,7 @@ RUN chmod +x /srv/init.sh /usr/local/bin/backup /usr/local/bin/restore /usr/loca
 
 COPY --from=build-backend /build/backend/remark42 /srv/remark42
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /srv/web/
+COPY --from=build-admin-ui /app/build/ /srv/admin/
 RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
 
