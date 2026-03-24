@@ -51,6 +51,8 @@ type Rest struct {
 	AnonVote        bool
 	WebRoot         string
 	WebFS           embed.FS
+	AdminRoot       string
+	AdminFS         embed.FS
 	RemarkURL       string
 	ReadOnlyAge     int
 	SharedSecret    string
@@ -362,7 +364,11 @@ func (s *Rest) routes() chi.Router {
 	})
 
 	// file server for static content from s.WebRoot on path /web
-	addFileServer(router, s.WebFS, s.WebRoot, s.Version)
+	addFileServer(router, s.WebFS, s.WebRoot, "web", s.Version)
+
+	// file server for admin UI from s.AdminRoot on path /admin
+	addFileServer(router, s.AdminFS, s.AdminRoot, "admin", s.Version)
+
 	return router
 }
 
@@ -475,32 +481,34 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, cnf)
 }
 
-// serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
-func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
-	var webFS http.Handler
+// serves static files from the root directory or files embedded into the compiled binary if that directory is absent.
+// pathPrefix is the URL path segment (e.g. "web" or "admin") used both for the route and the embed FS subdirectory.
+func addFileServer(r chi.Router, embedFS embed.FS, root, pathPrefix, version string) {
+	var fileHandler http.Handler
 
-	if _, err := os.Stat(webRoot); err == nil {
-		log.Printf("[INFO] run file server from %s from the disk", webRoot)
-		webFS = http.FileServer(http.Dir(webRoot))
+	if _, err := os.Stat(root); err == nil {
+		log.Printf("[INFO] run file server for /%s from %s on disk", pathPrefix, root)
+		fileHandler = http.FileServer(http.Dir(root))
 	} else {
-		log.Printf("[INFO] run file server, embedded")
-		var contentFS, _ = fs.Sub(embedFS, "web")
-		webFS = http.FileServer(http.FS(contentFS))
+		log.Printf("[INFO] run file server for /%s, embedded", pathPrefix)
+		contentFS, _ := fs.Sub(embedFS, pathPrefix)
+		fileHandler = http.FileServer(http.FS(contentFS))
 	}
 
-	webFS = http.StripPrefix("/web", webFS)
-	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
+	prefix := "/" + pathPrefix
+	fileHandler = http.StripPrefix(prefix, fileHandler)
+	r.Get(prefix, http.RedirectHandler(prefix+"/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
 		middleware.Timeout(10*time.Second),
 		cacheControl(time.Hour, version),
-	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
+	).Get(prefix+"/*", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
-		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {
+		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != (prefix+"/") {
 			http.NotFound(w, r)
 			return
 		}
-		webFS.ServeHTTP(w, r)
+		fileHandler.ServeHTTP(w, r)
 	})
 }
 

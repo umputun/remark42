@@ -46,6 +46,9 @@ import (
 //go:embed web
 var webFS embed.FS
 
+//go:embed admin
+var adminFS embed.FS
+
 // ServerCommand with command line flags and env
 type ServerCommand struct {
 	Store      StoreGroup      `group:"store" namespace:"store" env-namespace:"STORE"`
@@ -79,6 +82,7 @@ type ServerCommand struct {
 	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
+	AdminRoot                  string        `long:"admin-root" env:"REMARK_ADMIN_ROOT" default:"./admin" description:"admin UI root directory"`
 	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
@@ -600,6 +604,8 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		DataService:                dataService,
 		WebRoot:                    s.WebRoot,
 		WebFS:                      webFS,
+		AdminRoot:                  s.AdminRoot,
+		AdminFS:                    adminFS,
 		RemarkURL:                  s.RemarkURL,
 		ImageProxy:                 imgProxy,
 		CommentFormatter:           commentFormatter,
