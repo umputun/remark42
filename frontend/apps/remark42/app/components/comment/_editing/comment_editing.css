@@ -4,7 +4,7 @@
   }
 
   /* it isn't mobile first, but it's fine here */
-  @media (-moz-touch-enabled: 1) and (max-width: 768px), (pointer: coarse) and (max-width: 768px) {
+  @media (pointer: coarse) and (max-width: 768px) {
     border: 8px solid;
     padding-bottom: 0;
 
