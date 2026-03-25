@@ -438,13 +438,11 @@ func TestService_VoteAggressive(t *testing.T) {
 
 	// crazy vote +1 as user1
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 1000 {
+		wg.Go(func() {
 			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
 				UserID: "user1", Val: true})
-		}()
+		})
 	}
 	wg.Wait()
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{ID: "user1"})
@@ -458,14 +456,12 @@ func TestService_VoteAggressive(t *testing.T) {
 	assert.Equal(t, 0, len(res[0].VotedIPs), "vote ips hidden")
 
 	// random +1/-1 result should be [0..2]
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			val := rand.Intn(2) > 0
 			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
 				UserID: "user1", Val: val})
-		}()
+		})
 	}
 	wg.Wait()
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})
@@ -492,14 +488,11 @@ func TestService_VoteConcurrent(t *testing.T) {
 
 	// concurrent vote +1 as multiple users for the same comment
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		ii := i
-		go func() {
-			defer wg.Done()
+	for i := range 100 {
+		wg.Go(func() {
 			_, _ = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: res[0].ID,
-				UserID: fmt.Sprintf("user1-%d", ii), Val: true})
-		}()
+				UserID: fmt.Sprintf("user1-%d", i), Val: true})
+		})
 	}
 	wg.Wait()
 	res, err = b.Last("radio-t", 0, time.Time{}, store.User{})

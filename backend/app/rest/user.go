@@ -56,7 +56,7 @@ func SetUserInfo(r *http.Request, user store.User) *http.Request {
 		Picture:  user.Picture,
 		IP:       user.IP,
 		Audience: user.SiteID,
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"blocked":  user.Blocked,
 			"verified": user.Verified,
 		},

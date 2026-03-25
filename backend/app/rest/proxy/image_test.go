@@ -212,7 +212,7 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
 	// in order to validate that cached data used cache "will return" some other data from what http server would
-	testImage := []byte(fmt.Sprintf("%256s", "X"))
+	testImage := fmt.Appendf(nil, "%256s", "X")
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 		return testImage, nil
 	}}

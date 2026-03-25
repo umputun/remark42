@@ -92,10 +92,7 @@ func logDeprecatedParams(params []cmd.DeprecatedFlag) {
 func getDump() string {
 	maxSize := 5 * 1024 * 1024
 	stacktrace := make([]byte, maxSize)
-	length := runtime.Stack(stacktrace, true)
-	if length > maxSize {
-		length = maxSize
-	}
+	length := min(runtime.Stack(stacktrace, true), maxSize)
 	return string(stacktrace[:length])
 }
 

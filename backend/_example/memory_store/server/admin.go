@@ -73,7 +73,7 @@ func (s *RPC) admEnabledHndl(id uint64, params json.RawMessage) (rr jrpc.Respons
 // onEvent returns nothing, callback to OnEvent
 func (s *RPC) admEventHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
 	var siteID string
-	var ps []interface{}
+	var ps []any
 	if err := json.Unmarshal(params, &ps); err != nil {
 		return jrpc.Response{Error: err.Error()}
 	}

@@ -217,7 +217,7 @@ func TestRPC_listFlagsHndl(t *testing.T) {
 
 	flags, err = re.ListFlags(verifyFlagReq)
 	require.NoError(t, err)
-	assert.Equal(t, []interface{}{"u1"}, flags)
+	assert.Equal(t, []any{"u1"}, flags)
 	verifiedUsers := make([]string, 0, len(flags))
 	for _, v := range flags {
 		verifiedUsers = append(verifiedUsers, v.(string))

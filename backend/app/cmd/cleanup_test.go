@@ -173,7 +173,7 @@ func cleanupRoutes(t *testing.T, r *chi.Mux, c *cleanedComments) {
 
 		commentsWithInfo := struct {
 			Comments []store.Comment `json:"comments"`
-			Info     store.PostInfo  `json:"info,omitempty"`
+			Info     store.PostInfo  `json:"info"`
 		}{}
 
 		switch r.URL.Query().Get("url") {

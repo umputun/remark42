@@ -51,7 +51,7 @@ type errTmplData struct {
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
 		if err = tmpl.Execute(wr, data); err != nil {
 			panic(err)
 		}

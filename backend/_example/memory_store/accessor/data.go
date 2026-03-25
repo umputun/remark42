@@ -251,11 +251,11 @@ func (m *MemData) Flag(req engine.FlagRequest) (val bool, err error) {
 
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
-func (m *MemData) ListFlags(req engine.FlagRequest) (res []interface{}, err error) {
+func (m *MemData) ListFlags(req engine.FlagRequest) (res []any, err error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	res = []interface{}{}
+	res = []any{}
 
 	switch req.Flag {
 	case engine.Verified:

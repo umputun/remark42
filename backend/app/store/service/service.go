@@ -62,7 +62,7 @@ type UserMetaData struct {
 		Until  time.Time `json:"until"`
 	} `json:"blocked"`
 	Verified bool                   `json:"verified"`
-	Details  engine.UserDetailEntry `json:"details,omitempty"`
+	Details  engine.UserDetailEntry `json:"details"`
 }
 
 // PostMetaData keeps info about post flags
@@ -676,12 +676,7 @@ func (s *DataStore) IsAdmin(siteID, userID string) bool {
 		log.Printf("[WARN] can't get admins for %s, %v", siteID, err)
 		return false
 	}
-	for _, a := range admins {
-		if a == userID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(admins, userID)
 }
 
 // IsReadOnly checks if post read-only
