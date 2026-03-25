@@ -7,6 +7,8 @@ import { siteId, url } from 'common/settings';
 import { BASE_URL, API_BASE } from 'common/constants';
 import { Dropdown, DropdownItem } from 'components/dropdown';
 
+import styles from './subscribe-by-rss.module.css';
+
 export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams = '') =>
   `${BASE_URL}${API_BASE}/rss/${type}?site=${siteId}${urlParams}`;
 
@@ -48,14 +50,13 @@ export const SubscribeByRSS: FunctionComponent<{ userId: string | null }> = ({ u
   return (
     <Dropdown
       title={intl.formatMessage(messages.title)}
-      titleClass="comment-form__rss-dropdown__title"
       buttonTitle={intl.formatMessage(messages.buttonTitle)}
-      mix="comment-form__rss-dropdown"
+      mix={styles.rssDropdown}
       theme={theme}
     >
       {items.map(([href, label]) => (
         <DropdownItem key={label}>
-          <a href={href} className="comment-form__rss-dropdown__link" target="_blank" rel="noreferrer">
+          <a href={href} className={styles.link} target="_blank" rel="noreferrer">
             {label}
           </a>
         </DropdownItem>

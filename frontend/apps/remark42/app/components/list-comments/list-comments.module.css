@@ -1,4 +1,4 @@
-.list-comments__item {
+.item {
   &:last-child {
     margin-bottom: 0;
   }
