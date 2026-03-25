@@ -87,7 +87,7 @@ func TestAdmin_Delete(t *testing.T) {
 	// check count updated
 	res, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah")
 	assert.Equal(t, http.StatusOK, code)
-	b := map[string]interface{}{}
+	b := map[string]any{}
 	err = json.Unmarshal([]byte(res), &b)
 	assert.NoError(t, err)
 	t.Logf("%#v", b)
@@ -718,7 +718,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		User: &token.User{
 			ID:      "user1",
 			Picture: "pic.image",
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				"delete_me": true,
 			},
 		},
@@ -786,7 +786,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 		},
 		User: &token.User{
 			ID: "provider1_user1",
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				"delete_me": true,
 			},
 		},

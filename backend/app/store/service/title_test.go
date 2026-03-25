@@ -61,7 +61,7 @@ func TestTitle_Get(t *testing.T) {
 	_, err = ex.Get(ts.URL + "/bad")
 	require.Error(t, err)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		r, err := ex.Get(ts.URL + "/good")
 		require.NoError(t, err)
 		assert.Equal(t, "blah 123", r)
@@ -70,9 +70,9 @@ func TestTitle_Get(t *testing.T) {
 }
 
 func TestTitle_GetConcurrent(t *testing.T) {
-	body := ""
-	for n := 0; n < 1000; n++ {
-		body += "something something blah blah\n"
+	var body strings.Builder
+	for range 1000 {
+		body.WriteString("something something blah blah\n")
 	}
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
@@ -80,7 +80,7 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.String(), "/good") {
 			atomic.AddInt32(&hits, 1)
-			_, err := fmt.Fprintf(w, "<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body)
+			_, err := fmt.Fprintf(w, "<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body.String())
 			assert.NoError(t, err)
 			return
 		}
@@ -90,12 +90,11 @@ func TestTitle_GetConcurrent(t *testing.T) {
 
 	g := syncs.NewSizedGroup(10)
 
-	for i := 0; i < 100; i++ {
-		ii := i
+	for i := range 100 {
 		g.Go(func(_ context.Context) {
-			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(ii))
+			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(i))
 			require.NoError(t, err)
-			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(ii), title)
+			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(i), title)
 		})
 	}
 	g.Wait()
@@ -115,7 +114,7 @@ func TestTitle_GetFailed(t *testing.T) {
 	_, err := ex.Get(ts.URL + "/bad")
 	require.Error(t, err)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		r, err := ex.Get(ts.URL + "/bad")
 		require.NoError(t, err)
 		assert.Equal(t, "", r)

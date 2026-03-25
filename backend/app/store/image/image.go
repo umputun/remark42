@@ -111,9 +111,7 @@ func (s *Service) Submit(idsFn func() []string) {
 	s.once.Do(func() {
 		log.Printf("[DEBUG] image submitter activated")
 		s.submitCh = make(chan submitReq, submitQueueSize)
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
+		s.wg.Go(func() {
 			for req := range s.submitCh {
 				// wait for EditDuration expiration with emergency pass on term
 				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.EditDuration {
@@ -127,7 +125,7 @@ func (s *Service) Submit(idsFn func() []string) {
 				atomic.AddInt32(&s.submitCount, -1)
 			}
 			log.Printf("[INFO] image submitter terminated")
-		}()
+		})
 	})
 
 	atomic.AddInt32(&s.submitCount, 1)

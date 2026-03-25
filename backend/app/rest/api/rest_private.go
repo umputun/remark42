@@ -579,7 +579,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
 		if err := tmpl.Execute(wr, data); err != nil {
 			panic(err)
 		}
@@ -670,7 +670,7 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	merr = multierror.Append(merr, write([]byte(`, "comments":`))) // send comments prefix
 
 	// get comments in 100 in each paginated request
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		comments, errUser := s.dataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
 		if errUser != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
@@ -711,7 +711,7 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		User: &token.User{
 			ID:   user.ID,
 			Name: user.Name,
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				"delete_me": true, // prevents this token from being used for login
 			},
 		},
