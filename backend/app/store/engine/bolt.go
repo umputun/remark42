@@ -890,32 +890,30 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 
 	log.Printf("[DEBUG] comments for removal=%d", len(comments))
 
-	// delete collected comments
-	for _, ci := range comments {
-		if e := b.deleteComment(bdb, ci.locator, ci.commentID, mode); e != nil {
-			return fmt.Errorf("failed to delete comment %+v: %w", ci, err)
-		}
-	}
-
-	// delete user bucket in hard mode
-	if mode == store.HardDelete {
-		err = bdb.Update(func(tx *bolt.Tx) error {
-			usersBkt := tx.Bucket([]byte(userBucketName))
-			if usersBkt != nil {
-				if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-					return fmt.Errorf("failed to delete user bucket for %s: %w", userID, err)
-				}
+	if len(comments) > 0 {
+		// delete collected comments
+		for _, ci := range comments {
+			if e := b.deleteComment(bdb, ci.locator, ci.commentID, mode); e != nil {
+				return fmt.Errorf("failed to delete comment %+v: %w", ci, err)
 			}
-			return nil
-		})
-
-		if err != nil {
-			return fmt.Errorf("can't delete user meta: %w", err)
 		}
-	}
 
-	if len(comments) == 0 {
-		return fmt.Errorf("unknown user %s", userID)
+		// delete user bucket in hard mode
+		if mode == store.HardDelete {
+			err = bdb.Update(func(tx *bolt.Tx) error {
+				usersBkt := tx.Bucket([]byte(userBucketName))
+				if usersBkt != nil {
+					if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
+						return fmt.Errorf("failed to delete user bucket for %s: %w", userID, e)
+					}
+				}
+				return nil
+			})
+
+			if err != nil {
+				return fmt.Errorf("can't delete user meta: %w", err)
+			}
+		}
 	}
 
 	return b.deleteUserDetail(bdb, userID, AllUserDetails)
