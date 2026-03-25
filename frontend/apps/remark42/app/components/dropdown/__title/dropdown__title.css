@@ -1,6 +1,0 @@
-.dropdown__title {
-  &::after {
-    content: '\25BE';
-    margin-left: 2px;
-  }
-}

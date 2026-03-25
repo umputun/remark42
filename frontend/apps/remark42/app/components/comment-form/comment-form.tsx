@@ -1,6 +1,6 @@
 import { h, Component, createRef, Fragment } from 'preact';
 import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
-import b, { Mix } from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
@@ -20,13 +20,14 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
+import styles from './comment-form.module.css';
 
 export type Props = {
   id: string;
   user: User | null;
   errorMessage?: string;
   value?: string;
-  mix?: Mix;
+  mix?: string | string[];
   mode?: 'main' | 'edit' | 'reply';
   theme: Theme;
   autofocus?: boolean;
@@ -362,13 +363,13 @@ export class CommentForm extends Component<Props, State> {
   };
 
   renderMarkdownTip = () => (
-    <div className="comment-form__markdown">
+    <div className={styles.markdown}>
       <FormattedMessage
         id="commentForm.notice-about-styling"
         defaultMessage="Styling with <a>Markdown</a> is supported"
         values={{
           a: (title: string) => (
-            <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
+            <a class={styles.markdownLink} target="_blank" href="markdown-help.html">
               {title}
             </a>
           ),
@@ -426,14 +427,13 @@ export class CommentForm extends Component<Props, State> {
 
     return (
       <form
-        className={b('comment-form', {
-          mods: {
-            theme,
-            type: mode || 'reply',
-            simple: isSimpleView,
-          },
-          mix,
-        })}
+        className={clsx(
+          styles.root,
+          theme === 'dark' ? styles.themeDark : styles.themeLight,
+          (!mode || mode === 'reply') && styles.typeReply,
+          isSimpleView && styles.simple,
+          mix
+        )}
         onSubmit={this.send}
         aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
@@ -441,7 +441,7 @@ export class CommentForm extends Component<Props, State> {
         data-testid={`commentform_${this.props.id}`}
       >
         {!isSimpleView && (
-          <div className="comment-form__control-panel" data-testid="markdown-toolbar">
+          <div className={styles.controlPanel} data-testid="markdown-toolbar">
             <MarkdownToolbar
               intl={intl}
               allowUpload={Boolean(uploadImage)}
@@ -450,13 +450,13 @@ export class CommentForm extends Component<Props, State> {
             />
           </div>
         )}
-        <div className="comment-form__field-wrapper">
+        <div className={styles.fieldWrapper}>
           <TextExpander>
             <TextareaAutosize
               id={this.textareaId}
               ref={this.textareaRef}
               onPaste={this.onPaste}
-              className="comment-form__field"
+              className={styles.field}
               placeholder={placeholderMessage}
               value={text}
               onInput={this.onInput}
@@ -467,17 +467,17 @@ export class CommentForm extends Component<Props, State> {
               dir="auto"
             />
           </TextExpander>
-          {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
+          {charactersLeft < 100 && <span className={styles.counter}>{charactersLeft}</span>}
         </div>
 
         {(isErrorShown || !!errorMessage) &&
           (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
-            <p className="comment-form__error" role="alert" key={e}>
+            <p className={styles.error} role="alert" key={e}>
               {e}
             </p>
           ))}
 
-        <div className="comment-form__actions">
+        <div className={styles.actions}>
           {user ? (
             <>
               <div>
@@ -486,20 +486,20 @@ export class CommentForm extends Component<Props, State> {
                     kind="secondary"
                     theme={theme}
                     size="large"
-                    mix="comment-form__button"
+                    className={styles.button}
                     disabled={isDisabled}
                     onClick={this.getPreview}
                   >
                     <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
                   </Button>
                 )}
-                <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+                <Button kind="primary" size="large" className={styles.button} type="submit" disabled={isDisabled}>
                   {label}
                 </Button>
               </div>
 
               {mode === 'main' && (
-                <div className="comment-form__rss">
+                <div className={styles.rss}>
                   {this.renderMarkdownTip()}
                   {this.renderSubscribeButtons()}
                 </div>
@@ -517,9 +517,9 @@ export class CommentForm extends Component<Props, State> {
           // TODO: it can be more elegant;
           // for example it can render full comment component here (or above textarea on mobile)
           !!preview && (
-            <div className="comment-form__preview-wrapper">
+            <div className={styles.previewWrapper}>
               <div
-                className="comment-form__preview raw-content"
+                className={clsx(styles.preview, 'raw-content')}
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
                 dir="auto"
