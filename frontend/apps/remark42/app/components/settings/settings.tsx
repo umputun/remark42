@@ -1,11 +1,12 @@
 import { h, Component } from 'preact';
-import b from 'bem-react-helper';
+import clsx from 'clsx';
 
 import { User, BlockedUser, Theme, BlockTTL } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
 import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
 import { useTheme } from 'hooks/useTheme';
+import styles from './settings.module.css';
 
 interface Props {
   theme: Theme;
@@ -98,44 +99,37 @@ class SettingsComponent extends Component<Props, State> {
     const hiddenUsersList = Object.values(this.state.hiddenUsers);
     const intl = this.props.intl;
     return (
-      <div className={b('settings', {}, { theme })}>
-        <div
-          className="settings__section settings__hidden-users"
-          role="region"
-          aria-label={intl.formatMessage(messages.hiddenUsers)}
-        >
+      <div className={clsx(styles.root, theme === 'dark' ? styles.themeDark : styles.themeLight)}>
+        <div className={styles.section} role="region" aria-label={intl.formatMessage(messages.hiddenUsers)}>
           <h3>
             <FormattedMessage id="settings.hidden-user-header" defaultMessage="Hidden users:" />
           </h3>
           {!hiddenUsersList.length && (
-            <h4 className="settings__dimmed">
+            <h4 className={styles.dimmed}>
               <FormattedMessage id="settings.no-hidden-users" defaultMessage="There are no hidden users." />
             </h4>
           )}
           {!!hiddenUsersList.length && (
-            <ul className="settings__list">
+            <ul className={styles.list}>
               {hiddenUsersList.map((user) => {
                 const isUserUnhidden = unhiddenUsers.includes(user.id);
 
                 return (
-                  <li key={user.id} className="settings__list-item">
-                    <span
-                      className={['settings__username', isUserUnhidden ? 'settings__invisible' : null].join(' ')}
-                      title={user.id}
-                    >
+                  <li key={user.id} className={styles.listItem}>
+                    <span className={clsx(styles.username, isUserUnhidden && styles.invisible)} title={user.id}>
                       {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                     </span>
                     {this.__isUserHidden(user) ? (
-                      <span className="settings__action" {...getHandleClickProps(() => this.unhide(user))}>
+                      <span className={styles.action} {...getHandleClickProps(() => this.unhide(user))}>
                         <FormattedMessage id="settings.show" defaultMessage="show" />
                       </span>
                     ) : (
-                      <span className="settings__action" {...getHandleClickProps(() => this.hide(user))}>
+                      <span className={styles.action} {...getHandleClickProps(() => this.hide(user))}>
                         <FormattedMessage id="settings.hide" defaultMessage="hide" />
                       </span>
                     )}
                     <div>
-                      <span className="settings__user-id">
+                      <span className={styles.userId}>
                         id: <span>{user.id}</span>
                       </span>
                     </div>
@@ -146,50 +140,43 @@ class SettingsComponent extends Component<Props, State> {
           )}
         </div>
         {user && user.admin && (
-          <div
-            className="settings__section settings__blocked-users"
-            role="region"
-            aria-label={intl.formatMessage(messages.blockedUsers)}
-          >
+          <div className={styles.section} role="region" aria-label={intl.formatMessage(messages.blockedUsers)}>
             <h3>
               <FormattedMessage id="settings.blocked-users-header" defaultMessage="Blocked users:" />
             </h3>
 
             {!blockedUsers.length && (
-              <h4 className="settings__dimmed">
+              <h4 className={styles.dimmed}>
                 <FormattedMessage id="settings.no-blocked-users" defaultMessage="There are no blocked users." />
               </h4>
             )}
 
             {!!blockedUsers.length && (
-              <ul className="settings__list settings__blocked-users-list">
+              <ul className={styles.list}>
                 {blockedUsers.map((user) => {
                   const isUserUnblocked = unblockedUsers.includes(user.id);
 
                   return (
-                    <li key={user.id} className="settings__list-item">
-                      <span
-                        className={['settings__username', isUserUnblocked ? 'settings__invisible' : null].join(' ')}
-                        title={user.id}
-                      >
+                    <li key={user.id} className={styles.listItem}>
+                      <span className={clsx(styles.username, isUserUnblocked && styles.invisible)} title={user.id}>
                         {user.name ? user.name : <FormattedMessage id="settings.unknown" defaultMessage="unknown" />}
                       </span>
-                      <span className="settings__blocked-users-user-block-ttl">
+                      <span>
                         {' '}
                         <FormatTime time={new Date(user.time)} />
                       </span>
                       {isUserUnblocked && (
-                        <span {...getHandleClickProps(() => this.block(user))} className="settings__action">
+                        <span {...getHandleClickProps(() => this.block(user))} className={styles.action}>
                           <FormattedMessage id="settings.block" defaultMessage="block" />
                         </span>
                       )}
                       {!isUserUnblocked && (
-                        <span {...getHandleClickProps(() => this.unblock(user))} className="settings__action">
+                        <span {...getHandleClickProps(() => this.unblock(user))} className={styles.action}>
                           <FormattedMessage id="settings.unblock" defaultMessage="unblock" />
                         </span>
                       )}
                       <div>
-                        <span className="settings__user-id">
+                        <span className={styles.userId}>
                           id: <span>{user.id}</span>
                         </span>
                       </div>

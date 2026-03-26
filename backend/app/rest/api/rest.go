@@ -96,12 +96,12 @@ const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
-	Info     store.PostInfo  `json:"info,omitempty"`
+	Info     store.PostInfo  `json:"info"`
 }
 
 type treeWithInfo struct {
 	*service.Tree
-	Info store.PostInfo `json:"info,omitempty"`
+	Info store.PostInfo `json:"info"`
 }
 
 // Run the lister and request's router, activate rest server
@@ -504,7 +504,7 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	})
 }
 
-func encodeJSONWithHTML(v interface{}) ([]byte, error) {
+func encodeJSONWithHTML(v any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)

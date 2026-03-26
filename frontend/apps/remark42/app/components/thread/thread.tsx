@@ -1,7 +1,7 @@
 import { h, FunctionComponent } from 'preact';
 import { shallowEqual } from 'react-redux';
 import { useCallback } from 'preact/hooks';
-import b from 'bem-react-helper';
+import clsx from 'clsx';
 import { useIntl } from 'react-intl';
 
 import { Comment as CommentInterface } from 'common/types';
@@ -12,6 +12,8 @@ import { getThreadIsCollapsed } from 'store/thread/getters';
 import { InView } from 'components/root/in-view/in-view';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
 import { CommentForm } from 'components/comment-form';
+
+import styles from './thread.module.css';
 
 interface Props {
   id: CommentInterface['id'];
@@ -47,7 +49,13 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
 
   return (
     <div
-      className={b('thread', { mix }, { level, theme, indented })}
+      className={clsx(
+        styles.root,
+        indented && styles.indented,
+        level === 6 && styles.level6,
+        theme === 'dark' && styles.themeDark,
+        mix
+      )}
       role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}
     >
@@ -74,7 +82,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
           <Thread key={`thread-${currentId}`} id={currentId} level={Math.min(level + 1, 6)} getPreview={getPreview} />
         ))}
       {level < 6 && (
-        <div className={b('thread__collapse', { mods: { collapsed } })} {...getHandleClickProps(collapse)}>
+        <div className={collapsed ? styles.collapsed : styles.collapse} {...getHandleClickProps(collapse)}>
           <div />
         </div>
       )}

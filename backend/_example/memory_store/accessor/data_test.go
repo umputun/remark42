@@ -198,7 +198,7 @@ func TestMemData_FindForUserPagination(t *testing.T) {
 	}
 
 	// write 200 comments
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		c.ID = fmt.Sprintf("idd-%d", i)
 		c.Text = fmt.Sprintf("text #%d", i)
 		c.Timestamp = time.Date(2017, 12, 20, 15, 18, i, 0, time.Local)
@@ -484,7 +484,7 @@ func TestMemData_FlagVerified(t *testing.T) {
 func TestMemData_FlagListVerified(t *testing.T) {
 
 	b := prepMem(t)
-	toIDs := func(inp []interface{}) (res []string) {
+	toIDs := func(inp []any) (res []string) {
 		res = make([]string, len(inp))
 		for i, v := range inp {
 			vv, ok := v.(string)
@@ -530,7 +530,7 @@ func TestMemData_FlagListBlocked(t *testing.T) {
 		return err
 	}
 
-	toBlocked := func(inp []interface{}) (res []store.BlockedUser) {
+	toBlocked := func(inp []any) (res []store.BlockedUser) {
 		res = make([]store.BlockedUser, len(inp))
 		for i, v := range inp {
 			vv, ok := v.(store.BlockedUser)

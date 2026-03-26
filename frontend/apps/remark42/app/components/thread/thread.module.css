@@ -1,0 +1,97 @@
+.root {
+  position: relative;
+}
+
+.indented {
+  margin-left: 17px;
+}
+
+.level6 .level6 {
+  margin-left: 0;
+}
+
+.collapse {
+  height: calc(100% - 50px);
+  width: 11px;
+  position: absolute;
+  top: 50px;
+  left: -4px;
+  cursor: pointer;
+
+  &::after {
+    display: block;
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 0;
+    border-left: 1px dotted var(--color35);
+    height: 100%;
+  }
+
+  &:hover::after {
+    transform: translateX(-1px);
+    border-left: 3px solid var(--color10);
+    z-index: 10;
+  }
+}
+
+.collapsed {
+  composes: collapse;
+  width: 18px;
+  height: 18px;
+  top: 12px;
+  left: 0;
+  display: flex;
+  text-align: center;
+  opacity: 0.8;
+  border-radius: 2px;
+  border: 1px solid;
+
+  &::after {
+    display: none;
+  }
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:hover::after {
+    transform: translateX(0);
+  }
+
+  & > div {
+    position: relative;
+    top: 6px;
+    left: 3px;
+    width: 12px;
+    height: 2px;
+    border-bottom: 2px solid;
+
+    &::before,
+    &::after {
+      content: '';
+      width: 100%;
+      height: 2px;
+      border-bottom: 2px solid;
+      position: absolute;
+      top: -4px;
+      left: 0;
+    }
+
+    &::after {
+      top: 4px !important;
+    }
+  }
+}
+
+.themeDark {
+  & .collapse {
+    &::after {
+      border-color: var(--color36);
+    }
+
+    &:hover::after {
+      border-color: var(--color6);
+    }
+  }
+}

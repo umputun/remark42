@@ -930,7 +930,7 @@ func TestRest_Config(t *testing.T) {
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 300.0, j["edit_duration"])
-	assert.EqualValues(t, []interface{}{"a1", "a2"}, j["admins"])
+	assert.EqualValues(t, []any{"a1", "a2"}, j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
 	assert.Equal(t, 4000.0, j["max_comment_size"])
 	assert.Equal(t, -5.0, j["low_score"])

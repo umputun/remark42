@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -498,12 +499,7 @@ func stringsSetAndDifferent(s1, s2 string) bool {
 }
 
 func contains(s string, a []string) bool {
-	for _, t := range a {
-		if t == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a, s)
 }
 
 var reservedCustomProviderNames = map[string]struct{}{

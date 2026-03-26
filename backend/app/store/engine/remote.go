@@ -71,24 +71,24 @@ func (r *RPC) Flag(req FlagRequest) (status bool, err error) {
 	return status, err
 }
 
-func unmarshalString(data []byte) ([]interface{}, error) {
+func unmarshalString(data []byte) ([]any, error) {
 	var strings []string
 	if err := json.Unmarshal(data, &strings); err != nil {
 		return nil, err
 	}
-	list := make([]interface{}, 0, len(strings))
+	list := make([]any, 0, len(strings))
 	for _, w := range strings {
 		list = append(list, w)
 	}
 	return list, nil
 }
 
-func unmarshalBlockedUser(data []byte) ([]interface{}, error) {
+func unmarshalBlockedUser(data []byte) ([]any, error) {
 	var blockedUsers []store.BlockedUser
 	if err := json.Unmarshal(data, &blockedUsers); err != nil {
 		return nil, err
 	}
-	list := make([]interface{}, 0, len(blockedUsers))
+	list := make([]any, 0, len(blockedUsers))
 	for _, w := range blockedUsers {
 		list = append(list, w)
 	}
@@ -96,7 +96,7 @@ func unmarshalBlockedUser(data []byte) ([]interface{}, error) {
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
-func (r *RPC) ListFlags(req FlagRequest) ([]interface{}, error) {
+func (r *RPC) ListFlags(req FlagRequest) ([]any, error) {
 	resp, err := r.Call("store.list_flags", req)
 	if err != nil {
 		return nil, err

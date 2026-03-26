@@ -179,7 +179,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 	commentsWithInfo := struct {
 		Comments []store.Comment `json:"comments"`
-		Info     store.PostInfo  `json:"info,omitempty"`
+		Info     store.PostInfo  `json:"info"`
 	}{}
 
 	if err = json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {

@@ -49,7 +49,7 @@ func TestRest_Create(t *testing.T) {
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	assert.NoError(t, err)
-	loc := c["locator"].(map[string]interface{})
+	loc := c["locator"].(map[string]any)
 	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 	assert.True(t, len(c["id"].(string)) > 8)
@@ -71,7 +71,7 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 	c := R.JSON{}
 	err = json.Unmarshal(b, &c)
 	require.NoError(t, err, string(b))
-	loc := c["locator"].(map[string]interface{})
+	loc := c["locator"].(map[string]any)
 	assert.Equal(t, "remark42", loc["site"])
 	assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 	assert.Equal(t, "`foo<bar>`", c["orig"])
@@ -123,7 +123,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 		require.NoError(t, err, string(b))
 		assert.NotContains(t, c["text"], pngServer.URL)
 		assert.Contains(t, c["text"], srv.RemarkURL)
-		loc := c["locator"].(map[string]interface{})
+		loc := c["locator"].(map[string]any)
 		assert.Equal(t, "remark42", loc["site"])
 		assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
 		assert.True(t, len(c["id"].(string)) > 8)
@@ -1456,7 +1456,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local)}
 
-	for i := 0; i < 51; i++ {
+	for i := range 51 {
 		c.ID = fmt.Sprintf("id-%03d", i)
 		c.Timestamp = c.Timestamp.Add(time.Second)
 		_, err := srv.DataService.Create(c)

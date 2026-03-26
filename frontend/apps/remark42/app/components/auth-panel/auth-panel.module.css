@@ -1,3 +1,35 @@
+.root {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  line-height: 16px;
+  align-items: center;
+}
+
+.column:last-child {
+  margin-left: 8px;
+  text-align: right;
+}
+
+.columnSeparated > * + * {
+  position: relative;
+  display: inline-block;
+  margin-left: 20px;
+
+  &::before {
+    position: absolute;
+    left: -15px;
+    display: inline-block;
+    width: 10px;
+    text-align: center;
+    content: '•';
+  }
+}
+
+/* stylelint-disable-next-line block-no-empty -- selector-only class for test targeting */
+.adminAction {
+}
+
 .user {
   display: flex;
   align-items: center;

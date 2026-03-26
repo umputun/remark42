@@ -96,7 +96,7 @@ func TestService_Many(t *testing.T) {
 	s := NewService(nil, 5, d1, d2)
 	assert.NotNil(t, s)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.Submit(Request{Comment: store.Comment{ID: fmt.Sprintf("%d", 100+i)}})
 		s.SubmitVerification(VerificationRequest{User: fmt.Sprintf("%d", 100+i)})
 		time.Sleep(time.Millisecond * time.Duration(rand.Int31n(20)))
