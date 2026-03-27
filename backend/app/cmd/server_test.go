@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
@@ -90,6 +91,30 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, "pong", string(body))
+
+	cancel()
+	app.Wait()
+}
+
+func TestServerApp_CustomOAuthProvider(t *testing.T) {
+	port := chooseRandomUnusedPort()
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Custom.Name = "oidc"
+		o.Auth.Custom.CID = "cid"
+		o.Auth.Custom.CSEC = "csec"
+		o.Auth.Custom.AuthURL = "https://example.com/oauth2/authorize"
+		o.Auth.Custom.TokenURL = "https://example.com/oauth2/token"
+		o.Auth.Custom.InfoURL = "https://example.com/oauth2/userinfo"
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(port)
+
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
 
 	cancel()
 	app.Wait()
@@ -389,6 +414,95 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: an AppleProvider creating failed: "+
 			"provided private key is not ECDSA")
 	t.Log(err)
+
+	// incomplete custom oauth config
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.name=oidc", "--auth.custom.cid=123"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
+			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
+	t.Log(err)
+}
+
+func TestIsReservedCustomProviderName(t *testing.T) {
+	reserved := []string{
+		"email", "anonymous", "google", "github", "facebook", "yandex", "twitter",
+		"microsoft", "patreon", "discord", "telegram", "dev", "apple",
+	}
+
+	for _, name := range reserved {
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, isReservedCustomProviderName(name))
+		})
+	}
+
+	assert.False(t, isReservedCustomProviderName("oidc"))
+}
+
+func TestIsValidCustomProviderName(t *testing.T) {
+	valid := []string{"oidc", "codeberg", "provider_1", "provider-1", "a1"}
+	for _, name := range valid {
+		t.Run("valid_"+name, func(t *testing.T) {
+			assert.True(t, isValidCustomProviderName(name))
+		})
+	}
+
+	invalid := []string{"", " has-space", "has space", "Uppercase", "provider!", "-provider", "_provider"}
+	for _, name := range invalid {
+		t.Run("invalid_"+strings.ReplaceAll(name, " ", "_"), func(t *testing.T) {
+			assert.False(t, isValidCustomProviderName(name))
+		})
+	}
+}
+
+func TestCustomProviderSourceID(t *testing.T) {
+	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
+
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
+	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
+	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
+	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
+	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+}
+
+func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
+	baseArgs := []string{
+		"--store.bolt.path=/tmp",
+		"--backup=/tmp",
+		"--image.fs.path=/tmp",
+		"--auth.custom.cid=123",
+		"--auth.custom.csec=456",
+		"--auth.custom.auth-url=https://example.com/oauth2/authorize",
+		"--auth.custom.token-url=https://example.com/oauth2/token",
+		"--auth.custom.info-url=https://example.com/oauth2/userinfo",
+	}
+
+	t.Run("reserved", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=twitter"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "twitter" is reserved`)
+	})
+
+	t.Run("not_url_safe", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=bad name"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "bad name" is invalid, expected pattern "^[a-z0-9][a-z0-9_-]*$"`)
+	})
 }
 
 func TestServerApp_Shutdown(t *testing.T) {

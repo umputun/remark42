@@ -20,6 +20,7 @@ export const OAUTH_DATA = {
   microsoft: require('assets/social/microsoft.svg').default as string,
   yandex: require('assets/social/yandex.svg').default as string,
   dev: require('assets/social/dev.svg').default as string,
+  custom: require('assets/social/custom.svg').default as string,
   github: {
     name: 'GitHub',
     icons: {
