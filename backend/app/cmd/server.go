@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -513,6 +514,7 @@ var reservedCustomProviderNames = map[string]struct{}{
 	"github":    {},
 	"facebook":  {},
 	"yandex":    {},
+	"twitter":   {},
 	"microsoft": {},
 	"patreon":   {},
 	"discord":   {},
@@ -521,9 +523,40 @@ var reservedCustomProviderNames = map[string]struct{}{
 	"apple":     {},
 }
 
+var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
 func isReservedCustomProviderName(name string) bool {
 	_, ok := reservedCustomProviderNames[name]
 	return ok
+}
+
+func isValidCustomProviderName(name string) bool {
+	return validCustomProviderName.MatchString(name)
+}
+
+func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
+	sourceID := data.Value(cfg.IDField)
+	if sourceID == "" {
+		sourceID = data.Value(cfg.EmailField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.NameField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.PictureField)
+	}
+	if sourceID == "" {
+		payload, err := json.Marshal(data)
+		if err != nil {
+			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
+		} else {
+			sourceID = string(payload)
+		}
+	}
+	if sourceID == "" || sourceID == "{}" {
+		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
+	}
+	return sourceID
 }
 
 func (c CustomAuthGroup) isConfigured() bool {
@@ -1040,6 +1073,9 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		}
 
 		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
+		if !isValidCustomProviderName(customName) {
+			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
+		}
 		if isReservedCustomProviderName(customName) {
 			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
@@ -1052,14 +1088,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
 			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				sourceID := data.Value(s.Auth.Custom.IDField)
-				if sourceID == "" {
-					sourceID = data.Value(s.Auth.Custom.EmailField)
-				}
-				if sourceID == "" {
-					sourceID = data.Value(s.Auth.Custom.NameField)
-				}
-
+				sourceID := customProviderSourceID(data, s.Auth.Custom)
 				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
 				user := token.User{
 					ID:      customName + "_" + hashID,
