@@ -4,13 +4,13 @@
   border: 0;
   margin: 0;
   padding: 4px;
-  transition: transfrom 0.15s ease-out;
+  transition: transform 0.15s ease-out;
   border-radius: 2px;
   appearance: none;
 
   &:hover {
     transform: scale(1.06);
-    transition: transfrom 0.15s ease-in;
+    transition: transform 0.15s ease-in;
   }
 
   &:active {

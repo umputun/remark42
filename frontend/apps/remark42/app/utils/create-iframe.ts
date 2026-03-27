@@ -10,13 +10,8 @@ export function createIframe({ __colors__, styles, ...params }: Params) {
   setAttributes(iframe, {
     src: `${BASE_URL}/web/iframe.html?${query}`,
     name: JSON.stringify({ __colors__ }),
-    frameborder: '0',
-    allowtransparency: 'true',
-    scrolling: 'no',
     tabindex: '0',
     title: 'Comments | Remark42',
-    horizontalscrolling: 'no',
-    verticalscrolling: 'no',
   });
   setStyles(iframe, {
     height: '100%',

@@ -437,7 +437,7 @@ func Test_validEmailAuth(t *testing.T) {
 
 // randomPath pick a file or folder name which is not in use for sure
 func randomPath(tempDir, basename, suffix string) (string, error) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		fname := fmt.Sprintf("/%s/%s-%d%s", tempDir, basename, rand.Int31(), suffix)
 		fmt.Printf("fname %q", fname)
 		_, err := os.Stat(fname)
@@ -667,7 +667,7 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 }
 
 func chooseRandomUnusedPort() (port int) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		port = 40000 + int(rand.Int31n(10000))
 		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
 			_ = ln.Close()
@@ -679,7 +679,7 @@ func chooseRandomUnusedPort() (port int) {
 
 func waitForHTTPSServerStart(port int) {
 	// wait for up to 3 seconds for HTTPS server to start
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		time.Sleep(time.Millisecond * 10)
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {

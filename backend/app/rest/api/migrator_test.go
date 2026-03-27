@@ -276,8 +276,8 @@ func TestMigrator_ImportDouble(t *testing.T) {
 "picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
-	recs := []string{}
-	for i := 0; i < 50; i++ {
+	recs := make([]string, 0, 50)
+	for i := range 50 {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
@@ -329,7 +329,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
 	nRecs := 50
 	recs := make([]string, 0, nRecs)
-	for i := 0; i < nRecs; i++ {
+	for i := range nRecs {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with `nRecs` records

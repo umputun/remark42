@@ -8,6 +8,7 @@ import type { User } from 'common/types';
 import enMessages from 'locales/en.json';
 
 import { AuthPanel, Props } from './auth-panel';
+import styles from './auth-panel.module.css';
 
 const DefaultProps = {
   postInfo: {
@@ -47,7 +48,7 @@ describe('<AuthPanel />', () => {
         postInfo: { ...DefaultProps.postInfo, read_only: true },
       } as Props);
 
-      const adminAction = element.find('.auth-panel__admin-action');
+      const adminAction = element.find(`.${styles.adminAction}`);
 
       expect(adminAction.exists()).toBe(false);
     });
@@ -60,7 +61,7 @@ describe('<AuthPanel />', () => {
         hiddenUsers: { hidden_joe: {} as User },
       } as Props);
 
-      const adminAction = element.find('.auth-panel__admin-action');
+      const adminAction = element.find(`.${styles.adminAction}`).first();
 
       expect(adminAction.text()).toEqual('Show settings');
     });
@@ -73,7 +74,7 @@ describe('<AuthPanel />', () => {
         user: { id: 'john', name: 'John' },
       } as Props);
 
-      const authPanelColumn = element.find('.auth-panel__column');
+      const authPanelColumn = element.find(`.${styles.column}`);
 
       expect(authPanelColumn.length).toEqual(2);
 
@@ -89,7 +90,7 @@ describe('<AuthPanel />', () => {
         user: { id: 'test', admin: true, name: 'John' },
       } as Props);
 
-      const adminAction = element.find('.auth-panel__admin-action').first();
+      const adminAction = element.find(`.${styles.adminAction}`).first();
 
       expect(adminAction.text()).toEqual('Show settings');
     });

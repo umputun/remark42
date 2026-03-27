@@ -1,0 +1,14 @@
+.root {
+  & > button,
+  & > a,
+  & > [data-dropdown] {
+    display: inline-block;
+    text-align: left;
+    padding: 5px;
+  }
+}
+
+.separator {
+  border-bottom: 1px solid var(--color15);
+  margin-bottom: 5px;
+}

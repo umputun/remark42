@@ -39,7 +39,7 @@ type mockTGRequester struct {
 	t   *testing.T
 }
 
-func (m *mockTGRequester) Request(_ context.Context, _ string, _ []byte, data interface{}) error {
+func (m *mockTGRequester) Request(_ context.Context, _ string, _ []byte, data any) error {
 	if m.hit < 2 {
 		m.hit++
 		assert.NoError(m.t, json.Unmarshal([]byte(getUpdatesResp), data))
