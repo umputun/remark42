@@ -33,7 +33,7 @@
     "clsx": "^1.1.1",
     "core-js": "^3.23.3",
     "intersection-observer": "^0.12.2",
-    "lodash-es": "^4.17.23",
+    "lodash-es": "^4.18.1",
     "node-emoji": "^1.11.0",
     "preact": "10.6.2",
     "react": "npm:@preact/compat@^17.1.1",
