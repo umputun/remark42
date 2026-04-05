@@ -20,7 +20,7 @@ export function createIframe({ __colors__, styles, ...params }: Params) {
     padding: 0,
     margin: 0,
     overflow: 'hidden',
-    colorScheme: 'none',
+    colorScheme: params.theme === 'dark' ? 'dark' : 'light',
     ...styles,
   });
 
