@@ -1,6 +1,6 @@
 module github.com/umputun/remark42/memory_store
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/go-pkgz/jrpc v0.4.0
@@ -31,7 +31,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/image v0.36.0 // indirect
+	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
