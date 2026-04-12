@@ -303,14 +303,7 @@ export class Comment extends Component<CommentProps, State> {
           ? intl.formatMessage(messages.deletedComment)
           : props.data.text,
       time: new Date(props.data.time),
-      orig: isEditing
-        ? props.data.orig &&
-          props.data.orig.replace(/&[#A-Za-z0-9]+;/gi, (entity) => {
-            const span = document.createElement('span');
-            span.innerHTML = entity;
-            return span.innerText;
-          })
-        : props.data.orig,
+      orig: props.data.orig,
       user: props.data.user,
     };
 
