@@ -17,6 +17,8 @@
   - **IMPORTANT**: Example lint: `cd backend/_example/memory_store && golangci-lint run --config ../../.golangci.yml`
   - Frontend: `cd frontend && pnpm lint`
   - **Before committing**: Always run tests and linter on both main backend AND examples
+- **Dependency Updates**:
+  - When updating Go modules in `backend/`, also run `go mod tidy` (and `go mod vendor`) in `backend/_example/memory_store` to keep indirect deps in sync. The example module replaces `github.com/umputun/remark42/backend` with `../../` so stale indirect deps there will break the example build.
 
 ## Code Style
 - **Backend**: Formatting with golangci-lint, strict error handling
