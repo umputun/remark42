@@ -40,15 +40,20 @@ async function init(): Promise<void> {
 
     if (data.theme === 'light') {
       document.body.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
     }
 
     if (data.theme === 'dark') {
       document.body.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
     }
   });
 
   if (theme === 'dark') {
     document.body.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+  } else {
+    document.documentElement.style.colorScheme = 'light';
   }
 
   boundActions.fetchHiddenUsers();
