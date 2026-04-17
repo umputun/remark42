@@ -180,7 +180,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer func() {
-			if e = os.Remove(fh.Name()); e != nil {
+			if e = os.Remove(fh.Name()); e != nil { //nolint:gosec // fh.Name() is from os.CreateTemp, server-controlled
 				log.Printf("[WARN] failed to remove temp file %+v", e)
 			}
 		}()
