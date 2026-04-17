@@ -465,7 +465,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err := json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", bytes.NewBuffer(b))
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -489,7 +489,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site="+c.Locator.SiteID, bytes.NewBuffer(b))
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)

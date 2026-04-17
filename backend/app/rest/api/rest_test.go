@@ -630,7 +630,11 @@ func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	postURL := ts.URL + "/api/v1/comment"
+	if c.Locator.SiteID != "" {
+		postURL += "?site=" + c.Locator.SiteID
+	}
+	req, err := http.NewRequest("POST", postURL, bytes.NewBuffer(b))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -695,4 +699,44 @@ func TestMain(m *testing.M) {
 		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
 		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
 	)
+}
+
+// TestRest_matchSiteID reproduces the multi-tenant isolation gap in the matchSiteID
+// middleware. Before the fix, the check `if siteID != "" && user.SiteID != siteID`
+// silently allowed any authenticated request that omitted the ?site= query param.
+// On admin and user-mutation routes this meant the cross-site check was bypassable
+// just by dropping the parameter. The fix requires ?site= to be present and to match
+// the user's bound site.
+func TestRest_matchSiteID(t *testing.T) {
+	wrapped := matchSiteID(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+
+	cases := []struct {
+		name     string
+		userSite string
+		query    string
+		want     int
+	}{
+		{name: "matching site allowed", userSite: "site-a", query: "?site=site-a", want: http.StatusOK},
+		{name: "mismatched site forbidden", userSite: "site-a", query: "?site=site-b", want: http.StatusForbidden},
+		{name: "missing site param rejected", userSite: "site-a", query: "", want: http.StatusForbidden},
+		{name: "empty site param rejected", userSite: "site-a", query: "?site=", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				r = rest.SetUserInfo(r, store.User{ID: "u", Name: "u", SiteID: c.userSite})
+				wrapped.ServeHTTP(w, r)
+			})
+			ts := httptest.NewServer(h)
+			defer ts.Close()
+			resp, err := http.Get(ts.URL + c.query)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+		})
+	}
 }

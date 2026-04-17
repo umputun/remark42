@@ -48,7 +48,7 @@ func TestServerApp(t *testing.T) {
 	// add comment
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -154,7 +154,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as good anonymous
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -219,7 +219,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 	// try to add a comment as anonymous with admin name
 	time.Sleep(time.Second)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -742,7 +742,7 @@ func TestServerAuthHooks(t *testing.T) {
 	defer client.CloseIdleConnections()
 
 	// add comment
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
@@ -757,7 +757,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkNoAud, err := tkService.Token(badClaimsNoAud)
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -775,7 +775,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkMultipleAuds, err := tkService.Token(badClaimsMultipleAud)
 	require.NoError(t, err)
 	t.Logf("multiple aud claims: %s", tkMultipleAuds)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -794,7 +794,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkNoUser, err := tkService.Token(badClaimsNoUser)
 	require.NoError(t, err)
 	t.Logf("no user claims: %s", tkNoUser)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -820,7 +820,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(string(b))
 
 	// try add a comment with blocked user
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
