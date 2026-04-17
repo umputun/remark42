@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -419,41 +418,6 @@ func TestImage_ResponseSizeLimit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	assert.Contains(t, string(b), "failed to fetch")
-}
-
-func TestIsPrivateIP(t *testing.T) {
-	tbl := []struct {
-		ip      string
-		private bool
-	}{
-		{"127.0.0.1", true},
-		{"10.0.0.1", true},
-		{"10.255.255.255", true},
-		{"172.16.0.1", true},
-		{"172.31.255.255", true},
-		{"192.168.0.1", true},
-		{"192.168.255.255", true},
-		{"169.254.1.1", true},
-		{"100.64.0.1", true},
-		{"100.127.255.255", true},
-		{"::1", true},
-		{"fc00::1", true},
-		{"fe80::1", true},
-		{"0.0.0.0", true},
-		{"::", true},
-		{"8.8.8.8", false},
-		{"203.0.113.1", false},
-		{"1.1.1.1", false},
-		{"2001:db8::1", false},
-	}
-
-	for _, tt := range tbl {
-		t.Run(tt.ip, func(t *testing.T) {
-			ip := net.ParseIP(tt.ip)
-			require.NotNil(t, ip)
-			assert.Equal(t, tt.private, isPrivateIP(ip))
-		})
-	}
 }
 
 func imgHTTPTestsServer(t *testing.T) *httptest.Server {

@@ -14,6 +14,8 @@ import (
 	"github.com/go-pkgz/syncs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark42/backend/app/safehttp"
 )
 
 func TestTitle_GetTitle(t *testing.T) {
@@ -127,4 +129,42 @@ func TestTitle_DoubleClosed(t *testing.T) {
 	assert.NoError(t, ex.Close())
 	// second call should not result in panic
 	assert.NoError(t, ex.Close())
+}
+
+// TestTitle_GetBlocksPrivateIPViaSafeTransport reproduces the SSRF in TitleExtractor.
+// In production (cmd/server.go) the TitleExtractor receives the comment's Locator.URL
+// straight from the user JSON body. The domain allowlist alone is not enough — a
+// hostname suffix-matching an allowed domain can resolve to a private IP (DNS rebinding)
+// or an attacker can list 127.0.0.1 directly when AllowedHosts is empty.
+//
+// The fix is to wrap the http.Client with safehttp.Transport at construction time,
+// matching what the image proxy already does. This test asserts the safehttp transport
+// is honored by the title fetcher: even though "127.0.0.1" is in the allowed-domains
+// list, the dialer refuses to connect to a private address.
+//
+// As a control, the second sub-test shows the same setup WITHOUT safehttp.Transport
+// happily fetches the page — demonstrating the original vulnerability.
+func TestTitle_GetBlocksPrivateIPViaSafeTransport(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html><title>secret</title></html>`))
+	}))
+	defer ts.Close()
+
+	t.Run("with safehttp transport: blocked", func(t *testing.T) {
+		client := http.Client{Timeout: 2 * time.Second, Transport: safehttp.Transport()}
+		ex := NewTitleExtractor(client, []string{"127.0.0.1"})
+		defer ex.Close()
+		_, err := ex.Get(ts.URL)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "access to private address is not allowed")
+	})
+
+	t.Run("control: default transport leaks", func(t *testing.T) {
+		client := http.Client{Timeout: 2 * time.Second} // no safehttp.Transport — vulnerable
+		ex := NewTitleExtractor(client, []string{"127.0.0.1"})
+		defer ex.Close()
+		title, err := ex.Get(ts.URL)
+		require.NoError(t, err, "without safehttp.Transport the SSRF succeeds — this is the bug")
+		assert.Equal(t, "secret", title)
+	})
 }
