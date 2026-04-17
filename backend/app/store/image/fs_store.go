@@ -147,8 +147,8 @@ func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 		age := time.Since(info.ModTime())
 		if age > (ttl + 100*time.Millisecond) { // delay cleanup triggering to allow commit
 			log.Printf("[INFO] remove staging image %s, age %v", fpath, age)
-			rmErr := os.Remove(fpath)
-			_ = os.Remove(path.Dir(fpath)) // try to remove directory
+			rmErr := os.Remove(fpath)             //nolint:gosec // staging dir is server-only, no untrusted symlinks land here
+			_ = os.Remove(path.Dir(fpath))        //nolint:gosec // same staging dir
 			return rmErr
 		}
 		return nil
