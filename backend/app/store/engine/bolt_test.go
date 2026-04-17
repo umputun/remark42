@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -571,47 +572,49 @@ func TestBolt_FlagListVerified(t *testing.T) {
 }
 
 func TestBolt_FlagListBlocked(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
+	synctest.Test(t, func(t *testing.T) {
+		b, teardown := prep(t)
+		defer teardown()
 
-	setBlocked := func(site, user string, status FlagStatus, ttl time.Duration) error {
-		req := FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status, TTL: ttl}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	toBlocked := func(inp []any) (res []store.BlockedUser) {
-		res = make([]store.BlockedUser, len(inp))
-		for i, v := range inp {
-			vv, ok := v.(store.BlockedUser)
-			require.True(t, ok)
-			res[i] = vv
+		setBlocked := func(site, user string, status FlagStatus, ttl time.Duration) error {
+			req := FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status, TTL: ttl}
+			_, err := b.Flag(req)
+			return err
 		}
-		return res
-	}
-	assert.NoError(t, setBlocked("radio-t", "user1", FlagTrue, 0))
-	assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 150*time.Millisecond))
-	assert.NoError(t, setBlocked("radio-t", "user3", FlagFalse, 0))
 
-	vv, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
+		toBlocked := func(inp []any) (res []store.BlockedUser) {
+			res = make([]store.BlockedUser, len(inp))
+			for i, v := range inp {
+				vv, ok := v.(store.BlockedUser)
+				require.True(t, ok)
+				res[i] = vv
+			}
+			return res
+		}
+		assert.NoError(t, setBlocked("radio-t", "user1", FlagTrue, 0))
+		assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 150*time.Millisecond))
+		assert.NoError(t, setBlocked("radio-t", "user3", FlagFalse, 0))
 
-	blockedList := toBlocked(vv)
-	require.Equal(t, 2, len(blockedList))
-	assert.Equal(t, "user1", blockedList[0].ID)
-	assert.Equal(t, "user2", blockedList[1].ID)
-	t.Logf("%+v", blockedList)
+		vv, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
+		assert.NoError(t, err)
 
-	// check block expiration
-	time.Sleep(150 * time.Millisecond)
-	vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	blockedList = toBlocked(vv)
-	require.Equal(t, 1, len(blockedList))
-	assert.Equal(t, "user1", blockedList[0].ID)
+		blockedList := toBlocked(vv)
+		require.Equal(t, 2, len(blockedList))
+		assert.Equal(t, "user1", blockedList[0].ID)
+		assert.Equal(t, "user2", blockedList[1].ID)
+		t.Logf("%+v", blockedList)
 
-	_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
-	assert.EqualError(t, err, `site "bad" not found`)
+		// check block expiration
+		time.Sleep(150 * time.Millisecond)
+		vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
+		assert.NoError(t, err)
+		blockedList = toBlocked(vv)
+		require.Equal(t, 1, len(blockedList))
+		assert.Equal(t, "user1", blockedList[0].ID)
+
+		_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
+		assert.EqualError(t, err, `site "bad" not found`)
+	})
 }
 
 func TestBoltDB_UserDetail(t *testing.T) {

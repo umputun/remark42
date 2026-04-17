@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-pkgz/lgr"
@@ -716,34 +717,36 @@ func TestService_VoteSameIP(t *testing.T) {
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
-	eng, teardown := prepStoreEngine(t)
-	defer teardown()
-	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
-		MaxVotes: -1}
-	b.RestrictSameIPVotes.Enabled = true
-	b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
+	synctest.Test(t, func(t *testing.T) {
+		eng, teardown := prepStoreEngine(t)
+		defer teardown()
+		b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+			MaxVotes: -1}
+		b.RestrictSameIPVotes.Enabled = true
+		b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
 
-	c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
-		UserID: "user2", UserIP: "123", Val: true})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, c.Score, "should have 1 score")
+		c, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+			UserID: "user2", UserIP: "123", Val: true})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, c.Score, "should have 1 score")
 
-	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
-		UserID: "user3", UserIP: "123", Val: true})
-	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
-	assert.Equal(t, 1, c.Score, "still have 1 score")
+		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+			UserID: "user3", UserIP: "123", Val: true})
+		assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
+		assert.Equal(t, 1, c.Score, "still have 1 score")
 
-	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
-		UserID: "user4", UserIP: "12345", Val: true})
-	assert.NoError(t, err)
-	assert.Equal(t, 2, c.Score, "have 2 score")
+		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+			UserID: "user4", UserIP: "12345", Val: true})
+		assert.NoError(t, err)
+		assert.Equal(t, 2, c.Score, "have 2 score")
 
-	time.Sleep(501 * time.Millisecond)
+		time.Sleep(501 * time.Millisecond)
 
-	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
-		UserID: "user3", UserIP: "123", Val: true})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, c.Score, "have 3 score")
+		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+			UserID: "user3", UserIP: "123", Val: true})
+		assert.NoError(t, err)
+		assert.Equal(t, 3, c.Score, "have 3 score")
+	})
 }
 
 func TestService_Controversy(t *testing.T) {
@@ -857,8 +860,6 @@ func TestService_EditCommentDurationFailed(t *testing.T) {
 	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
 
-	time.Sleep(time.Second)
-
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
 		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
 	assert.Error(t, err)
@@ -903,8 +904,6 @@ func TestService_EditCommentAdmin(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(res))
 	assert.Nil(t, res[0].Edit)
-
-	time.Sleep(time.Second)
 
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
 		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit", Admin: true})
@@ -1181,87 +1180,89 @@ func TestService_HasReplies(t *testing.T) {
 }
 
 func TestService_UserReplies(t *testing.T) {
-	// two comments for https://radio-t.com, no reply
-	eng, teardown := prepStoreEngine(t)
-	defer teardown()
-	b := DataStore{Engine: eng,
-		AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
+	synctest.Test(t, func(t *testing.T) {
+		// two comments for https://radio-t.com, no reply
+		eng, teardown := prepStoreEngine(t)
+		defer teardown()
+		b := DataStore{Engine: eng,
+			AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
 
-	c1 := store.Comment{
-		ID:      "comment-id-1",
-		Text:    "test 123",
-		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
-		User:    store.User{ID: "u1", Name: "developer one u1"},
-	}
-	c2 := store.Comment{
-		ID:       "comment-id-2",
-		ParentID: "comment-id-1",
-		Text:     "xyz test",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
-		User:     store.User{ID: "u2", Name: "developer one u2"},
-	}
-	c3 := store.Comment{
-		ID:       "comment-id-3",
-		ParentID: "comment-id-1",
-		Text:     "xyz test",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
-		User:     store.User{ID: "u2", Name: "developer one u3"},
-	}
-	c4 := store.Comment{
-		ID:       "comment-id-4",
-		ParentID: "",
-		Text:     "xyz test",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
-		User:     store.User{ID: "u4", Name: "developer one u4"},
-	}
-	c5 := store.Comment{
-		ID:       "comment-id-5",
-		ParentID: "comment-id-1",
-		Text:     "xyz test",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
-		User:     store.User{ID: "u2", Name: "developer one u2"},
-	}
+		c1 := store.Comment{
+			ID:      "comment-id-1",
+			Text:    "test 123",
+			Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+			User:    store.User{ID: "u1", Name: "developer one u1"},
+		}
+		c2 := store.Comment{
+			ID:       "comment-id-2",
+			ParentID: "comment-id-1",
+			Text:     "xyz test",
+			Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+			User:     store.User{ID: "u2", Name: "developer one u2"},
+		}
+		c3 := store.Comment{
+			ID:       "comment-id-3",
+			ParentID: "comment-id-1",
+			Text:     "xyz test",
+			Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+			User:     store.User{ID: "u2", Name: "developer one u3"},
+		}
+		c4 := store.Comment{
+			ID:       "comment-id-4",
+			ParentID: "",
+			Text:     "xyz test",
+			Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+			User:     store.User{ID: "u4", Name: "developer one u4"},
+		}
+		c5 := store.Comment{
+			ID:       "comment-id-5",
+			ParentID: "comment-id-1",
+			Text:     "xyz test",
+			Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "radio-t"},
+			User:     store.User{ID: "u2", Name: "developer one u2"},
+		}
 
-	_, err := b.Create(c1)
-	require.NoError(t, err)
-	_, err = b.Create(c2)
-	require.NoError(t, err)
-	_, err = b.Create(c3)
-	require.NoError(t, err)
-	_, err = b.Create(c4)
-	require.NoError(t, err)
+		// small sleeps give each Create a unique nanosecond timestamp under synctest's fake clock,
+		// since Bolt keys the "last" bucket by comment timestamp
+		_, err := b.Create(c1)
+		require.NoError(t, err)
+		time.Sleep(time.Nanosecond)
+		_, err = b.Create(c2)
+		require.NoError(t, err)
+		time.Sleep(time.Nanosecond)
+		_, err = b.Create(c3)
+		require.NoError(t, err)
+		time.Sleep(time.Nanosecond)
+		_, err = b.Create(c4)
+		require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
-	_, err = b.Create(c5)
-	require.NoError(t, err)
+		time.Sleep(100 * time.Millisecond)
+		_, err = b.Create(c5)
+		require.NoError(t, err)
 
-	cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
-	assert.NoError(t, err)
-	require.Equal(t, 3, len(cc), "3 replies to u1")
-	assert.Equal(t, "developer one u1", u)
+		cc, u, err := b.UserReplies("radio-t", "u1", 10, time.Hour)
+		assert.NoError(t, err)
+		require.Equal(t, 3, len(cc), "3 replies to u1")
+		assert.Equal(t, "developer one u1", u)
 
-	// mutex to prevent multiple b.UserReplies calls resulting in data race
-	l := sync.Mutex{}
-	assert.Eventually(t, func() bool {
-		l.Lock()
-		defer l.Unlock()
+		// advance fake clock so c2 and c3 (created 100ms before c5) age past the 299ms window,
+		// leaving only c5 as a recent reply
+		time.Sleep(200 * time.Millisecond)
 		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Millisecond*299)
 		require.NoError(t, err)
 		require.Equal(t, "developer one u1", u)
-		return len(cc) == 1
-	}, 300*time.Millisecond, 30*time.Millisecond, "1 reply to u1 in the last 300ms")
+		require.Equal(t, 1, len(cc), "1 reply to u1 in the last 299ms")
 
-	l.Lock()
-	defer l.Unlock()
-	cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(cc), "0 replies to u2")
-	assert.Equal(t, "developer one u2", u)
+		cc, u, err = b.UserReplies("radio-t", "u2", 10, time.Hour)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(cc), "0 replies to u2")
+		assert.Equal(t, "developer one u2", u)
 
-	cc, u, err = b.UserReplies("radio-t", "uxxx", 10, time.Hour)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(cc), "0 replies to uxxx")
-	assert.Equal(t, "", u)
+		cc, u, err = b.UserReplies("radio-t", "uxxx", 10, time.Hour)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(cc), "0 replies to uxxx")
+		assert.Equal(t, "", u)
+	})
 }
 
 func TestService_Find(t *testing.T) {
@@ -1358,7 +1359,6 @@ func TestService_Info(t *testing.T) {
 	assert.True(t, info.LastTS.After(info.FirstTS))
 	firstTS := info.FirstTS
 
-	time.Sleep(1 * time.Second) // make post RO in 1sec
 	info, err = b.Info(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, 1)
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com", info.URL)
@@ -1401,75 +1401,77 @@ func TestService_Delete(t *testing.T) {
 func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	mockStore := image.StoreMock{
-		DeleteFunc:            func(string) error { return nil },
-		CommitFunc:            func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error { return nil },
-	}
-	imgSvc := image.NewService(&mockStore,
-		image.ServiceParams{
-			EditDuration: 50 * time.Millisecond,
-			ImageAPI:     "/images/dev/",
-			ProxyAPI:     "/non_existent",
-		})
-	defer imgSvc.Close(context.TODO())
+	synctest.Test(t, func(t *testing.T) {
+		mockStore := image.StoreMock{
+			DeleteFunc:            func(string) error { return nil },
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		imgSvc := image.NewService(&mockStore,
+			image.ServiceParams{
+				EditDuration: 50 * time.Millisecond,
+				ImageAPI:     "/images/dev/",
+				ProxyAPI:     "/non_existent",
+			})
+		defer imgSvc.Close(context.TODO())
 
-	// two comments for https://radio-t.com
-	eng, teardown := prepStoreEngine(t)
-	defer teardown()
-	b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
-		AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		// two comments for https://radio-t.com
+		eng, teardown := prepStoreEngine(t)
+		defer teardown()
+		b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
+			AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
 
-	c := store.Comment{
-		ID:        "id-22",
-		Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
-	assert.NoError(t, err)
-	b.submitImages(c)
-	// reply to the first comment with one new image and one existing one
-	c = store.Comment{
-		ID:       "id-23",
-		ParentID: "id-22",
-		Text:     `some text <img src="/images/dev/pic2.png"/> xx <img src="/images/dev/pic3.png"/>`,
-		Locator:  store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:     store.User{ID: "user1", Name: "user name"},
-	}
-	_, err = b.Engine.Create(c) // create directly with engine, doesn't call submitImages
-	assert.NoError(t, err)
-	b.submitImages(c)
+		c := store.Comment{
+			ID:        "id-22",
+			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "user1", Name: "user name"},
+		}
+		_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+		assert.NoError(t, err)
+		b.submitImages(c)
+		// reply to the first comment with one new image and one existing one
+		c = store.Comment{
+			ID:       "id-23",
+			ParentID: "id-22",
+			Text:     `some text <img src="/images/dev/pic2.png"/> xx <img src="/images/dev/pic3.png"/>`,
+			Locator:  store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:     store.User{ID: "user1", Name: "user name"},
+		}
+		_, err = b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+		assert.NoError(t, err)
+		b.submitImages(c)
 
-	// verify that images are in staging store
-	assert.Equal(t, 4, len(mockStore.ResetCleanupTimerCalls()))
-	assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[2].ID)
-	assert.Equal(t, "dev/pic3.png", mockStore.ResetCleanupTimerCalls()[3].ID)
-	time.Sleep(b.EditDuration + 100*time.Millisecond)
-	// verify that they got into the main store
-	assert.Equal(t, 4, len(mockStore.CommitCalls()))
-	assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[2].ID)
-	assert.Equal(t, "dev/pic3.png", mockStore.CommitCalls()[3].ID)
+		// verify that images are in staging store
+		assert.Equal(t, 4, len(mockStore.ResetCleanupTimerCalls()))
+		assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[2].ID)
+		assert.Equal(t, "dev/pic3.png", mockStore.ResetCleanupTimerCalls()[3].ID)
+		time.Sleep(b.EditDuration + 100*time.Millisecond)
+		// verify that they got into the main store
+		assert.Equal(t, 4, len(mockStore.CommitCalls()))
+		assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[2].ID)
+		assert.Equal(t, "dev/pic3.png", mockStore.CommitCalls()[3].ID)
 
-	// delete the first comment
-	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-22", store.SoftDelete)
-	assert.NoError(t, err)
-	// verify that images are deleted from the main store
-	assert.Equal(t, 1, len(mockStore.DeleteCalls()))
-	assert.Equal(t, "dev/pic1.png", mockStore.DeleteCalls()[0].ID)
+		// delete the first comment
+		err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-22", store.SoftDelete)
+		assert.NoError(t, err)
+		// verify that images are deleted from the main store
+		assert.Equal(t, 1, len(mockStore.DeleteCalls()))
+		assert.Equal(t, "dev/pic1.png", mockStore.DeleteCalls()[0].ID)
 
-	// delete the second comment
-	err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-23", store.SoftDelete)
-	assert.NoError(t, err)
-	// verify that images are deleted from the main store
-	assert.Equal(t, 3, len(mockStore.DeleteCalls()))
-	assert.Equal(t, "dev/pic2.png", mockStore.DeleteCalls()[1].ID)
-	assert.Equal(t, "dev/pic3.png", mockStore.DeleteCalls()[2].ID)
+		// delete the second comment
+		err = b.Delete(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "id-23", store.SoftDelete)
+		assert.NoError(t, err)
+		// verify that images are deleted from the main store
+		assert.Equal(t, 3, len(mockStore.DeleteCalls()))
+		assert.Equal(t, "dev/pic2.png", mockStore.DeleteCalls()[1].ID)
+		assert.Equal(t, "dev/pic3.png", mockStore.DeleteCalls()[2].ID)
+	})
 }
 
 // DeleteUser removes all comments from user
@@ -1651,129 +1653,133 @@ func TestService_DeleteAll(t *testing.T) {
 func TestService_submitImages(t *testing.T) {
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
-	mockStore := image.StoreMock{
-		CommitFunc:            func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error { return nil },
-	}
-	imgSvc := image.NewService(&mockStore,
-		image.ServiceParams{
-			EditDuration: 50 * time.Millisecond,
-			ImageAPI:     "/images/dev/",
-			ProxyAPI:     "/non_existent",
-		})
-	defer imgSvc.Close(context.TODO())
+	synctest.Test(t, func(t *testing.T) {
+		mockStore := image.StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		imgSvc := image.NewService(&mockStore,
+			image.ServiceParams{
+				EditDuration: 50 * time.Millisecond,
+				ImageAPI:     "/images/dev/",
+				ProxyAPI:     "/non_existent",
+			})
+		defer imgSvc.Close(context.TODO())
 
-	// two comments for https://radio-t.com
-	eng, teardown := prepStoreEngine(t)
-	defer teardown()
-	b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
-		AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		// two comments for https://radio-t.com
+		eng, teardown := prepStoreEngine(t)
+		defer teardown()
+		b := DataStore{Engine: eng, EditDuration: 50 * time.Millisecond,
+			AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
 
-	c := store.Comment{
-		ID:        "id-22",
-		Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
-	assert.NoError(t, err)
+		c := store.Comment{
+			ID:        "id-22",
+			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "user1", Name: "user name"},
+		}
+		_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+		assert.NoError(t, err)
 
-	b.submitImages(c)
-	assert.Equal(t, 2, len(mockStore.ResetCleanupTimerCalls()))
-	assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
-	time.Sleep(b.EditDuration + 100*time.Millisecond)
-	assert.Equal(t, 2, len(mockStore.CommitCalls()))
-	assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
-	assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
+		b.submitImages(c)
+		assert.Equal(t, 2, len(mockStore.ResetCleanupTimerCalls()))
+		assert.Equal(t, "dev/pic1.png", mockStore.ResetCleanupTimerCalls()[0].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.ResetCleanupTimerCalls()[1].ID)
+		time.Sleep(b.EditDuration + 100*time.Millisecond)
+		assert.Equal(t, 2, len(mockStore.CommitCalls()))
+		assert.Equal(t, "dev/pic1.png", mockStore.CommitCalls()[0].ID)
+		assert.Equal(t, "dev/pic2.png", mockStore.CommitCalls()[1].ID)
+	})
 }
 
 func TestService_ResubmitStagingImages(t *testing.T) {
-	mockStore := image.StoreMock{
-		InfoFunc: func() (image.StoreInfo, error) {
-			return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
-		},
-		CommitFunc: func(string) error {
-			return nil
-		},
-		ResetCleanupTimerFunc: func(string) error { return nil },
-	}
-	imgSvc := image.NewService(&mockStore,
-		image.ServiceParams{
-			EditDuration: 10 * time.Millisecond,
-			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
-			ProxyAPI:     "http://127.0.0.1:8080/api/v1/img",
-		})
-	defer imgSvc.Close(context.TODO())
+	synctest.Test(t, func(t *testing.T) {
+		mockStore := image.StoreMock{
+			InfoFunc: func() (image.StoreInfo, error) {
+				return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
+			},
+			CommitFunc: func(string) error {
+				return nil
+			},
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		imgSvc := image.NewService(&mockStore,
+			image.ServiceParams{
+				EditDuration: 10 * time.Millisecond,
+				ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+				ProxyAPI:     "http://127.0.0.1:8080/api/v1/img",
+			})
+		defer imgSvc.Close(context.TODO())
 
-	eng, teardown := prepStoreEngine(t)
-	defer teardown()
-	b := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
+		eng, teardown := prepStoreEngine(t)
+		defer teardown()
+		b := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
-	// create comment with three images without preparing it properly
-	comment := store.Comment{
-		ID: "id-0",
-		Text: `<img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf122eq9r8ad657n3ng" alt="startrails_01.jpg"><br/>
+		// create comment with three images without preparing it properly
+		comment := store.Comment{
+			ID: "id-0",
+			Text: `<img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf122eq9r8ad657n3ng" alt="startrails_01.jpg"><br/>
                <img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf321eq9r8ad657n3ng" alt="cat.png"><br/>
                <img src="http://127.0.0.1:8080/api/v1/img?src=aHR0cHM6Ly9ob21lcGFnZXMuY2FlLndpc2MuZWR1L35lY2U1MzMvaW1hZ2VzL2JvYXQucG5n" alt="cat.png"><br/>
                <img src="https://homepages.cae.wisc.edu/~ece533/images/boat.png" alt="boat.png">`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Engine.Create(comment)
-	require.NoError(t, err)
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "user1", Name: "user name"},
+		}
+		_, err := b.Engine.Create(comment)
+		require.NoError(t, err)
 
-	// resubmit single comment with three images, of which two are in staging storage
-	err = b.ResubmitStagingImages([]string{"radio-t"})
-	assert.NoError(t, err)
+		// resubmit single comment with three images, of which two are in staging storage
+		err = b.ResubmitStagingImages([]string{"radio-t"})
+		assert.NoError(t, err)
 
-	// wait for Submit goroutine to commit image
-	time.Sleep(b.EditDuration + time.Millisecond*100)
+		// wait for Submit goroutine to commit image
+		time.Sleep(b.EditDuration + time.Millisecond*100)
 
-	assert.Equal(t, 1, len(mockStore.InfoCalls()))
-	assert.Equal(t, 3, len(mockStore.CommitCalls()))
+		assert.Equal(t, 1, len(mockStore.InfoCalls()))
+		assert.Equal(t, 3, len(mockStore.CommitCalls()))
 
-	// empty answer
-	mockStoreEmpty := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
-		return image.StoreInfo{FirstStagingImageTS: time.Time{}}, nil
-	}}
-	imgSvcEmpty := image.NewService(&mockStoreEmpty,
-		image.ServiceParams{
-			EditDuration: 10 * time.Millisecond,
-			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
-		})
-	defer imgSvcEmpty.Close(context.TODO())
-	bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
+		// empty answer
+		mockStoreEmpty := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
+			return image.StoreInfo{FirstStagingImageTS: time.Time{}}, nil
+		}}
+		imgSvcEmpty := image.NewService(&mockStoreEmpty,
+			image.ServiceParams{
+				EditDuration: 10 * time.Millisecond,
+				ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+			})
+		defer imgSvcEmpty.Close(context.TODO())
+		bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
 
-	// resubmit receive empty timestamp and should do nothing )
-	err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
-	assert.NoError(t, err)
+		// resubmit receive empty timestamp and should do nothing )
+		err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
+		assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(mockStore.InfoCalls()))
+		assert.Equal(t, 1, len(mockStore.InfoCalls()))
 
-	// error from image storage
-	mockStoreError := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
-		return image.StoreInfo{}, fmt.Errorf("mock_err")
-	}}
-	imgSvcError := image.NewService(&mockStoreError,
-		image.ServiceParams{
-			EditDuration: 10 * time.Millisecond,
-			ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
-		})
-	defer imgSvcError.Close(context.TODO())
-	bError := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcError}
+		// error from image storage
+		mockStoreError := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
+			return image.StoreInfo{}, fmt.Errorf("mock_err")
+		}}
+		imgSvcError := image.NewService(&mockStoreError,
+			image.ServiceParams{
+				EditDuration: 10 * time.Millisecond,
+				ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
+			})
+		defer imgSvcError.Close(context.TODO())
+		bError := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcError}
 
-	// resubmit will receive error from image storage and should return it
-	err = bError.ResubmitStagingImages([]string{"radio-t"})
-	assert.EqualError(t, err, "mock_err")
+		// resubmit will receive error from image storage and should return it
+		err = bError.ResubmitStagingImages([]string{"radio-t"})
+		assert.EqualError(t, err, "mock_err")
 
-	assert.Equal(t, 1, len(mockStore.InfoCalls()))
-	assert.Equal(t, 3, len(mockStore.ResetCleanupTimerCalls()))
-	assert.Equal(t, "dev_user/bqf122eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[0].ID)
-	assert.Equal(t, "dev_user/bqf321eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[1].ID)
-	assert.Equal(t, "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e", mockStore.ResetCleanupTimerCalls()[2].ID)
+		assert.Equal(t, 1, len(mockStore.InfoCalls()))
+		assert.Equal(t, 3, len(mockStore.ResetCleanupTimerCalls()))
+		assert.Equal(t, "dev_user/bqf122eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[0].ID)
+		assert.Equal(t, "dev_user/bqf321eq9r8ad657n3ng", mockStore.ResetCleanupTimerCalls()[1].ID)
+		assert.Equal(t, "cached_images/12318fbd4c55e9d177b8b5ae197bc89c5afd8e07-a41fcb00643f28d700504256ec81cbf2e1aac53e", mockStore.ResetCleanupTimerCalls()[2].ID)
+	})
 }
 
 func TestService_ResubmitStagingImages_EngineError(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	ntf "github.com/go-pkgz/notify"
@@ -12,12 +13,14 @@ import (
 )
 
 func TestDispatchTelegramUpdates(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	poolPeriod := time.Millisecond * 100
-	go DispatchTelegramUpdates(ctx, &mockTGRequester{t: t}, []TGUpdatesReceiver{&mockTGUpdatesReceiver{t: t}}, poolPeriod)
-	time.Sleep(poolPeriod * 3)
-	cancel()
-	time.Sleep(poolPeriod)
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		poolPeriod := time.Millisecond * 100
+		go DispatchTelegramUpdates(ctx, &mockTGRequester{t: t}, []TGUpdatesReceiver{&mockTGUpdatesReceiver{t: t}}, poolPeriod)
+		time.Sleep(poolPeriod * 3)
+		cancel()
+		synctest.Wait()
+	})
 }
 
 const getUpdatesResp = `{

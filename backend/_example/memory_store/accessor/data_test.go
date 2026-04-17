@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -521,51 +522,52 @@ func TestMemData_FlagListVerified(t *testing.T) {
 }
 
 func TestMemData_FlagListBlocked(t *testing.T) {
-
-	b := prepMem(t)
-	setBlocked := func(site, user string, status engine.FlagStatus, ttl time.Duration) error {
-		req := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status,
-			TTL: ttl}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	toBlocked := func(inp []any) (res []store.BlockedUser) {
-		res = make([]store.BlockedUser, len(inp))
-		for i, v := range inp {
-			vv, ok := v.(store.BlockedUser)
-			require.True(t, ok)
-			res[i] = vv
+	synctest.Test(t, func(t *testing.T) {
+		b := prepMem(t)
+		setBlocked := func(site, user string, status engine.FlagStatus, ttl time.Duration) error {
+			req := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status,
+				TTL: ttl}
+			_, err := b.Flag(req)
+			return err
 		}
-		return res
-	}
-	assert.NoError(t, setBlocked("radio-t", "user1", engine.FlagTrue, 0))
-	assert.NoError(t, setBlocked("radio-t", "user2", engine.FlagTrue, 50*time.Millisecond))
-	assert.NoError(t, setBlocked("radio-t", "user3", engine.FlagFalse, 0))
 
-	vv, err := b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
+		toBlocked := func(inp []any) (res []store.BlockedUser) {
+			res = make([]store.BlockedUser, len(inp))
+			for i, v := range inp {
+				vv, ok := v.(store.BlockedUser)
+				require.True(t, ok)
+				res[i] = vv
+			}
+			return res
+		}
+		assert.NoError(t, setBlocked("radio-t", "user1", engine.FlagTrue, 0))
+		assert.NoError(t, setBlocked("radio-t", "user2", engine.FlagTrue, 50*time.Millisecond))
+		assert.NoError(t, setBlocked("radio-t", "user3", engine.FlagFalse, 0))
 
-	blockedList := toBlocked(vv)
-	var blockedIDs = make([]string, len(blockedList))
-	for i, x := range blockedList {
-		blockedIDs[i] = x.ID
-	}
-	require.Equal(t, 2, len(blockedList), b.metaUsers)
-	assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIDs)
-	t.Logf("%+v", blockedList)
+		vv, err := b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
+		assert.NoError(t, err)
 
-	// check block expiration
-	time.Sleep(50 * time.Millisecond)
-	vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	blockedList = toBlocked(vv)
-	require.Equal(t, 1, len(blockedList))
-	assert.Equal(t, "user1", blockedList[0].ID)
+		blockedList := toBlocked(vv)
+		var blockedIDs = make([]string, len(blockedList))
+		for i, x := range blockedList {
+			blockedIDs[i] = x.ID
+		}
+		require.Equal(t, 2, len(blockedList), b.metaUsers)
+		assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIDs)
+		t.Logf("%+v", blockedList)
 
-	vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "bad"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(vv))
+		// check block expiration
+		time.Sleep(50 * time.Millisecond)
+		vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
+		assert.NoError(t, err)
+		blockedList = toBlocked(vv)
+		require.Equal(t, 1, len(blockedList))
+		assert.Equal(t, "user1", blockedList[0].ID)
+
+		vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "bad"}})
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(vv))
+	})
 }
 
 func TestMemData_DeleteComment(t *testing.T) {
