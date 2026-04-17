@@ -38,7 +38,7 @@ func TestRest_Create(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	resp, err := post(t, ts.URL+"/api/v1/comment",
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	assert.NoError(t, err)
 	b, err := io.ReadAll(resp.Body)
@@ -60,7 +60,7 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	resp, err := post(t, ts.URL+"/api/v1/comment",
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "`+"`foo<bar>`"+`", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	assert.NoError(t, err)
 	b, err := io.ReadAll(resp.Body)
@@ -110,7 +110,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 	defer pngServer.Close()
 
 	t.Run("create", func(t *testing.T) {
-		resp, err := post(t, ts.URL+"/api/v1/comment",
+		resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 		assert.NoError(t, err)
 		b, err := io.ReadAll(resp.Body)
@@ -176,7 +176,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	assert.Equal(t, 1, len(comments))
 
 	// try to add new comment to the same old post
-	resp, err := post(t, ts.URL+"/api/v1/comment",
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
@@ -189,7 +189,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 	_, err = srv.DataService.Create(old)
 	assert.NoError(t, err)
 
-	resp, err = post(t, ts.URL+"/api/v1/comment",
+	resp, err = post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "test 123", "locator":{"site": "remark42","url": "https://radio-t.com/blah1"}}`)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
@@ -202,7 +202,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 
-	resp, err := post(t, ts.URL+"/api/v1/comment", longComment)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", longComment)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
@@ -215,7 +215,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 	assert.Equal(t, "invalid comment", c["details"])
 
 	veryLongComment := fmt.Sprintf(`{"text": "%70000s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
-	resp, err = post(t, ts.URL+"/api/v1/comment", veryLongComment)
+	resp, err = post(t, ts.URL+"/api/v1/comment?site=remark42", veryLongComment)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err = io.ReadAll(resp.Body)
@@ -235,7 +235,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	badComment := `{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`
 
-	resp, err := post(t, ts.URL+"/api/v1/comment", badComment)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", badComment)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
@@ -254,7 +254,7 @@ func TestRest_CreateRelativeURL(t *testing.T) {
 
 	// check that it's not possible to click insert URL button and not alter the URL in it (which is `url` by default)
 	relativeURLText := `{"text": "here is a link with relative URL: [google.com](url)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
-	resp, err := post(t, ts.URL+"/api/v1/comment", relativeURLText)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", relativeURLText)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
@@ -273,7 +273,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 
 	// try to create without auth
-	resp, err := http.Post(ts.URL+"/api/v1/comment", "", strings.NewReader(body))
+	resp, err := http.Post(ts.URL+"/api/v1/comment?site=remark42", "", strings.NewReader(body))
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -281,7 +281,7 @@ func TestRest_CreateRejected(t *testing.T) {
 	// try with wrong aud
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(body))
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devTokenBadAud)
 	resp, err = client.Do(req)
@@ -295,7 +295,7 @@ func TestRest_CreateWithWrongImage(t *testing.T) {
 	defer teardown()
 
 	// create comment
-	resp, err := post(t, ts.URL+"/api/v1/comment", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
@@ -317,7 +317,7 @@ func TestRest_CreateWithLazyImage(t *testing.T) {
 	defer teardown()
 	body := `{"text": "test 123 ![](http://example.com/image.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 	// create comment
-	resp, err := post(t, ts.URL+"/api/v1/comment", body)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	b, err := io.ReadAll(resp.Body)
@@ -334,7 +334,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	defer teardown()
 
 	// create comment
-	resp, err := post(t, ts.URL+"/api/v1/comment",
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "**test** *123*\n\n http://radio-t.com", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -373,7 +373,7 @@ func TestRest_CreateWithQuotes(t *testing.T) {
 	defer teardown()
 
 	// create comment with quotes with smartypants
-	resp, err := post(t, ts.URL+"/api/v1/comment",
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "smartpants \"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -396,7 +396,7 @@ func TestRest_CreateWithQuotes(t *testing.T) {
 
 	// create comment with quotes without smartypants
 	srv.privRest.disableFancyTextFormatting = true
-	resp, err = post(t, ts.URL+"/api/v1/comment",
+	resp, err = post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "no_smartpants \"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -882,30 +882,30 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		body         string
 	}{
 		{description: "issue delete request without auth", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
-		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusBadRequest},
+		{description: "issue delete request without site_id", url: "/api/v1/email", method: http.MethodDelete, responseCode: http.StatusForbidden},
 		{description: "delete non-existent user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "set user email, token not set", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
+		{description: "set user email, token not set", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
 		{description: "set user email, token not set, old query param", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send email confirmation without address", url: "/api/v1/email/subscribe", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
+		{description: "send email confirmation without address", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest, body: `{"site":"remark42"}`},
 		{description: "send email confirmation without address, old query param", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
-		{description: "send email confirmation", url: "/api/v1/email/subscribe", method: http.MethodPost, responseCode: http.StatusOK, body: `{"site":"remark42","address":"good@example.com"}`},
+		{description: "send email confirmation", url: "/api/v1/email/subscribe?site=remark42", method: http.MethodPost, responseCode: http.StatusOK, body: `{"site":"remark42","address":"good@example.com"}`},
 		{description: "send email confirmation, old query param", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
+		{description: "set user email, token is good", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
 		{description: "set user email, token is good, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "send confirmation with same address", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusConflict},
 		{description: "get user email", url: "/api/v1/email?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "delete user email", url: "/api/v1/email?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send another confirmation", url: "/api/v1/email/subscribe?site=remark42&address=good@example.com", method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "set user email, token is good", url: "/api/v1/email/confirm", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
+		{description: "set user email, token is good", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com", body: fmt.Sprintf(`{"site":"remark42","token":%q}`, goodToken)},
 		{description: "set user email, token is good, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "unsubscribe user, no token", url: "/email/unsubscribe.html?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
 		{description: "unsubscribe user, wrong token", url: "/email/unsubscribe.html?site=remark42&tkn=jwt", method: http.MethodGet, responseCode: http.StatusForbidden},
 		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
 		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusConflict},
 		{description: "issue delete request without auth", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
-		{description: "issue delete request without site_id", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusBadRequest},
+		{description: "issue delete request without site_id", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusForbidden},
 		{description: "delete non-existent user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
-		{description: "send telegram confirmation, no siteID", url: "/api/v1/telegram/subscribe", method: http.MethodGet, responseCode: http.StatusBadRequest},
+		{description: "send telegram confirmation, no siteID", url: "/api/v1/telegram/subscribe", method: http.MethodGet, responseCode: http.StatusForbidden},
 		{description: "send telegram confirmation", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "set user telegram, token is good", url: "/api/v1/telegram/subscribe?site=remark42&tkn=good_token", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "send confirmation with same address", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusConflict},
@@ -956,7 +956,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	defer client.CloseIdleConnections()
 
 	// create new comment from dev user
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(
 		`{"text": "test 123",
 "user": {"name": "provider1_dev::good@example.com"},
 "locator":{"url": "https://radio-t.com/blah1",
@@ -977,7 +977,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.Empty(t, mockDestination.Get()[0].Emails)
 
 	// create child comment from another user, email notification only to admin expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 456",
 	"pid": %q,
 	"user": {"name": "other_user"},
@@ -999,7 +999,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// send confirmation token for email
 	req, err = http.NewRequest(
 		http.MethodPost,
-		ts.URL+"/api/v1/email/subscribe",
+		ts.URL+"/api/v1/email/subscribe?site=remark42",
 		io.NopCloser(strings.NewReader(`{"site": "remark42", "address": "good@example.com"}`)),
 	)
 	require.NoError(t, err)
@@ -1038,7 +1038,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// verify email
 	req, err = http.NewRequest(
 		http.MethodPost,
-		ts.URL+"/api/v1/email/confirm",
+		ts.URL+"/api/v1/email/confirm?site=remark42",
 		io.NopCloser(strings.NewReader(fmt.Sprintf(`{"site": "remark42", "token": %q}`, verificationToken))),
 	)
 	require.NoError(t, err)
@@ -1070,7 +1070,7 @@ func TestRest_EmailNotification(t *testing.T) {
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, subscribedUser)
 
 	// create child comment from another user, email notification expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 789",
 	"pid": %q,
 	"user": {"name": "other_user"},
@@ -1101,7 +1101,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
 	// create child comment from another user, no email notification
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(
 		`{"text": "test 321",
 	"user": {"name": "other_user"},
 	"locator":{"url": "https://radio-t.com/blah1",
@@ -1159,7 +1159,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	// confirm email via subscribe call, no email notification is expected
 	req, err = http.NewRequest(
 		http.MethodPost,
-		ts.URL+"/api/v1/email/subscribe",
+		ts.URL+"/api/v1/email/subscribe?site=remark42",
 		io.NopCloser(strings.NewReader(`{"site": "remark42", "address": "good@example.com"}`)),
 	)
 	require.NoError(t, err)
@@ -1206,7 +1206,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	defer client.CloseIdleConnections()
 
 	// create new comment from dev user
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(
 		`{"text": "test 123",
 "user": {"name": "provider1_dev::good@example.com"},
 "locator":{"url": "https://radio-t.com/blah1",
@@ -1227,7 +1227,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	assert.Empty(t, mockDestination.Get()[0].Telegrams)
 
 	// create child comment from another user, telegram notification only to admin expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 456",
 	"pid": %q,
 	"user": {"name": "other_user"},
@@ -1340,7 +1340,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 		Picture: "http://example.com/pic.png", IP: "127.0.0.1", SiteID: "remark42"}, user)
 
 	// create child comment from another user, telegram notification expected
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(fmt.Sprintf(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(fmt.Sprintf(
 		`{"text": "test 789",
 	"pid": %q,
 	"user": {"name": "other_user"},
@@ -1371,7 +1371,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
 
 	// create child comment from another user, no telegram notification
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", strings.NewReader(
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(
 		`{"text": "test 321",
 	"user": {"name": "other_user"},
 	"locator":{"url": "https://radio-t.com/blah1",
@@ -1536,7 +1536,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 		client := http.Client{}
 		defer client.CloseIdleConnections()
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", contentType)
 		req.Header.Add("X-JWT", devToken)
@@ -1628,7 +1628,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		require.NoError(t, bodyWriter.Close())
 		client := http.Client{}
 		defer client.CloseIdleConnections()
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture", ts.URL), bodyBuf)
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
 		require.NoError(t, err)
 		req.Header.Add("Content-Type", contentType)
 		req.Header.Add("X-JWT", devToken)
@@ -1654,7 +1654,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	text := fmt.Sprintf(`text 123  ![](%s/api/v1/picture/%s) *xxx* ![](%s/api/v1/picture/%s) ![](%s/api/v1/picture/%s)`, svc.RemarkURL, ids[0], svc.RemarkURL, ids[1], svc.RemarkURL, ids[2])
 	body := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, text)
 
-	resp, err := post(t, ts.URL+"/api/v1/comment", body)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", body)
 	assert.NoError(t, err)
 	b, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
