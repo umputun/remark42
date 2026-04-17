@@ -56,7 +56,7 @@ func (s *rss) postCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(data); err != nil {
+	if _, err = w.Write(data); err != nil { //nolint:gosec // xml feed bytes from gorilla/feeds, not HTML
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
 }
@@ -87,7 +87,7 @@ func (s *rss) siteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(data); err != nil {
+	if _, err = w.Write(data); err != nil { //nolint:gosec // xml feed bytes from gorilla/feeds, not HTML
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
 }
@@ -119,7 +119,7 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(data); err != nil {
+	if _, err = w.Write(data); err != nil { //nolint:gosec // xml feed bytes from gorilla/feeds, not HTML
 		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
 	}
 }

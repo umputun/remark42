@@ -464,7 +464,7 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	if _, err = w.Write(png); err != nil {
+	if _, err = w.Write(png); err != nil { //nolint:gosec // png bytes from go-qrcode, not HTML
 		log.Printf("[WARN] can't render qr, %v", err)
 	}
 }
