@@ -120,7 +120,7 @@ func TestComment_PrepareUntrusted(t *testing.T) {
 		Score:       10,
 		Pin:         true,
 		Deleted:     true,
-		Timestamp:   time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Timestamp:   time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:       map[string]bool{"uu": true},
 		Controversy: 123,
 		Imported:    true,
@@ -150,7 +150,7 @@ func TestComment_SetDeleted(t *testing.T) {
 		Locator:   Locator{SiteID: "site", URL: "url"},
 		Score:     10,
 		Deleted:   false,
-		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:     map[string]bool{"uu": true},
 		Pin:       true,
 	}
@@ -177,7 +177,7 @@ func TestComment_SetDeletedHard(t *testing.T) {
 		Locator:   Locator{SiteID: "site", URL: "url"},
 		Score:     10,
 		Deleted:   false,
-		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:     map[string]bool{"uu": true},
 		Pin:       true,
 	}
