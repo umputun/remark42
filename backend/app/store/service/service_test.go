@@ -185,7 +185,7 @@ func TestService_Put(t *testing.T) {
 		Text:      "test text",
 		User:      store.User{ID: "user2", Name: "user name 2"},
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 	}
 	_, err := b.Create(comment)
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestService_Put(t *testing.T) {
 		Text:      "new text",
 		User:      store.User{ID: "user3", Name: "user name 3"},
 		Locator:   store.Locator{URL: "https://example.com", SiteID: "example"},
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 	}
 
 	err = b.Put(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, updatedComment)
@@ -213,7 +213,7 @@ func TestService_Put(t *testing.T) {
 	assert.Equal(t, "user name 2", got.User.Name, "should be unaltered")
 	assert.Equal(t, "https://radio-t.com", got.Locator.URL, "should be unaltered")
 	assert.Equal(t, "radio-t", got.Locator.SiteID, "should be unaltered")
-	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local), got.Timestamp, "should be unaltered")
+	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC), got.Timestamp, "should be unaltered")
 
 }
 
@@ -596,7 +596,7 @@ func TestService_RestrictedWords(t *testing.T) {
 		ID:        "c-1",
 		ParentID:  "id-1",
 		Text:      "restricted word",
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name 2"},
 	}
@@ -631,7 +631,7 @@ func TestDataStore_AdminStoreErrors(t *testing.T) {
 		ID:        "c-1",
 		ParentID:  "id-1",
 		Text:      "restricted word",
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name 2"},
 	}
@@ -881,7 +881,7 @@ func TestService_EditCommentReplyFailed(t *testing.T) {
 		ID:        "123456",
 		ParentID:  "id-1",
 		Text:      "some text",
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name 2"},
 	}
@@ -951,7 +951,7 @@ func TestService_Counts(t *testing.T) {
 	comment := store.Comment{
 		ID:        "123456",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
@@ -1122,7 +1122,7 @@ func TestService_HasReplies(t *testing.T) {
 	comment := store.Comment{
 		ID:        "id-1",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
@@ -1132,7 +1132,7 @@ func TestService_HasReplies(t *testing.T) {
 		ID:        "c-1",
 		ParentID:  "id-1",
 		Text:      "some text",
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name 2"},
 	}
@@ -1280,7 +1280,7 @@ func TestService_Find(t *testing.T) {
 	comment := store.Comment{
 		ID:        "123456",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 		Score:     1,
@@ -1316,7 +1316,7 @@ func TestService_FindSince(t *testing.T) {
 	assert.Equal(t, "id-1", res[0].ID)
 
 	res, err = b.FindSince(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "time", store.User{},
-		time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local))
+		time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC))
 	require.NoError(t, err)
 	require.Equal(t, 1, len(res))
 	assert.Equal(t, "id-2", res[0].ID)
@@ -1333,7 +1333,7 @@ func TestService_Info(t *testing.T) {
 	comment := store.Comment{
 		ID:        "123456xyz",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com/another", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
 	}
@@ -1424,7 +1424,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 		c := store.Comment{
 			ID:        "id-22",
 			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
-			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 			User:      store.User{ID: "user1", Name: "user name"},
 		}
@@ -1486,7 +1486,7 @@ func TestService_DeleteUser(t *testing.T) {
 	comment := store.Comment{
 		ID:        "123456xyz",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
 	}
@@ -1516,7 +1516,7 @@ func TestService_List(t *testing.T) {
 	// add one more for user2
 	comment := store.Comment{
 		ID:        "id-3",
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
@@ -1529,13 +1529,13 @@ func TestService_List(t *testing.T) {
 	require.Equal(t, 2, len(res), "2 posts")
 	assert.Equal(t, "https://radio-t.com/2", res[0].URL)
 	assert.Equal(t, 1, res[0].Count)
-	assert.Equal(t, time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local), res[0].FirstTS)
-	assert.Equal(t, time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local), res[0].LastTS)
+	assert.Equal(t, time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC), res[0].FirstTS)
+	assert.Equal(t, time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC), res[0].LastTS)
 
 	assert.Equal(t, "https://radio-t.com", res[1].URL)
 	assert.Equal(t, 2, res[1].Count)
-	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local), res[1].FirstTS)
-	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local), res[1].LastTS)
+	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC), res[1].FirstTS)
+	assert.Equal(t, time.Date(2017, 12, 20, 15, 18, 23, 0, time.UTC), res[1].LastTS)
 }
 
 func TestService_Count(t *testing.T) {
@@ -1548,7 +1548,7 @@ func TestService_Count(t *testing.T) {
 	// add one more for user2
 	comment := store.Comment{
 		ID:        "id-3",
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
@@ -1579,7 +1579,7 @@ func TestService_UserComments(t *testing.T) {
 	// add one more for user2
 	comment := store.Comment{
 		ID:        "id-3",
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
@@ -1604,7 +1604,7 @@ func TestService_UserCount(t *testing.T) {
 	// add one more for user2
 	comment := store.Comment{
 		ID:        "id-3",
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
@@ -1634,7 +1634,7 @@ func TestService_DeleteAll(t *testing.T) {
 	// add one more for user2
 	comment := store.Comment{
 		ID:        "id-3",
-		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC),
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
 		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
 		User:      store.User{ID: "user2", Name: "user name"},
@@ -1675,7 +1675,7 @@ func TestService_submitImages(t *testing.T) {
 		c := store.Comment{
 			ID:        "id-22",
 			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
-			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 			User:      store.User{ID: "user1", Name: "user name"},
 		}
@@ -1723,7 +1723,7 @@ func TestService_ResubmitStagingImages(t *testing.T) {
                <img src="http://127.0.0.1:8080/api/v1/picture/dev_user/bqf321eq9r8ad657n3ng" alt="cat.png"><br/>
                <img src="http://127.0.0.1:8080/api/v1/img?src=aHR0cHM6Ly9ob21lcGFnZXMuY2FlLndpc2MuZWR1L35lY2U1MzMvaW1hZ2VzL2JvYXQucG5n" alt="cat.png"><br/>
                <img src="https://homepages.cae.wisc.edu/~ece533/images/boat.png" alt="boat.png">`,
-			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 			User:      store.User{ID: "user1", Name: "user name"},
 		}
@@ -1891,7 +1891,7 @@ func Benchmark_ServiceCreate(b *testing.B) {
 		comment := store.Comment{
 			ID:        "id-" + strconv.Itoa(i),
 			Text:      `some text, <a href="http://radio-t.com">link</a>`,
-			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 			User:      store.User{ID: "user1", Name: "user name"},
 		}
@@ -1938,7 +1938,7 @@ func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	comment := store.Comment{
 		ID:        "id-1",
 		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}
@@ -1948,7 +1948,7 @@ func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	comment = store.Comment{
 		ID:        "id-2",
 		Text:      "some text2",
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.Local),
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 23, 0, time.UTC),
 		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 		User:      store.User{ID: "user1", Name: "user name"},
 	}

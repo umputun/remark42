@@ -1028,3 +1028,79 @@ func TestRest_Robots(t *testing.T) {
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/user\nAllow: /api/v1/img\n"+
 		"Allow: /api/v1/avatar\nAllow: /api/v1/picture\n", body)
 }
+
+// TestRest_LoadPictureRejectsPathTraversal reproduces the unauthenticated path-traversal
+// vulnerability in GET /api/v1/picture/{user}/{id}. Before the fix, the handler concatenated
+// the URL params verbatim into a filesystem path via path.Join, so a request like
+// `/api/v1/picture/../remark.db` would resolve to `<base>/../remark.db`, escaping the image
+// directory. Even when the file did not exist (default Partitions=100 mitigates direct hits),
+// the FS error message leaked the constructed internal path back to the unauthenticated caller.
+func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{name: "dotdot in user segment", path: "/api/v1/picture/../remark.db"},
+		{name: "dotdot in id segment", path: "/api/v1/picture/dev_user/..%2Fremark.db"},
+		{name: "encoded dotdot in user segment", path: "/api/v1/picture/%2E%2E/remark.db"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			s := string(body)
+			assert.NotContains(t, s, "..", "error body must not echo traversal marker")
+			assert.NotContains(t, s, "remark.db", "error body must not echo attacker-supplied filename")
+			assert.NotContains(t, s, "no such file", "error body must not leak filesystem state")
+			assert.NotContains(t, s, "/var/", "error body must not leak internal filesystem path")
+		})
+	}
+}
+
+// TestRest_LoadPictureRejectsControlCharsInSegment makes sure a CRLF / tab / NUL
+// in the URL segment is rejected by safePictureSegment. Without the rejection
+// the [WARN] log line constructed from %q-formatted segments would still be
+// safe (Go's %q escapes control chars), but a future log change to %s would
+// turn this into log forgery — and no legitimate picture id ever needs control
+// characters, so the right place to slam the door is in the validator.
+func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{name: "lf in user segment", path: "/api/v1/picture/dev%0Auser/abc.png"},
+		{name: "cr in user segment", path: "/api/v1/picture/dev%0Duser/abc.png"},
+		{name: "tab in user segment", path: "/api/v1/picture/dev%09user/abc.png"},
+		{name: "lf in id segment", path: "/api/v1/picture/dev_user/abc%0A.png"},
+		{name: "nul in id segment", path: "/api/v1/picture/dev_user/abc%00.png"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			s := string(body)
+			assert.Contains(t, s, "invalid picture id", "must reject as invalid input, not fall through to storage")
+			assert.NotContains(t, s, "no such file", "must not reach the filesystem")
+		})
+	}
+}

@@ -42,7 +42,7 @@ func (ic *ImportCommand) Execute(_ []string) error {
 	}
 	req.SetBasicAuth("admin", ic.AdminPasswd)
 
-	resp, err := client.Do(req.WithContext(ctx)) // closes request's reader
+	resp, err := client.Do(req.WithContext(ctx)) //nolint:gosec // importURL built from operator CLI flags, not user input; closes request's reader
 	if err != nil {
 		return fmt.Errorf("request failed for %s: %w", importURL, err)
 	}

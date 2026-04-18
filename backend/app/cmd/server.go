@@ -39,6 +39,7 @@ import (
 	"github.com/umputun/remark42/backend/app/providers"
 	"github.com/umputun/remark42/backend/app/rest/api"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
+	"github.com/umputun/remark42/backend/app/safehttp"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -621,7 +622,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5, Transport: safehttp.Transport()}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP

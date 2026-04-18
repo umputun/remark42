@@ -73,6 +73,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 256*1024*1024) // hard cap on upload to prevent memory exhaustion
 	if err := r.ParseMultipartForm(20 * 1024 * 1024); err != nil { // 20M max memory, if bigger will make a file
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
 		return
@@ -180,7 +181,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer func() {
-			if e = os.Remove(fh.Name()); e != nil {
+			if e = os.Remove(fh.Name()); e != nil { //nolint:gosec // fh.Name() is from os.CreateTemp, server-controlled
 				log.Printf("[WARN] failed to remove temp file %+v", e)
 			}
 		}()

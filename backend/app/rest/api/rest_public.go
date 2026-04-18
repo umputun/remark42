@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
@@ -364,12 +365,44 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// safePictureSegment reports whether seg is acceptable as a path segment in
+// the picture URL (no traversal markers, no path separators, no control
+// characters). Picture IDs are server-generated hashes plus a known
+// extension, so any value carrying these characters is hostile and must be
+// rejected before reaching the store. Rejecting controls (CR, LF, TAB, NUL,
+// etc.) also closes a log-injection vector since the rejected segment is
+// echoed into the access log.
+func safePictureSegment(seg string) bool {
+	if seg == "" || seg == "." {
+		return false
+	}
+	if strings.ContainsAny(seg, "/\\") {
+		return false
+	}
+	if strings.Contains(seg, "..") { // also covers seg == ".."
+		return false
+	}
+	for _, r := range seg {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
 // GET /picture/{user}/{id} - get picture
 func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
+	user, imgID := chi.URLParam(r, "user"), chi.URLParam(r, "id")
+	if user == "" || imgID == "" || !safePictureSegment(user) || !safePictureSegment(imgID) {
+		log.Printf("[WARN] rejected picture request with unsafe id segments user=%q id=%q", user, imgID)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid picture id"), "invalid picture id", rest.ErrAssetNotFound)
+		return
+	}
+	id := user + "/" + imgID
 	img, err := s.imageService.Load(id)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
+		log.Printf("[WARN] can't load image %s: %v", id, err)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("image not found"), "can't get image", rest.ErrAssetNotFound)
 		return
 	}
 	// enforce client-side caching
@@ -431,7 +464,7 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	if _, err = w.Write(png); err != nil {
+	if _, err = w.Write(png); err != nil { //nolint:gosec // png bytes from go-qrcode, not HTML
 		log.Printf("[WARN] can't render qr, %v", err)
 	}
 }
