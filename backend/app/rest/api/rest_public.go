@@ -373,13 +373,13 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 // etc.) also closes a log-injection vector since the rejected segment is
 // echoed into the access log.
 func safePictureSegment(seg string) bool {
-	if seg == "" || seg == "." || seg == ".." {
+	if seg == "" || seg == "." {
 		return false
 	}
 	if strings.ContainsAny(seg, "/\\") {
 		return false
 	}
-	if strings.Contains(seg, "..") {
+	if strings.Contains(seg, "..") { // also covers seg == ".."
 		return false
 	}
 	for _, r := range seg {
@@ -464,7 +464,7 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	if _, err = w.Write(png); err != nil { //nolint:gosec // png bytes from go-qrcode, not HTML
+	if _, err = w.Write(png); err != nil {
 		log.Printf("[WARN] can't render qr, %v", err)
 	}
 }
