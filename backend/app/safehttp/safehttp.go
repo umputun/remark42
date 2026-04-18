@@ -16,40 +16,44 @@ import (
 // that resolves to a private/reserved IP, choosing the IP itself for the dial
 // to defeat DNS rebinding (an attacker cannot have the resolver hand back a
 // public IP at the check and a private one at the connect).
+//
+// The returned transport is a clone of http.DefaultTransport with only
+// DialContext overridden, preserving Proxy, HTTP/2, idle/keep-alive and
+// TLS handshake timeouts that bare &http.Transport{} would lose.
 func Transport() *http.Transport {
 	dialer := &net.Dialer{Timeout: 30 * time.Second}
-	return &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid address %s: %w", addr, err)
-			}
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %s: %w", addr, err)
+		}
 
-			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-			if err != nil {
-				return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
-			}
-			if len(ips) == 0 {
-				return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
-			}
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
+		}
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
+		}
 
-			for _, ip := range ips {
-				if IsPrivateIP(ip.IP) {
-					return nil, fmt.Errorf("access to private address is not allowed")
-				}
+		for _, ip := range ips {
+			if IsPrivateIP(ip.IP) {
+				return nil, fmt.Errorf("access to private address is not allowed")
 			}
+		}
 
-			var lastErr error
-			for _, ip := range ips {
-				conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
-				if dialErr == nil {
-					return conn, nil
-				}
-				lastErr = dialErr
+		var lastErr error
+		for _, ip := range ips {
+			conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+			if dialErr == nil {
+				return conn, nil
 			}
-			return nil, fmt.Errorf("can't connect to %s: %w", host, lastErr)
-		},
+			lastErr = dialErr
+		}
+		return nil, fmt.Errorf("can't connect to %s: %w", host, lastErr)
 	}
+	return t
 }
 
 // privateCIDRs holds pre-parsed private/reserved CIDR blocks.

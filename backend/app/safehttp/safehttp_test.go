@@ -63,16 +63,28 @@ func TestTransport_BlocksPrivate(t *testing.T) {
 }
 
 func TestTransport_AllowsPublic(t *testing.T) {
-	dialer := &net.Dialer{Timeout: 2 * time.Second}
 	tr := Transport()
-	// monkey-check the Dialer wiring directly: the transport must reject 127.0.0.1
+	// the policy check must reject the loopback literal
 	_, err := tr.DialContext(context.Background(), "tcp", "127.0.0.1:1")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "access to private address is not allowed")
 
-	// public IP literal goes through the dial path (will likely error on connect, but NOT on policy)
-	_, err = tr.DialContext(context.Background(), "tcp", "203.0.113.1:1")
+	// public IP literal passes the policy check; bound the dial with a tight context
+	// so the test does not depend on real-world routing of TEST-NET-3 (203.0.113.0/24).
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err = tr.DialContext(ctx, "tcp", "203.0.113.1:1")
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "access to private address is not allowed")
-	_ = dialer
+}
+
+func TestTransport_PreservesDefaultTransportSettings(t *testing.T) {
+	def := http.DefaultTransport.(*http.Transport)
+	tr := Transport()
+	assert.NotNil(t, tr.Proxy, "Proxy must be inherited from http.DefaultTransport")
+	assert.Equal(t, def.ForceAttemptHTTP2, tr.ForceAttemptHTTP2, "ForceAttemptHTTP2")
+	assert.Equal(t, def.MaxIdleConns, tr.MaxIdleConns, "MaxIdleConns")
+	assert.Equal(t, def.IdleConnTimeout, tr.IdleConnTimeout, "IdleConnTimeout")
+	assert.Equal(t, def.TLSHandshakeTimeout, tr.TLSHandshakeTimeout, "TLSHandshakeTimeout")
+	assert.Equal(t, def.ExpectContinueTimeout, tr.ExpectContinueTimeout, "ExpectContinueTimeout")
 }
