@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -125,37 +126,41 @@ func TestService_ExtractPictures(t *testing.T) {
 }
 
 func TestService_Cleanup(t *testing.T) {
-	store := StoreMock{
-		CleanupFunc: func(context.Context, time.Duration) error {
-			return nil
-		},
-	}
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CleanupFunc: func(context.Context, time.Duration) error {
+				return nil
+			},
+		}
 
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	// cancel context after 2.1 cleanup TTLs
-	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
-	defer cancel()
-	svc.Cleanup(ctx)
-	assert.Equal(t, 2, len(store.CleanupCalls()))
+		svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+		// cancel context after 2.1 cleanup TTLs
+		ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
+		defer cancel()
+		svc.Cleanup(ctx)
+		assert.Equal(t, 2, len(store.CleanupCalls()))
+	})
 }
 
 func TestService_Submit(t *testing.T) {
-	store := StoreMock{
-		CommitFunc:            func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error { return nil },
-	}
-	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
-	err := svc.Commit(func() []string { return []string{"id4", "id5"} })
-	assert.NoError(t, err)
-	svc.Submit(func() []string { return []string{"id6", "id7"} })
-	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
-	svc.Submit(nil)
-	assert.Equal(t, 2, len(store.CommitCalls()))
-	time.Sleep(time.Millisecond * 175)
-	assert.Equal(t, 7, len(store.CommitCalls()))
-	svc.Close(context.TODO())
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
+		svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+		assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
+		err := svc.Commit(func() []string { return []string{"id4", "id5"} })
+		assert.NoError(t, err)
+		svc.Submit(func() []string { return []string{"id6", "id7"} })
+		assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
+		svc.Submit(nil)
+		assert.Equal(t, 2, len(store.CommitCalls()))
+		time.Sleep(time.Millisecond * 175)
+		assert.Equal(t, 7, len(store.CommitCalls()))
+		svc.Close(context.TODO())
+	})
 }
 
 func TestService_Close(t *testing.T) {
@@ -173,21 +178,23 @@ func TestService_Close(t *testing.T) {
 }
 
 func TestService_SubmitDelay(t *testing.T) {
-	store := StoreMock{
-		CommitFunc: func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error {
-			return nil
-		},
-	}
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
-	svc.Submit(func() []string { return []string{"id4", "id5"} })
-	svc.Submit(nil)
-	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
-	assert.Equal(t, 3, len(store.CommitCalls()))
-	svc.Close(context.TODO())
-	assert.Equal(t, 5, len(store.CommitCalls()))
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc: func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error {
+				return nil
+			},
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+		svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+		time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
+		svc.Submit(func() []string { return []string{"id4", "id5"} })
+		svc.Submit(nil)
+		assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
+		assert.Equal(t, 3, len(store.CommitCalls()))
+		svc.Close(context.TODO())
+		assert.Equal(t, 5, len(store.CommitCalls()))
+	})
 }
 
 func TestService_Info(t *testing.T) {

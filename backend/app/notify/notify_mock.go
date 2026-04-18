@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	log "github.com/go-pkgz/lgr"
 )
@@ -22,14 +21,13 @@ type MockDest struct {
 func (m *MockDest) Send(ctx context.Context, r Request) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	select {
-	case <-time.After(10 * time.Millisecond):
-		m.data = append(m.data, r)
-		log.Printf("sent %s -> %d", r.Comment.ID, m.id)
-	case <-ctx.Done():
+	if err := ctx.Err(); err != nil {
 		log.Printf("ctx closed %d", m.id)
 		m.closed = true
+		return nil
 	}
+	m.data = append(m.data, r)
+	log.Printf("sent %s -> %d", r.Comment.ID, m.id)
 	return nil
 }
 
@@ -37,14 +35,13 @@ func (m *MockDest) Send(ctx context.Context, r Request) error {
 func (m *MockDest) SendVerification(ctx context.Context, v VerificationRequest) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	select {
-	case <-time.After(10 * time.Millisecond):
-		m.verificationData = append(m.verificationData, v)
-		log.Printf("sent verification %s -> %d", v.User, m.id)
-	case <-ctx.Done():
+	if err := ctx.Err(); err != nil {
 		log.Printf("verification ctx closed %d", m.id)
 		m.closed = true
+		return nil
 	}
+	m.verificationData = append(m.verificationData, v)
+	log.Printf("sent verification %s -> %d", v.User, m.id)
 	return nil
 }
 
