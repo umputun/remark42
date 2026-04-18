@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
@@ -365,18 +366,26 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // safePictureSegment reports whether seg is acceptable as a path segment in
-// the picture URL (no traversal markers, no path separators, no NULs). Picture
-// IDs are server-generated hashes plus a known extension, so any value carrying
-// these characters is hostile and must be rejected before reaching the store.
+// the picture URL (no traversal markers, no path separators, no control
+// characters). Picture IDs are server-generated hashes plus a known
+// extension, so any value carrying these characters is hostile and must be
+// rejected before reaching the store. Rejecting controls (CR, LF, TAB, NUL,
+// etc.) also closes a log-injection vector since the rejected segment is
+// echoed into the access log.
 func safePictureSegment(seg string) bool {
 	if seg == "" || seg == "." || seg == ".." {
 		return false
 	}
-	if strings.ContainsAny(seg, "/\\\x00") {
+	if strings.ContainsAny(seg, "/\\") {
 		return false
 	}
 	if strings.Contains(seg, "..") {
 		return false
+	}
+	for _, r := range seg {
+		if unicode.IsControl(r) {
+			return false
+		}
 	}
 	return true
 }

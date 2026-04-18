@@ -1066,3 +1066,41 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 		})
 	}
 }
+
+// TestRest_LoadPictureRejectsControlCharsInSegment makes sure a CRLF / tab / NUL
+// in the URL segment is rejected by safePictureSegment. Without the rejection
+// the [WARN] log line constructed from %q-formatted segments would still be
+// safe (Go's %q escapes control chars), but a future log change to %s would
+// turn this into log forgery — and no legitimate picture id ever needs control
+// characters, so the right place to slam the door is in the validator.
+func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{name: "lf in user segment", path: "/api/v1/picture/dev%0Auser/abc.png"},
+		{name: "cr in user segment", path: "/api/v1/picture/dev%0Duser/abc.png"},
+		{name: "tab in user segment", path: "/api/v1/picture/dev%09user/abc.png"},
+		{name: "lf in id segment", path: "/api/v1/picture/dev_user/abc%0A.png"},
+		{name: "nul in id segment", path: "/api/v1/picture/dev_user/abc%00.png"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			s := string(body)
+			assert.Contains(t, s, "invalid picture id", "must reject as invalid input, not fall through to storage")
+			assert.NotContains(t, s, "no such file", "must not reach the filesystem")
+		})
+	}
+}
