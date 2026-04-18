@@ -28,7 +28,11 @@ type Image struct {
 	CacheExternal bool
 	Timeout       time.Duration
 	ImageService  *image.Service
-	Transport     http.RoundTripper // if nil, uses SSRF-safe transport blocking private IPs
+	// Transport, if non-nil, is used as-is for outbound image fetches and is the
+	// caller's responsibility to make SSRF-safe. When nil, safehttp.Transport()
+	// is installed, which blocks dialing any private/reserved IP and resolves
+	// hostnames to defeat DNS rebinding.
+	Transport http.RoundTripper
 }
 
 // Convert img src links to proxied links depends on enabled options
@@ -163,11 +167,14 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	var resp *http.Response
 	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
 		var e error
-		req, e := http.NewRequest("GET", imgURL, http.NoBody) //nolint:gosec // SSRF mitigated by safehttp.Transport assigned above
+		// SSRF safety: client.Transport is safehttp.Transport() when p.Transport is nil
+		// (see Image.Transport contract above); when caller supplies a transport they
+		// own SSRF safety for that path.
+		req, e := http.NewRequest("GET", imgURL, http.NoBody) //nolint:gosec // see comment above
 		if e != nil {
 			return fmt.Errorf("failed to make request for %s: %w", imgURL, e)
 		}
-		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; SSRF mitigated by safehttp.Transport
+		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; transport contract above
 		return e
 	})
 	if err != nil {
