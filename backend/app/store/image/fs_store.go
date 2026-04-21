@@ -37,7 +37,7 @@ type FileSystem struct {
 func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
-	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil { //nolint:gosec // id validated at HTTP layer, dst computed via f.location
+	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil { //nolint:gosec // id is server-generated hash via image.Service (Save / SaveWithID); dst computed via f.location
 		return fmt.Errorf("can't make image directory: %w", err)
 	}
 

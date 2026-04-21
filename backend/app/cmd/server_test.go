@@ -913,13 +913,14 @@ func Test_getAllowedRedirectHosts(t *testing.T) {
 		{name: "https scheme stripped", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
 		{name: "http scheme stripped", hosts: []string{"http://example.com"}, want: []string{"example.com"}},
 		{name: "scheme with path strips path", hosts: []string{"https://example.com/embed"}, want: []string{"example.com"}},
-		{name: "host with port preserved as host (auth lib does port-insensitive compare)", hosts: []string{"example.com:8080"}, want: []string{"example.com"}},
-		{name: "scheme with port preserved", hosts: []string{"https://example.com:8443"}, want: []string{"example.com"}},
+		{name: "explicit port preserved as host:port", hosts: []string{"example.com:8080"}, want: []string{"example.com:8080"}},
+		{name: "scheme with explicit port preserved", hosts: []string{"https://example.com:8443"}, want: []string{"example.com:8443"}},
+		{name: "scheme without port stays bare host", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
 		{name: "self sentinel filtered", hosts: []string{"'self'", "self", `"self"`, "example.com"}, want: []string{"example.com"}},
 		{name: "wildcards filtered", hosts: []string{"*", "*.example.com", "https://*.example.com", "example.com"}, want: []string{"example.com"}},
 		{name: "empty entries filtered", hosts: []string{"", "  ", "example.com"}, want: []string{"example.com"}},
 		{name: "mixed real-world", hosts: []string{"'self'", "https://blog.example.com", "admin.example.com:8443", "*.cdn.example.com"},
-			want: []string{"blog.example.com", "admin.example.com"}},
+			want: []string{"blog.example.com", "admin.example.com:8443"}},
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
