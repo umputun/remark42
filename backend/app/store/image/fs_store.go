@@ -37,11 +37,11 @@ type FileSystem struct {
 func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
-	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil {
+	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil { //nolint:gosec // id validated at HTTP layer, dst computed via f.location
 		return fmt.Errorf("can't make image directory: %w", err)
 	}
 
-	if err := os.WriteFile(dst, img, 0o600); err != nil {
+	if err := os.WriteFile(dst, img, 0o600); err != nil { //nolint:gosec // same as MkdirAll above
 		return fmt.Errorf("can't write image file with id %s: %w", id, err)
 	}
 
