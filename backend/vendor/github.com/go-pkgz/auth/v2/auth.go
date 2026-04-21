@@ -63,6 +63,15 @@ type Opts struct {
 	URL       string          // root url for the rest service, i.e. http://blah.example.com, required
 	Validator token.Validator // validator allows to reject some valid tokens with user-defined logic
 
+	// AllowedRedirectHosts lists hostnames accepted in the "from" query
+	// parameter of OAuth/verify login flows. Setting this field enables
+	// host validation: the host of URL is always implicit, and any other
+	// host must appear here. Nil (the default) disables validation and
+	// preserves legacy permissive behavior — any non-empty "from" value
+	// is honored. Hardening is opt-in; to restrict to the service host
+	// only, pass a getter returning an empty slice.
+	AllowedRedirectHosts token.AllowedHosts
+
 	AvatarStore       avatar.Store // store to save/load avatars, required (use avatar.NoOp to disable avatars support)
 	AvatarResizeLimit int          // resize avatar's limit in pixels
 	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
@@ -227,14 +236,15 @@ func (s *Service) Middleware() middleware.Authenticator {
 // AddProviderWithUserAttributes adds provider with user attributes mapping
 func (s *Service) AddProviderWithUserAttributes(name, cid, csecret string, userAttributes provider.UserAttributes) {
 	p := provider.Params{
-		URL:            s.opts.URL,
-		JwtService:     s.jwtService,
-		Issuer:         s.issuer,
-		AvatarSaver:    s.avatarProxy,
-		Cid:            cid,
-		Csecret:        csecret,
-		L:              s.logger,
-		UserAttributes: userAttributes,
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		Cid:                  cid,
+		Csecret:              csecret,
+		L:                    s.logger,
+		UserAttributes:       userAttributes,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProviderByName(name, p)
 }
@@ -309,14 +319,15 @@ func (s *Service) isValidProviderName(name string) bool {
 // AddProvider adds provider for given name
 func (s *Service) AddProvider(name, cid, csecret string) {
 	p := provider.Params{
-		URL:            s.opts.URL,
-		JwtService:     s.jwtService,
-		Issuer:         s.issuer,
-		AvatarSaver:    s.avatarProxy,
-		Cid:            cid,
-		Csecret:        csecret,
-		L:              s.logger,
-		UserAttributes: map[string]string{},
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		Cid:                  cid,
+		Csecret:              csecret,
+		L:                    s.logger,
+		UserAttributes:       map[string]string{},
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProviderByName(name, p)
 }
@@ -327,15 +338,16 @@ func (s *Service) AddProvider(name, cid, csecret string) {
 // For advanced configuration (e.g., UserAttributes), construct provider.Params directly.
 func (s *Service) AddMicrosoftProvider(cid, csecret, tenant string) {
 	p := provider.Params{
-		URL:             s.opts.URL,
-		JwtService:      s.jwtService,
-		Issuer:          s.issuer,
-		AvatarSaver:     s.avatarProxy,
-		Cid:             cid,
-		Csecret:         csecret,
-		L:               s.logger,
-		UserAttributes:  map[string]string{},
-		MicrosoftTenant: tenant,
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		Cid:                  cid,
+		Csecret:              csecret,
+		L:                    s.logger,
+		UserAttributes:       map[string]string{},
+		MicrosoftTenant:      tenant,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProvider(provider.NewMicrosoft(p))
 }
@@ -343,13 +355,14 @@ func (s *Service) AddMicrosoftProvider(cid, csecret, tenant string) {
 // AddDevProvider with a custom host and port
 func (s *Service) AddDevProvider(host string, port int) {
 	p := provider.Params{
-		URL:         s.opts.URL,
-		JwtService:  s.jwtService,
-		Issuer:      s.issuer,
-		AvatarSaver: s.avatarProxy,
-		L:           s.logger,
-		Port:        port,
-		Host:        host,
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		L:                    s.logger,
+		Port:                 port,
+		Host:                 host,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProvider(provider.NewDev(p))
 }
@@ -357,11 +370,12 @@ func (s *Service) AddDevProvider(host string, port int) {
 // AddAppleProvider allow SignIn with Apple ID
 func (s *Service) AddAppleProvider(appleConfig provider.AppleConfig, privKeyLoader provider.PrivateKeyLoaderInterface) error {
 	p := provider.Params{
-		URL:         s.opts.URL,
-		JwtService:  s.jwtService,
-		Issuer:      s.issuer,
-		AvatarSaver: s.avatarProxy,
-		L:           s.logger,
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		L:                    s.logger,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 
 	// error checking at create need for catch one when apple private key init
@@ -377,13 +391,14 @@ func (s *Service) AddAppleProvider(appleConfig provider.AppleConfig, privKeyLoad
 // AddCustomProvider adds custom provider (e.g. https://gopkg.in/oauth2.v3)
 func (s *Service) AddCustomProvider(name string, client Client, copts provider.CustomHandlerOpt) {
 	p := provider.Params{
-		URL:         s.opts.URL,
-		JwtService:  s.jwtService,
-		Issuer:      s.issuer,
-		AvatarSaver: s.avatarProxy,
-		Cid:         client.Cid,
-		Csecret:     client.Csecret,
-		L:           s.logger,
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		Cid:                  client.Cid,
+		Csecret:              client.Csecret,
+		L:                    s.logger,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProvider(provider.NewCustom(name, p, copts))
 }
@@ -421,14 +436,16 @@ func (s *Service) AddDirectProviderWithUserIDFunc(name string, credChecker provi
 // AddVerifProvider adds provider user's verification sent by sender
 func (s *Service) AddVerifProvider(name, msgTmpl string, sender provider.Sender) {
 	dh := provider.VerifyHandler{
-		L:            s.logger,
-		ProviderName: name,
-		Issuer:       s.issuer,
-		TokenService: s.jwtService,
-		AvatarSaver:  s.avatarProxy,
-		Sender:       sender,
-		Template:     msgTmpl,
-		UseGravatar:  s.useGravatar,
+		L:                    s.logger,
+		ProviderName:         name,
+		Issuer:               s.issuer,
+		TokenService:         s.jwtService,
+		AvatarSaver:          s.avatarProxy,
+		Sender:               sender,
+		Template:             msgTmpl,
+		UseGravatar:          s.useGravatar,
+		URL:                  s.opts.URL,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
 	}
 	s.addProvider(dh)
 }

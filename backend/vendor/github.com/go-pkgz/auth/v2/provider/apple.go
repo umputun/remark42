@@ -393,6 +393,11 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
+		if !isAllowedRedirect(oauthClaims.Handshake.From, ah.URL, ah.AllowedRedirectHosts) {
+			ah.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
 		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}

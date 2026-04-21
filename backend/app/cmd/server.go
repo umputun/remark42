@@ -1351,6 +1351,19 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SendJWTHeader:  s.Auth.SendJWTHeader,
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
+		// post-auth redirects to RemarkURL's own host plus any configured
+		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
+		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
+			hosts := make([]string, 0, len(s.AllowedHosts))
+			for _, h := range s.AllowedHosts {
+				if h == "self" || h == "'self'" || h == `"self"` { // CSP-only sentinel, not a host
+					continue
+				}
+				hosts = append(hosts, h)
+			}
+			return hosts, nil
+		}),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
