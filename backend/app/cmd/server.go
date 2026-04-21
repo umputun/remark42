@@ -794,6 +794,36 @@ func (s *ServerCommand) getAllowedDomains() []string {
 	return allowedDomains
 }
 
+// getAllowedRedirectHosts normalises s.AllowedHosts into the bare hostname
+// form that go-pkgz/auth's redirect validator expects (port-insensitive
+// hostname compare). Strips http(s) schemes, paths and ports, and skips CSP
+// sentinels ('self' / "self") and wildcard entries (*, *.example.com) that
+// are valid CSP source expressions but not valid hostnames.
+func (s *ServerCommand) getAllowedRedirectHosts() []string {
+	out := make([]string, 0, len(s.AllowedHosts))
+	for _, raw := range s.AllowedHosts {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || raw == "self" || raw == "'self'" || raw == `"self"` {
+			continue
+		}
+		if strings.ContainsRune(raw, '*') { // CSP wildcard, not a host
+			continue
+		}
+		// add scheme so url.Parse populates Hostname() consistently for bare hosts
+		toParse := raw
+		if !strings.HasPrefix(toParse, "http://") && !strings.HasPrefix(toParse, "https://") {
+			toParse = "https://" + toParse
+		}
+		u, err := url.Parse(toParse)
+		if err != nil || u.Hostname() == "" {
+			log.Printf("[WARN] skipping invalid AllowedHosts entry %q for redirect allowlist: %v", raw, err)
+			continue
+		}
+		out = append(out, u.Hostname())
+	}
+	return out
+}
+
 // Run all application objects
 func (a *serverApp) run(ctx context.Context) error {
 	if a.AdminPasswd != "" {
@@ -1355,14 +1385,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		// post-auth redirects to RemarkURL's own host plus any configured
 		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
 		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
-			hosts := make([]string, 0, len(s.AllowedHosts))
-			for _, h := range s.AllowedHosts {
-				if h == "self" || h == "'self'" || h == `"self"` { // CSP-only sentinel, not a host
-					continue
-				}
-				hosts = append(hosts, h)
-			}
-			return hosts, nil
+			return s.getAllowedRedirectHosts(), nil
 		}),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
