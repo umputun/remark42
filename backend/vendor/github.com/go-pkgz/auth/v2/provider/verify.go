@@ -28,6 +28,16 @@ type VerifyHandler struct {
 	Sender       Sender
 	Template     string
 	UseGravatar  bool
+
+	// URL is the service's own root URL; its host is always permitted as
+	// a "from" redirect target. Optional but recommended.
+	URL string
+	// AllowedRedirectHosts lists additional hostnames permitted as "from"
+	// redirect targets. Setting this field enables host validation: the
+	// host of URL is always implicit, and any other host must appear
+	// here. Nil disables validation and preserves legacy permissive
+	// behavior — any non-empty "from" value is honored.
+	AllowedRedirectHosts token.AllowedHosts
 }
 
 // Sender defines interface to send emails
@@ -127,6 +137,11 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if confClaims.Handshake != nil && confClaims.Handshake.From != "" {
+		if !isAllowedRedirect(confClaims.Handshake.From, e.URL, e.AllowedRedirectHosts) {
+			e.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(confClaims.Handshake.From))
+			rest.RenderJSON(w, claims.User)
+			return
+		}
 		http.Redirect(w, r, confClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}

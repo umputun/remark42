@@ -42,6 +42,14 @@ type Params struct {
 	AvatarSaver    AvatarSaver
 	UserAttributes UserAttributes
 
+	// AllowedRedirectHosts lists hostnames accepted in the "from" query
+	// parameter. Setting this field enables host validation: the host of
+	// URL is always implicit, and any other host must appear here. Nil
+	// disables validation and preserves legacy permissive behavior — any
+	// non-empty "from" value is honored. See isAllowedRedirect for the
+	// full policy.
+	AllowedRedirectHosts token.AllowedHosts
+
 	Port int    // relevant for providers supporting port customization, for example dev oauth2
 	Host string // relevant for providers supporting host customization, for example dev oauth2
 
@@ -239,6 +247,11 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
+		if !isAllowedRedirect(oauthClaims.Handshake.From, p.URL, p.AllowedRedirectHosts) {
+			p.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
 		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}

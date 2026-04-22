@@ -794,6 +794,42 @@ func (s *ServerCommand) getAllowedDomains() []string {
 	return allowedDomains
 }
 
+// getAllowedRedirectHosts normalises s.AllowedHosts into the form that
+// go-pkgz/auth's redirect validator expects. Strips http(s) schemes and
+// paths; preserves explicit ports (the validator matches both host-only
+// and host:port, so an entry without a port accepts any port while an
+// entry with a port restricts to that port). Skips CSP sentinels
+// ('self' / "self") and wildcard entries (*, *.example.com) that are
+// valid CSP source expressions but not valid hostnames.
+func (s *ServerCommand) getAllowedRedirectHosts() []string {
+	out := make([]string, 0, len(s.AllowedHosts))
+	for _, raw := range s.AllowedHosts {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || raw == "self" || raw == "'self'" || raw == `"self"` {
+			continue
+		}
+		if strings.ContainsRune(raw, '*') { // CSP wildcard, not a host
+			continue
+		}
+		// add scheme so url.Parse populates Hostname()/Host consistently for bare hosts
+		toParse := raw
+		if !strings.HasPrefix(toParse, "http://") && !strings.HasPrefix(toParse, "https://") {
+			toParse = "https://" + toParse
+		}
+		u, err := url.Parse(toParse)
+		if err != nil || u.Hostname() == "" {
+			log.Printf("[WARN] skipping invalid AllowedHosts entry %q for redirect allowlist: %v", raw, err)
+			continue
+		}
+		if u.Port() != "" {
+			out = append(out, u.Host) // preserve explicit host:port so allowlist is port-specific
+			continue
+		}
+		out = append(out, u.Hostname())
+	}
+	return out
+}
+
 // Run all application objects
 func (a *serverApp) run(ctx context.Context) error {
 	if a.AdminPasswd != "" {
@@ -1351,6 +1387,12 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SendJWTHeader:  s.Auth.SendJWTHeader,
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
+		// post-auth redirects to RemarkURL's own host plus any configured
+		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
+		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
+			return s.getAllowedRedirectHosts(), nil
+		}),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
