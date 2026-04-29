@@ -196,9 +196,7 @@ export function Auth() {
 
   return (
     <div className={clsx('auth', styles.root)}>
-      <Button className="auth-button" selected={isDropdownShown} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
-        {intl.formatMessage(messages.signin)}
-      </Button>
+      <label>Please sign in to comment</label>
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
