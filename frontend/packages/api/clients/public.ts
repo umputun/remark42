@@ -110,7 +110,7 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	async function getComments(url: string): Promise<CommentsTree>
 	async function getComments(params: GetUserCommentsParams): Promise<Comment[]>
 	async function getComments(
-		params: string | GetUserCommentsParams,
+		params: string | GetUserCommentsParams
 	): Promise<Comment[] | CommentsTree> {
 		if (typeof params === 'string') {
 			return fetcher.get('/comments', { url: params })

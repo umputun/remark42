@@ -43,12 +43,12 @@ describe<Context>('Public Client', (publicClient) => {
 
 				await expect(client.getComments(params)).resolves.toEqual(data)
 				expect(ref.req.url.searchParams.get('limit')).toBe(
-					params.limit === undefined ? null : `${params.limit}`,
+					params.limit === undefined ? null : `${params.limit}`
 				)
 				expect(ref.req.url.searchParams.get('skip')).toBe(
-					params.skip === undefined ? null : `${params.skip}`,
+					params.skip === undefined ? null : `${params.skip}`
 				)
-			},
+			}
 		)
 	})
 
@@ -97,29 +97,20 @@ describe<Context>('Public Client', (publicClient) => {
 		})
 	})
 
-	publicClient(
-		'getUser: should return user when /auth/status reports logged in',
-		async ({ client }) => {
-			const user = { id: '1', username: 'user' }
-			mockEndpoint('/remark42/auth/status', { body: { status: 'logged in', user: 'user' } })
-			mockEndpoint('/remark42/api/v1/user', { body: user })
-			await expect(client.getUser()).resolves.toEqual(user)
-		},
-	)
+	publicClient('getUser: should return user when logged in', async ({ client }) => {
+		const user = { id: '1', username: 'user' }
+		mockEndpoint('/remark42/auth/status', { body: { status: 'logged in', user: 'user' } })
+		mockEndpoint('/remark42/api/v1/user', { body: user })
+		await expect(client.getUser()).resolves.toEqual(user)
+	})
 
-	publicClient(
-		'getUser: should return null when /auth/status reports not logged in',
-		async ({ client }) => {
-			mockEndpoint('/remark42/auth/status', { body: { status: 'not logged in' } })
-			await expect(client.getUser()).resolves.toBeNull()
-		},
-	)
+	publicClient('getUser: should return null when not logged in', async ({ client }) => {
+		mockEndpoint('/remark42/auth/status', { body: { status: 'not logged in' } })
+		await expect(client.getUser()).resolves.toBeNull()
+	})
 
-	publicClient(
-		'getUser: should return null when /auth/status request fails',
-		async ({ client }) => {
-			mockEndpoint('/remark42/auth/status', { status: 500, body: 'boom' })
-			await expect(client.getUser()).resolves.toBeNull()
-		},
-	)
+	publicClient('getUser: should return null when status probe fails', async ({ client }) => {
+		mockEndpoint('/remark42/auth/status', { status: 500, body: 'boom' })
+		await expect(client.getUser()).resolves.toBeNull()
+	})
 })

@@ -27,12 +27,14 @@ describe('getUser', () => {
     expect(clearSpy).toHaveBeenCalledWith(XSRF_COOKIE);
   });
 
-  it('should return null when /auth/status request fails', async () => {
+  it('should return null without clearing cookies when /auth/status request fails', async () => {
     jest.spyOn(authFetcher, 'get').mockRejectedValue(new Error('boom'));
     const apiSpy = jest.spyOn(apiFetcher, 'get');
+    const clearSpy = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(() => {});
 
     await expect(getUser()).resolves.toBeNull();
     expect(apiSpy).not.toHaveBeenCalled();
+    expect(clearSpy).not.toHaveBeenCalled();
   });
 });
 

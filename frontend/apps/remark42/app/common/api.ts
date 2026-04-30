@@ -64,8 +64,12 @@ export const getPreview = (text: string): Promise<string> => apiFetcher.post('/p
 export async function getUser(): Promise<User | null> {
   // probe auth state via /auth/status (always 200, no console 401)
   const status = await authFetcher.get<{ status: string }>('/status').catch(() => null);
-  if (status?.status !== 'logged in') {
-    // clear stale auth cookies — preserves the cleanup-on-probe behaviour previously triggered by /user 401
+  if (status === null) {
+    // probe failed (network blip, transient 5xx) - leave cookies alone, treat as unknown
+    return null;
+  }
+  if (status.status !== 'logged in') {
+    // explicit "not logged in" - clear stale cookies, preserving cleanup-on-probe behaviour previously triggered by /user 401
     clearAuthCookie(JWT_COOKIE_NAME);
     clearAuthCookie(XSRF_COOKIE);
     return null;
