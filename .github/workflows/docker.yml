@@ -71,7 +71,7 @@ jobs:
             GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
             GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
             GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=ghcr.io/zKlau/remark42,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=ghcr.io/zklau/remark42,push-by-digest=true,name-canonical=true,push=true
 
       - name: export digests
         run: |
@@ -130,11 +130,11 @@ jobs:
         run: |
           if [[ "$HEAD_BRANCH" == v* ]]; then
             docker buildx imagetools create \
-              -t ghcr.io/zKlau/remark42:${HEAD_BRANCH} \
-              -t ghcr.io/zKlau/remark42:latest \
-              $(printf 'ghcr.io/zKlau/remark42@sha256:%s ' *)
+              -t ghcr.io/zklau/remark42:${HEAD_BRANCH} \
+              -t ghcr.io/zklau/remark42:latest \
+              $(printf 'ghcr.io/zklau/remark42@sha256:%s ' *)
           else
             docker buildx imagetools create \
-              -t ghcr.io/zKlau/remark42:${HEAD_BRANCH} \
-              $(printf 'ghcr.io/zKlau/remark42@sha256:%s ' *)
+              -t ghcr.io/zklau/remark42:${HEAD_BRANCH} \
+              $(printf 'ghcr.io/zklau/remark42@sha256:%s ' *)
           fi
