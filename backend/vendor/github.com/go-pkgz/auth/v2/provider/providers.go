@@ -254,7 +254,7 @@ func NewPatreon(p Params) Oauth2Handler {
 
 			uinfoJSON := uinfo{}
 			if err := json.Unmarshal(bdata, &uinfoJSON); err == nil {
-				userInfo.ID = "patreon_" + token.HashID(sha1.New(), userInfo.ID)
+				userInfo.ID = "patreon_" + token.HashID(sha1.New(), uinfoJSON.Data.ID)
 				userInfo.Name = uinfoJSON.Data.Attributes.FullName
 				userInfo.Picture = uinfoJSON.Data.Attributes.ImageURL
 
