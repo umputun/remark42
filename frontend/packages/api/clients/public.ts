@@ -83,6 +83,7 @@ export type Vote = -1 | 1
 
 export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	const fetcher = createFetcher(site, `${baseUrl}${API_BASE}`)
+	const authFetcher = createFetcher(site, `${baseUrl}/auth`)
 
 	/**
 	 * Get server config
@@ -92,9 +93,14 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	}
 
 	/**
-	 * Get current authorized user
+	 * Get current authorized user.
+	 * Probes /auth/status first (always 200, no console 401), then fetches /user only if logged in.
 	 */
 	async function getUser(): Promise<User | null> {
+		const status = await authFetcher.get<{ status: string }>('/status').catch(() => null)
+		if (status?.status !== 'logged in') {
+			return null
+		}
 		return fetcher.get<User | null>('/user').catch(() => null)
 	}
 
@@ -104,7 +110,7 @@ export function createPublicClient({ siteId: site, baseUrl }: ClientParams) {
 	async function getComments(url: string): Promise<CommentsTree>
 	async function getComments(params: GetUserCommentsParams): Promise<Comment[]>
 	async function getComments(
-		params: string | GetUserCommentsParams,
+		params: string | GetUserCommentsParams
 	): Promise<Comment[] | CommentsTree> {
 		if (typeof params === 'string') {
 			return fetcher.get('/comments', { url: params })

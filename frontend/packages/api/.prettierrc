@@ -2,5 +2,6 @@
 	"semi": false,
 	"printWidth": 100,
 	"quoteProps": "consistent",
-	"singleQuote": true
+	"singleQuote": true,
+	"trailingComma": "es5"
 }

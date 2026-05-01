@@ -97,11 +97,20 @@ describe<Context>('Public Client', (publicClient) => {
 		})
 	})
 
-	const userCases = [null, { id: '1', username: 'user' }]
-	userCases.forEach((user) => {
-		publicClient('should return user', async ({ client }) => {
-			mockEndpoint('/remark42/api/v1/user', { body: user })
-			await expect(client.getUser()).resolves.toEqual(user)
-		})
+	publicClient('getUser: should return user when logged in', async ({ client }) => {
+		const user = { id: '1', username: 'user' }
+		mockEndpoint('/remark42/auth/status', { body: { status: 'logged in', user: 'user' } })
+		mockEndpoint('/remark42/api/v1/user', { body: user })
+		await expect(client.getUser()).resolves.toEqual(user)
+	})
+
+	publicClient('getUser: should return null when not logged in', async ({ client }) => {
+		mockEndpoint('/remark42/auth/status', { body: { status: 'not logged in' } })
+		await expect(client.getUser()).resolves.toBeNull()
+	})
+
+	publicClient('getUser: should return null when status probe fails', async ({ client }) => {
+		mockEndpoint('/remark42/auth/status', { status: 500, body: 'boom' })
+		await expect(client.getUser()).resolves.toBeNull()
 	})
 })
