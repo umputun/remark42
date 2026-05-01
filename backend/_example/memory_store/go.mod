@@ -13,11 +13,11 @@ require (
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
-	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
+	github.com/alecthomas/chroma/v2 v2.24.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/go-pkgz/rest v1.21.0 // indirect
 	github.com/go-pkgz/routegroup v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect

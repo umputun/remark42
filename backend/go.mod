@@ -5,11 +5,11 @@ go 1.25.0
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
 	github.com/PuerkitoBio/goquery v1.12.0
-	github.com/alecthomas/chroma/v2 v2.23.1
+	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/didip/tollbooth/v8 v8.0.1
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.2
-	github.com/go-pkgz/auth/v2 v2.1.2-0.20260421203319-686683f19cf7
+	github.com/go-pkgz/auth/v2 v2.1.2
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.12.3
@@ -44,7 +44,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.4 // indirect
 	github.com/go-pkgz/email v0.6.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect

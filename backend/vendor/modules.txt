@@ -7,7 +7,7 @@ github.com/Depado/bfchroma/v2
 # github.com/PuerkitoBio/goquery v1.12.0
 ## explicit; go 1.25.0
 github.com/PuerkitoBio/goquery
-# github.com/alecthomas/chroma/v2 v2.23.1
+# github.com/alecthomas/chroma/v2 v2.24.1
 ## explicit; go 1.22
 github.com/alecthomas/chroma/v2
 github.com/alecthomas/chroma/v2/formatters/html
@@ -40,7 +40,7 @@ github.com/didip/tollbooth/v8/errors
 github.com/didip/tollbooth/v8/internal/time/rate
 github.com/didip/tollbooth/v8/libstring
 github.com/didip/tollbooth/v8/limiter
-# github.com/dlclark/regexp2 v1.11.5
+# github.com/dlclark/regexp2 v1.12.0
 ## explicit; go 1.13
 github.com/dlclark/regexp2
 github.com/dlclark/regexp2/syntax
@@ -56,7 +56,7 @@ github.com/go-chi/cors
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.1.2-0.20260421203319-686683f19cf7
+# github.com/go-pkgz/auth/v2 v2.1.2
 ## explicit; go 1.24.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
