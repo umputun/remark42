@@ -2,6 +2,9 @@ package slack
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/url"
 )
 
@@ -80,7 +83,8 @@ type OpenIDConnectResponse struct {
 }
 
 type oauthConfig struct {
-	apiURL string
+	apiURL       string
+	codeVerifier string
 }
 
 // OAuthOption configures package-level OAuth functions.
@@ -91,12 +95,22 @@ func OAuthOptionAPIURL(url string) OAuthOption {
 	return func(c *oauthConfig) { c.apiURL = url }
 }
 
-func resolveOAuthAPIURL(opts []OAuthOption) string {
+// OAuthOptionCodeVerifier sets the PKCE code_verifier for the OAuth token exchange.
+// Use this when your authorization request included a code_challenge.
+func OAuthOptionCodeVerifier(verifier string) OAuthOption {
+	return func(c *oauthConfig) { c.codeVerifier = verifier }
+}
+
+func resolveOAuthConfig(opts []OAuthOption) oauthConfig {
 	c := oauthConfig{apiURL: APIURL}
 	for _, o := range opts {
 		o(&c)
 	}
-	return c.apiURL
+	return c
+}
+
+func resolveOAuthAPIURL(opts []OAuthOption) string {
+	return resolveOAuthConfig(opts).apiURL
 }
 
 // GetOAuthToken retrieves an AccessToken.
@@ -160,16 +174,23 @@ func GetOAuthV2Response(client httpClient, clientID, clientSecret, code, redirec
 }
 
 // GetOAuthV2ResponseContext with a context, gets a V2 OAuth access token response.
+// For PKCE flows, pass OAuthOptionCodeVerifier and an empty clientSecret.
 // Slack API docs: https://api.slack.com/methods/oauth.v2.access
 func GetOAuthV2ResponseContext(ctx context.Context, client httpClient, clientID, clientSecret, code, redirectURI string, opts ...OAuthOption) (resp *OAuthV2Response, err error) {
+	cfg := resolveOAuthConfig(opts)
 	values := url.Values{
-		"client_id":     {clientID},
-		"client_secret": {clientSecret},
-		"code":          {code},
-		"redirect_uri":  {redirectURI},
+		"client_id":    {clientID},
+		"code":         {code},
+		"redirect_uri": {redirectURI},
+	}
+	if clientSecret != "" {
+		values.Set("client_secret", clientSecret)
+	}
+	if cfg.codeVerifier != "" {
+		values.Set("code_verifier", cfg.codeVerifier)
 	}
 	response := &OAuthV2Response{}
-	if _, err = postForm(ctx, client, resolveOAuthAPIURL(opts)+"oauth.v2.access", values, response, discard{}); err != nil {
+	if _, err = postForm(ctx, client, cfg.apiURL+"oauth.v2.access", values, response, discard{}); err != nil {
 		return nil, err
 	}
 	return response, response.Err()
@@ -182,13 +203,16 @@ func RefreshOAuthV2Token(client httpClient, clientID, clientSecret, refreshToken
 }
 
 // RefreshOAuthV2TokenContext with a context, gets a V2 OAuth access token response.
+// For PKCE public clients, pass an empty clientSecret.
 // Slack API docs: https://api.slack.com/methods/oauth.v2.access
 func RefreshOAuthV2TokenContext(ctx context.Context, client httpClient, clientID, clientSecret, refreshToken string, opts ...OAuthOption) (resp *OAuthV2Response, err error) {
 	values := url.Values{
 		"client_id":     {clientID},
-		"client_secret": {clientSecret},
 		"refresh_token": {refreshToken},
 		"grant_type":    {"refresh_token"},
+	}
+	if clientSecret != "" {
+		values.Set("client_secret", clientSecret)
 	}
 	response := &OAuthV2Response{}
 	if _, err = postForm(ctx, client, resolveOAuthAPIURL(opts)+"oauth.v2.access", values, response, discard{}); err != nil {
@@ -285,4 +309,22 @@ func GetOpenIDConnectTokenContext(ctx context.Context, client httpClient, client
 		return nil, err
 	}
 	return response, response.Err()
+}
+
+// GenerateCodeVerifier creates a cryptographically random PKCE code verifier
+// string suitable for use with OAuth 2.0 PKCE flows. The returned string is
+// 43 characters of URL-safe base64 (no padding).
+func GenerateCodeVerifier() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// GenerateCodeChallenge creates a PKCE code challenge from a code verifier
+// using the S256 method (SHA-256 hash, base64url-encoded without padding).
+func GenerateCodeChallenge(verifier string) string {
+	h := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(h[:])
 }
