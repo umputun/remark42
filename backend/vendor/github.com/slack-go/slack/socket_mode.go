@@ -36,7 +36,9 @@ func (api *Client) StartSocketModeContext(ctx context.Context) (info *SocketMode
 	// time significantly shorter (360 seconds).
 	if api.debug {
 		u, _ := url.Parse(response.SocketModeConnection.URL)
-		u.Query().Add("debug_reconnects", "true")
+		q := u.Query()
+		q.Set("debug_reconnects", "true")
+		u.RawQuery = q.Encode()
 		response.SocketModeConnection.URL = u.String()
 	}
 	return &response.SocketModeConnection, response.SocketModeConnection.URL, response.Err()

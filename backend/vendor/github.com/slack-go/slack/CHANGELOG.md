@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-05-10
+
+### Fixed
+
+- `NewSecretsVerifier` now rejects empty signing secrets to avoid accepting forged request
+  signatures when applications are misconfigured.
+
+## [0.23.0] - 2026-04-22
+
+### Added
+
+- **Block Kit: `CardBlock` and `CarouselBlock`** — Support for two of the new
+  agent-UI blocks announced in the
+  [April 16 Slack changelog](https://docs.slack.dev/changelog/2026/04/16/block-kit-new-blocks).
+  `CardBlock` is constructed via `NewCardBlock` with a functional-options
+  pattern and fluent `With*` builders (`WithTitle`, `WithSubtitle`, `WithBody`,
+  `WithIcon`, `WithHeroImage`, `WithActions`). `CarouselBlock` is constructed
+  via `NewCarouselBlock` with a variadic `*CardBlock` list plus `WithBlockID`
+  and `AddCard` helpers. Both blocks wire into `Blocks.UnmarshalJSON` for
+  round-trip fidelity, and reuse existing `ImageBlockElement` /
+  `ButtonBlockElement` / `BlockElements` types rather than introducing new
+  composition objects.
+- **Block Kit: `AlertBlock`** — Support for the third of the new agent-UI
+  blocks from the
+  [April 16 Slack changelog](https://docs.slack.dev/changelog/2026/04/16/block-kit-new-blocks).
+  `AlertBlock` is constructed via `NewAlertBlock` with a `*TextBlockObject`
+  body and a functional-options pattern. Severity is set via
+  `AlertBlockOptionLevel` (`AlertLevelDefault`, `AlertLevelInfo`,
+  `AlertLevelWarning`, `AlertLevelError`, `AlertLevelSuccess`) and the block
+  ID via `AlertBlockOptionBlockID`. Wires into `Blocks.UnmarshalJSON` for
+  round-trip fidelity. Must be delivered via the streaming chunks API —
+  `chat.postMessage` rejects it as an unsupported block type.
+- **Streaming-message chunks API** — `chat.startStream` / `chat.appendStream` /
+  `chat.stopStream` now accept a `chunks` parameter. Added `MsgOptionChunks`
+  along with a `StreamChunk` interface and four chunk types:
+  `MarkdownTextChunk`, `TaskUpdateChunk`, `PlanUpdateChunk`, and `BlocksChunk`
+  (each with a `New*Chunk` constructor). This is the supported transport for
+  streaming Block Kit content and the new agent-UI blocks in particular
+  (which `chat.postMessage` rejects as `Unsupported block type`).
+- **`MsgOptionTaskDisplayMode`** — New option for `chat.startStream` controlling
+  whether task chunks render as a sequential timeline or a grouped plan.
+  Accepts `TaskDisplayModeTimeline` or `TaskDisplayModePlan`.
+- Added `Username`, `IconURL`, and `IconEmoji` fields to
+  `AssistantThreadsSetStatusParameters`, forwarded by
+  `SetAssistantThreadsStatusContext`, matching the new optional parameters on
+  [`assistant.threads.setStatus`](https://docs.slack.dev/reference/methods/assistant.threads.setStatus)
+  for customising the status-update presentation.
+- Exposed `SocketmodeHandler.DispatchEvent` (previously the unexported
+  `dispatcher`), enabling integration tests to exercise registered handlers
+  without a live WebSocket connection. The unexported `dispatcher` is kept as
+  a thin wrapper for backwards compatibility. Closes #1549.
+
+## [0.22.0] - 2026-04-12
+
+### Added
+
+- Added missing parameters to `assistant.search.context` (`Sort`, `SortDir`, `Before`,
+  `After`, `Highlight`, `IncludeContextMessages`, `IncludeDeletedUsers`,
+  `IncludeMessageBlocks`, `IncludeArchivedChannels`, `DisableSemanticSearch`, `Modifiers`,
+  `TermClauses`) and new response types (`AssistantSearchContextFile`,
+  `AssistantSearchContextChannel`, `AssistantSearchContextMessageContext`) to match the
+  full Real-Time Search API surface.
+- Added `Underline`, `Highlight`, `ClientHighlight`, and `Unlink` fields to
+  `RichTextSectionTextStyle`. Added `Style` field to `RichTextSectionUserGroupElement`.
+- Added `BotOptional` and `UserOptional` fields to `OAuthScopes` for app manifests.
+- Added PKCE support for OAuth: `OAuthOptionCodeVerifier` option for
+  `GetOAuthV2Response`, `GenerateCodeVerifier()` and `GenerateCodeChallenge()`
+  helper functions (RFC 7636). `client_secret` is now conditionally omitted when
+  empty in both `GetOAuthV2ResponseContext` and `RefreshOAuthV2TokenContext`.
+
+### Fixed
+
+- `ChannelTypes` and `ContentTypes` now send comma-separated values instead of repeated
+  form keys, matching the convention used by every other method in the library.
+- In `socketmode` malformed JSON messages no longer force an unnecessary reconnect.
+  Instead the error is emitted and the connection continues as normal.
+
 ## [0.21.1] - 2026-04-08
 
 ### Added
@@ -489,7 +566,10 @@ for details.
 [#1196]: https://github.com/slack-go/slack/issues/1196
 [#1547]: https://github.com/slack-go/slack/pull/1547
 
-[Unreleased]: https://github.com/slack-go/slack/compare/v0.21.1...HEAD
+[Unreleased]: https://github.com/slack-go/slack/compare/v0.23.1...HEAD
+[0.23.1]: https://github.com/slack-go/slack/compare/v0.23.0...v0.23.1
+[0.23.0]: https://github.com/slack-go/slack/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/slack-go/slack/compare/v0.21.1...0.22.0
 [0.21.1]: https://github.com/slack-go/slack/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/slack-go/slack/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/slack-go/slack/compare/v0.19.0...v0.20.0
