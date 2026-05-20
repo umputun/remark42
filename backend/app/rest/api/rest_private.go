@@ -732,7 +732,10 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
 	r.Body = http.MaxBytesReader(w, r.Body, 32*1024*1024) // hard cap on upload to prevent memory exhaustion
-	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
+	// gosec G120: r.Body is already bounded by MaxBytesReader on the line above (32 MB),
+	// so ParseMultipartForm cannot read more than that regardless of the in-memory threshold.
+	// The 5 MB argument is the soft threshold above which the form is spilled to disk.
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { //nolint:gosec // bounded by MaxBytesReader above
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
 		return
 	}
