@@ -341,6 +341,44 @@ func TestRest_frameAncestors(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
 }
 
+// TestRest_apiCSP locks in that /api/v1/* responses get a strict default-src 'none'
+// override regardless of what the global CSP allows. The widget HTML pages
+// (/web/*.html) still get the global CSP (with 'unsafe-inline' for bootstrap),
+// so the test asserts the two policies diverge across origins.
+func TestRest_apiCSP(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+	client := http.Client{}
+
+	// JSON API endpoint — must carry the strict policy
+	resp, err := client.Get(ts.URL + "/api/v1/config")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	csp := resp.Header.Get("Content-Security-Policy")
+	assert.Contains(t, csp, "default-src 'none'",
+		"API responses must override the global CSP with default-src 'none'; got %q", csp)
+	assert.Contains(t, csp, "sandbox", "API CSP must include sandbox; got %q", csp)
+	assert.NotContains(t, csp, "'unsafe-inline'",
+		"API CSP must not allow inline scripts/styles; got %q", csp)
+
+	// RSS/XML endpoint — same strict policy, and the XML response itself must still be served
+	respRSS, err := client.Get(ts.URL + "/api/v1/rss/site?site=remark42")
+	require.NoError(t, err)
+	defer respRSS.Body.Close()
+	assert.Equal(t, http.StatusOK, respRSS.StatusCode, "RSS must still respond OK under strict CSP")
+	cspRSS := respRSS.Header.Get("Content-Security-Policy")
+	assert.Contains(t, cspRSS, "default-src 'none'", "RSS responses must carry the strict API CSP")
+	assert.Contains(t, cspRSS, "sandbox", "RSS CSP must include sandbox")
+
+	// widget HTML — must keep the global CSP (unchanged, lax to support inline bootstrap)
+	resp2, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp2.Body.Close()
+	csp2 := resp2.Header.Get("Content-Security-Policy")
+	assert.Contains(t, csp2, "'unsafe-inline'",
+		"widget HTML CSP must keep unsafe-inline for bootstrap; got %q", csp2)
+}
+
 // check CSP, img-src should be 'self' with proxy enabled and * without it
 func TestRest_securityHeaders(t *testing.T) {
 	ts, _, teardown := startupT(t)
