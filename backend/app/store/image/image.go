@@ -13,10 +13,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-
-	// support gif and jpeg images decoding
-	_ "image/gif"
-	_ "image/jpeg"
+	_ "image/gif"  // register gif decoder
+	_ "image/jpeg" // register jpeg decoder
 	"image/png"
 	"io"
 	"net/http"
@@ -32,6 +30,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/xid"
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp" // register webp decoder so DecodeConfig accepts what readAndValidateImage allows
 )
 
 // Service wraps Store with common functions needed for any store implementation
@@ -285,6 +284,13 @@ func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids 
 	return ids
 }
 
+// maxImagePixels caps the declared pixel count of an image before any raster decode
+// is allowed. Without this, a tiny compressed "decompression bomb" image declaring
+// e.g. 65535x65535 px would force image.Decode to allocate gigabytes of pixel memory
+// and OOM the service on a single comment upload. 16 MP covers any realistic image
+// (~4096x4096) while keeping peak allocation bounded.
+const maxImagePixels = 16 * 1024 * 1024
+
 // prepareImage calls readAndValidateImage and resize on provided image.
 func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
 	data, err := readAndValidateImage(r, s.MaxSize)
@@ -292,32 +298,59 @@ func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("can't load image: %w", err)
 	}
 
-	data = resize(data, s.MaxWidth, s.MaxHeight)
-	return data, nil
+	resized := resize(data, s.MaxWidth, s.MaxHeight)
+	if resized == nil {
+		return nil, fmt.Errorf("image rejected: malformed or exceeds %d-pixel safe limit", maxImagePixels)
+	}
+	return resized, nil
 }
 
-// resize an image of supported format (PNG, JPG, GIF) to the size of "limit" px of
-// the biggest side (width or height) preserving aspect ratio.
-// Returns original data if resizing is not needed or failed.
-// If resized the result will be for png format
+// resize validates an image and, if needed, re-encodes it to fit within the given
+// pixel limits preserving aspect ratio. Returns nil for malformed input or for
+// declared dimensions exceeding maxImagePixels so attacker payloads (decompression
+// bombs) never reach the store. With limit <= 0 or when the image already fits, the
+// original bytes are returned verbatim so animated GIFs and other multi-frame formats
+// round-trip without being flattened to one frame.
+//
+// Validation uses image.DecodeConfig (cheap — declares dimensions, allocates nothing)
+// before any full image.Decode, so a 100 KB compressed image declaring 65535x65535 px
+// is rejected without ever materializing the raster.
 func resize(data []byte, limitW, limitH int) []byte {
-	if data == nil || limitW <= 0 || limitH <= 0 {
-		return data
+	if len(data) == 0 {
+		return nil
 	}
 
-	src, _, err := image.Decode(bytes.NewBuffer(data))
+	// validate format and dimensions without allocating pixel memory.
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
-		log.Printf("[WARN] can't decode image, %s", err)
+		log.Printf("[WARN] can't decode image config, %s", err)
+		return nil
+	}
+	// multiply in int64 — on 32-bit builds (GOARCH=386, 32-bit arm) the int
+	// product of two 16-bit-or-larger dimensions can overflow and wrap below
+	// maxImagePixels, bypassing the cap.
+	if cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > int64(maxImagePixels) {
+		log.Printf("[WARN] image dimensions %dx%d exceed safe limit", cfg.Width, cfg.Height)
+		return nil
+	}
+
+	// dimensions are bounded — full decode is now safe to allocate. Decode also
+	// validates the raster body: a header that DecodeConfig accepts but with a
+	// corrupt or truncated payload would slip through if we returned early on the
+	// no-resize path without ever touching the pixels. Decode unconditionally,
+	// then either return the original bytes (no resize needed, multi-frame intact)
+	// or the re-encoded result.
+	src, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		log.Printf("[WARN] can't decode image after dim-check, %s", err)
+		return nil
+	}
+
+	if limitW <= 0 || limitH <= 0 || (cfg.Width <= limitW && cfg.Height <= limitH) {
 		return data
 	}
 
-	bounds := src.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	if w <= limitW && h <= limitH || w <= 0 || h <= 0 {
-		log.Printf("[DEBUG] resizing image is smaller that the limit or has 0 size")
-		return data
-	}
-
+	w, h := src.Bounds().Dx(), src.Bounds().Dy()
 	newW, newH := getProportionalSizes(w, h, limitW, limitH)
 	m := image.NewRGBA(image.Rect(0, 0, newW, newH))
 	draw.CatmullRom.Scale(m, m.Bounds(), src, src.Bounds(), draw.Src, nil)
@@ -325,7 +358,7 @@ func resize(data []byte, limitW, limitH int) []byte {
 	var out bytes.Buffer
 	if err = png.Encode(&out, m); err != nil {
 		log.Printf("[WARN] can't encode resized image to png, %s", err)
-		return data
+		return data // fall back to the validated original
 	}
 	return out.Bytes()
 }
@@ -366,8 +399,14 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 		return nil, fmt.Errorf("file is too large (limit=%d)", maxSize)
 	}
 
-	// read header first, needs it to check if data is valid png/gif/jpeg
-	if !isValidImage(data[:512]) {
+	// read header first to check the format. http.DetectContentType inspects up
+	// to the first 512 bytes, but a smaller body is fine — pass the whole slice
+	// rather than panicking on a fixed-size sub-slice.
+	header := data
+	if len(header) > 512 {
+		header = header[:512]
+	}
+	if !isValidImage(header) {
 		return nil, fmt.Errorf("file format not allowed")
 	}
 
