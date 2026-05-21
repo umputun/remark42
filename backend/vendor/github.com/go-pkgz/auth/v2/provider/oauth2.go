@@ -57,7 +57,7 @@ type Params struct {
 }
 
 // UserData is type for user information returned from oauth2 providers /info API method
-type UserData map[string]interface{}
+type UserData map[string]any
 
 // Value returns value for key or empty string if not found
 func (u UserData) Value(key string) string {
@@ -197,7 +197,7 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jData := map[string]interface{}{}
+	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return

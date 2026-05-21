@@ -310,6 +310,7 @@ func (api *Client) GetFilesContext(ctx context.Context, params GetFilesParameter
 	if params.Page != DEFAULT_FILES_PAGE {
 		values.Add("page", strconv.Itoa(params.Page))
 	}
+	//lint:ignore S1002 - we want to explicitly check against the constant
 	if params.ShowHidden != DEFAULT_FILES_SHOW_HIDDEN {
 		values.Add("show_files_hidden_by_limit", strconv.FormatBool(params.ShowHidden))
 	}

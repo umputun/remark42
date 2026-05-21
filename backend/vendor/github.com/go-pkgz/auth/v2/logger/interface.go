@@ -6,17 +6,17 @@ import "log"
 
 // L defined logger interface used everywhere in the package
 type L interface {
-	Logf(format string, args ...interface{})
+	Logf(format string, args ...any)
 }
 
 // Func type is an adapter to allow the use of ordinary functions as Logger.
-type Func func(format string, args ...interface{})
+type Func func(format string, args ...any)
 
 // Logf calls f(id)
-func (f Func) Logf(format string, args ...interface{}) { f(format, args...) }
+func (f Func) Logf(format string, args ...any) { f(format, args...) }
 
 // NoOp logger
-var NoOp = Func(func(string, ...interface{}) {})
+var NoOp = Func(func(string, ...any) {})
 
 // Std logger sends to std default logger directly
-var Std = Func(func(format string, args ...interface{}) { log.Printf(format, args...) })
+var Std = Func(func(format string, args ...any) { log.Printf(format, args...) })

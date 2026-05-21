@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -76,7 +77,7 @@ type AppleConfig struct {
 	ResponseMode string // changes method of receiving data in callback. Default value "form_post" (https://developer.apple.com/documentation/sign_in_with_apple/request_an_authorization_to_the_sign_in_with_apple_server?changes=_1_2#4066168)
 
 	scopes       []string         // for this package allow only username scope and UID in token claims. Apple service API provide only "email" and "name" scope values (https://developer.apple.com/documentation/sign_in_with_apple/clientconfigi/3230955-scope)
-	privateKey   interface{}      // private key from Apple obtained in developer account (the keys section). Required for create the Client Secret (https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens#3262048)
+	privateKey   any              // private key from Apple obtained in developer account (the keys section). Required for create the Client Secret (https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens#3262048)
 	publicKey    crypto.PublicKey // need for validate sign of token
 	clientSecret string           // is the JWT client secret will create after first call and then used until expired
 	jwkURL       string           // URL for fetch JWK Apple keys, need redefine for tests
@@ -228,7 +229,7 @@ func (ah *AppleHandler) initPrivateKey() error {
 }
 
 // tokenKeyFunc use for verify JWT sign, it receives the parsed token and should return the key for validating.
-func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (interface{}, error) {
+func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (any, error) {
 	if jwtToken == nil {
 		return nil, fmt.Errorf("failed to call token keyFunc, because token is nil")
 	}
@@ -331,7 +332,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, err, "exchange failed")
 		return
 	}
-	ah.Logf("[DEBUG] response data %+v", resp)
+	ah.Logf("[DEBUG] apple exchange response: %s", appleVerificationResponseLogSummary(resp))
 	if resp.Error != "" {
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("fetch IDtoken response error: %s", resp.Error))
 		return
@@ -345,10 +346,22 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get token claims for extract uid (and email or name if they exist in scope)
+	// get token claims for extract uid (and email or name if they exist in scope).
+	// jwt v5 parser options enforce iss == https://appleid.apple.com and
+	// aud == ClientID inline so we don't need a separate validate pass.
 	tokenClaims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(resp.IDToken, tokenClaims, keySet.keyFunc)
+	_, err = jwt.ParseWithClaims(resp.IDToken, tokenClaims, keySet.keyFunc,
+		jwt.WithIssuer(appleIDTokenIssuer),
+		jwt.WithAudience(ah.conf.ClientID))
 	if err != nil {
+		// distinguish a confused-deputy reject (iss/aud) from a server-side
+		// parse/sig failure so the handler returns the same 403 + body as
+		// before for the security-relevant case.
+		if errors.Is(err, jwt.ErrTokenInvalidIssuer) || errors.Is(err, jwt.ErrTokenInvalidAudience) {
+			ah.Logf("[WARN] apple id_token rejected: %s", err.Error())
+			rest.SendErrorJSON(w, r, ah.L, http.StatusForbidden, nil, "invalid id_token")
+			return
+		}
 		ah.Logf("[ERROR] failed to get claims: " + err.Error())
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("failed to token validation, key is invalid: %s", resp.Error))
 		return
@@ -549,3 +562,26 @@ func (ah AppleHandler) makeRedirURL(path string) string {
 
 	return strings.TrimRight(ah.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }
+
+// appleVerificationResponseLogSummary formats appleVerificationResponse for safe
+// logging. The struct's AccessToken, RefreshToken and IDToken fields are
+// credentials and must never appear verbatim in logs that may be shipped to
+// centralized logging or third-party observability systems; this helper logs
+// only their presence (present|missing), the non-secret token type and
+// expiry, plus any provider-side error string.
+func appleVerificationResponseLogSummary(r appleVerificationResponse) string {
+	return fmt.Sprintf("type=%s expires_in=%d access_token=%s refresh_token=%s id_token=%s error=%q",
+		r.TokenType, r.ExpiresIn,
+		presence(r.AccessToken), presence(r.RefreshToken), presence(r.IDToken), r.Error)
+}
+
+func presence(s string) string {
+	if s == "" {
+		return "missing"
+	}
+	return "present"
+}
+
+// appleIDTokenIssuer is the issuer Apple sets on every id_token issued by Sign in with Apple.
+// see https://developer.apple.com/documentation/sign_in_with_apple/sign_in_with_apple_rest_api/verifying_a_user
+const appleIDTokenIssuer = "https://appleid.apple.com" // #nosec G101 -- public Apple issuer URL, not a credential

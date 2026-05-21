@@ -79,17 +79,25 @@ func (c *CustomServer) Run(ctx context.Context) {
 	u, err := url.Parse(c.URL)
 	if err != nil {
 		c.Logf("[ERROR] failed to parse service base URL=%s", c.URL)
+		c.lock.Unlock()
 		return
 	}
 
-	_, port, err := net.SplitHostPort(u.Host)
+	host, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		c.Logf("[ERROR] failed to get port from URL=%s", c.URL)
+		c.lock.Unlock()
 		return
+	}
+	// hostname from URL is honored; only an explicit non-loopback host
+	// (e.g. "0.0.0.0" baked into c.URL) binds beyond loopback. Empty/
+	// "localhost" falls through to localBindAddr's 127.0.0.1 default.
+	if host == "localhost" {
+		host = ""
 	}
 
 	c.httpServer = &http.Server{
-		Addr:              fmt.Sprintf(":%s", port),
+		Addr:              localBindAddr(host, port),
 		ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {

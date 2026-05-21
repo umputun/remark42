@@ -79,9 +79,13 @@ func NewEmailClient(emailParams EmailParams, l logger.L) *Email {
 	return &Email{EmailParams: emailParams, L: l, sender: sender}
 }
 
-// Send email with given text
+// Send email with given text. The body is not logged: confirmation emails
+// sent by the verify provider contain a one-shot magic-link token, and any
+// party with log access could redeem it before the user does. Logging only
+// the recipient and body length keeps the line useful for operators
+// without leaking the credential.
 func (e *Email) Send(to, text string) error {
-	e.Logf("[DEBUG] send %q to %s", text, to)
+	e.Logf("[DEBUG] send %d-byte message to %s", len(text), to)
 	return e.sender.Send(text, email.Params{
 		From:    e.From,
 		To:      []string{to},

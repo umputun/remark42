@@ -122,7 +122,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jData := map[string]interface{}{}
+	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
