@@ -4,12 +4,27 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/token"
 )
+
+// localBindAddr returns the listen address for the dev oauth and custom-server
+// helpers. Both servers are intended for local development and embedded
+// flows; the historical default ":port" listened on every interface, which
+// silently exposed the dev OAuth UI to anyone on the LAN. Default the bind
+// to 127.0.0.1; callers that explicitly want a non-loopback bind can pass
+// a hostname (e.g. "0.0.0.0" or a specific IP) via Provider.Host (dev) or
+// the URL host (custom-server).
+func localBindAddr(host, port string) string {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
+}
 
 const (
 	urlLoginSuffix    = "/login"

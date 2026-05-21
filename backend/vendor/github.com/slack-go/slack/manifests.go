@@ -269,8 +269,10 @@ type OAuthConfig struct {
 
 // OAuthScopes is a group of settings that describe permission scopes configuration
 type OAuthScopes struct {
-	Bot  []string `json:"bot,omitempty" yaml:"bot,omitempty"`
-	User []string `json:"user,omitempty" yaml:"user,omitempty"`
+	Bot          []string `json:"bot,omitempty" yaml:"bot,omitempty"`
+	User         []string `json:"user,omitempty" yaml:"user,omitempty"`
+	BotOptional  []string `json:"bot_optional,omitempty" yaml:"bot_optional,omitempty"`
+	UserOptional []string `json:"user_optional,omitempty" yaml:"user_optional,omitempty"`
 }
 
 // ManifestResponse is the response returned by the API for apps.manifest.x endpoints
