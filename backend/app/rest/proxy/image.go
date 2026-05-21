@@ -112,30 +112,30 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	srcParam := r.URL.Query().Get("src")
 	src, err := base64.URLEncoding.DecodeString(srcParam)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
+		sendImageProxyError(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
 		return
 	}
 
 	imgURL := string(src)
 	imgID, err := image.CachedImgID(imgURL)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid image url"), "can't parse image url", rest.ErrAssetNotFound)
+		sendImageProxyError(w, r, http.StatusBadRequest, fmt.Errorf("invalid image url"), "can't parse image url", rest.ErrAssetNotFound)
 		return
 	}
 
-	// long-lived client cache with etag for cheap revalidation. 30-day TTL keeps the
-	// proxy efficient for hot pages; when clients DO revalidate (Ctrl+R, intermediaries,
-	// post-expiry), the versioned etag below ensures pre-fix poisoned validators don't
-	// match and a fresh validated 200 is returned. See etagVersionPrefix godoc for the
-	// limitation this leaves on browser-local caches.
+	// compute the current-version etag once. We don't set it as a response header yet
+	// because error paths below must NOT inherit it — otherwise transient failures
+	// (4xx) would get cached alongside the 30-day Cache-Control of the success path.
+	// The etag (and Cache-Control) are set only on the 304 short-circuit and the
+	// validated 200 path.
 	etag := `"` + etagVersionPrefix + srcParam + `"`
-	w.Header().Set("Etag", etag)
-	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 	// short-circuit revalidation before any cache lookup or upstream fetch: a matching
 	// current-version If-None-Match means the client already has bytes from a prior
 	// successful (post-fix, validated) 200, so a bodyless 304 is safe and avoids
 	// upstream DoS amplification on hot comment pages without CacheExternal.
 	if match := r.Header.Get("If-None-Match"); match != "" && rest.EtagMatches(match, etag) {
+		w.Header().Set("Etag", etag)
+		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -147,10 +147,10 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("[WARN] failed to download image: %v", err)
 			if errors.Is(err, errInvalidUpstreamContentType) {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid content type"), "invalid content type", rest.ErrImgNotFound)
+				sendImageProxyError(w, r, http.StatusBadRequest, fmt.Errorf("invalid content type"), "invalid content type", rest.ErrImgNotFound)
 				return
 			}
-			rest.SendErrorJSON(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
+			sendImageProxyError(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
 			return
 		}
 		if p.CacheExternal {
@@ -162,15 +162,31 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 	contentType, err := rest.SafeImgContentType(img)
 	if err != nil {
 		log.Printf("[WARN] rejecting non-image content from %s: %v", imgURL, err)
-		rest.SendErrorJSON(w, r, http.StatusUnsupportedMediaType, err, "invalid image content", rest.ErrImgNotFound)
+		sendImageProxyError(w, r, http.StatusUnsupportedMediaType, err, "invalid image content", rest.ErrImgNotFound)
 		return
 	}
 
+	// success path: long-lived client cache with etag for cheap revalidation. 30-day
+	// TTL keeps the proxy efficient for hot pages; when clients DO revalidate
+	// (Ctrl+R, intermediaries, post-expiry), the versioned etag ensures pre-fix
+	// poisoned validators don't match and a fresh validated 200 is returned. See
+	// etagVersionPrefix godoc for the limitation on browser-local caches.
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 	w.Header().Set("Content-Type", contentType)
 	_, err = io.Copy(w, bytes.NewReader(img))
 	if err != nil {
 		log.Printf("[WARN] can't copy image stream, %s", err)
 	}
+}
+
+// sendImageProxyError writes a no-store error response so a transient failure (4xx)
+// cannot inherit the success path's 30-day Cache-Control or the versioned ETag, which
+// would otherwise pin the error in the browser/intermediary cache for that TTL.
+// Defense headers from SetImageDefenseHeaders at the top of the handler survive.
+func sendImageProxyError(w http.ResponseWriter, r *http.Request, status int, err error, details string, errCode int) {
+	w.Header().Set("Cache-Control", "no-store")
+	rest.SendErrorJSON(w, r, status, err, details, errCode)
 }
 
 // cache image from provided Reader using given ID

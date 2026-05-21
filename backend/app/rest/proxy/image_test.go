@@ -538,11 +538,24 @@ func TestImage_ContentTypeHandling(t *testing.T) {
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 				assert.Equal(t, tt.wantCT, resp.Header.Get("Content-Type"))
 				assert.Equal(t, tt.body, body, "body bytes must round-trip")
+				assert.Contains(t, resp.Header.Get("Cache-Control"), "max-age=2592000",
+					"validated success path carries the 30-day TTL")
+				assert.True(t, strings.HasPrefix(resp.Header.Get("Etag"), `"v2:`),
+					"validated success path carries the versioned etag")
 				return
 			}
 
 			// reject path
 			assert.GreaterOrEqual(t, resp.StatusCode, 400, "must reject non-image content")
+			// reject responses must NOT inherit the success path's long-lived cache
+			// headers — a transient 4xx would otherwise be pinned in browser/intermediary
+			// caches alongside the versioned etag for 30 days.
+			assert.Contains(t, resp.Header.Get("Cache-Control"), "no-store",
+				"reject path must set Cache-Control: no-store; got %q", resp.Header.Get("Cache-Control"))
+			assert.NotContains(t, resp.Header.Get("Cache-Control"), "max-age=2592000",
+				"reject path must not carry the success-path 30-day TTL")
+			assert.Empty(t, resp.Header.Get("Etag"),
+				"reject path must not carry the versioned etag (would pin the failure in cache)")
 			ct := resp.Header.Get("Content-Type")
 			assert.False(t, strings.HasPrefix(ct, "text/html"),
 				"reject response must not be text/html; got %q", ct)

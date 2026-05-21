@@ -280,10 +280,10 @@ func (s *Rest) routes() chi.Router {
 
 		// open routes, cached. /img lives here (not in the NoCache group above) because
 		// middleware.NoCache strips If-None-Match from incoming requests, which would
-		// defeat the proxy handler's 304 short-circuit. The handler sets its own strict
-		// Cache-Control (private, no-cache, max-age=0, must-revalidate) so every reuse
-		// still revalidates against the server — the etag dance just lets unchanged
-		// content return 304 instead of re-shipping the full image bytes.
+		// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
+		// max-age on validated success responses (with a versioned etag for cache
+		// invalidation on revalidation); error responses get Cache-Control: no-store
+		// so transient failures aren't pinned in the cache.
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
 			ropen.Use(rateLimiter(10))
