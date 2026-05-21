@@ -359,3 +359,6 @@ func TestService_DoubleClose(*testing.T) {
 	// second call should not result in panic
 	svc.Close(context.TODO())
 }
+
+// TestSafeImgContentType now lives in the rest package alongside the SafeImgContentType
+// helper itself (see backend/app/rest/image_headers_test.go).

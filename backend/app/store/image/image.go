@@ -237,16 +237,6 @@ func (s *Service) SaveWithID(id string, r io.Reader) error {
 	return s.store.Save(id, img)
 }
 
-// ImgContentType returns content type for provided image
-func (s *Service) ImgContentType(img []byte) string {
-	contentType := http.DetectContentType(img)
-	if contentType == "application/octet-stream" {
-		// replace generic fallback with one which make sense in our scenario
-		return "image/*"
-	}
-	return contentType
-}
-
 // returns list of image IDs from the comment html, including proxied images if includeProxied is true
 func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids []string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))

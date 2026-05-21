@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/google/uuid"
@@ -19,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -1103,4 +1107,114 @@ func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
 			assert.NotContains(t, s, "no such file", "must not reach the filesystem")
 		})
 	}
+}
+
+// TestRest_LoadPictureDefenseHeaders saves a real PNG via the standard upload handler
+// and asserts that GET /api/v1/picture/{user}/{id} carries the layered defense headers
+// (strict CSP, nosniff, Content-Disposition with filename) and that the strict ETag
+// matcher does not 304 on a substring-of-the-real-etag (the pre-fix matcher would).
+func TestRest_LoadPictureDefenseHeaders(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// upload a real PNG via /api/v1/picture
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
+	require.NoError(t, err)
+	_, err = io.Copy(fileWriter, gopherPNG())
+	require.NoError(t, err)
+	contentType := bodyWriter.FormDataContentType()
+	require.NoError(t, bodyWriter.Close())
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
+	require.NoError(t, err)
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	m := map[string]string{}
+	require.NoError(t, json.Unmarshal(body, &m))
+	require.NotEmpty(t, m["id"])
+
+	// fetch the picture and assert defense headers
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "default-src 'none'; sandbox; frame-ancestors 'none'",
+		resp.Header.Get("Content-Security-Policy"))
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, `inline; filename="image"`, resp.Header.Get("Content-Disposition"))
+	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	realEtag := resp.Header.Get("Etag")
+	require.NotEmpty(t, realEtag)
+
+	// strict matcher: an If-None-Match value that CONTAINS the real etag as a substring
+	// but is not equal to it must NOT trigger 304. The pre-fix matcher used
+	// strings.Contains(header, etag) and would have returned true here.
+	require.True(t, len(realEtag) > 4)
+	substringMatch := "prefix-" + realEtag + "-suffix"
+	req2, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]), http.NoBody)
+	require.NoError(t, err)
+	req2.Header.Set("If-None-Match", substringMatch)
+	resp2, err := client.Do(req2)
+	require.NoError(t, err)
+	defer resp2.Body.Close()
+	assert.Equal(t, http.StatusOK, resp2.StatusCode,
+		"strict etag matcher must NOT 304 when real etag appears only as a substring of If-None-Match; got %q vs real %q", substringMatch, realEtag)
+
+	// sanity: the exact real etag DOES validate
+	req3, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]), http.NoBody)
+	require.NoError(t, err)
+	req3.Header.Set("If-None-Match", realEtag)
+	resp3, err := client.Do(req3)
+	require.NoError(t, err)
+	defer resp3.Body.Close()
+	assert.Equal(t, http.StatusNotModified, resp3.StatusCode, "exact etag must round-trip as 304")
+}
+
+// TestRest_LoadPictureRejectsNonImage proves the /picture/ handler rejects bytes that
+// don't sniff as a real image — even when retrieved successfully from the image store.
+// Uses a StoreMock so we can return arbitrary attacker bytes for a valid-looking id.
+func TestRest_LoadPictureRejectsNonImage(t *testing.T) {
+	htmlBody := []byte("<html><body><script>alert(document.domain)</script></body></html>")
+
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
+		return htmlBody, nil
+	}}
+	// minimal public struct on purpose: the reject path only exercises imageService.Load
+	// (other fields like dataService, cache, commentFormatter are not touched here).
+	p := &public{imageService: image.NewService(&imageStore, image.ServiceParams{})}
+
+	router := chi.NewRouter()
+	router.Get("/api/v1/picture/{user}/{id}", p.loadPictureCtrl)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/v1/picture/dev_user/abc.png")
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	assert.Equal(t, http.StatusUnsupportedMediaType, resp.StatusCode,
+		"non-image bytes must be rejected as 415")
+	assert.False(t, strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html"),
+		"reject response must not be text/html; got %q", resp.Header.Get("Content-Type"))
+	assert.NotContains(t, string(body), "<script>",
+		"attacker payload must not be echoed back")
+	assert.Equal(t, "no-store", resp.Header.Get("Cache-Control"),
+		"rejection path must not be cacheable")
+	// defense headers still present on the reject path
+	assert.Equal(t, "default-src 'none'; sandbox; frame-ancestors 'none'",
+		resp.Header.Get("Content-Security-Policy"))
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, `inline; filename="image"`, resp.Header.Get("Content-Disposition"))
 }
