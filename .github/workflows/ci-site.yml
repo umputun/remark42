@@ -53,13 +53,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.PKG_TOKEN }}
 
+      # cache-from is skipped on release events: the site embeds the latest
+      # remark42 version at build time (site/src/data/github.js fetches it from
+      # the GitHub releases API and Eleventy bakes it into the HTML). On a
+      # release-triggered run no site/** file has changed since the last
+      # master build, so Buildx would reuse the cached "yarn build" layer and
+      # ship the previous tag's version. Discarding the cache only for release
+      # events forces a fresh build that picks up the new tag; non-release
+      # runs keep the cache for fast iteration. cache-to is still populated
+      # so the next non-release run reuses what we just built.
       - name: build and push by digest
         id: build
         uses: docker/build-push-action@v7
         with:
           context: ./site
           platforms: ${{ matrix.platform }}
-          cache-from: type=gha,scope=site-${{ matrix.platform }}
+          cache-from: ${{ github.event_name == 'release' && '' || format('type=gha,scope=site-{0}', matrix.platform) }}
           cache-to: type=gha,scope=site-${{ matrix.platform }},mode=max
           outputs: type=image,name=ghcr.io/umputun/remark42-site,push-by-digest=true,name-canonical=true,push=true
 
