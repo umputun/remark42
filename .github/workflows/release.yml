@@ -1,0 +1,143 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - ".goreleaser.yml"
+      - "Makefile"
+      - "scripts/**"
+      - "backend/**"
+      - "frontend/**"
+      - "README.md"
+      - "LICENSE"
+      - "CLAUDE.md"
+      - "site/src/docs/getting-started/installation/index.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: install go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v6.0.4
+        with:
+          version: 8
+          run_install: false
+
+      - name: install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 16
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: test and build backend
+        run: |
+          go test -race -timeout=120s ./...
+          go build -race ./...
+        working-directory: backend/app
+        env:
+          TZ: "America/Chicago"
+
+      - name: test examples
+        run: |
+          go test -race ./...
+          go build -race ./...
+        working-directory: backend/_example/memory_store
+        env:
+          TZ: "America/Chicago"
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+        env:
+          CI: "true"
+
+      - name: check frontend
+        run: |
+          pnpm lint
+          pnpm type-check
+          pnpm test -- --runInBand
+        working-directory: frontend/apps/remark42
+        env:
+          CI: "true"
+
+      - name: check goreleaser snapshot
+        if: github.event_name == 'pull_request'
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release --snapshot --clean --skip=publish
+        env:
+          SKIP_PNPM_INSTALL: "true"
+
+      - name: clean generated release assets
+        if: always()
+        run: ./scripts/cleanup-release-assets.sh
+
+  release:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: install go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v6.0.4
+        with:
+          version: 8
+          run_install: false
+
+      - name: install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 16
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+        env:
+          CI: "true"
+
+      - name: run goreleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_PNPM_INSTALL: "true"
+
+      - name: clean generated release assets
+        if: always()
+        run: ./scripts/cleanup-release-assets.sh
