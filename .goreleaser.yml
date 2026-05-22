@@ -1,0 +1,69 @@
+version: 2
+
+project_name: remark42
+
+git:
+  ignore_tags:
+    - backend/*
+
+before:
+  hooks:
+    - ./scripts/prepare-release-assets.sh
+
+builds:
+  - id: remark42
+    dir: backend
+    main: ./app
+    binary: "remark42.{{ .Os }}-{{ .Arch }}"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - freebsd
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
+      - goos: freebsd
+        goarch: arm64
+      - goos: freebsd
+        goarch: "386"
+      - goos: freebsd
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: "386"
+      - goos: windows
+        goarch: arm
+    ldflags:
+      - -s -w -X main.revision={{ .Tag }}-{{ .ShortCommit }}-{{ trimsuffix (replace (replace .CommitDate "-" "") ":" "") "Z" }}
+
+archives:
+  - id: remark42
+    ids:
+      - remark42
+    name_template: "{{ .ProjectName }}.{{ .Os }}-{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+release:
+  name_template: "Version {{ .Version }}"
+  mode: keep-existing

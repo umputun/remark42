@@ -15,6 +15,7 @@ debug.test
 .mongo
 remark42
 /bin/
+/dist/
 /backend/var/
 /backend/app/var/
 /backend/app/cmd/web/
