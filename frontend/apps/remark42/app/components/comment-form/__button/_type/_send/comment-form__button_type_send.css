@@ -1,9 +1,0 @@
-.comment-form__button_type_send {
-  background: var(--color15);
-  color: var(--color6);
-
-  &:hover,
-  &:focus {
-    background: var(--color9);
-  }
-}

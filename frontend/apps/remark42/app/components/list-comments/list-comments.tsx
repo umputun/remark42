@@ -4,6 +4,8 @@ import { useIntl } from 'react-intl';
 import type { Comment as CommentType } from 'common/types';
 import { Comment } from 'components/comment';
 
+import styles from './list-comments.module.css';
+
 type Props = {
   comments: CommentType[];
 };
@@ -12,7 +14,7 @@ export function ListComments({ comments = [] }: Props) {
   const intl = useIntl();
 
   return (
-    <div className="comments-list">
+    <div>
       {comments.map((comment) => (
         <Comment
           intl={intl}
@@ -20,7 +22,7 @@ export function ListComments({ comments = [] }: Props) {
           data={comment}
           level={0}
           view="preview"
-          mix="list-comments__item"
+          mix={styles.item}
           user={null}
           theme="light"
           isCommentsDisabled={false}

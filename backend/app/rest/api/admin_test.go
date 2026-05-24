@@ -87,7 +87,7 @@ func TestAdmin_Delete(t *testing.T) {
 	// check count updated
 	res, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah")
 	assert.Equal(t, http.StatusOK, code)
-	b := map[string]interface{}{}
+	b := map[string]any{}
 	err = json.Unmarshal([]byte(res), &b)
 	assert.NoError(t, err)
 	t.Logf("%#v", b)
@@ -465,7 +465,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err := json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", bytes.NewBuffer(b))
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -489,7 +489,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site="+c.Locator.SiteID, bytes.NewBuffer(b))
 	require.NoError(t, err)
 	resp, err = sendReq(t, req, adminUmputunToken)
 	require.NoError(t, err)
@@ -718,7 +718,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		User: &token.User{
 			ID:      "user1",
 			Picture: "pic.image",
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				"delete_me": true,
 			},
 		},
@@ -786,7 +786,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 		},
 		User: &token.User{
 			ID: "provider1_user1",
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				"delete_me": true,
 			},
 		},

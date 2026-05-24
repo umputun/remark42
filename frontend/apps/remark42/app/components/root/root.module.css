@@ -1,3 +1,52 @@
+.root {
+  position: relative;
+
+  &::selection {
+    background: var(--color42);
+  }
+}
+
+.input {
+  margin-top: 4px;
+}
+
+.pinnedComment {
+  &:last-child {
+    margin-bottom: 0;
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.pinnedComments {
+  margin-top: 20px;
+  padding: 0 12px 12px;
+  border-radius: 2px;
+}
+
+.preloader {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+}
+
+.thread {
+  &:last-child {
+    margin-bottom: -24px;
+  }
+}
+
+.threads {
+  margin-top: 4px;
+}
+
+.copyright {
+  margin: 48px 0 0;
+  font-size: 12px;
+  text-align: right;
+}
+
 .sortPicker {
   display: flex;
   justify-content: flex-end;
@@ -9,4 +58,44 @@
   display: block;
   max-width: 320px;
   margin: 20px auto;
+}
+
+.themeDark {
+  color: var(--color20);
+
+  & .copyright {
+    color: var(--color1);
+  }
+
+  & .copyrightLink {
+    color: var(--color1);
+  }
+
+  & .pinnedComment {
+    border-bottom-color: var(--color18);
+  }
+
+  & .pinnedComments {
+    background: var(--color19);
+  }
+}
+
+.themeLight {
+  color: var(--color0);
+
+  & .copyright {
+    color: var(--color1);
+  }
+
+  & .copyrightLink {
+    color: var(--color1);
+  }
+
+  & .pinnedComment {
+    border-bottom-color: var(--color3);
+  }
+
+  & .pinnedComments {
+    background: var(--color4);
+  }
 }

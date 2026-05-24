@@ -38,7 +38,7 @@ func (u *URLMapper) loadRules(reader io.Reader) error {
 
 	u.rules = make(map[string]string)
 
-	for _, row := range strings.Split(rulesText, "\n") {
+	for row := range strings.SplitSeq(rulesText, "\n") {
 		row = strings.TrimSpace(row)
 		urls := strings.Split(row, " ")
 		if len(urls) != 2 {
@@ -64,8 +64,8 @@ func (u *URLMapper) URL(url string) string {
 		}
 		oldURL = strings.TrimSuffix(oldURL, "*")
 		newURL = strings.TrimSuffix(newURL, "*")
-		if strings.HasPrefix(url, oldURL) {
-			return newURL + strings.TrimPrefix(url, oldURL)
+		if after, ok := strings.CutPrefix(url, oldURL); ok {
+			return newURL + after
 		}
 	}
 	// search failed, return given url

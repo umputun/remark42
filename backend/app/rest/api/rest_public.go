@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
@@ -364,26 +365,81 @@ func (s *public) listCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// safePictureSegment reports whether seg is acceptable as a path segment in
+// the picture URL (no traversal markers, no path separators, no control
+// characters). Picture IDs are server-generated hashes plus a known
+// extension, so any value carrying these characters is hostile and must be
+// rejected before reaching the store. Rejecting controls (CR, LF, TAB, NUL,
+// etc.) also closes a log-injection vector since the rejected segment is
+// echoed into the access log.
+func safePictureSegment(seg string) bool {
+	if seg == "" || seg == "." {
+		return false
+	}
+	if strings.ContainsAny(seg, "/\\") {
+		return false
+	}
+	if strings.Contains(seg, "..") { // also covers seg == ".."
+		return false
+	}
+	for _, r := range seg {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// sendPictureError writes a no-store Cache-Control header and delegates to rest.SendErrorJSON.
+// Used by every rejection branch in loadPictureCtrl so error responses never inherit the
+// 7-day client cache of the success path.
+func sendPictureError(w http.ResponseWriter, r *http.Request, status int, err error, details string, code int) {
+	w.Header().Set("Cache-Control", "no-store")
+	rest.SendErrorJSON(w, r, status, err, details, code)
+}
+
 // GET /picture/{user}/{id} - get picture
 func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "user") + "/" + chi.URLParam(r, "id")
-	img, err := s.imageService.Load(id)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get image "+id, rest.ErrAssetNotFound)
+	rest.SetImageDefenseHeaders(w)
+
+	user, imgID := chi.URLParam(r, "user"), chi.URLParam(r, "id")
+	if user == "" || imgID == "" || !safePictureSegment(user) || !safePictureSegment(imgID) {
+		log.Printf("[WARN] rejected picture request with unsafe id segments user=%q id=%q", user, imgID)
+		sendPictureError(w, r, http.StatusBadRequest, fmt.Errorf("invalid picture id"), "invalid picture id", rest.ErrAssetNotFound)
 		return
 	}
-	// enforce client-side caching
+	id := user + "/" + imgID
+	img, err := s.imageService.Load(id)
+	if err != nil {
+		log.Printf("[WARN] can't load image %s: %v", id, err)
+		sendPictureError(w, r, http.StatusBadRequest, fmt.Errorf("image not found"), "can't get image", rest.ErrAssetNotFound)
+		return
+	}
+
+	contentType, err := rest.SafeImgContentType(img)
+	if err != nil {
+		log.Printf("[WARN] rejecting non-image picture %s: %v", id, err)
+		sendPictureError(w, r, http.StatusUnsupportedMediaType, err, "invalid image content", rest.ErrAssetNotFound)
+		return
+	}
+
+	// /picture/ does not need a security-version etag prefix — the upload flow
+	// validates input format (readAndValidateImage) and the serve path re-validates
+	// the stored bytes via rest.SafeImgContentType. Bytes within the resize dimension
+	// limits ARE preserved verbatim by resize, so the browser defense relies on the
+	// response headers (validated Content-Type + nosniff + strict CSP +
+	// Content-Disposition: inline), not on byte normalization. Picture IDs are limited
+	// to safePictureSegment (alphanumeric xid-generated guids), so the comma split
+	// inside rest.EtagMatches cannot collide; if the ID format ever changes, revisit.
 	etag := `"` + id + `"`
 	w.Header().Set("Etag", etag)
 	w.Header().Set("Cache-Control", "max-age=604800") // 7 days
-	if match := r.Header.Get("If-None-Match"); match != "" {
-		if strings.Contains(match, etag) {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
+	if match := r.Header.Get("If-None-Match"); match != "" && rest.EtagMatches(match, etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
 	}
 
-	w.Header().Set("Content-Type", s.imageService.ImgContentType(img))
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Length", strconv.Itoa(len(img)))
 	w.WriteHeader(http.StatusOK)
 	if _, err = io.Copy(w, bytes.NewReader(img)); err != nil {
@@ -431,7 +487,7 @@ func (s *public) telegramQrCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	if _, err = w.Write(png); err != nil {
+	if _, err = w.Write(png); err != nil { //nolint:gosec // png bytes from go-qrcode, not HTML
 		log.Printf("[WARN] can't render qr, %v", err)
 	}
 }

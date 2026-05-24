@@ -346,13 +346,13 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
-func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
+func (b *BoltDB) ListFlags(req FlagRequest) (res []any, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
 		return nil, e
 	}
 
-	res = []interface{}{}
+	res = []any{}
 	switch req.Flag {
 	case Verified:
 		err = bdb.View(func(tx *bolt.Tx) error {
@@ -957,7 +957,7 @@ func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error)
 }
 
 // save marshaled value to key for bucket. Should run in update tx
-func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err error) {
+func (b *BoltDB) save(bkt *bolt.Bucket, key string, value any) (err error) {
 	if value == nil {
 		return fmt.Errorf("can't save nil value for %s", key)
 	}
@@ -972,7 +972,7 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err erro
 }
 
 // load and unmarshal json value by key from bucket. Should run in view tx
-func (b *BoltDB) load(bkt *bolt.Bucket, key string, res interface{}) error {
+func (b *BoltDB) load(bkt *bolt.Bucket, key string, res any) error {
 	value := bkt.Get([]byte(key))
 	if value == nil {
 		return fmt.Errorf("no value for %s", key)
@@ -1027,7 +1027,7 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 
 // makeRef creates reference combining url and comment id
 func (b *BoltDB) makeRef(comment store.Comment) []byte {
-	return []byte(fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID))
+	return fmt.Appendf(nil, "%s!!%s", comment.Locator.URL, comment.ID)
 }
 
 // parseRef gets parts of reference

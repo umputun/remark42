@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -16,8 +16,14 @@ import (
 	"github.com/go-pkgz/repeater/v2"
 
 	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/safehttp"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
+
+// errInvalidUpstreamContentType is returned by downloadImage when the upstream's
+// Content-Type header is not image/*. The handler checks via errors.Is to convert
+// it into a 400 (input rejected) instead of the generic 404 (fetch failed).
+var errInvalidUpstreamContentType = errors.New("invalid upstream content type")
 
 // Image extracts image src from comment's html and provides proxy for them
 // this is needed to keep remark42 running behind of HTTPS serve all images via https
@@ -28,7 +34,11 @@ type Image struct {
 	CacheExternal bool
 	Timeout       time.Duration
 	ImageService  *image.Service
-	Transport     http.RoundTripper // if nil, uses SSRF-safe transport blocking private IPs
+	// Transport, if non-nil, is used as-is for outbound image fetches and is the
+	// caller's responsibility to make SSRF-safe. When nil, safehttp.Transport()
+	// is installed, which blocks dialing any private/reserved IP and resolves
+	// hostnames to defeat DNS rebinding.
+	Transport http.RoundTripper
 }
 
 // Convert img src links to proxied links depends on enabled options
@@ -80,32 +90,67 @@ func (p Image) replace(commentHTML string, imgs []string) string {
 	return commentHTML
 }
 
+// etagVersionPrefix is the security-version tag bumped whenever cached responses for the
+// same src need to be invalidated. Pre-fix responses were served as text/html and cached
+// by browsers/proxies under ETag `"<base64(src)>"`; the prefix invalidates those validators
+// so revalidating clients get a fresh 200 instead of letting the cached HTML 304.
+//
+// LIMITATION: with the 30-day max-age below, browsers serve pre-fix bytes from their
+// local cache without contacting the server until that TTL expires or the cache is
+// evicted under memory pressure. The prefix only helps clients that revalidate during
+// the cached lifetime (Ctrl+R, intermediaries, post-expiry use). Operators running a
+// CDN/edge cache in front of remark42 should purge /api/v1/img after deploy. The
+// realistic exposure is narrow: cache carryover only affects users who navigated
+// top-level to an attacker URL pre-fix and still have that URL cached — the normal
+// <img> embed path cached text/html but never executed it.
+const etagVersionPrefix = "v2:"
+
 // Handler returns http handler respond to proxied request
 func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
-	src, err := base64.URLEncoding.DecodeString(r.URL.Query().Get("src"))
+	rest.SetImageDefenseHeaders(w)
+
+	srcParam := r.URL.Query().Get("src")
+	src, err := base64.URLEncoding.DecodeString(srcParam)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
+		sendImageProxyError(w, r, http.StatusBadRequest, err, "can't decode image url", rest.ErrDecode)
 		return
 	}
 
 	imgURL := string(src)
-	var img []byte
 	imgID, err := image.CachedImgID(imgURL)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid image url"), "can't parse image url", rest.ErrAssetNotFound)
+		sendImageProxyError(w, r, http.StatusBadRequest, fmt.Errorf("invalid image url"), "can't parse image url", rest.ErrAssetNotFound)
 		return
 	}
+
+	// compute the current-version etag once. We don't set it as a response header yet
+	// because error paths below must NOT inherit it — otherwise transient failures
+	// (4xx) would get cached alongside the 30-day Cache-Control of the success path.
+	// The etag (and Cache-Control) are set only on the 304 short-circuit and the
+	// validated 200 path.
+	etag := `"` + etagVersionPrefix + srcParam + `"`
+	// short-circuit revalidation before any cache lookup or upstream fetch: a matching
+	// current-version If-None-Match means the client already has bytes from a prior
+	// successful (post-fix, validated) 200, so a bodyless 304 is safe and avoids
+	// upstream DoS amplification on hot comment pages without CacheExternal.
+	if match := r.Header.Get("If-None-Match"); match != "" && rest.EtagMatches(match, etag) {
+		w.Header().Set("Etag", etag)
+		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	// try to load from cache for case it was saved when CacheExternal was enabled
-	img, _ = p.ImageService.Load(imgID)
+	img, _ := p.ImageService.Load(imgID)
 	if img == nil {
-		img, err = p.downloadImage(context.Background(), imgURL)
+		img, err = p.downloadImage(r.Context(), imgURL)
 		if err != nil {
 			log.Printf("[WARN] failed to download image: %v", err)
-			if strings.Contains(err.Error(), "invalid content type") {
-				rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("invalid content type"), "invalid content type", rest.ErrImgNotFound)
+			if errors.Is(err, errInvalidUpstreamContentType) {
+				sendImageProxyError(w, r, http.StatusBadRequest, fmt.Errorf("invalid content type"), "invalid content type", rest.ErrImgNotFound)
 				return
 			}
-			rest.SendErrorJSON(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
+			sendImageProxyError(w, r, http.StatusNotFound, fmt.Errorf("failed to fetch"), "can't get image", rest.ErrAssetNotFound)
 			return
 		}
 		if p.CacheExternal {
@@ -113,22 +158,35 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// enforce client-side caching
-	etag := `"` + r.URL.Query().Get("src") + `"`
-	w.Header().Set("Etag", etag)
-	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
-	if match := r.Header.Get("If-None-Match"); match != "" {
-		if strings.Contains(match, etag) {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
+	// validate body bytes are actually an image — never trust upstream Content-Type or cache
+	contentType, err := rest.SafeImgContentType(img)
+	if err != nil {
+		log.Printf("[WARN] rejecting non-image content from %s: %v", imgURL, err)
+		sendImageProxyError(w, r, http.StatusUnsupportedMediaType, err, "invalid image content", rest.ErrImgNotFound)
+		return
 	}
 
-	w.Header().Add("Content-Type", p.ImageService.ImgContentType(img))
+	// success path: long-lived client cache with etag for cheap revalidation. 30-day
+	// TTL keeps the proxy efficient for hot pages; when clients DO revalidate
+	// (Ctrl+R, intermediaries, post-expiry), the versioned etag ensures pre-fix
+	// poisoned validators don't match and a fresh validated 200 is returned. See
+	// etagVersionPrefix godoc for the limitation on browser-local caches.
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+	w.Header().Set("Content-Type", contentType)
 	_, err = io.Copy(w, bytes.NewReader(img))
 	if err != nil {
 		log.Printf("[WARN] can't copy image stream, %s", err)
 	}
+}
+
+// sendImageProxyError writes a no-store error response so a transient failure (4xx)
+// cannot inherit the success path's 30-day Cache-Control or the versioned ETag, which
+// would otherwise pin the error in the browser/intermediary cache for that TTL.
+// Defense headers from SetImageDefenseHeaders at the top of the handler survive.
+func sendImageProxyError(w http.ResponseWriter, r *http.Request, status int, err error, details string, errCode int) {
+	w.Header().Set("Cache-Control", "no-store")
+	rest.SendErrorJSON(w, r, status, err, details, errCode)
 }
 
 // cache image from provided Reader using given ID
@@ -153,7 +211,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 
 	transport := p.Transport
 	if transport == nil {
-		transport = ssrfSafeTransport()
+		transport = safehttp.Transport()
 	}
 	client := http.Client{
 		Timeout:   30 * time.Second,
@@ -163,11 +221,14 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 	var resp *http.Response
 	err := repeater.NewFixed(5, time.Second).Do(ctx, func() error {
 		var e error
-		req, e := http.NewRequest("GET", imgURL, http.NoBody)
+		// SSRF safety: client.Transport is safehttp.Transport() when p.Transport is nil
+		// (see Image.Transport contract above); when caller supplies a transport they
+		// own SSRF safety for that path.
+		req, e := http.NewRequest("GET", imgURL, http.NoBody) //nolint:gosec // see comment above
 		if e != nil {
 			return fmt.Errorf("failed to make request for %s: %w", imgURL, e)
 		}
-		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; SSRF mitigated by ssrfSafeTransport
+		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; transport contract above
 		return e
 	})
 	if err != nil {
@@ -181,7 +242,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "image/") {
-		return nil, fmt.Errorf("invalid content type %s", contentType)
+		return nil, fmt.Errorf("%w: %s", errInvalidUpstreamContentType, contentType)
 	}
 
 	maxSize := 5 * 1024 * 1024 // 5MB default
@@ -197,73 +258,4 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		return nil, fmt.Errorf("image is too large")
 	}
 	return imgData, nil
-}
-
-// ssrfSafeTransport returns an http.Transport with a dialer that blocks connections to private IP addresses.
-// it resolves the host, validates all IPs, then dials using the resolved IP to prevent DNS rebinding attacks.
-// tries each resolved IP in order to handle dual-stack hosts where the first IP may be unreachable.
-func ssrfSafeTransport() *http.Transport {
-	dialer := &net.Dialer{Timeout: 30 * time.Second}
-	return &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid address %s: %w", addr, err)
-			}
-
-			// resolve the host to IP addresses
-			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-			if err != nil {
-				return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
-			}
-			if len(ips) == 0 {
-				return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
-			}
-
-			for _, ip := range ips {
-				if isPrivateIP(ip.IP) {
-					return nil, fmt.Errorf("access to private address is not allowed")
-				}
-			}
-
-			// try each resolved IP to handle dual-stack hosts where some IPs may be unreachable
-			var lastErr error
-			for _, ip := range ips {
-				conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
-				if dialErr == nil {
-					return conn, nil
-				}
-				lastErr = dialErr
-			}
-			return nil, fmt.Errorf("can't connect to %s: %w", host, lastErr)
-		},
-	}
-}
-
-// privateCIDRs holds pre-parsed private/reserved CIDR blocks for SSRF protection.
-var privateCIDRs = func() []*net.IPNet {
-	cidrs := []string{
-		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-		"100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
-		"::1/128", "fc00::/7", "fe80::/10",
-	}
-	blocks := make([]*net.IPNet, 0, len(cidrs))
-	for _, cidr := range cidrs {
-		_, block, _ := net.ParseCIDR(cidr)
-		blocks = append(blocks, block)
-	}
-	return blocks
-}()
-
-// isPrivateIP checks if the given IP belongs to a private/reserved range.
-func isPrivateIP(ip net.IP) bool {
-	if ip.IsUnspecified() {
-		return true
-	}
-	for _, block := range privateCIDRs {
-		if block.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }

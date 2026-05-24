@@ -116,6 +116,7 @@ function createInstance(config: typeof window.remark_config) {
 
   function changeTheme(theme: Theme) {
     window.remark_config.theme = theme;
+    iframe.style.colorScheme = theme;
     postMessageToIframe(iframe, { theme });
   }
 

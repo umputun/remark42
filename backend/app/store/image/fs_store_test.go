@@ -190,7 +190,7 @@ func TestFsStore_location(t *testing.T) {
 	}
 
 	svc := FileSystem{Location: "/tmp", Partitions: 10}
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		v := randomID(rand.Intn(64))
 		location := svc.location("/tmp", v)
 		elems := strings.Split(location, "/")

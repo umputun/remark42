@@ -3,13 +3,16 @@ package provider
 //go:generate moq --out telegram_moq_test.go . TelegramAPI
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	neturl "net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,6 +22,7 @@ import (
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/logger"
 	authtoken "github.com/go-pkgz/auth/v2/token"
 )
@@ -186,11 +190,18 @@ func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegram
 
 		id := th.ProviderName + "_" + authtoken.HashID(sha1.New(), fmt.Sprint(update.Message.Chat.ID))
 
+		// avatarURL embeds the bot token in its path
+		// (https://api.telegram.org/file/bot{TOKEN}/...). Never store it in
+		// User.Picture: it would leak through avatar.Proxy.Put logs and, when
+		// no avatar saver is configured, into the JWT and on to the client.
+		// Fetch the bytes here and hand them to the avatar store directly.
+		picture := th.saveTelegramAvatar(ctx, id, avatarURL)
+
 		authRequest.confirmed = true
 		authRequest.user = &authtoken.User{
 			ID:      id,
 			Name:    update.Message.Chat.Name,
-			Picture: avatarURL,
+			Picture: picture,
 		}
 
 		th.requests.Lock()
@@ -294,10 +305,19 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	u, err := setAvatar(th.AvatarSaver, *authUser, &http.Client{Timeout: 5 * time.Second})
-	if err != nil {
-		rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
-		return
+	// when saveTelegramAvatar already populated Picture with a local proxy
+	// URL, skip the URL-fetching avatar pipeline. Letting setAvatar run
+	// here would have it call Proxy.Put which re-fetches Picture; in
+	// split-DNS / unreachable-internal-Opts.URL deployments that fetch
+	// fails and the identicon fallback would silently overwrite the
+	// stored Telegram bytes with an identicon at the same store path.
+	u := *authUser
+	if u.Picture == "" {
+		u, err = setAvatar(th.AvatarSaver, *authUser, &http.Client{Timeout: 5 * time.Second})
+		if err != nil {
+			rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+			return
+		}
 	}
 
 	claims := authtoken.Claims{
@@ -449,18 +469,18 @@ func (tg *tgAPI) BotInfo(ctx context.Context) (*botInfo, error) {
 	return resp.Result, nil
 }
 
-func (tg *tgAPI) request(ctx context.Context, method string, data interface{}) error {
+func (tg *tgAPI) request(ctx context.Context, method string, data any) error {
 	return repeater.NewFixed(3, time.Millisecond*50).Do(ctx, func() error {
 		url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.token, method)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
+			return fmt.Errorf("failed to create request: %w", redactBotURLInErr(err))
 		}
 
 		resp, err := tg.client.Do(req)
 		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
+			return fmt.Errorf("failed to send request: %w", redactBotURLInErr(err))
 		}
 		defer resp.Body.Close() //nolint gosec // we don't care about response body
 
@@ -484,4 +504,102 @@ func (tg *tgAPI) parseError(r io.Reader, statusCode int) error {
 		return fmt.Errorf("unexpected telegram API status code %d", statusCode)
 	}
 	return fmt.Errorf("unexpected telegram API status code %d, error: %q", statusCode, tgErr.Description)
+}
+
+// avatarContentSaver matches the optional method on AvatarSaver implementations
+// that can store already-fetched bytes (avatar.Proxy provides one). Used by the
+// Telegram provider to avoid passing a bot-token-bearing URL through the
+// URL-fetching avatar pipeline.
+type avatarContentSaver interface {
+	PutContent(userID string, content io.Reader) (string, error)
+}
+
+// saveTelegramAvatar fetches the avatar bytes from a bot-token-bearing Telegram
+// URL and stores them via th.AvatarSaver, returning a clean local proxy URL.
+// The bot URL is consumed entirely inside this function so it never reaches
+// User.Picture, JWT claims, or any debug log of the user object. Returns ""
+// when the avatar cannot be saved (no URL, no compatible saver, or fetch
+// failure) — the caller treats that as "no picture" and the avatar pipeline
+// falls back to identicon as usual.
+func (th *TelegramHandler) saveTelegramAvatar(ctx context.Context, userID, avatarURL string) string {
+	if avatarURL == "" {
+		return ""
+	}
+	// guard against typed-nil *avatar.Proxy. auth.go skips initializing
+	// res.avatarProxy when Opts.AvatarStore is unset, so AvatarSaver can be
+	// a non-nil interface wrapping a nil *avatar.Proxy. The type assertion
+	// below would still succeed (interface satisfaction is structural), but
+	// PutContent on a nil receiver panics on the first p.Store deref.
+	if th.AvatarSaver == nil || th.AvatarSaver == (*avatar.Proxy)(nil) {
+		th.Logf("[WARN] telegram avatar dropped: AvatarSaver is not configured")
+		return ""
+	}
+	saver, ok := th.AvatarSaver.(avatarContentSaver)
+	if !ok {
+		// fallback intentionally drops the picture rather than expose the bot
+		// token; warn so operators can wire a content-aware saver if they want
+		// telegram avatars saved
+		th.Logf("[WARN] telegram avatar dropped: configured AvatarSaver does not support direct content save")
+		return ""
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, avatarURL, http.NoBody)
+	if err != nil {
+		th.Logf("[WARN] telegram avatar fetch request build failed: %v", redactBotURLInErr(err))
+		return ""
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		th.Logf("[WARN] telegram avatar fetch failed: %v", redactBotURLInErr(err))
+		return ""
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		th.Logf("[WARN] telegram avatar fetch returned status %d", resp.StatusCode)
+		return ""
+	}
+	// cap body size to protect PutContent from an unbounded upstream response.
+	// Telegram caps photos at 5 MiB; 10 MiB is generous headroom while still
+	// bounding worst-case memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxTelegramAvatarSize+1))
+	if err != nil {
+		th.Logf("[WARN] telegram avatar read failed: %v", err)
+		return ""
+	}
+	if int64(len(body)) > maxTelegramAvatarSize {
+		th.Logf("[WARN] telegram avatar dropped: body exceeds %d bytes", maxTelegramAvatarSize)
+		return ""
+	}
+	picture, err := saver.PutContent(userID, bytes.NewReader(body))
+	if err != nil {
+		th.Logf("[WARN] telegram avatar save failed: %v", err)
+		return ""
+	}
+	return picture
+}
+
+const maxTelegramAvatarSize = 10 << 20
+
+// botTokenInURLPath matches the bot-token segment of a Telegram URL anchored
+// between path slashes ("/botTOKEN/..."). The leading and trailing slashes
+// avoid matching unrelated identifiers that happen to start with "bot" (e.g.
+// the username "botFather" appearing elsewhere in a log line). Replacement
+// preserves the slashes via "/bot<redacted>/" to keep surrounding URL
+// structure intact for diagnostics.
+var botTokenInURLPath = regexp.MustCompile(`/bot[A-Za-z0-9:_-]+/`)
+
+// redactBotURLInErr returns the error with any embedded Telegram bot-token
+// segment in URL paths replaced by "bot<redacted>". net/http's *url.Error
+// stringifies as `Op "URL": Err`, so a transport failure on a URL like
+// https://api.telegram.org/file/bot<TOKEN>/... otherwise prints the token
+// verbatim.
+func redactBotURLInErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	redacted := botTokenInURLPath.ReplaceAllString(err.Error(), "/bot<redacted>/")
+	if redacted == err.Error() {
+		return err
+	}
+	return errors.New(redacted)
 }

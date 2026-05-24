@@ -28,16 +28,16 @@ type User struct {
 	Audience string `json:"aud,omitempty"`
 
 	// set by client
-	IP         string                 `json:"ip,omitempty"`
-	Email      string                 `json:"email,omitempty"`
-	Attributes map[string]interface{} `json:"attrs,omitempty"`
-	Role       string                 `json:"role,omitempty"`
+	IP         string         `json:"ip,omitempty"`
+	Email      string         `json:"email,omitempty"`
+	Attributes map[string]any `json:"attrs,omitempty"`
+	Role       string         `json:"role,omitempty"`
 }
 
 // SetBoolAttr sets boolean attribute
 func (u *User) SetBoolAttr(key string, val bool) {
 	if u.Attributes == nil {
-		u.Attributes = map[string]interface{}{}
+		u.Attributes = map[string]any{}
 	}
 	u.Attributes[key] = val
 }
@@ -45,7 +45,7 @@ func (u *User) SetBoolAttr(key string, val bool) {
 // SetStrAttr sets string attribute
 func (u *User) SetStrAttr(key, val string) {
 	if u.Attributes == nil {
-		u.Attributes = map[string]interface{}{}
+		u.Attributes = map[string]any{}
 	}
 	u.Attributes[key] = val
 }
@@ -100,7 +100,7 @@ func (u *User) SliceAttr(key string) []string {
 // SetSliceAttr sets slice attribute for given key
 func (u *User) SetSliceAttr(key string, val []string) {
 	if u.Attributes == nil {
-		u.Attributes = map[string]interface{}{}
+		u.Attributes = map[string]any{}
 	}
 	u.Attributes[key] = val
 }

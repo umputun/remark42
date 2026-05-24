@@ -3,6 +3,8 @@ import '@github/markdown-toolbar-element';
 import { h, Component } from 'preact';
 import { defineMessages, IntlShape } from 'react-intl';
 
+import styles from './markdown-toolbar.module.css';
+
 // TODO: Use SVGR
 import { BoldIcon } from './markdown-toolbar-icons/bold-icon';
 import { HeaderIcon } from './markdown-toolbar-icons/header-icon';
@@ -95,48 +97,40 @@ export class MarkdownToolbar extends Component<Props> {
     const attachImageLabel = intl.formatMessage(messages.attachImage);
 
     return (
-      <markdown-toolbar className="comment-form__toolbar" for={props.textareaId}>
-        <div className="comment-form__toolbar-group">
-          <md-header className="comment-form__toolbar-item" title={headerLabel} aria-label={headerLabel}>
+      <markdown-toolbar className={styles.toolbar} for={props.textareaId}>
+        <div className={styles.group}>
+          <md-header className={styles.item} title={headerLabel} aria-label={headerLabel}>
             <HeaderIcon />
           </md-header>
-          <md-bold className="comment-form__toolbar-item" title={boldLabel} aria-label={boldLabel}>
+          <md-bold className={styles.item} title={boldLabel} aria-label={boldLabel}>
             <BoldIcon />
           </md-bold>
-          <md-italic className="comment-form__toolbar-item" title={italicLabel} aria-label={italicLabel}>
+          <md-italic className={styles.item} title={italicLabel} aria-label={italicLabel}>
             <ItalicIcon />
           </md-italic>
         </div>
-        <div className="comment-form__toolbar-group">
-          <md-quote className="comment-form__toolbar-item" title={quoteLabel} aria-label={quoteLabel}>
+        <div className={styles.group}>
+          <md-quote className={styles.item} title={quoteLabel} aria-label={quoteLabel}>
             <QuoteIcon />
           </md-quote>
-          <md-code className="comment-form__toolbar-item" title={codeLabel} aria-label={codeLabel}>
+          <md-code className={styles.item} title={codeLabel} aria-label={codeLabel}>
             <CodeIcon />
           </md-code>
-          <md-link className="comment-form__toolbar-item" title={linkLabel} aria-label={linkLabel}>
+          <md-link className={styles.item} title={linkLabel} aria-label={linkLabel}>
             <LinkIcon />
           </md-link>
           {this.props.allowUpload ? (
-            <label className="comment-form__toolbar-item" title={attachImageLabel} aria-label={attachImageLabel}>
-              <input multiple className="comment-form__toolbar-file-input" type="file" onChange={this.uploadImages} />
+            <label className={styles.item} title={attachImageLabel} aria-label={attachImageLabel}>
+              <input multiple className={styles.fileInput} type="file" onChange={this.uploadImages} />
               <ImageIcon />
             </label>
           ) : null}
         </div>
-        <div className="comment-form__toolbar-group">
-          <md-unordered-list
-            className="comment-form__toolbar-item"
-            title={unorderedListLabel}
-            aria-label={unorderedListLabel}
-          >
+        <div className={styles.group}>
+          <md-unordered-list className={styles.item} title={unorderedListLabel} aria-label={unorderedListLabel}>
             <UnorderedListIcon />
           </md-unordered-list>
-          <md-ordered-list
-            className="comment-form__toolbar-item"
-            title={orderedListLabel}
-            aria-label={orderedListLabel}
-          >
+          <md-ordered-list className={styles.item} title={orderedListLabel} aria-label={orderedListLabel}>
             <OrderedListIcon />
           </md-ordered-list>
         </div>

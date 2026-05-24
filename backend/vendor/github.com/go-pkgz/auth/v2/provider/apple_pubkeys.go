@@ -162,7 +162,7 @@ func (aks *appleKeySet) get(kid string) (keys *applePublicKey, err error) {
 }
 
 // keyFunc use for JWT verify with specific public key
-func (aks *appleKeySet) keyFunc(token *jwt.Token) (interface{}, error) {
+func (aks *appleKeySet) keyFunc(token *jwt.Token) (any, error) {
 
 	keyID, ok := token.Header["kid"].(string)
 	if !ok {

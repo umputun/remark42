@@ -48,7 +48,7 @@ type commentoCommenter struct {
 	Link         string    `json:"link"`
 	Photo        string    `json:"photo"`
 	Provider     string    `json:"provider,omitempty"`
-	JoinDate     time.Time `json:"joinDate,omitempty"`
+	JoinDate     time.Time `json:"joinDate"`
 	IsModerator  bool      `json:"isModerator"`
 }
 

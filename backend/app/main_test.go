@@ -130,7 +130,7 @@ func TestGetDump(t *testing.T) {
 }
 
 func chooseRandomUnusedPort() (port int) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		port = 40000 + int(rand.Int31n(10000))
 		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
 			_ = ln.Close()
@@ -144,7 +144,7 @@ func waitForHTTPServerStart(port int) {
 	// wait for up to 10 seconds for server to start before returning it
 	client := http.Client{Timeout: time.Second}
 	defer client.CloseIdleConnections()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		time.Sleep(time.Millisecond * 100)
 		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
 			_ = resp.Body.Close()

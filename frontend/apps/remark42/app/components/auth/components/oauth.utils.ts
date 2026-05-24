@@ -16,7 +16,11 @@ export function getButtonVariant(num: number) {
 }
 
 export function getProviderData(provider: OAuthProvider, theme: Theme) {
-  const data = OAUTH_DATA[provider];
+  const data = OAUTH_DATA[provider as keyof typeof OAUTH_DATA];
+
+  if (!data) {
+    return { name: capitalizeFirstLetter(provider), icon: OAUTH_DATA.custom };
+  }
 
   if (typeof data !== 'string') {
     return {

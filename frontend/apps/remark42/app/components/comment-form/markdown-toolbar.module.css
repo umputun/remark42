@@ -1,0 +1,51 @@
+.toolbar {
+  display: block;
+  float: right;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.item {
+  background: none;
+  border: 0;
+  color: var(--color37);
+  display: flex;
+  float: left;
+  height: 24px;
+  width: 24px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color9);
+  }
+}
+
+.icon {
+  display: inline-block;
+  fill: currentColor;
+}
+
+.group {
+  display: inline-block;
+  margin-left: 20px;
+
+  &:first-child {
+    margin-left: 0;
+  }
+}
+
+:global(.dark) .item {
+  color: var(--color20);
+
+  &:hover {
+    color: var(--color9);
+  }
+}

@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +25,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/avatar"
@@ -35,6 +39,7 @@ import (
 	"github.com/umputun/remark42/backend/app/providers"
 	"github.com/umputun/remark42/backend/app/rest/api"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
+	"github.com/umputun/remark42/backend/app/safehttp"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -108,6 +113,7 @@ type ServerCommand struct {
 		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
+		Custom    CustomAuthGroup    `group:"custom" namespace:"custom" env-namespace:"CUSTOM" description:"Custom OAuth2 provider"`
 		Telegram  bool               `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool               `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool               `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -157,6 +163,21 @@ type MicrosoftAuthGroup struct {
 	CID    string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC   string `long:"csec" env:"CSEC" description:"OAuth client secret"`
 	Tenant string `long:"tenant" env:"TENANT" description:"Azure AD tenant ID, domain, or 'common' (default)" default:"common"`
+}
+
+// CustomAuthGroup defines options group for custom OAuth2 provider params
+type CustomAuthGroup struct {
+	Name         string   `long:"name" env:"NAME" description:"custom provider name used in auth route"`
+	CID          string   `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC         string   `long:"csec" env:"CSEC" description:"OAuth client secret"`
+	AuthURL      string   `long:"auth-url" env:"AUTH_URL" description:"OAuth authorization endpoint"`
+	TokenURL     string   `long:"token-url" env:"TOKEN_URL" description:"OAuth token endpoint"`
+	InfoURL      string   `long:"info-url" env:"INFO_URL" description:"OAuth user info endpoint"`
+	Scopes       []string `long:"scopes" env:"SCOPES" env-delim:"," description:"OAuth scopes"`
+	IDField      string   `long:"id-field" env:"ID_FIELD" default:"sub" description:"user info field used as unique id"`
+	NameField    string   `long:"name-field" env:"NAME_FIELD" default:"name" description:"user info field used as display name"`
+	PictureField string   `long:"picture-field" env:"PICTURE_FIELD" default:"picture" description:"user info field used as avatar url"`
+	EmailField   string   `long:"email-field" env:"EMAIL_FIELD" default:"email" description:"user info field used as email"`
 }
 
 // StoreGroup defines options group for store params
@@ -330,6 +351,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_YANDEX_CSEC",
 		"AUTH_PATREON_CSEC",
 		"AUTH_DISCORD_CSEC",
+		"AUTH_CUSTOM_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -479,12 +501,87 @@ func stringsSetAndDifferent(s1, s2 string) bool {
 }
 
 func contains(s string, a []string) bool {
-	for _, t := range a {
-		if t == s {
-			return true
+	return slices.Contains(a, s)
+}
+
+var reservedCustomProviderNames = map[string]struct{}{
+	"email":     {},
+	"anonymous": {},
+	"google":    {},
+	"github":    {},
+	"facebook":  {},
+	"yandex":    {},
+	"twitter":   {},
+	"microsoft": {},
+	"patreon":   {},
+	"discord":   {},
+	"telegram":  {},
+	"dev":       {},
+	"apple":     {},
+}
+
+var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
+func isReservedCustomProviderName(name string) bool {
+	_, ok := reservedCustomProviderNames[name]
+	return ok
+}
+
+func isValidCustomProviderName(name string) bool {
+	return validCustomProviderName.MatchString(name)
+}
+
+func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
+	sourceID := data.Value(cfg.IDField)
+	if sourceID == "" {
+		sourceID = data.Value(cfg.EmailField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.NameField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.PictureField)
+	}
+	if sourceID == "" {
+		payload, err := json.Marshal(data)
+		if err != nil {
+			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
+		} else {
+			sourceID = string(payload)
 		}
 	}
-	return false
+	if sourceID == "" || sourceID == "{}" {
+		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
+	}
+	return sourceID
+}
+
+func (c CustomAuthGroup) isConfigured() bool {
+	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
+		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
+}
+
+func (c CustomAuthGroup) missingRequired() []string {
+	missing := []string{}
+	if c.Name == "" {
+		missing = append(missing, "AUTH_CUSTOM_NAME")
+	}
+	if c.CID == "" {
+		missing = append(missing, "AUTH_CUSTOM_CID")
+	}
+	if c.CSEC == "" {
+		missing = append(missing, "AUTH_CUSTOM_CSEC")
+	}
+	if c.AuthURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_AUTH_URL")
+	}
+	if c.TokenURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_TOKEN_URL")
+	}
+	if c.InfoURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_INFO_URL")
+	}
+	return missing
 }
 
 // newServerApp prepares application and return it with all active parts
@@ -525,7 +622,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5, Transport: safehttp.Transport()}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
@@ -695,6 +792,42 @@ func (s *ServerCommand) getAllowedDomains() []string {
 		allowedDomains = append(allowedDomains, domain)
 	}
 	return allowedDomains
+}
+
+// getAllowedRedirectHosts normalises s.AllowedHosts into the form that
+// go-pkgz/auth's redirect validator expects. Strips http(s) schemes and
+// paths; preserves explicit ports (the validator matches both host-only
+// and host:port, so an entry without a port accepts any port while an
+// entry with a port restricts to that port). Skips CSP sentinels
+// ('self' / "self") and wildcard entries (*, *.example.com) that are
+// valid CSP source expressions but not valid hostnames.
+func (s *ServerCommand) getAllowedRedirectHosts() []string {
+	out := make([]string, 0, len(s.AllowedHosts))
+	for _, raw := range s.AllowedHosts {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || raw == "self" || raw == "'self'" || raw == `"self"` {
+			continue
+		}
+		if strings.ContainsRune(raw, '*') { // CSP wildcard, not a host
+			continue
+		}
+		// add scheme so url.Parse populates Hostname()/Host consistently for bare hosts
+		toParse := raw
+		if !strings.HasPrefix(toParse, "http://") && !strings.HasPrefix(toParse, "https://") {
+			toParse = "https://" + toParse
+		}
+		u, err := url.Parse(toParse)
+		if err != nil || u.Hostname() == "" {
+			log.Printf("[WARN] skipping invalid AllowedHosts entry %q for redirect allowlist: %v", raw, err)
+			continue
+		}
+		if u.Port() != "" {
+			out = append(out, u.Host) // preserve explicit host:port so allowlist is port-specific
+			continue
+		}
+		out = append(out, u.Hostname())
+	}
+	return out
 }
 
 // Run all application objects
@@ -966,6 +1099,45 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		providersCount++
 	}
 
+	if s.Auth.Custom.isConfigured() {
+		missing := s.Auth.Custom.missingRequired()
+		if len(missing) > 0 {
+			return fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
+		}
+
+		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
+		if !isValidCustomProviderName(customName) {
+			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
+		}
+		if isReservedCustomProviderName(customName) {
+			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
+		}
+
+		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  s.Auth.Custom.AuthURL,
+				TokenURL: s.Auth.Custom.TokenURL,
+			},
+			InfoURL: s.Auth.Custom.InfoURL,
+			Scopes:  s.Auth.Custom.Scopes,
+			MapUserFn: func(data provider.UserData, _ []byte) token.User {
+				sourceID := customProviderSourceID(data, s.Auth.Custom)
+				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
+				user := token.User{
+					ID:      customName + "_" + hashID,
+					Name:    data.Value(s.Auth.Custom.NameField),
+					Picture: data.Value(s.Auth.Custom.PictureField),
+					Email:   data.Value(s.Auth.Custom.EmailField),
+				}
+				if user.Name == "" {
+					user.Name = "noname_" + hashID[:4]
+				}
+				return user
+			},
+		})
+		providersCount++
+	}
+
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		u, errURL := url.Parse(s.RemarkURL)
@@ -1215,6 +1387,12 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SendJWTHeader:  s.Auth.SendJWTHeader,
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
+		// post-auth redirects to RemarkURL's own host plus any configured
+		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
+		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
+			return s.getAllowedRedirectHosts(), nil
+		}),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),

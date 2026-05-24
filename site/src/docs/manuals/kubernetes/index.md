@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: remark42
-          image: ghcr.io/umputun/remark42:v1.14.0
+          image: ghcr.io/umputun/remark42:v1.16.0
           ports:
             # http:
             - containerPort: 8080

@@ -70,6 +70,7 @@ describe('<Auth/>', () => {
   it.each([
     [[]],
     [['dev']],
+    [['customoidc']],
     [['facebook', 'google']],
     [['facebook', 'google', 'microsoft']],
     [['facebook', 'google', 'microsoft', 'yandex']],
@@ -290,6 +291,23 @@ describe('<Auth/>', () => {
         )
       );
       expect(setUser).toBeCalledWith(user);
+    });
+
+    it('should use custom provider route', async () => {
+      StaticStore.config.auth_providers = ['customoidc'];
+
+      const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
+
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Customoidc')));
+
+      await waitFor(() =>
+        expect(oauthSignin).toBeCalledWith(
+          `${BASE_URL}/auth/customoidc/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
+        )
+      );
     });
   });
 

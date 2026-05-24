@@ -1,7 +1,6 @@
 import { h, Component, Fragment } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSelector } from 'react-redux';
-import b from 'bem-react-helper';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
@@ -201,7 +200,7 @@ export class Root extends Component<Props, State> {
 
   render(props: Props, { isUserLoading, commentsShown, isSettingsVisible }: State) {
     if (isUserLoading) {
-      return <Preloader className="root__preloader" />;
+      return <Preloader className={styles.preloader} />;
     }
 
     const isCommentsDisabled = props.info.read_only!;
@@ -219,7 +218,7 @@ export class Root extends Component<Props, State> {
           onBlockedUsersHide={this.onBlockedUsersHide}
           onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
         />
-        <div className="root__main">
+        <div>
           {isSettingsVisible ? (
             <Settings
               intl={this.props.intl}
@@ -239,7 +238,7 @@ export class Root extends Component<Props, State> {
                   id={encodeURI(url || '')}
                   intl={this.props.intl}
                   theme={props.theme}
-                  mix="root__input"
+                  mix={styles.input}
                   mode="main"
                   user={props.user}
                   onSubmit={(text: string, title: string) => this.props.addComment(text, title)}
@@ -249,7 +248,7 @@ export class Root extends Component<Props, State> {
               )}
               {this.props.pinnedComments.length > 0 && (
                 <div
-                  className="root__pinned-comments"
+                  className={styles.pinnedComments}
                   role="region"
                   aria-label={this.props.intl.formatMessage(messages.pinnedComments)}
                 >
@@ -262,12 +261,12 @@ export class Root extends Component<Props, State> {
                       data={comment}
                       level={0}
                       disabled={true}
-                      mix="root__pinned-comment"
+                      mix={styles.pinnedComment}
                     />
                   ))}
                 </div>
               )}
-              <div className={clsx('sort-picker', styles.sortPicker)}>
+              <div className={styles.sortPicker}>
                 <SortPicker />
               </div>
               <Comments
@@ -296,17 +295,17 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
   const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
 
   return (
-    <div className="root__threads" role="list">
+    <div className={styles.threads} role="list">
       {isLoading ? (
-        <Preloader className="root__preloader" />
+        <Preloader className={styles.preloader} />
       ) : (
         <>
           {topComments.length > 0 &&
             renderComments.map((id) => (
-              <Thread key={`thread-${id}`} id={id} mix="root__thread" level={0} getPreview={getPreview} />
+              <Thread key={`thread-${id}`} id={id} mix={styles.thread} level={0} getPreview={getPreview} />
             ))}
           {isShowMoreButtonVisible && (
-            <Button className={clsx('more-comments', styles.moreComments)} onClick={showMore}>
+            <Button className={styles.moreComments} onClick={showMore}>
               <FormattedMessage id="root.show-more" defaultMessage="Show more" />
             </Button>
           )}
@@ -317,7 +316,7 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
 }
 
 const CopyrightLink = (title: string) => (
-  <a class="root__copyright-link" href="https://remark42.com/">
+  <a class={styles.copyrightLink} href="https://remark42.com/">
     {title}
   </a>
 );
@@ -337,10 +336,10 @@ export function ConnectedRoot() {
   }, []);
 
   return (
-    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
+    <div className={clsx(styles.root, props.theme === 'dark' ? styles.themeDark : styles.themeLight, props.theme)}>
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
-        <p className="root__copyright" role="contentinfo">
+        <p className={styles.copyright} role="contentinfo">
           <FormattedMessage
             id="root.powered-by"
             defaultMessage="Powered by <a>Remark42</a>"

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -59,19 +60,21 @@ func TestBackup_Do(t *testing.T) {
 	defer os.RemoveAll(loc)
 	assert.NoError(t, os.MkdirAll(loc, 0o700))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(time.Second)
-		cancel()
-	}()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(time.Second)
+			cancel()
+		}()
 
-	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}, Duration: 600 * time.Millisecond}
-	bk.Do(ctx)
+		bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}, Duration: 600 * time.Millisecond}
+		bk.Do(ctx)
 
-	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
-	fi, err := os.Lstat(expFile)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(52), fi.Size())
+		expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
+		fi, err := os.Lstat(expFile)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(52), fi.Size())
+	})
 }
 
 type mockExporter struct{}

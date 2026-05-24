@@ -37,11 +37,11 @@ type FileSystem struct {
 func (f *FileSystem) Save(id string, img []byte) error {
 	dst := f.location(f.Staging, id)
 
-	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil {
+	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil { //nolint:gosec // id is server-generated hash via image.Service (Save / SaveWithID); dst computed via f.location
 		return fmt.Errorf("can't make image directory: %w", err)
 	}
 
-	if err := os.WriteFile(dst, img, 0o600); err != nil {
+	if err := os.WriteFile(dst, img, 0o600); err != nil { //nolint:gosec // same as MkdirAll above
 		return fmt.Errorf("can't write image file with id %s: %w", id, err)
 	}
 
@@ -147,8 +147,8 @@ func (f *FileSystem) Cleanup(_ context.Context, ttl time.Duration) error {
 		age := time.Since(info.ModTime())
 		if age > (ttl + 100*time.Millisecond) { // delay cleanup triggering to allow commit
 			log.Printf("[INFO] remove staging image %s, age %v", fpath, age)
-			rmErr := os.Remove(fpath)
-			_ = os.Remove(path.Dir(fpath)) // try to remove directory
+			rmErr := os.Remove(fpath)             //nolint:gosec // staging dir is server-only, no untrusted symlinks land here
+			_ = os.Remove(path.Dir(fpath))        //nolint:gosec // same staging dir
 			return rmErr
 		}
 		return nil

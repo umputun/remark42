@@ -1,0 +1,46 @@
+.root {
+  display: inline-block;
+  position: relative;
+}
+
+.content {
+  position: absolute;
+  z-index: 20;
+  outline-width: 0;
+  display: none;
+  top: 100%;
+  left: 0;
+  transform: translate(-0.5em, 5px);
+  min-width: 120px;
+  max-width: 260px;
+  border: 2px solid var(--color15);
+  border-radius: 3px;
+  padding: 0 0 5px;
+}
+
+.items {
+  padding: 5px 0;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.title {
+  &::after {
+    content: '\25BE';
+    margin-left: 2px;
+  }
+}
+
+.active > .content {
+  display: block;
+}
+
+.themeDark > .content {
+  background-color: var(--color8);
+}
+
+.themeLight > .content {
+  background-color: var(--color6);
+}

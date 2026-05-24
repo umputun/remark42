@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -125,37 +126,41 @@ func TestService_ExtractPictures(t *testing.T) {
 }
 
 func TestService_Cleanup(t *testing.T) {
-	store := StoreMock{
-		CleanupFunc: func(context.Context, time.Duration) error {
-			return nil
-		},
-	}
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CleanupFunc: func(context.Context, time.Duration) error {
+				return nil
+			},
+		}
 
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	// cancel context after 2.1 cleanup TTLs
-	ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
-	defer cancel()
-	svc.Cleanup(ctx)
-	assert.Equal(t, 2, len(store.CleanupCalls()))
+		svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+		// cancel context after 2.1 cleanup TTLs
+		ctx, cancel := context.WithTimeout(context.Background(), svc.EditDuration/100*15*21)
+		defer cancel()
+		svc.Cleanup(ctx)
+		assert.Equal(t, 2, len(store.CleanupCalls()))
+	})
 }
 
 func TestService_Submit(t *testing.T) {
-	store := StoreMock{
-		CommitFunc:            func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error { return nil },
-	}
-	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
-	err := svc.Commit(func() []string { return []string{"id4", "id5"} })
-	assert.NoError(t, err)
-	svc.Submit(func() []string { return []string{"id6", "id7"} })
-	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
-	svc.Submit(nil)
-	assert.Equal(t, 2, len(store.CommitCalls()))
-	time.Sleep(time.Millisecond * 175)
-	assert.Equal(t, 7, len(store.CommitCalls()))
-	svc.Close(context.TODO())
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Millisecond * 100})
+		svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+		assert.Equal(t, 3, len(store.ResetCleanupTimerCalls()))
+		err := svc.Commit(func() []string { return []string{"id4", "id5"} })
+		assert.NoError(t, err)
+		svc.Submit(func() []string { return []string{"id6", "id7"} })
+		assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
+		svc.Submit(nil)
+		assert.Equal(t, 2, len(store.CommitCalls()))
+		time.Sleep(time.Millisecond * 175)
+		assert.Equal(t, 7, len(store.CommitCalls()))
+		svc.Close(context.TODO())
+	})
 }
 
 func TestService_Close(t *testing.T) {
@@ -173,21 +178,23 @@ func TestService_Close(t *testing.T) {
 }
 
 func TestService_SubmitDelay(t *testing.T) {
-	store := StoreMock{
-		CommitFunc: func(string) error { return nil },
-		ResetCleanupTimerFunc: func(string) error {
-			return nil
-		},
-	}
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
-	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
-	time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
-	svc.Submit(func() []string { return []string{"id4", "id5"} })
-	svc.Submit(nil)
-	assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
-	assert.Equal(t, 3, len(store.CommitCalls()))
-	svc.Close(context.TODO())
-	assert.Equal(t, 5, len(store.CommitCalls()))
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc: func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error {
+				return nil
+			},
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+		svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
+		time.Sleep(150 * time.Millisecond) // let first batch to pass TTL
+		svc.Submit(func() []string { return []string{"id4", "id5"} })
+		svc.Submit(nil)
+		assert.Equal(t, 5, len(store.ResetCleanupTimerCalls()))
+		assert.Equal(t, 3, len(store.CommitCalls()))
+		svc.Close(context.TODO())
+		assert.Equal(t, 5, len(store.CommitCalls()))
+	})
 }
 
 func TestService_Info(t *testing.T) {
@@ -203,19 +210,17 @@ func TestService_Info(t *testing.T) {
 }
 
 func TestService_resize(t *testing.T) {
-	// reader is nil
-	resized := resize(nil, 100, 100)
-	assert.Nil(t, resized)
+	t.Run("empty data returns nil", func(t *testing.T) {
+		assert.Nil(t, resize(nil, 100, 100))
+		assert.Nil(t, resize([]byte{}, 100, 100))
+	})
 
-	// negative limit error
-	resized = resize([]byte("some picture bin data"), -1, -1)
-	require.NotNil(t, resized)
-	assert.Equal(t, resized, []byte("some picture bin data"))
-
-	// decode error
-	resized = resize([]byte("invalid image content"), 100, 100)
-	assert.NotNil(t, resized)
-	assert.Equal(t, resized, []byte("invalid image content"))
+	t.Run("non-image bytes are refused", func(t *testing.T) {
+		// previously resize would fall back to the raw bytes on decode failure, letting
+		// attacker-controlled non-image content reach the store. After hardening, refuse.
+		assert.Nil(t, resize([]byte("some picture bin data"), -1, -1))
+		assert.Nil(t, resize([]byte("invalid image content"), 100, 100))
+	})
 
 	cases := []struct {
 		file   string
@@ -230,7 +235,7 @@ func TestService_resize(t *testing.T) {
 		require.NoError(t, err, "can't open test file %s", c.file)
 
 		// no need for resize, image dimensions are smaller than resize limit
-		resized = resize(img, 800, 800)
+		resized := resize(img, 800, 800)
 		assert.NotNil(t, resized, "file %s", c.file)
 		assert.Equal(t, resized, img)
 
@@ -244,6 +249,76 @@ func TestService_resize(t *testing.T) {
 		assert.Equal(t, c.wr, bounds.Dx(), "file %s", c.file)
 		assert.Equal(t, c.hr, bounds.Dy(), "file %s", c.file)
 	}
+}
+
+// TestService_SaveWithIDShortPayload guards readAndValidateImage from panicking
+// on a body shorter than 512 bytes — historically it sliced data[:512] without
+// a bounds check, which would panic before any decode-bomb defense could fire.
+func TestService_SaveWithIDShortPayload(t *testing.T) {
+	short := []byte("not an image")
+
+	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/", MaxSize: 1500, MaxWidth: 32, MaxHeight: 32}}
+	err := svc.SaveWithID("test_id", bytes.NewReader(short))
+	require.Error(t, err, "short non-image body must return an error, not panic")
+	assert.Contains(t, err.Error(), "file format not allowed")
+}
+
+// TestService_SaveWithIDWebP confirms that WebP — listed as an allowed format
+// in readAndValidateImage — still round-trips through prepareImage now that
+// resize() runs image.DecodeConfig. Without registering the WebP decoder, a
+// legitimate WebP upload would fail DecodeConfig and prepareImage would error.
+func TestService_SaveWithIDWebP(t *testing.T) {
+	webp, err := os.ReadFile("testdata/pixel.webp")
+	require.NoError(t, err)
+
+	// sanity: the fixture must be a well-formed 1x1 WebP that DecodeConfig accepts.
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(webp))
+	require.NoError(t, err)
+	require.Equal(t, "webp", format)
+	require.Equal(t, 1, cfg.Width)
+	require.Equal(t, 1, cfg.Height)
+
+	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
+	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+
+	err = svc.SaveWithID("webp_id", bytes.NewReader(webp))
+	require.NoError(t, err, "valid WebP must round-trip through SaveWithID")
+	assert.Equal(t, 1, len(store.SaveCalls()))
+	assert.Equal(t, webp, store.SaveCalls()[0].Img, "no-resize path must return bytes verbatim")
+}
+
+// TestService_resizeRejectsDecompressionBomb verifies the dimension-cap defense.
+// Builds a tiny GIF that declares 65535x65535 (4 gigapixels) in its logical-screen
+// header — image.DecodeConfig reads the dimensions, the int64 product overflows
+// any 32-bit int wrap, and resize must refuse before image.Decode allocates ~17 GB
+// of pixel memory.
+func TestService_resizeRejectsDecompressionBomb(t *testing.T) {
+	// minimal GIF87a header with 65535x65535 logical screen, no global color table.
+	// Bytes 6-7 are the little-endian width, 8-9 are the little-endian height.
+	bomb := []byte{
+		'G', 'I', 'F', '8', '7', 'a',
+		0xFF, 0xFF,
+		0xFF, 0xFF,
+		0x00,
+		0x00,
+		0x00,
+		0x3B,
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(bomb))
+	require.NoError(t, err, "bomb header must decode at the config level")
+	assert.Equal(t, 65535, cfg.Width)
+	assert.Equal(t, 65535, cfg.Height)
+
+	assert.Nil(t, resize(bomb, 100, 100), "resize must refuse oversized dimensions before raster decode")
+	assert.Nil(t, resize(bomb, 0, 0), "even with no-resize limits, oversized dims must be refused")
+
+	// integration-level: SaveWithID must reject the same bomb without panicking
+	// or allocating gigabytes of raster memory.
+	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
+	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+	err = svc.SaveWithID("bomb_id", bytes.NewReader(bomb))
+	require.Error(t, err, "SaveWithID must reject decompression bomb")
+	assert.Equal(t, 0, len(store.SaveCalls()), "rejected bomb must not be stored")
 }
 
 func TestGetProportionalSizes(t *testing.T) {
@@ -284,3 +359,6 @@ func TestService_DoubleClose(*testing.T) {
 	// second call should not result in panic
 	svc.Close(context.TODO())
 }
+
+// TestSafeImgContentType now lives in the rest package alongside the SafeImgContentType
+// helper itself (see backend/app/rest/image_headers_test.go).

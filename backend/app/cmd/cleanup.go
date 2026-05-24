@@ -179,7 +179,7 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 	commentsWithInfo := struct {
 		Comments []store.Comment `json:"comments"`
-		Info     store.PostInfo  `json:"info,omitempty"`
+		Info     store.PostInfo  `json:"info"`
 	}{}
 
 	if err = json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {
@@ -199,7 +199,7 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error { //nolint:dupl /
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
-	r, err := client.Do(req)
+	r, err := client.Do(req) //nolint:gosec // RemarkURL comes from operator CLI flag, not user input
 	if err != nil {
 		return fmt.Errorf("delete request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}
@@ -221,7 +221,7 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error { //nolint:dupl // not
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
-	r, err := client.Do(req)
+	r, err := client.Do(req) //nolint:gosec // RemarkURL comes from operator CLI flag, not user input
 	if err != nil {
 		return fmt.Errorf("title request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
 	}

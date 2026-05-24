@@ -122,7 +122,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jData := map[string]interface{}{}
+	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
@@ -163,6 +163,11 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
+		if !isAllowedRedirect(oauthClaims.Handshake.From, h.URL, h.AllowedRedirectHosts) {
+			h.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
 		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
 		return
 	}

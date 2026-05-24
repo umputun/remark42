@@ -96,12 +96,12 @@ const lastCommentsScope = "last"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
-	Info     store.PostInfo  `json:"info,omitempty"`
+	Info     store.PostInfo  `json:"info"`
 }
 
 type treeWithInfo struct {
 	*service.Tree
-	Info store.PostInfo `json:"info,omitempty"`
+	Info store.PostInfo `json:"info"`
 }
 
 // Run the lister and request's router, activate rest server
@@ -249,6 +249,7 @@ func (s *Rest) routes() chi.Router {
 
 	// api routes
 	router.Route("/api/v1", func(rapi chi.Router) {
+		rapi.Use(apiCSPMiddleware)
 		rapi.Group(func(rava chi.Router) {
 			rava.Use(middleware.Timeout(5 * time.Second))
 			rava.Use(rateLimiter(100))
@@ -269,7 +270,6 @@ func (s *Rest) routes() chi.Router {
 			ropen.Post("/counts", s.pubRest.countMultiCtrl)
 			ropen.Get("/list", s.pubRest.listCtrl)
 			ropen.Get("/info", s.pubRest.infoCtrl)
-			ropen.Get("/img", s.ImageProxy.Handler)
 
 			ropen.Route("/rss", func(rrss chi.Router) {
 				rrss.Get("/post", s.rssRest.postCommentsCtrl)
@@ -278,11 +278,17 @@ func (s *Rest) routes() chi.Router {
 			})
 		})
 
-		// open routes, cached
+		// open routes, cached. /img lives here (not in the NoCache group above) because
+		// middleware.NoCache strips If-None-Match from incoming requests, which would
+		// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
+		// max-age on validated success responses (with a versioned etag for cache
+		// invalidation on revalidation); error responses get Cache-Control: no-store
+		// so transient failures aren't pinned in the cache.
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
 			ropen.Use(rateLimiter(10))
 			ropen.Use(authMiddleware.Trace, logInfoWithBody)
+			ropen.Get("/img", s.ImageProxy.Handler)
 			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
 			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
 		})
@@ -504,7 +510,7 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	})
 }
 
-func encodeJSONWithHTML(v interface{}) ([]byte, error) {
+func encodeJSONWithHTML(v any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
@@ -584,7 +590,9 @@ func matchSiteID(next http.Handler) http.Handler {
 		}
 
 		siteID := r.URL.Query().Get("site")
-		if siteID != "" && user.SiteID != siteID {
+		// require an explicit site so the user.SiteID check below cannot be bypassed
+		// by simply omitting the query parameter
+		if siteID == "" || user.SiteID != siteID {
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
 		}
@@ -618,6 +626,26 @@ func cacheControl(expiration time.Duration, version string) func(http.Handler) h
 	}
 }
 
+// apiCSPMiddleware overrides the global Content-Security-Policy on /api/v1 routes
+// with a strict, default-deny policy. The global CSP (securityHeadersMiddleware) keeps
+// 'self' 'unsafe-inline' for script-src/style-src because the widget HTML pages
+// (/web/*.html) need inline bootstrap blocks. API responses serve JSON, XML/RSS, or
+// images — none of those should ever execute scripts when rendered, so they get the
+// strictest policy available as defense-in-depth against future trust-boundary bugs.
+//
+// Image-serving handlers (/api/v1/img, /api/v1/picture/{user}/{id}) re-apply the same
+// rest.StrictImageCSP value at the handler level and additionally set Content-Disposition:
+// inline; filename="image" (framing the response as a file rather than a renderable
+// document) and X-Content-Type-Options: nosniff. The CSP re-apply is intentional belt-and-
+// braces: if a future route refactor bypasses this middleware, the image handlers still
+// emit the policy.
+func apiCSPMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", rest.StrictImageCSP)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // securityHeadersMiddleware sets security-related headers:
 //   - Content-Security-Policy: controls which resources the browser is allowed to load
 //   - Permissions-Policy: disables browser features (camera, mic, etc.) not needed by a comment widget
@@ -637,7 +665,8 @@ func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string
 			if len(allowedAncestors) > 0 {
 				frameAncestors = strings.Join(allowedAncestors, " ")
 			}
-			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
+			// font-src is set to 'none' (no @font-face / no base64 fonts in the bundle).
+			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'none'; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
 			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")

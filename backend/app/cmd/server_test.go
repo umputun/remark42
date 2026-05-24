@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
@@ -47,7 +48,7 @@ func TestServerApp(t *testing.T) {
 	// add comment
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -95,6 +96,30 @@ func TestServerApp_DevMode(t *testing.T) {
 	app.Wait()
 }
 
+func TestServerApp_CustomOAuthProvider(t *testing.T) {
+	port := chooseRandomUnusedPort()
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Custom.Name = "oidc"
+		o.Auth.Custom.CID = "cid"
+		o.Auth.Custom.CSEC = "csec"
+		o.Auth.Custom.AuthURL = "https://example.com/oauth2/authorize"
+		o.Auth.Custom.TokenURL = "https://example.com/oauth2/token"
+		o.Auth.Custom.InfoURL = "https://example.com/oauth2/userinfo"
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(port)
+
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
+
+	cancel()
+	app.Wait()
+}
+
 func TestServerApp_AnonMode(t *testing.T) {
 	port := chooseRandomUnusedPort()
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
@@ -129,7 +154,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as good anonymous
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -194,7 +219,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 	// try to add a comment as anonymous with admin name
 	time.Sleep(time.Second)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -389,6 +414,95 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: an AppleProvider creating failed: "+
 			"provided private key is not ECDSA")
 	t.Log(err)
+
+	// incomplete custom oauth config
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.name=oidc", "--auth.custom.cid=123"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
+			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
+	t.Log(err)
+}
+
+func TestIsReservedCustomProviderName(t *testing.T) {
+	reserved := []string{
+		"email", "anonymous", "google", "github", "facebook", "yandex", "twitter",
+		"microsoft", "patreon", "discord", "telegram", "dev", "apple",
+	}
+
+	for _, name := range reserved {
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, isReservedCustomProviderName(name))
+		})
+	}
+
+	assert.False(t, isReservedCustomProviderName("oidc"))
+}
+
+func TestIsValidCustomProviderName(t *testing.T) {
+	valid := []string{"oidc", "codeberg", "provider_1", "provider-1", "a1"}
+	for _, name := range valid {
+		t.Run("valid_"+name, func(t *testing.T) {
+			assert.True(t, isValidCustomProviderName(name))
+		})
+	}
+
+	invalid := []string{"", " has-space", "has space", "Uppercase", "provider!", "-provider", "_provider"}
+	for _, name := range invalid {
+		t.Run("invalid_"+strings.ReplaceAll(name, " ", "_"), func(t *testing.T) {
+			assert.False(t, isValidCustomProviderName(name))
+		})
+	}
+}
+
+func TestCustomProviderSourceID(t *testing.T) {
+	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
+
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
+	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
+	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
+	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
+	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+}
+
+func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
+	baseArgs := []string{
+		"--store.bolt.path=/tmp",
+		"--backup=/tmp",
+		"--image.fs.path=/tmp",
+		"--auth.custom.cid=123",
+		"--auth.custom.csec=456",
+		"--auth.custom.auth-url=https://example.com/oauth2/authorize",
+		"--auth.custom.token-url=https://example.com/oauth2/token",
+		"--auth.custom.info-url=https://example.com/oauth2/userinfo",
+	}
+
+	t.Run("reserved", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=twitter"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "twitter" is reserved`)
+	})
+
+	t.Run("not_url_safe", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=bad name"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "bad name" is invalid, expected pattern "^[a-z0-9][a-z0-9_-]*$"`)
+	})
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
@@ -628,7 +742,7 @@ func TestServerAuthHooks(t *testing.T) {
 	defer client.CloseIdleConnections()
 
 	// add comment
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
@@ -643,7 +757,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkNoAud, err := tkService.Token(badClaimsNoAud)
 	require.NoError(t, err)
 	t.Logf("no-aud claims: %s", tkNoAud)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -661,7 +775,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkMultipleAuds, err := tkService.Token(badClaimsMultipleAud)
 	require.NoError(t, err)
 	t.Logf("multiple aud claims: %s", tkMultipleAuds)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -680,7 +794,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkNoUser, err := tkService.Token(badClaimsNoUser)
 	require.NoError(t, err)
 	t.Logf("no user claims: %s", tkNoUser)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -706,7 +820,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(string(b))
 
 	// try add a comment with blocked user
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
@@ -788,8 +902,36 @@ func Test_getAllowedDomains(t *testing.T) {
 	}
 }
 
+func Test_getAllowedRedirectHosts(t *testing.T) {
+	tbl := []struct {
+		name  string
+		hosts []string
+		want  []string
+	}{
+		{name: "empty", hosts: nil, want: []string{}},
+		{name: "bare hostnames pass through", hosts: []string{"example.com", "admin.example.com"}, want: []string{"example.com", "admin.example.com"}},
+		{name: "https scheme stripped", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
+		{name: "http scheme stripped", hosts: []string{"http://example.com"}, want: []string{"example.com"}},
+		{name: "scheme with path strips path", hosts: []string{"https://example.com/embed"}, want: []string{"example.com"}},
+		{name: "explicit port preserved as host:port", hosts: []string{"example.com:8080"}, want: []string{"example.com:8080"}},
+		{name: "scheme with explicit port preserved", hosts: []string{"https://example.com:8443"}, want: []string{"example.com:8443"}},
+		{name: "scheme without port stays bare host", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
+		{name: "self sentinel filtered", hosts: []string{"'self'", "self", `"self"`, "example.com"}, want: []string{"example.com"}},
+		{name: "wildcards filtered", hosts: []string{"*", "*.example.com", "https://*.example.com", "example.com"}, want: []string{"example.com"}},
+		{name: "empty entries filtered", hosts: []string{"", "  ", "example.com"}, want: []string{"example.com"}},
+		{name: "mixed real-world", hosts: []string{"'self'", "https://blog.example.com", "admin.example.com:8443", "*.cdn.example.com"},
+			want: []string{"blog.example.com", "admin.example.com:8443"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			s := ServerCommand{AllowedHosts: tt.hosts}
+			assert.Equal(t, tt.want, s.getAllowedRedirectHosts())
+		})
+	}
+}
+
 func chooseRandomUnusedPort() (port int) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		port = 40000 + int(rand.Int31n(10000))
 		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
 			_ = ln.Close()
@@ -803,7 +945,7 @@ func waitForHTTPServerStart(port int) {
 	// wait for up to 3 seconds for server to start before returning it
 	client := http.Client{Timeout: time.Second}
 	defer client.CloseIdleConnections()
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		time.Sleep(time.Millisecond * 10)
 		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
 			_ = resp.Body.Close()
@@ -814,7 +956,7 @@ func waitForHTTPServerStart(port int) {
 
 func waitForHTTPSServerStart(port int) {
 	// wait for up to 3 seconds for HTTPS server to start
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		time.Sleep(time.Millisecond * 10)
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {

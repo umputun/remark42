@@ -341,6 +341,44 @@ func TestRest_frameAncestors(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
 }
 
+// TestRest_apiCSP locks in that /api/v1/* responses get a strict default-src 'none'
+// override regardless of what the global CSP allows. The widget HTML pages
+// (/web/*.html) still get the global CSP (with 'unsafe-inline' for bootstrap),
+// so the test asserts the two policies diverge across origins.
+func TestRest_apiCSP(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+	client := http.Client{}
+
+	// JSON API endpoint — must carry the strict policy
+	resp, err := client.Get(ts.URL + "/api/v1/config")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	csp := resp.Header.Get("Content-Security-Policy")
+	assert.Contains(t, csp, "default-src 'none'",
+		"API responses must override the global CSP with default-src 'none'; got %q", csp)
+	assert.Contains(t, csp, "sandbox", "API CSP must include sandbox; got %q", csp)
+	assert.NotContains(t, csp, "'unsafe-inline'",
+		"API CSP must not allow inline scripts/styles; got %q", csp)
+
+	// RSS/XML endpoint — same strict policy, and the XML response itself must still be served
+	respRSS, err := client.Get(ts.URL + "/api/v1/rss/site?site=remark42")
+	require.NoError(t, err)
+	defer respRSS.Body.Close()
+	assert.Equal(t, http.StatusOK, respRSS.StatusCode, "RSS must still respond OK under strict CSP")
+	cspRSS := respRSS.Header.Get("Content-Security-Policy")
+	assert.Contains(t, cspRSS, "default-src 'none'", "RSS responses must carry the strict API CSP")
+	assert.Contains(t, cspRSS, "sandbox", "RSS CSP must include sandbox")
+
+	// widget HTML — must keep the global CSP (unchanged, lax to support inline bootstrap)
+	resp2, err := client.Get(ts.URL + "/web/index.html")
+	require.NoError(t, err)
+	defer resp2.Body.Close()
+	csp2 := resp2.Header.Get("Content-Security-Policy")
+	assert.Contains(t, csp2, "'unsafe-inline'",
+		"widget HTML CSP must keep unsafe-inline for bootstrap; got %q", csp2)
+}
+
 // check CSP, img-src should be 'self' with proxy enabled and * without it
 func TestRest_securityHeaders(t *testing.T) {
 	ts, _, teardown := startupT(t)
@@ -437,7 +475,7 @@ func Test_validEmailAuth(t *testing.T) {
 
 // randomPath pick a file or folder name which is not in use for sure
 func randomPath(tempDir, basename, suffix string) (string, error) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		fname := fmt.Sprintf("/%s/%s-%d%s", tempDir, basename, rand.Int31(), suffix)
 		fmt.Printf("fname %q", fname)
 		_, err := os.Stat(fname)
@@ -630,7 +668,11 @@ func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment", bytes.NewBuffer(b))
+	postURL := ts.URL + "/api/v1/comment"
+	if c.Locator.SiteID != "" {
+		postURL += "?site=" + c.Locator.SiteID
+	}
+	req, err := http.NewRequest("POST", postURL, bytes.NewBuffer(b))
 	require.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
 	resp, err := client.Do(req)
@@ -667,7 +709,7 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 }
 
 func chooseRandomUnusedPort() (port int) {
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		port = 40000 + int(rand.Int31n(10000))
 		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
 			_ = ln.Close()
@@ -679,7 +721,7 @@ func chooseRandomUnusedPort() (port int) {
 
 func waitForHTTPSServerStart(port int) {
 	// wait for up to 3 seconds for HTTPS server to start
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		time.Sleep(time.Millisecond * 10)
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
 		if conn != nil {
@@ -695,4 +737,44 @@ func TestMain(m *testing.M) {
 		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
 		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
 	)
+}
+
+// TestRest_matchSiteID reproduces the multi-tenant isolation gap in the matchSiteID
+// middleware. Before the fix, the check `if siteID != "" && user.SiteID != siteID`
+// silently allowed any authenticated request that omitted the ?site= query param.
+// On admin and user-mutation routes this meant the cross-site check was bypassable
+// just by dropping the parameter. The fix requires ?site= to be present and to match
+// the user's bound site.
+func TestRest_matchSiteID(t *testing.T) {
+	wrapped := matchSiteID(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+
+	cases := []struct {
+		name     string
+		userSite string
+		query    string
+		want     int
+	}{
+		{name: "matching site allowed", userSite: "site-a", query: "?site=site-a", want: http.StatusOK},
+		{name: "mismatched site forbidden", userSite: "site-a", query: "?site=site-b", want: http.StatusForbidden},
+		{name: "missing site param rejected", userSite: "site-a", query: "", want: http.StatusForbidden},
+		{name: "empty site param rejected", userSite: "site-a", query: "?site=", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				r = rest.SetUserInfo(r, store.User{ID: "u", Name: "u", SiteID: c.userSite})
+				wrapped.ServeHTTP(w, r)
+			})
+			ts := httptest.NewServer(h)
+			defer ts.Close()
+			resp, err := http.Get(ts.URL + c.query)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+		})
+	}
 }
