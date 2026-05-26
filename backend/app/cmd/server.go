@@ -90,7 +90,7 @@ type ServerCommand struct {
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
-	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors''" env-delim:","`
+	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors'" env-delim:","`
 	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
 	DisableSignature           bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
 	DisableFancyTextFormatting bool          `long:"disable-fancy-text-formatting" env:"DISABLE_FANCY_TEXT_FORMATTING" description:"disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc)"`
@@ -123,10 +123,10 @@ type ServerCommand struct {
 			Subject      string        `long:"subj" env:"SUBJ" default:"remark42 confirmation" description:"email's subject"`
 			ContentType  string        `long:"content-type" env:"CONTENT_TYPE" default:"text/html" description:"content type"`
 			Host         string        `long:"host" env:"HOST" description:"[deprecated, use --smtp.host] SMTP host"`
-			Port         int           `long:"port" env:"PORT" description:"[deprecated, use --smtp.port] SMTP password"`
-			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP port"`
-			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
-			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
+			Port         int           `long:"port" env:"PORT" description:"[deprecated, use --smtp.port] SMTP port"`
+			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP password"`
+			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] SMTP user name"`
+			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] enable TLS"`
 			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
 			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"[deprecated] message template file" default:"email_confirmation_login.html.tmpl"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
