@@ -125,7 +125,7 @@ services:
 | notify.slack.token             | NOTIFY_SLACK_TOKEN             |                         | Slack token                                              |
 | notify.slack.chan              | NOTIFY_SLACK_CHAN              | `general`               | Slack channel for admin notifications                    |
 | notify.webhook.url             | NOTIFY_WEBHOOK_URL             |                         | Webhook notification URL for admin notifications         |
-| notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": "{{.Text}}"}` | Webhook payload template                                 |
+| notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": {{.Text \| escapeJSONString}}}` | Webhook payload template (Go text/template) |
 | notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                         | HTTP header in format Header1:Value1,Header2:Value2,...  |
 | notify.webhook.timeout         | NOTIFY_WEBHOOK_TIMEOUT         | `5s`                    | Webhook connection timeout                               |
 | notify.email.from_address      | NOTIFY_EMAIL_FROM              |                         | from email address (e.g. `john.doe@example.com` or `"John Doe"<john.doe@example.com>`) |

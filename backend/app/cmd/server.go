@@ -283,8 +283,8 @@ type NotifyGroup struct {
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
-		Template string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
-		Headers  []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
+		Template string        `long:"template" env:"TEMPLATE" description:"webhook payload template (Go text/template); falls back to {\"text\": {{.Text | escapeJSONString}}} when empty"`
+		Headers  []string      `long:"headers" description:"webhook headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
