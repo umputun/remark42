@@ -54,7 +54,7 @@ const cachedVersion = readVersionCache()
 if (cachedVersion) {
 	applyVersion(cachedVersion)
 } else {
-	fetch('https://api.github.com/repos/umputun/remark42/releases/latest')
+	fetch('{{ site.githubApiUrl }}/releases/latest')
 		.then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
 		.then((d) => {
 			if (!d || !d.tag_name) return
