@@ -31,18 +31,12 @@
   margin: 0 auto;
 }
 
-.thread {
-  &:last-child {
-    margin-bottom: -24px;
-  }
-}
-
 .threads {
   margin-top: 4px;
 }
 
 .copyright {
-  margin: 48px 0 0;
+  margin: 24px 0 0;
   font-size: 12px;
   text-align: right;
 }
