@@ -139,7 +139,7 @@ Custom OAuth2 integration currently supports only one custom provider at a time,
 | smtp.port                      | SMTP_PORT                      |                         | SMTP port                                                |
 | smtp.username                  | SMTP_USERNAME                  |                         | SMTP user name                                           |
 | smtp.password                  | SMTP_PASSWORD                  |                         | SMTP password                                            |
-| smtp.login_auth                | SMTP_LOGIN_AUTH                | `false                  | enable LOGIN auth instead of PLAIN                       |
+| smtp.login_auth                | SMTP_LOGIN_AUTH                | `false`                 | enable LOGIN auth instead of PLAIN                       |
 | smtp.tls                       | SMTP_TLS                       | `false`                 | enable TLS for SMTP                                      |
 | smtp.starttls                  | SMTP_STARTTLS                  | `false`                 | enable StartTLS for SMTP                                 |
 | smtp.insecure_skip_verify      | SMTP_INSECURE_SKIP_VERIFY      | `false`                 | skip certificate verification for SMTP                   |
