@@ -12,7 +12,7 @@
 	{% endif %}
   <meta name="description" content="{{ metaDescription or renderData.metaDescription or site.description }}">
   <link rel="stylesheet" href="/style.css?v={% version %}"/>
-	<script>{% include "inline.js" %}</script>
+	<script>{% include "inline.njk" %}</script>
 	{% set js %}
     {% include "script.js" %}
   {% endset %}
