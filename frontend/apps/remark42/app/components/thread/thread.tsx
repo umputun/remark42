@@ -19,7 +19,6 @@ interface Props {
   id: CommentInterface['id'];
   childs?: CommentInterface['id'][];
   level: number;
-  mix?: string;
 
   getPreview(text: string): Promise<string>;
 }
@@ -34,7 +33,7 @@ const commentSelector = (id: string) => (state: StoreState) => {
   return { comment, childs, collapsed, theme };
 };
 
-export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview }) => {
+export const Thread: FunctionComponent<Props> = ({ id, level, getPreview }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
   const { collapsed, comment, childs, theme } = useAppSelector(commentSelector(id), shallowEqual);
@@ -53,8 +52,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
         styles.root,
         indented && styles.indented,
         level === 6 && styles.level6,
-        theme === 'dark' && styles.themeDark,
-        mix
+        theme === 'dark' && styles.themeDark
       )}
       role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
       aria-expanded={!collapsed}

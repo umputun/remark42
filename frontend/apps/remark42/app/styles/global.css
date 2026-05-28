@@ -8,6 +8,13 @@ body {
   color: rgb(var(--primary-text-color));
   background: transparent;
   box-sizing: border-box;
+
+  /* parent resizes the iframe element to fit content via postMessage, so the
+     iframe document never needs its own scrollbar. spec-correct replacement
+     for the deprecated `scrolling="no"` attribute removed in c26f45e5 — the
+     `overflow:hidden` on the iframe ELEMENT doesn't control the iframe
+     DOCUMENT's scrollbars, that has to be set inside the document. */
+  overflow: hidden;
 }
 
 input,

@@ -301,9 +301,7 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
       ) : (
         <>
           {topComments.length > 0 &&
-            renderComments.map((id) => (
-              <Thread key={`thread-${id}`} id={id} mix={styles.thread} level={0} getPreview={getPreview} />
-            ))}
+            renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
           {isShowMoreButtonVisible && (
             <Button className={styles.moreComments} onClick={showMore}>
               <FormattedMessage id="root.show-more" defaultMessage="Show more" />
