@@ -69,7 +69,7 @@ services:
 | image.fs.path                  | IMAGE_FS_PATH                  | `./var/pictures`        | permanent location of images                             |
 | image.fs.staging               | IMAGE_FS_STAGING               | `./var/pictures.staging` | staging location of images                               |
 | image.fs.partitions            | IMAGE_FS_PARTITIONS            | `100`                   | number of image partitions                               |
-| image.bolt.file                | IMAGE_BOLT_FILE                | `/var/pictures.db`      | images bolt file location                                |
+| image.bolt.file                | IMAGE_BOLT_FILE                | `./var/pictures.db`     | images bolt file location                                |
 | image.rpc.api                  | IMAGE_RPC_API                  |                         | rpc extension api url                                    |
 | image.rpc.timeout              | IMAGE_RPC_TIMEOUT              |                         | http timeout (default: 5s)                               |
 | image.rpc.auth_user            | IMAGE_RPC_AUTH_USER            |                         | basic auth user name                                     |
@@ -109,9 +109,6 @@ services:
 | auth.custom.name-field         | AUTH_CUSTOM_NAME_FIELD         | `name`                  | user info field used as display name                     |
 | auth.custom.picture-field      | AUTH_CUSTOM_PICTURE_FIELD      | `picture`               | user info field used as avatar URL                       |
 | auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field used as email                            |
-
-Custom OAuth2 integration currently supports only one custom provider at a time, and `AUTH_CUSTOM_NAME` must match `^[a-z0-9][a-z0-9_-]*$`.
-
 | auth.telegram                  | AUTH_TELEGRAM                  | `false`                 | Enable Telegram auth (telegram.token must be present)    |
 | auth.yandex.cid                | AUTH_YANDEX_CID                |                         | Yandex OAuth client ID                                   |
 | auth.yandex.csec               | AUTH_YANDEX_CSEC               |                         | Yandex OAuth client secret                               |
@@ -128,7 +125,7 @@ Custom OAuth2 integration currently supports only one custom provider at a time,
 | notify.slack.token             | NOTIFY_SLACK_TOKEN             |                         | Slack token                                              |
 | notify.slack.chan              | NOTIFY_SLACK_CHAN              | `general`               | Slack channel for admin notifications                    |
 | notify.webhook.url             | NOTIFY_WEBHOOK_URL             |                         | Webhook notification URL for admin notifications         |
-| notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": {{.Text | escapeJSONString}}}`  | Webhook payload template                 |
+| notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": {{.Text \| escapeJSONString}}}` | Webhook payload template (Go text/template) |
 | notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                         | HTTP header in format Header1:Value1,Header2:Value2,...  |
 | notify.webhook.timeout         | NOTIFY_WEBHOOK_TIMEOUT         | `5s`                    | Webhook connection timeout                               |
 | notify.email.from_address      | NOTIFY_EMAIL_FROM              |                         | from email address (e.g. `john.doe@example.com` or `"John Doe"<john.doe@example.com>`) |
@@ -183,6 +180,10 @@ Custom OAuth2 integration currently supports only one custom provider at a time,
 - command-line parameters are long-form `--<key>=value`, i.e., `--site=https://demo.remark42.com`
 - _multi_ parameters separated by `,` in the environment or repeated with command-line keys, like `--site=s1 --site=s2 ...`
 - _required_ parameters have to be presented in the environment or provided in the command-line
+
+### Custom OAuth2 integration
+
+Custom OAuth2 integration currently supports only one custom provider at a time, and `AUTH_CUSTOM_NAME` must match `^[a-z0-9][a-z0-9_-]*$`.
 
 ### Security Considerations for auth.send-jwt-header
 
