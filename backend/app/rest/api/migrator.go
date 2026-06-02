@@ -74,21 +74,40 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 256*1024*1024) // hard cap on upload to prevent memory exhaustion
-	if err := r.ParseMultipartForm(20 * 1024 * 1024); err != nil { // 20M max memory, if bigger will make a file
+	reader, err := r.MultipartReader()
+	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
 		return
 	}
 
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get import file from the request", rest.ErrInternal)
-		return
-	}
-	defer func() { _ = file.Close() }()
+	tmpfile := ""
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+			return
+		}
+		if part.FormName() != "file" {
+			_ = part.Close()
+			continue
+		}
 
-	tmpfile, err := m.saveTemp(file)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+		tmpfile, err = m.saveTemp(part)
+		if closeErr := part.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+			return
+		}
+		break
+	}
+	if tmpfile == "" {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("file field missing"),
+			"can't get import file from the request", rest.ErrInternal)
 		return
 	}
 

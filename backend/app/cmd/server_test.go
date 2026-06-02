@@ -548,6 +548,34 @@ func TestServerApp_MainSignal(t *testing.T) {
 	assert.True(t, time.Since(st).Seconds() < 5, "should take under five sec", time.Since(st).Seconds())
 }
 
+func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
+	port := chooseRandomUnusedPort()
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		return o
+	})
+	cancel()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+		app.Wait()
+	case <-time.After(time.Second):
+		waitForHTTPServerStart(port)
+		app.restSrv.Shutdown()
+		select {
+		case <-errCh:
+			app.Wait()
+		case <-time.After(time.Second):
+			t.Fatal("server app did not stop after forced REST shutdown")
+		}
+		t.Fatal("server app should exit when context is canceled before REST server starts")
+	}
+}
+
 func TestServerApp_DeprecatedArgs(t *testing.T) {
 	s := ServerCommand{}
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})

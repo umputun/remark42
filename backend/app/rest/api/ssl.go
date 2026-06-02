@@ -2,8 +2,10 @@ package api
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -66,12 +68,31 @@ func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
 
 func (s *Rest) redirectHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newURL := s.RemarkURL + r.URL.Path
-		if r.URL.RawQuery != "" {
-			newURL += "?" + r.URL.RawQuery
+		newURL, err := s.redirectURL(r)
+		if err != nil {
+			log.Printf("[WARN] failed to build redirect URL, %s", err)
+			http.Error(w, "invalid redirect URL", http.StatusInternalServerError)
+			return
 		}
 		http.Redirect(w, r, newURL, http.StatusTemporaryRedirect)
 	})
+}
+
+func (s *Rest) redirectURL(r *http.Request) (string, error) {
+	baseURL, err := url.Parse(s.RemarkURL)
+	if err != nil {
+		return "", fmt.Errorf("parse remark URL: %w", err)
+	}
+	if baseURL.Scheme != "http" && baseURL.Scheme != "https" || baseURL.Host == "" {
+		return "", fmt.Errorf("remark URL must be absolute HTTP(S) URL")
+	}
+
+	basePath := strings.TrimRight(baseURL.Path, "/")
+	requestPath := "/" + strings.TrimLeft(r.URL.Path, "/")
+	baseURL.Path = basePath + requestPath
+	baseURL.RawQuery = r.URL.RawQuery
+	baseURL.Fragment = ""
+	return baseURL.String(), nil
 }
 
 func (s *Rest) makeAutocertManager() *autocert.Manager {

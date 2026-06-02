@@ -71,10 +71,11 @@ type Rest struct {
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 	ExternalImageProxy         bool
 
-	SSLConfig   SSLConfig
-	httpsServer *http.Server
-	httpServer  *http.Server
-	lock        sync.Mutex
+	SSLConfig         SSLConfig
+	httpsServer       *http.Server
+	httpServer        *http.Server
+	shutdownRequested bool
+	lock              sync.Mutex
 
 	pubRest          public
 	privRest         private
@@ -117,6 +118,11 @@ func (s *Rest) Run(address string, port int) {
 		s.lock.Lock()
 		s.httpServer = s.makeHTTPServer(address, port, s.routes())
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 		s.lock.Unlock()
 
 		err := s.httpServer.ListenAndServe()
@@ -130,6 +136,11 @@ func (s *Rest) Run(address string, port int) {
 
 		s.httpServer = s.makeHTTPServer(address, port, s.httpToHTTPSRouter())
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 		s.lock.Unlock()
 
 		go func() {
@@ -150,6 +161,11 @@ func (s *Rest) Run(address string, port int) {
 
 		s.httpServer = s.makeHTTPServer(address, port, s.httpChallengeRouter(m))
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 
 		s.lock.Unlock()
 
@@ -171,6 +187,7 @@ func (s *Rest) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	s.lock.Lock()
+	s.shutdownRequested = true
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.Printf("[DEBUG] http shutdown error, %s", err)
