@@ -8,15 +8,11 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"net/mail"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v8"
-	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -573,192 +569,6 @@ func URLKeyWithUser(r *http.Request) string {
 	return key
 }
 
-// rejectAnonUser is a middleware rejecting anonymous users
-func rejectAnonUser(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		if strings.HasPrefix(user.ID, "anonymous_") {
-			http.Error(w, "Access denied", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-// matchSiteID is a middleware rejecting users with mismatch between site param and and User.SiteID
-func matchSiteID(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// skip for basic auth user
-		if user.Name == "admin" && user.ID == "admin" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		siteID := r.URL.Query().Get("site")
-		// require an explicit site so the user.SiteID check below cannot be bypassed
-		// by simply omitting the query parameter
-		if siteID == "" || user.SiteID != siteID {
-			http.Error(w, "Access denied", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-// cacheControl is a middleware setting cache expiration. Using url+version as etag
-func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
-	etag := func(r *http.Request, version string) string {
-		s := version + ":" + r.URL.String()
-		return store.EncodeID(s)
-	}
-
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			e := `"` + etag(r, version) + `"`
-			w.Header().Set("Etag", e)
-			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d, no-cache", int(expiration.Seconds())))
-
-			if match := r.Header.Get("If-None-Match"); match != "" {
-				if strings.Contains(match, e) {
-					w.WriteHeader(http.StatusNotModified)
-					return
-				}
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
-// apiCSPMiddleware overrides the global Content-Security-Policy on /api/v1 routes
-// with a strict, default-deny policy. The global CSP (securityHeadersMiddleware) keeps
-// 'self' 'unsafe-inline' for script-src/style-src because the widget HTML pages
-// (/web/*.html) need inline bootstrap blocks. API responses serve JSON, XML/RSS, or
-// images — none of those should ever execute scripts when rendered, so they get the
-// strictest policy available as defense-in-depth against future trust-boundary bugs.
-//
-// Image-serving handlers (/api/v1/img, /api/v1/picture/{user}/{id}) re-apply the same
-// rest.StrictImageCSP value at the handler level and additionally set Content-Disposition:
-// inline; filename="image" (framing the response as a file rather than a renderable
-// document) and X-Content-Type-Options: nosniff. The CSP re-apply is intentional belt-and-
-// braces: if a future route refactor bypasses this middleware, the image handlers still
-// emit the policy.
-func apiCSPMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", rest.StrictImageCSP)
-		next.ServeHTTP(w, r)
-	})
-}
-
-// securityHeadersMiddleware sets security-related headers:
-//   - Content-Security-Policy: controls which resources the browser is allowed to load
-//   - Permissions-Policy: disables browser features (camera, mic, etc.) not needed by a comment widget
-//   - X-Content-Type-Options: prevents browsers from MIME-sniffing responses away from the declared type,
-//     stopping e.g. a user-uploaded image from being reinterpreted as executable HTML/JS
-//   - Referrer-Policy: controls how much URL information leaks in the Referer header on cross-origin
-//     requests; "strict-origin-when-cross-origin" sends only the origin (no path) to other domains
-//     and nothing at all on HTTPS→HTTP downgrades
-func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			imgSrc := "*"
-			if imageProxyEnabled {
-				imgSrc = "'self'"
-			}
-			frameAncestors := "*"
-			if len(allowedAncestors) > 0 {
-				frameAncestors = strings.Join(allowedAncestors, " ")
-			}
-			// font-src is set to 'none' (no @font-face / no base64 fonts in the bundle).
-			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'none'; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
-			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// subscribersOnly is a middleware rejecting non-paid_sub users
-func subscribersOnly(enable bool) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			if enable {
-				user, err := rest.GetUserInfo(r)
-				if err != nil {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-				if !user.PaidSub {
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
-// validEmailAuth is a middleware for auth endpoints for email method.
-// it rejects login request if user, site or email are suspicious
-func validEmailAuth() func(http.Handler) http.Handler {
-
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
-	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_.-]{1,64}$`)
-
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-
-			if r.URL.Path != "/auth/email/login" {
-				// not email login, skip the check
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			if u := r.URL.Query().Get("user"); u != "" {
-				if !reUser.MatchString(u) {
-					log.Printf("[WARN] suspicious user rejected: %s", u)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			if a := r.URL.Query().Get("address"); a != "" {
-				if _, err := mail.ParseAddress(a); err != nil {
-					log.Printf("[WARN] suspicious address rejected: %s", a)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			if s := r.URL.Query().Get("site"); s != "" {
-				if !reSite.MatchString(s) {
-					log.Printf("[WARN] suspicious site rejected: %s", s)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
 func parseError(err error, defaultCode int) (code int) {
 	code = defaultCode
 
@@ -781,17 +591,4 @@ func parseError(err error, defaultCode int) (code int) {
 	}
 
 	return code
-}
-
-// rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
-// tollbooth v8 requires explicit IP lookup method to be set.
-// uses RemoteAddr which is set by rest.RealIP to the real client IP
-// from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
-func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
-	lmt := tollbooth.NewLimiter(maxReq, nil)
-	lmt.SetIPLookup(limiter.IPLookup{
-		Name:           "RemoteAddr",
-		IndexFromRight: 0,
-	})
-	return tollbooth.HTTPMiddleware(lmt)
 }
