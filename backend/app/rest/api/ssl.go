@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -8,12 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/go-pkgz/lgr"
-	"golang.org/x/crypto/acme/autocert"
-
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/routegroup"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 // sslMode defines ssl mode for rest server
@@ -42,13 +41,13 @@ type SSLConfig struct {
 
 // httpToHTTPSRouter creates new router which does redirect from http to https server
 // with default middlewares. Used in 'static' ssl mode.
-func (s *Rest) httpToHTTPSRouter() chi.Router {
-	log.Printf("[DEBUG] create https-to-http redirect routes")
-	router := chi.NewRouter()
-	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
+func (s *Rest) httpToHTTPSRouter() http.Handler {
+	log.Printf("[DEBUG] create http-to-https redirect routes")
+	router := routegroup.New(http.NewServeMux())
+	router.Use(R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), timeout(60*time.Second))
 
-	router.Handle("/*", s.redirectHandler())
+	router.Handle("/", s.redirectHandler())
 	return router
 }
 
@@ -56,14 +55,34 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 // with default middlewares. This part is necessary to obtain certificate from LE.
 // If it receives not a acme challenge it performs redirect to https server.
 // Used in 'auto' ssl mode.
-func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
+func (s *Rest) httpChallengeRouter(m *autocert.Manager) http.Handler {
 	log.Printf("[DEBUG] create http-challenge routes")
-	router := chi.NewRouter()
-	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
-	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
+	router := routegroup.New(http.NewServeMux())
+	router.Use(R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), timeout(60*time.Second))
 
-	router.Handle("/*", m.HTTPHandler(s.redirectHandler()))
+	router.Handle("/", m.HTTPHandler(s.redirectHandler()))
 	return router
+}
+
+// timeout returns a middleware matching chi's middleware.Timeout: it sets a
+// deadline on the request context and writes 504 Gateway Timeout if the
+// deadline is exceeded. The 504 is sent once the downstream handler returns
+// after observing the canceled context; a handler that ignores r.Context()
+// is not aborted.
+func timeout(d time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), d)
+			defer func() {
+				cancel()
+				if ctx.Err() == context.DeadlineExceeded {
+					w.WriteHeader(http.StatusGatewayTimeout)
+				}
+			}()
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func (s *Rest) redirectHandler() http.Handler {
