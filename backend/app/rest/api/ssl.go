@@ -45,6 +45,7 @@ type SSLConfig struct {
 func (s *Rest) httpToHTTPSRouter() chi.Router {
 	log.Printf("[DEBUG] create https-to-http redirect routes")
 	router := chi.NewRouter()
+	//nolint:staticcheck // SA1019: chi v5.3.0 deprecated middleware.RealIP for spoofing concerns; remark42 runs behind a trusted reverse proxy and changing IP detection is a behavior change tracked separately
 	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 
@@ -59,6 +60,7 @@ func (s *Rest) httpToHTTPSRouter() chi.Router {
 func (s *Rest) httpChallengeRouter(m *autocert.Manager) chi.Router {
 	log.Printf("[DEBUG] create http-challenge routes")
 	router := chi.NewRouter()
+	//nolint:staticcheck // SA1019: chi v5.3.0 deprecated middleware.RealIP for spoofing concerns; remark42 runs behind a trusted reverse proxy and changing IP detection is a behavior change tracked separately
 	router.Use(middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(middleware.Throttle(1000), middleware.Timeout(60*time.Second))
 

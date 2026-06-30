@@ -13,11 +13,11 @@ require (
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
-	github.com/alecthomas/chroma/v2 v2.24.1 // indirect
-	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
+	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.2 // indirect
 	github.com/go-pkgz/rest v1.21.0 // indirect
 	github.com/go-pkgz/routegroup v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
@@ -29,11 +29,11 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	go.etcd.io/bbolt v1.4.3 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/image v0.40.0 // indirect
-	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	go.etcd.io/bbolt v1.5.0 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/image v0.43.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
