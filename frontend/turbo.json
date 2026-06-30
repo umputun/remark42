@@ -1,7 +1,6 @@
 {
-  "$schema": "https://turborepo.org/schema.json",
-  "baseBranch": "origin/master",
-  "pipeline": {
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
     "dev": {},
     "start": {},
     "build": {
