@@ -221,7 +221,7 @@ func (s *Rest) routes() chi.Router {
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := chi.NewRouter()
-	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
