@@ -26,12 +26,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.4
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 10.10.0
           run_install: false
@@ -62,12 +62,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.4
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 10.10.0
           run_install: false
@@ -98,12 +98,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.4
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 10.10.0
           run_install: false
@@ -134,12 +134,12 @@ jobs:
       CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.4
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 10.10.0
           run_install: false
@@ -162,12 +162,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.4
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 10.10.0
           run_install: false
@@ -188,7 +188,7 @@ jobs:
         working-directory: ./frontend/apps/remark42
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
