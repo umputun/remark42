@@ -26,6 +26,14 @@ type Scanner = hscan.Scanner
 // Nil reply returned by Redis when key does not exist.
 const Nil = proto.Nil
 
+// String representations of special float values.
+// Values are lowercase for consistency with Redis RESP2 protocol responses.
+const (
+	NaN  = internal.NaN  // Not a Number
+	Inf  = internal.Inf  // Positive infinity
+	NInf = internal.NInf // Negative infinity
+)
+
 // SetLogger set custom log
 // Use with VoidLogger to disable logging.
 // If logger is nil, the call is ignored and the existing logger is kept.
@@ -693,11 +701,24 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 
 	var maintNotifHandshakeErr error
 	if maintNotifEnabled && protocol == 3 {
+		// Hold the manager read lock across the handshake and tracking so a
+		// concurrent downgrade cannot remove pool-level listeners before a
+		// successfully enabled connection is tracked for retirement.
+		c.maintNotificationsManagerLock.RLock()
+		manager := c.maintNotificationsManager
 		maintNotifHandshakeErr = conn.ClientMaintNotifications(
 			ctx,
 			true,
 			endpointType.String(),
 		).Err()
+		// A successful handshake enables maintnotifications for this connection,
+		// but must not promote ModeAuto to ModeEnabled. ModeEnabled is the
+		// explicit fail-closed policy; ModeAuto must remain able to downgrade if a
+		// later reconnect/failover reaches an endpoint that rejects the command.
+		if maintNotifHandshakeErr == nil && manager != nil {
+			manager.TrackMaintNotificationsConn(cn)
+		}
+		c.maintNotificationsManagerLock.RUnlock()
 		if maintNotifHandshakeErr != nil {
 			if !isRedisError(maintNotifHandshakeErr) {
 				// if not redis error, fail the connection
@@ -730,13 +751,6 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 					internal.Logger.Printf(ctx, "failed to disable maintnotifications in auto mode: %v", initErr)
 				}
 			}
-		} else {
-			// handshake was executed successfully
-			// to make sure that the handshake will be executed on other connections as well if it was successfully
-			// executed on this connection, we will force the handshake to be executed on all connections
-			c.optLock.Lock()
-			c.opt.MaintNotificationsConfig.Mode = maintnotifications.ModeEnabled
-			c.optLock.Unlock()
 		}
 	}
 
@@ -936,16 +950,9 @@ func classifyCommandError(err error) (errorType, statusCode string, isInternal b
 }
 
 func (c *baseClient) assertUnstableCommand(cmd Cmder) (bool, error) {
-	switch cmd.(type) {
-	case *AggregateCmd, *FTInfoCmd, *FTSpellCheckCmd, *FTSearchCmd, *FTSynDumpCmd:
-		if c.opt.UnstableResp3 {
-			return true, nil
-		} else {
-			return false, fmt.Errorf("RESP3 responses for this command are disabled because they may still change. Please set the flag UnstableResp3. See the README and the release notes for guidance")
-		}
-	default:
-		return false, nil
-	}
+	// All search commands (FTSearchCmd, AggregateCmd, FTInfoCmd, FTSpellCheckCmd, FTSynDumpCmd)
+	// now have stable RESP3 parsing. No commands require the UnstableResp3 flag anymore.
+	return false, nil
 }
 
 func (c *baseClient) _process(ctx context.Context, cmd Cmder, attempt int) (bool, *pool.Conn, error) {
@@ -1068,7 +1075,9 @@ func (c *baseClient) disableMaintNotificationsUpgrades() error {
 	if c.maintNotificationsManager != nil {
 		// Closing the manager will also shutdown the pool hook
 		// and remove it from the pool
-		c.maintNotificationsManager.Close()
+		if err := c.maintNotificationsManager.Close(); err != nil {
+			return err
+		}
 		c.maintNotificationsManager = nil
 	}
 	return nil

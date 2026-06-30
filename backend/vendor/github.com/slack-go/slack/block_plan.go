@@ -39,7 +39,9 @@ func NewPlanBlock(title string, options ...PlanBlockOption) *PlanBlock {
 	}
 
 	for _, option := range options {
-		option(&block)
+		if option != nil {
+			option(&block)
+		}
 	}
 
 	return &block

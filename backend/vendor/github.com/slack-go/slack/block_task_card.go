@@ -70,7 +70,9 @@ func NewTaskCardBlock(taskID, title string, options ...TaskCardBlockOption) *Tas
 	}
 
 	for _, option := range options {
-		option(&block)
+		if option != nil {
+			option(&block)
+		}
 	}
 
 	return &block
