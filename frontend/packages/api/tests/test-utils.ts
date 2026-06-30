@@ -1,10 +1,18 @@
-import { rest, RestRequest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 export const server = setupServer()
 
+interface CapturedRequest {
+	url: URL
+	method: string
+	headers: Headers
+	json: () => Promise<unknown>
+	text: () => Promise<string>
+}
+
 interface RequestRef {
-	req: RestRequest
+	req: CapturedRequest
 }
 
 export function mockEndpoint(
@@ -20,15 +28,30 @@ export function mockEndpoint(
 	const result = { req: {} } as RequestRef
 
 	server.use(
-		rest[method](url, (req, res, ctx) => {
-			const transformers = [ctx.status(status), ctx.json(body)]
-
-			if (headers) {
-				transformers.push(ctx.set(headers))
+		http[method](url, ({ request }) => {
+			const captured = request.clone()
+			result.req = {
+				url: new URL(request.url),
+				method: request.method,
+				headers: request.headers,
+				json: () => captured.clone().json(),
+				text: () => captured.clone().text(),
 			}
 
-			result.req = req
-			return res(...transformers)
+			const responseHeaders = new Headers()
+			if (headers) {
+				for (const [key, value] of Object.entries(headers)) {
+					if (Array.isArray(value)) {
+						for (const v of value) responseHeaders.append(key, v)
+					} else {
+						responseHeaders.set(key, value)
+					}
+				}
+			}
+
+			return body === undefined
+				? new HttpResponse(null, { status, headers: responseHeaders })
+				: HttpResponse.json(body, { status, headers: responseHeaders })
 		})
 	)
 

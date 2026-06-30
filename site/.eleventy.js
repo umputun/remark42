@@ -1,5 +1,5 @@
 const { format } = require('date-fns')
-const htmlmin = require('html-minifier')
+const htmlmin = require('html-minifier-terser')
 const syntaxHighlightPlugin = require('@11ty/eleventy-plugin-syntaxhighlight')
 
 function noteContainer() {
@@ -86,7 +86,7 @@ module.exports = function (eleventyConfig) {
 	)
 
 	// Minify HTML output
-	eleventyConfig.addTransform('htmlmin', function (content, outputPath) {
+	eleventyConfig.addTransform('htmlmin', async function (content, outputPath) {
 		if (!outputPath.endsWith('.html')) {
 			return content
 		}

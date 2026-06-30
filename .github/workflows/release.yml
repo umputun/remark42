@@ -38,13 +38,13 @@ jobs:
       - name: install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
       - name: install node
         uses: actions/setup-node@v6
         with:
-          node-version: 16
+          node-version: 20
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -74,7 +74,7 @@ jobs:
         run: |
           pnpm lint
           pnpm type-check
-          pnpm test -- --runInBand
+          pnpm test --runInBand
         working-directory: frontend/apps/remark42
         env:
           CI: "true"
@@ -113,13 +113,13 @@ jobs:
       - name: install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
       - name: install node
         uses: actions/setup-node@v6
         with:
-          node-version: 16
+          node-version: 20
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 
