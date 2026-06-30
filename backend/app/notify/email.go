@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"net/url"
-	"text/template"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
 	"github.com/go-pkgz/repeater/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/umputun/remark42/backend/app/templates"
 )
@@ -42,18 +43,42 @@ type Email struct {
 type msgTmplData struct {
 	UserName          string
 	UserPicture       string
-	CommentText       string
+	CommentText       template.HTML
 	CommentLink       string
 	CommentDate       time.Time
 	ParentUserName    string
 	ParentUserPicture string
-	ParentCommentText string
+	ParentCommentText template.HTML
 	ParentCommentLink string
 	ParentCommentDate time.Time
 	PostTitle         string
 	Email             string
 	UnsubscribeLink   string
 	ForAdmin          bool
+}
+
+// emailCommentPolicy sanitizes comment HTML for inclusion in notification emails.
+// It is intentionally stricter than the store-level UGC policy used for web rendering:
+// links (<a>) and images (<img>) are dropped so a comment can't smuggle phishing links
+// or remote tracking pixels into an email sent from the legitimate remark42 address,
+// while basic inline and block text formatting is preserved.
+var emailCommentPolicy = func() *bluemonday.Policy {
+	p := bluemonday.NewPolicy()
+	p.AllowElements(
+		"p", "br", "hr", "div", "span",
+		"b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "sub", "sup", "mark", "small",
+		"blockquote", "q", "cite",
+		"code", "pre", "kbd", "samp", "var",
+		"ul", "ol", "li", "dl", "dt", "dd",
+		"h1", "h2", "h3", "h4", "h5", "h6",
+	)
+	return p
+}()
+
+// emailSafeHTML strips links and images from pre-rendered comment HTML and returns
+// it as template.HTML so html/template renders the remaining safe formatting as-is.
+func emailSafeHTML(commentHTML string) template.HTML {
+	return template.HTML(emailCommentPolicy.Sanitize(commentHTML)) //nolint:gosec // sanitized above: <a>/<img> dropped, only formatting tags survive
 }
 
 // verifyTmplData store data for verification message template execution
@@ -257,7 +282,7 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 	tmplData := msgTmplData{
 		UserName:        req.Comment.User.Name,
 		UserPicture:     req.Comment.User.Picture,
-		CommentText:     req.Comment.Text,
+		CommentText:     emailSafeHTML(req.Comment.Text),
 		CommentLink:     commentURLPrefix + req.Comment.ID,
 		CommentDate:     req.Comment.Timestamp,
 		PostTitle:       req.Comment.PostTitle,
@@ -269,7 +294,7 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 	if req.Comment.ParentID != "" {
 		tmplData.ParentUserName = req.parent.User.Name
 		tmplData.ParentUserPicture = req.parent.User.Picture
-		tmplData.ParentCommentText = req.parent.Text
+		tmplData.ParentCommentText = emailSafeHTML(req.parent.Text)
 		tmplData.ParentCommentLink = commentURLPrefix + req.parent.ID
 		tmplData.ParentCommentDate = req.parent.Timestamp
 	}
