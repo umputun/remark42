@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
@@ -228,15 +227,7 @@ func (s *Rest) routes() chi.Router {
 	if s.ProxyCORS {
 		log.Printf("[WARN] internal CORS disabled")
 	} else {
-		corsMiddleware := cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"},
-			ExposedHeaders:   []string{"Authorization"},
-			AllowCredentials: true,
-			MaxAge:           300,
-		})
-		router.Use(corsMiddleware.Handler)
+		router.Use(corsMiddleware())
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization

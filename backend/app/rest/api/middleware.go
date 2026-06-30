@@ -13,9 +13,38 @@ import (
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
 	log "github.com/go-pkgz/lgr"
+	R "github.com/go-pkgz/rest"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 )
+
+// corsMiddleware builds the CORS middleware for the public API. With AllowedOrigins
+// "*" and credentials enabled, rest.CORS reflects the request Origin into
+// Access-Control-Allow-Origin (rather than a literal "*"), which browsers require
+// for credentialed cross-origin requests.
+func corsMiddleware() func(http.Handler) http.Handler {
+	cors := R.CORS(
+		R.CorsAllowedOrigins("*"),
+		R.CorsAllowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS"),
+		R.CorsAllowedHeaders("Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"),
+		R.CorsExposedHeaders("Authorization"),
+		R.CorsAllowCredentials(true),
+		R.CorsMaxAge(300),
+	)
+	return func(next http.Handler) http.Handler {
+		corsHandler := cors(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// rest.CORS only sets "Vary: Origin"; for preflight also vary on the requested
+			// method and headers so caches/proxies don't reuse one preflight response across
+			// different requests (preserving the prior go-chi/cors behavior).
+			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+				w.Header().Add("Vary", "Access-Control-Request-Method")
+				w.Header().Add("Vary", "Access-Control-Request-Headers")
+			}
+			corsHandler.ServeHTTP(w, r)
+		})
+	}
+}
 
 // timeout returns a middleware matching chi's middleware.Timeout: it sets a
 // deadline on the request context and writes 504 Gateway Timeout if the
