@@ -8,10 +8,36 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTimeout(t *testing.T) {
+	t.Run("fast handler passes through and gets a deadline", func(t *testing.T) {
+		var gotDeadline bool
+		h := timeout(time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, gotDeadline = r.Context().Deadline()
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte("ok"))
+		}))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+		assert.True(t, gotDeadline, "request context should carry a deadline")
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, "ok", rec.Body.String())
+	})
+
+	t.Run("deadline exceeded writes 504", func(t *testing.T) {
+		h := timeout(10*time.Millisecond)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			<-r.Context().Done() // honor the context: return only once the deadline fires
+		}))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+		assert.Equal(t, http.StatusGatewayTimeout, rec.Code)
+	})
+}
 
 func TestSSL_Redirect(t *testing.T) {
 	rest := Rest{RemarkURL: "https://localhost:443"}
