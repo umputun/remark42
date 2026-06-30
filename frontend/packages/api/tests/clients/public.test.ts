@@ -8,7 +8,7 @@ interface Context {
 
 describe<Context>('Public Client', (publicClient) => {
 	beforeEach<Context>((ctx) => {
-		ctx.client = createPublicClient({ siteId: 'mysite', baseUrl: '/remark42' })
+		ctx.client = createPublicClient({ siteId: 'mysite', baseUrl: 'http://localhost/remark42' })
 	})
 
 	publicClient('getConfig: should return config', async ({ client }) => {

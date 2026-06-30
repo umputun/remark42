@@ -8,7 +8,7 @@ interface Context {
 
 describe<Context>('Admin Client', (adminClient) => {
 	beforeEach<Context>((ctx) => {
-		ctx.client = createAdminClient({ siteId: 'mysite', baseUrl: '/remark42' })
+		ctx.client = createAdminClient({ siteId: 'mysite', baseUrl: 'http://localhost/remark42' })
 	})
 
 	adminClient('should return list of blocked users', async ({ client }) => {

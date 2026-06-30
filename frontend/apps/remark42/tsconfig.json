@@ -18,7 +18,9 @@
     "sourceMap": true,
     "paths": {
       "react": ["../node_modules/preact/compat"],
-      "react-dom": ["../node_modules/preact/compat"]
+      "react-dom": ["../node_modules/preact/compat"],
+      "preact": ["../node_modules/preact"],
+      "preact/*": ["../node_modules/preact/*"]
     }
   },
   "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],

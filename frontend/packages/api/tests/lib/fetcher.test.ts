@@ -9,7 +9,7 @@ interface Context {
 
 describe<Context>('Fetcher', (fetcher) => {
 	beforeEach<Context>((ctx) => {
-		ctx.client = createFetcher('remark42', '')
+		ctx.client = createFetcher('remark42', 'http://localhost')
 	})
 
 	fetcher('get', async ({ client }) => {

@@ -8,7 +8,7 @@ interface Content {
 
 describe<Content>('Auth Client', (authClient) => {
 	beforeEach<Content>((ctx) => {
-		ctx.client = createAuthClient({ siteId: 'mysite', baseUrl: '/remark42' })
+		ctx.client = createAuthClient({ siteId: 'mysite', baseUrl: 'http://localhost/remark42' })
 	})
 
 	authClient('should authorize as anonymouse', async ({ client }) => {

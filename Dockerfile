@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:16.20-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
@@ -11,7 +11,7 @@ COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
     apk add --no-cache --update git && \
-    npm i -g pnpm@8; \
+    npm i -g pnpm@10; \
   fi
 
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \

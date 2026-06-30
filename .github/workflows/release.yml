@@ -38,13 +38,13 @@ jobs:
       - name: install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 8
+          version: 10
           run_install: false
 
       - name: install node
         uses: actions/setup-node@v6
         with:
-          node-version: 16
+          node-version: 20
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -113,13 +113,13 @@ jobs:
       - name: install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 8
+          version: 10
           run_install: false
 
       - name: install node
         uses: actions/setup-node@v6
         with:
-          node-version: 16
+          node-version: 20
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 

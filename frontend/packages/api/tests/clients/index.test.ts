@@ -3,7 +3,7 @@ import { createClient } from '../..'
 
 describe('Client', () => {
 	it('should create a client', () => {
-		const params = { siteId: 'mysite', baseUrl: '/remark42' }
+		const params = { siteId: 'mysite', baseUrl: 'http://localhost/remark42' }
 		const client = createClient(params)
 
 		expect(client).toBeDefined()
