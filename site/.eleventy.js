@@ -87,7 +87,8 @@ module.exports = function (eleventyConfig) {
 
 	// Minify HTML output
 	eleventyConfig.addTransform('htmlmin', async function (content, outputPath) {
-		if (!outputPath.endsWith('.html')) {
+		// outputPath is falsy for templates rendered without a written file (e.g. permalink: false)
+		if (!outputPath || !outputPath.endsWith('.html')) {
 			return content
 		}
 
