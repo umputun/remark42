@@ -264,3 +264,44 @@ func TestRest_matchSiteID(t *testing.T) {
 		})
 	}
 }
+
+func TestCorsMiddleware(t *testing.T) {
+	h := corsMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	t.Run("credentialed cross-origin reflects the request origin", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req.Header.Set("Origin", "https://example.com")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		// AllowedOrigins "*" with credentials must reflect the origin, never a literal "*"
+		assert.Equal(t, "https://example.com", rec.Header().Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "true", rec.Header().Get("Access-Control-Allow-Credentials"))
+		assert.Equal(t, "Authorization", rec.Header().Get("Access-Control-Expose-Headers"))
+	})
+
+	t.Run("preflight advertises configured methods, headers and max-age", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/", http.NoBody)
+		req.Header.Set("Origin", "https://example.com")
+		req.Header.Set("Access-Control-Request-Method", "POST")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Contains(t, rec.Header().Get("Access-Control-Allow-Methods"), "POST")
+		assert.Contains(t, rec.Header().Get("Access-Control-Allow-Headers"), "X-JWT")
+		assert.Equal(t, "300", rec.Header().Get("Access-Control-Max-Age"))
+		// preflight responses must vary on origin and the request method/headers so caches
+		// don't reuse one preflight across different requests
+		vary := rec.Header().Values("Vary")
+		assert.Contains(t, vary, "Origin")
+		assert.Contains(t, vary, "Access-Control-Request-Method")
+		assert.Contains(t, vary, "Access-Control-Request-Headers")
+	})
+
+	t.Run("same-origin request (no Origin) gets no CORS headers", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+		assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+	})
+}
