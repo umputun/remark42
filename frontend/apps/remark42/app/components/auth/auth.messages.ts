@@ -67,6 +67,6 @@ export const messages = defineMessages<string>({
   },
   noProviders: {
     id: 'auth.no-providers',
-    defaultMessage: 'No providers available. May be you forgot to enable them?',
+    defaultMessage: 'No providers available. Maybe you forgot to enable them?',
   },
 });

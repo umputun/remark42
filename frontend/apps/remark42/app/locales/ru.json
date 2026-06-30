@@ -2,6 +2,7 @@
   "auth.back": "Назад",
   "auth.email-address": "Адрес эл. почты",
   "auth.loading": "Загрузка...",
+  "auth.no-providers": "Нет доступных провайдеров. Возможно, вы забыли их включить?",
   "auth.oauth-button": "Войти через {provider}",
   "auth.oauth-source": "Использовать социальные сети",
   "auth.open-profile": "Открыть Мой Профиль",

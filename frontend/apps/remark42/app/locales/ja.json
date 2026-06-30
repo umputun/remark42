@@ -2,6 +2,7 @@
   "auth.back": "戻る",
   "auth.email-address": "メールアドレス",
   "auth.loading": "読み込んでいます…",
+  "auth.no-providers": "利用可能なプロバイダーがありません。有効にするのを忘れていませんか？",
   "auth.oauth-button": "{provider} でサインイン",
   "auth.oauth-source": "ソーシャルネットワークを使用",
   "auth.open-profile": "マイプロファイルを開く",

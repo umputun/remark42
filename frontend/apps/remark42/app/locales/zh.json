@@ -2,6 +2,7 @@
   "auth.back": "返回",
   "auth.email-address": "电子邮件地址",
   "auth.loading": "加载中...",
+  "auth.no-providers": "没有可用的提供商。也许您忘记启用它们了？",
   "auth.oauth-button": "通过 {provider} 登录",
   "auth.oauth-source": "通过社交网络",
   "auth.open-profile": "打开我的资料",

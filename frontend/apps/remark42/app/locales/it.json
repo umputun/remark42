@@ -2,6 +2,7 @@
   "auth.back": "Indietro",
   "auth.email-address": "Indirizzo email",
   "auth.loading": "Caricamento...",
+  "auth.no-providers": "Nessun provider disponibile. Forse hai dimenticato di abilitarli?",
   "auth.oauth-button": "Accedi con {provider}",
   "auth.oauth-source": "Usa un Social Network",
   "auth.open-profile": "Apri il mio profilo",

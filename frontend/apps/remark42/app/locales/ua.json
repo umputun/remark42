@@ -2,6 +2,7 @@
   "auth.back": "Назад",
   "auth.email-address": "Email адреса",
   "auth.loading": "Завантаження...",
+  "auth.no-providers": "Немає доступних провайдерів. Можливо, ви забули їх увімкнути?",
   "auth.oauth-button": "Увійти за допомогою {provider}",
   "auth.oauth-source": "Використати соціальну мережу",
   "auth.open-profile": "Відкрити мій профіль",

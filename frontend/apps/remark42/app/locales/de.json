@@ -2,6 +2,7 @@
   "auth.back": "Zurück",
   "auth.email-address": "E-Mail-Adresse",
   "auth.loading": "Wird geladen ...",
+  "auth.no-providers": "Keine Anbieter verfügbar. Vielleicht haben Sie vergessen, sie zu aktivieren?",
   "auth.oauth-button": "Mit {provider} anmelden",
   "auth.oauth-source": "Soziales Netzwerk verwenden",
   "auth.open-profile": "Mein Profil öffnen",

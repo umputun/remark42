@@ -2,6 +2,7 @@
   "auth.back": "رجوع",
   "auth.email-address": "البريد الإلكتروني",
   "auth.loading": "جارٍ التحميل...",
+  "auth.no-providers": "لا يوجد مزوّدون متاحون. ربما نسيت تفعيلهم؟",
   "auth.oauth-button": "سجل دخولاً عبر {provider}",
   "auth.oauth-source": "عبر التواصل الاجتماعي",
   "auth.open-profile": "الصفحة الشخصية",

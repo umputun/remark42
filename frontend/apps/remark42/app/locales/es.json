@@ -2,6 +2,7 @@
   "auth.back": "Regresar",
   "auth.email-address": "Correo electrónico",
   "auth.loading": "Cargando...",
+  "auth.no-providers": "No hay proveedores disponibles. ¿Quizás olvidó habilitarlos?",
   "auth.oauth-button": "Iniciar sesión con {provider}",
   "auth.oauth-source": "Inicia sesión con tus redes sociales",
   "auth.open-profile": "Abrir mi perfil",

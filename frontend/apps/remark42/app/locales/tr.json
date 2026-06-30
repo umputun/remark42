@@ -2,6 +2,7 @@
   "auth.back": "Geri",
   "auth.email-address": "E-posta adresi",
   "auth.loading": "Yükleniyor...",
+  "auth.no-providers": "Kullanılabilir sağlayıcı yok. Belki de etkinleştirmeyi unuttunuz?",
   "auth.oauth-button": "{provider} ile Oturum Aç",
   "auth.oauth-source": "Sosyal Ağ Kullan",
   "auth.open-profile": "Open My Profile",
