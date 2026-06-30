@@ -41,7 +41,11 @@ export function mockEndpoint(
 			const responseHeaders = new Headers()
 			if (headers) {
 				for (const [key, value] of Object.entries(headers)) {
-					responseHeaders.set(key, Array.isArray(value) ? value.join(', ') : value)
+					if (Array.isArray(value)) {
+						for (const v of value) responseHeaders.append(key, v)
+					} else {
+						responseHeaders.set(key, value)
+					}
 				}
 			}
 

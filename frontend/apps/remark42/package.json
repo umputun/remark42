@@ -22,8 +22,8 @@
     "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {
-    "node": ">=16.15",
-    "pnpm": ">=8"
+    "node": ">=18",
+    "pnpm": ">=10"
   },
   "packageManager": "pnpm@10.10.0",
   "dependencies": {
