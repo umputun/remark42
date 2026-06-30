@@ -2,6 +2,7 @@
   "auth.back": "Powrót",
   "auth.email-address": "Adres email",
   "auth.loading": "Ładuję...",
+  "auth.no-providers": "Brak dostępnych dostawców. Może zapomniałeś ich włączyć?",
   "auth.oauth-button": "Zaloguj się korzystając z {provider}",
   "auth.oauth-source": "Użyj sieci społecznościowej",
   "auth.open-profile": "Otwórz mój profil",

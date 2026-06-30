@@ -2,6 +2,7 @@
   "auth.back": "ย้อนกลับ",
   "auth.email-address": "อีเมลล์",
   "auth.loading": "กำลังโหลด",
+  "auth.no-providers": "ไม่มีผู้ให้บริการที่พร้อมใช้งาน คุณอาจลืมเปิดใช้งานหรือไม่?",
   "auth.oauth-button": "เข้าสู่ระบบด้วย {provider}",
   "auth.oauth-source": "เข้าสู่ระบบง่ายๆด้วย",
   "auth.open-profile": "เปิดโปรไฟล์ของฉัน",

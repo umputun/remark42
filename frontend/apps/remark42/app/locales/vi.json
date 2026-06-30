@@ -2,6 +2,7 @@
   "auth.back": "Quay lại",
   "auth.email-address": "Địa chỉ email",
   "auth.loading": "Đang tải...",
+  "auth.no-providers": "Không có nhà cung cấp nào khả dụng. Có thể bạn đã quên bật chúng?",
   "auth.oauth-button": "Đăng nhập với {provider}",
   "auth.oauth-source": "Dùng mạng xã hội",
   "auth.open-profile": "Mở hồ sơ của tôi",

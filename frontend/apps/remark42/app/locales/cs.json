@@ -2,6 +2,7 @@
   "auth.back": "Zpět",
   "auth.email-address": "Emailová adresa",
   "auth.loading": "Načítání...",
+  "auth.no-providers": "Nejsou k dispozici žádní poskytovatelé. Možná jste je zapomněli povolit?",
   "auth.oauth-button": "Přihlásit se pomocí {provider}",
   "auth.oauth-source": "Použít sociální sítě",
   "auth.open-profile": "Otevřít můj profil",

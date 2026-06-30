@@ -2,6 +2,7 @@
   "auth.back": "Назад",
   "auth.email-address": "Email адрас",
   "auth.loading": "Загрузка...",
+  "auth.no-providers": "Няма даступных правайдараў. Магчыма, вы забыліся іх уключыць?",
   "auth.oauth-button": "Увайсці праз {provider}",
   "auth.oauth-source": "Скарыстацца сацыяльнай сеткай",
   "auth.open-profile": "Open My Profile",

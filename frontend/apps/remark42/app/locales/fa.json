@@ -2,6 +2,7 @@
   "auth.back": "بازگشت",
   "auth.email-address": "آدرس ایمیل",
   "auth.loading": "در حال بارگذاری...",
+  "auth.no-providers": "هیچ ارائه‌دهنده‌ای در دسترس نیست. شاید فراموش کرده‌اید آن‌ها را فعال کنید؟",
   "auth.oauth-button": "ورود با {provider}",
   "auth.oauth-source": "استفاده از شبکه اجتماعی",
   "auth.open-profile": "نمایش پروفایل من",

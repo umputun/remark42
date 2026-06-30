@@ -2,6 +2,7 @@
   "auth.back": "Înapoi",
   "auth.email-address": "Adresă de email",
   "auth.loading": "Se încarcă...",
+  "auth.no-providers": "Niciun furnizor disponibil. Poate ați uitat să îi activați?",
   "auth.oauth-button": "Autentifică-te cu {provider}",
   "auth.oauth-source": "Folosește rețeaua socială",
   "auth.open-profile": "Deschide profilul meu",

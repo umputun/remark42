@@ -2,6 +2,7 @@
   "auth.back": "返回",
   "auth.email-address": "電子郵件地址",
   "auth.loading": "載入中...",
+  "auth.no-providers": "沒有可用的提供者。也許您忘記啟用它們了？",
   "auth.oauth-button": "透過 {provider} 登入",
   "auth.oauth-source": "透過社群網路",
   "auth.open-profile": "檢視我的個人資料",
