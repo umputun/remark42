@@ -3,8 +3,8 @@ package notify
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"testing"
-	"text/template"
 
 	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
@@ -164,7 +164,7 @@ User: test_user
 01.01.0001 at 00:00
 Comment: 
 test@example.org  for parent_user
-Unsubscribe link: https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token
+Unsubscribe link: https://remark42.com/api/v1/email/unsubscribe?site=&amp;tkn=token
 `, msg.body)
 	assert.Equal(t, "https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token", msg.unsubscribeLink)
 	assert.Equal(t, `New reply to your comment for "test_title"`, msg.subject)
@@ -188,6 +188,50 @@ admin@example.org
 `, msg.body)
 	assert.Equal(t, `New comment to your site for "test_title"`, msg.subject)
 	assert.Empty(t, msg.unsubscribeLink)
+}
+
+func TestEmail_CommentTextSanitizedForEmail(t *testing.T) {
+	// comment HTML reaching the email path is sanitized by the store-level UGC policy,
+	// which permits <a> and <img>. The email must drop both so a comment can't inject
+	// phishing links or remote tracking pixels into a notification (GHSA-74pc-3r2m-ppx3).
+	email, err := NewEmail(EmailParams{
+		From:            "from@example.org",
+		MsgTemplatePath: "testdata/msg.html.tmpl",
+	}, ntf.SMTPParams{})
+	require.NoError(t, err)
+	email.TokenGenFn = TokenGenFn
+
+	malicious := `hello <a href="https://phishing.example/verify">click to verify</a>` +
+		` <img src="https://attacker.example/track.png" width="1" height="1"> <b>kept</b>`
+	req := Request{
+		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title", Text: malicious},
+		Emails:  []string{"test@example.org"},
+	}
+	msg, err := email.buildMessageFromRequest(req, req.Emails[0], false)
+	require.NoError(t, err)
+
+	assert.NotContains(t, msg.body, "phishing.example", "phishing link must be stripped")
+	assert.NotContains(t, msg.body, "attacker.example", "tracking pixel must be stripped")
+	assert.NotContains(t, msg.body, "<img", "no image tags in email body")
+	assert.NotContains(t, msg.body, "<a ", "no anchor tags in email body")
+	assert.Contains(t, msg.body, "click to verify", "anchor text is preserved, only the link is dropped")
+	assert.Contains(t, msg.body, "<b>kept</b>", "basic formatting is preserved")
+}
+
+// emailSafeHTML drops links/images while keeping inline/block formatting and escaping nothing extra.
+func TestEmailSafeHTML(t *testing.T) {
+	tbl := []struct{ name, in, want string }{
+		{"strips anchor keeps text", `<a href="http://evil">x</a>`, "x"},
+		{"strips image entirely", `a<img src="http://evil/t.png">b`, "ab"},
+		{"keeps bold/italic/code", `<b>b</b><i>i</i><code>c</code>`, `<b>b</b><i>i</i><code>c</code>`},
+		{"keeps blockquote and lists", `<blockquote>q</blockquote><ul><li>x</li></ul>`, `<blockquote>q</blockquote><ul><li>x</li></ul>`},
+		{"drops onclick handlers", `<span onclick="alert(1)">s</span>`, `<span>s</span>`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, string(emailSafeHTML(tt.in)))
+		})
+	}
 }
 
 func TestEmail_SendVerification(t *testing.T) {
