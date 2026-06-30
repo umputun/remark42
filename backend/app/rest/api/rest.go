@@ -251,7 +251,7 @@ func (s *Rest) routes() chi.Router {
 
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, rateLimiter(2), middleware.NoCache)
+		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Mount("/auth", authHandler)
 	})
@@ -277,7 +277,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(ropen chi.Router) {
 			ropen.Use(middleware.Timeout(30 * time.Second))
 			ropen.Use(rateLimiter(s.openRouteLimiter))
-			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
+			ropen.Use(authMiddleware.Trace, R.NoCache, logInfoWithBody)
 			ropen.Get("/config", s.configCtrl)
 			ropen.Get("/find", s.pubRest.findCommentsCtrl)
 			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
@@ -296,7 +296,7 @@ func (s *Rest) routes() chi.Router {
 		})
 
 		// open routes, cached. /img lives here (not in the NoCache group above) because
-		// middleware.NoCache strips If-None-Match from incoming requests, which would
+		// R.NoCache strips If-None-Match from incoming requests, which would
 		// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
 		// max-age on validated success responses (with a versioned etag for cache
 		// invalidation on revalidation); error responses get Cache-Control: no-store
@@ -314,7 +314,7 @@ func (s *Rest) routes() chi.Router {
 		rapi.Group(func(rauth chi.Router) {
 			rauth.Use(middleware.Timeout(30 * time.Second))
 			rauth.Use(rateLimiter(10))
-			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
+			rauth.Use(authMiddleware.Auth, matchSiteID, R.NoCache, logInfoWithBody)
 			rauth.Get("/user", s.privRest.userInfoCtrl)
 			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
 		})
@@ -324,7 +324,7 @@ func (s *Rest) routes() chi.Router {
 			radmin.Use(middleware.Timeout(30 * time.Second))
 			radmin.Use(rateLimiter(10))
 			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
-			radmin.Use(middleware.NoCache, logInfoWithBody)
+			radmin.Use(R.NoCache, logInfoWithBody)
 
 			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
 			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
@@ -350,7 +350,7 @@ func (s *Rest) routes() chi.Router {
 			rauth.Use(middleware.Timeout(10 * time.Second))
 			rauth.Use(rateLimiter(s.updateLimiter()))
 			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
-			rauth.Use(middleware.NoCache, logInfoWithBody)
+			rauth.Use(R.NoCache, logInfoWithBody)
 
 			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
 			rauth.Post("/preview", s.privRest.previewCommentCtrl)
