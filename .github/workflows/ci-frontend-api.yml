@@ -33,7 +33,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 10
+          version: 10.10.0
           run_install: false
 
       - name: Install node
@@ -69,7 +69,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 10
+          version: 10.10.0
           run_install: false
 
       - name: Install node
@@ -105,7 +105,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.4
         with:
-          version: 10
+          version: 10.10.0
           run_install: false
 
       - name: Install node
