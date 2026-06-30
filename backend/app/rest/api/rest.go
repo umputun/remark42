@@ -221,7 +221,7 @@ func (s *Rest) routes() chi.Router {
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := chi.NewRouter()
-	router.Use(R.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), R.RealIP, R.Recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
@@ -785,7 +785,7 @@ func parseError(err error, defaultCode int) (code int) {
 
 // rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
 // tollbooth v8 requires explicit IP lookup method to be set.
-// uses RemoteAddr which is set by chi's middleware.RealIP to the real client IP
+// uses RemoteAddr which is set by rest.RealIP to the real client IP
 // from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
 func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 	lmt := tollbooth.NewLimiter(maxReq, nil)
