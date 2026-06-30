@@ -45,7 +45,6 @@ github.com/dlclark/regexp2/v2/syntax
 # github.com/go-chi/chi/v5 v5.2.5
 ## explicit; go 1.22
 github.com/go-chi/chi/v5
-github.com/go-chi/chi/v5/middleware
 # github.com/go-chi/cors v1.2.2
 ## explicit; go 1.14
 github.com/go-chi/cors
