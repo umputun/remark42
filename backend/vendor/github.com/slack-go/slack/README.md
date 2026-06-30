@@ -24,7 +24,9 @@ Release Policy](https://go.dev/doc/devel/release#policy)).
 
 ### *go get*
 
-    $ go get -u github.com/slack-go/slack
+```bash
+go get -u github.com/slack-go/slack
+```
 
 ## Example
 

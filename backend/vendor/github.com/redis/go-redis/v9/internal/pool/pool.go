@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/redis/go-redis/v9/internal"
 	"github.com/redis/go-redis/v9/internal/proto"
-	"github.com/redis/go-redis/v9/internal/rand"
 )
 
 // Connection close reason constants for metrics.
@@ -33,6 +33,11 @@ const (
 
 	// CloseReasonFailover indicates the connection was closed due to a failover event.
 	CloseReasonFailover = "failover"
+
+	// CloseReasonMaintNotificationsDisabled indicates the connection enabled
+	// maintenance notifications, but the client later downgraded and disabled
+	// maintenance notification handling for the pool.
+	CloseReasonMaintNotificationsDisabled = "maintnotifications_disabled"
 )
 
 // Metric state constants for connection state tracking.
@@ -315,6 +320,10 @@ type Stats struct {
 	PubSubStats PubSubStats
 }
 
+type ConnRetirer interface {
+	RetireConns(ctx context.Context, conns []*Conn, reason string)
+}
+
 type Pooler interface {
 	NewConn(context.Context) (*Conn, error)
 	CloseConn(ctx context.Context, cn *Conn, reason string, fromState string) error
@@ -388,7 +397,6 @@ type ConnPool struct {
 	dialErrorsNum uint32 // atomic
 	lastDialError atomic.Value
 
-	queue           chan struct{}
 	dialsInProgress chan struct{}
 	dialsQueue      *wantConnQueue
 	// Fast semaphore for connection limiting with eventual fairness
@@ -420,7 +428,6 @@ func NewConnPool(opt *Options) *ConnPool {
 	p := &ConnPool{
 		cfg:             opt,
 		semaphore:       internal.NewFastSemaphore(opt.PoolSize),
-		queue:           make(chan struct{}, opt.PoolSize),
 		conns:           make(map[uint64]*Conn),
 		dialsInProgress: make(chan struct{}, opt.MaxConcurrentDials),
 		dialsQueue:      newWantConnQueue(),
@@ -1219,6 +1226,11 @@ func (p *ConnPool) putConn(ctx context.Context, cn *Conn, freeTurn bool) {
 	shouldRemove := false
 	var err error
 
+	if reason := cn.CloseOnPutReason(); reason != "" {
+		p.removeConnInternal(ctx, cn, errors.New(reason), freeTurn)
+		return
+	}
+
 	if cn.HasBufferedData() {
 		// Peek at the reply type to check if it's a push notification
 		if replyType, err := cn.PeekReplyTypeSafe(); err != nil || replyType != proto.RespPush {
@@ -1447,6 +1459,10 @@ func (p *ConnPool) removeConnInternal(ctx context.Context, cn *Conn, reason erro
 //   - reason: why the connection is being closed (use CloseReason* constants)
 //   - fromState: the metric state the connection was in (use MetricState* constants)
 func (p *ConnPool) CloseConn(ctx context.Context, cn *Conn, reason string, fromState string) error {
+	if hookManager := p.hookManager.Load(); hookManager != nil {
+		hookManager.ProcessOnRemove(ctx, cn, errors.New(reason))
+	}
+
 	removed := p.removeConnWithLock(cn)
 
 	// Only emit UpDownCounter decrements if we actually removed the connection.
@@ -1560,6 +1576,47 @@ func (p *ConnPool) closed() bool {
 	return atomic.LoadUint32(&p._closed) == 1
 }
 
+func (p *ConnPool) RetireConns(ctx context.Context, conns []*Conn, reason string) {
+	if len(conns) == 0 {
+		return
+	}
+
+	idleConnSet := make(map[*Conn]struct{})
+	toClose := make([]*Conn, 0, len(conns))
+
+	p.connsMu.Lock()
+	for _, ic := range p.idleConns {
+		idleConnSet[ic] = struct{}{}
+	}
+	for _, cn := range conns {
+		if cn == nil {
+			continue
+		}
+		if _, ok := p.conns[cn.GetID()]; !ok {
+			continue
+		}
+		if _, isIdle := idleConnSet[cn]; isIdle {
+			if p.removeConn(cn) {
+				toClose = append(toClose, cn)
+			}
+			continue
+		}
+		cn.MarkCloseOnPut(reason)
+	}
+	p.connsMu.Unlock()
+
+	if hookManager := p.hookManager.Load(); hookManager != nil {
+		for _, cn := range toClose {
+			hookManager.ProcessOnRemove(ctx, cn, errors.New(reason))
+		}
+	}
+	for _, cn := range toClose {
+		p.recordConnectionMetrics(ctx, cn, reason, MetricStateIdle)
+		_ = p.closeConn(cn)
+	}
+	p.checkMinIdleConns()
+}
+
 func (p *ConnPool) Filter(fn func(*Conn) bool) error {
 	ctx := context.Background()
 
@@ -1616,9 +1673,19 @@ func (p *ConnPool) Close() error {
 		// Check health before closing, since closeConn invalidates the
 		// underlying fd and would make connCheck (inside isHealthyConn)
 		// always fail with EBADF.
-		healthy := p.isHealthyConn(cn, nowNs)
+		// Only check health for idle connections to avoid data races when
+		// peeking at the socket/reader while another goroutine is reading from it.
+		// Non-idle connections are either in use or in transitional states and
+		// shouldn't be health-checked during shutdown.
+		_, isIdle := idleSet[cn.GetID()]
+		var healthy bool
+		if isIdle {
+			healthy = p.isHealthyConn(cn, nowNs)
+		} else {
+			healthy = true
+		}
 		if cb != nil {
-			if _, isIdle := idleSet[cn.GetID()]; isIdle {
+			if isIdle {
 				cb(ctx, -1, cn, "idle", false)
 			} else {
 				cb(ctx, -1, cn, "used", false)

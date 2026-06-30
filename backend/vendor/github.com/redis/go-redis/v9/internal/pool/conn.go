@@ -82,8 +82,10 @@ type Conn struct {
 	bw *bufio.Writer
 	wr *proto.Writer
 
-	// Lightweight mutex to protect reader operations during handoff
-	// Only used for the brief period during SetNetConn and HasBufferedData/PeekReplyTypeSafe
+	// Lightweight mutex to protect reader operations during handoff and health checks
+	// Used during:
+	// - SetNetConn (write lock for resetting reader state)
+	// - HasBufferedData/PeekReplyTypeSafe (read lock for safe concurrent peek operations)
 	readerMu sync.RWMutex
 
 	// State machine for connection state management
@@ -111,6 +113,11 @@ type Conn struct {
 	// closeReason is only used when an in-use connection is closed by another goroutine,
 	// to inform the goroutine using the connection why the connection was closed.
 	closeReason uberatomic.String
+
+	// closeOnPutReason marks an in-use connection for removal when it is returned
+	// to the pool. The socket is left open for the in-flight command and closed
+	// by ConnPool.Put.
+	closeOnPutReason uberatomic.String
 
 	// maintenanceNotifications upgrade support: relaxed timeouts during migrations/failovers
 
@@ -433,6 +440,17 @@ func (cn *Conn) IncrementAndGetHandoffRetries(n int) int {
 // IsPooled returns true if the connection is managed by a pool and will be pooled on Put.
 func (cn *Conn) IsPooled() bool {
 	return cn.pooled
+}
+
+// MarkCloseOnPut marks the connection for removal when it is returned to the pool.
+func (cn *Conn) MarkCloseOnPut(reason string) {
+	cn.closeOnPutReason.Store(reason)
+}
+
+// CloseOnPutReason returns a non-empty reason when the connection should be
+// removed instead of pooled on Put.
+func (cn *Conn) CloseOnPutReason() string {
+	return cn.closeOnPutReason.Load()
 }
 
 // IsPubSub returns true if the connection is used for PubSub.

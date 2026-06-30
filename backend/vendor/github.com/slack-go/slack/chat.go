@@ -278,12 +278,7 @@ func (api *Client) SendMessageContext(ctx context.Context, channelID string, opt
 func redactToken(b []byte) []byte {
 	// See https://api.slack.com/authentication/token-types
 	// and https://api.slack.com/authentication/rotation
-	re, err := regexp.Compile(`(token=x[a-z.]+)-[0-9A-Za-z-]+`)
-	if err != nil {
-		// The regular expression above should never result in errors,
-		// but just in case, do no harm.
-		return b
-	}
+	re := regexp.MustCompile(`(token=x[a-z.]+)-[0-9A-Za-z-]+`)
 	// Keep "token=" and the first element of the token, which identifies its type
 	// (this could be useful for debugging, e.g. when using a wrong token).
 	return re.ReplaceAll(b, []byte("$1-REDACTED"))
