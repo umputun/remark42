@@ -1512,6 +1512,8 @@ func TestRest_DeleteMe(t *testing.T) {
 	claims, err := srv.Authenticator.TokenService().Parse(tkn)
 	assert.NoError(t, err)
 	assert.Equal(t, "provider1_dev", claims.User.ID)
+	assert.Equal(t, "http://example.com/pic.png", claims.User.Picture,
+		"delete_me token must carry the user's picture so the avatar can be removed when the request is processed")
 	assert.Equal(t, "https://demo.remark42.com/web/deleteme.html?token="+tkn, m["link"])
 
 	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/deleteme?site=remark42", ts.URL), http.NoBody)
