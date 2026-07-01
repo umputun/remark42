@@ -802,7 +802,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-	// try bad user
+	// unknown user: deletion is idempotent, so a valid (signed) delete_me token for a user with
+	// no stored data is a no-op success rather than an error
 	badClaimsUser := claims
 	badClaimsUser.User.ID = "no-such-id"
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsUser)
@@ -813,7 +814,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, resp.Status)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, resp.Status)
 	badClaimsUser.User.ID = "provider1_user1"
 
 	// try without deleteme flag
