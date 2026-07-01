@@ -158,6 +158,9 @@ func CORS(opts ...CorsOpt) func(http.Handler) http.Handler {
 			// handle preflight request
 			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 				// preflight request
+				// the response varies by the requested method and headers, so caches must key on them
+				w.Header().Add("Vary", "Access-Control-Request-Method")
+				w.Header().Add("Vary", "Access-Control-Request-Headers")
 				w.Header().Set("Access-Control-Allow-Methods", methodsStr)
 				w.Header().Set("Access-Control-Allow-Headers", headersStr)
 

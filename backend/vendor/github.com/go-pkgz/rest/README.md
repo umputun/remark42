@@ -182,6 +182,14 @@ RealIP is a middleware that sets a http.Request's RemoteAddr to the results of p
 
 Only public IPs are accepted from headers; private/loopback/link-local IPs are skipped. This makes the middleware compatible with CDN setups like Cloudflare where the leftmost IP in `X-Forwarded-For` is the actual client.
 
+### Timeout middleware
+
+Timeout bounds a request to the given duration and responds with `StatusGatewayTimeout` (504) at the deadline if the handler has not finished — even for a handler that does not observe the context. The handler runs with a context deadline and its output is buffered; on success the buffered response is written through unchanged, and if the deadline fires first the buffered output is discarded, a 504 is sent, and further writes by the still-running handler return `http.ErrHandlerTimeout`. Because the response is buffered, `http.Flusher` and `http.Hijacker` are not available under `Timeout` (as with `net/http.TimeoutHandler`), so it is not suitable for streaming or connection-hijacking handlers. A non-positive duration disables the middleware (the handler is called directly).
+
+```go
+router.Use(rest.Timeout(5 * time.Second))
+```
+
 ### CORS middleware
 
 Handles Cross-Origin Resource Sharing, allowing controlled access from different origins.
@@ -213,6 +221,7 @@ Features:
 - Origin validation with case-insensitive matching
 - Credentials support (reflects origin instead of `*`)
 - Configurable cache duration for preflight results
+- Cache-correct `Vary` headers (adds `Access-Control-Request-Method` and `Access-Control-Request-Headers` on preflight)
 
 Available options:
 - `CorsAllowedOrigins(origins...)` - allowed origins (default: `*`)

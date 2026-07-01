@@ -13,7 +13,7 @@ require (
 	github.com/go-pkgz/lgr v0.12.3
 	github.com/go-pkgz/notify v1.3.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
-	github.com/go-pkgz/rest v1.21.0
+	github.com/go-pkgz/rest v1.22.0
 	github.com/go-pkgz/routegroup v1.6.0
 	github.com/go-pkgz/syncs v1.3.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
