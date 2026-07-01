@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -188,7 +187,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get last comments for %s", siteID)
 
-	limit, err := strconv.Atoi(chi.URLParam(r, "limit"))
+	limit, err := strconv.Atoi(r.PathValue("limit"))
 	if err != nil {
 		limit = 0
 	}
@@ -222,7 +221,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /id/{id}?site=siteID&url=post-url - gets a comment by id
 func (s *public) commentByIDCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	siteID := r.URL.Query().Get("site")
 	url := r.URL.Query().Get("url")
 
@@ -402,7 +401,7 @@ func sendPictureError(w http.ResponseWriter, r *http.Request, status int, err er
 func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	rest.SetImageDefenseHeaders(w)
 
-	user, imgID := chi.URLParam(r, "user"), chi.URLParam(r, "id")
+	user, imgID := r.PathValue("user"), r.PathValue("id")
 	if user == "" || imgID == "" || !safePictureSegment(user) || !safePictureSegment(imgID) {
 		log.Printf("[WARN] rejected picture request with unsafe id segments user=%q id=%q", user, imgID)
 		sendPictureError(w, r, http.StatusBadRequest, fmt.Errorf("invalid picture id"), "invalid picture id", rest.ErrAssetNotFound)

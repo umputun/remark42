@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
+	"github.com/go-pkgz/routegroup"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -209,12 +209,12 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 	}
 }
 
-func (s *Rest) routes() chi.Router {
+func (s *Rest) routes() http.Handler {
 	if s.openRouteLimiter == 0 {
 		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
 		s.openRouteLimiter = openRouteLimiter
 	}
-	router := chi.NewRouter()
+	router := routegroup.New(http.NewServeMux())
 	router.Use(R.Throttle(1000), R.RealIP, R.Recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
@@ -235,139 +235,139 @@ func (s *Rest) routes() chi.Router {
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
-	router.Group(func(r chi.Router) {
+	router.Route(func(r *routegroup.Bundle) {
 		r.Use(timeout(5 * time.Second))
 		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
-		r.Mount("/auth", authHandler)
+		r.Handle("/auth/", authHandler)
 	})
 
-	router.Group(func(r chi.Router) {
+	router.Route(func(r *routegroup.Bundle) {
 		r.Use(timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
-		r.Mount("/avatar", avatarHandler)
+		r.Handle("/avatar/", avatarHandler)
 	})
 
 	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
-	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Use(apiCSPMiddleware)
-		rapi.Group(func(rava chi.Router) {
-			rava.Use(timeout(5 * time.Second))
-			rava.Use(rateLimiter(100))
-			rava.Mount("/avatar", avatarHandler)
-		})
+	rapi := router.Mount("/api/v1")
+	rapi.Use(apiCSPMiddleware)
 
-		// open routes
-		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(timeout(30 * time.Second))
-			ropen.Use(rateLimiter(s.openRouteLimiter))
-			ropen.Use(authMiddleware.Trace, R.NoCache, logInfoWithBody)
-			ropen.Get("/config", s.configCtrl)
-			ropen.Get("/find", s.pubRest.findCommentsCtrl)
-			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
-			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
-			ropen.Get("/last/{limit}", s.pubRest.lastCommentsCtrl)
-			ropen.Get("/count", s.pubRest.countCtrl)
-			ropen.Post("/counts", s.pubRest.countMultiCtrl)
-			ropen.Get("/list", s.pubRest.listCtrl)
-			ropen.Get("/info", s.pubRest.infoCtrl)
+	rapi.Group().Route(func(rava *routegroup.Bundle) {
+		rava.Use(timeout(5 * time.Second))
+		rava.Use(rateLimiter(100))
+		rava.Handle("/avatar/", avatarHandler)
+	})
 
-			ropen.Route("/rss", func(rrss chi.Router) {
-				rrss.Get("/post", s.rssRest.postCommentsCtrl)
-				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
-				rrss.Get("/reply", s.rssRest.repliesCtrl)
-			})
-		})
+	// open routes
+	rapi.Group().Route(func(ropen *routegroup.Bundle) {
+		ropen.Use(timeout(30 * time.Second))
+		ropen.Use(rateLimiter(s.openRouteLimiter))
+		ropen.Use(authMiddleware.Trace, R.NoCache, logInfoWithBody)
+		ropen.HandleFunc("GET /config", s.configCtrl)
+		ropen.HandleFunc("GET /find", s.pubRest.findCommentsCtrl)
+		ropen.HandleFunc("GET /id/{id}", s.pubRest.commentByIDCtrl)
+		ropen.HandleFunc("GET /comments", s.pubRest.findUserCommentsCtrl)
+		ropen.HandleFunc("GET /last/{limit}", s.pubRest.lastCommentsCtrl)
+		ropen.HandleFunc("GET /count", s.pubRest.countCtrl)
+		ropen.HandleFunc("POST /counts", s.pubRest.countMultiCtrl)
+		ropen.HandleFunc("GET /list", s.pubRest.listCtrl)
+		ropen.HandleFunc("GET /info", s.pubRest.infoCtrl)
 
-		// open routes, cached. /img lives here (not in the NoCache group above) because
-		// R.NoCache strips If-None-Match from incoming requests, which would
-		// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
-		// max-age on validated success responses (with a versioned etag for cache
-		// invalidation on revalidation); error responses get Cache-Control: no-store
-		// so transient failures aren't pinned in the cache.
-		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(timeout(30 * time.Second))
-			ropen.Use(rateLimiter(10))
-			ropen.Use(authMiddleware.Trace, logInfoWithBody)
-			ropen.Get("/img", s.ImageProxy.Handler)
-			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
-			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
-		})
-
-		// protected routes, require auth
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(timeout(30 * time.Second))
-			rauth.Use(rateLimiter(10))
-			rauth.Use(authMiddleware.Auth, matchSiteID, R.NoCache, logInfoWithBody)
-			rauth.Get("/user", s.privRest.userInfoCtrl)
-			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
-		})
-
-		// admin routes, require auth and admin users only
-		rapi.Route("/admin", func(radmin chi.Router) {
-			radmin.Use(timeout(30 * time.Second))
-			radmin.Use(rateLimiter(10))
-			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
-			radmin.Use(R.NoCache, logInfoWithBody)
-
-			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
-			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
-			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
-			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
-			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
-			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
-			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
-			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
-			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
-			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
-
-			// migrator
-			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
-			radmin.Post("/import", s.adminRest.migrator.importCtrl)
-			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
-			radmin.Post("/remap", s.adminRest.migrator.remapCtrl)
-			radmin.Get("/wait", s.adminRest.migrator.waitCtrl)
-		})
-
-		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(timeout(10 * time.Second))
-			rauth.Use(rateLimiter(s.updateLimiter()))
-			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
-			rauth.Use(R.NoCache, logInfoWithBody)
-
-			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
-			rauth.Post("/preview", s.privRest.previewCommentCtrl)
-			rauth.Post("/comment", s.privRest.createCommentCtrl)
-			rauth.Put("/vote/{id}", s.privRest.voteCtrl)
-			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
-			rauth.With(rejectAnonUser).Get("/email", s.privRest.getEmailCtrl)
-			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
-			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
-			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
-			rauth.With(rejectAnonUser).Get("/telegram/subscribe", s.privRest.telegramSubscribeCtrl)
-			rauth.With(rejectAnonUser).Delete("/telegram", s.privRest.deleteTelegramCtrl)
-		})
-
-		// protected routes, anonymous rejected
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(timeout(10 * time.Second))
-			rauth.Use(rateLimiter(s.updateLimiter()))
-			rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
-			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/picture", s.privRest.savePictureCtrl)
+		ropen.Mount("/rss").Route(func(rrss *routegroup.Bundle) {
+			rrss.HandleFunc("GET /post", s.rssRest.postCommentsCtrl)
+			rrss.HandleFunc("GET /site", s.rssRest.siteCommentsCtrl)
+			rrss.HandleFunc("GET /reply", s.rssRest.repliesCtrl)
 		})
 	})
 
+	// open routes, cached. /img lives here (not in the NoCache group above) because
+	// R.NoCache strips If-None-Match from incoming requests, which would
+	// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
+	// max-age on validated success responses (with a versioned etag for cache
+	// invalidation on revalidation); error responses get Cache-Control: no-store
+	// so transient failures aren't pinned in the cache.
+	rapi.Group().Route(func(ropen *routegroup.Bundle) {
+		ropen.Use(timeout(30 * time.Second))
+		ropen.Use(rateLimiter(10))
+		ropen.Use(authMiddleware.Trace, logInfoWithBody)
+		ropen.HandleFunc("GET /img", s.ImageProxy.Handler)
+		ropen.HandleFunc("GET /picture/{user}/{id}", s.pubRest.loadPictureCtrl)
+		ropen.HandleFunc("GET /qr/telegram", s.pubRest.telegramQrCtrl)
+	})
+
+	// protected routes, require auth
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(timeout(30 * time.Second))
+		rauth.Use(rateLimiter(10))
+		rauth.Use(authMiddleware.Auth, matchSiteID, R.NoCache, logInfoWithBody)
+		rauth.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+		rauth.HandleFunc("GET /userdata", s.privRest.userAllDataCtrl)
+	})
+
+	// admin routes, require auth and admin users only
+	rapi.Mount("/admin").Route(func(radmin *routegroup.Bundle) {
+		radmin.Use(timeout(30 * time.Second))
+		radmin.Use(rateLimiter(10))
+		radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
+		radmin.Use(R.NoCache, logInfoWithBody)
+
+		radmin.HandleFunc("DELETE /comment/{id}", s.adminRest.deleteCommentCtrl)
+		radmin.HandleFunc("PUT /user/{userid}", s.adminRest.setBlockCtrl)
+		radmin.HandleFunc("DELETE /user/{userid}", s.adminRest.deleteUserCtrl)
+		radmin.HandleFunc("GET /user/{userid}", s.adminRest.getUserInfoCtrl)
+		radmin.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
+		radmin.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
+		radmin.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
+		radmin.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
+		radmin.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
+		radmin.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
+
+		// migrator
+		radmin.HandleFunc("GET /export", s.adminRest.migrator.exportCtrl)
+		radmin.HandleFunc("POST /import", s.adminRest.migrator.importCtrl)
+		radmin.HandleFunc("POST /import/form", s.adminRest.migrator.importFormCtrl)
+		radmin.HandleFunc("POST /remap", s.adminRest.migrator.remapCtrl)
+		radmin.HandleFunc("GET /wait", s.adminRest.migrator.waitCtrl)
+	})
+
+	// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(timeout(10 * time.Second))
+		rauth.Use(rateLimiter(s.updateLimiter()))
+		rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
+		rauth.Use(R.NoCache, logInfoWithBody)
+
+		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
+		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
+		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
+		rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /email/confirm", s.privRest.setConfirmedEmailCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("DELETE /email", s.privRest.deleteEmailCtrl)
+		rauth.With(rejectAnonUser, rejectHead("GET")).HandleFunc("GET /telegram/subscribe", s.privRest.telegramSubscribeCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("DELETE /telegram", s.privRest.deleteTelegramCtrl)
+	})
+
+	// protected routes, anonymous rejected
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(timeout(10 * time.Second))
+		rauth.Use(rateLimiter(s.updateLimiter()))
+		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
+		rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
+	})
+
 	// open routes on root level
-	router.Group(func(rroot chi.Router) {
+	router.Route(func(rroot *routegroup.Bundle) {
 		rroot.Use(timeout(10 * time.Second))
 		rroot.Use(rateLimiter(50))
-		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
-		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
-		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("GET /robots.txt", s.pubRest.robotsCtrl)
+		rroot.With(rejectHead("GET, POST")).HandleFunc("GET /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
 	// file server for static content from s.WebRoot on path /web
@@ -485,7 +485,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
-func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
+func addFileServer(r *routegroup.Bundle, embedFS embed.FS, webRoot, version string) {
 	var webFS http.Handler
 
 	if _, err := os.Stat(webRoot); err == nil {
@@ -498,12 +498,12 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	}
 
 	webFS = http.StripPrefix("/web", webFS)
-	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
+	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
 		timeout(10*time.Second),
 		cacheControl(time.Hour, version),
-	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
+	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {
 			http.NotFound(w, r)

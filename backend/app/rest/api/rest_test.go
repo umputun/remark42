@@ -68,6 +68,122 @@ func TestRest_FileServer(t *testing.T) {
 	_ = os.Remove(testHTMLFile)
 }
 
+// TestRest_FileServerStaticAssets covers the static file server behaviors that are
+// sensitive to the router: the bare /web -> /web/ redirect, cache headers applied to
+// served assets, 404 for missing files, and the directory-listing block.
+func TestRest_FileServerStaticAssets(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	require.NoError(t, os.WriteFile(srv.WebRoot+"/asset-test.html", []byte("static body"), 0o600))
+	require.NoError(t, os.MkdirAll(srv.WebRoot+"/subdir-test", 0o700))
+	defer func() {
+		_ = os.Remove(srv.WebRoot + "/asset-test.html")
+		_ = os.RemoveAll(srv.WebRoot + "/subdir-test")
+	}()
+
+	noRedirect := http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	defer noRedirect.CloseIdleConnections()
+
+	t.Run("bare /web redirects to /web/", func(t *testing.T) {
+		resp, err := noRedirect.Get(ts.URL + "/web")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusMovedPermanently, resp.StatusCode)
+		assert.Equal(t, "/web/", resp.Header.Get("Location"))
+	})
+
+	t.Run("serves an existing asset with cache headers", func(t *testing.T) {
+		resp, err := noRedirect.Get(ts.URL + "/web/asset-test.html")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "static body", string(body))
+		assert.NotEmpty(t, resp.Header.Get("Etag"), "cacheControl must set an Etag on served assets")
+		assert.Contains(t, resp.Header.Get("Cache-Control"), "max-age", "cacheControl must set max-age on served assets")
+	})
+
+	t.Run("missing asset returns 404", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/does-not-exist.html")
+		assert.Equal(t, http.StatusNotFound, code)
+	})
+
+	t.Run("directory listing is blocked", func(t *testing.T) {
+		resp, err := noRedirect.Get(ts.URL + "/web/subdir-test/")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode, "directory listings must be blocked")
+	})
+}
+
+// TestRest_RejectHeadOnDestructiveGET verifies that HEAD is blocked on the state-mutating
+// GET routes (which stdlib http.ServeMux would otherwise route to the GET handler) while
+// still being served for safe, read-only routes.
+func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+
+	t.Run("HEAD is rejected on a destructive GET route", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodHead, ts.URL+"/api/v1/admin/deleteme?site=remark42", http.NoBody)
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode, "HEAD must not reach a state-mutating GET handler")
+		assert.Equal(t, "GET", resp.Header.Get("Allow"), "405 must carry an Allow header")
+	})
+
+	t.Run("HEAD is rejected on the email unsubscribe route", func(t *testing.T) {
+		// emailUnsubscribeCtrl deletes the user's email subscription on GET, so HEAD (which
+		// ServeMux would route to the GET handler) must be rejected before it runs
+		resp, err := client.Head(ts.URL + "/email/unsubscribe.html?site=remark42")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode, "HEAD must not reach the email-unsubscribe handler")
+		assert.Equal(t, "GET, POST", resp.Header.Get("Allow"), "Allow must list every method the resource supports")
+	})
+
+	t.Run("HEAD still works on a safe read-only route", func(t *testing.T) {
+		resp, err := client.Head(ts.URL + "/api/v1/config?site=remark42")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "HEAD must still be served for safe read-only routes")
+	})
+
+	t.Run("wrong method on a known route returns 405 with Allow", func(t *testing.T) {
+		// method-in-pattern is new under ServeMux; a wrong method on a known route must
+		// still yield 405 with the allowed methods advertised
+		resp, err := client.Post(ts.URL+"/api/v1/config?site=remark42", "application/json", http.NoBody)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		assert.Contains(t, resp.Header.Get("Allow"), "GET", "405 must advertise the allowed methods")
+	})
+}
+
+// TestRest_AvatarMounts verifies both avatar mounts (root /avatar/ and /api/v1/avatar/)
+// still route to the avatar handler after the chi Mount -> ServeMux Handle rewiring,
+// rather than falling through to a router 404.
+func TestRest_AvatarMounts(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	for _, path := range []string{"/api/v1/avatar/nonexistent.image", "/avatar/nonexistent.image"} {
+		t.Run(path, func(t *testing.T) {
+			body, code := get(t, ts.URL+path)
+			// the avatar handler responds (403 "can't load avatar"), not a router 404
+			assert.Equal(t, http.StatusForbidden, code, "avatar mount must reach the avatar handler")
+			assert.Contains(t, body, "can't load avatar", "request must reach the avatar handler, not a routing 404")
+		})
+	}
+}
+
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
 	done := make(chan bool)
