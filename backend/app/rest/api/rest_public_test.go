@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/routegroup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1044,12 +1044,20 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 	defer teardown()
 
 	cases := []struct {
-		name string
-		path string
+		name       string
+		path       string
+		wantStatus int
 	}{
-		{name: "dotdot in user segment", path: "/api/v1/picture/../remark.db"},
-		{name: "dotdot in id segment", path: "/api/v1/picture/dev_user/..%2Fremark.db"},
-		{name: "encoded dotdot in user segment", path: "/api/v1/picture/%2E%2E/remark.db"},
+		// A literal ".." is normalized away by net/http.ServeMux before routing: the request
+		// is redirected to the cleaned path, which matches no picture route, so it never reaches
+		// loadPictureCtrl and resolves to 404. The traversal is neutralized at the router level
+		// (the cleaned path can only ever reach defined routes or the webRoot-bounded file server),
+		// so nothing is served either way.
+		{name: "dotdot in user segment", path: "/api/v1/picture/../remark.db", wantStatus: http.StatusNotFound},
+		// Encoded traversal is not cleaned by the router, so the handler's safePictureSegment
+		// validation is what rejects it, with 400.
+		{name: "dotdot in id segment", path: "/api/v1/picture/dev_user/..%2Fremark.db", wantStatus: http.StatusBadRequest},
+		{name: "encoded dotdot in user segment", path: "/api/v1/picture/%2E%2E/remark.db", wantStatus: http.StatusBadRequest},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1059,7 +1067,7 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 			require.NoError(t, err)
 			defer func() { _ = resp.Body.Close() }()
 
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			assert.Equal(t, c.wantStatus, resp.StatusCode)
 			body, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 			s := string(body)
@@ -1193,8 +1201,8 @@ func TestRest_LoadPictureRejectsNonImage(t *testing.T) {
 	// (other fields like dataService, cache, commentFormatter are not touched here).
 	p := &public{imageService: image.NewService(&imageStore, image.ServiceParams{})}
 
-	router := chi.NewRouter()
-	router.Get("/api/v1/picture/{user}/{id}", p.loadPictureCtrl)
+	router := routegroup.New(http.NewServeMux())
+	router.HandleFunc("GET /api/v1/picture/{user}/{id}", p.loadPictureCtrl)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

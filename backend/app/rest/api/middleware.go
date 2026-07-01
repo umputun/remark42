@@ -66,6 +66,25 @@ func timeout(d time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
+// rejectHead rejects HEAD requests with 405, advertising the given allowed methods in
+// the Allow header. net/http.ServeMux routes HEAD to a "GET ..." handler, but per RFC
+// 9110 GET/HEAD are safe methods; this guard is applied to the few GET routes whose
+// handlers mutate state so they cannot be triggered by a (nominally side-effect-free)
+// HEAD, preserving the pre-routegroup behavior. allow lists every method the resource
+// supports (e.g. "GET" or "GET, POST") so the 405 Allow header is accurate.
+func rejectHead(allow string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodHead {
+				w.Header().Set("Allow", allow)
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // rejectAnonUser is a middleware rejecting anonymous users
 func rejectAnonUser(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
