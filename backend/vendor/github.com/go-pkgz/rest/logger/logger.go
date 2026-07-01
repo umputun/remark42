@@ -146,8 +146,8 @@ func (l *Middleware) formatDefault(r *http.Request, p *logParts) string {
 		_, _ = bld.WriteString(" ")
 	}
 
-	_, _ = bld.WriteString(fmt.Sprintf("%s - %s - %s - %s - %d (%d) - %v",
-		p.method, p.rawURL, p.host, p.remoteIP, p.statusCode, p.respSize, p.duration))
+	_, _ = fmt.Fprintf(&bld, "%s - %s - %s - %s - %d (%d) - %v",
+		p.method, p.rawURL, p.host, p.remoteIP, p.statusCode, p.respSize, p.duration)
 
 	if p.user != "" {
 		_, _ = bld.WriteString(" - ")

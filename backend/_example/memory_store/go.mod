@@ -18,7 +18,7 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.2 // indirect
-	github.com/go-pkgz/rest v1.21.0 // indirect
+	github.com/go-pkgz/rest v1.22.0 // indirect
 	github.com/go-pkgz/routegroup v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

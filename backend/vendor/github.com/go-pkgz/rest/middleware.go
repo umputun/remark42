@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/go-pkgz/rest/logger"
@@ -13,8 +14,8 @@ import (
 
 // Wrap converts a list of middlewares to nested calls (in reverse order)
 func Wrap(handler http.Handler, mws ...func(http.Handler) http.Handler) http.Handler {
-	for i := len(mws) - 1; i >= 0; i-- {
-		handler = mws[i](handler)
+	for _, mw := range slices.Backward(mws) {
+		handler = mw(handler)
 	}
 	return handler
 }

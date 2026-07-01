@@ -60,8 +60,8 @@ github.com/go-pkgz/repeater v1.2.0 h1:oJFvjyKdTDd5RCzpzxlzYIZFFj6Zfl17rE1aUfu6Uj
 github.com/go-pkgz/repeater v1.2.0/go.mod h1:vypP6xamA53MFmafnGUucqOmALKk36xgKu2hSG73LHM=
 github.com/go-pkgz/repeater/v2 v2.2.0 h1:8nZR/NaknmLfx2YMHbr78u9OL4Xj+8+romm9dz4FpMg=
 github.com/go-pkgz/repeater/v2 v2.2.0/go.mod h1:RgX5vUbLKq7PV82QUDP5pFbQS1os4Z+U9XzKymK23A8=
-github.com/go-pkgz/rest v1.21.0 h1:Y/C4d/TpclJJDxqnH1RAcS6Hmox0RIReAlkwMcUWXK4=
-github.com/go-pkgz/rest v1.21.0/go.mod h1:+AHzjHazq7Z3Tk/kRWOhbbAz/YZlUV40feC1Hf4NtbE=
+github.com/go-pkgz/rest v1.22.0 h1:d3XFKlmAGBiU9MQER9/n46iXpyUr8IQUtfjU8JlqkkY=
+github.com/go-pkgz/rest v1.22.0/go.mod h1:+AHzjHazq7Z3Tk/kRWOhbbAz/YZlUV40feC1Hf4NtbE=
 github.com/go-pkgz/routegroup v1.6.0 h1:44XHZgF6JIIldRlv+zjg6SygULASmjifnfIQjwCT0e4=
 github.com/go-pkgz/routegroup v1.6.0/go.mod h1:Pmu04fhgWhRtBMIJ8HXppnnzOPjnL/IEPBIdO2zmeqg=
 github.com/go-pkgz/syncs v1.3.2 h1:gmioASlJNy3gNosPlgvWOM2QP0Hdjzn2u+/sUShgd8E=
