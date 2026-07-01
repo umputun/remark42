@@ -912,6 +912,9 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		{description: "delete user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
 		{description: "send another confirmation", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodGet, responseCode: http.StatusOK},
 		{description: "set user telegram, token is good", url: "/api/v1/telegram/subscribe?site=remark42&tkn=good_token", method: http.MethodGet, responseCode: http.StatusOK},
+		// telegramSubscribeCtrl mutates state, so HEAD (which stdlib ServeMux would route to the
+		// GET handler) must be rejected by rejectHead before it runs
+		{description: "HEAD is rejected on telegram subscribe", url: "/api/v1/telegram/subscribe?site=remark42", method: http.MethodHead, responseCode: http.StatusMethodNotAllowed},
 	}
 	client := http.Client{}
 	defer client.CloseIdleConnections()

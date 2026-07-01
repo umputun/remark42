@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
@@ -193,7 +192,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	user := rest.MustGetUserInfo(r)
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 
 	log.Printf("[DEBUG] update comment %s", id)
 
@@ -260,7 +259,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	log.Printf("[DEBUG] vote for comment %s", id)
 
 	vote := r.URL.Query().Get("vote") == "1"

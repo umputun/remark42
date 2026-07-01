@@ -6,7 +6,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-pkgz/auth/v2"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
@@ -43,7 +42,7 @@ type adminStore interface {
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
 
@@ -58,7 +57,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
 func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
@@ -72,7 +71,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
 func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
@@ -136,7 +135,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
 func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
@@ -202,7 +201,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /title/{id}?site=siteID&url=post-url - set comment PostTitle to page's title
 func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
 	c, err := a.dataService.SetTitle(locator, id)
@@ -216,9 +215,9 @@ func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
-// PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
+// PUT /verify/{userid}?site=siteID&verified=1 - set or reset verified status for the user
 func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	verifyStatus := r.URL.Query().Get("verified") == "1"
 
@@ -233,7 +232,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
 // mark/unmark comment as a special
 func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
-	commentID := chi.URLParam(r, "id")
+	commentID := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	pinStatus := r.URL.Query().Get("pin") == "1"
 
