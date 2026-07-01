@@ -9,35 +9,44 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/v2/token"
+	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 )
 
-func TestTimeout(t *testing.T) {
-	t.Run("fast handler passes through and gets a deadline", func(t *testing.T) {
-		var gotDeadline bool
-		h := timeout(time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, gotDeadline = r.Context().Deadline()
-			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte("ok"))
-		}))
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
-		assert.True(t, gotDeadline, "request context should carry a deadline")
-		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, "ok", rec.Body.String())
-	})
+// routes() wraps bounded routes with the enforcing rest.Timeout and deliberately leaves the
+// streaming/long-polling routes (GET /export, /userdata, /wait) without it. This checks that
+// contract holds against the vendored middleware: a slow handler under R.Timeout is aborted with
+// 504 at the deadline, while a route left without it runs to completion.
+func TestRouteTimeout(t *testing.T) {
+	slow := func(d time.Duration) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			select {
+			case <-r.Context().Done(): // return promptly once the enforcing timeout cancels the context
+			case <-time.After(d):
+			}
+			w.WriteHeader(http.StatusOK)
+		}
+	}
 
-	t.Run("deadline exceeded writes 504", func(t *testing.T) {
-		h := timeout(10 * time.Millisecond)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-			<-r.Context().Done() // honor the context: return only once the deadline fires
-		}))
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
-		assert.Equal(t, http.StatusGatewayTimeout, rec.Code)
-	})
+	router := routegroup.New(http.NewServeMux())
+	router.With(R.Timeout(20*time.Millisecond)).HandleFunc("GET /bounded", slow(time.Second))
+	router.HandleFunc("GET /streaming", slow(30*time.Millisecond)) // no timeout, like /export and /wait
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/bounded")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode, "route under R.Timeout is aborted at the deadline")
+
+	resp, err = http.Get(ts.URL + "/streaming")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "route without R.Timeout runs to completion")
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {

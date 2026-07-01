@@ -44,7 +44,7 @@ func (s *Rest) httpToHTTPSRouter() http.Handler {
 	log.Printf("[DEBUG] create http-to-https redirect routes")
 	router := routegroup.New(http.NewServeMux())
 	router.Use(R.Recoverer(log.Default()))
-	router.Use(R.Throttle(1000), timeout(60*time.Second))
+	router.Use(R.Throttle(1000), R.Timeout(60*time.Second))
 
 	router.Handle("/", s.redirectHandler())
 	return router
@@ -58,7 +58,7 @@ func (s *Rest) httpChallengeRouter(m *autocert.Manager) http.Handler {
 	log.Printf("[DEBUG] create http-challenge routes")
 	router := routegroup.New(http.NewServeMux())
 	router.Use(R.Recoverer(log.Default()))
-	router.Use(R.Throttle(1000), timeout(60*time.Second))
+	router.Use(R.Throttle(1000), R.Timeout(60*time.Second))
 
 	router.Handle("/", m.HTTPHandler(s.redirectHandler()))
 	return router
