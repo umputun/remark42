@@ -228,9 +228,9 @@ http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 - `GET /api/v1/admin/wait?site=site-id` - wait for completion for any async migration ops (import or remap)
 - `PUT /api/v1/admin/pin/{id}?site=site-id&url=post-url&pin=1` - pin or unpin comment
 - `GET /api/v1/admin/user/{userid}?site=site-id` - get user's info
-- `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete all user's comments
+- `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete the user's comments and stored details; succeeds even if the user has no comments or is already absent
 - `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 - `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set verified status
-- `GET /api/v1/admin/deleteme?token=token` - process deleteme user's request
+- `GET /api/v1/admin/deleteme?token=token` - process a user's deleteme request; already-deleted or dataless users return success (idempotent)
 
 _all admin calls require auth and admin privilege_

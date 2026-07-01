@@ -843,6 +843,63 @@ func TestBoltAdmin_DeleteUserHard(t *testing.T) {
 	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
+// TestBoltAdmin_DeleteUserHard_NoComments covers hard-deleting a user who has no comments
+// (and therefore no user bucket) — e.g. one who only logged in. This must succeed rather than
+// fail on the missing bucket, and must still remove any stored user details.
+func TestBoltAdmin_DeleteUserHard_NoComments(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	t.Run("login-only user with a detail but no comments", func(t *testing.T) {
+		const userID = "login-only-user"
+		loc := store.Locator{SiteID: "radio-t"}
+
+		// user logged in and has a stored detail, but never commented (no user bucket)
+		_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail, Update: "user@example.com"})
+		require.NoError(t, err)
+
+		err = b.Delete(DeleteRequest{Locator: loc, UserID: userID, DeleteMode: store.HardDelete})
+		require.NoError(t, err, "hard delete must not fail on a missing user bucket")
+
+		details, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail})
+		require.NoError(t, err)
+		assert.Empty(t, details, "stored user detail must be removed on hard delete")
+	})
+
+	t.Run("unknown user is a no-op", func(t *testing.T) {
+		err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "never-seen-user", DeleteMode: store.HardDelete})
+		assert.NoError(t, err, "hard-deleting an unknown user must not error")
+	})
+}
+
+// TestBoltAdmin_DeleteUserSoft_NoComments covers soft-deleting a user with no comments. As with the
+// hard path (and the existing soft path for users who do have comments) it cleans stored user
+// details and is a no-op for an unknown user.
+func TestBoltAdmin_DeleteUserSoft_NoComments(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	t.Run("login-only user with a detail but no comments", func(t *testing.T) {
+		const userID = "login-only-soft"
+		loc := store.Locator{SiteID: "radio-t"}
+
+		_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail, Update: "user@example.com"})
+		require.NoError(t, err)
+
+		err = b.Delete(DeleteRequest{Locator: loc, UserID: userID, DeleteMode: store.SoftDelete})
+		require.NoError(t, err)
+
+		details, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail})
+		require.NoError(t, err)
+		assert.Empty(t, details, "soft delete cleans stored user details, consistent with the has-comments path")
+	})
+
+	t.Run("unknown user is a no-op", func(t *testing.T) {
+		err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "never-seen-soft", DeleteMode: store.SoftDelete})
+		assert.NoError(t, err, "soft-deleting an unknown user must not error")
+	})
+}
+
 func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
