@@ -708,8 +708,9 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
-			ID:   user.ID,
-			Name: user.Name,
+			ID:      user.ID,
+			Name:    user.Name,
+			Picture: user.Picture, // carried so the avatar can be removed when the request is processed
 			Attributes: map[string]any{
 				"delete_me": true, // prevents this token from being used for login
 			},

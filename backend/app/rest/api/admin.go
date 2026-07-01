@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
@@ -122,15 +123,30 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
-		avatarStore := a.authenticator.AvatarProxy().Store
-		if err = avatarStore.Remove(path.Base(claims.User.Picture)); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar", rest.ErrInternal)
-			return
+		if avatarID := avatarIDFromPicture(claims.User.Picture); avatarID != "" {
+			// best-effort removal: the user's data is already gone and the avatar store gives no way to tell
+			// an already-removed avatar from a real failure, so a missing avatar must not fail the deletion
+			if err = a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil {
+				log.Printf("[WARN] can't delete avatar for user %s on site %s: %v", claims.User.ID, audience, err)
+			}
+		} else {
+			log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", claims.User.Picture, claims.User.ID, audience)
 		}
 	}
 
 	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
+}
+
+// avatarIDFromPicture returns the avatar-store object id for a user picture, or "" if the picture
+// does not resolve to a well-formed id (the store names its objects "<hash>.image"). Guarding on the
+// id shape keeps a malformed picture, e.g. a path sentinel, from making a filesystem-backed store
+// target an unexpected path.
+func avatarIDFromPicture(picture string) string {
+	if id := path.Base(picture); strings.HasSuffix(id, ".image") {
+		return id
+	}
+	return ""
 }
 
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user

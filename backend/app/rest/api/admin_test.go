@@ -717,7 +717,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		},
 		User: &token.User{
 			ID:      "user1",
-			Picture: "pic.image",
+			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image", // production-shaped URL: removal must path.Base it to the avatar id
 			Attributes: map[string]any{
 				"delete_me": true,
 			},
@@ -747,6 +747,76 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	email, err = srv.DataService.GetUserEmail("remark42", "user1")
 	assert.NoError(t, err)
 	assert.Empty(t, email, "user1 email was deleted")
+
+	assert.NoFileExists(t, os.TempDir()+"/ava-remark42/42/pic.image", "user's avatar should be removed on deleteme")
+}
+
+// a delete_me request whose token carries a picture must still succeed when the avatar is
+// already gone from the store: the user data is deleted and a missing avatar is tolerated
+func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user3 name", ID: "user3"}}
+	_, err := srv.DataService.Create(c1)
+	require.NoError(t, err)
+
+	claims := token.Claims{
+		SessionOnly: true,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "2345678",
+			Issuer:    "remark42",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		},
+		User: &token.User{
+			ID:      "user3",
+			Picture: "missing.image", // no avatar file exists for this picture in the store
+			Attributes: map[string]any{
+				"delete_me": true,
+			},
+		},
+	}
+
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "a missing avatar must not fail the deletion")
+
+	_, err = srv.DataService.User("remark42", "user3", 0, 0, store.User{})
+	assert.EqualError(t, err, "no comments for user user3 in store", "user3 comments should be deleted")
+}
+
+func TestAvatarIDFromPicture(t *testing.T) {
+	tbl := []struct {
+		name    string
+		picture string
+		want    string
+	}{
+		{"local avatar url", "https://demo.remark42.com/api/v1/avatar/cb42ff493ade696d88a3a590f136ae9e34de7c1b.image", "cb42ff493ade696d88a3a590f136ae9e34de7c1b.image"},
+		{"bare avatar id", "pic.image", "pic.image"},
+		{"parent sentinel", "https://demo.remark42.com/api/v1/avatar/..", ""},
+		{"trailing slash", "https://demo.remark42.com/api/v1/avatar/", ""},
+		{"root", "/", ""},
+		{"dotdot", "..", ""},
+		{"empty", "", ""},
+		{"provider url without image suffix", "https://example.com/pic.png", ""},
+	}
+	for _, tc := range tbl {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, avatarIDFromPicture(tc.picture))
+		})
+	}
 }
 
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
