@@ -2,7 +2,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -31,26 +30,6 @@ func corsMiddleware() func(http.Handler) http.Handler {
 		R.CorsAllowCredentials(true),
 		R.CorsMaxAge(300),
 	)
-}
-
-// timeout returns a middleware matching chi's middleware.Timeout: it sets a
-// deadline on the request context and writes 504 Gateway Timeout if the
-// deadline is exceeded. The 504 is sent once the downstream handler returns
-// after observing the canceled context; a handler that ignores r.Context()
-// is not aborted.
-func timeout(d time.Duration) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), d)
-			defer func() {
-				cancel()
-				if ctx.Err() == context.DeadlineExceeded {
-					w.WriteHeader(http.StatusGatewayTimeout)
-				}
-			}()
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
 }
 
 // rejectHead rejects HEAD requests with 405, advertising the given allowed methods in

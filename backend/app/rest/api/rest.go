@@ -236,14 +236,14 @@ func (s *Rest) routes() http.Handler {
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
 	router.Route(func(r *routegroup.Bundle) {
-		r.Use(timeout(5 * time.Second))
+		r.Use(R.Timeout(5 * time.Second))
 		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Handle("/auth/", authHandler)
 	})
 
 	router.Route(func(r *routegroup.Bundle) {
-		r.Use(timeout(5 * time.Second))
+		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
 		r.Handle("/avatar/", avatarHandler)
 	})
@@ -255,14 +255,14 @@ func (s *Rest) routes() http.Handler {
 	rapi.Use(apiCSPMiddleware)
 
 	rapi.Group().Route(func(rava *routegroup.Bundle) {
-		rava.Use(timeout(5 * time.Second))
+		rava.Use(R.Timeout(5 * time.Second))
 		rava.Use(rateLimiter(100))
 		rava.Handle("/avatar/", avatarHandler)
 	})
 
 	// open routes
 	rapi.Group().Route(func(ropen *routegroup.Bundle) {
-		ropen.Use(timeout(30 * time.Second))
+		ropen.Use(R.Timeout(30 * time.Second))
 		ropen.Use(rateLimiter(s.openRouteLimiter))
 		ropen.Use(authMiddleware.Trace, R.NoCache, logInfoWithBody)
 		ropen.HandleFunc("GET /config", s.configCtrl)
@@ -289,7 +289,7 @@ func (s *Rest) routes() http.Handler {
 	// invalidation on revalidation); error responses get Cache-Control: no-store
 	// so transient failures aren't pinned in the cache.
 	rapi.Group().Route(func(ropen *routegroup.Bundle) {
-		ropen.Use(timeout(30 * time.Second))
+		ropen.Use(R.Timeout(30 * time.Second))
 		ropen.Use(rateLimiter(10))
 		ropen.Use(authMiddleware.Trace, logInfoWithBody)
 		ropen.HandleFunc("GET /img", s.ImageProxy.Handler)
@@ -299,32 +299,45 @@ func (s *Rest) routes() http.Handler {
 
 	// protected routes, require auth
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
-		rauth.Use(timeout(30 * time.Second))
 		rauth.Use(rateLimiter(10))
 		rauth.Use(authMiddleware.Auth, matchSiteID, R.NoCache, logInfoWithBody)
-		rauth.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+
+		// GET /userdata streams a gzipped export of the user's data straight to the client, so it
+		// deliberately runs without R.Timeout: that middleware buffers the whole response in memory
+		// before sending and aborts at the deadline, which would hold a full export in RAM and truncate it.
 		rauth.HandleFunc("GET /userdata", s.privRest.userAllDataCtrl)
+
+		rauth.Group().Route(func(r *routegroup.Bundle) {
+			r.Use(R.Timeout(30 * time.Second))
+			r.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+		})
 	})
 
 	// admin routes, require auth and admin users only
 	rapi.Mount("/admin").Route(func(radmin *routegroup.Bundle) {
-		radmin.Use(timeout(30 * time.Second))
 		radmin.Use(rateLimiter(10))
 		radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
 		radmin.Use(R.NoCache, logInfoWithBody)
 
-		radmin.HandleFunc("DELETE /comment/{id}", s.adminRest.deleteCommentCtrl)
-		radmin.HandleFunc("PUT /user/{userid}", s.adminRest.setBlockCtrl)
-		radmin.HandleFunc("DELETE /user/{userid}", s.adminRest.deleteUserCtrl)
-		radmin.HandleFunc("GET /user/{userid}", s.adminRest.getUserInfoCtrl)
-		radmin.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
-		radmin.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
-		radmin.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
-		radmin.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
-		radmin.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
-		radmin.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
+		// bounded admin operations return small responses and get the enforcing request timeout
+		radmin.Group().Route(func(r *routegroup.Bundle) {
+			r.Use(R.Timeout(30 * time.Second))
+			r.HandleFunc("DELETE /comment/{id}", s.adminRest.deleteCommentCtrl)
+			r.HandleFunc("PUT /user/{userid}", s.adminRest.setBlockCtrl)
+			r.HandleFunc("DELETE /user/{userid}", s.adminRest.deleteUserCtrl)
+			r.HandleFunc("GET /user/{userid}", s.adminRest.getUserInfoCtrl)
+			r.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
+			r.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
+			r.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
+			r.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
+			r.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
+			r.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
+		})
 
-		// migrator
+		// migrator routes deliberately run without R.Timeout: GET /export streams a full-site
+		// backup, GET /wait long-polls for up to 15m, and import/remap ingest large uploads. The
+		// enforcing timeout buffers the whole response and aborts at the deadline, which would
+		// truncate backups, break waiting, and reject large imports.
 		radmin.HandleFunc("GET /export", s.adminRest.migrator.exportCtrl)
 		radmin.HandleFunc("POST /import", s.adminRest.migrator.importCtrl)
 		radmin.HandleFunc("POST /import/form", s.adminRest.migrator.importFormCtrl)
@@ -334,7 +347,7 @@ func (s *Rest) routes() http.Handler {
 
 	// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
-		rauth.Use(timeout(10 * time.Second))
+		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
 		rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 		rauth.Use(R.NoCache, logInfoWithBody)
@@ -354,7 +367,7 @@ func (s *Rest) routes() http.Handler {
 
 	// protected routes, anonymous rejected
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
-		rauth.Use(timeout(10 * time.Second))
+		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
 		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
 		rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
@@ -363,7 +376,7 @@ func (s *Rest) routes() http.Handler {
 
 	// open routes on root level
 	router.Route(func(rroot *routegroup.Bundle) {
-		rroot.Use(timeout(10 * time.Second))
+		rroot.Use(R.Timeout(10 * time.Second))
 		rroot.Use(rateLimiter(50))
 		rroot.HandleFunc("GET /robots.txt", s.pubRest.robotsCtrl)
 		rroot.With(rejectHead("GET, POST")).HandleFunc("GET /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
@@ -501,7 +514,7 @@ func addFileServer(r *routegroup.Bundle, embedFS embed.FS, webRoot, version stri
 	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
-		timeout(10*time.Second),
+		R.Timeout(10*time.Second),
 		cacheControl(time.Hour, version),
 	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
