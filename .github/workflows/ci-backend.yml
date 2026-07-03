@@ -13,7 +13,6 @@ on:
       - "!backend/scripts/**"
       - "!**.md"
   pull_request:
-    types: [opened, reopened]
     paths:
       - ".github/workflows/ci-backend.yml"
       - "backend/**"
