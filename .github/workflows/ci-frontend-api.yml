@@ -44,7 +44,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm install --frozen-lockfile
         working-directory: ./frontend
 
       - name: Run type check
@@ -80,7 +80,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm install --frozen-lockfile
         working-directory: ./frontend
 
       - name: Run linters
@@ -116,7 +116,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm install --frozen-lockfile
         working-directory: ./frontend
 
       - name: Test & Coverage
