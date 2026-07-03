@@ -21,7 +21,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -663,10 +662,8 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		return e
 	}
 
-	var merr error
-	merr = multierror.Append(merr, write([]byte(`{"info": `)))     // send user prefix
-	merr = multierror.Append(merr, write(userB))                   // send user info
-	merr = multierror.Append(merr, write([]byte(`, "comments":`))) // send comments prefix
+	// send user prefix, user info and comments prefix
+	errs := []error{write([]byte(`{"info": `)), write(userB), write([]byte(`, "comments":`))}
 
 	// get comments in 100 in each paginated request
 	for i := range 100 {
@@ -681,15 +678,15 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		merr = multierror.Append(merr, write(b))
+		errs = append(errs, write(b))
 		if len(comments) != 100 {
 			break
 		}
 	}
 
-	merr = multierror.Append(merr, write([]byte(`}`)))
-	if merr.(*multierror.Error).ErrorOrNil() != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info", rest.ErrInternal)
+	errs = append(errs, write([]byte(`}`)))
+	if err := errors.Join(errs...); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user info", rest.ErrInternal)
 		return
 	}
 }

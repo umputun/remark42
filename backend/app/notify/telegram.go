@@ -2,12 +2,12 @@ package notify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/hashicorp/go-multierror"
 )
 
 const commentTextLengthLimit = 100
@@ -47,14 +47,14 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 // Send to telegram recipients
 func (t *Telegram) Send(ctx context.Context, req Request) error {
 	log.Printf("[DEBUG] send telegram notification for comment ID %s", req.Comment.ID)
-	result := new(multierror.Error)
+	var errs []error
 
 	msg := t.buildMessage(req)
 
 	if t.AdminChannelID != "" {
 		err := t.Telegram.Send(ctx, fmt.Sprintf("telegram:%s?parseMode=HTML", t.AdminChannelID), msg)
 		if err != nil {
-			result = multierror.Append(result,
+			errs = append(errs,
 				fmt.Errorf("problem sending admin telegram notification about comment ID %s to %s: %w",
 					req.Comment.ID, t.AdminChannelID, err,
 				),
@@ -66,7 +66,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 		for _, user := range req.Telegrams {
 			err := t.Telegram.Send(ctx, fmt.Sprintf("telegram:%s?parseMode=HTML", user), msg)
 			if err != nil {
-				result = multierror.Append(result,
+				errs = append(errs,
 					fmt.Errorf("problem sending user telegram notification about comment ID %s to %q: %w",
 						req.Comment.ID, user, err,
 					),
@@ -74,7 +74,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 			}
 		}
 	}
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // buildMessage generates message for generic notification about new comment
