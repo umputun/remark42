@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // not used for cryptography
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"  // register gif decoder
@@ -27,7 +28,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/rs/xid"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // register webp decoder so DecodeConfig accepts what readAndValidateImage allows
@@ -91,14 +91,14 @@ func NewService(s Store, p ServiceParams) *Service {
 
 // Commit multiple ids immediately
 func (s *Service) Commit(idsFn func() []string) error {
-	errs := new(multierror.Error)
+	var errs []error
 	for _, id := range idsFn() {
 		err := s.store.Commit(id)
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("failed to commit image %s: %w", id, err))
+			errs = append(errs, fmt.Errorf("failed to commit image %s: %w", id, err))
 		}
 	}
-	return errs.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // Submit multiple ids via function for delayed commit

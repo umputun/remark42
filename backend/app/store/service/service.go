@@ -3,6 +3,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -14,7 +15,6 @@ import (
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
 	bf "github.com/russross/blackfriday/v2"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -249,18 +249,18 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	if ts.IsZero() {
 		return nil
 	}
-	result := new(multierror.Error)
+	var errs []error
 	for _, site := range sites {
 		locator := store.Locator{SiteID: site}
 		comments, err := s.FindSince(locator, "time", store.User{}, ts)
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("problem finding comments for site %s: %w", site, err))
+			errs = append(errs, fmt.Errorf("problem finding comments for site %s: %w", site, err))
 		}
 		for _, c := range comments {
 			s.submitImages(c)
 		}
 	}
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
@@ -915,32 +915,32 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 
 // SetMetas saves metadata for users and posts
 func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []PostMetaData) (err error) {
-	errs := new(multierror.Error)
+	var errs []error
 
 	// save posts metas
 	for _, pm := range pmetas {
 		if pm.ReadOnly {
-			errs = multierror.Append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
+			errs = append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
 		}
 	}
 
 	// save users metas
 	for _, um := range umetas {
 		if um.Blocked.Status {
-			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
+			errs = append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
 		}
 		if um.Verified {
-			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+			errs = append(errs, s.SetVerified(siteID, um.ID, true))
 		}
 		// this code doesn't delete user details in case they are not set in import but present in DB already
 		if um.Details.Email != "" {
 			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
 			_, err := s.Engine.UserDetail(req)
-			errs = multierror.Append(errs, err)
+			errs = append(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // User gets comment for given userID on siteID
@@ -972,15 +972,15 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 
 // Close store service
 func (s *DataStore) Close() error {
-	errs := new(multierror.Error)
+	var errs []error
 	if s.repliesCache.LoadingCache != nil {
-		errs = multierror.Append(errs, s.repliesCache.Close())
+		errs = append(errs, s.repliesCache.Close())
 	}
 	if s.TitleExtractor != nil {
-		errs = multierror.Append(errs, s.TitleExtractor.Close())
+		errs = append(errs, s.TitleExtractor.Close())
 	}
-	errs = multierror.Append(errs, s.Engine.Close())
-	return errs.ErrorOrNil()
+	errs = append(errs, s.Engine.Close())
+	return errors.Join(errs...)
 }
 
 func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
