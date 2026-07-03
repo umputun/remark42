@@ -1878,6 +1878,78 @@ func TestService_alterComment(t *testing.T) {
 	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
 }
 
+func TestService_alterCommentsFlagCaching(t *testing.T) {
+	t.Run("repeated user looked up once", func(t *testing.T) {
+		engineMock := engine.InterfaceMock{
+			FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil },
+		}
+		svc := DataStore{Engine: &engineMock}
+
+		var comments []store.Comment
+		for i := 0; i < 5; i++ {
+			comments = append(comments, store.Comment{ID: fmt.Sprintf("c%d", i),
+				User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}})
+		}
+		svc.alterComments(comments, store.User{ID: "u1"})
+
+		// one Blocked + one Verified lookup for the single user, not two per comment
+		assert.Equal(t, 2, len(engineMock.FlagCalls()), "5 comments by one user -> 2 flag lookups")
+	})
+
+	t.Run("distinct users looked up per user", func(t *testing.T) {
+		engineMock := engine.InterfaceMock{
+			FlagFunc: func(req engine.FlagRequest) (bool, error) {
+				return req.Flag == engine.Blocked && req.UserID == "blocked", nil // "blocked" user is blocked
+			},
+		}
+		svc := DataStore{Engine: &engineMock}
+
+		comments := []store.Comment{
+			{ID: "c1", User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}},
+			{ID: "c2", User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}},
+			{ID: "c3", User: store.User{ID: "blocked"}, Locator: store.Locator{SiteID: "site1"}},
+			{ID: "c4", User: store.User{ID: "blocked"}, Locator: store.Locator{SiteID: "site1"}},
+		}
+		res := svc.alterComments(comments, store.User{ID: "admin", Admin: true})
+
+		// u1: Blocked+Verified (2); blocked user: Blocked only, Verified skipped (1) = 3 total
+		assert.Equal(t, 3, len(engineMock.FlagCalls()), "two distinct users -> 3 flag lookups")
+		assert.True(t, res[2].User.Blocked && res[3].User.Blocked, "blocked user marked blocked")
+		assert.False(t, res[0].User.Blocked, "u1 not blocked")
+	})
+
+	t.Run("flag read error is not cached", func(t *testing.T) {
+		var blockedCalls int
+		engineMock := engine.InterfaceMock{
+			FlagFunc: func(req engine.FlagRequest) (bool, error) {
+				if req.Flag == engine.Blocked {
+					blockedCalls++
+					if blockedCalls == 1 {
+						return false, fmt.Errorf("transient flag read error")
+					}
+					return true, nil
+				}
+				return false, nil
+			},
+		}
+		svc := DataStore{Engine: &engineMock}
+
+		comments := []store.Comment{
+			{ID: "c0", User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}},
+			{ID: "c1", User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}},
+			{ID: "c2", User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}},
+		}
+		res := svc.alterComments(comments, store.User{ID: "admin", Admin: true})
+
+		// the errored first lookup must not be cached, so the next comment retries and
+		// picks up the real blocked state; once it succeeds the result is cached
+		assert.False(t, res[0].User.Blocked, "errored lookup treated as not blocked")
+		assert.True(t, res[1].User.Blocked, "retry after error picks up blocked state")
+		assert.True(t, res[2].User.Blocked, "successful read is cached")
+		assert.Equal(t, 2, blockedCalls, "blocked retried once after the error, then cached")
+	})
+}
+
 func Benchmark_ServiceCreate(b *testing.B) {
 	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
 	defer func() { _ = os.Remove(dbFile) }()

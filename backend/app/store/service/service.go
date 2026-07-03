@@ -128,6 +128,7 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 	}
 
 	changedSort := false
+	flags := s.newUserFlagCache()
 	// sets votes controversy for comments added prior to #274
 	// also sanitizes locator.URL for comments added prior to #927
 	for i, c := range comments {
@@ -137,7 +138,7 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 				changedSort = true
 			}
 		}
-		comments[i] = s.alterComment(c, user)
+		comments[i] = s.alterCommentCached(c, user, flags)
 	}
 
 	// resort commits if altered
@@ -1011,25 +1012,28 @@ func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
 
 func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []store.Comment) {
 	res = make([]store.Comment, len(cc))
+	flags := s.newUserFlagCache()
 	for i, c := range cc {
-		res[i] = s.alterComment(c, user)
+		res[i] = s.alterCommentCached(c, user, flags)
 	}
 	return res
 }
 
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
-	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-	blocked, bErr := s.Engine.Flag(blocReq)
+	return s.alterCommentCached(c, user, s.newUserFlagCache())
+}
 
+// alterCommentCached is alterComment sharing a userFlagCache so that block/verified
+// lookups for a user repeated across a listing hit the engine only once.
+func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *userFlagCache) (res store.Comment) {
 	// mark user blocked
-	if bErr == nil && blocked {
-		c.User.Blocked = blocked
+	if flags.blocked(c.Locator.SiteID, c.User.ID) {
+		c.User.Blocked = true
 	}
 
 	// set verified status retroactively
 	if !c.User.Blocked {
-		verifReq := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-		c.User.Verified, _ = s.Engine.Flag(verifReq)
+		c.User.Verified = flags.verified(c.Locator.SiteID, c.User.ID)
 	}
 
 	// hide info from non-admins
@@ -1041,6 +1045,51 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
 	return c
+}
+
+// userFlagCache memoises engine block/verified flag lookups by site and user within
+// a single listing, avoiding two engine.Flag calls per comment for repeated users.
+type userFlagCache struct {
+	s         *DataStore
+	blockedM  map[flagKey]bool
+	verifiedM map[flagKey]bool
+}
+
+type flagKey struct {
+	siteID string
+	userID string
+}
+
+func (s *DataStore) newUserFlagCache() *userFlagCache {
+	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}}
+}
+
+func (f *userFlagCache) blocked(siteID, userID string) bool {
+	key := flagKey{siteID: siteID, userID: userID}
+	if v, ok := f.blockedM[key]; ok {
+		return v
+	}
+	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	if err != nil {
+		// don't cache on error so a repeated user is retried, matching the
+		// pre-refactor per-comment behavior; treat this comment as not blocked
+		return false
+	}
+	f.blockedM[key] = v
+	return v
+}
+
+func (f *userFlagCache) verified(siteID, userID string) bool {
+	key := flagKey{siteID: siteID, userID: userID}
+	if v, ok := f.verifiedM[key]; ok {
+		return v
+	}
+	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	if err != nil {
+		return false // don't cache on error, retry on the next comment for this user
+	}
+	f.verifiedM[key] = v
+	return v
 }
 
 // prepare vote info for client view
