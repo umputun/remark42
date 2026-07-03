@@ -4,7 +4,6 @@
 #
 # build remark42 docker image - docker compose -f compose-dev-backend.yml build
 # start remark42 service - docker compose -f compose-dev-backend.yml up
-version: "2"
 
 services:
   remark42:
