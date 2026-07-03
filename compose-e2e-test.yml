@@ -1,5 +1,4 @@
 # compose for running e2e tests in CI
-version: "2"
 
 services:
   remark42:
