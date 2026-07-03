@@ -211,9 +211,9 @@ func (t *Tree) limit(limit int, offsetID string) {
 			continue
 		}
 
-		// check if we just exceeded the limit and there are already some nodes in the list,
-		// as otherwise we would have to return the first node with all its replies even if it exceeds the limit.
-		if commentsCount+repliesCount >= limit && len(limitedNodes) > 0 {
+		// stop once adding this subtree would exceed the limit, as long as we already have a node;
+		// a subtree that fits exactly is still included, and the first node is always returned in full.
+		if commentsCount+repliesCount > limit && len(limitedNodes) > 0 {
 			t.countLeft += repliesCount
 			commentsCount = limit // adjust commentsCount to stop checking limit for the next nodes
 			continue
