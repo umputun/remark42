@@ -771,8 +771,12 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		t.Run(tc.params, func(t *testing.T) {
 			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
 			body, code := get(t, url)
+			// bad-request cases are identified by their error response body rather than
+			// a "=bad" substring of the params: comment IDs are random UUIDs and one
+			// starting with "bad" (e.g. offset_id=bad49e60-...) would otherwise be
+			// misread as a bad request, making this test flaky.
 			expectedStatus := http.StatusOK
-			if strings.Contains(tc.params, "=bad") {
+			if strings.Contains(tc.expectedBody, `"error":`) {
 				expectedStatus = http.StatusBadRequest
 			}
 			assert.Equal(t, expectedStatus, code)
