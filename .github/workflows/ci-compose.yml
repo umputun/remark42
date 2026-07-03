@@ -1,0 +1,44 @@
+name: compose
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/ci-compose.yml"
+      - "**compose*.yml"
+      - "**compose*.yaml"
+  pull_request:
+    paths:
+      - ".github/workflows/ci-compose.yml"
+      - "**compose*.yml"
+      - "**compose*.yaml"
+
+jobs:
+  validate:
+    name: Validate compose files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: validate tracked compose files
+        run: |
+          set -euo pipefail
+          n=0
+          # null-delimited to stay safe with unusual filenames; exclude this
+          # workflow (its name contains "compose") and vendored compose files.
+          # filenames are not echoed as workflow commands to avoid log-command injection
+          while IFS= read -r -d '' f; do
+            docker compose -f "$f" config --quiet
+            n=$((n + 1))
+          done < <(git ls-files -z '*compose*.yml' '*compose*.yaml' ':!:*/vendor/*' ':!:.github/*')
+          if [ "$n" -eq 0 ]; then
+            echo "no compose files found" >&2
+            exit 1
+          fi
+          echo "validated $n compose file(s)"
