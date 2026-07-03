@@ -21,40 +21,44 @@ updates:
       "Go modules updates":
         dependency-type: "production"
   - package-ecosystem: "npm"
+    # /frontend is a pnpm workspace root (see frontend/pnpm-workspace.yaml), so
+    # this single block covers the root manifest and every workspace member
+    # (apps/remark42, packages/api, e2e). Do NOT add per-member blocks for the
+    # same directories: they would overlap this root and duplicate PRs while
+    # bypassing the holds below.
     directory: "/frontend"
-    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
-    directory: "/frontend/packages/api"
-    open-pull-requests-limit: 0
-    schedule:
-      interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
-    directory: "/frontend/e2e"
-    open-pull-requests-limit: 0
-    schedule:
-      interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
-    directory: "/frontend/apps/remark42"
-    open-pull-requests-limit: 0
-    schedule:
-      interval: "monthly"
+    # major updates of these are deliberately held back (config-migration or
+    # bundle-changing majors), see frontend/CLAUDE.md; minor/patch still flow.
+    # Dependabot cannot scope ignores per workspace member (subdirectory pnpm
+    # workspace updates are unsupported when the workspace file is in the parent),
+    # so a workspace-root block applies to every member. These holds are therefore
+    # the union of all members' holds; a hold that only apps/remark42 strictly
+    # needs (e.g. typescript, held for its TS4 config) also applies to packages/api
+    # and e2e even though they are on newer majors — an unavoidable trade-off of
+    # the single-root constraint, not an oversight.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "stylelint"
+        update-types: ["version-update:semver-major"]
+      # jest* also covers jest-environment-jsdom and other jest-family packages
+      # that version in lockstep with jest; the Jest 30 hold needs all of them.
+      - dependency-name: "jest*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "redux"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-redux"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
     groups:
       "NPM modules updates":
         dependency-type: "production"
@@ -62,11 +66,45 @@ updates:
         dependency-type: "development"
   - package-ecosystem: "npm"
     directory: "/site"
-    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
+    # tailwindcss v4 and eleventy v3 are full config rewrites, held back per frontend/CLAUDE.md
+    ignore:
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@11ty/eleventy"
+        update-types: ["version-update:semver-major"]
     groups:
       "NPM modules updates":
         dependency-type: "production"
       "NPM modules updates for tests":
         dependency-type: "development"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Docker updates":
+        patterns:
+          - "*"
+  - package-ecosystem: "docker"
+    directory: "/backend/_example/memory_store"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Docker updates":
+        patterns:
+          - "*"
+  # no docker updater for /frontend: its only Dockerfile is Dockerfile.e2e, whose
+  # Playwright base image must stay pinned to the @playwright/test version in
+  # frontend/e2e/package.json (see frontend/CLAUDE.md). Dependabot bumps docker
+  # and npm in separate PRs, so an independent image bump would desync the two
+  # and break the e2e container; the image is updated manually alongside npm.
+  - package-ecosystem: "docker"
+    directory: "/site"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Docker updates":
+        patterns:
+          - "*"
