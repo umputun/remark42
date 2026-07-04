@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
-	github.com/go-pkgz/auth/v2 v2.1.4
+	github.com/go-pkgz/auth/v2 v2.1.5
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.12.3

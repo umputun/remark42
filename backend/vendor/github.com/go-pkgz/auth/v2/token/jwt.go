@@ -82,7 +82,7 @@ type Opts struct {
 	AudienceReader    Audience      // allowed aud values
 	Issuer            string        // optional value for iss claim, usually application name
 	AudSecrets        bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
-	SendJWTHeader     bool          // if enabled send JWT as a header instead of cookie
+	SendJWTHeader     bool          // if enabled, also send JWT as a response header (in addition to the cookie)
 	SameSite          http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
 }
 
@@ -241,9 +241,11 @@ func (j *Service) validate(claims *Claims) error {
 	return err
 }
 
-// Set creates token cookie with xsrf cookie and put it to ResponseWriter
-// accepts claims and sets expiration if none defined. permanent flag means long-living cookie,
-// false makes it session only.
+// Set writes the JWT cookie and the XSRF cookie to w, also emitting the JWT as a
+// response header when SendJWTHeader is enabled. Expiration is filled in from
+// j.TokenDuration if claims.ExpiresAt is zero. The cookie is session-only (MaxAge 0)
+// when claims.SessionOnly is true or claims contain a Handshake; otherwise it lasts
+// j.CookieDuration.
 func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	nowUnix := time.Now().Unix()
 
@@ -286,8 +288,10 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	return claims, nil
 }
 
-// Get token from url, header or cookie
-// if cookie used, verify xsrf token to match
+// Get token from url, header or cookie. When a user token is read from a cookie,
+// XSRF protection requires the request header to match the token claim ID (the
+// value Set also writes to the XSRF cookie), unless DisableXSRF is set, the request
+// method is in XSRFIgnoreMethods, or the claims carry no user.
 func (j *Service) Get(r *http.Request) (Claims, string, error) {
 
 	fromCookie := false
@@ -419,7 +423,7 @@ type ClaimsUpdater interface {
 // with the appropriate signature, ClaimsUpdFunc(f) is a Handler that calls f.
 type ClaimsUpdFunc func(claims Claims) Claims
 
-// Update calls f(id)
+// Update calls f(claims).
 func (f ClaimsUpdFunc) Update(claims Claims) Claims {
 	return f(claims)
 }
@@ -434,7 +438,7 @@ type Validator interface {
 // with the appropriate signature, ValidatorFunc(f) is a Validator that calls f.
 type ValidatorFunc func(token string, claims Claims) bool
 
-// Validate calls f(id)
+// Validate calls f(token, claims).
 func (f ValidatorFunc) Validate(token string, claims Claims) bool {
 	return f(token, claims)
 }

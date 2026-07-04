@@ -12,7 +12,7 @@ type L interface {
 // Func type is an adapter to allow the use of ordinary functions as Logger.
 type Func func(format string, args ...any)
 
-// Logf calls f(id)
+// Logf calls f(format, args...).
 func (f Func) Logf(format string, args ...any) { f(format, args...) }
 
 // NoOp logger

@@ -402,7 +402,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ah.Logf("[DEBUG] user info %+v", u)
+	ah.Logf("[DEBUG] user info %s", userLogSummary(u))
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
@@ -522,7 +522,7 @@ func (ah *AppleHandler) parseUserData(user *token.User, jUser string) {
 
 	// catch error for log only. No need break flow if user name doesn't exist
 	if err := json.Unmarshal([]byte(jUser), &userData); err != nil {
-		ah.Logf("[DEBUG] failed to parse user data %s: %v", user, err)
+		ah.Logf("[DEBUG] failed to parse apple user data: %v", err)
 		user.Name = "noname_" + user.ID[6:12] // paste noname if user name failed to parse
 		return
 	}

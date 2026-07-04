@@ -797,6 +797,54 @@ func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
 	assert.EqualError(t, err, "no comments for user user3 in store", "user3 comments should be deleted")
 }
 
+// a genuine (non not-found) avatar-store failure must now surface, not be silently swallowed:
+// avatar.ErrNotFound lets deleteMeRequestCtrl tell an already-gone avatar from a real error
+func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
+		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user5 name", ID: "user5"}}
+	_, err := srv.DataService.Create(c1)
+	require.NoError(t, err)
+
+	// put a non-empty directory where the avatar file is expected, so Store.Remove fails with a real
+	// error (directory not empty), not os.ErrNotExist - "pic" hashes to partition 42
+	require.NoError(t, os.MkdirAll(os.TempDir()+"/ava-remark42/42/pic.image", 0o700))
+	require.NoError(t, os.WriteFile(os.TempDir()+"/ava-remark42/42/pic.image/child", []byte("x"), 0o600))
+
+	claims := token.Claims{
+		SessionOnly: true,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ID:        "4567890",
+			Issuer:    "remark42",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		},
+		User: &token.User{
+			ID:      "user5",
+			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
+			Attributes: map[string]any{
+				"delete_me": true,
+			},
+		},
+	}
+
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "a real avatar-store failure must surface, not be swallowed")
+}
+
 func TestAvatarIDFromPicture(t *testing.T) {
 	tbl := []struct {
 		name    string

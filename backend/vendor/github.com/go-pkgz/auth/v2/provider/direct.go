@@ -76,24 +76,25 @@ func (p DirectHandler) Name() string { return p.ProviderName }
 //	  "aud": "bar",
 //	}
 func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	logReq := p.scrubPasswordFromRequest(r)
 	creds, err := p.getCredentials(w, r)
 	if err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusBadRequest, err, "failed to parse credentials")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusBadRequest, err, "failed to parse credentials")
 		return
 	}
 	sessOnly := r.URL.Query().Get("sess") == "1"
 	if p.CredChecker == nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError,
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError,
 			fmt.Errorf("no credential checker"), "no credential checker")
 		return
 	}
 	ok, err := p.CredChecker.Check(creds.User, creds.Password)
 	if err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to check user credentials")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError, err, "failed to check user credentials")
 		return
 	}
 	if !ok {
-		rest.SendErrorJSON(w, r, p.L, http.StatusForbidden, nil, "incorrect user or password")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusForbidden, nil, "incorrect user or password")
 		return
 	}
 
@@ -108,13 +109,13 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err = setAvatar(p.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second})
 	if err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return
 	}
 
 	cid, err := randToken()
 	if err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "can't make token id")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError, err, "can't make token id")
 		return
 	}
 
@@ -132,10 +133,24 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err = p.TokenService.Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to set token")
+		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 	rest.RenderJSON(w, claims.User)
+}
+
+func (p DirectHandler) scrubPasswordFromRequest(r *http.Request) *http.Request {
+	if r == nil || r.URL == nil {
+		return r
+	}
+	if _, ok := r.URL.Query()["passwd"]; !ok {
+		return r
+	}
+	rc := r.Clone(r.Context())
+	q := rc.URL.Query()
+	q.Set("passwd", "<redacted>")
+	rc.URL.RawQuery = q.Encode()
+	return rc
 }
 
 // getCredentials extracts user and password from request
