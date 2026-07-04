@@ -52,3 +52,5 @@ server {
 ```
 
 Note: `proxy_pass` points to internal DNS name `remark42` and is expected to run from the same compose. If Nginx runs outside compose, the real IP (or docker's bridge IP) should be used
+
+Because this config sets `X-Real-IP`/`X-Forwarded-For`, set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) to the network Nginx connects from (for a same-compose Nginx that is the Docker network, e.g. `172.16.0.0/12`). Without it Remark42 trusts those headers from any client, which lets them spoof their IP and bypass rate limiting and vote de-duplication.

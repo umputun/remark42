@@ -85,6 +85,7 @@ type ServerCommand struct {
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) whose X-Real-IP/X-Forwarded-For headers set the client IP; if unset, these headers are trusted from any client (see docs)" env-delim:","`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
@@ -596,6 +597,17 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	}
 	log.Printf("[INFO] root url=%s", s.RemarkURL)
 
+	// parse trusted proxies up front so a bad CIDR fails before any resource is allocated
+	trustedProxies, err := api.ParseTrustedProxies(s.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --trusted-proxy: %w", err)
+	}
+	if len(trustedProxies) == 0 {
+		log.Printf("[WARN] --trusted-proxy is not set: X-Real-IP/X-Forwarded-For/CF-Connecting-IP headers are trusted from " +
+			"any client, so a client can spoof its IP and bypass rate limiting and vote dedup. Behind a reverse proxy set " +
+			"--trusted-proxy to the proxy network (e.g. 172.16.0.0/12 for a proxy in the same compose); see the trusted-proxy docs.")
+	}
+
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
 		return nil, fmt.Errorf("failed to make data store engine: %w", err)
@@ -703,6 +715,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Migrator:                   migr,
 		ReadOnlyAge:                s.ReadOnlyAge,
 		SharedSecret:               s.SharedSecret,
+		TrustedProxies:             trustedProxies,
 		Authenticator:              authenticator,
 		Cache:                      loadingCache,
 		NotifyService:              notifyService,

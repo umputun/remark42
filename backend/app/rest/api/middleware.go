@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/mail"
 	"regexp"
@@ -16,6 +17,96 @@ import (
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 )
+
+// ipForwardingHeaders are the request headers R.RealIP derives the client IP from.
+var ipForwardingHeaders = []string{"X-Real-IP", "X-Forwarded-For", "CF-Connecting-IP"}
+
+// realIPMiddleware derives the client IP from forwarding headers (X-Real-IP / X-Forwarded-For /
+// CF-Connecting-IP) via R.RealIP, but honors those headers only for requests whose direct peer
+// is one of the trusted proxies. For any other peer it drops those headers and pins RemoteAddr to
+// the real socket IP, so an untrusted client can't spoof the IP that per-IP controls (rate limiting,
+// vote dedup, comment IP, anonymous id) and the request log key on.
+//
+// With no trusted proxies configured it falls back to trusting the headers from any client (the
+// historical behavior). That is spoofable by design, so operators running behind a reverse proxy
+// should set --trusted-proxy to the proxy's network — see the "trusted proxy" docs.
+func realIPMiddleware(trustedProxies []*net.IPNet) func(http.Handler) http.Handler {
+	if len(trustedProxies) == 0 {
+		return R.RealIP
+	}
+	return func(next http.Handler) http.Handler {
+		fromTrusted := R.RealIP(next) // rewrites RemoteAddr from the forwarding headers
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			peer := directPeerIP(r.RemoteAddr)
+			if peer != nil && cidrsContain(trustedProxies, peer) {
+				fromTrusted.ServeHTTP(w, r) // trusted proxy: honor the forwarding headers
+				return
+			}
+			// untrusted peer: drop the forwarding headers and pin RemoteAddr to the real socket IP,
+			// so nothing downstream can be fooled by a spoofed header (R.RealIP normalizes
+			// RemoteAddr to a bare IP for trusted peers; do the same here for consistency)
+			for _, h := range ipForwardingHeaders {
+				r.Header.Del(h)
+			}
+			if peer != nil {
+				r.RemoteAddr = peer.String()
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// directPeerIP extracts the IP from a "host:port" (or bare host) RemoteAddr, or nil if unparseable.
+func directPeerIP(remoteAddr string) net.IP {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr // may already be a bare IP with no port
+	}
+	return net.ParseIP(host)
+}
+
+// cidrsContain reports whether ip falls within any of the CIDRs.
+func cidrsContain(cidrs []*net.IPNet, ip net.IP) bool {
+	for _, c := range cidrs {
+		if c.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// ParseTrustedProxies parses a list of trusted-proxy entries into CIDRs. Each entry may be a CIDR
+// (e.g. 172.16.0.0/12) or a bare IP (treated as a single host). Blank entries are skipped; a
+// malformed entry is a hard error so a typo can't silently disable proxy trust.
+func ParseTrustedProxies(entries []string) ([]*net.IPNet, error) {
+	var out []*net.IPNet
+	for _, e := range entries {
+		e = strings.TrimSpace(e)
+		if e == "" {
+			continue
+		}
+		if !strings.Contains(e, "/") { // bare IP -> single-host CIDR
+			ip := net.ParseIP(e)
+			if ip == nil {
+				return nil, fmt.Errorf("invalid trusted proxy %q", e)
+			}
+			// build the network from the normalized IP so a v4-mapped IPv6 (e.g. ::ffff:10.0.0.1)
+			// yields the intended /32 host, not a huge ::/32 range
+			bits := 128
+			if v4 := ip.To4(); v4 != nil {
+				ip, bits = v4, 32
+			}
+			out = append(out, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+			continue
+		}
+		_, network, err := net.ParseCIDR(e)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trusted proxy CIDR %q: %w", e, err)
+		}
+		out = append(out, network)
+	}
+	return out, nil
+}
 
 // corsMiddleware builds the CORS middleware for the public API. With AllowedOrigins
 // "*" and credentials enabled, rest.CORS reflects the request Origin into
@@ -239,8 +330,8 @@ func validEmailAuth() func(http.Handler) http.Handler {
 
 // rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
 // tollbooth v8 requires explicit IP lookup method to be set.
-// uses RemoteAddr which is set by rest.RealIP to the real client IP
-// from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
+// keys on RemoteAddr, which realIPMiddleware sets to the client IP (from the forwarding
+// headers for trusted proxies, otherwise the real socket IP).
 func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 	lmt := tollbooth.NewLimiter(maxReq, nil)
 	lmt.SetIPLookup(limiter.IPLookup{
