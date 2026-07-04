@@ -171,6 +171,7 @@ services:
 | port                           | REMARK_PORT                    | `8080`                  | web server port                                          |
 | web-root                       | REMARK_WEB_ROOT                | `./web`                 | web server root directory                                |
 | update-limit                   | UPDATE_LIMIT                   | `0.5`                   | updates/sec limit                                        |
+| trusted-proxy                  | TRUSTED_PROXY                  | none (trust any)        | reverse-proxy networks (CIDR/IP, comma-separated) trusted to set the client IP; see [Trusted proxies and client IP](#trusted-proxies-and-client-ip) |
 | subscribers-only               | SUBSCRIBERS_ONLY               | `false`                 | enable commenting only for Patreon subscribers           |
 | disable-signature              | DISABLE_SIGNATURE              | `false`                 | disable server signature in headers                      |
 | disable-fancy-text-formatting  | DISABLE_FANCY_HTML_FORMATTING  | `false`                 | disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc) |
@@ -201,6 +202,51 @@ This configuration should only be used when:
 1. You need cross-domain authentication support
 2. You understand and accept the increased XSS risk
 3. You have implemented strong XSS protections on your site
+
+### Trusted proxies and client IP
+
+Remark42 keys per-IP rate limiting — and, when `--votes-ip` is enabled, vote de-duplication and the stored comment IP — on the client IP. When Remark42 runs behind a reverse proxy (nginx, Reproxy, Traefik, Cloudflare, an ALB, a k8s ingress, …) the TCP connection it sees comes from the **proxy**, not the visitor, so the proxy forwards the real client IP in a header and Remark42 reads it (priority: `X-Real-IP`, then `CF-Connecting-IP`, then `X-Forwarded-For`) to recover the real IP.
+
+> ⚠️ **Security note.** Those headers can be set by any client. If Remark42 trusts them from everyone, a caller can send `X-Real-IP: <anything>` and rotate its apparent IP to **bypass rate limiting and vote de-duplication**. Use `--trusted-proxy` so Remark42 reads the forwarding headers **only** when the request actually arrives from your proxy.
+
+`--trusted-proxy` / `TRUSTED_PROXY` takes a comma-separated list of networks (CIDR) or bare IPs. When set, the forwarding headers are honored only if the **direct peer** — the machine that opened the TCP connection to Remark42 — falls inside one of them; for a request from any other peer those headers are dropped and the real socket IP is used. When it is **not** set, the headers are trusted from any client: this preserves the historical behavior so existing deployments keep working, but leaves the bypass above open, and Remark42 prints a warning at startup. **If Remark42 is reachable from the internet, set this.**
+
+Two conditions must **both** hold to be safe:
+
+**1. Trust the right peer.** Point `--trusted-proxy` at the network your proxy connects _from_, and nothing wider.
+
+**2. Your proxy must set the IP itself.** Trusting a proxy is not enough if the proxy relays what the client sent. Because Remark42 reads `X-Real-IP` first, the proxy must **set** `X-Real-IP` to the real connecting client and overwrite any client value. A proxy that only _appends_ to `X-Forwarded-For` (Traefik, most cloud ALBs, k8s ingress, HAProxy defaults) or that derives `X-Real-IP` from a client-controlled `X-Forwarded-For` leaves the visitor in control of the reported IP **even through a trusted proxy**:
+
+- **nginx** — safe with the [manual's](../../manuals/nginx/) `proxy_set_header X-Real-IP $remote_addr;` (overwrites any client value).
+- **Reproxy** — sets `X-Real-IP`, but derives it from an incoming `X-Forwarded-For` when present, so a directly-exposed Reproxy still lets a client choose it; front it with something that strips client `X-Forwarded-For`, or don't rely on it for per-IP controls.
+- **Cloudflare** — does **not** set `X-Real-IP`, and a client-supplied `X-Real-IP` wins over `CF-Connecting-IP`; add a Cloudflare Transform Rule that sets `X-Real-IP` from `CF-Connecting-IP` and clears any inbound `X-Real-IP` / `X-Forwarded-For`.
+
+**Recommended `--trusted-proxy` per deployment:**
+
+| Deployment | Direct peer Remark42 sees | `--trusted-proxy` |
+| --- | --- | --- |
+| nginx in the **same Docker Compose** (the [nginx manual](../../manuals/nginx/)) | the proxy container's Docker IP | the Docker network, e.g. `172.16.0.0/12` (covers Docker's default bridge pool) — or pin your compose network's subnet |
+| reverse proxy on the **host** / another machine | the proxy's host IP | that proxy's IP or CIDR, e.g. `10.0.0.5` |
+| **Directly exposed**, no proxy | the real client IP already | `--trusted-proxy=127.0.0.1/32` — a value no client matches, so forwarding headers are always ignored and the real connecting IP is used |
+
+Examples:
+
+```
+# docker-compose: nginx on the same network
+TRUSTED_PROXY=172.16.0.0/12
+
+# a single upstream proxy
+--trusted-proxy=10.0.0.5
+
+# multiple ranges (v4 and v6)
+TRUSTED_PROXY=10.0.0.0/8,fd00::/8
+```
+
+Caveats:
+
+- **IPv6.** CIDRs are matched by family — `172.16.0.0/12` (or `0.0.0.0/0`) never matches an IPv6 peer. If your proxy reaches Remark42 over IPv6 (dual-stack / IPv6-enabled Docker), add the IPv6 network too, or every visitor collapses onto the proxy's IP and gets over-throttled.
+- **Don't publish Remark42's own port** when trusting a Docker range. If Remark42's port is exposed to the host, external traffic is SNAT'd to the Docker gateway (inside `172.16.0.0/12`) and appears trusted — re-opening the bypass. Publish only the proxy.
+- `0.0.0.0/0` trusts everyone and re-opens the bypass; too narrow a range over-throttles real visitors. If unsure which network your proxy uses, check a Remark42 request log for the peer address it reports.
 
 ### Deprecated parameters
 

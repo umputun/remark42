@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -48,6 +49,7 @@ type Rest struct {
 	RemarkURL       string
 	ReadOnlyAge     int
 	SharedSecret    string
+	TrustedProxies  []*net.IPNet // reverse-proxy networks whose forwarding headers (X-Real-IP, X-Forwarded-For, ...) are trusted
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -215,7 +217,7 @@ func (s *Rest) routes() http.Handler {
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Throttle(1000), R.RealIP, R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), R.Recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))

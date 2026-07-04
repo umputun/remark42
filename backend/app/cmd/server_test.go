@@ -377,6 +377,16 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
+	// invalid trusted proxy CIDR fails fast, before any resource is created
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--backup=/tmp", "--trusted-proxy=nonsense"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err, `invalid --trusted-proxy: invalid trusted proxy "nonsense"`)
+	t.Log(err)
+
 	// wrong store type
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})

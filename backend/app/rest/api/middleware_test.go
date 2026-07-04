@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -47,6 +48,72 @@ func TestRouteTimeout(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "route without R.Timeout runs to completion")
+}
+
+func TestRealIPMiddleware(t *testing.T) {
+	var seenAddr, seenHdr string // what the downstream handler observes
+	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		seenAddr, seenHdr = r.RemoteAddr, r.Header.Get("X-Real-IP")
+	})
+
+	call := func(mw func(http.Handler) http.Handler, remoteAddr, xRealIP string) {
+		seenAddr, seenHdr = "", ""
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req.RemoteAddr = remoteAddr
+		req.Header.Set("X-Real-IP", xRealIP)
+		mw(next).ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	trusted, err := ParseTrustedProxies([]string{"172.16.0.0/12", "2001:db8::/32"})
+	require.NoError(t, err)
+
+	t.Run("no trusted proxies trusts the header from anyone (legacy)", func(t *testing.T) {
+		call(realIPMiddleware(nil), "203.0.113.9:1234", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", seenAddr)
+	})
+	t.Run("trusted v4 peer: forwarding header sets the client IP", func(t *testing.T) {
+		call(realIPMiddleware(trusted), "172.18.0.5:5555", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", seenAddr)
+	})
+	t.Run("trusted v6 peer: forwarding header honored", func(t *testing.T) {
+		call(realIPMiddleware(trusted), "[2001:db8::5]:5555", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", seenAddr)
+	})
+	t.Run("untrusted peer: header stripped, RemoteAddr pinned to bare socket IP", func(t *testing.T) {
+		call(realIPMiddleware(trusted), "203.0.113.9:1234", "8.8.8.8")
+		assert.Equal(t, "203.0.113.9", seenAddr, "real socket IP with the port stripped")
+		assert.Empty(t, seenHdr, "spoofed forwarding header removed so nothing downstream can read it")
+	})
+}
+
+func TestParseTrustedProxies(t *testing.T) {
+	t.Run("cidr, bare v4, bare v6, blanks", func(t *testing.T) {
+		got, err := ParseTrustedProxies([]string{"172.16.0.0/12", " 10.0.0.1 ", "", "2001:db8::/32"})
+		require.NoError(t, err)
+		require.Len(t, got, 3)
+		assert.True(t, got[0].Contains(net.ParseIP("172.18.0.5")))
+		assert.True(t, got[1].Contains(net.ParseIP("10.0.0.1")))
+		assert.False(t, got[1].Contains(net.ParseIP("10.0.0.2")), "a bare IP is a single host")
+		assert.True(t, got[2].Contains(net.ParseIP("2001:db8::1")))
+	})
+	t.Run("v4-mapped IPv6 bare entry resolves to the v4 host", func(t *testing.T) {
+		got, err := ParseTrustedProxies([]string{"::ffff:10.0.0.1"})
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Contains(net.ParseIP("10.0.0.1")), "the intended /32 host")
+		assert.False(t, got[0].Contains(net.ParseIP("10.0.0.2")), "not a wider range")
+	})
+	t.Run("malformed entry is a hard error", func(t *testing.T) {
+		_, err := ParseTrustedProxies([]string{"172.16.0.0/12", "nonsense"})
+		require.Error(t, err)
+		_, err = ParseTrustedProxies([]string{"10.0.0.0/999"})
+		require.Error(t, err)
+	})
+	t.Run("all blank yields nil", func(t *testing.T) {
+		got, err := ParseTrustedProxies([]string{"", "  "})
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {

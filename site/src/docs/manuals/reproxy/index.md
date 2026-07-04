@@ -82,3 +82,5 @@ services:
       reproxy.dest: "/$$1"
       reproxy.ping: "/ping"
 ```
+
+To make per-IP rate limiting and vote de-duplication use the real client IP, set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) to the network Reproxy connects from (the Docker network for a same-compose Reproxy, e.g. `172.16.0.0/12`). Two Reproxy-specific cautions: Reproxy derives `X-Real-IP` from an incoming `X-Forwarded-For`, so a directly-exposed Reproxy still lets a client spoof the IP — front it with something that strips client `X-Forwarded-For`; and drop the `ports: - "8080"` mapping on the `remark42` service once Reproxy is the entry point, otherwise Remark42 is reachable directly and external traffic appears as a trusted Docker peer.
