@@ -28,17 +28,12 @@ import (
 // http.sniffLen is 512 bytes which is how much we need to read to detect content type
 const sniffLen = 512
 
-// maxAvatarFetchSize bounds the bytes read from a remote avatar URL. 10 MiB is
-// generous for any reasonable avatar (Telegram caps photo at 5 MiB; Gravatar is
-// much smaller); the cap protects Proxy.Put against an upstream sending an
-// unbounded body that would exhaust process memory inside resize.
+// maxAvatarFetchSize caps the byte length of any avatar accepted by load,
+// PutContent, or resize — i.e. the upper bound on bytes that ever reach Store.Put.
 const maxAvatarFetchSize = 10 << 20
 
-// maxAvatarPixels caps the declared pixel count of an avatar before any raster
-// decode is allowed. Without this, a tiny compressed "decompression bomb" image
-// declaring e.g. 65535x65535 px would force image.Decode to allocate gigabytes
-// of pixel memory and OOM the auth service on a single login attempt. 16 MP
-// covers any realistic avatar (~4096x4096) while keeping peak allocation bounded.
+// maxAvatarPixels caps cfg.Width*cfg.Height (from image.DecodeConfig) before any
+// full image.Decode runs. Defends against decompression-bomb inputs.
 const maxAvatarPixels = 16 * 1024 * 1024
 
 // Proxy provides http handler for avatars from avatar.Store
@@ -51,7 +46,11 @@ type Proxy struct {
 	ResizeLimit int
 }
 
-// Put stores retrieved avatar to avatar.Store. Gets image from user info. Returns proxied url
+// Put fetches u.Picture, validates and optionally resizes the body, stores it via
+// Store, and returns the proxied avatar URL. If u.Picture is empty, the fetch fails,
+// or the upstream bytes are not a recognized image format within the configured
+// dimension and size limits, Put silently falls back to a generated identicon and
+// returns its proxied URL — the caller is not told upstream was rejected.
 func (p *Proxy) Put(u token.User, client *http.Client) (avatarURL string, err error) {
 
 	genIdenticon := func(userID string) (avatarURL string, err error) {
@@ -168,7 +167,9 @@ func (p *Proxy) load(url string, client *http.Client) ([]byte, error) {
 	return body, nil
 }
 
-// Handler returns token routes for given provider
+// Handler serves stored avatar content by avatar id. GET only; rejects invalid ids
+// (403) and stored bytes that fail the safeImgContentType sniff (415). Layered
+// defense headers are set on every response via setAvatarDefenseHeaders.
 func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 	setAvatarDefenseHeaders(w)
 
@@ -195,11 +196,9 @@ func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// io.ReadFull keeps reading until the buffer is full or EOF, so a Store
-	// implementation that returns a buffered reader with a small first-Read size
-	// won't cause DetectContentType to misclassify a real image. Short bodies
-	// (avatars under sniffLen) return ErrUnexpectedEOF — that's expected, we sniff
-	// what we got.
+	// ReadFull (not Read) so a Store backend that hands back a short first Read
+	// doesn't truncate the sniff window. Short bodies are signaled by
+	// ErrUnexpectedEOF and treated like EOF.
 	buf := make([]byte, sniffLen)
 	n, err := io.ReadFull(avReader, buf)
 	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
@@ -208,11 +207,9 @@ func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// validate the bytes really are an image before declaring a content type. Even
-	// though Put() now refuses to store non-image content, this catches stores poisoned
-	// before the fix and any future regression — never trust the bytes at the store
-	// boundary alone, validate again at serve time. An empty body (e.g. NoOp store)
-	// is treated as a benign no-content case: nothing to render, no XSS surface.
+	// sniff buf[:n] against the safeImgContentType allowlist. This is not a full
+	// image decode; it catches stores poisoned before Put validated. An empty body
+	// (e.g. NoOp store) is treated as benign — nothing to render.
 	var contentType string
 	if n > 0 {
 		var ctErr error
@@ -248,20 +245,12 @@ func (p *Proxy) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// resize validates that the input is a real image and, if needed, re-encodes it to
-// fit within "limit" px on the larger side preserving aspect ratio. Returns nil for
-// non-image content or for declared dimensions exceeding maxAvatarPixels so attacker
-// payloads (HTML/SVG/decompression bombs) never reach the store. With limit <= 0 or
-// when the image already fits, the original bytes are returned verbatim so animated
-// GIFs and other multi-frame formats round-trip without being flattened to one frame.
-//
-// Validation uses image.DecodeConfig (cheap — declares dimensions, allocates nothing)
-// before any full image.Decode, so a 100 KB compressed image declaring 65535x65535 px
-// is rejected without ever materializing the raster.
-//
-// Callers (load, PutContent, identicon generation) must ensure body is bounded by
-// maxAvatarFetchSize before calling; resize trusts the size invariant rather than
-// re-buffering. An empty body or a body over the cap is refused defensively.
+// resize checks body via image.DecodeConfig (format + dimensions only, no raster
+// allocation), then either returns the original bytes verbatim (limit <= 0, or
+// dimensions already within limit) or fully decodes and re-encodes to PNG fitting
+// within limit px on the larger side. Returns nil for non-image input or for
+// dimensions exceeding maxAvatarPixels. Caller must ensure body is within
+// maxAvatarFetchSize; a body over the cap is also refused defensively.
 func (p *Proxy) resize(body []byte, limit int) io.Reader {
 	if len(body) == 0 || int64(len(body)) > maxAvatarFetchSize {
 		p.Logf("[WARN] avatar resize(): refusing body of size %d (cap %d)", len(body), maxAvatarFetchSize)
@@ -315,13 +304,9 @@ func (p *Proxy) resize(body []byte, limit int) io.Reader {
 	return &out
 }
 
-// safeImgContentType returns the sniffed content type if the bytes look like a safe
-// raster image format. The set is an explicit allowlist (PNG, JPEG, GIF, WebP, BMP,
-// ICO) — no HasPrefix("image/") catch-all — so future scriptable image/* MIME types
-// added by http.DetectContentType cannot silently pass. Returns an error otherwise.
-// image/svg+xml is excluded because SVG can execute scripts when navigated to top
-// level; image/* coverage of icon files uses both spellings http.DetectContentType
-// is known to return.
+// safeImgContentType returns the sniffed Content-Type for img if it is one of the
+// allow-listed raster image formats (PNG, JPEG, GIF, WebP, BMP, ICO), else an error.
+// SVG is excluded.
 func safeImgContentType(img []byte) (string, error) {
 	ct := http.DetectContentType(img)
 	base := ct

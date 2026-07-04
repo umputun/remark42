@@ -127,8 +127,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
-	h.Logf("[DEBUG] got raw user info %+v", jData)
-
+	h.Logf("[DEBUG] got raw user info %s", userDataLogSummary(jData))
 	u := h.mapUser(jData, data)
 	u, err = setAvatar(h.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second})
 	if err != nil {
@@ -159,7 +158,7 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Logf("[DEBUG] user info %+v", u)
+	h.Logf("[DEBUG] user info %s", userLogSummary(u))
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
@@ -190,7 +189,7 @@ func (h Oauth1Handler) makeRedirURL(path string) string {
 	return strings.TrimSuffix(h.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }
 
-// initOauth2Handler makes oauth1 handler for given provider
+// initOauth1Handler makes oauth1 handler for given provider
 func initOauth1Handler(p Params, service Oauth1Handler) Oauth1Handler {
 	if p.L == nil {
 		p.L = logger.NoOp
@@ -200,7 +199,7 @@ func initOauth1Handler(p Params, service Oauth1Handler) Oauth1Handler {
 	service.conf.ConsumerKey = p.Cid
 	service.conf.ConsumerSecret = p.Csecret
 
-	p.Logf("[DEBUG] created %s oauth2, id=%s, redir=%s, endpoint=%s",
+	p.Logf("[DEBUG] created %s oauth1, id=%s, redir=%s, endpoint=%s",
 		service.name, service.Cid, service.makeRedirURL("/{route}/"+service.name+"/"), service.conf.Endpoint)
 	return service
 }

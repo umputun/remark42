@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -124,10 +126,11 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
 		if avatarID := avatarIDFromPicture(claims.User.Picture); avatarID != "" {
-			// best-effort removal: the user's data is already gone and the avatar store gives no way to tell
-			// an already-removed avatar from a real failure, so a missing avatar must not fail the deletion
-			if err = a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil {
-				log.Printf("[WARN] can't delete avatar for user %s on site %s: %v", claims.User.ID, audience, err)
+			// an already-removed avatar is fine (a repeated request stays idempotent), but a genuine
+			// store failure is surfaced now that avatar.ErrNotFound lets us tell the two apart
+			if err = a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
+				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+				return
 			}
 		} else {
 			log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", claims.User.Picture, claims.User.ID, audience)

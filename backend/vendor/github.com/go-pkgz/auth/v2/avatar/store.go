@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint gosec
 	"encoding/hex"
+	"errors"
 	"fmt"
 	_ "image/gif"  // initializing packages for supporting GIF
 	_ "image/jpeg" // initializing packages for supporting JPEG.
@@ -26,6 +27,10 @@ import (
 const imgSfx = ".image"
 
 var reValidAvatarID = regexp.MustCompile(`^[a-fA-F0-9]{40}\.image$`)
+
+// ErrNotFound is returned by Store.Remove when the requested avatar does not exist,
+// so callers can tell a missing avatar from a real failure with errors.Is.
+var ErrNotFound = errors.New("avatar not found")
 
 // Store defines interface to store and load avatars
 type Store interface {
@@ -70,7 +75,10 @@ func NewStore(uri string) (Store, error) {
 	return nil, fmt.Errorf("can't parse store url %s", uri)
 }
 
-// Migrate avatars between stores
+// Migrate copies avatars from src to dst, returning the number of ids enumerated
+// from src and the first List error if any. Per-avatar Get/Put/Close failures are
+// logged with [WARN] and skipped — they do not abort the migration or surface in
+// the returned error, so the returned count is "ids attempted", not "ids stored".
 func Migrate(dst, src Store) (int, error) {
 	ids, err := src.List()
 	if err != nil {

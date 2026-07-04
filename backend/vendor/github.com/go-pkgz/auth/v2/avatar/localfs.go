@@ -1,6 +1,7 @@
 package avatar
 
 import (
+	"errors"
 	"fmt"
 	"hash/crc64"
 	"io"
@@ -82,7 +83,15 @@ func (fs *LocalFS) ID(avatar string) (id string) {
 func (fs *LocalFS) Remove(avatar string) error {
 	location := fs.location(strings.TrimSuffix(avatar, imgSfx))
 	avFile := path.Join(location, avatar)
-	return os.Remove(avFile)
+	if err := os.Remove(avFile); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// keep the underlying os.ErrNotExist in the chain alongside ErrNotFound so callers that
+			// already matched errors.Is(err, os.ErrNotExist) on this store keep working
+			return fmt.Errorf("avatar %s not found: %w: %w", avatar, ErrNotFound, err)
+		}
+		return err
+	}
+	return nil
 }
 
 // List all avatars (ids) on local file system

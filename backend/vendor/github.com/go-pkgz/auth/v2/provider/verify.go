@@ -161,7 +161,7 @@ func scrubTokenFromRequest(r *http.Request) *http.Request {
 	return rc
 }
 
-// Sender defines interface to send emails
+// Sender defines interface to deliver a verification message (email, IM, or anything else).
 type Sender interface {
 	Send(address, text string) error
 }
@@ -380,7 +380,7 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 	rest.RenderJSON(w, rest.JSON{"user": user, "address": address})
 }
 
-// AuthHandler doesn't do anything for direct login as it has no callbacks
+// AuthHandler is a no-op for verify login — the flow has no provider callback.
 func (e VerifyHandler) AuthHandler(http.ResponseWriter, *http.Request) {}
 
 // LogoutHandler - GET /logout

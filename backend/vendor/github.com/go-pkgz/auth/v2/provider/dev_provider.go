@@ -167,7 +167,7 @@ func (d *DevAuthServer) Shutdown() {
 	d.lock.Unlock()
 }
 
-// NewDev makes dev oauth2 provider for admin user
+// NewDev makes a dev oauth2 provider intended for local development only.
 func NewDev(p Params) Oauth2Handler {
 	if p.Port == 0 {
 		p.Port = defDevAuthPort

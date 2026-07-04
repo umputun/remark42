@@ -156,8 +156,8 @@ func (th *TelegramHandler) ProcessUpdate(ctx context.Context, textUpdate string)
 	return nil
 }
 
-// processUpdates processes a batch of updates from telegram servers
-// Returns offset for subsequent calls
+// processUpdates processes a batch of updates from telegram servers. Offset
+// tracking for subsequent polls is handled inside TelegramAPI.GetUpdates.
 func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegramUpdate) {
 	for _, update := range updates.Result {
 		if update.Message.Chat.Type != "private" {
@@ -229,7 +229,8 @@ func (th *TelegramHandler) addToken(token string, expires time.Time) error {
 	return nil
 }
 
-// checkToken verifies incoming token, returns the user address if it's confirmed and empty string otherwise
+// checkToken returns the confirmed user for a known token, or an error if the
+// request is missing, expired, or has not been verified yet.
 func (th *TelegramHandler) checkToken(token string) (*authtoken.User, error) {
 	th.requests.RLock()
 	authRequest, ok := th.requests.data[token]

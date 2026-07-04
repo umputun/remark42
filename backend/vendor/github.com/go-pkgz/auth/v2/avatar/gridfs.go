@@ -27,7 +27,9 @@ type GridFS struct {
 	timeout    time.Duration
 }
 
-// Put avatar to gridfs object, try to resize
+// Put stores avatar bytes read from reader in GridFS, keyed by the encoded userID
+// with .image suffix, and records the sha1 of those bytes in the file's metadata.
+// Resizing happens upstream in Proxy.resize; this layer only writes what it is given.
 func (gf *GridFS) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := encodeID(userID)
 	bucket, err := gridfs.NewBucket(gf.db, &options.BucketOptions{Name: &gf.bucketName})
@@ -59,7 +61,8 @@ func (gf *GridFS) Get(avatar string) (reader io.ReadCloser, size int, err error)
 	return io.NopCloser(buf), int(sz), nil
 }
 
-// ID returns a fingerprint of the avatar content. Uses MD5 because gridfs provides it directly
+// ID returns the sha1 fingerprint of the avatar content stored in the GridFS file's
+// metadata at Put time, or an encoded fallback id when the file lookup/decode fails.
 func (gf *GridFS) ID(avatar string) (id string) {
 
 	finfo := struct {
@@ -113,7 +116,7 @@ func (gf *GridFS) Remove(avatar string) error {
 		}
 		return bucket.Delete(r.ID)
 	}
-	return fmt.Errorf("avatar %s not found", avatar)
+	return fmt.Errorf("avatar %s not found: %w", avatar, ErrNotFound)
 }
 
 // List all avatars (ids) on gfs

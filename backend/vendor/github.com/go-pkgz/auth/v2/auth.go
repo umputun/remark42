@@ -58,7 +58,7 @@ type Opts struct {
 	XSRFHeaderKey     string        // default "X-XSRF-TOKEN"
 	XSRFIgnoreMethods []string      // disable XSRF protection for the specified request methods (ex. []string{"GET", "POST")}, default empty
 	JWTQuery          string        // default "token"
-	SendJWTHeader     bool          // if enabled send JWT as a header instead of cookie
+	SendJWTHeader     bool          // if enabled, also send JWT as a response header (in addition to the cookie)
 	SameSiteCookie    http.SameSite // limit cross-origin requests with SameSite cookie attribute
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
@@ -81,7 +81,7 @@ type Opts struct {
 	UseGravatar       bool         // for email based auth (verified provider) use gravatar service
 
 	AdminPasswd      string                      // if presented, allows basic auth with user admin and given password
-	BasicAuthChecker middleware.BasicAuthFunc    // user custom checker for basic auth, if one defined then "AdminPasswd" will ignored
+	BasicAuthChecker middleware.BasicAuthFunc    // custom checker for basic auth; when set, AdminPasswd is bypassed entirely
 	AudienceReader   token.Audience              // list of allowed aud values, default (empty) allows any
 	AudSecrets       bool                        // allow multiple secrets (secret per aud)
 	Logger           logger.L                    // logger interface, default is no logging at all
@@ -240,30 +240,17 @@ func (s *Service) Handlers() (authHandler, avatarHandler http.Handler) {
 	return withSecurityHeaders(http.HandlerFunc(ah)), withSecurityHeaders(http.HandlerFunc(s.avatarProxy.Handler))
 }
 
-// withSecurityHeaders wraps an auth response handler to apply strict CSP and nosniff
-// on every response. The go-pkgz/auth package's own response surface is JSON-only
-// for auth routes and images for the avatar route — no built-in HTML rendering
-// anywhere — so this CSP is unconditionally safe and gives the auth origin
-// defense-in-depth against any future trust-boundary regression that might emit a
-// renderable body.
+// withSecurityHeaders wraps a handler to set Content-Security-Policy
+// "default-src 'none'; sandbox; frame-ancestors 'none'" and X-Content-Type-Options
+// "nosniff" on every response. Safe to apply unconditionally because go-pkgz/auth
+// only emits JSON (auth routes) and images (avatar route).
 //
-//   - Content-Security-Policy: default-src 'none'; sandbox — blocks inline scripts
-//     and event handlers even if a body is ever served as HTML by mistake; the
-//     sandbox directive additionally isolates any rendered document from this origin.
-//   - X-Content-Type-Options: nosniff — prevents browsers from MIME-overriding the
-//     declared Content-Type to a more dangerous one.
-//
-// The avatar Handler additionally sets Content-Disposition: inline; filename="avatar"
-// inside itself, so direct callers (tests, custom mounts) still get the full header
-// set without going through this wrapper.
-//
-// CONSUMER NOTE: custom providers added via Service.AddCustomHandler / AddProvider
-// are also wrapped. If a custom provider renders HTML (login forms, JS-based flows,
-// the dev_provider's login page, etc.), the strict CSP will block inline scripts and
-// event handlers on those pages. Such providers should either (a) override the CSP
-// for their own response by calling w.Header().Set("Content-Security-Policy", ...)
-// before writing — Set replaces the wrapper's value — or (b) move any required
-// scripts/styles to external files served from 'self'.
+// CONSUMER NOTE: custom providers registered through AddCustomHandler / AddProvider
+// are wrapped too. A provider that renders HTML (login form, JS flow, custom server
+// login page, etc.) will be blocked by this CSP — default-src 'none' plus sandbox
+// stop scripts, styles, forms, and images even when served from 'self'. Such
+// providers must override the CSP on their own response (call w.Header().Set before
+// writing — Set replaces the wrapper's value) and relax only the directives needed.
 func withSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox; frame-ancestors 'none'")
@@ -517,7 +504,7 @@ func (s *Service) AddCustomHandler(p provider.Provider) {
 
 // DevAuth makes dev oauth2 server, for testing and development only!
 func (s *Service) DevAuth() (*provider.DevAuthServer, error) {
-	p, err := s.Provider("dev") // peak dev provider
+	p, err := s.Provider("dev") // peek dev provider
 	if err != nil {
 		return nil, fmt.Errorf("dev provider not registered: %w", err)
 	}
@@ -545,7 +532,7 @@ func (s *Service) TokenService() *token.Service {
 	return s.jwtService
 }
 
-// AvatarProxy returns stored in service
+// AvatarProxy returns the avatar.Proxy configured on the service, or nil if no AvatarStore was set.
 func (s *Service) AvatarProxy() *avatar.Proxy {
 	return s.avatarProxy
 }

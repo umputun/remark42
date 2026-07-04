@@ -109,7 +109,7 @@ func (u *User) SetSliceAttr(key string, val []string) {
 func HashID(h hash.Hash, val string) string {
 
 	if reValidSha.MatchString(val) {
-		return val // already hashed or empty
+		return val // already a sha1 hex digest, pass through unchanged
 	}
 
 	if _, err := io.WriteString(h, val); err != nil {
