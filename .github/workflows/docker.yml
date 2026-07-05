@@ -62,14 +62,14 @@ jobs:
           sudo rm -rf /usr/local/share/boost
           docker system prune -af
 
-      - name: build and push to ghcr.io by digest
-        id: build-ghcr
+      - name: build once and push to both registries by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
           cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,scope=${{ matrix.platform }},mode=max
+          cache-to: type=gha,scope=${{ matrix.platform }},mode=max,ignore-error=true
           build-args: |
             SKIP_BACKEND_TEST=true
             SKIP_FRONTEND_TEST=true
@@ -77,31 +77,18 @@ jobs:
             GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
             GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
             GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
+          outputs: |
+            type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
+            type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
 
-      - name: build and push to DockerHub by digest
-        id: build-dockerhub
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          build-args: |
-            SKIP_BACKEND_TEST=true
-            SKIP_FRONTEND_TEST=true
-            CI=github
-            GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
-            GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
-            GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
-
-      - name: export digests
+      - name: export digest
         run: |
+          # both registries receive the same content-addressed image, so the
+          # single build digest applies to each
           mkdir -p /tmp/digests/ghcr /tmp/digests/dockerhub
-          digest_ghcr="${{ steps.build-ghcr.outputs.digest }}"
-          digest_dockerhub="${{ steps.build-dockerhub.outputs.digest }}"
-          touch "/tmp/digests/ghcr/${digest_ghcr#sha256:}"
-          touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/ghcr/${digest#sha256:}"
+          touch "/tmp/digests/dockerhub/${digest#sha256:}"
 
       - name: upload ghcr digest
         uses: actions/upload-artifact@v7
