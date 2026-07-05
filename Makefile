@@ -17,7 +17,7 @@ docker:
 dockerx:
 	docker buildx build --build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) --build-arg CI=true \
 		--build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true \
-		--progress=plain --platform linux/amd64,linux/arm/v7,linux/arm64 \
+		--progress=plain --platform linux/amd64,linux/arm64 \
 		-t ghcr.io/umputun/remark42:master -t umputun/remark42:master .
 
 release:

@@ -20,9 +20,6 @@ linters:
     - unparam
     - unused
   settings:
-    goconst:
-      min-len: 2
-      min-occurrences: 2
     gosec:
       excludes:
         - G117 # false positive: struct field name matches "secret" pattern
@@ -38,8 +35,6 @@ linters:
     govet:
       enable:
         - shadow
-    lll:
-      line-length: 140
     misspell:
       locale: US
   exclusions:
