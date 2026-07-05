@@ -65,6 +65,17 @@ func directPeerIP(remoteAddr string) net.IP {
 	return net.ParseIP(host)
 }
 
+// TrustsAnyPeer reports whether the trusted-proxy list contains a catch-all (0.0.0.0/0 or ::/0),
+// which trusts forwarding headers from every client and re-opens the IP-spoofing bypass.
+func TrustsAnyPeer(cidrs []*net.IPNet) bool {
+	for _, c := range cidrs {
+		if ones, _ := c.Mask.Size(); ones == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // cidrsContain reports whether ip falls within any of the CIDRs.
 func cidrsContain(cidrs []*net.IPNet, ip net.IP) bool {
 	for _, c := range cidrs {

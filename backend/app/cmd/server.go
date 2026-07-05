@@ -85,7 +85,7 @@ type ServerCommand struct {
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
-	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) whose X-Real-IP/X-Forwarded-For headers set the client IP; if unset, these headers are trusted from any client (see docs)" env-delim:","`
+	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) trusted to set the client IP; if unset, trusted from any client (see docs)" env-delim:","`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
@@ -602,10 +602,11 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid --trusted-proxy: %w", err)
 	}
-	if len(trustedProxies) == 0 {
-		log.Printf("[WARN] --trusted-proxy is not set: X-Real-IP/X-Forwarded-For/CF-Connecting-IP headers are trusted from " +
-			"any client, so a client can spoof its IP and bypass rate limiting and vote dedup. Behind a reverse proxy set " +
-			"--trusted-proxy to the proxy network (e.g. 172.16.0.0/12 for a proxy in the same compose); see the trusted-proxy docs.")
+	switch {
+	case len(trustedProxies) == 0:
+		log.Printf("[WARN] --trusted-proxy not set: forwarding headers are trusted from any client and can be spoofed to bypass rate limiting / vote dedup; set it behind a reverse proxy (see docs)")
+	case api.TrustsAnyPeer(trustedProxies):
+		log.Printf("[WARN] --trusted-proxy has a catch-all (0.0.0.0/0 or ::/0): forwarding headers are trusted from any client, re-opening the spoofing bypass; scope it to your proxy network")
 	}
 
 	storeEngine, err := s.makeDataStore()
