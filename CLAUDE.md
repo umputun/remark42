@@ -41,6 +41,21 @@ GoReleaser must ignore `backend/*` tags in `.goreleaser.yml` so release notes an
 
 For local artifact runs, install GoReleaser, Go 1.25, Node 16+, PNPM 8, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
 
+## Milestones and Issue Labels
+
+**Milestones** — one `vX.Y.Z` milestone per release. Assign every merged PR, and every issue closed by a code change, to the milestone of the release it shipped in.
+- Decide which release a PR belongs to by whether its merge commit is **contained in a release tag** — not by comparing dates (a tag can be cut from an earlier commit, or moved). `git fetch --tags`, then `git tag --contains <merge_sha> | grep '^v' | sort -V | head -1` is its release. If no release tag contains it yet, it belongs to the next (unreleased) version's milestone — create it if missing (`gh api repos/umputun/remark42/milestones -f title="vX.Y.Z"`).
+- An **issue gets a milestone only when it was closed by a code change** (a linked closing PR/commit); take the milestone from that PR/commit (via the commit-in-tag rule). Issues closed as `duplicate`/`invalid`/`wontfix`/answered get no milestone.
+- Find unassigned: `gh pr list --state merged --search "no:milestone"`, `gh issue list --state closed --search "no:milestone"`. Assign with `gh pr edit N --milestone "vX.Y.Z"` / `gh issue edit N --milestone "vX.Y.Z"`.
+
+**Issue labels** — classify each issue with a type and an area (add priority when relevant):
+- Type: `bug`, `enhancement`, `question`, `documentation`, `discussion`
+- Area: `backend`, `frontend`, `site`, `CI`, `design`, `localization`
+- Priority: `important`, `minor`, `some day`
+- Contribution: `help wanted`, `good-first-issue`
+- Resolution (on close, when applicable): `duplicate`, `invalid`, `wontfix`, `no-action-needed`
+- PR auto-labels (applied by Dependabot/Actions, not manual PRs): `dependencies`, `go`, `javascript`, `github_actions`
+
 ## Code Style
 - **Backend**: Formatting with golangci-lint, strict error handling
 - **Frontend**: TypeScript with ESLint, Stylelint and Prettier
