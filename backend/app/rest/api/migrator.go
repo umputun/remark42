@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/store/engine"
 )
 
 // Migrator rest with import and export controllers
@@ -151,7 +154,8 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		gzWriter := gzip.NewWriter(&buf)
 		if _, err := m.NativeExporter.Export(gzWriter, siteID); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+			code, errCode := exportErrStatus(err)
+			rest.SendErrorJSON(w, r, code, err, "export failed", errCode)
 			return
 		}
 		if err := gzWriter.Close(); err != nil {
@@ -171,8 +175,21 @@ func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 
 	// stream mode - write directly to response
 	if _, err := m.NativeExporter.Export(w, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "export failed", rest.ErrInternal)
+		code, errCode := exportErrStatus(err)
+		rest.SendErrorJSON(w, r, code, err, "export failed", errCode)
 	}
+}
+
+// exportErrStatus maps an export failure to an HTTP status and error code: an unknown
+// site is a client error (400), anything else is treated as internal (500).
+// The bolt store returns the engine.ErrSiteNotFound sentinel; the rpc store loses typed
+// errors over jrpc, so the "not found" message is matched as a fallback (export only ever
+// hits a site-level lookup, so a "not found" here can only mean the site).
+func exportErrStatus(err error) (status, errCode int) {
+	if errors.Is(err, engine.ErrSiteNotFound) || strings.Contains(err.Error(), "not found") {
+		return http.StatusBadRequest, rest.ErrSiteNotFound
+	}
+	return http.StatusInternalServerError, rest.ErrInternal
 }
 
 // POST /remap?site=site-id

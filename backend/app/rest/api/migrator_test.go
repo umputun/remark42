@@ -391,15 +391,31 @@ func TestMigrator_Export(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 
-	// export wrong site, should result in error
+	// export unknown site is a client error, not internal
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=test", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
+	errBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	resp.Body.Close()
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Contains(t, string(errBody), `"code":6`)  // rest.ErrSiteNotFound, not ErrInternal
+	assert.Contains(t, string(errBody), `not found`) // error detail names the missing site
+
+	// unknown site in stream mode is also a client error
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=stream&site=test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	errBody, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Contains(t, string(errBody), `"code":6`)
 
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", http.NoBody)
