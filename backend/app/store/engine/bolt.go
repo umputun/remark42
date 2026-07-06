@@ -1018,7 +1018,7 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	if res, ok := b.dbs[siteID]; ok {
 		return res, nil
 	}
-	return nil, fmt.Errorf("site %q not found", siteID)
+	return nil, fmt.Errorf("site %q %w", siteID, ErrSiteNotFound)
 }
 
 // makeRef creates reference combining url and comment id
