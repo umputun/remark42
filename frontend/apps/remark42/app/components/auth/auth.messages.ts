@@ -5,6 +5,10 @@ export const messages = defineMessages<string>({
     id: 'auth.signin',
     defaultMessage: 'Sign In',
   },
+  signinorpickname: {
+    id: 'auth.signinorpickname',
+    defaultMessage: 'Sign in or pick name',
+  },
   or: {
     id: 'auth.or',
     defaultMessage: 'or',
@@ -15,7 +19,11 @@ export const messages = defineMessages<string>({
   },
   usernameRestriction: {
     id: 'auth.symbols-restriction',
-    defaultMessage: 'Username must contain only letters, numbers, underscores or spaces',
+    defaultMessage: 'Username must contain only letters, dots, numbers, dashes, underscores or spaces',
+  },
+  usernameRestrictionLetters: {
+    id: 'auth.symbols-restriction-letters',
+    defaultMessage: 'Username may only contain letters, dots, dashes and spaces',
   },
   userNotFound: {
     id: 'auth.user-not-found',
@@ -24,6 +32,10 @@ export const messages = defineMessages<string>({
   emailAddress: {
     id: 'auth.email-address',
     defaultMessage: 'Email Address',
+  },
+  notRequired: {
+    id: 'auth.not-required',
+    defaultMessage: 'not required',
   },
   token: {
     id: 'token',

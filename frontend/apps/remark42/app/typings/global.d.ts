@@ -37,6 +37,16 @@ type RemarkConfig = {
   // Optional, 'false' by default. Overrides the parameter from the backend minimized UI with basic info only.
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
+  hide_voting?: boolean;
+  // Optional, 'false' by default. If enabled, the voting buttons and score will be hidden.
+  hide_hide?: boolean;
+  // Optional, 'false' by default. If enabled, the Hide button from the comment view will be removed. Previously
+  // hidden comments can still be restored.
+  hide_avatars?: boolean;
+  // Optional, 'false' by default. If enabled, the avatars will be hidden, but will still created so that they can
+  // be reenabled later.
+  hide_userid?: boolean;
+  // Optional, 'false' by default. If enabled, the user ID will be hidden from the profile information.
   no_footer?: boolean;
   __colors__?: Record<string, string>;
 };

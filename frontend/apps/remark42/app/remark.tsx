@@ -63,6 +63,10 @@ async function init(): Promise<void> {
   StaticStore.config = {
     ...config,
     simple_view: config.simple_view || rawParams.simple_view === 'true',
+    hide_voting: config.hide_voting || rawParams.hide_voting === 'true',
+    hide_hide: config.hide_hide || rawParams.hide_hide === 'true',
+    hide_avatars: config.hide_avatars || rawParams.hide_avatars === 'true',
+    hide_userid: config.hide_userid || rawParams.hide_userid === 'true',
   };
 
   render(

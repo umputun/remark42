@@ -2,6 +2,7 @@ import { h, Component } from 'preact';
 import { FormattedMessage, IntlShape, useIntl } from 'react-intl';
 import clsx from 'clsx';
 
+import { StaticStore } from 'common/static-store';
 import { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
@@ -65,9 +66,11 @@ class AuthPanelComponent extends Component<Props, State> {
           onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
-          <div className={styles.userAvatar}>
-            <Avatar url={user.picture} />
-          </div>
+          {!StaticStore.config.hide_avatars && (
+            <div className={styles.userAvatar}>
+              <Avatar url={user.picture} />
+            </div>
+          )}
           {user.name}
         </button>{' '}
         <div className={styles.userLogoutButton}>

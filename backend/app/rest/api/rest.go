@@ -58,7 +58,14 @@ type Rest struct {
 	EmailNotifications         bool
 	TelegramNotifications      bool
 	EmojiEnabled               bool
+	NameCharacters             string
+	NameMinLength              int
+	NameMaxLength              int
 	SimpleView                 bool
+	HideVoting                 bool
+	HideHide                   bool
+	HideAvatars                bool
+	HideUserId                 bool
 	ProxyCORS                  bool
 	SendJWTHeader              bool
 	AllowedAncestors           []string // sets Content-Security-Policy "frame-ancestors ..."
@@ -462,8 +469,15 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		MaxImageSize          int      `json:"max_image_size"`
 		EmailNotifications    bool     `json:"email_notifications"`
 		TelegramNotifications bool     `json:"telegram_notifications"`
+		NameCharacters        string   `json:"name_characters"`
+		NameMinLength         int      `json:"name_minlength"`
+		NameMaxLength         int      `json:"name_maxlength"`
 		EmojiEnabled          bool     `json:"emoji_enabled"`
 		SimpleView            bool     `json:"simple_view"`
+		HideVoting            bool     `json:"hide_voting"`
+		HideHide              bool     `json:"hide_hide"`
+		HideAvatars           bool     `json:"hide_avatars"`
+		HideUserId            bool     `json:"hide_userid"`
 		SendJWTHeader         bool     `json:"send_jwt_header"`
 		SubscribersOnly       bool     `json:"subscribers_only"`
 	}{
@@ -482,8 +496,15 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		EmailNotifications:    s.EmailNotifications,
 		TelegramNotifications: s.TelegramNotifications,
 		EmojiEnabled:          s.EmojiEnabled,
+		NameCharacters:        s.NameCharacters,
+		NameMinLength:         s.NameMinLength,
+		NameMaxLength:         s.NameMaxLength,
 		AnonVote:              s.AnonVote,
 		SimpleView:            s.SimpleView,
+		HideVoting:            s.HideVoting,
+		HideHide:              s.HideHide,
+		HideAvatars:           s.HideAvatars,
+		HideUserId:            s.HideUserId,
 		SendJWTHeader:         s.SendJWTHeader,
 		SubscribersOnly:       s.SubscribersOnly,
 	}

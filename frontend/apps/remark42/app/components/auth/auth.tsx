@@ -4,6 +4,7 @@ import { useState, useRef } from 'preact/hooks';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
 
+import { StaticStore } from 'common/static-store';
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
@@ -34,6 +35,7 @@ export function Auth() {
   const emailRef = useRef('');
   const dispatch = useDispatch();
   const [oauthProviders, formProviders] = getProviders();
+  const hasBothEmailAndAnonymous = (StaticStore.config.auth_providers.includes("email") && StaticStore.config.auth_providers.includes("anonymous"));
 
   // UI State
   const [isLoading, setLoading] = useState(false);
@@ -122,10 +124,17 @@ export function Auth() {
           const email = data.get('email') as string;
           const username = data.get('username') as string;
 
-          emailRef.current = email;
+          if (email.length>0) {
+            emailRef.current = email;
 
-          await emailSignin(email, username);
-          setView('token');
+            await emailSignin(email, username);
+            setView('token');
+          } else {
+            // No e-mail entered, this should be the same as the anonymous login.
+            const user = await anonymousSignin(username);
+
+            dispatch(setUser(user));
+          }
           break;
         }
         case 'token': {
@@ -197,7 +206,7 @@ export function Auth() {
   return (
     <div className={clsx('auth', styles.root)}>
       <Button className="auth-button" selected={isDropdownShown} onClick={handleClickSingIn} suffix={<ArrowIcon />}>
-        {intl.formatMessage(messages.signin)}
+        {StaticStore.config.auth_providers.includes("anonymous") ? intl.formatMessage(messages.signinorpickname) : intl.formatMessage(messages.signin)}
       </Button>
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
@@ -301,9 +310,7 @@ export function Auth() {
                 )}
                 {hasFormProviders && (
                   <>
-                    {formProviders.length === 1 ? (
-                      <h5 className={clsx('auth-form-title', styles.title)}>{formProviders[0]}</h5>
-                    ) : (
+                    {formProviders.length > 1 ? (
                       <div className={clsx('auth-tabs', styles.tabs)}>
                         {formProviders.map((p) => (
                           <Fragment key={p}>
@@ -322,15 +329,16 @@ export function Auth() {
                           </Fragment>
                         ))}
                       </div>
-                    )}
+                    ) : {}}
                     <div className={clsx('auth-row', styles.row)}>
                       <Input
                         className="auth-input-username"
                         required
                         name="username"
-                        minLength={3}
-                        pattern="[\p{L}\d\s_]+"
-                        title={intl.formatMessage(messages.usernameRestriction)}
+                        minLength={StaticStore.config.name_minlength}
+                        maxLength={StaticStore.config.name_maxlength}
+                        pattern={StaticStore.config.name_characters==='alphanumerical' ? '[\\p{L}\\d\\._ \\-]+' : '[\\p{L}\\d\\. \\-]+'}
+                        title={StaticStore.config.name_characters==='alphanumerical' ? intl.formatMessage(messages.usernameRestriction) : intl.formatMessage(messages.usernameRestrictionLetters)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
                         onBlur={(evt) => {
@@ -344,10 +352,10 @@ export function Auth() {
                       <div className={clsx('auth-row', styles.row)}>
                         <Input
                           className="auth-input-email"
-                          required
+                          required={!hasBothEmailAndAnonymous}
                           name="email"
                           type="email"
-                          placeholder={intl.formatMessage(messages.emailAddress)}
+                          placeholder={intl.formatMessage(messages.emailAddress) + (hasBothEmailAndAnonymous ? " (" + intl.formatMessage(messages.notRequired)+ ")" : "") }
                           disabled={isLoading}
                           dir="auto"
                         />
