@@ -1,5 +1,4 @@
 import { h, Component, Fragment } from 'preact';
-import { useEffect } from 'preact/hooks';
 import { useSelector } from 'react-redux';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
@@ -112,8 +111,29 @@ export class Root extends Component<Props, State> {
     isSettingsVisible: false,
   };
 
+  heightObserver: ResizeObserver | null = null;
+  heightFallbackTimeout: number | null = null;
+
+  startHeightReporting = () => {
+    if (this.heightObserver) {
+      return;
+    }
+
+    updateIframeHeight();
+    this.heightObserver = new ResizeObserver(() => updateIframeHeight());
+    this.heightObserver.observe(document.body);
+  };
+
   componentDidMount() {
-    const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
+    // if the user fetch hangs, report the preloader height anyway so the parent page
+    // is not left with an unbounded iframe
+    this.heightFallbackTimeout = window.setTimeout(this.startHeightReporting, 5000);
+
+    const userloading = this.props.fetchUser().finally(() =>
+      // start reporting iframe height only after the global preloader is replaced with
+      // real content, so the parent page never shrinks the iframe to the preloader size
+      this.setState({ isUserLoading: false }, this.startHeightReporting)
+    );
 
     Promise.all([userloading, this.props.fetchComments()]).finally(() => {
       setTimeout(this.checkUrlHash);
@@ -121,6 +141,13 @@ export class Root extends Component<Props, State> {
     });
 
     window.addEventListener('message', this.onMessage);
+  }
+
+  componentWillUnmount() {
+    if (this.heightFallbackTimeout !== null) {
+      window.clearTimeout(this.heightFallbackTimeout);
+    }
+    this.heightObserver?.disconnect();
   }
 
   checkUrlHash = (e: Event & { newURL: string }) => {
@@ -324,14 +351,6 @@ export function ConnectedRoot() {
   const intl = useIntl();
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
-
-  useEffect(() => {
-    const observer = new ResizeObserver(() => updateIframeHeight());
-
-    updateIframeHeight();
-    observer.observe(document.body);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <div className={clsx(styles.root, props.theme === 'dark' ? styles.themeDark : styles.themeLight, props.theme)}>
