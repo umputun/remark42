@@ -11,6 +11,25 @@
         window.close();
       }
       (function () {
+        // the parent sets color-scheme on the iframe element from the theme param. this document
+        // must match it before the first paint, otherwise the canvas is painted opaque in its own
+        // scheme instead of staying transparent, which flashes white on dark host pages.
+        try {
+          var pairs = window.location.search.substring(1).split('&');
+          var theme = '';
+
+          for (var i = 0; i < pairs.length; i++) {
+            var pair = pairs[i].split('=');
+            if (pair[0] === 'theme') {
+              theme = decodeURIComponent(pair[1] || '');
+              break;
+            }
+          }
+
+          document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+      (function () {
         function isCSSVariablesSupported() {
           if (typeof window === `undefined`) {
             return true;

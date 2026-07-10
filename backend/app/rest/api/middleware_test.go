@@ -51,38 +51,49 @@ func TestRouteTimeout(t *testing.T) {
 }
 
 func TestRealIPMiddleware(t *testing.T) {
-	var seenAddr, seenHdr string // what the downstream handler observes
-	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		seenAddr, seenHdr = r.RemoteAddr, r.Header.Get("X-Real-IP")
-	})
-
-	call := func(mw func(http.Handler) http.Handler, remoteAddr, xRealIP string) {
-		seenAddr, seenHdr = "", ""
+	// call runs mw with the given peer and (optional) X-Real-IP header and returns what the
+	// downstream handler observes; state is per-call, so subtests don't share closure locals.
+	call := func(mw func(http.Handler) http.Handler, remoteAddr, xRealIP string) (addr, hdr string) {
+		next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			addr, hdr = r.RemoteAddr, r.Header.Get("X-Real-IP")
+		})
 		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 		req.RemoteAddr = remoteAddr
-		req.Header.Set("X-Real-IP", xRealIP)
+		if xRealIP != "" {
+			req.Header.Set("X-Real-IP", xRealIP)
+		}
 		mw(next).ServeHTTP(httptest.NewRecorder(), req)
+		return addr, hdr
 	}
 
 	trusted, err := ParseTrustedProxies([]string{"172.16.0.0/12", "2001:db8::/32"})
 	require.NoError(t, err)
 
 	t.Run("no trusted proxies trusts the header from anyone (legacy)", func(t *testing.T) {
-		call(realIPMiddleware(nil), "203.0.113.9:1234", "8.8.8.8")
-		assert.Equal(t, "8.8.8.8", seenAddr)
+		addr, _ := call(realIPMiddleware(nil), "203.0.113.9:1234", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", addr)
 	})
 	t.Run("trusted v4 peer: forwarding header sets the client IP", func(t *testing.T) {
-		call(realIPMiddleware(trusted), "172.18.0.5:5555", "8.8.8.8")
-		assert.Equal(t, "8.8.8.8", seenAddr)
+		addr, _ := call(realIPMiddleware(trusted), "172.18.0.5:5555", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", addr)
 	})
 	t.Run("trusted v6 peer: forwarding header honored", func(t *testing.T) {
-		call(realIPMiddleware(trusted), "[2001:db8::5]:5555", "8.8.8.8")
-		assert.Equal(t, "8.8.8.8", seenAddr)
+		addr, _ := call(realIPMiddleware(trusted), "[2001:db8::5]:5555", "8.8.8.8")
+		assert.Equal(t, "8.8.8.8", addr)
+	})
+	t.Run("trusted peer without a forwarding header falls back to the socket IP", func(t *testing.T) {
+		addr, _ := call(realIPMiddleware(trusted), "172.18.0.5:5555", "")
+		assert.Equal(t, "172.18.0.5", addr, "no header to honor, so the bare socket IP is used")
 	})
 	t.Run("untrusted peer: header stripped, RemoteAddr pinned to bare socket IP", func(t *testing.T) {
-		call(realIPMiddleware(trusted), "203.0.113.9:1234", "8.8.8.8")
-		assert.Equal(t, "203.0.113.9", seenAddr, "real socket IP with the port stripped")
-		assert.Empty(t, seenHdr, "spoofed forwarding header removed so nothing downstream can read it")
+		addr, hdr := call(realIPMiddleware(trusted), "203.0.113.9:1234", "8.8.8.8")
+		assert.Equal(t, "203.0.113.9", addr, "real socket IP with the port stripped")
+		assert.Empty(t, hdr, "spoofed forwarding header removed so nothing downstream can read it")
+	})
+	t.Run("unparseable RemoteAddr is treated as untrusted, header stripped", func(t *testing.T) {
+		addr, hdr := call(realIPMiddleware(trusted), "garbage", "8.8.8.8")
+		assert.Equal(t, "garbage", addr, "unparseable peer left as-is, not overwritten")
+		assert.Empty(t, hdr, "forwarding header still stripped for a non-trusted peer")
 	})
 }
 
@@ -114,6 +125,18 @@ func TestParseTrustedProxies(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
+}
+
+func TestTrustsAnyPeer(t *testing.T) {
+	catchAll := func(entries ...string) bool {
+		cidrs, err := ParseTrustedProxies(entries)
+		require.NoError(t, err)
+		return TrustsAnyPeer(cidrs)
+	}
+	assert.True(t, catchAll("10.0.0.0/8", "0.0.0.0/0"), "v4 catch-all")
+	assert.True(t, catchAll("::/0"), "v6 catch-all")
+	assert.False(t, catchAll("172.16.0.0/12", "10.0.0.5"), "scoped ranges are not catch-all")
+	assert.False(t, catchAll(), "empty is not catch-all")
 }
 
 func TestRest_rejectAnonUser(t *testing.T) {

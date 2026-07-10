@@ -1,6 +1,7 @@
 import type { Theme, Profile } from 'common/types';
 
 type ParentMessage = {
+  /** the iframe document bootstrapped: drives placeholder removal and iframe reveal */
   inited?: true;
   scrollTo?: number;
   height?: number;
