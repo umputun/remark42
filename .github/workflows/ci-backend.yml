@@ -7,6 +7,9 @@ on:
     paths:
       - ".github/workflows/ci-backend.yml"
       - "backend/**"
+      - "Dockerfile"
+      - "docker-init.sh"
+      - ".dockerignore"
       - "!backend/scripts/**"
       - "!**.md"
   pull_request:
@@ -14,6 +17,9 @@ on:
     paths:
       - ".github/workflows/ci-backend.yml"
       - "backend/**"
+      - "Dockerfile"
+      - "docker-init.sh"
+      - ".dockerignore"
       - "!backend/scripts/**"
       - "!**.md"
 

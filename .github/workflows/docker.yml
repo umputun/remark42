@@ -2,7 +2,7 @@ name: docker
 
 on:
   workflow_run:
-    workflows: [backend]
+    workflows: [backend, frontend]
     types: [completed]
 
 concurrency:
