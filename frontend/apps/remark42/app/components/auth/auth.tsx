@@ -355,7 +355,7 @@ export function Auth() {
                           required={!hasBothEmailAndAnonymous}
                           name="email"
                           type="email"
-                          placeholder={intl.formatMessage(messages.emailAddress) + (hasBothEmailAndAnonymous ? " (" + intl.formatMessage(messages.notRequired)+ ")" : "") }
+                          placeholder={`${intl.formatMessage(messages.emailAddress)}${hasBothEmailAndAnonymous ? ` (${intl.formatMessage(messages.notRequired)})` : ""}`}
                           disabled={isLoading}
                           dir="auto"
                         />

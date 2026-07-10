@@ -37,9 +37,8 @@ export function Countdown({ timestamp = 0, onTimePassed }: Props) {
   }
   if (value > 90) {
     return <Fragment>({Math.round(value / 60)} min)</Fragment>;
-  } else {
-    return <Fragment>({value} s)</Fragment>;
   }
+  return <Fragment>({value} s)</Fragment>;
 }
 
 function calcRestTime(timestamp: number): number {
