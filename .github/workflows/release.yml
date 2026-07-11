@@ -32,7 +32,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25"
+          go-version: "1.25.12"
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
@@ -107,7 +107,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25"
+          go-version: "1.25.12"
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
