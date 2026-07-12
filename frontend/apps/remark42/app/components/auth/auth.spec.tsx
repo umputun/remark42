@@ -100,7 +100,6 @@ describe('<Auth/>', () => {
     render(<Auth />);
 
     fireEvent.click(screen.getByText('Sign In'));
-    expect(screen.getByText('email')).toHaveClass('auth-form-title');
     expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
     expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
     expect(screen.getByText('Submit')).toHaveClass('auth-submit');
@@ -111,8 +110,7 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
-    expect(screen.getByText('anonymous')).toHaveClass('auth-form-title');
+    fireEvent.click(screen.getByText('Sign in or pick name'));
     expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
     expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
@@ -207,7 +205,7 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in or pick name'));
     fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
     fireEvent.click(screen.getByText('Submit'));
     expect(screen.getByRole('presentation')).toHaveClass('spinner');

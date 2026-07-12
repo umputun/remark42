@@ -96,7 +96,7 @@ type ServerCommand struct {
 	HideVoting                 bool          `long:"hide-voting" env:"HIDE_VOTING" description:"hide voting and voting results for comments"`
 	HideHide                   bool          `long:"hide-hide" env:"HIDE_HIDE" description:"hides the hide button for users"`
 	HideAvatars                bool          `long:"hide-avatars" env:"HIDE_AVATARS" description:"hide user avatars"`
-	HideUserId                 bool          `long:"hide-userid" env:"HIDE_USERID" description:"hide user ID:s in profile information"`
+	HideUserID                 bool          `long:"hide-userid" env:"HIDE_USERID" description:"hide user ID:s in profile information"`
 	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors'" env-delim:","`
 	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
@@ -742,7 +742,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		HideVoting:                 s.HideVoting,
 		HideHide:                   s.HideHide,
 		HideAvatars:                s.HideAvatars,
-		HideUserId:                 s.HideUserId,
+		HideUserID:                 s.HideUserID,
 		ProxyCORS:                  s.ProxyCORS,
 		AllowedAncestors:           s.AllowedHosts,
 		SendJWTHeader:              s.Auth.SendJWTHeader,
@@ -1204,9 +1204,9 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		log.Print("[INFO] anonymous access enabled")
 		var isValidAnonName func(string) bool
 		if s.NameCharacters == "alphanumerical" {
-			isValidAnonName = regexp.MustCompile(`^[\p{L}\d\._\- ]+$`).MatchString
+			isValidAnonName = regexp.MustCompile(`^[\p{L}\d._\- ]+$`).MatchString
 		} else {
-			isValidAnonName = regexp.MustCompile(`^[\p{L}\.\- ]+$`).MatchString
+			isValidAnonName = regexp.MustCompile(`^[\p{L}.\- ]+$`).MatchString
 		}
 		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
 

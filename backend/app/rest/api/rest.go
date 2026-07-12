@@ -65,7 +65,7 @@ type Rest struct {
 	HideVoting                 bool
 	HideHide                   bool
 	HideAvatars                bool
-	HideUserId                 bool
+	HideUserID                 bool
 	ProxyCORS                  bool
 	SendJWTHeader              bool
 	AllowedAncestors           []string // sets Content-Security-Policy "frame-ancestors ..."
@@ -477,7 +477,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		HideVoting            bool     `json:"hide_voting"`
 		HideHide              bool     `json:"hide_hide"`
 		HideAvatars           bool     `json:"hide_avatars"`
-		HideUserId            bool     `json:"hide_userid"`
+		HideUserID            bool     `json:"hide_userid"`
 		SendJWTHeader         bool     `json:"send_jwt_header"`
 		SubscribersOnly       bool     `json:"subscribers_only"`
 	}{
@@ -504,7 +504,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		HideVoting:            s.HideVoting,
 		HideHide:              s.HideHide,
 		HideAvatars:           s.HideAvatars,
-		HideUserId:            s.HideUserId,
+		HideUserID:            s.HideUserID,
 		SendJWTHeader:         s.SendJWTHeader,
 		SubscribersOnly:       s.SubscribersOnly,
 	}
