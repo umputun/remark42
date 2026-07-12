@@ -8,6 +8,7 @@ type Params = {
   /** @deprecated use `custom_properties` instead - merged with it if both are set */
   __colors__?: Record<string, string>;
   custom_properties?: Record<string, string>;
+  __font__?: string;
   styles?: StylesDeclaration;
   onReveal?: () => void;
 };
@@ -31,7 +32,7 @@ const REVEAL_TIMEOUT = 5000;
  * `styles` is applied last, so a caller passing `visibility` overrides the hiding
  * and brings the white flash back.
  */
-export function createIframe({ __colors__, custom_properties, styles, onReveal, ...params }: Params) {
+export function createIframe({ __colors__, __font__, custom_properties, styles, onReveal, ...params }: Params) {
   const iframe = document.createElement('iframe');
   const query = new URLSearchParams(params as Record<string, string>).toString();
 
@@ -39,7 +40,7 @@ export function createIframe({ __colors__, custom_properties, styles, onReveal, 
     src: `${BASE_URL}/web/iframe.html?${query}`,
     // wire format stays __colors__ - only iframe.html reads this, and it never sees the
     // public config names above. custom_properties wins on a key both set.
-    name: JSON.stringify({ __colors__: { ...__colors__, ...custom_properties } }),
+    name: JSON.stringify({ __colors__: { ...__colors__, ...custom_properties }, __font__ }),
     tabindex: '0',
     title: 'Comments | Remark42',
   });

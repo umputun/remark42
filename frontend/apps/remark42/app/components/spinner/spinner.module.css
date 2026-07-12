@@ -8,8 +8,8 @@
 }
 
 .dark {
-  border: 2px solid var(--color46);
-  border-inline-end-color: var(--color37);
+  border: 2px solid rgb(var(--shadow-color));
+  border-inline-end-color: rgb(var(--line-color));
 }
 
 @keyframes spin {

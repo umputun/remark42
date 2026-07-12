@@ -11,7 +11,7 @@
 }
 
 .countdown {
-  color: rgb(var(--secondary-darker-text-color));
+  color: rgb(var(--lighter-text-color));
 }
 
 @media (hover: hover) {

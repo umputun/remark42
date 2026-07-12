@@ -20,7 +20,7 @@
   align-items: center;
   padding: 2px;
   opacity: 0.4;
-  color: var(--color13);
+  color: rgb(var(--lighter-text-color));
   transition:
     opacity 0.15s,
     color 0.15s;
@@ -32,13 +32,13 @@
 
 .upVoteButton:hover,
 .upVoteButtonActive {
-  color: rgb(var(--color12));
+  color: rgb(var(--upvote-color));
   opacity: 1;
 }
 
 .downVoteButton:hover,
 .downVoteButtonActive {
-  color: rgb(var(--color30));
+  color: rgb(var(--downvote-color));
   opacity: 1;
 }
 
@@ -49,7 +49,7 @@
   border-radius: 3px;
   min-width: 16px;
   text-align: center;
-  color: rgb(var(--secondary-darker-text-color));
+  color: rgb(var(--lighter-text-color));
 
   /* the score is a number, not prose: pin it to ltr regardless of locale so a negative value's
      minus sign stays next to the digit instead of drifting to the other side under rtl */
@@ -58,13 +58,13 @@
 }
 
 .votesNegative {
-  color: rgb(var(--color30));
-  background-color: rgb(var(--color30), 0.1);
+  color: rgb(var(--downvote-color));
+  background-color: rgb(var(--downvote-color), 0.1);
 }
 
 .votesPositive {
-  color: rgb(var(--color12));
-  background-color: rgb(var(--color12), 0.1);
+  color: rgb(var(--upvote-color));
+  background-color: rgb(var(--upvote-color), 0.1);
 }
 
 .upVoteIcon {

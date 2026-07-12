@@ -16,7 +16,7 @@
   cursor: pointer;
   white-space: nowrap;
   background-color: rgb(var(--primary-color));
-  color: rgb(var(--white-color));
+  color: rgb(var(--inverse-text-color));
 
   &:hover {
     background-color: rgb(var(--primary-brighter-color));
@@ -30,7 +30,7 @@
   &:disabled {
     opacity: 0.6;
     cursor: default;
-    background-color: var(--color9);
+    background-color: rgb(var(--primary-color));
   }
 }
 

@@ -10,7 +10,7 @@
   white-space: nowrap;
 
   &:focus {
-    box-shadow: 0 0 0 2px var(--color47);
+    box-shadow: 0 0 0 2px rgb(var(--primary-brighter-color));
     outline: none;
   }
 
@@ -23,37 +23,37 @@
 .kindLink {
   background: transparent;
   font-weight: 600;
-  color: var(--color9);
+  color: rgb(var(--primary-color));
 
   &:hover {
-    color: var(--color33);
+    color: rgb(var(--primary-brighter-color));
   }
 
   &:disabled,
   &:hover:disabled {
-    color: var(--color9);
+    color: rgb(var(--primary-color));
   }
 }
 
 .kindPrimary {
-  background: var(--color15);
-  color: var(--color6);
+  background: rgb(var(--primary-color));
+  color: rgb(var(--inverse-text-color));
 
   &:hover {
-    background: var(--color33);
+    background: rgb(var(--primary-brighter-color));
   }
 
   &:hover:disabled {
-    background: var(--color15);
+    background: rgb(var(--primary-brighter-color));
   }
 }
 
 .kindSecondary {
-  background: var(--color6);
-  color: inherit;
+  background: rgb(var(--inverse-text-color));
+  color: rgb(var(--primary-color));
 
   &:hover {
-    box-shadow: inset 0 0 0 2px var(--color33);
+    box-shadow: inset 0 0 0 2px rgb(var(--primary-brighter-color));
   }
 }
 
@@ -70,14 +70,14 @@
 
 .themeDark {
   &.kindSecondary {
-    background: var(--color8);
-    color: var(--color20);
+    background: rgb(var(--primary-background-color));
+    color: rgb(var(--primary-text-color));
   }
 
   &.kindLink {
     &:disabled,
     &:hover:disabled {
-      color: var(--color6);
+      color: rgb(var(--inverse-text-color));
     }
   }
 }

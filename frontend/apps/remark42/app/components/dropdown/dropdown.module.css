@@ -13,7 +13,7 @@
   transform: translate(-0.5em, 5px);
   min-width: 120px;
   max-width: 260px;
-  border: 2px solid var(--color15);
+  border: 2px solid rgb(var(--primary-brighter-color));
   border-radius: 3px;
   padding: 0 0 5px;
 }
@@ -38,11 +38,11 @@
 }
 
 .themeDark > .content {
-  background-color: var(--color8);
+  background-color: rgb(var(--primary-background-color));
 }
 
 .themeLight > .content {
-  background-color: var(--color6);
+  background-color: rgb(var(--primary-background-color));
 }
 
 /* the dropdown nudges itself half an em toward the inline-start edge it's anchored to; in rtl
