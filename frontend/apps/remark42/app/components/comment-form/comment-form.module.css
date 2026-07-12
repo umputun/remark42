@@ -20,7 +20,7 @@
 
 .controlPanel {
   height: 30px;
-  background-color: var(--color5);
+  background-color: rgb(var(--secondary-background-color));
 }
 
 .fieldWrapper {
@@ -47,13 +47,13 @@
   transform: translateZ(0);
 
   &:focus {
-    box-shadow: 0 0 0 2px var(--color47);
-    border-color: var(--color15);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.4);
+    border-color: rgb(var(--primary-brighter-color));
     outline: none;
   }
 
   &:disabled {
-    color: var(--color10);
+    color: rgb(var(--lighter-text-color));
   }
 }
 
@@ -63,7 +63,7 @@
   bottom: 4px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--color38);
+  color: rgb(var(--error-color));
 }
 
 .error {
@@ -122,65 +122,67 @@
 }
 
 .themeDark {
-  border-color: var(--color7);
-  background: var(--color8);
+  border-color: rgb(var(--secondary-background-color));
+  background: rgb(var(--primary-background-color));
 
   & .actions {
-    background: var(--color7);
+    background: rgb(var(--secondary-background-color));
+    color: rgb(var(--secondary-text-color));
   }
 
   & .error {
-    border-top: 8px solid var(--color7);
-    background: var(--color28);
-    color: var(--color27);
+    border-top: 8px solid rgb(var(--line-color));
+    background: rgb(var(--error-background));
+    color: rgb(var(--error-color));
   }
 
   & .field {
-    background: var(--color8);
-    color: var(--color5);
+    background: rgb(var(--primary-background-color));
+    color: rgb(var(--primary-text-color));
   }
 
   & .preview {
-    border-color: var(--color8);
-    background: var(--color8);
-    color: var(--color20);
+    border-color: rgb(var(--primary-background-color));
+    background: rgb(var(--primary-background-color));
+    color: rgb(var(--primary-text-color));
   }
 
   & .previewWrapper {
-    background: var(--color7);
+    background: rgb(var(--secondary-background-color));
   }
 
   & .controlPanel {
-    background-color: var(--color7);
+    background-color: rgb(var(--secondary-background-color));
   }
 }
 
 .themeLight {
-  border-color: var(--color5);
-  background: var(--color6);
+  border-color: rgb(var(--secondary-background-color));
+  background: rgb(var(--primary-background-color));
 
   & .actions {
-    background: var(--color5);
+    background: rgb(var(--secondary-background-color));
+    color: rgb(var(--secondary-text-color));
   }
 
   & .error {
-    border-top: 8px solid var(--color5);
-    background: var(--color26);
-    color: var(--color25);
+    border-top: 8px solid rgb(var(--secondary-background-color));
+    background: rgb(var(--error-background));
+    color: rgb(var(--error-color));
   }
 
   & .field {
-    background: var(--color6);
-    color: var(--color0);
+    background: rgb(var(--primary-background-color));
+    color: rgb(var(--primary-text-color));
   }
 
   & .preview {
-    border-color: var(--color5);
-    background: var(--color6);
-    color: var(--color7);
+    border-color: rgb(var(--primary-background-color));
+    background: rgb(var(--primary-background-color));
+    color: rgb(var(--primary-text-color));
   }
 
   & .previewWrapper {
-    background: var(--color5);
+    background: rgb(var(--secondary-background-color));
   }
 }

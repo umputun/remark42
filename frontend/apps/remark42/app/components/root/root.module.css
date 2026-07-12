@@ -2,7 +2,7 @@
   position: relative;
 
   &::selection {
-    background: var(--color42);
+    background: rgb(var(--selection-color));
   }
 }
 
@@ -55,41 +55,41 @@
 }
 
 .themeDark {
-  color: var(--color20);
+  color: rgb(var(--primary-text-color));
 
   & .copyright {
-    color: var(--color1);
+    color: rgb(var(--lighter-text-color));
   }
 
   & .copyrightLink {
-    color: var(--color1);
+    color: rgb(var(--primary-text-color));
   }
 
   & .pinnedComment {
-    border-bottom-color: var(--color18);
+    border-bottom-color: rgb(var(--line-color));
   }
 
   & .pinnedComments {
-    background: var(--color19);
+    background: rgb(var(--highlight-color));
   }
 }
 
 .themeLight {
-  color: var(--color0);
+  color: rgb(var(--primary-text-color));
 
   & .copyright {
-    color: var(--color1);
+    color: rgb(var(--lighter-text-color));
   }
 
   & .copyrightLink {
-    color: var(--color1);
+    color: rgb(var(--primary-text-color));
   }
 
   & .pinnedComment {
-    border-bottom-color: var(--color3);
+    border-bottom-color: rgb(var(--line-color));
   }
 
   & .pinnedComments {
-    background: var(--color4);
+    background: rgb(var(--highlight-color));
   }
 }

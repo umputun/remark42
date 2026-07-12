@@ -10,7 +10,7 @@
   }
 
   & a {
-    color: var(--color9);
+    color: rgb(var(--primary-color));
     text-decoration: underline;
 
     &:hover {
@@ -26,7 +26,7 @@
   & blockquote {
     padding: 12px 8px 12px 16px;
     border-left: 2px solid;
-    border-left-color: var(--color45);
+    border-left-color: rgba(var(--shadow-color));
   }
 
   & p,
@@ -43,20 +43,22 @@
     & th {
       text-align: left;
       font-weight: 600;
+      background-color: rgb(var(--primary-color));
+      color: rgb(var(--inverse-text-color));
     }
 
     & th,
     & td {
       padding: 6px 13px;
-      border: 1px solid var(--color16);
+      border: 1px solid rgb(var(--line-color));
     }
 
     & tr {
-      border-top: 1px solid var(--color43);
-      background-color: var(--color6);
+      border-top: 1px solid rgb(var(--line-color));
+      background-color: rgb(var(--primary-background-color));
 
       &:nth-child(2n) {
-        background-color: var(--color21);
+        background-color: rgb(var(--line-color));
       }
     }
   }
@@ -71,7 +73,7 @@
 
   & hr {
     border-width: 0 0 1px 0;
-    border-color: var(--color21);
+    border-color: rgb(var(--line-brighter-color));
   }
 
   & code {
@@ -219,25 +221,25 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-left-color: var(--color44);
+    border-left-color: rgb(var(--line-color));
   }
 
   & table {
     & th,
     & td {
-      border: 1px solid var(--color24);
+      border: 1px solid rgb(var(--line-color));
     }
 
     & tr {
-      background-color: var(--color8);
+      background-color: rgb(var(--primary-background-color));
 
       &:nth-child(2n) {
-        background-color: var(--color23);
+        background-color: rgb(var(--line-color));
       }
     }
   }
 
   & hr {
-    border-color: var(--color22);
+    border-color: rgb(var(--line-brighter-color));
   }
 }
