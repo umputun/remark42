@@ -13,7 +13,6 @@ on:
       - "!backend/scripts/**"
       - "!**.md"
   pull_request:
-    types: [opened, reopened]
     paths:
       - ".github/workflows/ci-backend.yml"
       - "backend/**"
@@ -43,7 +42,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25"
+          go-version: "1.25.12"
           cache-dependency-path: backend
 
       - name: test and build backend
@@ -83,3 +82,34 @@ jobs:
         working-directory: backend
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  vulncheck:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: install go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.12"
+          # both go.sum files so the cache key covers the main and example modules scanned below
+          cache-dependency-path: |
+            backend/go.sum
+            backend/_example/memory_store/go.sum
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.5.0
+          govulncheck ./...
+          (cd _example/memory_store && govulncheck ./...)
+        working-directory: backend
+        env:
+          # ignore the committed vendor dirs and resolve modules from the cache so
+          # both the main module and the nested example module scan consistently
+          GOFLAGS: "-mod=readonly"

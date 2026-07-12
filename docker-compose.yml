@@ -1,5 +1,3 @@
-version: "2"
-
 services:
   remark:
     # remove the next line in case you want to use this Docker Compose file separately

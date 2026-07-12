@@ -110,10 +110,10 @@ func TestEmailSendErrors(t *testing.T) {
 	e.msgTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "test"}}, Emails: []string{"bad@example.org"}}),
-		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\": "+
+		"problem sending user email notification to \"bad@example.org\": "+
 			"error executing template to build comment reply message: "+
 			"template: test:1:2: executing \"test\" at <.Test>: "+
-			"can't evaluate field Test in type notify.msgTmplData\n\n")
+			"can't evaluate field Test in type notify.msgTmplData")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -121,8 +121,14 @@ func TestEmailSendErrors(t *testing.T) {
 		"sending email messages about comment \"999\" aborted due to canceled context")
 
 	assert.EqualError(t, e.Send(context.Background(), Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad@example.org"}}),
-		"1 error occurred:\n\t* problem sending user email notification to \"bad@example.org\":"+
-			" error creating token for unsubscribe link: token generation error\n\n")
+		"problem sending user email notification to \"bad@example.org\":"+
+			" error creating token for unsubscribe link: token generation error")
+
+	// errors for all failed recipients are reported, not just the last one
+	assert.EqualError(t, e.Send(context.Background(),
+		Request{Comment: store.Comment{ID: "999"}, parent: store.Comment{User: store.User{ID: "error"}}, Emails: []string{"bad1@example.org", "bad2@example.org"}}),
+		"problem sending user email notification to \"bad1@example.org\": error creating token for unsubscribe link: token generation error\n"+
+			"problem sending user email notification to \"bad2@example.org\": error creating token for unsubscribe link: token generation error")
 }
 
 func TestEmailSend_ExitConditions(t *testing.T) {

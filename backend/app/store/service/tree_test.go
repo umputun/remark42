@@ -152,6 +152,100 @@ func TestTreeSortNodes(t *testing.T) {
 	assert.Equal(t, "1", res.Nodes[0].Comment.ID)
 }
 
+func TestMakeTreeLimit(t *testing.T) {
+	loc := store.Locator{URL: "url", SiteID: "site"}
+	ts := func(sec int) time.Time { return time.Date(2017, 12, 25, 19, 0, sec, 0, time.UTC) }
+
+	// tree with four top-level comments and subtree sizes 3, 2, 1, 3 (total 9):
+	//   c1 -> c1a, c1b
+	//   c2 -> c2a
+	//   c3
+	//   c4 -> c4a -> c4a1
+	comments := []store.Comment{
+		{Locator: loc, ID: "c1", Timestamp: ts(1)},
+		{Locator: loc, ID: "c1a", ParentID: "c1", Timestamp: ts(11)},
+		{Locator: loc, ID: "c1b", ParentID: "c1", Timestamp: ts(12)},
+		{Locator: loc, ID: "c2", Timestamp: ts(2)},
+		{Locator: loc, ID: "c2a", ParentID: "c2", Timestamp: ts(21)},
+		{Locator: loc, ID: "c3", Timestamp: ts(3)},
+		{Locator: loc, ID: "c4", Timestamp: ts(4)},
+		{Locator: loc, ID: "c4a", ParentID: "c4", Timestamp: ts(41)},
+		{Locator: loc, ID: "c4a1", ParentID: "c4a", Timestamp: ts(42)},
+	}
+
+	nodeIDs := func(nodes []*Node) []string {
+		ids := make([]string, 0, len(nodes))
+		for _, n := range nodes {
+			ids = append(ids, n.Comment.ID)
+		}
+		return ids
+	}
+
+	tests := []struct {
+		name      string
+		limit     int
+		offsetID  string
+		wantNodes []string
+		wantLeft  int
+		wantLast  string
+	}{
+		{"no limit, no offset returns all", 0, "", []string{"c1", "c2", "c3", "c4"}, 0, ""},
+		{"limit equals first subtree size", 3, "", []string{"c1"}, 6, "c1"},
+		{"limit smaller than first subtree returns it whole", 2, "", []string{"c1"}, 6, "c1"},
+		{"limit between first and second boundary stops after first", 4, "", []string{"c1"}, 6, "c1"},
+		{"limit at exact two-subtree boundary includes both", 5, "", []string{"c1", "c2"}, 4, "c2"},
+		{"limit reaches third subtree exactly", 6, "", []string{"c1", "c2", "c3"}, 3, "c3"},
+		{"limit equal to total returns all", 9, "", []string{"c1", "c2", "c3", "c4"}, 0, "c4"},
+		{"limit larger than total returns all", 100, "", []string{"c1", "c2", "c3", "c4"}, 0, "c4"},
+		{"offset only, no limit slices remainder", 0, "c1", []string{"c2", "c3", "c4"}, 0, ""},
+		{"offset at last node clears result", 0, "c4", []string{}, 0, ""},
+		{"offset at last node with limit clears result", 5, "c4", []string{}, 0, ""},
+		{"offset not found starts from beginning", 0, "missing", []string{"c1", "c2", "c3", "c4"}, 0, ""},
+		{"offset plus limit returns single subtree", 2, "c1", []string{"c2"}, 4, "c2"},
+		{"offset plus limit stops before last subtree", 3, "c2", []string{"c3"}, 3, "c3"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			res := MakeTree(comments, "+time", tc.limit, tc.offsetID)
+			assert.Equal(t, tc.wantNodes, nodeIDs(res.Nodes), "top-level nodes")
+			assert.Equal(t, tc.wantLeft, res.CountLeft(), "count left")
+			assert.Equal(t, tc.wantLast, res.LastComment(), "last comment")
+		})
+	}
+}
+
+func TestCountReplies(t *testing.T) {
+	loc := store.Locator{URL: "url", SiteID: "site"}
+	ts := func(sec int) time.Time { return time.Date(2017, 12, 25, 19, 0, sec, 0, time.UTC) }
+	comments := []store.Comment{
+		{Locator: loc, ID: "c1", Timestamp: ts(1)},
+		{Locator: loc, ID: "c1a", ParentID: "c1", Timestamp: ts(11)},
+		{Locator: loc, ID: "c1b", ParentID: "c1", Timestamp: ts(12)},
+		{Locator: loc, ID: "c4", Timestamp: ts(4)},
+		{Locator: loc, ID: "c4a", ParentID: "c4", Timestamp: ts(41)},
+		{Locator: loc, ID: "c4a1", ParentID: "c4a", Timestamp: ts(42)},
+	}
+	res := MakeTree(comments, "+time", 0, "")
+
+	byID := map[string]*Node{}
+	for _, n := range res.Nodes {
+		byID[n.Comment.ID] = n
+	}
+
+	// guard presence and shape first so a regression in MakeTree fails with a clear
+	// assertion instead of a nil-pointer panic on the map lookups below
+	require.Contains(t, byID, "c1")
+	require.Contains(t, byID, "c4")
+	require.Len(t, byID["c1"].Replies, 2)
+	require.Len(t, byID["c4"].Replies, 1)
+
+	assert.Equal(t, 2, countReplies(byID["c1"]), "c1 has two direct replies, no nesting")
+	assert.Equal(t, 2, countReplies(byID["c4"]), "c4 counts nested reply recursively")
+	assert.Equal(t, 1, countReplies(byID["c4"].Replies[0]), "c4a has one nested reply")
+	assert.Equal(t, 0, countReplies(byID["c1"].Replies[0]), "leaf reply has no replies")
+}
+
 func BenchmarkTree(b *testing.B) {
 	comments := []store.Comment{}
 	data, err := os.ReadFile("testdata/tree_bench.json")

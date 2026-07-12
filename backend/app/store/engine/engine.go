@@ -4,12 +4,17 @@ package engine
 // Includes default implementation with boltdb
 
 import (
+	"errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
+
+// ErrSiteNotFound is returned by engines when the requested site does not exist.
+// Its message is "not found" so wrapping it as `site %q %w` reads "site \"x\" not found".
+var ErrSiteNotFound = errors.New("not found")
 
 // NOTE: matryer/moq should be installed globally and works with `go generate ./...`
 //go:generate moq --out engine_mock.go . Interface

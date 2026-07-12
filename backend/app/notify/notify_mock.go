@@ -15,10 +15,14 @@ type MockDest struct {
 	id               int
 	closed           bool
 	lock             sync.Mutex
+	block            chan struct{} // if non-nil, Send/SendVerification wait on it before recording, letting tests pin the consumer
 }
 
 // Send mock
 func (m *MockDest) Send(ctx context.Context, r Request) error {
+	if m.block != nil {
+		<-m.block
+	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -33,6 +37,9 @@ func (m *MockDest) Send(ctx context.Context, r Request) error {
 
 // SendVerification mock
 func (m *MockDest) SendVerification(ctx context.Context, v VerificationRequest) error {
+	if m.block != nil {
+		<-m.block
+	}
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if err := ctx.Err(); err != nil {

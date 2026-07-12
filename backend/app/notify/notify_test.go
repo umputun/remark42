@@ -49,26 +49,38 @@ func TestService_WithDestinations(t *testing.T) {
 
 func TestService_WithDrops(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
+		// gated destinations pin the consumer on the first item so the size-1 queue
+		// fills deterministically and the overflow is dropped regardless of scheduling
+		gate := make(chan struct{})
+		d1, d2 := &MockDest{id: 1, block: gate}, &MockDest{id: 2, block: gate}
 		s := NewService(nil, 1, d1, d2)
 		assert.NotNil(t, s)
 
-		s.Submit(Request{Comment: store.Comment{ID: "100"}})
-		s.Submit(Request{Comment: store.Comment{ID: "101"}})
-		s.Submit(Request{Comment: store.Comment{ID: "102"}})
+		s.Submit(Request{Comment: store.Comment{ID: "100"}}) // consumed, consumer blocks in Send on the gate
+		synctest.Wait()
+		s.Submit(Request{Comment: store.Comment{ID: "101"}}) // fills the size-1 queue
+		s.Submit(Request{Comment: store.Comment{ID: "102"}}) // queue full, dropped
+		synctest.Wait()
+
+		close(gate) // release the consumer: it finishes 100 then processes 101
 		synctest.Wait()
 		s.Close()
 
 		s.Submit(Request{Comment: store.Comment{ID: "111"}}) // safe to send after close
 
-		assert.LessOrEqual(t, len(d1.Get()), 2, "at least one comment from three dropped from d1, got: %v", d1.Get())
-		assert.LessOrEqual(t, len(d2.Get()), 2, "at least one comment from three dropped from d2, got: %v", d2.Get())
+		require.Len(t, d1.Get(), 2, "one comment of three dropped from d1, got: %v", d1.Get())
+		require.Len(t, d2.Get(), 2, "one comment of three dropped from d2, got: %v", d2.Get())
+		assert.Equal(t, "100", d1.Get()[0].Comment.ID)
+		assert.Equal(t, "101", d1.Get()[1].Comment.ID)
 	})
 }
 
 func TestService_SubmitVerificationWithDrops(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
+		// gated destinations pin the consumer on the first item so the size-1 queue
+		// fills deterministically and the overflow is dropped regardless of scheduling
+		gate := make(chan struct{})
+		d1, d2 := &MockDest{id: 1, block: gate}, &MockDest{id: 2, block: gate}
 		s := NewService(nil, 1, d1, d2)
 		assert.NotNil(t, s)
 
@@ -77,22 +89,27 @@ func TestService_SubmitVerificationWithDrops(t *testing.T) {
 			User:   "testUser",
 			Email:  "test@example.org",
 			Token:  "testToken",
-		})
-		s.SubmitVerification(VerificationRequest{})
-		s.SubmitVerification(VerificationRequest{})
+		}) // consumed, consumer blocks in SendVerification on the gate
+		synctest.Wait()
+		s.SubmitVerification(VerificationRequest{User: "second"})  // fills the size-1 queue
+		s.SubmitVerification(VerificationRequest{User: "dropped"}) // queue full, dropped
+		synctest.Wait()
+
+		close(gate) // release the consumer: it finishes testUser then processes second
 		synctest.Wait()
 		s.Close()
 
 		s.SubmitVerification(VerificationRequest{}) // safe to send after close
 
-		assert.LessOrEqual(t, len(d2.GetVerify()), 2, "one request from three dropped from d2, got: %v", d2.GetVerify())
+		require.Len(t, d2.GetVerify(), 2, "one request of three dropped from d2, got: %v", d2.GetVerify())
 
 		verifyDest := d1.GetVerify()
-		require.LessOrEqual(t, len(verifyDest), 2, "one request from three dropped from d1, got: %v", verifyDest)
+		require.Len(t, verifyDest, 2, "one request of three dropped from d1, got: %v", verifyDest)
 		assert.Equal(t, "remark", verifyDest[0].SiteID)
 		assert.Equal(t, "testUser", verifyDest[0].User)
 		assert.Equal(t, "test@example.org", verifyDest[0].Email)
 		assert.Equal(t, "testToken", verifyDest[0].Token)
+		assert.Equal(t, "second", verifyDest[1].User)
 	})
 }
 

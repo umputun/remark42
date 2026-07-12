@@ -3,6 +3,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -14,7 +15,6 @@ import (
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
 	bf "github.com/russross/blackfriday/v2"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -128,6 +128,7 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 	}
 
 	changedSort := false
+	flags := s.newUserFlagCache()
 	// sets votes controversy for comments added prior to #274
 	// also sanitizes locator.URL for comments added prior to #927
 	for i, c := range comments {
@@ -137,7 +138,7 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 				changedSort = true
 			}
 		}
-		comments[i] = s.alterComment(c, user)
+		comments[i] = s.alterCommentCached(c, user, flags)
 	}
 
 	// resort commits if altered
@@ -249,18 +250,18 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	if ts.IsZero() {
 		return nil
 	}
-	result := new(multierror.Error)
+	var errs []error
 	for _, site := range sites {
 		locator := store.Locator{SiteID: site}
 		comments, err := s.FindSince(locator, "time", store.User{}, ts)
 		if err != nil {
-			result = multierror.Append(result, fmt.Errorf("problem finding comments for site %s: %w", site, err))
+			errs = append(errs, fmt.Errorf("problem finding comments for site %s: %w", site, err))
 		}
 		for _, c := range comments {
 			s.submitImages(c)
 		}
 	}
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
@@ -915,32 +916,32 @@ func (s *DataStore) Metas(siteID string) (umetas []UserMetaData, pmetas []PostMe
 
 // SetMetas saves metadata for users and posts
 func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []PostMetaData) (err error) {
-	errs := new(multierror.Error)
+	var errs []error
 
 	// save posts metas
 	for _, pm := range pmetas {
 		if pm.ReadOnly {
-			errs = multierror.Append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
+			errs = append(errs, s.SetReadOnly(store.Locator{SiteID: siteID, URL: pm.URL}, true))
 		}
 	}
 
 	// save users metas
 	for _, um := range umetas {
 		if um.Blocked.Status {
-			errs = multierror.Append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
+			errs = append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
 		}
 		if um.Verified {
-			errs = multierror.Append(errs, s.SetVerified(siteID, um.ID, true))
+			errs = append(errs, s.SetVerified(siteID, um.ID, true))
 		}
 		// this code doesn't delete user details in case they are not set in import but present in DB already
 		if um.Details.Email != "" {
 			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
 			_, err := s.Engine.UserDetail(req)
-			errs = multierror.Append(errs, err)
+			errs = append(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // User gets comment for given userID on siteID
@@ -972,15 +973,15 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 
 // Close store service
 func (s *DataStore) Close() error {
-	errs := new(multierror.Error)
+	var errs []error
 	if s.repliesCache.LoadingCache != nil {
-		errs = multierror.Append(errs, s.repliesCache.Close())
+		errs = append(errs, s.repliesCache.Close())
 	}
 	if s.TitleExtractor != nil {
-		errs = multierror.Append(errs, s.TitleExtractor.Close())
+		errs = append(errs, s.TitleExtractor.Close())
 	}
-	errs = multierror.Append(errs, s.Engine.Close())
-	return errs.ErrorOrNil()
+	errs = append(errs, s.Engine.Close())
+	return errors.Join(errs...)
 }
 
 func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
@@ -1011,25 +1012,28 @@ func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
 
 func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []store.Comment) {
 	res = make([]store.Comment, len(cc))
+	flags := s.newUserFlagCache()
 	for i, c := range cc {
-		res[i] = s.alterComment(c, user)
+		res[i] = s.alterCommentCached(c, user, flags)
 	}
 	return res
 }
 
 func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Comment) {
-	blocReq := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-	blocked, bErr := s.Engine.Flag(blocReq)
+	return s.alterCommentCached(c, user, s.newUserFlagCache())
+}
 
+// alterCommentCached is alterComment sharing a userFlagCache so that block/verified
+// lookups for a user repeated across a listing hit the engine only once.
+func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *userFlagCache) (res store.Comment) {
 	// mark user blocked
-	if bErr == nil && blocked {
-		c.User.Blocked = blocked
+	if flags.blocked(c.Locator.SiteID, c.User.ID) {
+		c.User.Blocked = true
 	}
 
 	// set verified status retroactively
 	if !c.User.Blocked {
-		verifReq := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: c.Locator.SiteID}, UserID: c.User.ID}
-		c.User.Verified, _ = s.Engine.Flag(verifReq)
+		c.User.Verified = flags.verified(c.Locator.SiteID, c.User.ID)
 	}
 
 	// hide info from non-admins
@@ -1041,6 +1045,51 @@ func (s *DataStore) alterComment(c store.Comment, user store.User) (res store.Co
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
 	return c
+}
+
+// userFlagCache memoises engine block/verified flag lookups by site and user within
+// a single listing, avoiding two engine.Flag calls per comment for repeated users.
+type userFlagCache struct {
+	s         *DataStore
+	blockedM  map[flagKey]bool
+	verifiedM map[flagKey]bool
+}
+
+type flagKey struct {
+	siteID string
+	userID string
+}
+
+func (s *DataStore) newUserFlagCache() *userFlagCache {
+	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}}
+}
+
+func (f *userFlagCache) blocked(siteID, userID string) bool {
+	key := flagKey{siteID: siteID, userID: userID}
+	if v, ok := f.blockedM[key]; ok {
+		return v
+	}
+	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	if err != nil {
+		// don't cache on error so a repeated user is retried, matching the
+		// pre-refactor per-comment behavior; treat this comment as not blocked
+		return false
+	}
+	f.blockedM[key] = v
+	return v
+}
+
+func (f *userFlagCache) verified(siteID, userID string) bool {
+	key := flagKey{siteID: siteID, userID: userID}
+	if v, ok := f.verifiedM[key]; ok {
+		return v
+	}
+	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	if err != nil {
+		return false // don't cache on error, retry on the next comment for this user
+	}
+	f.verifiedM[key] = v
+	return v
 }
 
 // prepare vote info for client view

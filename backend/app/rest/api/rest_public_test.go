@@ -733,16 +733,16 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
 		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
 		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
-		{"format=tree&limit=6", `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
-		{"format=tree&limit=7", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
 		{"format=tree&url=test-url&limit=2", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
-		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		{"format=tree&url=test-url&limit=7", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		// start after first top-level comment
 		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[0]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[0]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
 		// start after second top-level comment
-		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[1]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		// start after third top-level comment, so expect comment to post 2, or no comments on post 1 if "url" is set
 		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
@@ -771,8 +771,12 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		t.Run(tc.params, func(t *testing.T) {
 			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
 			body, code := get(t, url)
+			// bad-request cases are identified by their error response body rather than
+			// a "=bad" substring of the params: comment IDs are random UUIDs and one
+			// starting with "bad" (e.g. offset_id=bad49e60-...) would otherwise be
+			// misread as a bad request, making this test flaky.
 			expectedStatus := http.StatusOK
-			if strings.Contains(tc.params, "=bad") {
+			if strings.Contains(tc.expectedBody, `"error":`) {
 				expectedStatus = http.StatusBadRequest
 			}
 			assert.Equal(t, expectedStatus, code)

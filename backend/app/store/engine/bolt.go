@@ -9,7 +9,6 @@ import (
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/hashicorp/go-multierror"
 	bolt "go.etcd.io/bbolt"
 	berrors "go.etcd.io/bbolt/errors"
 
@@ -415,14 +414,14 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 
 // Close boltdb store
 func (b *BoltDB) Close() error {
-	errs := new(multierror.Error)
+	var errs []error
 	for site, db := range b.dbs {
 		err := db.Close()
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("can't close site %s: %w", site, err))
+			errs = append(errs, fmt.Errorf("can't close site %s: %w", site, err))
 		}
 	}
-	return errs.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // Last returns up to max last comments for given siteID
@@ -1019,7 +1018,7 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	if res, ok := b.dbs[siteID]; ok {
 		return res, nil
 	}
-	return nil, fmt.Errorf("site %q not found", siteID)
+	return nil, fmt.Errorf("site %q %w", siteID, ErrSiteNotFound)
 }
 
 // makeRef creates reference combining url and comment id

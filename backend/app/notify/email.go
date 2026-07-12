@@ -3,6 +3,7 @@ package notify
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/url"
@@ -11,7 +12,6 @@ import (
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
 	"github.com/go-pkgz/repeater/v2"
-	"github.com/hashicorp/go-multierror"
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/umputun/remark42/backend/app/templates"
@@ -160,23 +160,23 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 	default:
 	}
 
-	result := new(multierror.Error)
+	var errs []error
 
 	for _, email := range req.Emails {
 		err := e.buildAndSendMessage(ctx, req, email, false)
 		if err != nil {
-			result = multierror.Append(fmt.Errorf("problem sending user email notification to %q: %w", email, err))
+			errs = append(errs, fmt.Errorf("problem sending user email notification to %q: %w", email, err))
 		}
 	}
 
 	for _, email := range e.AdminEmails {
 		err := e.buildAndSendMessage(ctx, req, email, true)
 		if err != nil {
-			result = multierror.Append(fmt.Errorf("problem sending admin email notification to %q: %w", email, err))
+			errs = append(errs, fmt.Errorf("problem sending admin email notification to %q: %w", email, err))
 		}
 	}
 
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email string, forAdmin bool) error {
