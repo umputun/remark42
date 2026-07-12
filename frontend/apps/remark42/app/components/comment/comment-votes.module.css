@@ -20,7 +20,7 @@
   align-items: center;
   padding: 2px;
   opacity: 0.4;
-  color: var(--color13);
+  color: rgb(var(--lighter-text-color));
   transition: opacity 0.15s, color 0.15s;
 }
 
@@ -30,13 +30,13 @@
 
 .upVoteButton:hover,
 .upVoteButtonActive {
-  color: rgb(var(--color12));
+  color: rgb(var(--upvote-color));
   opacity: 1;
 }
 
 .downVoteButton:hover,
 .downVoteButtonActive {
-  color: rgb(var(--color30));
+  color: rgb(var(--downvote-color));
   opacity: 1;
 }
 
@@ -47,17 +47,17 @@
   border-radius: 3px;
   min-width: 16px;
   text-align: center;
-  color: rgb(var(--secondary-darker-text-color));
+  color: rgb(var(--lighter-text-color));
 }
 
 .votesNegative {
-  color: rgb(var(--color30));
-  background-color: rgba(var(--color30), 0.1);
+  color: rgb(var(--downvote-color));
+  background-color: rgba(var(--downvote-color), 0.1);
 }
 
 .votesPositive {
-  color: rgb(var(--color12));
-  background-color: rgba(var(--color12), 0.1);
+  color: rgb(var(--upvote-color));
+  background-color: rgba(var(--upvote-color), 0.1);
 }
 
 .upVoteIcon {

@@ -5,6 +5,7 @@ import { setStyles, setAttributes, StylesDeclaration } from 'utils/set-dom-props
 type Params = {
   [key: string]: unknown;
   __colors__?: Record<string, string>;
+  __font__?: string;
   styles?: StylesDeclaration;
   onReveal?: () => void;
 };
@@ -28,13 +29,13 @@ const REVEAL_TIMEOUT = 5000;
  * `styles` is applied last, so a caller passing `visibility` overrides the hiding
  * and brings the white flash back.
  */
-export function createIframe({ __colors__, styles, onReveal, ...params }: Params) {
+export function createIframe({ __colors__, __font__, styles, onReveal, ...params }: Params) {
   const iframe = document.createElement('iframe');
   const query = new URLSearchParams(params as Record<string, string>).toString();
 
   setAttributes(iframe, {
     src: `${BASE_URL}/web/iframe.html?${query}`,
-    name: JSON.stringify({ __colors__ }),
+    name: JSON.stringify({ __colors__, __font__ }),
     tabindex: '0',
     title: 'Comments | Remark42',
   });

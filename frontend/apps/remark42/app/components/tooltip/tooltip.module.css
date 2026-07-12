@@ -7,8 +7,8 @@
   visibility: hidden;
   padding: 4px 6px;
   border-radius: 4px;
-  background-color: rgb(var(--black-color));
-  color: rgb(var(--white-color));
+  background-color: rgb(var(--primary-text-color));
+  color: rgb(var(--primary-background-color));
 }
 
 .tooltip::after {
@@ -42,7 +42,7 @@
   &::after {
     top: 100%;
     right: 10px;
-    border-top-color: rgb(var(--black-color));
+    border-top-color: rgb(var(--primary-text-color));
     border-bottom-width: 0;
   }
 }

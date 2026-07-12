@@ -3,7 +3,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 6px;
-  font-family: system-ui;
+  font-family: var(--font-family, "system-ui");
   font-size: 14px;
   color: rgb(var(--primary-text-color));
   background: transparent;
@@ -39,12 +39,12 @@ button {
 }
 
 a {
-  color: var(--color9);
+  color: rgb(var(--primary-color));
   text-decoration: none;
   cursor: pointer;
 
   &:hover {
-    color: var(--color33);
+    color: rgb(var(--primary-brighter-color));
   }
 }
 
@@ -68,7 +68,7 @@ a {
 }
 
 .preloader {
-  color: var(--color6, #fff);
+  color: var(--primary-background-color, #fff);
   position: relative;
   transform: translate3d(0, -10px, 0);
   animation-delay: -0.16s;
@@ -92,7 +92,7 @@ a {
 
 .preloader_view_iframe {
   margin: 0 auto;
-  color: var(--color13, #888);
+  color: rgb(var(--deactivated-color), (136, 136, 136));
 }
 
 :focus:not(.focus-visible):not(.button) {

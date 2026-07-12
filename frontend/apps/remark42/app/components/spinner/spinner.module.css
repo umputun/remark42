@@ -8,8 +8,8 @@
 }
 
 .dark {
-  border: 2px solid var(--color46);
-  border-right-color: var(--color37);
+  border: 2px solid rgba(var(--shadow-color));
+  border-right-color: rgb(var(--line-color));
 }
 
 :global(.dark) & {

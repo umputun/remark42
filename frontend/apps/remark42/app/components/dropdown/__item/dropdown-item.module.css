@@ -9,6 +9,6 @@
 }
 
 .separator {
-  border-bottom: 1px solid var(--color15);
+  border-bottom: 1px solid rgb(var(--primary-brighter-color));
   margin-bottom: 5px;
 }

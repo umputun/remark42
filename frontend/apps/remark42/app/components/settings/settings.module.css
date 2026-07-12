@@ -9,11 +9,11 @@
 .action {
   margin-left: 8px;
   font-weight: 700;
-  color: var(--color9);
+  color: rgb(var(--primary-color));
   cursor: pointer;
 
   &:hover {
-    color: var(--color33);
+    color: rgb(var(--primary-brighter-color));
   }
 
   &::before {
@@ -65,7 +65,7 @@
 .themeDark {
   & .action {
     &::before {
-      color: var(--color20);
+      color: rgb(var(--lighter-text-color));
     }
   }
 }
@@ -73,7 +73,7 @@
 .themeLight {
   & .action {
     &::before {
-      color: var(--color10);
+      color: rgb(var(--lighter-text-color));
     }
   }
 }
