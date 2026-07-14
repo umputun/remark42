@@ -24,13 +24,13 @@
     position: absolute;
     left: 5px;
     top: 0;
-    border-left: 1px dotted var(--color35);
+    border-left: 1px dotted rgb(var(--line-color));
     height: 100%;
   }
 
   &:hover::after {
     transform: translateX(-1px);
-    border-left: 3px solid var(--color10);
+    border-left: 3px solid rgb(var(--line-brighter-color));
     z-index: 10;
   }
 }
@@ -87,11 +87,11 @@
 .themeDark {
   & .collapse {
     &::after {
-      border-color: var(--color36);
+      border-color: rgb(var(--line-color));
     }
 
     &:hover::after {
-      border-color: var(--color6);
+      border-color: rgb(var(--line-brighter-color));
     }
   }
 }

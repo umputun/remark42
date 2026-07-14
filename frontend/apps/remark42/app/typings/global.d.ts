@@ -38,6 +38,11 @@ type RemarkConfig = {
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
   no_footer?: boolean;
+  // Optional, 'system-ui' by default. A string containing the fonts being used, delimited by commas for
+  // alternative fonts if the first one doesn't exist on the system.
+  __font__?: string;
+  // Optional. An array of different rgb values for changing the interface colors and an rgba value for
+  // changing the shadows.
   __colors__?: Record<string, string>;
 };
 

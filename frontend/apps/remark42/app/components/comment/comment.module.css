@@ -17,11 +17,10 @@
 }
 
 .verificationIcon {
-  color: var(--color29);
+  color: rgb(var(--verified-color));
 }
 
 .verificationIconInactive {
-  color: var(--color1);
   transition: opacity 0.15s;
 
   &:hover {
@@ -33,20 +32,20 @@
   display: inline-flex;
   height: 1rem;
   width: 1rem;
-  color: var(--color1);
+  color: rgb(var(--lighter-text-color));
   justify-content: center;
   align-items: center;
 
   &:hover {
-    color: var(--color29);
+    color: rgb(var(--primary-text-color));
   }
 }
 
 :global(.dark) .threadStarterAnchor {
-  color: var(--color11);
+  color: rgb(var(--lighter-text-color));
 
   &:hover {
-    color: var(--color41);
+    color: rgb(var(--primary-text-color));
   }
 }
 
@@ -211,7 +210,7 @@
   &.themeLight,
   &.themeDark {
     & .username {
-      color: var(--color29);
+      color: rgb(var(--primary-color));
     }
   }
 }
@@ -227,11 +226,11 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      color: var(--color9);
+      color: rgb(var(--primary-color));
     }
 
     & .titleLink {
-      color: var(--color9);
+      color: rgb(var(--primary-color));
       text-decoration: none;
 
       &:hover {
@@ -243,7 +242,7 @@
       display: inline;
       padding-right: 0;
       font-weight: 700;
-      color: var(--color10);
+      color: rgb(var(--lighter-text-color));
 
       &::after {
         content: ' ';
@@ -251,7 +250,7 @@
     }
 
     & .username {
-      color: var(--color9);
+      color: rgb(var(--primary-color));
     }
 
     & .text {
@@ -277,7 +276,7 @@
   }
 
   & .titleLink {
-    color: var(--color29);
+    color: rgb(var(--primary-color));
     font-weight: bold;
     text-decoration: none;
     text-overflow: ellipsis;
@@ -293,104 +292,104 @@
 
 .themeDark {
   & .status {
-    color: var(--color11);
+    color: rgb(var(--lighter-text-color));
   }
 
   & .time {
-    color: var(--color35);
+    color: rgb(var(--lighter-text-color));
 
     &:hover {
-      color: var(--color1);
+      color: rgb(var(--primary-text-color));
     }
   }
 
   & .username {
-    color: var(--color10);
+    color: rgb(var(--primary-color));
 
     &:hover {
-      color: var(--color33);
+      color: rgb(var(--primary-brighter-color));
     }
   }
 
   &.editing {
     & .input {
-      border-color: var(--color7);
+      border-color: rgb(var(--secondary-background-color));
     }
 
     @media (pointer: coarse) and (max-width: 768px) {
-      border-color: var(--color7);
+      border-color: rgb(var(--secondary-background-color));
     }
   }
 
   &.replying {
     & .input {
-      border-color: var(--color7);
+      border-color: rgb(var(--secondary-background-color));
     }
 
     @media (pointer: coarse) and (max-width: 768px) {
-      border-color: var(--color7);
+      border-color: rgb(var(--secondary-background-color));
     }
   }
 
   &.viewPreview {
     & .info {
       &::after {
-        color: var(--color10);
+        color: rgb(var(--lighter-text-color))
       }
     }
   }
 
   &:global(.comment_highlighting) {
-    background: var(--color19);
+    background: rgb(var(--highlight-color));
   }
 }
 
 .themeLight {
   & .status {
-    color: var(--color11);
+    color: rgb(var(--lighter-text-color));
   }
 
   & .time {
-    color: var(--color11);
+    color: rgb(var(--lighter-text-color));
 
     &:hover {
-      color: var(--color10);
+      color: rgb(var(--lighter-text-color));
     }
   }
 
   & .username {
-    color: var(--color10);
+    color: rgb(var(--primary-color));
   }
 
   &.editing {
     & .input {
-      border-color: var(--color5);
+      border-color: rgb(var(--secondary-background-color));
     }
 
     @media (pointer: coarse) and (max-width: 768px) {
-      border-color: var(--color5);
+      border-color: rgb(var(--secondary-background-color));
     }
   }
 
   &.replying {
     & .input {
-      border-color: var(--color5);
+      border-color: rgb(var(--secondary-background-color));
     }
 
     @media (pointer: coarse) and (max-width: 768px) {
-      border-color: var(--color5);
+      border-color: rgb(var(--secondary-background-color));
     }
   }
 
   &.viewPreview {
     & .info {
       &::after {
-        color: var(--color10);
+        color: rgb(var(--lighter-text-color))
       }
     }
   }
 
   &:global(.comment_highlighting) {
-    background: var(--color4);
+    background: rgb(var(--highlight-color));
   }
 }
