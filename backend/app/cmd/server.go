@@ -88,8 +88,15 @@ type ServerCommand struct {
 	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) trusted to set the client IP; if unset, trusted from any client (see docs)" env-delim:","`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
+	NameMinLength              int           `long:"name-minlength" env:"NAME_MINLENGTH" default:"3" description:"minimum length for usernames"`
+	NameMaxLength              int           `long:"name-maxlength" env:"NAME_MAXLENGTH" default:"64" description:"maximum length for usernames"`
+	NameCharacters             string        `long:"name-characters" env:"NAME_CHARACTERS" default:"alphanumerical" description:"characters that can be used in usernames, 'alphanumerical' (including underscores, dots and dashes), or 'letters' (including dots and dashes)"`
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
+	HideVoting                 bool          `long:"hide-voting" env:"HIDE_VOTING" description:"hide voting and voting results for comments"`
+	HideHide                   bool          `long:"hide-hide" env:"HIDE_HIDE" description:"hides the hide button for users"`
+	HideAvatars                bool          `long:"hide-avatars" env:"HIDE_AVATARS" description:"hide user avatars"`
+	HideUserID                 bool          `long:"hide-userid" env:"HIDE_USERID" description:"hide user ID:s in profile information"`
 	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
 	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors'" env-delim:","`
 	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
@@ -726,9 +733,16 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		ImageService:               imageService,
 		EmailNotifications:         contains("email", s.Notify.Users),
 		TelegramNotifications:      contains("telegram", s.Notify.Users) && telegramService != nil,
+		NameCharacters:             s.NameCharacters,
+		NameMinLength:              s.NameMinLength,
+		NameMaxLength:              s.NameMaxLength,
 		EmojiEnabled:               s.EnableEmoji,
 		AnonVote:                   s.AnonymousVote && s.RestrictVoteIP,
 		SimpleView:                 s.SimpleView,
+		HideVoting:                 s.HideVoting,
+		HideHide:                   s.HideHide,
+		HideAvatars:                s.HideAvatars,
+		HideUserID:                 s.HideUserID,
 		ProxyCORS:                  s.ProxyCORS,
 		AllowedAncestors:           s.AllowedHosts,
 		SendJWTHeader:              s.Auth.SendJWTHeader,
@@ -1188,7 +1202,12 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
-		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
+		var isValidAnonName func(string) bool
+		if s.NameCharacters == "alphanumerical" {
+			isValidAnonName = regexp.MustCompile(`^[\p{L}\d._\- ]+$`).MatchString
+		} else {
+			isValidAnonName = regexp.MustCompile(`^[\p{L}.\- ]+$`).MatchString
+		}
 		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
 
 			// don't allow anon with space prefix or suffix
@@ -1198,17 +1217,21 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			}
 
 			user = strings.TrimSpace(user)
-			if len(user) < 3 {
-				log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
+			if len(user) < s.NameMinLength {
+				log.Printf("[WARN] name %q is too short, should be at least %q characters", user, s.NameMinLength)
 				return false, nil
 			}
-			if len(user) > 64 {
-				log.Printf("[WARN] name %q is too long, should be up to 64 characters", user)
+			if len(user) > s.NameMaxLength {
+				log.Printf("[WARN] name %q is too long, should be up to %q characters", user, s.NameMaxLength)
 				return false, nil
 			}
 
 			if !isValidAnonName(user) {
-				log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", user)
+				if s.NameCharacters == "alphanumerical" {
+					log.Printf("[WARN] name %q should have letters, digits, underscores, dots, dashes and spaces only", user)
+				} else {
+					log.Printf("[WARN] name %q should have letters, dots, dashes and spaces only", user)
+				}
 				return false, nil
 			}
 			return true, nil

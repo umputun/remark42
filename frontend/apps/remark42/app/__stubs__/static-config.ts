@@ -15,9 +15,16 @@ beforeEach(() => {
     readonly_age: 100,
     version: 'jest-test',
     simple_view: false,
+    hide_voting: false,
+    hide_hide: false,
+    hide_avatars: false,
+    hide_userid: false,
     anon_vote: false,
     email_notifications: false,
     telegram_notifications: false,
+    name_minlength: 3,
+    name_maxlength: 64,
+    name_characters: 'alphanumerical',
     emoji_enabled: true,
   };
 });

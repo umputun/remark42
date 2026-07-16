@@ -3,6 +3,7 @@ import { h, Fragment } from 'preact';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useIntl, FormattedMessage } from 'react-intl';
 
+import { StaticStore } from 'common/static-store';
 import { getUserComments } from 'common/api';
 import { parseQuery } from 'utils/parse-query';
 import { requestDeletion } from 'utils/email';
@@ -189,12 +190,16 @@ export function Profile() {
       </div>
       <aside className={clsx('profile-sidebar', isCurrent && 'profile_current', styles.sidebar)}>
         <header className={clsx('profile-header', styles.header)}>
-          <div className={clsx('profile-avatar', styles.avatar)}>
-            <Avatar data-testid="avatar" url={user.picture} />
-          </div>
+          {!StaticStore.config.hide_avatars && (
+            <div className={clsx('profile-avatar', styles.avatar)}>
+              <Avatar data-testid="avatar" url={user.picture} />
+            </div>
+          )}
           <div className={clsx('profile-content', styles.info)}>
             <div className={clsx('profile-title', styles.name)}>{user.name}</div>
-            <div className={clsx('profile-id', styles.id)}>{user.id}</div>
+            {!StaticStore.config.hide_userid && (
+              <div className={clsx('profile-id', styles.id)}>{user.id}</div>
+            )}
           </div>
           {isCurrent && (
             <button

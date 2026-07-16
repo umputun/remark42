@@ -393,7 +393,7 @@ export class Comment extends Component<CommentProps, State> {
           </div>
         )}
         <div className={styles.info}>
-          {props.view !== 'user' && !props.collapsed && (
+          {props.view !== 'user' && !props.collapsed && !StaticStore.config.hide_avatars && (
             <div className={styles.avatar}>
               <Avatar url={o.user.picture} />
             </div>
@@ -461,7 +461,7 @@ export class Comment extends Component<CommentProps, State> {
               <FormattedMessage id="comment.deleted-user" defaultMessage="Deleted" />
             </span>
           )}
-          {this.props.view !== 'pinned' && (
+          {this.props.view !== 'pinned' && !StaticStore.config.hide_voting && (
             <CommentVotes
               id={this.props.data.id}
               vote={props.data.vote}

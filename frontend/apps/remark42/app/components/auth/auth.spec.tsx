@@ -100,7 +100,6 @@ describe('<Auth/>', () => {
     render(<Auth />);
 
     fireEvent.click(screen.getByText('Sign In'));
-    expect(screen.getByText('email')).toHaveClass('auth-form-title');
     expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
     expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
     expect(screen.getByText('Submit')).toHaveClass('auth-submit');
@@ -111,30 +110,19 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
-    expect(screen.getByText('anonymous')).toHaveClass('auth-form-title');
+    fireEvent.click(screen.getByText('Sign in or pick name'));
     expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
     expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
 
-  it('should render tabs with two form providers', () => {
+  it('should render combined login form', () => {
     StaticStore.config.auth_providers = ['email', 'anonymous'];
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
-    expect(screen.getByDisplayValue('email')).toHaveAttribute('id', 'form-provider-email');
-    expect(screen.getByText('email')).toHaveAttribute('for', 'form-provider-email');
-    expect(screen.getByText('email')).toHaveClass('auth-tabs-item');
-    expect(screen.getByDisplayValue('anonymous')).toHaveAttribute('id', 'form-provider-anonymous');
-    expect(screen.getByText('anonym')).toHaveAttribute('for', 'form-provider-anonymous');
-    expect(screen.getByText('anonym')).toHaveClass('auth-tabs-item');
+    fireEvent.click(screen.getByText('Sign in or pick name'));
     expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
-
-    fireEvent.click(screen.getByLabelText('email'));
-    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
+    expect(screen.getByPlaceholderText('Email Address (not required)')).toHaveClass('auth-input-email');
     expect(screen.getByText('Submit')).toHaveClass('auth-submit');
   });
 
@@ -207,7 +195,7 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in or pick name'));
     fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
     fireEvent.click(screen.getByText('Submit'));
     expect(screen.getByRole('presentation')).toHaveClass('spinner');

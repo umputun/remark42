@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 import { defineMessages, useIntl } from 'react-intl';
+import { StaticStore } from 'common/static-store';
 
 import { BlockTTL } from 'common/types';
 import { Select } from 'components/select';
@@ -88,7 +89,7 @@ export function CommentActions({
         data-testid="comment-actions-additional"
         className={clsx('comment-actions-additional', styles.additionalActions)}
       >
-        {!currentUser && (
+        {!currentUser && !StaticStore.config.hide_hide && (
           <Button kind="link" size="sm" onClick={onHideUser}>
             {intl.formatMessage(messages.hide)}
           </Button>
