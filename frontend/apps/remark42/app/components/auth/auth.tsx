@@ -337,7 +337,7 @@ export function Auth() {
                         name="username"
                         minLength={StaticStore.config.name_minlength}
                         maxLength={StaticStore.config.name_maxlength}
-                        pattern={StaticStore.config.name_characters==='alphanumerical' ? '[\\p{L}\\d\\._ \\-]+' : '[\\p{L}\\d\\. \\-]+'}
+                        pattern={StaticStore.config.name_characters==='alphanumerical' ? '[\\p{L}\\d\\._ \\-]+' : '[\\p{L}\\. \\-]+'}
                         title={StaticStore.config.name_characters==='alphanumerical' ? intl.formatMessage(messages.usernameRestriction) : intl.formatMessage(messages.usernameRestrictionLetters)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
