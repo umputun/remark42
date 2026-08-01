@@ -54,6 +54,13 @@ type Params struct {
 	Host string // relevant for providers supporting host customization, for example dev oauth2
 
 	MicrosoftTenant string // tenant for microsoft provider, default "common"
+
+	// GithubNumericID makes github provider derive the user id from the immutable numeric account id
+	// instead of the login. Logins are released on rename or account removal and can be claimed by
+	// someone else, so an id derived from login may be inherited by the next holder of the name.
+	// Enabling this changes the id of every existing github user, see README for the migration note.
+	// Best-effort: if the response carries no usable numeric id the login-derived id is kept.
+	GithubNumericID bool
 }
 
 // UserData is type for user information returned from oauth2 providers /info API method
@@ -190,6 +197,13 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 			p.Logf("[WARN] failed to close response body, %s", e)
 		}
 	}()
+
+	// an error body carries no identity fields, mapping it would hash empty values into a shared id
+	if uinfo.StatusCode < http.StatusOK || uinfo.StatusCode >= http.StatusMultipleChoices {
+		rest.SendErrorJSON(w, r, p.L, http.StatusServiceUnavailable,
+			fmt.Errorf("status %s", uinfo.Status), "failed to get user info")
+		return
+	}
 
 	data, err := io.ReadAll(uinfo.Body)
 	if err != nil {

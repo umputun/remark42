@@ -92,6 +92,8 @@ Logs request, request handling time and response. Log record fields in order of 
 
 _remote IP can be masked with user defined function_
 
+_request body can be transformed before logging with a user-defined function (`BodyFn`), e.g. to mask credentials. It only runs when body logging is on (`WithBody`), and receives the body along with a `truncated` flag that is set when the body exceeded `MaxBodySize` - the function can use it to emit a marker instead of logging a partial body it can't safely process_
+
 example: `019/03/05 17:26:12.976 [INFO] GET - /api/v1/find?site=remark - 8e228e9cfece - 200 (115) - 4.47784618s`
 
 ### Recoverer middleware

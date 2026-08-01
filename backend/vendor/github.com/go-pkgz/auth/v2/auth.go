@@ -383,6 +383,28 @@ func (s *Service) AddMicrosoftProvider(cid, csecret, tenant string) {
 	s.addProvider(provider.NewMicrosoft(p))
 }
 
+// AddGithubProviderWithNumericID adds github provider deriving the user id from the immutable
+// numeric account id instead of the login. Logins are released on rename or account removal and
+// can be claimed by someone else, so an id derived from login may be inherited by the next holder
+// of the name. This changes the id of every existing github user, see README for the migration note.
+// If the response carries no usable numeric id the login-derived id is kept.
+// For advanced configuration (e.g., UserAttributes), construct provider.Params directly.
+func (s *Service) AddGithubProviderWithNumericID(cid, csecret string) {
+	p := provider.Params{
+		URL:                  s.opts.URL,
+		JwtService:           s.jwtService,
+		Issuer:               s.issuer,
+		AvatarSaver:          s.avatarProxy,
+		Cid:                  cid,
+		Csecret:              csecret,
+		L:                    s.logger,
+		UserAttributes:       map[string]string{},
+		GithubNumericID:      true,
+		AllowedRedirectHosts: s.opts.AllowedRedirectHosts,
+	}
+	s.addProvider(provider.NewGithub(p))
+}
+
 // AddDevProvider with a custom host and port
 func (s *Service) AddDevProvider(host string, port int) {
 	p := provider.Params{
