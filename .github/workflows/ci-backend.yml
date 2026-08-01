@@ -40,7 +40,7 @@ jobs:
           DEBUG: ${{secrets.DEBUG}}
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25.12"
           cache-dependency-path: backend
@@ -95,7 +95,7 @@ jobs:
           persist-credentials: false
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25.12"
           # both go.sum files so the cache key covers the main and example modules scanned below
