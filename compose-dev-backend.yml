@@ -49,6 +49,7 @@ services:
       - NOTIFY_EMAIL_FROM
       - ADMIN_SHARED_EMAIL
       - SMTP_HOST
+      - SMTP_HELO_HOST
       - SMTP_USERNAME
       - SMTP_PASSWORD
       - SMTP_PORT

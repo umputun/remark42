@@ -31,6 +31,7 @@ type Sender struct {
 	smtpClient         SMTPClient
 	logger             Logger
 	host               string     // SMTP host
+	heloHost           string     // SMTP HELO/EHLO host
 	port               int        // SMTP port
 	contentType        string     // content type, optional. Will trigger MIME and Content-Type headers
 	tls                bool       // TLS auth
@@ -127,6 +128,7 @@ func (em *Sender) Send(text string, params Params) error {
 	}
 
 	if auth := em.auth(); auth != nil {
+		em.logger.Logf("[DEBUG] SMTP AUTH: sender_host=%q helo_host=%q", em.host, em.heloHost)
 		if err := client.Auth(auth); err != nil {
 			return fmt.Errorf("failed to auth to smtp %s:%d, %w", em.host, em.port, err)
 		}
@@ -200,6 +202,11 @@ func (em *Sender) client() (c *smtp.Client, err error) {
 		if c, err = smtp.NewClient(conn, em.host); err != nil {
 			return nil, fmt.Errorf("failed to make smtp client for %s: %w", srvAddress, err)
 		}
+		if em.heloHost != "" {
+			if err = c.Hello(em.heloHost); err != nil {
+				return nil, fmt.Errorf("failed to send HELO: %w", err)
+			}
+		}
 		return c, nil
 	}
 
@@ -211,6 +218,12 @@ func (em *Sender) client() (c *smtp.Client, err error) {
 	c, err = smtp.NewClient(conn, em.host)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %w", err)
+	}
+
+	if em.heloHost != "" {
+		if err = c.Hello(em.heloHost); err != nil {
+			return nil, fmt.Errorf("failed to send HELO: %w", err)
+		}
 	}
 
 	if em.starttls {
