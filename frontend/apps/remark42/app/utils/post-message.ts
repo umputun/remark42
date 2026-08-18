@@ -78,8 +78,8 @@ export function updateIframeHeight(dropdown?: HTMLElement) {
     scrollHeight = window.scrollY + Math.abs(top) + dropdown.scrollHeight + 20;
   }
 
-  // The size of vertical padding on body is 12px
-  const bodyHeight = document.body.offsetHeight + 12;
+  // offsetHeight already covers padding and border, so it is the full document height
+  const bodyHeight = document.body.offsetHeight;
 
   postMessageToParent({ height: Math.max(scrollHeight, bodyHeight) });
 }
