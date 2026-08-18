@@ -22,6 +22,13 @@ describe('<Auth/>', () => {
     StaticStore.config.auth_providers = defaultProviders;
   });
 
+  // the embedding page posts into the widget with iframe.contentWindow.postMessage, which
+  // arrives with source set to the parent. jsdom leaves source unset on window.postMessage,
+  // so it is set here explicitly
+  function postFromParent(data: unknown) {
+    window.dispatchEvent(new MessageEvent('message', { data, source: window.parent }));
+  }
+
   // TODO: separate tests of `useDropdown` mechanics with the hook
   describe('useDropdown', () => {
     it('should render auth with hidden dropdown', () => {
@@ -54,7 +61,7 @@ describe('<Auth/>', () => {
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
-    it('should close dropdown by message from parent', async () => {
+    it('should close dropdown by clickOutside message from parent', async () => {
       const { container } = render(<Auth />);
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
@@ -62,8 +69,37 @@ describe('<Auth/>', () => {
       fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
-      window.postMessage('{"clickOutside": true}', '*');
+      postFromParent({ clickOutside: true });
       await waitFor(() => expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument());
+    });
+
+    it.each([
+      ['title', { title: 'New title' }],
+      ['hash', { hash: '#comment-1' }],
+      ['theme', { theme: 'dark' }],
+      ['an unparsable payload', 'clickOutside'],
+    ])('should not close dropdown by %s message from parent', async (_, message) => {
+      const { container } = render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+
+      postFromParent(message);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+    });
+
+    it('should not close dropdown by clickOutside message from a foreign source', async () => {
+      const { container } = render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+
+      window.dispatchEvent(new MessageEvent('message', { data: { clickOutside: true }, source: null }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     });
   });
 
