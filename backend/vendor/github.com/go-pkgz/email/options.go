@@ -82,10 +82,3 @@ func TimeOut(timeOut time.Duration) Option {
 		s.timeOut = timeOut
 	}
 }
-
-// HELOHost sets the SMTP HELO/EHLO hostname.
-func HELOHost(host string) Option {
-	return func(s *Sender) {
-		s.heloHost = host
-	}
-}
