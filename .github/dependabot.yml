@@ -4,6 +4,11 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+
+# npm updates are switched off entirely. open-pull-requests-limit bounds version
+# updates only, so the ignore entries below are what also stops security updates;
+# removing the npm entries would not work, as security updates come from alerts
+# rather than from this file.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -23,6 +28,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -33,6 +40,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend/packages/api"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -43,6 +52,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend/e2e"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -53,6 +64,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend/apps/remark42"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -63,6 +76,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/site"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
