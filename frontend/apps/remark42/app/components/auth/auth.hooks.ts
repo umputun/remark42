@@ -23,9 +23,16 @@ export function useDropdown(disableClosing?: boolean) {
     }
 
     function handleMessageFromParent(evt: MessageEvent) {
+      // only the embedding page may close the dropdown, and only by reporting a click
+      // outside the widget. the parent also posts hash, title and theme messages, and
+      // extensions post their own, none of which should interrupt an active login
+      if (evt.source !== window.parent) {
+        return;
+      }
+
       const data = parseMessage(evt);
 
-      if (disableClosing && data.clickOutside) {
+      if (!data.clickOutside || disableClosing) {
         return;
       }
 
