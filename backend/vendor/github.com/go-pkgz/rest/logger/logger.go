@@ -26,6 +26,7 @@ type Middleware struct {
 	ipFn           func(ip string) string
 	userFn         func(r *http.Request) (string, error)
 	subjFn         func(r *http.Request) (string, error)
+	bodyFn         func(body string, truncated bool) string
 	log            Backend
 	apacheCombined bool
 }
@@ -104,6 +105,9 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 			if unescURL, err := url.QueryUnescape(rawurl); err == nil {
 				rawurl = unescURL
 			}
+			// unescaping can surface line breaks the encoded url hid, collapse them the same way
+			// the body is collapsed so an embedded break can't forge additional log records
+			rawurl = lineBreaks.Replace(rawurl)
 
 			remoteIP, err := realip.Get(r)
 			if err != nil {
@@ -131,7 +135,7 @@ func (l *Middleware) Handler(next http.Handler) http.Handler {
 				body:       body,
 			}
 
-			l.log.Logf(formater(r, p))
+			l.log.Logf("%s", formater(r, p))
 		}()
 
 		next.ServeHTTP(ww, r)
@@ -191,7 +195,7 @@ func (l *Middleware) formatApacheCombined(r *http.Request, p *logParts) string {
 	bld.WriteString(p.method)
 	bld.WriteString(" ")
 	bld.WriteString(p.rawURL)
-	bld.WriteString(`" `)
+	bld.WriteString(" ")
 	bld.WriteString(r.Proto)
 	bld.WriteString(`" `)
 	bld.WriteString(strconv.Itoa(p.statusCode))
@@ -207,6 +211,19 @@ func (l *Middleware) formatApacheCombined(r *http.Request, p *logParts) string {
 }
 
 var reMultWhtsp = regexp.MustCompile(`[\s\p{Zs}]{2,}`)
+
+// lineBreaks maps every character that can start a new line to a space, so a body
+// can't forge extra log records. reMultWhtsp only collapses runs of two or more, so
+// a lone CR or a Unicode line separator would otherwise slip through.
+var lineBreaks = strings.NewReplacer(
+	"\n", " ", // LF
+	"\r", " ", // CR
+	"\v", " ", // vertical tab
+	"\f", " ", // form feed
+	"\u0085", " ", // NEL
+	"\u2028", " ", // line separator
+	"\u2029", " ", // paragraph separator
+)
 
 func (l *Middleware) getBody(r *http.Request) string {
 	if !l.logBody {
@@ -226,13 +243,24 @@ func (l *Middleware) getBody(r *http.Request) string {
 	// https://golang.org/pkg/net/http/#Handler
 	r.Body = io.NopCloser(reader)
 
-	if body != "" {
-		body = strings.ReplaceAll(body, "\n", " ")
-		body = reMultWhtsp.ReplaceAllString(body, " ")
+	// the transform owns the logged body: it receives the body (capped at
+	// maxBodySize) and a flag telling it whether more was dropped, and decides
+	// how to render it - mask values, summarize, or emit a marker for a
+	// truncated body. an empty body has nothing to transform, so it is left
+	// alone. without a transform the body is logged as read, with the "..."
+	// marker appended when it was truncated.
+	switch {
+	case l.bodyFn != nil && body != "":
+		body = l.bodyFn(body, hasMore)
+	case hasMore:
+		body += "..."
 	}
 
-	if hasMore {
-		body += "..."
+	// always collapse to a single line, regardless of the transform, so an
+	// embedded line break in the body can't forge additional log lines.
+	if body != "" {
+		body = lineBreaks.Replace(body)
+		body = reMultWhtsp.ReplaceAllString(body, " ")
 	}
 
 	return body
