@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -115,6 +116,13 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 			h.Logf("[WARN] failed to close response body, %s", e)
 		}
 	}()
+
+	// an error body carries no identity fields, mapping it would hash empty values into a shared id
+	if uinfo.StatusCode < http.StatusOK || uinfo.StatusCode >= http.StatusMultipleChoices {
+		rest.SendErrorJSON(w, r, h.L, http.StatusServiceUnavailable,
+			fmt.Errorf("status %s", uinfo.Status), "failed to get user info")
+		return
+	}
 
 	data, err := io.ReadAll(uinfo.Body)
 	if err != nil {

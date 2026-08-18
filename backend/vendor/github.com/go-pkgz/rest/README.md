@@ -92,6 +92,8 @@ Logs request, request handling time and response. Log record fields in order of 
 
 _remote IP can be masked with user defined function_
 
+_request body can be transformed before logging with a user-defined function (`BodyFn`), e.g. to mask credentials. It only runs when body logging is on (`WithBody`), and receives the body along with a `truncated` flag that is set when the body exceeded `MaxBodySize` - the function can use it to emit a marker instead of logging a partial body it can't safely process_
+
 example: `019/03/05 17:26:12.976 [INFO] GET - /api/v1/find?site=remark - 8e228e9cfece - 200 (115) - 4.47784618s`
 
 ### Recoverer middleware
@@ -104,6 +106,8 @@ It prevents server crashes in case of panic in one of the controllers.
 
 OnlyFrom middleware allows access from a limited list of source IPs.
 Such IPs can be defined as complete ip (like 192.168.1.12), prefix (129.168.) or CIDR (192.168.0.0/16).
+Complete IP rules use semantic address equality (so equivalent IPv6 spellings match), CIDRs use network containment,
+and all other rules use literal textual prefix matching.
 The middleware will respond with `StatusForbidden` (403) if the request comes from a different IP. 
 It supports both IPv4 and IPv6 and checks the usual headers like `X-Forwarded-For` and `X-Real-IP` and the remote address.
 
@@ -451,4 +455,3 @@ Profiler is a convenient sub-router used for mounting net/http/pprof, i.e.
 ```
 
 It exposes a bunch of `/pprof/*` endpoints as well as `/vars`. Builtin support for `onlyIps` allows restricting access, which is important if it runs on a publicly exposed port. However, counting on IP check only is not that reliable way to limit request and for production use it would be better to add some sort of auth (for example provided `BasicAuth` middleware) or run with a separate http server, exposed to internal ip/port only.
-
