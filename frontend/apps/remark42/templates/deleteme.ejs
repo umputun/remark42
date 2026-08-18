@@ -69,7 +69,7 @@
       <div class="preloader preloader_view_iframe"></div>
     </div>
     <script>
-      var remark_config = { host: '<%= htmlWebpackPlugin.options.REMARK_URL %>' };
+      var remark_config = { host: location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, '') };
     </script>
     <script src="deleteme.js"></script>
   </body>

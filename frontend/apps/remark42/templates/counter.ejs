@@ -21,13 +21,13 @@
       <p>
         First counter with url from data-attribute:
         <span class="remark42__counter" data-url="https://remark42.com/demo/"></span>
-        (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
+        (<a href="./" target="_blank">note</a>)
       </p>
 
       <p>
         Second counter with url from global remark config:
         <span class="remark42__counter"></span>
-        (<a href="http://127.0.0.1:8080/web/" target="_blank">note</a>)
+        (<a href="./" target="_blank">note</a>)
       </p>
 
       <p>If it can't get url from data-attribute or remark config, it will try to use window.location.href for it.</p>
@@ -36,7 +36,7 @@
     <script>
       var remark_config = {
         site_id: 'remark',
-        host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+        host: location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, ''),
         url: 'https://remark42.com/demo/',
         components: ['counter'],
       };
