@@ -2,7 +2,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  padding: 6px;
+  padding: 0;
   font-family: system-ui;
   font-size: 14px;
   color: rgb(var(--primary-text-color));
