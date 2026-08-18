@@ -78,11 +78,15 @@ _instructions for Google OAuth2 setup borrowed from [oauth2_proxy](https://githu
 ### Microsoft
 
 1. Register a new application [using the Azure portal](https://docs.microsoft.com/en-us/graph/auth-register-app-v2)
-2. Under **"Authentication/Platform configurations/Web"** enter the correct URL constructed as domain + `/auth/microsoft/callback`, i.e., `https://example.mysite.com/auth/microsoft/callback`
-3. In **"Overview"** take note of the **Application (client) ID** (`AUTH_MICROSOFT_CID`)
-4. Choose the new project from the top right project dropdown (only if another project is selected)
-5. Select **"Certificates & secrets"** and click on **"+ New Client Secret"** (`AUTH_MICROSOFT_CSEC`)
-6. For single-tenant Entra ID applications, set `AUTH_MICROSOFT_TENANT` to your tenant ID or domain name. The default value is `common`, which works for multi-tenant applications.
+2. Under **"Supported account types"** select **"Accounts in any organizational directory (Any Microsoft Entra directory - Multitenant) and personal Microsoft accounts"**
+3. Under **"Authentication/Platform configurations/Web"** enter the correct URL constructed as domain + `/auth/microsoft/callback`, i.e., `https://example.mysite.com/auth/microsoft/callback`
+4. In **"Overview"** take note of the **Application (client) ID** (`AUTH_MICROSOFT_CID`)
+5. Choose the new project from the top right project dropdown (only if another project is selected)
+6. Select **"Certificates & secrets"** and click on **"+ New Client Secret"** (`AUTH_MICROSOFT_CSEC`)
+
+By default, Remark42 authenticates against the `common` endpoint, which requires a multi-tenant application. A single-tenant application (`signInAudience: AzureADMyOrg`) is rejected there with [`AADSTS50194`](https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes). The account types the application actually accepts are the intersection of the endpoint and the registration, so selecting personal Microsoft accounts as well is what makes them usable; choose `signInAudience: AzureADMultipleOrgs` instead to keep sign-in to work or school accounts only. You can check and change the value under **"Manifest"** for an application that already exists.
+
+To use a different endpoint, set `AUTH_MICROSOFT_TENANT` to your tenant ID or domain name for a single-tenant Entra ID application (`AzureADMyOrg`), to `organizations` for a multi-tenant application accepting work or school accounts only (`AzureADMultipleOrgs`), or to `consumers` for an application limited to personal Microsoft accounts (`PersonalMicrosoftAccount`).
 
 ### Yandex
 

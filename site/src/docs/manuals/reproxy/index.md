@@ -59,8 +59,6 @@ services:
       - ADMIN_SHARED_ID=github_ef0f706a79cc24b112345
       - ADMIN_SHARED_NAME=myname,anothername
       - ADMIN_SHARED_EMAIL=admin@example.com
-      - AUTH_TWITTER_CID=12345678
-      - AUTH_TWITTER_CSEC=asdfghjkl
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
       - AUTH_EMAIL_FROM=confirmation@example.com
