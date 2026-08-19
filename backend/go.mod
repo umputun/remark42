@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
-	github.com/go-pkgz/auth/v2 v2.1.5
+	github.com/go-pkgz/auth/v2 v2.1.6
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
 	github.com/go-pkgz/lgr v0.12.3
@@ -20,7 +20,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/kyokomi/emoji/v2 v2.2.13
+	github.com/kyokomi/emoji/v2 v2.2.14
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/rs/xid v1.6.0
 	github.com/russross/blackfriday/v2 v2.1.0
@@ -28,9 +28,9 @@ require (
 	github.com/stretchr/testify v1.12.0
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/goleak v1.3.0
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.55.0
 	golang.org/x/image v0.45.0
-	golang.org/x/net v0.56.0
+	golang.org/x/net v0.57.0
 	golang.org/x/oauth2 v0.36.0
 )
 
