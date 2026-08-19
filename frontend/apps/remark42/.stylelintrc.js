@@ -1,10 +1,9 @@
 const { CUSTOM_PROPERTIES_PATH } = require('./webpack.config');
 
 module.exports = {
-  extends: ['stylelint-config-standard', 'stylelint-config-prettier'],
-  plugins: ['stylelint-value-no-unknown-custom-properties', '@mavrin/stylelint-declaration-use-css-custom-properties'],
+  extends: ['stylelint-config-standard'],
+  plugins: ['stylelint-value-no-unknown-custom-properties', 'stylelint-declaration-strict-value'],
   rules: {
-    'max-empty-lines': 1,
     'rule-empty-line-before': [
       'always-multi-line',
       {
@@ -19,11 +18,14 @@ module.exports = {
     'value-keyword-case': ['lower', { ignoreProperties: ['composes'], camelCaseSvgKeywords: true }],
     'selector-pseudo-class-no-unknown': [true, { ignorePseudoClasses: ['global'] }],
     'property-no-unknown': [true, { ignoreProperties: ['composes'] }],
-    'mavrin/stylelint-declaration-use-css-custom-properties': {
-      cssDefinitions: ['color'],
-      ignoreProperties: ['/^\\$/'],
-      ignoreValues: ['/\\$/', 'transparent', '-webkit-focus-ring-color', 'currentColor'],
-    },
+    'scale-unlimited/declaration-strict-value': [
+      ['color'],
+      {
+        ignoreValues: ['transparent', 'inherit', 'currentColor', 'none', '-webkit-focus-ring-color'],
+        ignoreFunctions: true,
+        disableFix: true,
+      },
+    ],
     'csstools/value-no-unknown-custom-properties': [
       true,
       {
@@ -41,6 +43,10 @@ module.exports = {
     {
       files: ['*.html', '**/*.html', '*.ejs', '**/*.ejs'],
       customSyntax: 'postcss-html',
+      // standalone pages rather than the themeable widget surface, so literal colours are fine
+      rules: {
+        'scale-unlimited/declaration-strict-value': null,
+      },
     },
   ],
 };

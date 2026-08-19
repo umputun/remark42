@@ -54,12 +54,12 @@
 
 .votesNegative {
   color: rgb(var(--color30));
-  background-color: rgba(var(--color30), 0.1);
+  background-color: rgb(var(--color30), 0.1);
 }
 
 .votesPositive {
   color: rgb(var(--color12));
-  background-color: rgba(var(--color12), 0.1);
+  background-color: rgb(var(--color12), 0.1);
 }
 
 .upVoteIcon {

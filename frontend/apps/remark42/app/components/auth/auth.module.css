@@ -14,7 +14,7 @@
     position: absolute;
     content: '';
     height: 100%;
-    border-left: 1px solid rgba(var(--white-color), 0.5);
+    border-left: 1px solid rgb(var(--white-color), 0.5);
   }
 }
 
@@ -27,8 +27,8 @@
   padding: 16px;
   background-color: rgb(var(--primary-background-color));
   box-shadow:
-    0 10px 15px rgba(var(--black-color), 0.1),
-    0 -1px 6px rgba(var(--black-color), 0.05);
+    0 10px 15px rgb(var(--black-color), 0.1),
+    0 -1px 6px rgb(var(--black-color), 0.05);
   border-radius: 6px;
 }
 
@@ -119,13 +119,13 @@
 .radio:checked + .provider {
   /* stylelint-disable-next-line mavrin/stylelint-declaration-use-css-custom-properties */
   color: rgb(var(--primary-color));
-  background-color: rgba(var(--primary-color), 0.1);
+  background-color: rgb(var(--primary-color), 0.1);
   border-radius: 2px;
 }
 
 :global(.dark) .radio:checked + .provider {
   color: rgb(var(--white-color));
-  background-color: rgba(var(--primary-color), 0.4);
+  background-color: rgb(var(--primary-color), 0.4);
 }
 
 .row {
@@ -156,7 +156,7 @@
   align-items: center;
 
   &:hover {
-    background-color: rgba(var(--primary-color), 0.1);
+    background-color: rgb(var(--primary-color), 0.1);
   }
 }
 

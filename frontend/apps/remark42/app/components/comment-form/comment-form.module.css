@@ -13,7 +13,7 @@
 .typeReply {
   margin-left: 17px;
 
-  @media (pointer: coarse) and (max-width: 768px) {
+  @media (pointer: coarse) and (width <= 768px) {
     margin-left: 0;
   }
 }

@@ -154,7 +154,7 @@
     display: none;
   }
 
-  @media (pointer: coarse) and (max-width: 768px) {
+  @media (pointer: coarse) and (width <= 768px) {
     border: 8px solid;
     padding-bottom: 0;
 
@@ -176,7 +176,7 @@
   position: relative;
   z-index: 1;
 
-  @media (pointer: coarse) and (max-width: 768px) {
+  @media (pointer: coarse) and (width <= 768px) {
     border: 8px solid;
 
     & .info {
@@ -317,7 +317,7 @@
       border-color: var(--color7);
     }
 
-    @media (pointer: coarse) and (max-width: 768px) {
+    @media (pointer: coarse) and (width <= 768px) {
       border-color: var(--color7);
     }
   }
@@ -327,7 +327,7 @@
       border-color: var(--color7);
     }
 
-    @media (pointer: coarse) and (max-width: 768px) {
+    @media (pointer: coarse) and (width <= 768px) {
       border-color: var(--color7);
     }
   }
@@ -367,7 +367,7 @@
       border-color: var(--color5);
     }
 
-    @media (pointer: coarse) and (max-width: 768px) {
+    @media (pointer: coarse) and (width <= 768px) {
       border-color: var(--color5);
     }
   }
@@ -377,7 +377,7 @@
       border-color: var(--color5);
     }
 
-    @media (pointer: coarse) and (max-width: 768px) {
+    @media (pointer: coarse) and (width <= 768px) {
       border-color: var(--color5);
     }
   }
