@@ -99,11 +99,7 @@ const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comm
 export const allComments = (
   state: Record<Comment['id'], Comment> = {},
   action:
-    | COMMENTS_SET_ACTION
-    | COMMENTS_APPEND_ACTION
-    | COMMENTS_EDIT_ACTION
-    | COMMENTS_PATCH_ACTION
-    | COMMENT_PATCH_ACTION
+    COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION | COMMENT_PATCH_ACTION
 ): Record<Comment['id'], Comment> => {
   switch (action.type) {
     case COMMENTS_SET: {

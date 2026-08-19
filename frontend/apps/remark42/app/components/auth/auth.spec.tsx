@@ -177,7 +177,7 @@ describe('<Auth/>', () => {
   it('should send email and then verify forms', async () => {
     StaticStore.config.auth_providers = ['email'];
     jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
-    jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({} as User));
+    jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({}) as User);
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
     jest.spyOn(utils, 'persistEmail').mockImplementationOnce(jest.fn());
 
@@ -239,7 +239,7 @@ describe('<Auth/>', () => {
 
   it('should send anonym form', async () => {
     StaticStore.config.auth_providers = ['anonymous'];
-    jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({} as User));
+    jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({}) as User);
 
     render(<Auth />);
 

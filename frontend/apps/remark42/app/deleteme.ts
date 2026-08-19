@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { NODE_ID } from 'common/constants';
 import { approveDeleteMe, getUser } from 'common/api';
 import { token } from 'common/settings';

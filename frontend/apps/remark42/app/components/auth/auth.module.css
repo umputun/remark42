@@ -26,7 +26,9 @@
   min-width: 240px;
   padding: 16px;
   background-color: rgb(var(--primary-background-color));
-  box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
+  box-shadow:
+    0 10px 15px rgba(var(--black-color), 0.1),
+    0 -1px 6px rgba(var(--black-color), 0.05);
   border-radius: 6px;
 }
 

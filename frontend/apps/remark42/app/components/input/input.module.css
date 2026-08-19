@@ -38,7 +38,9 @@
   -webkit-text-fill-color: var(--color7);
 
   &:focus {
-    box-shadow: 0 0 0 1000px rgb(var(--white-color)) inset, 0 0 0 2px var(--color47);
+    box-shadow:
+      0 0 0 1000px rgb(var(--white-color)) inset,
+      0 0 0 2px var(--color47);
   }
 
   &::placeholder {
@@ -66,7 +68,9 @@
     -webkit-text-fill-color: rgba(var(--white-color), 0.8);
 
     &:focus {
-      box-shadow: 0 0 0 1000px var(--color22) inset, 0 0 0 2px var(--color47);
+      box-shadow:
+        0 0 0 1000px var(--color22) inset,
+        0 0 0 2px var(--color47);
       -webkit-text-fill-color: rgba(var(--white-color), 0.8);
     }
 

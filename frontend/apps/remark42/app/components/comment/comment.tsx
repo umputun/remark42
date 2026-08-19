@@ -300,8 +300,8 @@ export class Comment extends Component<CommentProps, State> {
         props.view === 'preview'
           ? getTextSnippet(props.data.text)
           : props.data.delete
-          ? intl.formatMessage(messages.deletedComment)
-          : props.data.text,
+            ? intl.formatMessage(messages.deletedComment)
+            : props.data.text,
       time: new Date(props.data.time),
       orig: props.data.orig,
       user: props.data.user,

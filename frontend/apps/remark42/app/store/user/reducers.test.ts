@@ -28,7 +28,7 @@ describe('user', () => {
           id: 'john',
           name: 'John',
           admin: true,
-        } as User)
+        }) as User
     );
     const dispatch = jest.fn();
     const getState = jest.fn();

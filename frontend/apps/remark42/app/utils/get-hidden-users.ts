@@ -10,7 +10,7 @@ export function getHiddenUsers() {
       return hiddenUsers;
     }
   } catch (e) {
-    console.error('incorrect hidden user data in local storage', e); // eslint-disable-line no-console
+    console.error('incorrect hidden user data in local storage', e);
   }
 
   return {};

@@ -18,7 +18,6 @@ locales.forEach((locale) => {
   });
 });
 if (errors.length) {
-  // eslint-disable-next-line no-console
   console.error(errors.join(`\n`));
   process.exit(1);
 }

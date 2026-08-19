@@ -19,7 +19,7 @@ const user: Props['user'] = {
   verified: false,
 };
 
-function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeof StaticStore['config']> = {}) {
+function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<(typeof StaticStore)['config']> = {}) {
   Object.assign(StaticStore.config, overrideConfig);
 
   const props = {
