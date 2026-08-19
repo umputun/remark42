@@ -10,7 +10,7 @@ describe('copy to clipboard', () => {
 
   it('should call `clipboard.write` for new browser', async () => {
     const clipboardWrite = jest.fn(() => Promise.resolve());
-    window.ClipboardItem = jest.fn();
+    window.ClipboardItem = jest.fn() as unknown as typeof ClipboardItem;
 
     Object.defineProperty(navigator, 'clipboard', {
       value: {

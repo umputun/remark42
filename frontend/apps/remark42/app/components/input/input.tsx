@@ -3,7 +3,7 @@ import clsx from 'clsx';
 
 import styles from './input.module.css';
 
-type Props = JSX.HTMLAttributes<HTMLInputElement> & {
+type Props = JSX.InputHTMLAttributes<HTMLInputElement> & {
   invalid?: boolean;
 };
 

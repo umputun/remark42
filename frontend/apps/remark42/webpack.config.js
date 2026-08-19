@@ -117,6 +117,9 @@ module.exports = (_, { mode, analyze }) => {
           loader: 'ts-loader',
           options: {
             transpileOnly: true,
+            // tsconfig targets the automatic runtime so type checking resolves JSX from
+            // preact; the bundle keeps JSX intact here so babel can still strip test ids
+            compilerOptions: { jsx: 'preserve' },
           },
         },
       ],

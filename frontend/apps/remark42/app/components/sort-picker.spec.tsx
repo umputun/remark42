@@ -37,7 +37,10 @@ describe('<SortPicker />', () => {
 
     expect(select).toBeInTheDocument();
 
-    fireEvent.change(select, { target: { value: nextOption } });
+    // fireEvent.change does not reach handlers on elements rendered inside the compat
+    // providers, so set the value and dispatch the event directly
+    select.value = nextOption;
+    fireEvent(select, new Event('change', { bubbles: true }));
 
     await waitFor(() => expect(updateSorting).toHaveBeenCalledWith(nextOption));
 

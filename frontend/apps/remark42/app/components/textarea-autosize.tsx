@@ -7,13 +7,23 @@ function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
-type Props = Omit<JSX.HTMLAttributes<HTMLTextAreaElement>, 'onInput'> & {
+type Props = Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onInput'> & {
   onInput?(evt: JSX.TargetedEvent<HTMLTextAreaElement, Event>): void;
 };
 
 export const TextareaAutosize = forwardRef<HTMLTextAreaElement, Props>(({ onInput, value, ...props }, externalRef) => {
-  const localRef = useRef<HTMLTextAreaElement>(null);
-  const ref = externalRef || localRef;
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!externalRef) {
+      return;
+    }
+    if (typeof externalRef === 'function') {
+      externalRef(ref.current);
+    } else {
+      externalRef.current = ref.current;
+    }
+  });
 
   const handleInput: JSX.GenericEventHandler<HTMLTextAreaElement> = (evt) => {
     if (!ref.current) {

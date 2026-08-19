@@ -31,7 +31,8 @@ describe('<Select/>', () => {
   it('should highlight select on focus', async () => {
     render(<Select items={items} selected={items[0]} />);
 
-    fireEvent.focus(screen.getByRole('combobox'));
+    // preact/compat maps onFocus onto focusin
+    fireEvent(screen.getByRole('combobox'), new FocusEvent('focusin', { bubbles: true }));
     await waitFor(() => {
       const rootElement = screen.getByTestId('select-root');
       expect(rootElement).toHaveClass('select_focused');
