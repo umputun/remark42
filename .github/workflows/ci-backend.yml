@@ -42,7 +42,8 @@ jobs:
       - name: install go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.12"
+          go-version: "1.25"
+          check-latest: true
           cache-dependency-path: backend
 
       - name: test and build backend
@@ -97,7 +98,8 @@ jobs:
       - name: install go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.12"
+          go-version: "1.25"
+          check-latest: true
           # both go.sum files so the cache key covers the main and example modules scanned below
           cache-dependency-path: |
             backend/go.sum
