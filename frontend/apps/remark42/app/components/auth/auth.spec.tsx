@@ -265,8 +265,8 @@ describe('<Auth/>', () => {
     const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
-    // preact/compat maps onBlur onto focusout, so a plain blur never reaches the handler
-    fireEvent(input, new FocusEvent('focusout', { bubbles: true }));
+    input.focus();
+    input.blur();
 
     expect(input).toHaveValue(expected);
   });
@@ -286,8 +286,8 @@ describe('<Auth/>', () => {
     const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
-    // preact/compat maps onBlur onto focusout, so a plain blur never reaches the handler
-    fireEvent(input, new FocusEvent('focusout', { bubbles: true }));
+    input.focus();
+    input.blur();
 
     expect(input).toHaveValue(expected);
   });
