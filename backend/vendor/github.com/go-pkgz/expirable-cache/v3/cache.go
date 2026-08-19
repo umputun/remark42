@@ -8,6 +8,9 @@
 // In case of default TTL (10 years) and default MaxSize (0, unlimited) the cache will be truly unlimited
 // and will never delete entries from itself automatically.
 //
+// Get, Peek, Contains and Values treat an expired entry as missing, while Len and Keys report
+// everything the cache still holds, expired entries included.
+//
 // Important: only reliable way of not having expired entries stuck in a cache is to
 // run cache.DeleteExpired periodically using time.Ticker, advisable period is 1/2 of TTL.
 package cache
@@ -78,9 +81,10 @@ func NewCache[K comparable, V any]() Cache[K, V] {
 	}
 }
 
-// Add adds a value to the cache. Returns true if an eviction occurred.
+// Add adds a value to the cache. Returns true if an eviction occurred, either
+// because the size was exceeded or because the oldest entry expired.
 // Returns false if there was no eviction: the item was already in the cache,
-// or the size was not exceeded.
+// or nothing had to be removed.
 func (c *cacheImpl[K, V]) Add(key K, value V) (evicted bool) {
 	return c.addWithTTL(key, value, c.ttl)
 }
@@ -90,9 +94,10 @@ func (c *cacheImpl[K, V]) Set(key K, value V, ttl time.Duration) {
 	c.addWithTTL(key, value, ttl)
 }
 
-// Returns true if an eviction occurred.
+// Returns true if an eviction occurred, either because the size was exceeded
+// or because the oldest entry expired.
 // Returns false if there was no eviction: the item was already in the cache,
-// or the size was not exceeded.
+// or nothing had to be removed.
 func (c *cacheImpl[K, V]) addWithTTL(key K, value V, ttl time.Duration) (evicted bool) {
 	if ttl == 0 {
 		ttl = c.ttl
@@ -119,15 +124,16 @@ func (c *cacheImpl[K, V]) addWithTTL(key K, value V, ttl time.Duration) (evicted
 		ent := c.evictList.Back()
 		if ent != nil && now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
 			c.removeElement(ent)
+			evicted = true
 		}
 	}
 
-	evict := c.maxKeys > 0 && len(c.items) > c.maxKeys
 	// Verify size not exceeded
-	if evict {
+	if c.maxKeys > 0 && len(c.items) > c.maxKeys {
 		c.removeOldest()
+		evicted = true
 	}
-	return evict
+	return evicted
 }
 
 // Get returns the key value if it's not expired
@@ -152,12 +158,15 @@ func (c *cacheImpl[K, V]) Get(key K) (V, bool) {
 }
 
 // Contains checks if a key is in the cache, without updating the recent-ness
-// or deleting it for being stale.
+// or deleting it for being stale. Expired entries are reported as missing.
 func (c *cacheImpl[K, V]) Contains(key K) (ok bool) {
 	c.Lock()
 	defer c.Unlock()
-	_, ok = c.items[key]
-	return ok
+	ent, ok := c.items[key]
+	if !ok {
+		return false
+	}
+	return !time.Now().After(ent.Value.(*cacheItem[K, V]).expiresAt)
 }
 
 // Peek returns the key value (or undefined if not found) without updating the "recently used"-ness of the key.
@@ -199,10 +208,10 @@ func (c *cacheImpl[K, V]) Keys() []K {
 // Values returns a slice of the values in the cache, from oldest to newest.
 // Expired entries are filtered out.
 func (c *cacheImpl[K, V]) Values() []V {
-	values := make([]V, 0, len(c.items))
 	now := time.Now()
 	c.Lock()
 	defer c.Unlock()
+	values := make([]V, 0, len(c.items))
 	for ent := c.evictList.Back(); ent != nil; ent = ent.Prev() {
 		if !now.After(ent.Value.(*cacheItem[K, V]).expiresAt) {
 			values = append(values, ent.Value.(*cacheItem[K, V]).value)

@@ -2,6 +2,7 @@ package lcw
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -35,24 +36,24 @@ func (m *Scache[V]) Close() error {
 	return m.lc.Close()
 }
 
-// Flush clears cache and calls postFlushFn async
+// Flush clears keys of the requested partition, matching the requested scopes.
+// With no scopes set every key of the partition is removed, keys of other partitions are kept.
 func (m *Scache[V]) Flush(req FlusherRequest) {
-	if len(req.scopes) == 0 {
-		m.lc.Purge()
-		return
-	}
-
-	// check if fullKey has matching scopes
+	// check if fullKey belongs to the requested partition and has matching scopes
 	inScope := func(fullKey string) bool {
 		key, err := parseKey(fullKey)
 		if err != nil {
 			return false
 		}
+		if key.partition != req.partition {
+			return false
+		}
+		if len(req.scopes) == 0 { // no scopes means the whole partition
+			return true
+		}
 		for _, s := range req.scopes {
-			for _, ks := range key.scopes {
-				if ks == s {
-					return true
-				}
+			if slices.Contains(key.scopes, s) {
+				return true
 			}
 		}
 		return false

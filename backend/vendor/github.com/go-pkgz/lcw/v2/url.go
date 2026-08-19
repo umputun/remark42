@@ -1,18 +1,18 @@
 package lcw
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/redis/go-redis/v9"
 )
 
 // New parses uri and makes any of supported caches
 // supported URIs:
-//   - redis://<ip>:<port>?db=123&max_keys=10
+//   - redis://<ip>:<port>?db=123&max_keys=10&redis_key_prefix=lcw:
 //   - mem://lru?max_keys=10&max_cache_size=1024
 //   - mem://expirable?ttl=30s&max_val_size=100
 //   - nop://
@@ -55,13 +55,13 @@ func New[V any](uri string) (LoadingCache[V], error) {
 }
 
 func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
-	errs := new(multierror.Error)
+	var errs []error
 	o := NewOpts[V]()
 
 	if v := q.Get("max_val_size"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, fmt.Errorf("max_val_size query param %s: %w", v, e))
+			errs = append(errs, fmt.Errorf("max_val_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, o.MaxValSize(vv))
 		}
@@ -70,7 +70,7 @@ func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
 	if v := q.Get("max_key_size"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, fmt.Errorf("max_key_size query param %s: %w", v, e))
+			errs = append(errs, fmt.Errorf("max_key_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, o.MaxKeySize(vv))
 		}
@@ -79,7 +79,7 @@ func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
 	if v := q.Get("max_keys"); v != "" {
 		vv, e := strconv.Atoi(v)
 		if e != nil {
-			errs = multierror.Append(errs, fmt.Errorf("max_keys query param %s: %w", v, e))
+			errs = append(errs, fmt.Errorf("max_keys query param %s: %w", v, e))
 		} else {
 			opts = append(opts, o.MaxKeys(vv))
 		}
@@ -88,7 +88,7 @@ func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
 	if v := q.Get("max_cache_size"); v != "" {
 		vv, e := strconv.ParseInt(v, 10, 64)
 		if e != nil {
-			errs = multierror.Append(errs, fmt.Errorf("max_cache_size query param %s: %w", v, e))
+			errs = append(errs, fmt.Errorf("max_cache_size query param %s: %w", v, e))
 		} else {
 			opts = append(opts, o.MaxCacheSize(vv))
 		}
@@ -97,13 +97,17 @@ func optionsFromQuery[V any](q url.Values) (opts []Option[V], err error) {
 	if v := q.Get("ttl"); v != "" {
 		vv, e := time.ParseDuration(v)
 		if e != nil {
-			errs = multierror.Append(errs, fmt.Errorf("ttl query param %s: %w", v, e))
+			errs = append(errs, fmt.Errorf("ttl query param %s: %w", v, e))
 		} else {
 			opts = append(opts, o.TTL(vv))
 		}
 	}
 
-	return opts, errs.ErrorOrNil()
+	if v := q.Get("redis_key_prefix"); v != "" {
+		opts = append(opts, o.RedisKeyPrefix(v))
+	}
+
+	return opts, errors.Join(errs...)
 }
 
 func redisOptionsFromURL(u *url.URL) (*redis.Options, error) {

@@ -115,7 +115,7 @@ func (api *Client) auditLogsRequest(ctx context.Context, path string, values url
 	return response, response.Err()
 }
 
-// GetAuditLogs retrieves a page of audit entires according to the parameters given
+// GetAuditLogs retrieves a page of audit entries according to the parameters given
 func (api *Client) GetAuditLogs(params AuditLogParameters) (entries []AuditEntry, nextCursor string, err error) {
 	return api.GetAuditLogsContext(context.Background(), params)
 }

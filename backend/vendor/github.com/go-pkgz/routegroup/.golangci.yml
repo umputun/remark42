@@ -45,6 +45,10 @@ linters:
           - gosec
         text: 'G114: Use of net/http serve function that has no support for setting timeouts'
       - linters:
+          - gosec
+        path: _test\.go$
+        text: 'G705: XSS via taint analysis'
+      - linters:
           - revive
           - unparam
         path: _test\.go$
