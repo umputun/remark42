@@ -1,6 +1,19 @@
 codecov:
   require_ci_to_pass: false
 
+# the app and the api package are covered by separate workflows, each triggered by its own
+# paths filter. without carryforward a pull request touching only one of them uploads only
+# that report, and codecov reads the other's absence as a coverage drop.
+flags:
+  app:
+    paths:
+      - frontend/apps/remark42/
+    carryforward: true
+  api:
+    paths:
+      - frontend/packages/api/
+    carryforward: true
+
 ignore:
   - .editorconfig
   - .eslitnrc.js

@@ -127,5 +127,6 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          flags: api
           working-directory: ./frontend
           codecov_yml_path: ./frontend/apps/remark42/codecov.yml
