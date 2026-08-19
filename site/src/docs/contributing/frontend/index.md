@@ -20,8 +20,8 @@ While developing, we set up environment which imitates real world example. We se
 
 You must have at least 2GB RAM or swap enabled for building.
 
-- install [Node.js 16](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
-- install [PNPM 8](https://pnpm.io/installation)
+- install [Node.js 20](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
+- install [PNPM 10](https://pnpm.io/installation)
 - run `pnpm i` inside `./frontend`
 
 Running `pnpm i` will set up pre-commit hooks into your git repository. They are used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
