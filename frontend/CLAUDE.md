@@ -10,7 +10,7 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 - `frontend/Dockerfile.e2e` — `FROM mcr.microsoft.com/playwright:vX.Y.Z-noble` **and** `corepack prepare pnpm@X.Y.Z`
 - `site/Dockerfile`, `site/Dockerfile.dev` — `FROM node:X-alpine` (site uses yarn, not pnpm)
 - `frontend/.nvmrc`, `site/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
-- Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json`, `frontend/packages/api/package.json` — `frontend/e2e/package.json` has none) and `frontend/apps/remark42/package.json`'s `engines` block
+- Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json` — `frontend/e2e/package.json` has none) and `frontend/apps/remark42/package.json`'s `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5), `ci-frontend-api.yml` (3), `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `frontend/e2e/package.json`'s `@playwright/test`/`playwright` versions must match `frontend/Dockerfile.e2e`'s base image tag exactly, or the e2e container's bundled browser revision mismatches what the npm package expects.
 
@@ -26,9 +26,11 @@ A few deps needed pinning specifically because of pnpm 10's hoisting changes, no
 
 If a dependency bump mysteriously breaks types or module resolution only after a pnpm major bump, suspect the layout change before suspecting the dependency.
 
-## msw 1→2 needed a real migration, not just a version bump
+## node 20's native fetch requires absolute URLs in tests
 
-`frontend/packages/api` test mocks (`tests/test-utils.ts`) moved from msw's `rest` API to `http`/`HttpResponse`. Also: test base URLs had to become absolute, and a jsdom base URL had to be set, because node 20's native `fetch` (unlike node 16/18's polyfilled fetch) requires an absolute URL — relative request URLs in tests started failing silently otherwise.
+Unlike the polyfilled fetch in node 16 and 18, it rejects relative request URLs, and the failure is
+silent: requests simply never match. Any test harness that mocks fetch needs absolute base URLs and
+a jsdom base URL set.
 
 ## Held-back majors
 
