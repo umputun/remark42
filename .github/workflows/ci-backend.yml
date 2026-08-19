@@ -40,7 +40,7 @@ jobs:
           DEBUG: ${{secrets.DEBUG}}
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25"
           check-latest: true
@@ -96,7 +96,7 @@ jobs:
           persist-credentials: false
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25"
           check-latest: true

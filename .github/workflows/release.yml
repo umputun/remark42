@@ -30,20 +30,20 @@ jobs:
           persist-credentials: false
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25"
           check-latest: true
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
-        uses: pnpm/action-setup@v6.0.9
+        uses: pnpm/action-setup@v6.0.10
         with:
           version: 10.10.0
           run_install: false
 
       - name: install node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: "pnpm"
@@ -106,20 +106,20 @@ jobs:
           persist-credentials: false
 
       - name: install go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "1.25"
           check-latest: true
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
-        uses: pnpm/action-setup@v6.0.9
+        uses: pnpm/action-setup@v6.0.10
         with:
           version: 10.10.0
           run_install: false
 
       - name: install node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: "pnpm"
