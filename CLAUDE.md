@@ -17,8 +17,11 @@
   - **IMPORTANT**: Example lint: `cd backend/_example/memory_store && golangci-lint run --config ../../.golangci.yml`
   - Frontend: `cd frontend && pnpm lint`
   - **Before committing**: Always run tests and linter on both main backend AND examples
-- **Dependency Updates**:
-  - When updating Go modules in `backend/`, also run `go mod tidy` (and `go mod vendor`) in `backend/_example/memory_store` to keep indirect deps in sync. The example module replaces `github.com/umputun/remark42/backend` with `../../` so stale indirect deps there will break the example build.
+- **Go module changes**:
+  - **Any** change to `backend/go.mod` or `backend/go.sum` requires `go mod tidy` in `backend/_example/memory_store` in the same commit. That covers dependency bumps, adding or removing a dependency, and changing the `go` directive, not only version updates.
+  - Only `go mod tidy` there, not `go mod vendor`: the example's vendor directory is gitignored (`.gitignore:26`), so its output is never committed, while a stale local copy silently becomes what the example resolves against.
+  - The example module replaces `github.com/umputun/remark42/backend` with `../../`, so it carries the backend's dependencies as indirect entries. Leaving them stale fails the `test examples` CI step with `go: updates to go.mod needed; to update it: go mod tidy`.
+  - This applies to Dependabot pull requests too: the bot updates `backend/` only, so its Go module PRs need the example tidied before they can go green.
 
 ## Release Procedure
 
