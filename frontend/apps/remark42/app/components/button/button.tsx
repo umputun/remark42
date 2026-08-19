@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { h, JSX } from 'preact';
+import { h, type ButtonHTMLAttributes } from 'preact';
 import { forwardRef } from 'preact/compat';
 
 import type { Theme } from 'common/types';
@@ -17,12 +17,11 @@ const sizeStyles: Record<string, string> = {
   large: styles.sizeLarge,
 };
 
-export type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'className' | 'type'> & {
+export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'className'> & {
   kind?: 'primary' | 'secondary' | 'link';
   size?: 'middle' | 'large';
   theme?: Theme;
   mix?: string | string[];
-  type?: 'button' | 'submit' | 'reset';
   className?: string;
 };
 

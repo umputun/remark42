@@ -3,11 +3,9 @@
     "incremental": true,
     "target": "es6",
     "module": "esnext",
-    "lib": [
-      "es2019",
-      "dom"
-    ],
+    "lib": ["es2019", "dom"],
     "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "noEmit": true,
     "strict": true,
     "allowJs": true,
@@ -18,27 +16,12 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "paths": {
-      "react": [
-        "../node_modules/preact/compat"
-      ],
-      "react-dom": [
-        "../node_modules/preact/compat"
-      ],
-      "preact": [
-        "../node_modules/preact"
-      ],
-      "preact/*": [
-        "../node_modules/preact/*"
-      ]
-    },
-    "jsxImportSource": "preact"
+      "react": ["../node_modules/preact/compat"],
+      "react-dom": ["../node_modules/preact/compat"],
+      "preact": ["../node_modules/preact"],
+      "preact/*": ["../node_modules/preact/*"]
+    }
   },
-  "include": [
-    "app/typings",
-    "app/**/*.tsx",
-    "app/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],
+  "exclude": ["node_modules"]
 }

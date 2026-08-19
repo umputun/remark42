@@ -1,29 +1,20 @@
-import { h, JSX } from 'preact';
+import { h, JSX, type TextareaHTMLAttributes } from 'preact';
 import { forwardRef } from 'preact/compat';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useImperativeHandle, useRef } from 'preact/hooks';
 
 function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = '';
   textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
-type Props = Omit<JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onInput'> & {
+type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'onInput'> & {
   onInput?(evt: JSX.TargetedEvent<HTMLTextAreaElement, Event>): void;
 };
 
 export const TextareaAutosize = forwardRef<HTMLTextAreaElement, Props>(({ onInput, value, ...props }, externalRef) => {
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    if (!externalRef) {
-      return;
-    }
-    if (typeof externalRef === 'function') {
-      externalRef(ref.current);
-    } else {
-      externalRef.current = ref.current;
-    }
-  });
+  useImperativeHandle(externalRef, () => ref.current as HTMLTextAreaElement, []);
 
   const handleInput: JSX.GenericEventHandler<HTMLTextAreaElement> = (evt) => {
     if (!ref.current) {
@@ -41,7 +32,7 @@ export const TextareaAutosize = forwardRef<HTMLTextAreaElement, Props>(({ onInpu
     if (ref.current) {
       autoResize(ref.current);
     }
-  }, [value, ref]);
+  }, [value]);
 
   return <textarea {...props} data-testid={props.id} onInput={handleInput} value={value} ref={ref} dir="auto" />;
 });

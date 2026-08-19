@@ -1,9 +1,9 @@
-import { h, JSX } from 'preact';
+import { h, type InputHTMLAttributes } from 'preact';
 import clsx from 'clsx';
 
 import styles from './input.module.css';
 
-type Props = JSX.InputHTMLAttributes<HTMLInputElement> & {
+type Props = InputHTMLAttributes<HTMLInputElement> & {
   invalid?: boolean;
 };
 
