@@ -33,7 +33,7 @@ describe('user', () => {
     const dispatch = jest.fn();
     const getState = jest.fn();
     await fetchUser()(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: USER_SET,
       user: {
         id: 'john',
@@ -55,7 +55,7 @@ describe('user', () => {
       block: false,
       verified: true,
     })(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: USER_SET,
       user: {
         name: 'Umputun',
