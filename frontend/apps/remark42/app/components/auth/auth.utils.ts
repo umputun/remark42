@@ -11,6 +11,7 @@ export function getProviders(): [OAuthProvider[], FormProvider[]] {
   const formProviders: FormProvider[] = [];
 
   StaticStore.config.auth_providers.forEach((p) => {
+    if (p === 'anonymous' && StaticStore.config.auth_providers.includes("email")) return;
     p === 'email' || p === 'anonymous'
       ? formProviders.push(p as FormProvider)
       : oauthProviders.push(p as OAuthProvider);

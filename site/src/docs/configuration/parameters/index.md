@@ -158,6 +158,9 @@ services:
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
+| name-minlength                 | NAME_MINLENGTH                 | `3`                     | minimum username length                                  |
+| name-maxlength                 | NAME_MAXLENGTH                 | `64`                    | maximum username length                                  |
+| name-characters                | NAME_CHARACTERS                | `alphanumerical`        | permitted characters in usernames, alphanumerical or letters |
 | edit-time                      | EDIT_TIME                      | `5m`                    | edit window; set to `0` to disable comment editing and staged image cleanup |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
@@ -165,6 +168,10 @@ services:
 | image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | minimized UI with basic info only                        |
+| hide-voting                    | HIDE_VOTING                    | `false`                 | hides voting for comments                                |
+| hide-hide                      | HIDE_HIDE                      | `false`                 | disallows users to hide comment from other users         |
+| hide-avatars                   | HIDE_AVATARS                   | `false`                 | hides user avatars in the interface                      |
+| hide-userid                    | HIDE_USERID                    | `false`                 | hides user ID in the interface                           |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
 | allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |

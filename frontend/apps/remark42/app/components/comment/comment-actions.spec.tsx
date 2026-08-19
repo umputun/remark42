@@ -71,7 +71,7 @@ describe('<CommentActions/>', () => {
     Object.assign(props, { editable: true, editDeadline: Date.now() + 300 * 1000 });
     render(<CommentActions {...props} />);
     expect(screen.getByText('Edit')).toBeInTheDocument();
-    await waitFor(() => expect(['300s', '299s']).toContain(screen.getByRole('timer').textContent));
+    await waitFor(() => expect('(5 min)').toContain(screen.getByRole('timer').textContent));
   });
 
   it('should render "Cancel" instead "Edit" in editing mode', async () => {

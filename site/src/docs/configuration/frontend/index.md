@@ -21,6 +21,10 @@ title: Frontend Configuration
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – overrides the parameter from the backend minimized UI with basic info only
+- **`hide_voting`**`: boolean` (optional, `false` by default) - overrides the parameter from the backend whether the voting buttons and score should be visible
+- **`hide_hide`**`: boolean` (optional, `false` by default) - overrides the parameter from the backend whether the users should be able to hide comments from other users
+- **`hide_avatars`**`: boolean` (optional, `false` by default) - overrides the parameter from the backend whether the avatars should be visible
+- **`hide_userid`**`: boolean` (optional, `false` by default) - overrides the parameter from the backend whether the user ID should be visible in the profile
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 
 Example with all of the params:
@@ -37,6 +41,10 @@ Example with all of the params:
 		locale: 'es',
 		show_email_subscription: false,
 		simple_view: true,
+		hide_voting: true,
+		hide_hide: true,
+		hide_avatars: true,
+		hide_userid: true,
 		no_footer: false
 	}
 </script>

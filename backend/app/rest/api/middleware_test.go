@@ -302,7 +302,7 @@ func Test_validEmailAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Евгений+Умпутун", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=12", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=.,blah+blah", http.StatusForbidden},
 		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
 		{"/auth/twitter/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%example.com", http.StatusOK},

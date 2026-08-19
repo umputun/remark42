@@ -16,6 +16,10 @@ export interface Config {
 	readonly_age: number
 	max_image_size: number
 	simple_view: boolean
+	hide_voting: boolean
+	hide_hide: boolean
+	hide_avatars: boolean
+	hide_userid: boolean
 	anon_vote: boolean
 	email_notifications: boolean
 	telegram_notifications: boolean
