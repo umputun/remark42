@@ -15,7 +15,6 @@
   --font-family: system-ui;
   --primary-color: 0, 170, 170;
   --primary-brighter-color: 0, 197, 197;
-  --primary-darker-color: 0, 102, 102;
   --primary-text-color: 38, 38, 38;
   --secondary-text-color: 100, 116, 139;
   --inverse-text-color: 255, 255, 255;
@@ -29,6 +28,7 @@
   --downvote-color: 204, 6, 6;
   --upvote-color: 37, 158, 6;
   --verified-color: 14, 126, 157;
+  --ghost-color: 156, 221, 219;
   --white-color: 255, 255, 255;
   --error-color: 185, 28, 28;
   --error-background: 255, 222, 230;

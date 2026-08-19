@@ -10,7 +10,7 @@
   white-space: nowrap;
 
   &:focus {
-    box-shadow: 0 0 0 2px rgb(var(--primary-brighter-color));
+    box-shadow: 0 0 0 2px rgba(var(--primary-brighter-color), 0.4);
     outline: none;
   }
 
@@ -44,7 +44,7 @@
   }
 
   &:hover:disabled {
-    background: rgb(var(--primary-brighter-color));
+    background: rgb(var(--primary-color));
   }
 }
 

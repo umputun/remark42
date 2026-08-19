@@ -50,7 +50,7 @@
     & th,
     & td {
       padding: 6px 13px;
-      border: 1px solid rgb(var(--line-color));
+      border: 1px solid rgb(var(--line-brighter-color));
     }
 
     & tr {
@@ -227,7 +227,7 @@
   & table {
     & th,
     & td {
-      border: 1px solid rgb(var(--line-color));
+      border: 1px solid rgb(var(--line-brighter-color));
     }
 
     & tr {
