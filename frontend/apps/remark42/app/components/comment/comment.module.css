@@ -21,6 +21,7 @@
 }
 
 .verificationIconInactive {
+  color: rgb(var(--deactivated-color));
   transition: opacity 0.15s;
 
   &:hover {
@@ -211,7 +212,7 @@
   &.themeLight,
   &.themeDark {
     & .username {
-      color: rgb(var(--primary-color));
+      color: rgb(var(--lighter-text-color));
     }
   }
 }
@@ -251,7 +252,7 @@
     }
 
     & .username {
-      color: rgb(var(--primary-color));
+      color: rgb(var(--lighter-text-color));
     }
 
     & .text {
@@ -305,7 +306,7 @@
   }
 
   & .username {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--lighter-text-color));
 
     &:hover {
       color: rgb(var(--primary-brighter-color));
@@ -359,7 +360,7 @@
   }
 
   & .username {
-    color: rgb(var(--primary-color));
+    color: rgb(var(--lighter-text-color));
   }
 
   &.editing {

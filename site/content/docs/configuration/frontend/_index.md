@@ -28,8 +28,8 @@ aliases:
 - **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 - **`custom_properties`**`: object` (optional) – CSS custom properties for the widget, see [Matching your site's font](#matching-your-sites-font)
-- **`__font__`**`: string` (optional, `system-ui` by default) - a string containing the fonts being used, delimited by commas for alternative fonts if the first one doesn't exist on the system.
-- **`__colors__`**`: ['--primary-color:': 'r, g, b', '--primary-text-color:' 'r, g, b', .., '--shadow.color:' 'r, g, b, a']` (optional) - An array containing different rgb values for changing the interface colors, and an rgba value for changing the shadows. Changing these settings will only work using the light theme. Colors not included in the array will have their default values. Note that interface elements might change their default color group in the future, so any changes made here are likely to break with future updates.
+- **`__font__`**`: string` (optional, `system-ui` by default) - a string containing the fonts being used for the iframe module, delimited by commas for alternative fonts if the first one doesn't exist on the system.
+- **`__colors__`**`: {'--primary-color': 'r, g, b', '--primary-text-color': 'r, g, b', .., '--shadow-color': 'r, g, b, a'}` (optional) - An object containing different rgb values for changing the interface colors for the iframe module, and an rgba value for changing the shadows. Many of these settings will be overwritten by using the dark theme, so this is mainly to be used with the light theme as the base setting. Colors not included in the object will have their default values. Note that interface elements might change their default color group in the future, so any changes made here are likely to break with future updates. Previous versions included numbered colors as well (e.g. --color11), but these have been replaced with the named colors.
 
 Configuration example:
 
@@ -56,7 +56,6 @@ Configuration example:
 			'--secondary-background-color': '255, 0, 0',
 			'--primary-color': '255, 255, 0',
 			'--primary-brighter-color': '255, 255, 0',
-			'--primary-darker-color': '0, 0, 0',
 			'--primary-text-color': '255, 255, 255',
 			'--secondary-text-color': '255, 255, 0',
 			'--inverse-text-color': '255, 0, 0',
@@ -69,6 +68,7 @@ Configuration example:
 			'--downvote-color': '255, 0, 0',
 			'--upvote-color': '0, 255, 0',
 			'--verified-color': '0, 0, 255',
+			'--ghost-color': '0, 0, 0',
 			'--white-color': '255, 255, 255',
 			'--error-color': '255, 0, 0',
 			'--error-background': '255, 255, 0',

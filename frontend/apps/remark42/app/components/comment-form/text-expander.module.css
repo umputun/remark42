@@ -36,7 +36,7 @@
 .suggesterItem[aria-selected='true'] {
   color: rgb(var(--primary-background-color));
   text-decoration: none;
-  background-color: rgb(var(--primary-brighter-color));
+  background-color: rgb(var(--inverse-text-color));
 }
 
 .suggesterItem:first-child {

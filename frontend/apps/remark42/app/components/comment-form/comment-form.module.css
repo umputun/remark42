@@ -143,7 +143,7 @@
   }
 
   & .error {
-    border-top: 8px solid rgb(var(--line-color));
+    border-top: 8px solid rgb(var(--secondary-background-color));
     background: rgb(var(--error-background));
     color: rgb(var(--error-color));
   }
@@ -189,7 +189,7 @@
   }
 
   & .preview {
-    border-color: rgb(var(--primary-background-color));
+    border-color: rgb(var(--secondary-background-color));
     background: rgb(var(--primary-background-color));
     color: rgb(var(--primary-text-color));
   }

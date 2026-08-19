@@ -1,7 +1,7 @@
 .container {
   font-size: 14px;
   line-height: 1;
-  background-color: rgb(var(--primary-color));
+  background-color: rgb(var(--verified-color));
   color: rgb(var(--inverse-text-color));
   font-weight: 700;
   padding: 3px 4px 2px;
