@@ -412,7 +412,7 @@ func (rtm *RTM) receiveIncomingEvent(events chan json.RawMessage) error {
 		select {
 		case events <- event:
 		case <-rtm.disconnected:
-			rtm.Debugln("disonnected while attempting to send raw event")
+			rtm.Debugln("disconnected while attempting to send raw event")
 		}
 	}
 

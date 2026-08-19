@@ -93,6 +93,8 @@ func (b *Blocks) UnmarshalJSON(data []byte) error {
 			block = &CardBlock{}
 		case "carousel":
 			block = &CarouselBlock{}
+		case "container":
+			block = &ContainerBlock{}
 		default:
 			b := &UnknownBlock{raw: r}
 			if err = json.Unmarshal(r, b); err != nil {

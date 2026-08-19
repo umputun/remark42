@@ -34,7 +34,7 @@ github.com/didip/tollbooth/v8/errors
 github.com/didip/tollbooth/v8/internal/time/rate
 github.com/didip/tollbooth/v8/libstring
 github.com/didip/tollbooth/v8/limiter
-# github.com/dlclark/regexp2/v2 v2.2.2
+# github.com/dlclark/regexp2/v2 v2.7.1
 ## explicit; go 1.25
 github.com/dlclark/regexp2/v2
 github.com/dlclark/regexp2/v2/helpers
@@ -56,13 +56,13 @@ github.com/go-pkgz/auth/v2/token
 # github.com/go-pkgz/email v0.8.0
 ## explicit; go 1.19
 github.com/go-pkgz/email
-# github.com/go-pkgz/expirable-cache/v3 v3.1.0
-## explicit; go 1.20
+# github.com/go-pkgz/expirable-cache/v3 v3.1.1
+## explicit; go 1.23
 github.com/go-pkgz/expirable-cache/v3
-# github.com/go-pkgz/jrpc v0.4.0
+# github.com/go-pkgz/jrpc v0.4.2
 ## explicit; go 1.24.0
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw/v2 v2.0.0
+# github.com/go-pkgz/lcw/v2 v2.1.0
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
@@ -80,11 +80,11 @@ github.com/go-pkgz/repeater/v2
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
 github.com/go-pkgz/rest/realip
-# github.com/go-pkgz/routegroup v1.6.0
+# github.com/go-pkgz/routegroup v1.6.1
 ## explicit; go 1.23
 github.com/go-pkgz/routegroup
-# github.com/go-pkgz/syncs v1.3.2
-## explicit; go 1.20
+# github.com/go-pkgz/syncs v1.3.3
+## explicit; go 1.22
 github.com/go-pkgz/syncs
 # github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
@@ -104,12 +104,6 @@ github.com/gorilla/feeds
 # github.com/gorilla/websocket v1.5.3
 ## explicit; go 1.12
 github.com/gorilla/websocket
-# github.com/hashicorp/errwrap v1.1.0
-## explicit
-github.com/hashicorp/errwrap
-# github.com/hashicorp/go-multierror v1.1.1
-## explicit; go 1.13
-github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru/v2 v2.0.7
 ## explicit; go 1.18
 github.com/hashicorp/golang-lru/v2
@@ -129,8 +123,8 @@ github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/kyokomi/emoji/v2 v2.2.13
-## explicit; go 1.14
+# github.com/kyokomi/emoji/v2 v2.2.14
+## explicit; go 1.21
 github.com/kyokomi/emoji/v2
 # github.com/microcosm-cc/bluemonday v1.0.27
 ## explicit; go 1.19
@@ -139,7 +133,7 @@ github.com/microcosm-cc/bluemonday/css
 # github.com/montanaflynn/stats v0.12.4
 ## explicit; go 1.13
 github.com/montanaflynn/stats
-# github.com/redis/go-redis/v9 v9.21.0
+# github.com/redis/go-redis/v9 v9.22.0
 ## explicit; go 1.24
 github.com/redis/go-redis/v9
 github.com/redis/go-redis/v9/auth
@@ -170,7 +164,7 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.27.0
+# github.com/slack-go/slack v0.29.0
 ## explicit; go 1.25
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -278,7 +272,7 @@ golang.org/x/image/riff
 golang.org/x/image/vp8
 golang.org/x/image/vp8l
 golang.org/x/image/webp
-# golang.org/x/net v0.57.0
+# golang.org/x/net v0.58.0
 ## explicit; go 1.25.0
 golang.org/x/net/html
 golang.org/x/net/html/atom

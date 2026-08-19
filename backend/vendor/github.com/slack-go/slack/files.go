@@ -162,6 +162,7 @@ type UploadFileParameters struct {
 	InitialComment  string
 	Blocks          Blocks
 	Channel         string
+	Channels        []string
 	ThreadTimestamp string
 	AltTxt          string
 	SnippetType     string
@@ -197,6 +198,7 @@ type CompleteUploadExternalParameters struct {
 	Files           []FileSummary
 	Blocks          Blocks
 	Channel         string
+	Channels        []string
 	InitialComment  string
 	ThreadTimestamp string
 }
@@ -489,7 +491,7 @@ func (api *Client) UploadToURL(ctx context.Context, params UploadToURLParameters
 	return err
 }
 
-// CompleteUploadExternalContext once files are uploaded, this completes the upload and shares it to the specified channel
+// CompleteUploadExternalContext once files are uploaded, this completes the upload and shares it to the specified channels
 // Slack API docs: https://api.slack.com/methods/files.completeUploadExternal
 func (api *Client) CompleteUploadExternalContext(ctx context.Context, params CompleteUploadExternalParameters) (file *CompleteUploadExternalResponse, err error) {
 	filesBytes, err := json.Marshal(params.Files)
@@ -504,6 +506,9 @@ func (api *Client) CompleteUploadExternalContext(ctx context.Context, params Com
 
 	if params.Channel != "" {
 		values.Add("channel_id", params.Channel)
+	}
+	if len(params.Channels) > 0 {
+		values.Add("channels", strings.Join(params.Channels, ","))
 	}
 	if params.InitialComment != "" {
 		values.Add("initial_comment", params.InitialComment)
@@ -538,7 +543,7 @@ func (api *Client) UploadFile(params UploadFileParameters) (*FileSummary, error)
 // UploadFileContext uploads file to a given slack channel using 3 steps -
 //  1. Get an upload URL using files.getUploadURLExternal API
 //  2. Send the file as a post to the URL provided by slack
-//  3. Complete the upload and share it to the specified channel using files.completeUploadExternal
+//  3. Complete the upload and share it to the specified channels using files.completeUploadExternal
 //
 // Slack Docs: https://api.slack.com/messaging/files#uploading_files
 func (api *Client) UploadFileContext(ctx context.Context, params UploadFileParameters) (file *FileSummary, err error) {
@@ -576,6 +581,7 @@ func (api *Client) UploadFileContext(ctx context.Context, params UploadFileParam
 			Title: params.Title,
 		}},
 		Channel:         params.Channel,
+		Channels:        params.Channels,
 		InitialComment:  params.InitialComment,
 		ThreadTimestamp: params.ThreadTimestamp,
 		Blocks:          params.Blocks,

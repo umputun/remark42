@@ -7,7 +7,9 @@ import (
 // Option func type
 type Option func(s *Server)
 
-// Auth sets basic auth credentials, required
+// Auth sets basic auth credentials, optional.
+// Auth enforced only if both user and password set to non-empty values, otherwise the server
+// keeps serving every request unauthenticated. Setting just one of them doesn't enable auth.
 func Auth(user, password string) Option {
 	return func(s *Server) {
 		s.authUser = user

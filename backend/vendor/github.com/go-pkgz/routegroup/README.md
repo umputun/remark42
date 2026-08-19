@@ -6,7 +6,7 @@
 ## Features
 
 - Simple and intuitive API for route grouping and route mounting.
-- Lightweight, just about 100 LOC
+- Lightweight, contained in a single file
 - Easy middleware integration for individual routes or groups of routes.
 - Seamless integration with Go's standard `http.ServeMux`.
 - Fully compatible with the `http.Handler` interface and can be used as a drop-in replacement for `http.ServeMux`.
@@ -133,7 +133,7 @@ router.Group().Route(func(b *routegroup.Bundle) {
 
 **Setting optional `NotFoundHandler`**
 
-It is possible to set a custom `NotFoundHandler` for the group. This handler will be called when no other route matches the request:
+Set a custom `NotFoundHandler` for the group. It runs only when `http.ServeMux` would return 404:
 
 ```go
 group.NotFoundHandler(func(w http.ResponseWriter, _ *http.Request) {
@@ -141,11 +141,11 @@ group.NotFoundHandler(func(w http.ResponseWriter, _ *http.Request) {
 }
 ```
 
-If a custom `NotFoundHandler` is not configured, `routegroup` will default to using the standard library behavior.
+Without a custom `NotFoundHandler`, `routegroup` uses the standard library behavior.
 
-Note on 405: In the current design, `routegroup` applies root-level middlewares to all requests at the top level without installing a catch‑all route. This preserves native `405 Method Not Allowed` responses from `http.ServeMux` when a path exists but a wrong method is used. A configured `NotFoundHandler` is only invoked when no route matches; it does not interfere with 405 handling. The custom `NotFoundHandler` will have the root bundle's global middlewares applied to it.
+Native mux responses: `routegroup` applies root-level middlewares to all requests without installing a catch‑all route. A configured `NotFoundHandler` runs only when `http.ServeMux` would return 404. Method mismatches return `405 Method Not Allowed` with an `Allow` header, and `http.ServeMux` performs path-cleanup redirects. Root-level middlewares apply to the custom handler.
 
-Legacy note: `DisableNotFoundHandler()` is now a no‑op and preserved only for API compatibility.
+`DisableNotFoundHandler()` has no effect.
 
 ### Middleware Ordering
 
@@ -289,7 +289,7 @@ http.ListenAndServe(":8080", mux)
 - Wrong method on an existing path returns `405 Method Not Allowed` (with an `Allow` header).
 - Unknown path returns `404 Not Found`.
 
-You can optionally configure a custom 404 handler with `NotFoundHandler(fn)`. It will run only when no route matches and does not affect 405 handling. The custom handler will have global middlewares applied to it. The legacy `DisableNotFoundHandler()` is now a no‑op and kept only for compatibility.
+You can optionally configure a custom 404 handler with `NotFoundHandler(fn)`. It runs only when `http.ServeMux` would return 404 and does not affect method mismatch responses or path-cleanup redirects. Global middlewares apply to the custom handler. `DisableNotFoundHandler()` has no effect.
 
 ### HandleFiles helper
 

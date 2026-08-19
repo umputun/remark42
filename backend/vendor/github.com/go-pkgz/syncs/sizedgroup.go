@@ -17,7 +17,7 @@ type SizedGroup struct {
 // NewSizedGroup makes wait group with limited size alive goroutines
 func NewSizedGroup(size int, opts ...GroupOption) *SizedGroup {
 	res := SizedGroup{sema: NewSemaphore(size)}
-	res.options.ctx = context.Background()
+	res.ctx = context.Background()
 	for _, opt := range opts {
 		opt(&res.options)
 	}

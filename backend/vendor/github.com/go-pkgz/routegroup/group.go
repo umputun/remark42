@@ -63,14 +63,19 @@ func (b *Bundle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// but intercept 404s to use custom handler if provided
 	muxHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if pattern == "" && root.notFound != nil {
-			// no route matched, need to check if it's a true 404 or a 405
-			// probe the mux to see what status it would return
-			probe := &statusRecorder{status: http.StatusOK}
-			b.mux.ServeHTTP(probe, r)
+			handler, currentPattern := b.mux.Handler(r)
+			if currentPattern != "" {
+				b.mux.ServeHTTP(w, r)
+				return
+			}
 
-			// if mux wants to return 405 (Method Not Allowed), let it handle the request
-			// to preserve the proper 405 response and Allow header
-			if probe.status == http.StatusMethodNotAllowed {
+			// no route matched, need to check if it's a true 404
+			// probe the synthetic handler to see what status it would return
+			probe := &statusRecorder{status: http.StatusOK}
+			handler.ServeHTTP(probe, r)
+
+			// let the mux handle redirects and method mismatches
+			if probe.status != http.StatusNotFound {
 				b.mux.ServeHTTP(w, r)
 				return
 			}
@@ -181,13 +186,13 @@ func (b *Bundle) Handler(r *http.Request) (h http.Handler, pattern string) {
 	return b.mux.Handler(r)
 }
 
-// DisableNotFoundHandler used to disable auto-registration of a catch-all 404.
-// Deprecated: now a no-op retained for API compatibility.
+// DisableNotFoundHandler has no effect.
+//
+// Deprecated: this method has no effect.
 func (b *Bundle) DisableNotFoundHandler() {}
 
-// NotFoundHandler sets a custom handler for any unmatched routes (404 responses).
-// Note: This handler is only used for true 404s. Requests to valid paths with
-// incorrect HTTP methods will still return 405 Method Not Allowed with Allow header.
+// NotFoundHandler sets a custom handler for true 404 responses.
+// Method mismatches and path-cleanup redirects are handled by http.ServeMux.
 func (b *Bundle) NotFoundHandler(handler http.HandlerFunc) {
 	// always set on the root bundle so custom 404 works regardless of which bundle serves.
 	if b.root != nil {

@@ -72,11 +72,19 @@ It can work as a regular errgrp.Group or with early termination. It is thread-sa
 ```go
 	ewg := syncs.NewErrSizedGroup(5, syncs.Preemptive) // error wait group with max size=5, don't try to start more if any error happened
 	for i :=0; i<10; i++ {
-		ewg.Go(func(ctx context.Context) error { // Go here could be blocked if trying to run >5 at the same time 
+		ewg.Go(func() error { // Go here could be blocked if trying to run >5 at the same time 
 			err := doThings(ctx)     // only 5 of these will run in parallel
 			return err
 		})
 	}
 	err := ewg.Wait()
+```
+
+`Wait` returns all the collected errors as `*MultiError`, which implements `Unwrap() []error`, so `errors.Is` and `errors.As` match any of them:
+
+```go
+	if err := ewg.Wait(); errors.Is(err, context.Canceled) {
+		// at least one of the goroutines was canceled
+	}
 ```
 

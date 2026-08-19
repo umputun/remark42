@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -13,12 +14,13 @@ import (
 	"github.com/go-pkgz/routegroup"
 )
 
-// Server is json-rpc server with an optional basic auth
+// Server is json-rpc server with an optional basic auth.
+// Auth enforced only if both authUser and authPasswd set, see Auth option.
 type Server struct {
 	api string // url path, i.e. "/command" or "/rpc" etc., required
 
-	authUser          string      // basic auth user name, should match Client.AuthUser, optional
-	authPasswd        string      // basic auth password, should match Client.AuthPasswd, optional
+	authUser          string      // basic auth user name, should match Client.AuthUser, optional, no auth if empty
+	authPasswd        string      // basic auth password, should match Client.AuthPasswd, optional, no auth if empty
 	customMiddlewares middlewares // list of custom middlewares, should match array of http.Handler func, optional
 
 	signature signaturePayload // add server signature to server response headers appName, author, version), disable by default
@@ -81,15 +83,29 @@ func NewServer(api string, options ...Option) *Server {
 	return srv
 }
 
-// Run http server on given port
+// Run http server on given port, blocks until Shutdown called or the server failed
 func (s *Server) Run(port int) error {
 
-	if s.authUser == "" || s.authPasswd == "" {
-		s.logger.Logf("[WARN] extension server runs without auth")
+	if len(s.funcs.m) == 0 {
+		return fmt.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
 	}
 
-	if s.funcs.m == nil && len(s.funcs.m) == 0 {
-		return fmt.Errorf("nothing mapped for dispatch, Add has to be called prior to Run")
+	s.activate()
+
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return fmt.Errorf("can't listen on port %d: %w", port, err)
+	}
+
+	return s.serve(ln)
+}
+
+// activate makes http server with all the middlewares and the dispatch handler.
+// after this call Add won't accept new methods.
+func (s *Server) activate() {
+
+	if s.authUser == "" || s.authPasswd == "" {
+		s.logger.Logf("[WARN] extension server runs without auth, both user and password have to be set to enable it")
 	}
 
 	router := routegroup.New(http.NewServeMux())
@@ -124,16 +140,26 @@ func (s *Server) Run(port int) error {
 
 	s.httpServer.Lock()
 	s.httpServer.Server = &http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           router,
 		ReadHeaderTimeout: s.timeouts.ReadHeaderTimeout,
 		WriteTimeout:      s.timeouts.WriteTimeout,
 		IdleTimeout:       s.timeouts.IdleTimeout,
 	}
 	s.httpServer.Unlock()
+}
 
-	s.logger.Logf("[INFO] listen on %d", port)
-	return s.httpServer.ListenAndServe()
+// serve runs activated http server on the provided listener
+func (s *Server) serve(l net.Listener) error {
+	s.httpServer.Lock()
+	srv := s.httpServer.Server
+	s.httpServer.Unlock()
+
+	if srv == nil {
+		return fmt.Errorf("server is not activated")
+	}
+
+	s.logger.Logf("[INFO] listen on %s", l.Addr())
+	return srv.Serve(l)
 }
 
 // Shutdown http server
@@ -202,7 +228,8 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	rest.RenderJSON(w, fn(req.ID, params))
 }
 
-// basicAuth middleware. enabled only if both AuthUser and AuthPasswd defined.
+// basicAuth middleware, enabled only if both authUser and authPasswd set to non-empty values.
+// with either of them empty every request passes through unauthenticated.
 func (s *Server) basicAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -229,30 +256,27 @@ func getDefaultTimeouts() Timeouts {
 	}
 }
 
-// timeout middleware cancels context after given duration
+// timeout middleware limits the time allowed for the call, responds with 503 and drops
+// the late handler writes if the deadline reached
 func timeout(dt time.Duration) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), dt)
-			defer cancel()
-			h.ServeHTTP(w, r.WithContext(ctx))
-		})
+		return http.TimeoutHandler(h, dt, `{"error":"call timeout"}`)
 	}
 }
 
 // L defined logger interface used for an optional rest logging
 type L interface {
-	Logf(format string, args ...interface{})
+	Logf(format string, args ...any)
 }
 
 // LoggerFunc type is an adapter to allow the use of ordinary functions as Logger.
-type LoggerFunc func(format string, args ...interface{})
+type LoggerFunc func(format string, args ...any)
 
 // Logf calls f(id)
-func (f LoggerFunc) Logf(format string, args ...interface{}) { f(format, args...) }
+func (f LoggerFunc) Logf(format string, args ...any) { f(format, args...) }
 
 // NoOpLogger logger does nothing
-var NoOpLogger = LoggerFunc(func(format string, args ...interface{}) {}) //nolint
+var NoOpLogger = LoggerFunc(func(format string, args ...any) {}) //nolint
 
 // rateLimitByIP returns middleware that limits requests per second for each client IP.
 // Uses X-Real-IP header (set by rest.RealIP middleware) for client identification.
