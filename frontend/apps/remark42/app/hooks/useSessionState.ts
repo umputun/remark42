@@ -1,6 +1,6 @@
-import { useState, StateUpdater } from 'preact/hooks';
+import { useState, StateUpdater, Dispatch } from 'preact/hooks';
 
-function useSessionStorage<T>(key: string, initialValue?: T): [T, StateUpdater<T>] {
+function useSessionStorage<T>(key: string, initialValue?: T): [T, Dispatch<StateUpdater<T>>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     const item = sessionStorage.getItem(key);
     if (item === null) {

@@ -17,12 +17,12 @@ const sizeStyles: Record<string, string> = {
   large: styles.sizeLarge,
 };
 
-export type ButtonProps = Omit<JSX.HTMLAttributes, 'size' | 'className'> & {
+export type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'className' | 'type'> & {
   kind?: 'primary' | 'secondary' | 'link';
   size?: 'middle' | 'large';
   theme?: Theme;
   mix?: string | string[];
-  type?: string;
+  type?: 'button' | 'submit' | 'reset';
   className?: string;
 };
 
