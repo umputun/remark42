@@ -44,7 +44,7 @@ Set it when the mail server rejects the greeting. Postfix with `reject_non_fqdn_
 SMTP_HELO_HOST=comments.example.com
 ```
 
-This currently applies to notification emails. Verification emails for email authentication are sent through a separate client that has no equivalent setting yet, so a relay that rejects the greeting will still reject those.
+It applies to both paths that send mail: notification emails and the verification emails used by email authentication.
 
 ## Setup email notifications
 

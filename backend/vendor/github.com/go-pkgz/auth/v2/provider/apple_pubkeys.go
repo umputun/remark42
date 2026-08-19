@@ -14,6 +14,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -65,16 +66,24 @@ func fetchAppleJWK(ctx context.Context, keyURL string) (set appleKeySet, err err
 	if err != nil {
 		return set, fmt.Errorf("failed to fetch Apple public keys: %w", err)
 	}
+	defer func() { _ = res.Body.Close() }()
+
+	// an error body parses as a key set with no keys, caching it would break every login until it expires
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return set, fmt.Errorf("failed to fetch Apple public keys, status %s", res.Status)
+	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return set, fmt.Errorf("failed read data after Apple public key fetched: %w", err)
 	}
-	defer func() { _ = res.Body.Close() }()
 
 	set, err = parseAppleJWK(data)
 	if err != nil {
 		return set, fmt.Errorf("get set of apple public key failed: %w", err)
+	}
+	if len(set.keys) == 0 {
+		return appleKeySet{}, fmt.Errorf("no keys in Apple public key response")
 	}
 
 	return set, nil
@@ -175,4 +184,71 @@ func (aks *appleKeySet) keyFunc(token *jwt.Token) (any, error) {
 	}
 
 	return key.publicKey, nil
+}
+
+// appleJWKTTL is how long a successfully fetched key set is reused before a refresh
+const appleJWKTTL = time.Hour
+
+// appleJWKStaleTTL bounds the use of a cached key set when the key service is unreachable
+const appleJWKStaleTTL = 12 * time.Hour
+
+// appleJWKCache keeps the last fetched Apple key set. AppleHandler is copied by value on
+// every request, so the cache is held behind a pointer and shared by all copies.
+type appleJWKCache struct {
+	lock      sync.Mutex
+	set       appleKeySet
+	fetchedAt time.Time
+}
+
+// jwkSet returns a set of Apple public keys able to verify kid. The cached set is reused
+// until appleJWKTTL passes; an unknown kid forces a refresh to pick up Apple's key rotation.
+// If the refresh fails, a cached set holding the kid is used for up to appleJWKStaleTTL, so
+// logins survive a short outage of the key service.
+func (ah AppleHandler) jwkSet(ctx context.Context, kid string) (appleKeySet, error) {
+	if ah.jwkCache == nil { // handler constructed without NewApple
+		return fetchAppleJWK(ctx, ah.conf.jwkURL)
+	}
+
+	ah.jwkCache.lock.Lock()
+	defer ah.jwkCache.lock.Unlock()
+
+	cached := ah.jwkCache.set
+	_, cachedErr := cached.get(kid)
+	if cachedErr == nil && time.Since(ah.jwkCache.fetchedAt) < appleJWKTTL {
+		return cached, nil
+	}
+
+	set, err := fetchAppleJWK(ctx, ah.conf.jwkURL)
+	if err != nil {
+		if cachedErr == nil && time.Since(ah.jwkCache.fetchedAt) < appleJWKStaleTTL {
+			ah.Logf("[WARN] failed to refresh Apple public keys, using cached set: %v", err)
+			return cached, nil
+		}
+		return set, err
+	}
+
+	ah.jwkCache.set, ah.jwkCache.fetchedAt = set, time.Now()
+	return set, nil
+}
+
+// jwkKeyFunc verifies an Apple id_token signature with the key named by the token's kid header
+func (ah AppleHandler) jwkKeyFunc(ctx context.Context) jwt.Keyfunc {
+	return func(jwtToken *jwt.Token) (any, error) {
+		kid, ok := jwtToken.Header["kid"].(string)
+		if !ok {
+			return nil, fmt.Errorf("get JWT kid header not found")
+		}
+
+		set, err := ah.jwkSet(ctx, kid)
+		if err != nil {
+			ah.Logf("[ERROR] failed to fetch JWK from Apple key service: %v", err)
+			return nil, fmt.Errorf("failed to fetch JWK from Apple key service: %w", err)
+		}
+
+		key, err := set.get(kid)
+		if err != nil {
+			return nil, err
+		}
+		return key.publicKey, nil
+	}
 }

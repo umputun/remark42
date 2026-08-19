@@ -36,10 +36,10 @@ func (f Float64Data) Median() (float64, error) { return Median(f) }
 // Mode returns the mode of the data
 func (f Float64Data) Mode() ([]float64, error) { return Mode(f) }
 
-// GeometricMean returns the median of the data
+// GeometricMean returns the geometric mean of the data
 func (f Float64Data) GeometricMean() (float64, error) { return GeometricMean(f) }
 
-// HarmonicMean returns the mode of the data
+// HarmonicMean returns the harmonic mean of the data
 func (f Float64Data) HarmonicMean() (float64, error) { return HarmonicMean(f) }
 
 // MedianAbsoluteDeviation the median of the absolute deviations from the dataset median
@@ -95,6 +95,11 @@ func (f Float64Data) AutoCorrelation(lags int) (float64, error) {
 // Pearson calculates the Pearson product-moment correlation coefficient between two variables.
 func (f Float64Data) Pearson(d Float64Data) (float64, error) {
 	return Pearson(f, d)
+}
+
+// Spearman calculates the Spearman rank correlation coefficient between two variables.
+func (f Float64Data) Spearman(d Float64Data) (float64, error) {
+	return Spearman(f, d)
 }
 
 // Quartile returns the three quartile points from a slice of data

@@ -193,7 +193,8 @@ func (c *CustomServer) handleAvatar(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if _, err = w.Write(b); err != nil {
+	w.Header().Set("Content-Type", "image/png")
+	if _, err = w.Write(b); err != nil { //nolint:gosec // generated identicon png, not reflected markup
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

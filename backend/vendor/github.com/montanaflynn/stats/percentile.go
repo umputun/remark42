@@ -27,7 +27,7 @@ func Percentile(input Float64Data, percent float64) (percentile float64, err err
 		return input[0], nil
 	}
 
-	if percent <= 0 || percent > 100 {
+	if math.IsNaN(percent) || percent <= 0 || percent > 100 {
 		return math.NaN(), BoundsErr
 	}
 
@@ -62,8 +62,8 @@ func PercentileNearestRank(input Float64Data, percent float64) (percentile float
 		return math.NaN(), EmptyInputErr
 	}
 
-	// Return error for less than 0 or greater than 100 percentages
-	if percent < 0 || percent > 100 {
+	// Return error for NaN, less than 0, or greater than 100 percentages
+	if math.IsNaN(percent) || percent < 0 || percent > 100 {
 		return math.NaN(), BoundsErr
 	}
 

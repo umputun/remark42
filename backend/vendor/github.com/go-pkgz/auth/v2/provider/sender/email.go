@@ -2,6 +2,7 @@
 package sender
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-pkgz/auth/v2/logger"
@@ -20,6 +21,7 @@ type Email struct {
 type EmailParams struct {
 	Host        string // SMTP host
 	Port        int    // SMTP port
+	HELOHost    string // SMTP HELO/EHLO hostname, defaults to localhost when unset
 	From        string // from email field
 	Subject     string // email subject
 	ContentType string // content type
@@ -58,6 +60,10 @@ func NewEmailClient(emailParams EmailParams, l logger.L) *Email {
 		opts = append(opts, email.Port(emailParams.Port))
 	}
 
+	if emailParams.HELOHost != "" {
+		opts = append(opts, email.HELOHost(emailParams.HELOHost))
+	}
+
 	if emailParams.TimeOut != 0 {
 		opts = append(opts, email.TimeOut(emailParams.TimeOut))
 	}
@@ -79,14 +85,22 @@ func NewEmailClient(emailParams EmailParams, l logger.L) *Email {
 	return &Email{EmailParams: emailParams, L: l, sender: sender}
 }
 
-// Send email with given text. The body is not logged: confirmation emails
-// sent by the verify provider contain a one-shot magic-link token, and any
-// party with log access could redeem it before the user does. Logging only
-// the recipient and body length keeps the line useful for operators
-// without leaking the credential.
+// Send email with given text, with no cancellation and with TimeOut applied to the connection setup only.
+// See SendContext for the details.
 func (e *Email) Send(to, text string) error {
+	return e.SendContext(context.Background(), to, text)
+}
+
+// SendContext sends email with given text and terminates the whole SMTP transaction as soon as ctx is done.
+// TimeOut covers the connection setup only, so without a context a server accepting the connection and
+// stalling afterwards blocks the caller for as long as it likes.
+//
+// The body is not logged: confirmation emails sent by the verify provider contain a one-shot magic-link
+// token, and any party with log access could redeem it before the user does. Logging only the recipient
+// and body length keeps the line useful for operators without leaking the credential.
+func (e *Email) SendContext(ctx context.Context, to, text string) error {
 	e.Logf("[DEBUG] send %d-byte message to %s", len(text), to)
-	return e.sender.Send(text, email.Params{
+	return e.sender.SendContext(ctx, text, email.Params{
 		From:    e.From,
 		To:      []string{to},
 		Subject: e.Subject,

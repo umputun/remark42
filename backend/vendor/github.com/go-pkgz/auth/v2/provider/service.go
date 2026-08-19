@@ -118,6 +118,18 @@ func setAvatar(ava AvatarSaver, u token.User, client *http.Client) (token.User, 
 	return u, nil
 }
 
+// sessionOnlyFromRequest reads the session-only flag from the request. Both "session",
+// as documented in README, and "sess", accepted by the direct and verify providers since
+// the beginning, are honored.
+func sessionOnlyFromRequest(r *http.Request) bool {
+	for _, name := range []string{"session", "sess"} {
+		if v := r.URL.Query().Get(name); v != "" {
+			return v != "0"
+		}
+	}
+	return false
+}
+
 func randToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

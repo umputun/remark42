@@ -1167,6 +1167,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		params := sender.EmailParams{
 			Host:               s.SMTP.Host,
 			Port:               s.SMTP.Port,
+			HELOHost:           s.SMTP.HELOHost,
 			SMTPUserName:       s.SMTP.Username,
 			SMTPPassword:       s.SMTP.Password,
 			TimeOut:            s.SMTP.TimeOut,
