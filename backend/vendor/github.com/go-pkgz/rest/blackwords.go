@@ -13,16 +13,20 @@ func BlackWords(words ...string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if content, err := io.ReadAll(r.Body); err == nil {
-				body := strings.ToLower(string(content))
-				r.Body = io.NopCloser(bytes.NewReader(content))
+			content, err := io.ReadAll(r.Body)
+			if err != nil {
+				// the body can't be inspected, refuse rather than pass a partially consumed one through
+				_ = EncodeJSON(w, http.StatusBadRequest, JSON{"error": "can't read request body"})
+				return
+			}
+			r.Body = io.NopCloser(bytes.NewReader(content))
 
-				if body != "" {
-					for _, word := range words {
-						if strings.Contains(body, strings.ToLower(word)) {
-							_ = EncodeJSON(w, http.StatusForbidden, JSON{"error": "one of blacklisted words detected"})
-							return
-						}
+			body := strings.ToLower(string(content))
+			if body != "" {
+				for _, word := range words {
+					if strings.Contains(body, strings.ToLower(word)) {
+						_ = EncodeJSON(w, http.StatusForbidden, JSON{"error": "one of blacklisted words detected"})
+						return
 					}
 				}
 			}

@@ -123,6 +123,12 @@ func ParseTrustedProxies(entries []string) ([]*net.IPNet, error) {
 // "*" and credentials enabled, rest.CORS reflects the request Origin into
 // Access-Control-Allow-Origin (rather than a literal "*"), which browsers require
 // for credentialed cross-origin requests.
+//
+// That combination is refused by default upstream, so it has to be asked for by name with
+// CorsUnsafeAnyOriginWithCredentials. The wildcard stays because the comment widget is embedded on
+// arbitrary third-party sites, which makes the set of origins unknowable. The consequence it carries
+// is that any site a signed-in user visits can read authenticated responses, so state-changing
+// requests have to keep being protected by something other than the origin, X-XSRF-Token today.
 func corsMiddleware() func(http.Handler) http.Handler {
 	return R.CORS(
 		R.CorsAllowedOrigins("*"),
@@ -130,6 +136,7 @@ func corsMiddleware() func(http.Handler) http.Handler {
 		R.CorsAllowedHeaders("Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"),
 		R.CorsExposedHeaders("Authorization"),
 		R.CorsAllowCredentials(true),
+		R.CorsUnsafeAnyOriginWithCredentials(true),
 		R.CorsMaxAge(300),
 	)
 }

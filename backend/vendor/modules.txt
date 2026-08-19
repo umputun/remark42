@@ -23,9 +23,6 @@ github.com/aymerick/douceur/parser
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/davecgh/go-spew v1.1.1
-## explicit
-github.com/davecgh/go-spew/spew
 # github.com/dghubble/oauth1 v0.7.3
 ## explicit; go 1.19
 github.com/dghubble/oauth1
@@ -82,7 +79,7 @@ github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/repeater/v2 v2.2.0
 ## explicit; go 1.23
 github.com/go-pkgz/repeater/v2
-# github.com/go-pkgz/rest v1.22.0
+# github.com/go-pkgz/rest v1.24.0
 ## explicit; go 1.24.0
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
@@ -146,9 +143,6 @@ github.com/microcosm-cc/bluemonday/css
 # github.com/montanaflynn/stats v0.9.0
 ## explicit; go 1.13
 github.com/montanaflynn/stats
-# github.com/pmezard/go-difflib v1.0.0
-## explicit
-github.com/pmezard/go-difflib/difflib
 # github.com/redis/go-redis/v9 v9.21.0
 ## explicit; go 1.24
 github.com/redis/go-redis/v9
@@ -187,10 +181,12 @@ github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
 github.com/slack-go/slack/internal/timex
 github.com/slack-go/slack/slackutilsx
-# github.com/stretchr/testify v1.11.1
+# github.com/stretchr/testify v1.12.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
+github.com/stretchr/testify/internal/difflib
+github.com/stretchr/testify/internal/spew
 github.com/stretchr/testify/require
 # github.com/xdg-go/pbkdf2 v1.0.0
 ## explicit; go 1.9

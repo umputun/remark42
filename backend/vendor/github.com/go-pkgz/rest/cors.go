@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -10,7 +11,7 @@ import (
 // Use CorsOpt functions to customize.
 type CORSConfig struct {
 	// AllowedOrigins is a list of origins that may access the resource.
-	// use "*" to allow all origins (not recommended with credentials).
+	// use "*" to allow all origins, rejected by CORS when combined with credentials.
 	// default: ["*"]
 	AllowedOrigins []string
 	// AllowedMethods is a list of methods the client is allowed to use.
@@ -23,9 +24,14 @@ type CORSConfig struct {
 	// default: empty
 	ExposedHeaders []string
 	// AllowCredentials indicates whether the request can include credentials.
-	// when true, AllowedOrigins cannot be "*" (browser security restriction).
+	// when true, AllowedOrigins cannot contain "*" unless UnsafeAnyOriginWithCredentials is set,
+	// and CORS panics otherwise.
 	// default: false
 	AllowCredentials bool
+	// UnsafeAnyOriginWithCredentials permits "*" together with credentials, making the middleware
+	// reflect whatever Origin the request carries alongside Access-Control-Allow-Credentials.
+	// default: false
+	UnsafeAnyOriginWithCredentials bool
 	// MaxAge indicates how long (in seconds) the results of a preflight can be cached.
 	// default: 0 (no caching)
 	MaxAge int
@@ -47,7 +53,7 @@ func defaultCORSConfig() CORSConfig {
 }
 
 // CorsAllowedOrigins sets the list of allowed origins.
-// Use "*" to allow all origins (not recommended with credentials).
+// Use "*" to allow all origins, which CORS rejects when credentials are enabled.
 func CorsAllowedOrigins(origins ...string) CorsOpt {
 	return func(c *CORSConfig) {
 		c.AllowedOrigins = origins
@@ -76,10 +82,21 @@ func CorsExposedHeaders(headers ...string) CorsOpt {
 }
 
 // CorsAllowCredentials enables or disables credentials.
-// When true, AllowedOrigins cannot be "*".
+// When true, AllowedOrigins cannot contain "*" and CORS panics if it does.
 func CorsAllowCredentials(allow bool) CorsOpt {
 	return func(c *CORSConfig) {
 		c.AllowCredentials = allow
+	}
+}
+
+// CorsUnsafeAnyOriginWithCredentials permits "*" among the allowed origins together with credentials.
+// The middleware then reflects whatever Origin the request carries and sends
+// Access-Control-Allow-Credentials: true with it, so any site a signed-in user visits can read
+// authenticated responses. Only use it for a service meant to be embedded on arbitrary third-party
+// origins, and make sure state-changing requests are protected by something other than the origin.
+func CorsUnsafeAnyOriginWithCredentials(allow bool) CorsOpt {
+	return func(c *CORSConfig) {
+		c.UnsafeAnyOriginWithCredentials = allow
 	}
 }
 
@@ -93,10 +110,19 @@ func CorsMaxAge(seconds int) CorsOpt {
 // CORS is middleware that handles Cross-Origin Resource Sharing.
 // It handles preflight OPTIONS requests and sets appropriate headers.
 // By default allows all origins with common methods and headers.
+//
+// Panics if credentials are enabled while "*" is among the allowed origins, including the default
+// origin list. Such a configuration reflects any origin back with Access-Control-Allow-Credentials,
+// which lets any site read authenticated responses. Enumerate the origins instead.
 func CORS(opts ...CorsOpt) func(http.Handler) http.Handler {
 	cfg := defaultCORSConfig()
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+
+	if cfg.AllowCredentials && !cfg.UnsafeAnyOriginWithCredentials && slices.Contains(cfg.AllowedOrigins, "*") {
+		panic(`rest: CORS with credentials can't allow "*" as an origin, list the allowed origins explicitly ` +
+			`or opt in with CorsUnsafeAnyOriginWithCredentials`)
 	}
 
 	// pre-compute joined strings for performance
