@@ -96,15 +96,18 @@ func Health(path string, checkers ...func(ctx context.Context) (name string, err
 }
 
 // Recoverer is a middleware that recovers from panics, logs the panic and returns a HTTP 500 status if possible.
+// http.ErrAbortHandler is passed through untouched, as net/http relies on it reaching the server to abort
+// the response and close the connection.
 func Recoverer(l logger.Backend) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if rvr := recover(); rvr != nil {
-					l.Logf("request panic for %s from %s, %v", r.URL.String(), r.RemoteAddr, rvr)
-					if rvr != http.ErrAbortHandler {
-						l.Logf(string(debug.Stack()))
+					if rvr == http.ErrAbortHandler {
+						panic(rvr)
 					}
+					l.Logf("request panic for %s from %s, %v", r.URL.String(), r.RemoteAddr, rvr)
+					l.Logf(string(debug.Stack()))
 					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				}
 			}()

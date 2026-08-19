@@ -49,6 +49,20 @@ func SubjFn(subjFn func(r *http.Request) (string, error)) Option {
 	}
 }
 
+// BodyFn sets a transform applied to the request body before it is logged, e.g. to
+// mask secrets. It only runs when body logging is enabled (see WithBody) and the
+// body is non-empty; if bodyFn is nil the body is logged unchanged. bodyFn receives
+// the body (capped at MaxBodySize) and a truncated flag that is true when the body was longer than
+// MaxBodySize and got cut short - a masker can use it to emit a marker instead of
+// risking a pass-through of a partial body it cannot parse. The returned string is
+// what gets logged, so bodyFn owns the content; the logger still collapses it to a
+// single line to keep one log record per request.
+func BodyFn(bodyFn func(body string, truncated bool) string) Option {
+	return func(l *Middleware) {
+		l.bodyFn = bodyFn
+	}
+}
+
 // ApacheCombined sets format to Apache Combined Log.
 // See http://httpd.apache.org/docs/2.2/logs.html#combined
 func ApacheCombined(l *Middleware) {
