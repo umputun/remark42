@@ -1,10 +1,9 @@
-import { h, JSX, VNode } from 'preact';
+import { h, VNode, type ButtonHTMLAttributes } from 'preact';
 import clsx from 'clsx';
 
 import styles from './button.module.css';
 
-type Props = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'type'> & {
-  type?: 'button' | 'submit' | 'reset';
+type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
   size?: 'xs' | 'sm';
   kind?: 'transparent' | 'link' | 'hollow';
   suffix?: VNode;

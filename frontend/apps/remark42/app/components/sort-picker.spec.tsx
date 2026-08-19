@@ -37,8 +37,8 @@ describe('<SortPicker />', () => {
 
     expect(select).toBeInTheDocument();
 
-    // fireEvent.change does not reach handlers on elements rendered inside the compat
-    // providers, so set the value and dispatch the event directly
+    // @testing-library/preact rewrites change to input for every element once it sees a
+    // compat vnode, so fireEvent.change never reaches a select handler; dispatch directly
     select.value = nextOption;
     fireEvent(select, new Event('change', { bubbles: true }));
 
