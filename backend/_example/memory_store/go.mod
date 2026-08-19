@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/go-pkgz/jrpc v0.4.0
-	github.com/go-pkgz/lgr v0.12.3
+	github.com/go-pkgz/lgr v0.12.4
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/stretchr/testify v1.12.0
 	github.com/umputun/remark42/backend v1.1000.0

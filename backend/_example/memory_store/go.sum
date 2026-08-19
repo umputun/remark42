@@ -17,8 +17,8 @@ github.com/dlclark/regexp2/v2 v2.2.2 h1:MYWvNYw8okuqNhwTYO587EZMiDruVa2vhV6fsGpf
 github.com/dlclark/regexp2/v2 v2.2.2/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
 github.com/go-pkgz/jrpc v0.4.0 h1:oD7xiGrzDkndkuCjeHGugQXxbggLSV7O1QmHhoc5pYY=
 github.com/go-pkgz/jrpc v0.4.0/go.mod h1:JFoY3bRjRyx4M3CbEVDFQStMB1m2gmQ7OjqFK7q3kOo=
-github.com/go-pkgz/lgr v0.12.3 h1:QDug7kRkEsuQtruT9fNF5PVT2kZUqCDPc4GmsgS3fP8=
-github.com/go-pkgz/lgr v0.12.3/go.mod h1:lpCDgVvCIxBHZp8+sGCj9MPctIzKZyZ3QdE19ddqd54=
+github.com/go-pkgz/lgr v0.12.4 h1:lDeQ4BR28ldXrKau6BOjq7A8nHzcXz+MF4xUfV4l1Ok=
+github.com/go-pkgz/lgr v0.12.4/go.mod h1:Lw6DkNRnCPyX07mqkiUK/p+eA1opq4GKkWfWia64RA8=
 github.com/go-pkgz/rest v1.24.0 h1:GAUCgx7U8xCOC2OynLjhCRMhtnMQH4d1mTdKpQyX2yI=
 github.com/go-pkgz/rest v1.24.0/go.mod h1:dl3EWiuFB4hRTo2Sknj6UrQGFRAYvANK6/NyW8qQPxc=
 github.com/go-pkgz/routegroup v1.6.0 h1:44XHZgF6JIIldRlv+zjg6SygULASmjifnfIQjwCT0e4=

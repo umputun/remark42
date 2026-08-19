@@ -134,6 +134,7 @@ services:
 | telegram.timeout               | TELEGRAM_TIMEOUT               | `5s`                    | Telegram connection timeout                              |
 | smtp.host                      | SMTP_HOST                      |                         | SMTP host                                                |
 | smtp.port                      | SMTP_PORT                      |                         | SMTP port                                                |
+| smtp.helo_host                 | SMTP_HELO_HOST                 |                         | SMTP HELO/EHLO hostname                                  |
 | smtp.username                  | SMTP_USERNAME                  |                         | SMTP user name                                           |
 | smtp.password                  | SMTP_PASSWORD                  |                         | SMTP password                                            |
 | smtp.login_auth                | SMTP_LOGIN_AUTH                | `false`                 | enable LOGIN auth instead of PLAIN                       |

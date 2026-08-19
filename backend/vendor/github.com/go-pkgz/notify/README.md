@@ -40,14 +40,18 @@ func main() {
 	}
 	err = notify.Send(context.Background(), notifiers, "https://example.com/webhook", "Hello, world!")
 	if err != nil {
-		fmt.Printf("Sent message error: %s", err))
+		fmt.Printf("Sent message error: %s", err)
 	}
 }
 ```
 
+A runnable version of the same flow, sending to a local test server instead of a real webhook, is in [`example_test.go`](example_test.go).
+
 ### Email
 
 `mailto:` [scheme](https://datatracker.ietf.org/doc/html/rfc6068) is supported. Only `subject` and `from` query params are used.
+
+**Note:** Query parameter values must be URL-encoded. In particular, email addresses containing `+` (e.g. `noreply+tag@example.com`) must use `%2B`, otherwise `+` is interpreted as a space. Use `url.QueryEscape` for all parameter values.
 
 Examples:
 
@@ -70,6 +74,7 @@ func main() {
 		Host:        "localhost", // the only required field, others are optional
 		Port:        25,
 		TLS:         false, // TLS, but not STARTTLS
+		HELOHost:    "mail.example.org", // hostname sent in the SMTP greeting, "localhost" by default
 		ContentType: "text/html",
 		Charset:     "UTF-8",
 		Username:    "username",

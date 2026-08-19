@@ -10,8 +10,8 @@ require (
 	github.com/go-pkgz/auth/v2 v2.1.5
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
-	github.com/go-pkgz/lgr v0.12.3
-	github.com/go-pkgz/notify v1.3.0
+	github.com/go-pkgz/lgr v0.12.4
+	github.com/go-pkgz/notify v1.4.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.0
@@ -42,9 +42,8 @@ require (
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.2 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.4 // indirect
-	github.com/go-pkgz/email v0.6.0 // indirect
+	github.com/go-pkgz/email v0.8.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
-	github.com/go-pkgz/repeater v1.2.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect

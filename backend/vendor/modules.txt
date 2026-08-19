@@ -53,7 +53,7 @@ github.com/go-pkgz/auth/v2/middleware
 github.com/go-pkgz/auth/v2/provider
 github.com/go-pkgz/auth/v2/provider/sender
 github.com/go-pkgz/auth/v2/token
-# github.com/go-pkgz/email v0.6.0
+# github.com/go-pkgz/email v0.8.0
 ## explicit; go 1.19
 github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache/v3 v3.1.0
@@ -66,16 +66,12 @@ github.com/go-pkgz/jrpc
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
-# github.com/go-pkgz/lgr v0.12.3
+# github.com/go-pkgz/lgr v0.12.4
 ## explicit; go 1.21
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v1.3.0
-## explicit; go 1.24.0
+# github.com/go-pkgz/notify v1.4.0
+## explicit; go 1.25.0
 github.com/go-pkgz/notify
-# github.com/go-pkgz/repeater v1.2.0
-## explicit; go 1.20
-github.com/go-pkgz/repeater
-github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/repeater/v2 v2.2.0
 ## explicit; go 1.23
 github.com/go-pkgz/repeater/v2
