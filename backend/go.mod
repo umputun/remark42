@@ -7,11 +7,11 @@ require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
-	github.com/go-pkgz/auth/v2 v2.1.5
+	github.com/go-pkgz/auth/v2 v2.2.0
 	github.com/go-pkgz/jrpc v0.4.0
 	github.com/go-pkgz/lcw/v2 v2.0.0
-	github.com/go-pkgz/lgr v0.12.3
-	github.com/go-pkgz/notify v1.3.0
+	github.com/go-pkgz/lgr v0.12.4
+	github.com/go-pkgz/notify v1.4.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.0
@@ -28,9 +28,9 @@ require (
 	github.com/stretchr/testify v1.12.0
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/goleak v1.3.0
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.55.0
 	golang.org/x/image v0.45.0
-	golang.org/x/net v0.56.0
+	golang.org/x/net v0.57.0
 	golang.org/x/oauth2 v0.36.0
 )
 
@@ -42,17 +42,16 @@ require (
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.2 // indirect
 	github.com/go-oauth2/oauth2/v4 v4.5.4 // indirect
-	github.com/go-pkgz/email v0.6.0 // indirect
+	github.com/go-pkgz/email v0.8.0 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.1.0 // indirect
-	github.com/go-pkgz/repeater v1.2.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
-	github.com/montanaflynn/stats v0.9.0 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/montanaflynn/stats v0.12.4 // indirect
 	github.com/redis/go-redis/v9 v9.21.0 // indirect
 	github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d // indirect
 	github.com/slack-go/slack v0.27.0 // indirect

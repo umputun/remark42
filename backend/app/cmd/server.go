@@ -252,6 +252,7 @@ type TelegramGroup struct {
 type SMTPGroup struct {
 	Host               string        `long:"host" env:"HOST" description:"SMTP host"`
 	Port               int           `long:"port" env:"PORT" description:"SMTP port"`
+	HELOHost           string        `long:"helo_host" env:"HELO_HOST" description:"SMTP HELO/EHLO hostname"`
 	Username           string        `long:"username" env:"USERNAME" description:"SMTP user name"`
 	Password           string        `long:"password" env:"PASSWORD" description:"SMTP password"`
 	TLS                bool          `long:"tls" env:"TLS" description:"enable TLS"`
@@ -1166,6 +1167,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		params := sender.EmailParams{
 			Host:               s.SMTP.Host,
 			Port:               s.SMTP.Port,
+			HELOHost:           s.SMTP.HELOHost,
 			SMTPUserName:       s.SMTP.Username,
 			SMTPPassword:       s.SMTP.Password,
 			TimeOut:            s.SMTP.TimeOut,
@@ -1322,6 +1324,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 		smtpParams := ntf.SMTPParams{
 			Host:               s.SMTP.Host,
 			Port:               s.SMTP.Port,
+			HELOHost:           s.SMTP.HELOHost,
 			TLS:                s.SMTP.TLS,
 			StartTLS:           s.SMTP.StartTLS,
 			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,

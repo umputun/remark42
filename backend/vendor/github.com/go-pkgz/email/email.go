@@ -3,6 +3,7 @@ package email
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
@@ -20,6 +21,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -31,6 +33,7 @@ type Sender struct {
 	smtpClient         SMTPClient
 	logger             Logger
 	host               string     // SMTP host
+	heloHost           string     // SMTP HELO/EHLO host
 	port               int        // SMTP port
 	contentType        string     // content type, optional. Will trigger MIME and Content-Type headers
 	tls                bool       // TLS auth
@@ -91,53 +94,73 @@ func NewSender(smtpHost string, options ...Option) *Sender {
 		opt(&res)
 	}
 
-	res.logger.Logf("[INFO] new email sender created with host: %s:%d, tls: %v, insecureSkipVerify: %v, username: %q, timeout: %v, "+
-		"content type: %q, charset: %q", smtpHost,
-		res.port, res.tls, res.insecureSkipVerify, res.smtpUserName, res.timeOut, res.contentType, res.contentCharset)
+	res.logger.Logf("[INFO] new email sender created with host: %s:%d, helo: %q, tls: %v, insecureSkipVerify: %v, username: %q, timeout: %v, "+
+		"content type: %q, charset: %q", smtpHost, res.port, res.effectiveHELOHost(),
+		res.tls, res.insecureSkipVerify, res.smtpUserName, res.timeOut, res.contentType, res.contentCharset)
 	return &res
 }
 
-// Send email with given text
-// If SMTPClient defined in Email struct it will be used, if not - new smtp.Client on each send.
-// Always closes client on completion or failure.
+// Send email with given text, with no cancellation and with TimeOut applied to the connection setup only.
+// See SendContext for the details.
 func (em *Sender) Send(text string, params Params) error {
+	return em.SendContext(context.Background(), text, params)
+}
+
+// SendContext sends email with given text and terminates the whole SMTP transaction as soon as ctx is done,
+// including the greeting, the authentication and the message body transfer.
+// If SMTPClient set with the SMTP option it will be used, if not - new smtp.Client on each send.
+// Note that a client set that way owns its connection, so such a transaction can't be terminated in the middle.
+// Always closes client on completion or failure.
+func (em *Sender) SendContext(ctx context.Context, text string, params Params) error {
 	em.logger.Logf("[DEBUG] send %q to %v", text, params.To)
 
-	client := em.smtpClient
-	if client == nil { // if client not set make new net/smtp
-		c, err := em.client()
-		if err != nil {
-			return fmt.Errorf("failed to make smtp client: %w", err)
-		}
-		client = c
-	}
+	client := em.smtpClient // set by the SMTP option, nil when SendContext makes its own client below
 
 	var quit bool
 	defer func() {
 		if quit || client == nil { // quit set if Quit() call passed because it's closing connection as well.
 			return
 		}
-		if err := client.Close(); err != nil {
-			em.logger.Logf("[WARN] can't close smtp connection, %v", err)
+		if e := client.Close(); e != nil {
+			em.logger.Logf("[WARN] can't close smtp connection, %v", e)
 		}
 	}()
+
+	if err := ctx.Err(); err != nil { // nothing started yet, a client set with the SMTP option is closed by the defer
+		return err
+	}
 
 	if len(params.To) == 0 {
 		return errors.New("no recipients")
 	}
 
+	// message is built before the connection is made, this way a bad message doesn't reach the server at all
+	msg, err := em.buildMessage(text, params)
+	if err != nil {
+		return fmt.Errorf("can't make email message: %w", err)
+	}
+
+	if client == nil { // if client not set make new net/smtp
+		c, stop, e := em.client(ctx)
+		if e != nil {
+			return fmt.Errorf("failed to make smtp client: %w", e)
+		}
+		defer stop() // runs before the deferred close above, releasing the ctx watcher first
+		client = c
+	}
+
 	if auth := em.auth(); auth != nil {
-		if err := client.Auth(auth); err != nil {
+		if err = client.Auth(auth); err != nil {
 			return fmt.Errorf("failed to auth to smtp %s:%d, %w", em.host, em.port, err)
 		}
 	}
 
-	if err := client.Mail(extractEmailAddress(params.From)); err != nil {
+	if err = client.Mail(extractEmailAddress(params.From)); err != nil {
 		return fmt.Errorf("bad from address %q: %w", params.From, err)
 	}
 
 	for _, rcpt := range params.To {
-		if err := client.Rcpt(extractEmailAddress(rcpt)); err != nil {
+		if err = client.Rcpt(extractEmailAddress(rcpt)); err != nil {
 			return fmt.Errorf("bad to address %q: %w", params.To, err)
 		}
 	}
@@ -147,16 +170,12 @@ func (em *Sender) Send(text string, params Params) error {
 		return fmt.Errorf("can't make email writer: %w", err)
 	}
 
-	msg, err := em.buildMessage(text, params)
-	if err != nil {
-		return fmt.Errorf("can't make email message: %w", err)
-	}
-	buf := bytes.NewBufferString(msg)
-	if _, err = buf.WriteTo(writer); err != nil {
+	if _, err = msg.WriteTo(writer); err != nil {
 		return fmt.Errorf("failed to send email body to %q: %w", params.To, err)
 	}
+	// closing the writer reports the final response to the DATA command, i.e. the actual delivery result
 	if err = writer.Close(); err != nil {
-		em.logger.Logf("[WARN] can't close smtp body writer, %v", err)
+		return fmt.Errorf("failed to send email to %q: %w", params.To, err)
 	}
 
 	if err = client.Quit(); err != nil {
@@ -179,11 +198,25 @@ func extractEmailAddress(from string) string {
 }
 
 func (em *Sender) String() string {
-	return fmt.Sprintf("smtp://%s:%d, auth:%v, tls:%v, starttls:%v, insecureSkipVerify:%v, timeout:%v, content-type:%q, charset:%q",
-		em.host, em.port, em.smtpUserName != "", em.tls, em.starttls, em.insecureSkipVerify, em.timeOut, em.contentType, em.contentCharset)
+	return fmt.Sprintf("smtp://%s:%d, helo:%q, auth:%v, tls:%v, starttls:%v, insecureSkipVerify:%v, timeout:%v, content-type:%q, charset:%q",
+		em.host, em.port, em.effectiveHELOHost(), em.smtpUserName != "", em.tls, em.starttls, em.insecureSkipVerify,
+		em.timeOut, em.contentType, em.contentCharset)
 }
 
-func (em *Sender) client() (c *smtp.Client, err error) {
+func (em *Sender) effectiveHELOHost() string {
+	if em.smtpClient != nil {
+		return "client-managed"
+	}
+	if em.heloHost == "" {
+		return "localhost"
+	}
+	return em.heloHost
+}
+
+// client makes smtp client with the connection bound to ctx: it is closed as soon as ctx is done,
+// which is the only way to interrupt net/smtp calls as they take no context.
+// Returned stop function releases that binding and has to be called when the client is not needed anymore.
+func (em *Sender) client(ctx context.Context) (c *smtp.Client, stop func(), err error) {
 	srvAddress := net.JoinHostPort(em.host, strconv.Itoa(em.port))
 	// #nosec G402
 	tlsConf := &tls.Config{
@@ -192,34 +225,74 @@ func (em *Sender) client() (c *smtp.Client, err error) {
 		MinVersion:         tls.VersionTLS12,
 	}
 
+	dialer := &net.Dialer{Timeout: em.timeOut}
+
+	var conn net.Conn
 	if em.tls {
-		conn, e := tls.DialWithDialer(&net.Dialer{Timeout: em.timeOut}, "tcp", srvAddress, tlsConf)
-		if e != nil {
-			return nil, fmt.Errorf("failed to dial smtp tls to %s: %w", srvAddress, e)
+		if conn, err = (&tls.Dialer{NetDialer: dialer, Config: tlsConf}).DialContext(ctx, "tcp", srvAddress); err != nil {
+			return nil, nil, fmt.Errorf("failed to dial smtp tls to %s: %w", srvAddress, err)
 		}
-		if c, err = smtp.NewClient(conn, em.host); err != nil {
-			return nil, fmt.Errorf("failed to make smtp client for %s: %w", srvAddress, err)
+	} else {
+		if conn, err = dialer.DialContext(ctx, "tcp", srvAddress); err != nil {
+			return nil, nil, fmt.Errorf("timeout connecting to %s: %w", srvAddress, err)
 		}
-		return c, nil
 	}
 
-	conn, err := net.DialTimeout("tcp", srvAddress, em.timeOut)
-	if err != nil {
-		return nil, fmt.Errorf("timeout connecting to %s: %w", srvAddress, err)
+	// closing the connection is the only way to interrupt net/smtp calls, as they take no context
+	watchDone := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = conn.Close()
+		case <-watchDone:
+		}
+	}()
+	var stopOnce sync.Once
+	stop = func() { stopOnce.Do(func() { close(watchDone) }) }
+
+	if deadline, ok := ctx.Deadline(); ok {
+		if e := conn.SetDeadline(deadline); e != nil {
+			em.logger.Logf("[WARN] can't set deadline on smtp connection to %s, %v", srvAddress, e)
+		}
 	}
 
-	c, err = smtp.NewClient(conn, em.host)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial: %w", err)
+	if c, err = smtp.NewClient(conn, em.host); err != nil {
+		stop()
+		_ = conn.Close()
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, nil, fmt.Errorf("failed to make smtp client for %s: %w", srvAddress, ctxErr)
+		}
+		if em.tls {
+			return nil, nil, fmt.Errorf("failed to make smtp client for %s: %w", srvAddress, err)
+		}
+		return nil, nil, fmt.Errorf("failed to dial: %w", err)
 	}
 
-	if em.starttls {
+	if err = em.hello(c); err != nil {
+		stop()
+		_ = c.Close()
+		return nil, nil, err
+	}
+
+	if !em.tls && em.starttls {
 		if err = c.StartTLS(tlsConf); err != nil {
-			return nil, fmt.Errorf("failed to start tls: %w", err)
+			stop()
+			_ = c.Close()
+			return nil, nil, fmt.Errorf("failed to start tls: %w", err)
 		}
 	}
 
-	return c, nil
+	return c, stop, nil
+}
+
+func (em *Sender) hello(client *smtp.Client) error {
+	if em.heloHost == "" {
+		return nil
+	}
+	if err := client.Hello(em.heloHost); err != nil {
+		return fmt.Errorf("failed to send SMTP greeting: %w", err)
+	}
+	return nil
 }
 
 // auth returns an smtp.Auth that implements SMTP authentication mechanism
@@ -235,78 +308,112 @@ func (em *Sender) auth() smtp.Auth {
 	return smtp.PlainAuth("", em.smtpUserName, em.smtpPassword, em.host)
 }
 
-func (em *Sender) buildMessage(text string, params Params) (message string, err error) {
-	addHeader := func(msg, h, v string) string {
-		msg += fmt.Sprintf("%s: %s\n", h, v)
-		return msg
-	}
-	message = addHeader(message, "From", params.From)
-	message = addHeader(message, "To", strings.Join(params.To, ","))
-	message = addHeader(message, "Subject", mime.BEncoding.Encode("utf-8", params.Subject))
-
-	if params.UnsubscribeLink != "" {
-		message = addHeader(message, "List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
-		message = addHeader(message, "List-Unsubscribe", "<"+params.UnsubscribeLink+">")
+// validateHeaders rejects user-provided values which would break out of the header they are put into.
+// CR and LF allow injecting arbitrary headers and message body, i.e. sending a different email than the caller intended.
+func (params Params) validateHeaders() error {
+	check := func(name, value string) error {
+		if strings.ContainsAny(value, "\r\n") {
+			return fmt.Errorf("invalid %s header value %q: contains CR or LF", name, value)
+		}
+		return nil
 	}
 
-	if params.InReplyTo != "" {
-		message = addHeader(message, "In-reply-to", "<"+params.InReplyTo+">")
+	for _, h := range [][2]string{
+		{"From", params.From},
+		{"Subject", params.Subject},
+		{"List-Unsubscribe", params.UnsubscribeLink},
+		{"In-reply-to", params.InReplyTo},
+	} {
+		if err := check(h[0], h[1]); err != nil {
+			return err
+		}
 	}
 
-	withAttachments := len(params.Attachments) > 0
-	withInlineImg := len(params.InlineImages) > 0
-
-	if em.contentType != "" || withAttachments || withInlineImg {
-		message = addHeader(message, "MIME-version", "1.0")
+	for _, to := range params.To {
+		if err := check("To", to); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
-	message = addHeader(message, "Date", em.timeNow().Format(time.RFC1123Z))
+// buildMessage makes the complete message, headers and body, in a single buffer the caller sends as is
+func (em *Sender) buildMessage(text string, params Params) (*bytes.Buffer, error) {
+	if err := params.validateHeaders(); err != nil {
+		return nil, err
+	}
 
 	buff := &bytes.Buffer{}
+	addHeader := func(h, v string) {
+		fmt.Fprintf(buff, "%s: %s\n", h, v)
+	}
+
+	// body writers are made upfront because the boundaries they pick are needed in the headers,
+	// they write nothing until used, i.e. after all the headers are in the buffer
 	qp := quotedprintable.NewWriter(buff)
 	mpMixed := multipart.NewWriter(buff)
 	boundaryMixed := mpMixed.Boundary()
 	mpRelated := multipart.NewWriter(buff)
 	boundaryRelated := mpRelated.Boundary()
 
+	addHeader("From", params.From)
+	addHeader("To", strings.Join(params.To, ","))
+	addHeader("Subject", mime.BEncoding.Encode("utf-8", params.Subject))
+
+	if params.UnsubscribeLink != "" {
+		addHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+		addHeader("List-Unsubscribe", "<"+params.UnsubscribeLink+">")
+	}
+
+	if params.InReplyTo != "" {
+		addHeader("In-reply-to", "<"+params.InReplyTo+">")
+	}
+
+	withAttachments := len(params.Attachments) > 0
+	withInlineImg := len(params.InlineImages) > 0
+
+	if em.contentType != "" || withAttachments || withInlineImg {
+		addHeader("MIME-version", "1.0")
+	}
+
+	addHeader("Date", em.timeNow().Format(time.RFC1123Z))
+
 	if withAttachments {
-		message = addHeader(message, "Content-Type", fmt.Sprintf("multipart/mixed; boundary=%q\r\n\r\n%s\r",
+		addHeader("Content-Type", fmt.Sprintf("multipart/mixed; boundary=%q\r\n\r\n%s\r",
 			boundaryMixed, "--"+boundaryMixed))
 	}
 
 	if withInlineImg {
-		message = addHeader(message, "Content-Type", fmt.Sprintf("multipart/related; boundary=%q\r\n\r\n%s\r",
+		addHeader("Content-Type", fmt.Sprintf("multipart/related; boundary=%q\r\n\r\n%s\r",
 			boundaryRelated, "--"+boundaryRelated))
 	}
 
 	if em.contentType != "" {
-		message = addHeader(message, "Content-Transfer-Encoding", "quoted-printable")
-		message = addHeader(message, "Content-Type", fmt.Sprintf("%s; charset=%q", em.contentType, em.contentCharset))
-
+		addHeader("Content-Transfer-Encoding", "quoted-printable")
+		addHeader("Content-Type", fmt.Sprintf("%s; charset=%q", em.contentType, em.contentCharset))
 	}
 
+	buff.WriteString("\n") // empty line between the headers and the body
+
 	if err := em.writeBody(qp, text); err != nil {
-		return "", fmt.Errorf("failed to write body: %w", err)
+		return nil, fmt.Errorf("failed to write body: %w", err)
 	}
 
 	if withInlineImg {
 		buff.WriteString("\r\n\r\n")
 		if err := em.writeFiles(mpRelated, params.InlineImages, "inline"); err != nil {
-			return "", fmt.Errorf("failed to write inline images: %w", err)
+			return nil, fmt.Errorf("failed to write inline images: %w", err)
 		}
 	}
 
 	if withAttachments {
 		buff.WriteString("\r\n\r\n")
 		if err := em.writeFiles(mpMixed, params.Attachments, "attachment"); err != nil {
-			return "", fmt.Errorf("failed to write attachments: %w", err)
+			return nil, fmt.Errorf("failed to write attachments: %w", err)
 		}
 	}
 
-	m := buff.String()
-	message += "\n" + m
-	// returns base part of the file location
-	return message, nil
+	return buff, nil
 }
 
 func (em *Sender) writeBody(wc io.WriteCloser, text string) error {
@@ -321,53 +428,7 @@ func (em *Sender) writeBody(wc io.WriteCloser, text string) error {
 
 func (em *Sender) writeFiles(mp *multipart.Writer, files []string, disposition string) error {
 	for _, attachment := range files {
-		file, err := os.Open(filepath.Clean(attachment))
-		if err != nil {
-			return err
-		}
-
-		// we need first 512 bytes to detect file type
-		fTypeBuff := make([]byte, 512)
-		_, err = file.Read(fTypeBuff)
-		if err != nil {
-			return fmt.Errorf("failed to read file type %q: %w", attachment, err)
-		}
-
-		// remove null bytes in case file less than 512 bytes
-		fTypeBuff = bytes.Trim(fTypeBuff, "\x00")
-		fName := filepath.Base(attachment)
-		header := textproto.MIMEHeader{}
-		header.Set("Content-Type", http.DetectContentType(fTypeBuff)+"; name=\""+fName+"\"")
-		header.Set("Content-Transfer-Encoding", "base64")
-
-		switch disposition {
-		case "attachment":
-			header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fName))
-		case "inline":
-			header.Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", fName))
-			header.Set("Content-ID", fmt.Sprintf("<%s>", fName))
-		}
-
-		writer, err := mp.CreatePart(header)
-		if err != nil {
-			return err
-		}
-
-		// set reader offset at the beginning of the file because we read first 512 bytes
-		_, err = file.Seek(0, io.SeekStart)
-		if err != nil {
-			return err
-		}
-
-		encoder := base64.NewEncoder(base64.StdEncoding, writer)
-		if _, err := io.Copy(encoder, file); err != nil {
-			return err
-		}
-		if err := encoder.Close(); err != nil {
-			return err
-		}
-
-		if err := file.Close(); err != nil {
+		if err := em.writeFile(mp, attachment, disposition); err != nil {
 			return err
 		}
 	}
@@ -375,6 +436,108 @@ func (em *Sender) writeFiles(mp *multipart.Writer, files []string, disposition s
 		return err
 	}
 	return nil
+}
+
+// writeFile adds a single file as a mime part, the file is closed on every return path
+func (em *Sender) writeFile(mp *multipart.Writer, attachment, disposition string) (err error) {
+	file, err := os.Open(filepath.Clean(attachment))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e := file.Close(); e != nil && err == nil {
+			err = e
+		}
+	}()
+
+	// we need first 512 bytes to detect file type, an empty file is fine and detected as plain text
+	fTypeBuff := make([]byte, 512)
+	n, err := file.Read(fTypeBuff)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("failed to read file type %q: %w", attachment, err)
+	}
+	fTypeBuff = fTypeBuff[:n] // file can be shorter than the buffer
+
+	fName := filepath.Base(attachment)
+	// CR and LF are legal in file names but would terminate the header the name goes into
+	if strings.ContainsAny(fName, "\r\n") {
+		return fmt.Errorf("invalid file name %q: contains CR or LF", attachment)
+	}
+
+	// the detected type is always parseable, it comes from a fixed set of sniffed types
+	contentType, ctParams, _ := mime.ParseMediaType(http.DetectContentType(fTypeBuff))
+	params := map[string]string{"name": fName}
+	for k, v := range ctParams { // carries the charset of the text types over
+		params[k] = v
+	}
+
+	// mime formatting quotes and encodes the file name, plain interpolation would let it break out of the header
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Type", mime.FormatMediaType(contentType, params))
+	header.Set("Content-Transfer-Encoding", "base64")
+
+	switch disposition {
+	case "attachment", "inline":
+		header.Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": fName}))
+	}
+	if disposition == "inline" {
+		header.Set("Content-ID", fmt.Sprintf("<%s>", fName))
+	}
+
+	writer, err := mp.CreatePart(header)
+	if err != nil {
+		return err
+	}
+
+	// set reader offset at the beginning of the file because we read first 512 bytes
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	encoder := base64.NewEncoder(base64.StdEncoding, &lineWrapper{w: writer, limit: base64LineLimit})
+	if _, err = io.Copy(encoder, file); err != nil {
+		return err
+	}
+	return encoder.Close()
+}
+
+// base64LineLimit is the maximum line length for base64 encoded mime parts, set by RFC 2045
+const base64LineLimit = 76
+
+// crlf is shared by the line wrapper to keep it from allocating a separator for every line
+var crlf = []byte("\r\n")
+
+// lineWrapper breaks the stream written to it into lines of limit characters, separated by CRLF.
+// Base64 encoders produce a single unbroken line, which mime doesn't allow and strict relays reject.
+type lineWrapper struct {
+	w     io.Writer
+	limit int
+	n     int // characters already written to the current line
+}
+
+func (lw *lineWrapper) Write(p []byte) (int, error) {
+	written := 0
+	for len(p) > 0 {
+		if lw.n == lw.limit {
+			if _, err := lw.w.Write(crlf); err != nil {
+				return written, err
+			}
+			lw.n = 0
+		}
+
+		size := lw.limit - lw.n
+		if size > len(p) {
+			size = len(p)
+		}
+		n, err := lw.w.Write(p[:size])
+		written += n
+		lw.n += n
+		if err != nil {
+			return written, err
+		}
+		p = p[size:]
+	}
+	return written, nil
 }
 
 type nopLogger struct{}

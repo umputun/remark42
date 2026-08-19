@@ -44,8 +44,8 @@ github.com/dlclark/regexp2/v2/syntax
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.1.5
-## explicit; go 1.24.0
+# github.com/go-pkgz/auth/v2 v2.2.0
+## explicit; go 1.25.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
 github.com/go-pkgz/auth/v2/logger
@@ -53,7 +53,7 @@ github.com/go-pkgz/auth/v2/middleware
 github.com/go-pkgz/auth/v2/provider
 github.com/go-pkgz/auth/v2/provider/sender
 github.com/go-pkgz/auth/v2/token
-# github.com/go-pkgz/email v0.6.0
+# github.com/go-pkgz/email v0.8.0
 ## explicit; go 1.19
 github.com/go-pkgz/email
 # github.com/go-pkgz/expirable-cache/v3 v3.1.0
@@ -66,16 +66,12 @@ github.com/go-pkgz/jrpc
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
-# github.com/go-pkgz/lgr v0.12.3
+# github.com/go-pkgz/lgr v0.12.4
 ## explicit; go 1.21
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v1.3.0
-## explicit; go 1.24.0
+# github.com/go-pkgz/notify v1.4.0
+## explicit; go 1.25.0
 github.com/go-pkgz/notify
-# github.com/go-pkgz/repeater v1.2.0
-## explicit; go 1.20
-github.com/go-pkgz/repeater
-github.com/go-pkgz/repeater/strategy
 # github.com/go-pkgz/repeater/v2 v2.2.0
 ## explicit; go 1.23
 github.com/go-pkgz/repeater/v2
@@ -123,7 +119,7 @@ github.com/hashicorp/golang-lru/v2/simplelru
 # github.com/jessevdk/go-flags v1.6.1
 ## explicit; go 1.20
 github.com/jessevdk/go-flags
-# github.com/klauspost/compress v1.18.7
+# github.com/klauspost/compress v1.19.2
 ## explicit; go 1.24
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
@@ -140,7 +136,7 @@ github.com/kyokomi/emoji/v2
 ## explicit; go 1.19
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
-# github.com/montanaflynn/stats v0.9.0
+# github.com/montanaflynn/stats v0.12.4
 ## explicit; go 1.13
 github.com/montanaflynn/stats
 # github.com/redis/go-redis/v9 v9.21.0
@@ -263,7 +259,7 @@ go.uber.org/atomic
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.53.0
+# golang.org/x/crypto v0.55.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -282,7 +278,7 @@ golang.org/x/image/riff
 golang.org/x/image/vp8
 golang.org/x/image/vp8l
 golang.org/x/image/webp
-# golang.org/x/net v0.56.0
+# golang.org/x/net v0.57.0
 ## explicit; go 1.25.0
 golang.org/x/net/html
 golang.org/x/net/html/atom

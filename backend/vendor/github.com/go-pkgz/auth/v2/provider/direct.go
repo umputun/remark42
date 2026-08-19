@@ -60,9 +60,9 @@ func (p DirectHandler) Name() string { return p.ProviderName }
 
 // LoginHandler checks "user" and "passwd" against data store and makes jwt if all passed.
 //
-// GET /something?user=name&passwd=xyz&aud=bar&sess=[0|1]
+// GET /something?user=name&passwd=xyz&aud=bar&session=[0|1]
 //
-// POST /something?sess[0|1]
+// POST /something?session=[0|1]
 // Accepts application/x-www-form-urlencoded or application/json encoded requests.
 //
 // application/x-www-form-urlencoded body example:
@@ -82,7 +82,7 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, logReq, p.L, http.StatusBadRequest, err, "failed to parse credentials")
 		return
 	}
-	sessOnly := r.URL.Query().Get("sess") == "1"
+	sessOnly := sessionOnlyFromRequest(r)
 	if p.CredChecker == nil {
 		rest.SendErrorJSON(w, logReq, p.L, http.StatusInternalServerError,
 			fmt.Errorf("no credential checker"), "no credential checker")

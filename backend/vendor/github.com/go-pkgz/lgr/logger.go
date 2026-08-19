@@ -164,6 +164,12 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		return
 	}
 
+	// hide secrets in the message itself, covers slog handler and panic dump paths
+	// as well as the formatted line redacted later in this function
+	if len(l.secrets) > 0 {
+		msg = string(l.hideSecrets([]byte(msg)))
+	}
+
 	// if slog handler is set, use it
 	if l.slogHandler != nil {
 		// get the caller's PC so slog handlers can resolve source info when AddSource is enabled

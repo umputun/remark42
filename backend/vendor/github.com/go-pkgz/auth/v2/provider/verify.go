@@ -2,6 +2,7 @@ package provider
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
@@ -166,12 +167,26 @@ type Sender interface {
 	Send(address, text string) error
 }
 
+// ContextSender is an optional extension of Sender. A Sender implementing it gets the request context,
+// so the delivery is bound to the request instead of running until the transport times out on its own.
+type ContextSender interface {
+	SendContext(ctx context.Context, address, text string) error
+}
+
 // SenderFunc type is an adapter to allow the use of ordinary functions as Sender.
 type SenderFunc func(address, text string) error
 
 // Send calls f(address,text) to implement Sender interface
 func (f SenderFunc) Send(address, text string) error {
 	return f(address, text)
+}
+
+// send delivers the message, passing ctx to senders which accept it
+func (e VerifyHandler) send(ctx context.Context, address, text string) error {
+	if s, ok := e.Sender.(ContextSender); ok {
+		return s.SendContext(ctx, address, text)
+	}
+	return e.Sender.Send(address, text)
 }
 
 // VerifTokenService defines interface accessing tokens
@@ -252,7 +267,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, address := elems[0], elems[1]
-	sessOnly := r.URL.Query().Get("sess") == "1"
+	sessOnly := sessionOnlyFromRequest(r)
 
 	u := token.User{
 		Name: user,
@@ -299,7 +314,8 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			rest.RenderJSON(w, claims.User)
 			return
 		}
-		http.Redirect(w, r, confClaims.Handshake.From, http.StatusTemporaryRedirect)
+		// see-other keeps the redirect a GET whatever method the callback arrived with
+		http.Redirect(w, r, confClaims.Handshake.From, http.StatusSeeOther)
 		return
 	}
 	rest.RenderJSON(w, claims.User)
@@ -308,7 +324,11 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // GET /login?site=site&user=name&address=someone@example.com
 func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) {
 
-	user, address, site := r.URL.Query().Get("user"), r.URL.Query().Get("address"), r.URL.Query().Get("site")
+	user, address := r.URL.Query().Get("user"), r.URL.Query().Get("address")
+	site := r.URL.Query().Get("site")
+	if site == "" { // documented as aud, kept reading site for backward compatibility
+		site = r.URL.Query().Get("aud")
+	}
 
 	if user == "" || address == "" {
 		rest.SendErrorJSON(w, r, e.L, http.StatusBadRequest, fmt.Errorf("wrong request"), "can't get user and address")
@@ -327,7 +347,7 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 			// honor from at all.
 			From: r.URL.Query().Get("from"),
 		},
-		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
+		SessionOnly: sessionOnlyFromRequest(r),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  []string{site},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
@@ -372,7 +392,7 @@ func (e VerifyHandler) sendConfirmation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := e.Sender.Send(address, buf.String()); err != nil {
+	if err := e.send(r.Context(), address, buf.String()); err != nil {
 		rest.SendErrorJSON(w, r, e.L, http.StatusInternalServerError, err, "failed to send confirmation")
 		return
 	}

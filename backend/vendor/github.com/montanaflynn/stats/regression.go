@@ -10,101 +10,130 @@ type Coordinate struct {
 	X, Y float64
 }
 
-// LinearRegression finds the least squares linear regression on data series
+// LinearRegression finds the least squares linear regression on data series.
+// A series without at least two distinct X values returns ErrBounds.
 func LinearRegression(s Series) (regressions Series, err error) {
 
 	if len(s) == 0 {
 		return nil, EmptyInputErr
 	}
 
-	// Placeholder for the math to be done
-	var sum [4]float64
-
-	// Loop over data keeping index in place
-	i := 0
-	for ; i < len(s); i++ {
-		sum[0] += s[i].X
-		sum[1] += s[i].Y
-		sum[2] += s[i].X * s[i].X
-		sum[3] += s[i].X * s[i].Y
+	var sumX, sumY float64
+	for _, coordinate := range s {
+		sumX += coordinate.X
+		sumY += coordinate.Y
 	}
+	meanX := sumX / float64(len(s))
+	meanY := sumY / float64(len(s))
 
-	// Find gradient and intercept
-	f := float64(i)
-	gradient := (f*sum[3] - sum[0]*sum[1]) / (f*sum[2] - sum[0]*sum[0])
-	intercept := (sum[1] / f) - (gradient * sum[0] / f)
+	var covariance, variance float64
+	for _, coordinate := range s {
+		dx := coordinate.X - meanX
+		covariance += dx * (coordinate.Y - meanY)
+		variance += dx * dx
+	}
+	if variance == 0 {
+		return nil, ErrBounds
+	}
+	gradient := covariance / variance
 
 	// Create the new regression series
 	for j := 0; j < len(s); j++ {
 		regressions = append(regressions, Coordinate{
 			X: s[j].X,
-			Y: s[j].X*gradient + intercept,
+			Y: meanY + gradient*(s[j].X-meanX),
 		})
 	}
 
 	return regressions, nil
 }
 
-// ExponentialRegression returns an exponential regression on data series
+// ExponentialRegression returns an exponential regression on data series.
+// A non-positive Y value returns ErrYCoord, and a series without at least two
+// distinct X values returns ErrBounds.
 func ExponentialRegression(s Series) (regressions Series, err error) {
 
 	if len(s) == 0 {
 		return nil, EmptyInputErr
 	}
 
-	var sum [6]float64
+	var sumY, sumDeltaXY, sumYLogY float64
+	referenceX := s[0].X
 
 	for i := 0; i < len(s); i++ {
-		if s[i].Y < 0 {
-			return nil, YCoordErr
+		if s[i].Y <= 0 {
+			return nil, ErrYCoord
 		}
-		sum[0] += s[i].X
-		sum[1] += s[i].Y
-		sum[2] += s[i].X * s[i].X * s[i].Y
-		sum[3] += s[i].Y * math.Log(s[i].Y)
-		sum[4] += s[i].X * s[i].Y * math.Log(s[i].Y)
-		sum[5] += s[i].X * s[i].Y
+		sumY += s[i].Y
+		sumDeltaXY += (s[i].X - referenceX) * s[i].Y
+		sumYLogY += s[i].Y * math.Log(s[i].Y)
 	}
+	meanDeltaX := sumDeltaXY / sumY
+	meanLogY := sumYLogY / sumY
 
-	denominator := (sum[1]*sum[2] - sum[5]*sum[5])
-	a := math.Pow(math.E, (sum[2]*sum[3]-sum[5]*sum[4])/denominator)
-	b := (sum[1]*sum[4] - sum[5]*sum[3]) / denominator
+	var covariance, variance float64
+	for _, coordinate := range s {
+		dx := coordinate.X - referenceX - meanDeltaX
+		covariance += coordinate.Y * dx * (math.Log(coordinate.Y) - meanLogY)
+		variance += coordinate.Y * dx * dx
+	}
+	if variance == 0 {
+		return nil, ErrBounds
+	}
+	b := covariance / variance
 
 	for j := 0; j < len(s); j++ {
 		regressions = append(regressions, Coordinate{
 			X: s[j].X,
-			Y: a * math.Exp(b*s[j].X),
+			Y: math.Exp(meanLogY + b*(s[j].X-referenceX-meanDeltaX)),
 		})
 	}
 
 	return regressions, nil
 }
 
-// LogarithmicRegression returns an logarithmic regression on data series
+// LogarithmicRegression returns a logarithmic regression on data series.
+// A non-positive X value or a series without at least two distinct X values
+// returns ErrBounds.
 func LogarithmicRegression(s Series) (regressions Series, err error) {
 
 	if len(s) == 0 {
 		return nil, EmptyInputErr
 	}
-
-	var sum [4]float64
-
-	i := 0
-	for ; i < len(s); i++ {
-		sum[0] += math.Log(s[i].X)
-		sum[1] += s[i].Y * math.Log(s[i].X)
-		sum[2] += s[i].Y
-		sum[3] += math.Pow(math.Log(s[i].X), 2)
+	if s[0].X <= 0 {
+		return nil, ErrBounds
 	}
 
-	f := float64(i)
-	a := (f*sum[1] - sum[2]*sum[0]) / (f*sum[3] - sum[0]*sum[0])
-	b := (sum[2] - a*sum[0]) / f
+	logX := make([]float64, len(s))
+	referenceLogX := math.Log(s[0].X)
+	var sumDeltaLogX, sumY float64
+
+	for i := 0; i < len(s); i++ {
+		if s[i].X <= 0 {
+			return nil, ErrBounds
+		}
+		logX[i] = math.Log(s[i].X)
+		sumDeltaLogX += logX[i] - referenceLogX
+		sumY += s[i].Y
+	}
+	meanDeltaLogX := sumDeltaLogX / float64(len(s))
+	meanY := sumY / float64(len(s))
+
+	var covariance, variance float64
+	for i, coordinate := range s {
+		dx := logX[i] - referenceLogX - meanDeltaLogX
+		covariance += dx * (coordinate.Y - meanY)
+		variance += dx * dx
+	}
+	if variance == 0 {
+		return nil, ErrBounds
+	}
+	a := covariance / variance
 
 	for j := 0; j < len(s); j++ {
 		regressions = append(regressions, Coordinate{
 			X: s[j].X,
-			Y: b + a*math.Log(s[j].X),
+			Y: meanY + a*(logX[j]-referenceLogX-meanDeltaLogX),
 		})
 	}
 

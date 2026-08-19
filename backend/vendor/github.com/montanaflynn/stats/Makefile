@@ -24,11 +24,10 @@ docs:
 	godoc2md github.com/montanaflynn/stats | sed -e s#src/target/##g > DOCUMENTATION.md
 
 release:
-	git-chglog --output CHANGELOG.md --next-tag ${TAG}
+	@test -n "${TAG}" || { echo "TAG is required, e.g. make release TAG=v0.10.0"; exit 1; }
+	sh scripts/update-changelog.sh ${TAG}
 	git add CHANGELOG.md
-	git commit -m "Update changelog with ${TAG} changes"
-	git tag ${TAG}
-	git-chglog $(TAG) | tail -n +4 | gsed '1s/^/$(TAG)\n/gm' > release-notes.txt
+	git commit -m "chore: update changelog for ${TAG}"
+	git tag -a ${TAG} -m "${TAG}"
 	git push origin master ${TAG}
-	hub release create --copy -F release-notes.txt ${TAG}
 

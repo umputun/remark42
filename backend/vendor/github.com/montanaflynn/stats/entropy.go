@@ -19,13 +19,16 @@ func Entropy(input Float64Data) (float64, error) {
 	return -result, nil
 }
 
+// normalize divides each value by the sum of all values,
+// leaving the input itself unchanged.
 func normalize(input Float64Data) (Float64Data, error) {
 	sum, err := input.Sum()
 	if err != nil {
 		return Float64Data{}, err
 	}
-	for i := 0; i < input.Len(); i++ {
-		input[i] = input[i] / sum
+	c := copyslice(input)
+	for i := 0; i < c.Len(); i++ {
+		c[i] = c[i] / sum
 	}
-	return input, nil
+	return c, nil
 }

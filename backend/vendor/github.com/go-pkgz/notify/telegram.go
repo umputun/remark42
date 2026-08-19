@@ -12,11 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/repeater"
+	"github.com/go-pkgz/repeater/v2"
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/net/html"
 )
@@ -34,16 +33,19 @@ type TelegramParams struct {
 type Telegram struct {
 	TelegramParams
 
-	// Identifier of the first update to be requested.
-	// Should be equal to LastSeenUpdateID + 1
+	// identifier of the first update to be requested.
+	// should be equal to LastSeenUpdateID + 1
 	// See https://core.telegram.org/bots/api#getupdates
 	updateOffset           int
 	apiPollInterval        time.Duration // interval to check updates from Telegram API and answer to users
 	expiredCleanupInterval time.Duration // interval to check and clean up expired notification requests
 	username               string        // bot username
-	run                    int32         // non-zero if Run goroutine has started
-	requests               struct {
+	updates                struct {
 		sync.RWMutex
+		running bool // set while the Run goroutine is active, ProcessUpdate is not allowed then
+	}
+	requests struct {
+		sync.Mutex
 		data map[string]tgAuthRequest
 	}
 }
@@ -224,18 +226,17 @@ func (t *Telegram) AddToken(token, user, site string, expires time.Time) {
 
 // CheckToken verifies incoming token, returns the user address if it's confirmed and empty string otherwise
 func (t *Telegram) CheckToken(token, user string) (telegram, site string, err error) {
-	t.requests.RLock()
-	authRequest, ok := t.requests.data[token]
-	t.requests.RUnlock()
+	// lookup and consumption are a single transaction, so the one-time token can't be used twice
+	t.requests.Lock()
+	defer t.requests.Unlock()
 
+	authRequest, ok := t.requests.data[token]
 	if !ok {
 		return "", "", errors.New("request is not found")
 	}
 
 	if time.Now().After(authRequest.expires) {
-		t.requests.Lock()
 		delete(t.requests.data, token)
-		t.requests.Unlock()
 		return "", "", errors.New("request expired")
 	}
 
@@ -247,10 +248,7 @@ func (t *Telegram) CheckToken(token, user string) (telegram, site string, err er
 		return "", "", errors.New("user does not match original requester")
 	}
 
-	// Delete request
-	t.requests.Lock()
 	delete(t.requests.data, token)
-	t.requests.Unlock()
 
 	return authRequest.telegramID, authRequest.site, nil
 }
@@ -258,7 +256,21 @@ func (t *Telegram) CheckToken(token, user string) (telegram, site string, err er
 // Run starts processing login requests sent in Telegram, required for user notifications to work
 // Blocks caller
 func (t *Telegram) Run(ctx context.Context) {
-	atomic.AddInt32(&t.run, 1)
+	t.updates.Lock()
+	if t.updates.running {
+		t.updates.Unlock()
+		log.Print("[WARN] telegram updates processing is already running, ignoring the call")
+		return
+	}
+	t.updates.running = true
+	t.updates.Unlock()
+
+	defer func() {
+		t.updates.Lock()
+		t.updates.running = false
+		t.updates.Unlock()
+	}()
+
 	processUpdatedTicker := time.NewTicker(t.apiPollInterval)
 	cleanupTicker := time.NewTicker(t.expiredCleanupInterval)
 
@@ -267,7 +279,6 @@ func (t *Telegram) Run(ctx context.Context) {
 		case <-ctx.Done():
 			processUpdatedTicker.Stop()
 			cleanupTicker.Stop()
-			atomic.AddInt32(&t.run, -1)
 			return
 		case <-processUpdatedTicker.C:
 			updates, err := t.getUpdates(ctx)
@@ -292,7 +303,12 @@ func (t *Telegram) Run(ctx context.Context) {
 // ProcessUpdate is alternative to Run, it processes provided plain text update from Telegram
 // so that caller could get updates and send it not only there but to multiple sources
 func (t *Telegram) ProcessUpdate(ctx context.Context, textUpdate string) error {
-	if atomic.LoadInt32(&t.run) != 0 {
+	// read lock is held for the whole call, so Run can't start in the middle of it,
+	// while parallel ProcessUpdate calls are still allowed
+	t.updates.RLock()
+	defer t.updates.RUnlock()
+
+	if t.updates.running {
 		return errors.New("the Run goroutine should not be used with ProcessUpdate")
 	}
 	defer func() {
@@ -385,10 +401,18 @@ func (t *Telegram) processUpdates(ctx context.Context, updates *TelegramUpdate) 
 
 		token := strings.TrimPrefix(update.Message.Text, "/start ")
 
-		t.requests.RLock()
+		// confirmation is a single transaction, otherwise a request consumed by CheckToken
+		// in the middle of it would be restored from the stale copy
+		t.requests.Lock()
 		authRequest, ok := t.requests.data[token]
-		if !ok { // No such token
-			t.requests.RUnlock()
+		if ok {
+			authRequest.confirmed = true
+			authRequest.telegramID = strconv.Itoa(update.Message.Chat.ID)
+			t.requests.data[token] = authRequest
+		}
+		t.requests.Unlock()
+
+		if !ok { // no such token
 			if t.ErrorMsg != "" {
 				if err := t.sendText(ctx, update.Message.Chat.ID, t.ErrorMsg); err != nil {
 					log.Printf("[WARN] failed to notify telegram peer: %v", err)
@@ -396,14 +420,6 @@ func (t *Telegram) processUpdates(ctx context.Context, updates *TelegramUpdate) 
 			}
 			continue
 		}
-		t.requests.RUnlock()
-
-		authRequest.confirmed = true
-		authRequest.telegramID = strconv.Itoa(update.Message.Chat.ID)
-
-		t.requests.Lock()
-		t.requests.data[token] = authRequest
-		t.requests.Unlock()
 
 		if err := t.sendText(ctx, update.Message.Chat.ID, t.SuccessMsg); err != nil {
 			log.Printf("[ERROR] failed to notify telegram peer: %v", err)
@@ -413,7 +429,7 @@ func (t *Telegram) processUpdates(ctx context.Context, updates *TelegramUpdate) 
 
 // sendText sends a plain text message to telegram peer
 func (t *Telegram) sendText(ctx context.Context, recipientID int, msg string) error {
-	url := fmt.Sprintf("sendMessage?chat_id=%d&text=%s", recipientID, neturl.PathEscape(msg))
+	url := fmt.Sprintf("sendMessage?chat_id=%d&text=%s", recipientID, neturl.QueryEscape(msg))
 	return t.Request(ctx, url, nil, &struct{}{})
 }
 
@@ -436,7 +452,7 @@ func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
 
 // Request makes a request to the Telegram API and return the result
 func (t *Telegram) Request(ctx context.Context, method string, b []byte, data any) error {
-	return repeater.NewDefault(3, time.Millisecond*250).Do(ctx, func() error {
+	return repeater.NewFixed(3, time.Millisecond*250).Do(ctx, func() error {
 		url := fmt.Sprintf("%s%s/%s", t.apiPrefix, t.Token, method)
 
 		var req *http.Request
@@ -445,17 +461,18 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data an
 			req, err = http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 		} else {
 			req, err = http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(b))
-			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		}
 		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
+			return fmt.Errorf("failed to create request: %w", t.redactToken(err))
+		}
+		if b != nil {
+			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		}
 
 		client := http.Client{Timeout: t.Timeout}
-		defer client.CloseIdleConnections()
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
+			return fmt.Errorf("failed to send request: %w", t.redactToken(err))
 		}
 		defer resp.Body.Close()
 
@@ -469,6 +486,16 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data an
 
 		return nil
 	})
+}
+
+// redactToken hides the bot token in the URL of *url.Error returned by the http client,
+// as the token is a part of every API URL and otherwise leaks into the logs of the caller printing the error
+func (t *Telegram) redactToken(err error) error {
+	var urlErr *neturl.Error
+	if t.Token == "" || !errors.As(err, &urlErr) || !strings.Contains(urlErr.URL, t.Token) {
+		return err
+	}
+	return &neturl.Error{Op: urlErr.Op, URL: strings.ReplaceAll(urlErr.URL, t.Token, "<redacted>"), Err: urlErr.Err}
 }
 
 func (t *Telegram) parseError(r io.Reader, statusCode int) error {

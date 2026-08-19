@@ -25,6 +25,7 @@ To enable any email functionality, you need to set up an email (SMTP) server con
 ```
 SMTP_HOST
 SMTP_PORT
+SMTP_HELO_HOST
 SMTP_TLS
 SMTP_INSECURE_SKIP_VERIFY
 SMTP_STARTTLS
@@ -32,6 +33,18 @@ SMTP_USERNAME
 SMTP_PASSWORD
 SMTP_TIMEOUT
 ```
+
+### SMTP_HELO_HOST
+
+`SMTP_HELO_HOST` sets the hostname Remark42 announces in the SMTP greeting. Left unset it stays `localhost`, which is what Remark42 has always sent, so existing setups need no change.
+
+Set it when the mail server rejects the greeting. Postfix with `reject_non_fqdn_helo_hostname` or `reject_unknown_helo_hostname`, which is common on hardened relays, refuses `localhost` and the message never leaves, typically with a 504 in the log. Give it a fully qualified name that resolves to the sending host, for example:
+
+```
+SMTP_HELO_HOST=comments.example.com
+```
+
+It applies to both paths that send mail: notification emails and the verification emails used by email authentication.
 
 ## Setup email notifications
 
