@@ -23,6 +23,7 @@
   - The example module replaces `github.com/umputun/remark42/backend` with `../../`, so it carries the backend's dependencies as indirect entries. Leaving them stale fails the `test examples` CI step with `go: updates to go.mod needed; to update it: go mod tidy`.
   - This applies to Dependabot pull requests too: the bot updates `backend/` only, so its Go module PRs need the example tidied before they can go green.
 
+
 ## Release Procedure
 
 Remark42 uses two tags for each release:
@@ -42,7 +43,7 @@ git push origin backend/vX.Y.Z
 
 GoReleaser must ignore `backend/*` tags in `.goreleaser.yml` so release notes and current-tag detection use only product tags. Docker image publishing stays separate and is handled by the existing Docker workflow.
 
-For local artifact runs, install GoReleaser, Go 1.25, Node 16+, PNPM 8, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
+For local artifact runs, install GoReleaser, Go 1.25, Node 20+, PNPM 10, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
 
 ## Milestones and Issue Labels
 
