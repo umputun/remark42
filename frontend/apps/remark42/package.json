@@ -22,7 +22,7 @@
     "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.18.1",
     "pnpm": ">=10"
   },
   "packageManager": "pnpm@10.10.0",

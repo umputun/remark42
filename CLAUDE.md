@@ -23,38 +23,6 @@
   - The example module replaces `github.com/umputun/remark42/backend` with `../../`, so it carries the backend's dependencies as indirect entries. Leaving them stale fails the `test examples` CI step with `go: updates to go.mod needed; to update it: go mod tidy`.
   - This applies to Dependabot pull requests too: the bot updates `backend/` only, so its Go module PRs need the example tidied before they can go green.
 
-## Node and pnpm versions live in many places
-
-Changing the required Node or pnpm version means changing **every** entry below in the same commit.
-They drift otherwise: the docs sat on "Node 16+" and "PNPM 8" while CI, Docker and `.nvmrc` had all
-moved to Node 20 and pnpm 10.
-
-Version declarations:
-- `frontend/apps/remark42/package.json` - `engines.node`, `engines.pnpm`, `packageManager`
-- `site/package.json` - `engines.node`, `engines.yarn`, `packageManager` (site uses yarn, not pnpm)
-- `frontend/package.json` and `frontend/packages/api/package.json` - `packageManager` only, and they
-  are easy to miss because neither declares `engines`
-- `frontend/.nvmrc` and `site/.nvmrc`
-
-CI (every matrix entry, not just the first):
-- `.github/workflows/ci-frontend.yml` - four `node:` matrices
-- `.github/workflows/ci-frontend-api.yml` - three `node:` matrices
-- `.github/workflows/release.yml` - two `node-version:` values, plus the pnpm `version:` inputs
-
-Container images:
-- `Dockerfile` - `node:<v>-alpine` in the frontend build stage
-- `site/Dockerfile` and `site/Dockerfile.dev`
-
-Documentation:
-- `site/README.md`
-- `site/src/docs/contributing/frontend/index.md`
-- `site/src/docs/getting-started/installation/index.md` - mentioned twice
-- this file, in the Release Procedure section
-
-Note that `engines.node` describes the floor we support, while `.nvmrc`, CI and Docker pin what we
-actually build with, so they are allowed to differ in form but never in major version. Some
-transitive dev dependencies are already stricter than the declared floor: `undici` requires
-`>=20.18.1`, which any current Node 20 satisfies.
 
 ## Release Procedure
 
@@ -75,7 +43,7 @@ git push origin backend/vX.Y.Z
 
 GoReleaser must ignore `backend/*` tags in `.goreleaser.yml` so release notes and current-tag detection use only product tags. Docker image publishing stays separate and is handled by the existing Docker workflow.
 
-For local artifact runs, install GoReleaser, Go 1.25, Node 20+, PNPM 10, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
+For local artifact runs, install GoReleaser, Go 1.25, Node 20.18.1+, PNPM 10, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
 
 ## Milestones and Issue Labels
 
