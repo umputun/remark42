@@ -1,6 +1,6 @@
 import { h, FunctionComponent, Fragment } from 'preact';
 import { useState, useCallback, useRef } from 'preact/hooks';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'store/context';
 import clsx from 'clsx';
 import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
 

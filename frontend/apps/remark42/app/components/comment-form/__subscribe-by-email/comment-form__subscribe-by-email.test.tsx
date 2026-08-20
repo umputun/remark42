@@ -1,6 +1,6 @@
 import { mount } from 'enzyme';
 import { act } from 'preact/test-utils';
-import { Provider } from 'react-redux';
+import { Provider } from 'store/context';
 import { Middleware } from 'redux';
 import createMockStore from 'redux-mock-store';
 import { IntlProvider } from 'react-intl';

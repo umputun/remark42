@@ -1,5 +1,5 @@
 import { createStore, applyMiddleware, AnyAction, compose, combineReducers } from 'redux';
-import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
+import { useDispatch, useSelector, type TypedUseSelectorHook } from './context';
 import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import { rootProvider } from './reducers';
 import { ACTIONS } from './actions';

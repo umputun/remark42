@@ -1,5 +1,5 @@
 import { h, FunctionComponent, type AriaRole } from 'preact';
-import { shallowEqual } from 'react-redux';
+import { shallowEqual } from 'store/context';
 import { useCallback } from 'preact/hooks';
 import clsx from 'clsx';
 import { useIntl } from 'react-intl';

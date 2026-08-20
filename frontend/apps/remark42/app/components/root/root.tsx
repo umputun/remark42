@@ -1,5 +1,5 @@
 import { h, Component, Fragment } from 'preact';
-import { useSelector } from 'react-redux';
+import { useSelector } from 'store/context';
 import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 

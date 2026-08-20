@@ -1,7 +1,7 @@
 import { mount } from 'enzyme';
 import createMockStore from 'redux-mock-store';
 import { Middleware } from 'redux';
-import { Provider } from 'react-redux';
+import { Provider } from 'store/context';
 import { IntlProvider } from 'react-intl';
 
 import type { User } from 'common/types';

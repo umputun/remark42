@@ -1,4 +1,4 @@
-import { useSelector } from 'react-redux';
+import { useSelector } from 'store/context';
 
 import { StoreState } from 'store';
 import { Theme } from 'common/types';

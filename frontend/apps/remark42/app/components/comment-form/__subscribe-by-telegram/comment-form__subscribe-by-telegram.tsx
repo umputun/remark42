@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { h, FunctionComponent, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { useSelector } from 'react-redux';
+import { useSelector } from 'store/context';
 import { useIntl, defineMessages } from 'react-intl';
 
 import { User } from 'common/types';
