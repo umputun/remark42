@@ -39,7 +39,6 @@ overrides:
   '@xmldom/xmldom@<0.8.12': '>=0.8.12'
   '@babel/traverse@<7.23.2': '>=7.23.2 <8.0.0'
   '@xmldom/xmldom@<0.8.13': '>=0.8.13'
-  turbo@>=1.1.0 <2.9.14: '>=2.9.14'
   '@tootallnate/once@<2.0.1': '>=2.0.1'
   serialize-javascript@>=5.0.0 <7.0.5: '>=7.0.5'
   uuid@<11.1.1: '>=11.1.1'
@@ -52,7 +51,6 @@ overrides:
   '@babel/core@<=7.29.0': '>=7.29.6 <8.0.0'
   webpack-dev-server@<5.2.6: '>=5.2.6 <6.0.0'
   http-proxy-middleware@>=0.16.0 <2.0.10: '>=2.0.10'
-  turbo@<=2.9.13: '>=2.9.14'
   yaml@>=1.0.0 <2.0.0: '>=1.10.3 <2.0.0'
   yaml@>=2.0.0 <3.0.0: '>=2.9.0 <3.0.0'
   js-yaml@>=3.0.0 <4.0.0: '>=3.15.1 <4.0.0'
@@ -85,9 +83,6 @@ importers:
       lint-staged:
         specifier: ^13.0.3
         version: 13.3.0
-      turbo:
-        specifier: ^2.10.2
-        version: 2.10.2
 
   apps/remark42:
     dependencies:
@@ -1796,36 +1791,6 @@ packages:
 
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
-
-  '@turbo/darwin-64@2.10.2':
-    resolution: {integrity: sha512-wBM3ObqOWnKUDmg7QfUFDkDHPFUAJmrYlYqmEM8jMPAPA/I6wRJIbWimeQUqhOiQ8xPKhzyWM+xaiUP0wz8FEQ==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@turbo/darwin-arm64@2.10.2':
-    resolution: {integrity: sha512-/Cq0joWnuMjDPfhjbFP4sv+C/7gkQ415zlaO4XUzD5EZxbtrKgXKvuuydMvogG8GeUnN1aDltW71RlmEfpjbyw==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@turbo/linux-64@2.10.2':
-    resolution: {integrity: sha512-mMsf5IIhiKuceEXNstd25IbadjBXZ0amxzFOqliEzJX6HyeeHdBQPVSY583PWqYDyqM/FB8d5ZjkthfBSeuH3Q==}
-    cpu: [x64]
-    os: [linux]
-
-  '@turbo/linux-arm64@2.10.2':
-    resolution: {integrity: sha512-Wcng1i2kaKmXutmwxT9MUoYZvdaIekXAdlGr4+0TpgbhGLw7nDuEcRBFrxb5BbRoX1d1q8SpdRxLc45TvDZIdQ==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@turbo/windows-64@2.10.2':
-    resolution: {integrity: sha512-SsNhM7Ho7EpAdwtrJKBOic9Hso23vu6Dp0gAfLOvUFjPzurr/sGQlXZEvr6z89ne4RDOypTwz5CBDrixpMKtXw==}
-    cpu: [x64]
-    os: [win32]
-
-  '@turbo/windows-arm64@2.10.2':
-    resolution: {integrity: sha512-Gf+S7ICAdimT/n02bOuVWKvhHnct/HYjZg3oBNIz5hZ9ZyWHbQim9J3P5Qip8WpX0ksxF7eaBVziJCuLnjhqDg==}
-    cpu: [arm64]
-    os: [win32]
 
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
@@ -6306,10 +6271,6 @@ packages:
     resolution: {integrity: sha512-axr3IdNuVIxnaK5XGEUFTu3YmAQ6lllgrvqfEoR16g/HGnYY/6We4oWENtAnzK6/LpJ2ur9PAb80RBt7/U4ugw==}
     engines: {node: '>= 6.0.0'}
 
-  turbo@2.10.2:
-    resolution: {integrity: sha512-wTExrNrRjB8qzIcg+ZLm0A3GFNLDsWNwdS/RBXB0FPrBDyzk3i96Yx+TxWZC7a0k1SIreFB8ciUbxjmEqTH8IQ==}
-    hasBin: true
-
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -8423,24 +8384,6 @@ snapshots:
   '@tsconfig/node14@1.0.3': {}
 
   '@tsconfig/node16@1.0.4': {}
-
-  '@turbo/darwin-64@2.10.2':
-    optional: true
-
-  '@turbo/darwin-arm64@2.10.2':
-    optional: true
-
-  '@turbo/linux-64@2.10.2':
-    optional: true
-
-  '@turbo/linux-arm64@2.10.2':
-    optional: true
-
-  '@turbo/windows-64@2.10.2':
-    optional: true
-
-  '@turbo/windows-arm64@2.10.2':
-    optional: true
 
   '@types/aria-query@5.0.4': {}
 
@@ -13723,15 +13666,6 @@ snapshots:
   tsyringe@4.10.0:
     dependencies:
       tslib: 1.14.1
-
-  turbo@2.10.2:
-    optionalDependencies:
-      '@turbo/darwin-64': 2.10.2
-      '@turbo/darwin-arm64': 2.10.2
-      '@turbo/linux-64': 2.10.2
-      '@turbo/linux-arm64': 2.10.2
-      '@turbo/windows-64': 2.10.2
-      '@turbo/windows-arm64': 2.10.2
 
   type-check@0.4.0:
     dependencies:
