@@ -11,13 +11,12 @@
   "scripts": {
     "prepare": "if [ -z \"$CI\" ]; then cd .. && husky install frontend/.husky; else echo \"Skip Husky Hooks\"; fi",
     "lint-staged": "lint-staged",
-    "dev:app": "turbo run dev --filter=@remark42/app"
+    "dev:app": "pnpm --filter @remark42/app dev"
   },
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
     "husky": "^8.0.1",
-    "lint-staged": "^13.0.3",
-    "turbo": "^2.10.2"
+    "lint-staged": "^13.0.3"
   },
   "pnpm": {
     "overrides": {
@@ -55,7 +54,6 @@
       "@xmldom/xmldom@<0.8.12": ">=0.8.12",
       "@babel/traverse@<7.23.2": ">=7.23.2 <8.0.0",
       "@xmldom/xmldom@<0.8.13": ">=0.8.13",
-      "turbo@>=1.1.0 <2.9.14": ">=2.9.14",
       "@tootallnate/once@<2.0.1": ">=2.0.1",
       "serialize-javascript@>=5.0.0 <7.0.5": ">=7.0.5",
       "uuid@<11.1.1": ">=11.1.1",
@@ -68,7 +66,6 @@
       "@babel/core@<=7.29.0": ">=7.29.6 <8.0.0",
       "webpack-dev-server@<5.2.6": ">=5.2.6 <6.0.0",
       "http-proxy-middleware@>=0.16.0 <2.0.10": ">=2.0.10",
-      "turbo@<=2.9.13": ">=2.9.14",
       "yaml@>=1.0.0 <2.0.0": ">=1.10.3 <2.0.0",
       "yaml@>=2.0.0 <3.0.0": ">=2.9.0 <3.0.0",
       "js-yaml@>=3.0.0 <4.0.0": ">=3.15.1 <4.0.0",
