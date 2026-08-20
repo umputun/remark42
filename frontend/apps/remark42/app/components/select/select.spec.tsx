@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { fireEvent, screen, waitFor } from '@testing-library/preact';
+import { screen, waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import { Select } from './select';
@@ -31,7 +31,7 @@ describe('<Select/>', () => {
   it('should highlight select on focus', async () => {
     render(<Select items={items} selected={items[0]} />);
 
-    fireEvent.focus(screen.getByRole('combobox'));
+    screen.getByRole<HTMLSelectElement>('combobox').focus();
     await waitFor(() => {
       const rootElement = screen.getByTestId('select-root');
       expect(rootElement).toHaveClass('select_focused');

@@ -265,7 +265,8 @@ describe('<Auth/>', () => {
     const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
-    fireEvent.blur(input);
+    input.focus();
+    input.blur();
 
     expect(input).toHaveValue(expected);
   });
@@ -285,7 +286,8 @@ describe('<Auth/>', () => {
     const input = screen.getByPlaceholderText('Username');
 
     fireEvent.change(input, { target: { value } });
-    fireEvent.blur(input);
+    input.focus();
+    input.blur();
 
     expect(input).toHaveValue(expected);
   });

@@ -19,8 +19,7 @@ When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `e
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
 A few deps needed pinning specifically because of pnpm 10's hoisting changes, not because of the deps themselves:
-- `preact` pinned via `pnpm.overrides` (10.6.2) — newer breaks the build under the stricter layout
-- `react-intl` 6.0.5 and `@testing-library/preact` 3.2.2 — newer versions' type declarations break the preact-compat alias setup
+- `react-intl` 6.0.5 — newer versions' type declarations break the preact-compat alias setup
 - `@types/minimatch` 5.1.2 — 6.x is an empty stub that the hoisted layout picks up instead of the real types
 - `cheerio` 1.0.0-rc.12 — 1.2 is ESM-only and breaks under jest 28
 
@@ -32,12 +31,30 @@ Unlike the polyfilled fetch in node 16 and 18, it rejects relative request URLs,
 silent: requests simply never match. Any test harness that mocks fetch needs absolute base URLs and
 a jsdom base URL set.
 
+## JSX runs on the automatic runtime, in three places that must agree
+
+`preact` 10.29 types a component's return as `ComponentChildren`, which only satisfies a JSX check on
+TypeScript 5.1+ via `JSX.ElementType`, and it scopes the `JSX` namespace to `preact/jsx-runtime` rather
+than declaring it globally. So the type layer has to use the automatic runtime:
+
+- `tsconfig.json`: `jsx: react-jsx` with `jsxImportSource: preact`
+- `.babelrc.js`: `@babel/preset-react` with `runtime: 'automatic'`, `importSource: 'preact'`
+- `jest.config.ts`: `@swc/jest` with `transform.react.runtime: 'automatic'`, `importSource: 'preact'`
+
+`ts-loader` in `webpack.config.js` overrides `jsx` back to `preserve`. That is deliberate: JSX has to
+survive as JSX until babel runs, or `babel-plugin-jsx-remove-data-test-id` has nothing to strip and
+`data-testid` attributes ship to production. Verify with `grep -c data-testid public/*.mjs` after a
+production build; it must be 0.
+
+Keep all three in step. If babel alone were left on the classic `pragma: 'h'` transform, a new `.tsx`
+without `import { h }` would type-check and lint clean, then throw at runtime, because
+`eslint-config-preact` sets `react/react-in-jsx-scope` to 0 and the local config turns `no-undef` off.
+
 ## Held-back majors
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
 - `eslint` 8 (9/10 need flat-config migration), `stylelint` 14 (16 has breaking rule changes), `babel` 7, `jest` 28 (30 needs config changes)
-- `typescript` 4.7 in `apps/remark42` specifically (the api package is on a newer TS — they're intentionally decoupled)
 - `react`/`react-dom` (the app uses `preact` aliased as `react`/`react-dom` via `preact/compat` — don't "fix" this by installing real react)
 - `redux`/`react-redux`, `tailwindcss` 3.4 (v4 is a full config rewrite), `@11ty/eleventy` 2 (v3 is an ESM migration) in `site/`
 

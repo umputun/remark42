@@ -2,8 +2,8 @@ const getPresetEnv = (options) => ['@babel/preset-env', options];
 const preactPreset = [
   '@babel/preset-react',
   {
-    pragma: 'h',
-    pragmaFrag: 'Fragment',
+    runtime: 'automatic',
+    importSource: 'preact',
   },
 ];
 

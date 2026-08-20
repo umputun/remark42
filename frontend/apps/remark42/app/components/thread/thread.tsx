@@ -1,4 +1,4 @@
-import { h, FunctionComponent } from 'preact';
+import { h, FunctionComponent, type AriaRole } from 'preact';
 import { shallowEqual } from 'react-redux';
 import { useCallback } from 'preact/hooks';
 import clsx from 'clsx';
@@ -54,7 +54,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, getPreview }) => {
         level === 6 && styles.level6,
         theme === 'dark' && styles.themeDark
       )}
-      role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
+      role={(!collapsed && !!repliesCount ? 'listitem list' : 'listitem') as AriaRole}
       aria-expanded={!collapsed}
     >
       <InView>
