@@ -20,7 +20,7 @@ While developing, we set up environment which imitates real world example. We se
 
 You must have at least 2GB RAM or swap enabled for building.
 
-- install [Node.js 20.18.1](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
+- install [Node.js 20](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
 - install [PNPM 10](https://pnpm.io/installation)
 - run `pnpm i` inside `./frontend`
 

@@ -18,7 +18,7 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
-`engines.node` must not sit below the strictest dependency requirement: `undici` needs `>=20.18.1`, so a bare `>=20` would advertise support for 20.0 through 20.18.0, which fail dependency engine checks. The docs must state the same floor.
+`engines.node` states the major we support, currently `>=20`, and the docs say the same. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`), which any current Node 20 satisfies; do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
 
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
