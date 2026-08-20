@@ -6,12 +6,12 @@ on:
       - master
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/apps/remark42/**"
+      - "frontend/**"
       - "!**.md"
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/apps/remark42/**"
+      - "frontend/**"
       - "!**.md"
 
 jobs:
