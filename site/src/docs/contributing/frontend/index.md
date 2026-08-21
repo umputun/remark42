@@ -8,7 +8,8 @@ Frontend for Remark42 is built with [Preact](https://preactjs.com) and [Redux](h
 
 ::: note 💡
 We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started).
-TLDR: Preact replicates React API and compatible with its libraries.
+React libraries are not usable here: the store bindings and the i18n helpers are small local
+modules under `app/`.
 :::
 
 In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget.
@@ -111,10 +112,10 @@ Run `pnpm build` inside `./frontend`, and result files will be saved in `./front
 ## Testing
 
 - Project uses [Jest](https://jestjs.io) as test framework
-- [Testing Library](https://testing-library.com) is used as UI test utilities (there are still tests with Enzyme, but we are in process of migration)
+- [Testing Library](https://testing-library.com) is used for UI tests
 - Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`
 - Tests are running on push attempt
-- Example tests can be found in `./app/components/auth/auth.spec.ts`, `./app/store/user/reducers.test.ts`
+- Example tests can be found in `./app/components/auth/auth.spec.tsx`, `./app/store/user/reducers.test.ts`
 
 ## Notes
 

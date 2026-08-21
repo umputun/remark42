@@ -1,10 +1,10 @@
 import clsx from 'clsx';
 import { h, Fragment, FunctionComponent } from 'preact';
-import { useIntl } from 'react-intl';
 import { messages } from './telegram.messages';
 import { BASE_URL, API_BASE } from 'common/constants.config';
 import { Button } from 'components/button';
 
+import { useIntl } from 'common/intl';
 import styles from './telegram-link.module.css';
 
 export type TelegramLinkProps = {

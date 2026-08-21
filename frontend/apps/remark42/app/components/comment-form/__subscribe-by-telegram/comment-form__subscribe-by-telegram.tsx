@@ -2,8 +2,8 @@ import clsx from 'clsx';
 import { h, FunctionComponent, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useSelector } from 'store/context';
-import { useIntl, defineMessages } from 'react-intl';
 
+import { useIntl, defineMessages } from 'common/intl';
 import { User } from 'common/types';
 import { StoreState } from 'store';
 import { FetcherError, RequestError, extractErrorMessageFromResponse } from 'utils/errorUtils';

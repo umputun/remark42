@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { User, BlockedUser, Theme, BlockTTL } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState } from 'store';
-import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'react-intl';
+import { defineMessages, IntlShape, FormattedMessage, useIntl } from 'common/intl';
 import { useTheme } from 'hooks/useTheme';
 import styles from './settings.module.css';
 

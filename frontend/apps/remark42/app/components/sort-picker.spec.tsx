@@ -37,10 +37,7 @@ describe('<SortPicker />', () => {
 
     expect(select).toBeInTheDocument();
 
-    // @testing-library/preact rewrites change to input for every element once it sees a
-    // compat vnode, so fireEvent.change never reaches a select handler; dispatch directly
-    select.value = nextOption;
-    fireEvent(select, new Event('change', { bubbles: true }));
+    fireEvent.change(select, { target: { value: nextOption } });
 
     await waitFor(() => expect(updateSorting).toHaveBeenCalledWith(nextOption));
 

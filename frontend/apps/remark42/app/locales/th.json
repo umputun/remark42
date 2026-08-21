@@ -119,7 +119,7 @@
   "profile.request-to-delete-data": "ขอให้ลบข้อมูลของฉัน",
   "retry": "ลองอีกครั้ง",
   "root.pinned-comments": "ความคิดเห็นที่ปักหมุด",
-  "root.powered-by": "ระบบแสดงความคิดเห็นโดย <a>Remark42</a",
+  "root.powered-by": "ระบบแสดงความคิดเห็นโดย <a>Remark42</a>",
   "root.show-more": "แสดงเพิ่มเติม",
   "settings.block": "บล็อก",
   "settings.block-time": "จนถึงวันที่ {day} เวลา {time}",

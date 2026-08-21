@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { useIntl, FormattedMessage } from 'react-intl';
 
+import { useIntl, FormattedMessage } from 'common/intl';
 import { getUserComments } from 'common/api';
 import { parseQuery } from 'utils/parse-query';
 import { requestDeletion } from 'utils/email';

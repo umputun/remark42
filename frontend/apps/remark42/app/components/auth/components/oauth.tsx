@@ -1,7 +1,7 @@
 import { h, JSX } from 'preact';
 import clsx from 'clsx';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import type { OAuthProvider } from 'common/types';
 import { siteId } from 'common/settings';
 import { useTheme } from 'hooks/useTheme';

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'preact/hooks';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import { errorMessages, RequestError } from 'utils/errorUtils';
 import { isObject } from 'utils/is-object';
 import { parseMessage, updateIframeHeight } from 'utils/post-message';

@@ -1,7 +1,7 @@
 import { h, FunctionComponent } from 'preact';
 import { useMemo } from 'preact/hooks';
-import { useIntl, defineMessages } from 'react-intl';
 
+import { useIntl, defineMessages } from 'common/intl';
 import { useTheme } from 'hooks/useTheme';
 import { siteId, url } from 'common/settings';
 import { BASE_URL, API_BASE } from 'common/constants';

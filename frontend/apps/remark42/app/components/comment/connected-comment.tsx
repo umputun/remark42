@@ -17,7 +17,7 @@ import { uploadImage, getPreview } from 'common/api';
 import { getThreadIsCollapsed } from 'store/thread/getters';
 import { bindActions } from 'utils/actionBinder';
 import { useActions } from 'hooks/useAction';
-import { useIntl } from 'react-intl';
+import { useIntl } from 'common/intl';
 
 type ProvidedProps = Pick<
   CommentProps,

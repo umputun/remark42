@@ -1,4 +1,4 @@
-import { defineMessages, IntlShape } from 'react-intl';
+import { defineMessages, IntlShape } from 'common/intl';
 import { BlockTTL } from 'common/types';
 
 export interface BlockingDuration {

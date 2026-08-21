@@ -2,8 +2,8 @@ import { h, FunctionComponent, type AriaRole } from 'preact';
 import { shallowEqual } from 'store/context';
 import { useCallback } from 'preact/hooks';
 import clsx from 'clsx';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import { Comment as CommentInterface } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
 import { StoreState, useAppDispatch, useAppSelector } from 'store';

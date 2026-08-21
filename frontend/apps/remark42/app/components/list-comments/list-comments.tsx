@@ -1,6 +1,6 @@
 import { h } from 'preact';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import type { Comment as CommentType } from 'common/types';
 import { Comment } from 'components/comment';
 

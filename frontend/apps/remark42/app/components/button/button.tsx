@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import { h, type ButtonHTMLAttributes } from 'preact';
-import { forwardRef } from 'preact/compat';
 
 import type { Theme } from 'common/types';
 
@@ -25,8 +24,8 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' |
   className?: string;
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ children, theme, mix, kind, type = 'button', size, className, ...props }, ref) => (
+export function Button({ children, theme, mix, kind, type = 'button', size, className, ...props }: ButtonProps) {
+  return (
     <button
       className={clsx(
         styles.root,
@@ -38,9 +37,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       )}
       type={type}
       {...props}
-      ref={ref}
     >
       {children}
     </button>
-  )
-);
+  );
+}

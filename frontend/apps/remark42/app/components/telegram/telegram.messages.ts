@@ -1,4 +1,4 @@
-import { defineMessages } from 'react-intl';
+import { defineMessages } from 'common/intl';
 
 export const messages = defineMessages<string>({
   telegramMessage1: {
