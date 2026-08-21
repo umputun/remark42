@@ -353,11 +353,10 @@ func threadURL(t *testing.T) string {
 // default one. every thread url goes through here so the rewriting below cannot be missed
 func threadURLOn(t *testing.T, base string) string {
 	t.Helper()
-	// no underscores: collapse persistence stores its localStorage keys as
-	// "siteID_url_commentID" and splits them on "_" (store/thread/utils.ts), so an underscore
-	// anywhere in the page URL makes the entry unreadable on the next load. subtest names
-	// also carry a "/", which has no business in a query value
-	name := strings.NewReplacer("_", "-", "/", "-").Replace(strings.ToLower(t.Name()))
+	// underscores are left in on purpose: collapse persistence keys off the page url, and a
+	// url carrying the separator its storage used to join on is the case that broke it. only
+	// the "/" of a subtest name is dropped, having no business in a query value
+	name := strings.ReplaceAll(strings.ToLower(t.Name()), "/", "-")
 	return fmt.Sprintf("%s/web/?e2e=%s-%s", base, name, runID)
 }
 

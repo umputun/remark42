@@ -108,7 +108,7 @@ export class Comment extends Component<CommentProps, State> {
         newState.editDeadline = Infinity;
       } else {
         const editDuration = StaticStore.config.edit_duration;
-        const timeDiff = StaticStore.serverClientTimeDiff || 0;
+        const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
         const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
 
         newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;

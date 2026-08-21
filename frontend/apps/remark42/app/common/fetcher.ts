@@ -3,7 +3,7 @@ import { errorMessages, RequestError } from 'utils/errorUtils';
 import { siteId } from './settings';
 import { getCookie, setAuthCookie, clearAuthCookie } from './cookies';
 import { StaticStore } from './static-store';
-import { BASE_URL, API_BASE } from './constants';
+import { BASE_URL, API_BASE, MAX_CLOCK_SKEW_MS } from './constants';
 
 /** Header name for JWT token */
 export const JWT_HEADER = 'X-JWT';
@@ -93,10 +93,17 @@ const createFetcher = (baseUrl: string = ''): Methods => {
 
     try {
       const res = await fetch(url, { ...params, headers });
-      // TODO: it should be clarified when frontend gets this header and what could be in it to simplify this logic and cover by tests
-      const date = (res.headers.has('date') && res.headers.get('date')) || '';
-      const timestamp = isNaN(Date.parse(date)) ? 0 : Date.parse(date);
-      StaticStore.serverClientTimeDiff = (new Date().getTime() - timestamp) / 1000;
+      // milliseconds, because every consumer adds it to an epoch in milliseconds.
+      //
+      // an implausible result is dropped rather than stored. the previous code fell back to a
+      // zero timestamp on a missing header, which made the "skew" the whole epoch, and
+      // Date.parse is lenient enough to turn junk into a date of its own accord, so trusting
+      // whatever comes back would keep a deadline computed from it open indefinitely
+      const timestamp = Date.parse(res.headers.get('date') || '');
+      const diff = new Date().getTime() - timestamp;
+      if (!isNaN(diff) && Math.abs(diff) < MAX_CLOCK_SKEW_MS) {
+        StaticStore.serverClientTimeDiffMs = diff;
+      }
 
       // backend could update jwt in any time. so, we should handle it
       if (res.headers.has(JWT_HEADER)) {

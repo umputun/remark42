@@ -2,8 +2,9 @@ import type { Config } from './types';
 
 interface StaticStoreType {
   config: Config;
-  /** used in fetcher, fer example to set comment edit timeout */
-  serverClientTimeDiff?: number;
+  /** how far the client clock is ahead of the server, in milliseconds. set by the fetcher,
+   * read wherever a server timestamp meets the local clock, such as the comment edit deadline */
+  serverClientTimeDiffMs?: number;
 }
 
 /**

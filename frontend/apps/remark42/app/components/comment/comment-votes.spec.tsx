@@ -13,7 +13,6 @@ describe('<CommentVote />', () => {
     expect(screen.getByTitle('Vote up')).toBeVisible();
     expect(screen.getByTitle('Vote down')).toBeVisible();
     expect(screen.getByTitle('Votes score')).toBeVisible();
-    // expect(screen.getByTitle('Votes score')).toHaveAttribute('title', '0.00');
   });
 
   it('should render vote component with positive score', () => {
@@ -103,5 +102,28 @@ describe('<CommentVote />', () => {
     expect(screen.queryByTitle('Vote down')).toBeDisabled();
     expect(screen.getByTitle('Vote up')).toBeVisible();
     expect(screen.getByTitle('Vote up')).not.toBeDisabled();
+  });
+
+  it('shows the vote count as the tooltip when there is no controversy', () => {
+    render(<CommentVotes id="1" vote={0} votes={3} controversy={0} />);
+
+    expect(screen.getByTitle('Votes score')).toHaveTextContent('3');
+    expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
+  });
+
+  // what actually arrives: the backend marks the field omitempty, so an uncontroversial
+  // comment carries no controversy at all rather than a zero
+  it('shows the vote count as the tooltip when controversy is absent', () => {
+    render(<CommentVotes id="1" vote={0} votes={3} controversy={undefined} />);
+
+    expect(screen.getByTitle('Votes score')).toHaveTextContent('3');
+    expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
+  });
+
+  it('shows the controversy as the tooltip when there is some', () => {
+    render(<CommentVotes id="1" vote={0} votes={3} controversy={1.234} />);
+
+    expect(screen.getByTitle('Controversy: 1.23')).toHaveTextContent('3');
+    expect(screen.queryByTitle('Votes score')).not.toBeInTheDocument();
   });
 });

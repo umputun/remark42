@@ -48,3 +48,6 @@ export const IS_THIRD_PARTY: boolean = (() => {
     return true;
   }
 })();
+
+/** clock difference against the server beyond which the reading is treated as unusable */
+export const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
