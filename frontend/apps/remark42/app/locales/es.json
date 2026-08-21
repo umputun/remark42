@@ -16,7 +16,7 @@
   "auth.telegram-message-1": "Abre Telegram",
   "auth.telegram-message-2": "y luego selecciona la opción “Start” para iniciar la conversación con el bot.",
   "auth.telegram-message-3": "Una vez autorizado por el bot, regresa aquí y haz clic en “Verificar”.",
-  "auth.telegram-optional-qr": "ó escaneando el código QR",
+  "auth.telegram-optional-qr": "o escaneando el código QR",
   "auth.telegram-qr": "Código QR de Telegram",
   "auth.user-not-found": "No se encontró el usuario",
   "auth.username": "Nombre de usuario",
