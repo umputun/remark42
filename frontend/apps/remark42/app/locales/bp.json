@@ -107,7 +107,7 @@
   "errors.5": "O comentário não pode ser encontrado. Atualize a página e tente novamente.",
   "errors.6": "O site não pode ser encontrado. Atualize a página e tente novamente.",
   "errors.7": "O usuário foi bloqueado.",
-  "errors.8": "O usuário foi bloqueado.",
+  "errors.8": "Não é possível comentar nesta página. Os comentários são somente leitura.",
   "errors.9": "A alteração do comentário falhou. Tente novamente um pouco mais tarde.",
   "errors.conflict": "Conflict.",
   "errors.failed-fetch": "Falha ao buscar. Verifique sua conexão com a Internet ou tente novamente mais tarde",

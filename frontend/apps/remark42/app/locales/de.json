@@ -107,7 +107,7 @@
   "errors.5": "Kommentar nicht gefunden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
   "errors.6": "Site nicht gefunden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
   "errors.7": "Benutzer wurde gesperrt.",
-  "errors.8": "Benutzer wurde gesperrt.",
+  "errors.8": "Auf dieser Seite können keine Kommentare geschrieben werden. Die Kommentare sind schreibgeschützt.",
   "errors.9": "Änderungen konnten nicht gespeichert werden. Bitte versuchen Sie es später noch einmal.",
   "errors.conflict": "Conflict.",
   "errors.failed-fetch": "Abruf fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es etwas später erneut",
@@ -177,7 +177,7 @@
   "user.load-more": "Mehr laden...",
   "user.my-comments": "Meine Kommentare",
   "vote.controversy": "Strittigkeit: {value}",
-  "vote.downvote": " Nicht zustimmen",
+  "vote.downvote": "Nicht zustimmen",
   "vote.score": "Abstimmungsergebnis",
   "vote.upvote": "Zustimmen"
 }

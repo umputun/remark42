@@ -107,7 +107,7 @@
   "errors.5": "Yorum bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.",
   "errors.6": "Site bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.",
   "errors.7": "Kullanıcı engellendi.",
-  "errors.8": "Kullanıcı engellendi.",
+  "errors.8": "Bu sayfaya yorum yapılamaz. Yorumlar yazmaya kapalıdır.",
   "errors.9": "Yorum değiştirilemedi. Lütfen daha sonra tekrar deneyin.",
   "errors.conflict": "Conflict.",
   "errors.failed-fetch": "İçerik yüklenemedi. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin.",

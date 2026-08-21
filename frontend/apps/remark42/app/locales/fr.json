@@ -107,7 +107,7 @@
   "errors.5": "Commentaire introuvable. Rafraichissez la page et réessayez.",
   "errors.6": "Site introuvable. Rafraichissez la page et réessayez.",
   "errors.7": "L'utilisateur a été bloqué.",
-  "errors.8": "L'utilisateur a été bloqué.",
+  "errors.8": "Impossible de publier un commentaire sur cette page. Les commentaires sont en lecture seule.",
   "errors.9": "La modification du commentaire a échoué. Veuillez réessayer un peu plus tard.",
   "errors.conflict": "Conflict.",
   "errors.failed-fetch": "Impossible de récupérer les donnés. Veuillez vérifier votre connexion Internet ou réessayez plus tard",

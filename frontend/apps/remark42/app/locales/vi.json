@@ -107,7 +107,7 @@
   "errors.5": "Không tìm thấy bình luận, xin hãy làm mới trang và thử lại.",
   "errors.6": "Không tìm thấy trang web, xin hãy làm mới trang và thử lại.",
   "errors.7": "Người dùng đã bị chặn.",
-  "errors.8": "Người dùng đã bị chặn.",
+  "errors.8": "Không thể đăng bình luận trên trang này. Bình luận đang ở chế độ chỉ đọc.",
   "errors.9": "Thay đổi bình luận không thành công. Một chút sau rồi thử lại nhé.",
   "errors.conflict": "Xung đột.",
   "errors.failed-fetch": "Nhận dữ liệu thất bại. Vui lòng kiểm tra lại đường truyền hoặc thử lại sau.",
