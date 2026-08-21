@@ -6,7 +6,7 @@ require (
 	github.com/go-pkgz/jrpc v0.4.2
 	github.com/go-pkgz/lgr v0.12.4
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/umputun/remark42/backend v1.1000.0
 )
 
@@ -20,17 +20,15 @@ require (
 	github.com/go-pkgz/rest v1.24.0 // indirect
 	github.com/go-pkgz/routegroup v1.6.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/umputun/remark42/backend v1.1000.0 => ../../
