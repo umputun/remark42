@@ -1,4 +1,8 @@
-# compose for running e2e tests in CI
+# compose for the e2e suite; the tests themselves run on the host, see e2e/
+#
+# every port is bound to the loopback interface on purpose. this stack runs with a known
+# secret, dev oauth2 and an admin shared id, and `go test` can start it unattended, so it
+# must not be reachable from the network. the suite only ever talks to 127.0.0.1.
 
 services:
   remark42:
@@ -10,26 +14,96 @@ services:
         - SKIP_FRONTEND_TEST=true
 
     image: ghcr.io/umputun/remark42:dev
-    container_name: "remark42"
+    container_name: "remark42-e2e"
 
+    ports:
+      - "127.0.0.1:8080:8080"
+      # dev oauth2 provider, registered from the REMARK_URL hostname
+      - "127.0.0.1:8084:8084"
+
+    # the hostname has to be a name rather than 127.0.0.1: the dev oauth2 server binds the
+    # host it reads out of REMARK_URL, and a loopback bind inside the container cannot be
+    # published. the suite maps the name back to 127.0.0.1 in the browser, see e2e/
     environment:
-      # remark42 hostname used for proper dev auth work for tests container which connects to it
-      # using the such hostname (unlike local development where 127.0.0.1 is used)
       - REMARK_URL=http://remark42:8080
       - SECRET=12345
       - DEBUG=true
       - ADMIN_PASSWD=password
-      - AUTH_DEV=true # activate local OAuth "dev" listening on http://remark42:8084
+      - AUTH_DEV=true # local oauth2 "dev" provider, bound to the REMARK_URL host on :8084
+      # ADMIN_EDIT stays off: it gives admins an infinite edit window, which removes the
+      # countdown TestComment_EditWithinTheDeadline asserts on
       - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local oauth2
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
+      # the auth sender reads AUTH_EMAIL_FROM; NOTIFY_EMAIL_FROM feeds the notify module,
+      # which this stack does not enable
+      - AUTH_EMAIL_FROM=remark42@example.com
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      # default is 0.5/sec, which the suite exceeds whenever a test posts twice in a row
+      - UPDATE_LIMIT=100
     volumes:
-      - ./var:/srv/var
+      - remark42-e2e-var:/srv/var
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
-  tests:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.e2e
-    depends_on: [remark42]
+  # a second instance whose edit window expires almost immediately, so the expired-edit
+  # path can be exercised without holding a test open for the default five minutes
+  remark42-shortedit:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-shortedit"
+    # this service has no build of its own, so without this a pull could substitute the
+    # published image for the one built from this checkout
+    pull_policy: never
+    # only needs the image the first service builds, not a running one
+    depends_on:
+      remark42:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8081:8080"
+
+    # anonymous only: the dev oauth2 provider's port is hardcoded to 8084 against the
+    # REMARK_URL hostname, so a second instance on the same host would register the
+    # first one's provider
+    environment:
+      - REMARK_URL=http://remark42-shortedit:8081
+      - SECRET=12345
+      - AUTH_ANON=true
+      # long enough that the post round trip and the first assertion comfortably fit inside
+      # the window, short enough that waiting it out costs a few seconds
+      - EDIT_TIME=15s
+      - UPDATE_LIMIT=100
     volumes:
-      - ./playwright-report:/frontend/e2e/playwright-report
+      - remark42-e2e-shortedit-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # catches the email-auth verification message; the suite reads it back over the HTTP API
+  mailpit:
+    image: axllent/mailpit:v1.30.7
+    container_name: "remark42-e2e-mailpit"
+    ports:
+      - "127.0.0.1:8025:8025"
+    # without this `--wait` returns as soon as the container starts, and remark42 can be
+    # healthy before anything is listening on 1025
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+# named rather than bind mounts, so `docker compose down -v` really does discard the
+# databases and a run can start from an empty site
+volumes:
+  remark42-e2e-var:
+  remark42-e2e-shortedit-var:

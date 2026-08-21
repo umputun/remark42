@@ -12,6 +12,7 @@
 - **Frontend**:
   - Development: `cd frontend && pnpm dev:app`
   - Tests: `cd frontend && pnpm test`
+- **End-to-end**: `make e2e` drives the widget in a real browser; see `e2e/README.md`. Build-tagged, so `go test ./...` never runs it.
 - **Lint**:
   - Backend: `cd backend && golangci-lint run`
   - **IMPORTANT**: Example lint: `cd backend/_example/memory_store && golangci-lint run --config ../../.golangci.yml`

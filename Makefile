@@ -39,7 +39,18 @@ rundev:
 		docker compose -f compose-private.yml build
 	docker compose -f compose-private.yml up
 
-e2e:
-	docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
+e2e-up:
+	docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
-.PHONY: bin docker dockerx release race_test backend frontend rundev e2e
+e2e-down:
+	docker compose -f compose-e2e-test.yml down -v
+
+# the suite brings the stack up itself when it finds none, so e2e-up is only worth running
+# to keep the containers between invocations
+e2e:
+	cd e2e && go test -tags=e2e -count 1 -timeout 20m ./...
+
+e2e-ui:
+	cd e2e && E2E_HEADLESS=false E2E_KEEP=1 go test -tags=e2e -count 1 -v -timeout 20m ./...
+
+.PHONY: bin docker dockerx release race_test backend frontend rundev e2e e2e-up e2e-down e2e-ui
