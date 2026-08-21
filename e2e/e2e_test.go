@@ -72,8 +72,11 @@ var (
 	extraBrowsers   = map[string]playwright.Browser{}
 	extraBrowsersMu sync.Mutex
 
-	// distinguishes this run's threads from those a previous run left in the database
-	runID = fmt.Sprintf("%d", time.Now().UnixNano())
+	// distinguishes this run's threads from those a previous run left in the database.
+	// a rerun is a fresh process, so without E2E_RUN_ID it would get its own threads and a
+	// failure caused by ordering or by state an earlier test left behind would pass on the
+	// second attempt whatever the code did
+	runID = firstNonEmpty(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
 
 	authGate     sync.Mutex
 	lastAuthCall time.Time
@@ -176,6 +179,15 @@ func ensureStack() error {
 	return nil
 }
 
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // stackReady reports whether every service the suite needs answers
 func stackReady(timeout time.Duration) bool {
 	for _, url := range []string{
@@ -238,6 +250,10 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 	ctx, err := b.NewContext()
 	require.NoError(t, err)
 
+	// the reveal timers start when the iframe element is created, so the tests that bound
+	// them have to measure from there rather than from anything this process can time
+	require.NoError(t, ctx.AddInitScript(playwright.Script{Content: playwright.String(iframeMarkScript)}))
+
 	tracing := ctx.Tracing().Start(playwright.TracingStartOptions{
 		Screenshots: playwright.Bool(true),
 		Snapshots:   playwright.Bool(true),
@@ -255,8 +271,11 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 			}
 			// say so rather than swallowing it: this runs only on a test that already failed,
 			// and a silently missing trace is what the reader goes looking for
+			// the pid distinguishes attempts: a rerun is a fresh process that shares runID
+			// with the attempt it is retrying and restarts its own counter, so without it the
+			// rerun would overwrite the trace of the attempt that actually failed
 			name := strings.ReplaceAll(t.Name(), "/", "-")
-			path := filepath.Join(traceDir, fmt.Sprintf("%s-%d.zip", name, seq))
+			path := filepath.Join(traceDir, fmt.Sprintf("%s-%d-%d.zip", name, os.Getpid(), seq))
 			if serr := ctx.Tracing().Stop(path); serr != nil {
 				t.Logf("could not write the trace to %s: %v", path, serr)
 			}
