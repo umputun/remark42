@@ -3,7 +3,7 @@ import { h } from 'preact';
 import { useState } from 'preact/hooks';
 import { defineMessages, useIntl } from 'react-intl';
 
-import { useDispatch } from 'react-redux';
+import { useDispatch } from 'store/context';
 import { patchComment } from 'store/comments/actions';
 import { putCommentVote } from 'common/api';
 import { StaticStore } from 'common/static-store';

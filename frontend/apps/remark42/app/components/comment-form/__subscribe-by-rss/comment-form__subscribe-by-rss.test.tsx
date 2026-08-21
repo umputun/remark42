@@ -4,7 +4,7 @@ import { SubscribeByRSS, createSubscribeUrl } from '.';
 
 import styles from './subscribe-by-rss.module.css';
 
-jest.mock('react-redux', () => ({
+jest.mock('store/context', () => ({
   useSelector: jest.fn((fn) => fn({ theme: 'light' })),
 }));
 

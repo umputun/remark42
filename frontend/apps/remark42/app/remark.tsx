@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
 import { bindActionCreators } from 'redux';
-import { Provider } from 'react-redux';
+import { Provider } from 'store/context';
 import { IntlProvider } from 'react-intl';
 
 import { loadLocale } from 'utils/loadLocale';

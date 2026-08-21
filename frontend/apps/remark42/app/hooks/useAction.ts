@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'preact/compat';
-import { useDispatch } from 'react-redux';
+import { useDispatch } from 'store/context';
 import { BoundActionCreator, BoundActionCreators } from 'utils/actionBinder';
 
 /** binds actions to dispatch */
