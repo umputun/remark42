@@ -56,15 +56,11 @@ updates:
         dependency-type: "production"
       "NPM modules updates for tests":
         dependency-type: "development"
-  - package-ecosystem: "npm"
+  - package-ecosystem: "docker"
     directory: "/site"
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
+      "Site image updates":
+        patterns:
+          - "*"
