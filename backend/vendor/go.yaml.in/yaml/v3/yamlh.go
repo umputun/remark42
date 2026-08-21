@@ -433,19 +433,19 @@ type yaml_document_t struct {
 
 // The prototype of a read handler.
 //
-// The read handler is called when the parser needs to read more bytes from the
-// source. The handler should write not more than size bytes to the buffer.
-// The number of written bytes should be set to the size_read variable.
+//	The read handler is called when the parser needs to read more bytes from the
+//	source. The handler should write not more than size bytes to the buffer.
+//	The number of written bytes should be set to the size_read variable.
 //
-// [in,out]   data        A pointer to an application data specified by
-//                        yaml_parser_set_input().
-// [out]      buffer      The buffer to write the data from the source.
-// [in]       size        The size of the buffer.
-// [out]      size_read   The actual number of bytes read from the source.
+//	[in,out]   data        A pointer to an application data specified by
+//	                       yaml_parser_set_input().
+//	[out]      buffer      The buffer to write the data from the source.
+//	[in]       size        The size of the buffer.
+//	[out]      size_read   The actual number of bytes read from the source.
 //
-// On success, the handler should return 1.  If the handler failed,
-// the returned value should be 0. On EOF, the handler should set the
-// size_read to 0 and return 1.
+//	On success, the handler should return 1.  If the handler failed,
+//	the returned value should be 0. On EOF, the handler should set the
+//	size_read to 0 and return 1.
 type yaml_read_handler_t func(parser *yaml_parser_t, buffer []byte) (n int, err error)
 
 // This structure holds information about a potential simple key.
@@ -639,7 +639,6 @@ type yaml_parser_t struct {
 }
 
 type yaml_comment_t struct {
-
 	scan_mark  yaml_mark_t // Position where scanning for comments started
 	token_mark yaml_mark_t // Position after which tokens will be associated with this comment
 	start_mark yaml_mark_t // Position of '#' comment mark
@@ -654,18 +653,17 @@ type yaml_comment_t struct {
 
 // The prototype of a write handler.
 //
-// The write handler is called when the emitter needs to flush the accumulated
-// characters to the output.  The handler should write @a size bytes of the
-// @a buffer to the output.
+//	The write handler is called when the emitter needs to flush the accumulated
+//	characters to the output.  The handler should write @a size bytes of the
+//	@a buffer to the output.
 //
-// @param[in,out]   data        A pointer to an application data specified by
-//                              yaml_emitter_set_output().
-// @param[in]       buffer      The buffer with bytes to be written.
-// @param[in]       size        The size of the buffer.
+//	@param[in,out]   data        A pointer to an application data specified by
+//	                             yaml_emitter_set_output().
+//	@param[in]       buffer      The buffer with bytes to be written.
+//	@param[in]       size        The size of the buffer.
 //
-// @returns On success, the handler should return @c 1.  If the handler failed,
-// the returned value should be @c 0.
-//
+//	@returns On success, the handler should return @c 1.  If the handler failed,
+//	the returned value should be @c 0.
 type yaml_write_handler_t func(emitter *yaml_emitter_t, buffer []byte) error
 
 type yaml_emitter_state_t int
@@ -741,6 +739,8 @@ type yaml_emitter_t struct {
 	tag_directives []yaml_tag_directive_t // The list of tag directives.
 
 	indent int // The current indentation level.
+
+	compact_sequence_indent bool // Is '- ' is considered part of the indentation for sequence elements?
 
 	flow_level int // The current flow level.
 
