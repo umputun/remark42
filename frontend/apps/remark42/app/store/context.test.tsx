@@ -39,6 +39,30 @@ describe('useSelector', () => {
     expect(screen.getByTestId('value').textContent).toBe('1');
   });
 
+  // the subscribe-time check must not re-run a selector that builds a fresh object,
+  // or every connected component renders twice at mount
+  it('renders once at mount with an object-building selector', () => {
+    const store = createStore(reducer);
+    let renders = 0;
+
+    function Counting() {
+      const { value } = useSelector((s: State) => ({ value: s.value }));
+
+      renders += 1;
+
+      return <span data-testid="value">{value}</span>;
+    }
+
+    render(
+      <Provider store={store}>
+        <Counting />
+      </Provider>
+    );
+
+    expect(renders).toBe(1);
+    expect(screen.getByTestId('value').textContent).toBe('0');
+  });
+
   it('does not miss a dispatch that lands between render and subscribe', () => {
     const store = createStore(reducer);
 

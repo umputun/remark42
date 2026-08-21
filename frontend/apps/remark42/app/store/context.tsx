@@ -37,16 +37,19 @@ export function useSelector<S, R>(selector: (state: S) => R, equalityFn?: (a: R,
   const store = useStore<S, Action>();
   const [, setTick] = useState(0);
 
-  const selected = selector(store.getState());
+  const state = store.getState();
+  const selected = selector(state);
 
   // refs keep the subscription stable while always comparing against the latest
   // render's selector and value, so a changed selector cannot resurrect a stale result
   const selectorRef = useRef(selector);
   const equalityRef = useRef(equalityFn);
   const selectedRef = useRef(selected);
+  const stateRef = useRef(state);
   selectorRef.current = selector;
   equalityRef.current = equalityFn;
   selectedRef.current = selected;
+  stateRef.current = state;
 
   useLayoutEffect(() => {
     const checkForUpdates = () => {
@@ -62,10 +65,19 @@ export function useSelector<S, R>(selector: (state: S) => R, equalityFn?: (a: R,
     };
 
     const unsubscribe = store.subscribe(checkForUpdates);
+
     // a dispatch landing between this render and the subscription above is not
     // delivered, since the listener did not exist yet. check once on subscribe so
-    // that update cannot be lost until some later, unrelated dispatch
-    checkForUpdates();
+    // that update cannot be lost until some later, unrelated dispatch.
+    //
+    // only when the state actually moved, though: reducers return a new root
+    // object on every change, so an unchanged reference means nothing was missed.
+    // checking unconditionally would re-run the selector, and one building a fresh
+    // object fails Object.is against the render's value and forces a second render
+    // of every connected component at mount
+    if (store.getState() !== stateRef.current) {
+      checkForUpdates();
+    }
 
     return unsubscribe;
   }, [store]);
