@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS build
+FROM alpine:3.24 AS build
 
 ARG HUGO_VERSION=0.165.0
 ARG TARGETARCH
