@@ -55,6 +55,16 @@ These were deliberately not bumped because each is a config-migration or bundle-
 - `eslint` 8 (9/10 need flat-config migration), `stylelint` 14 (16 has breaking rule changes), `babel` 7, `jest` 28 (30 needs config changes)
 - `redux` 4
 
+## `/web` has a second source
+
+`privacy.html`, `markdown-help.html` and `400x400.jpeg` live in `backend/app/webassets/assets` and
+are embedded in the Go binary. The frontend build wins for any name present in both, which is what
+lets an operator override one by dropping a file next to the frontend files in `--web-root`. That
+directory replaces the embedded frontend outright when it exists, so an override belongs in a
+populated one. These three sit outside this toolchain: prettier, stylelint and `pnpm lint` do not
+see them, and they are served unminified. `devServer.static` lists the build output first and that
+directory second, matching the backend's order, so links to them resolve on the dev port too.
+
 ## Verifying a build didn't regress
 
 There's no automated build-output diff in CI. Before merging a dependency PR that touches the bundler/build tooling, manually diff the build output against a clean `master` checkout:

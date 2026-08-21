@@ -77,3 +77,8 @@ For local artifact runs, install GoReleaser, Go 1.25, Node 20+, PNPM 10, and Per
 ## Repository Structure
 - Backend: Go server using BoltDB for storage
 - Frontend: Preact/Redux-based UI with iframe embedding
+- `/web` is served from two sources, in lookup order: the frontend build output
+  (`frontend/apps/remark42/public`, embedded at `backend/app/cmd/web` or read from `--web-root`),
+  then `backend/app/webassets/assets`, embedded in the binary. A plain page or image the bundler
+  does not process belongs in `webassets`; anything needing templating or the widget's CSS/JS goes
+  through webpack. A name present in both is served from the frontend build.

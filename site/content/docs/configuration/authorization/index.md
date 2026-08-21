@@ -53,7 +53,7 @@ After completing the previous steps, you can configure the Apple auth provider. 
    - Upload a logo, if you want to
    - In the **App Domain** section:
      - **Application home page** - your site URL, e.g., `https://mysite.com`
-     - **Application privacy policy link** - `/web/privacy.html` of your Remark42 installation, e.g. `https://remark42.mysite.com/web/privacy.html` (please check that it works)
+     - **Application privacy policy link** - `/web/privacy.html` of your Remark42 installation, e.g. `https://remark42.mysite.com/web/privacy.html` (please check that it works). The page shipped with Remark42 describes remark42.com rather than your site; to serve your own, add a `privacy.html` alongside the frontend files in the `web-root` / `REMARK_WEB_ROOT` directory (`/srv/web` in the Docker image), which is served in preference to the built-in one. Add it to that directory rather than creating one: once the directory exists it supplies the whole frontend, so a web root holding only a `privacy.html` leaves the widget unreachable
      - **Terms of service** - leave empty
    - **Authorized domains** - your site domain, e.g., `mysite.com`
    - **Developer contact information** - add your email, and then click **Save and continue**

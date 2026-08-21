@@ -34,7 +34,7 @@ Run tests in your IDE, and re-run `make rundev` each time you want to see how yo
 
 You have to [install](https://golang.org/doc/install) the latest stable `go` toolchain to run the backend locally.
 
-In order to have working Remark42 installation you need once to copy frontend static files to `./backend/web` directory from `master` docker image, as it is expected to be where application compiles:
+In order to have working Remark42 installation you need once to copy frontend static files to `./backend/app/cmd/web` directory from `master` docker image, as it is expected to be where application compiles:
 
 ```shell
 # frontend files
@@ -48,6 +48,11 @@ find -E ./backend/app/cmd/web -regex '.*\.(html|js|mjs)$' -print -exec sed -i ''
 ## Linux version
 find ./backend/app/cmd/web -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 ```
+
+The assets under `/web` the frontend does not build (`privacy.html`, `markdown-help.html`,
+`400x400.jpeg`) come from `backend/app/webassets/assets` and are embedded in the binary, so the copy
+above neither covers them nor needs to. At runtime a file of the same name under `web-root` /
+`REMARK_WEB_ROOT` is served in preference to the embedded one.
 
 To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`. It stars backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 
