@@ -1,5 +1,5 @@
 import { createContext, h, type ComponentChildren } from 'preact';
-import { useContext, useEffect, useRef, useState } from 'preact/hooks';
+import { useContext, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Store, Dispatch, Action } from 'redux';
 
 /**
@@ -48,21 +48,27 @@ export function useSelector<S, R>(selector: (state: S) => R, equalityFn?: (a: R,
   equalityRef.current = equalityFn;
   selectedRef.current = selected;
 
-  useEffect(
-    () =>
-      store.subscribe(() => {
-        const next = selectorRef.current(store.getState());
-        const equal = equalityRef.current
-          ? equalityRef.current(selectedRef.current, next)
-          : Object.is(selectedRef.current, next);
+  useLayoutEffect(() => {
+    const checkForUpdates = () => {
+      const next = selectorRef.current(store.getState());
+      const equal = equalityRef.current
+        ? equalityRef.current(selectedRef.current, next)
+        : Object.is(selectedRef.current, next);
 
-        if (!equal) {
-          selectedRef.current = next;
-          setTick((n) => n + 1);
-        }
-      }),
-    [store]
-  );
+      if (!equal) {
+        selectedRef.current = next;
+        setTick((n) => n + 1);
+      }
+    };
+
+    const unsubscribe = store.subscribe(checkForUpdates);
+    // a dispatch landing between this render and the subscription above is not
+    // delivered, since the listener did not exist yet. check once on subscribe so
+    // that update cannot be lost until some later, unrelated dispatch
+    checkForUpdates();
+
+    return unsubscribe;
+  }, [store]);
 
   return selected;
 }
