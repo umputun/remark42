@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Następnie kliknij „Sprawdź” poniżej.",
   "auth.telegram-optional-qr": "lub skanując kod QR",
   "auth.telegram-qr": "Kod QR Telegrama",
-  "auth.user-not-found": "Żaden użytkownik nie został znaleziony",
   "auth.username": "Nazwa użytkownika",
   "authPanel.disable-comments": "Wyłącz komentarze",
   "authPanel.disabled-cookies": "Wyłącz zewnętrzne blokowanie cookies w celu logowania lub otwierania w nich komentarzy",

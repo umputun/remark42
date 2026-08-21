@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Ardından aşağıdaki “Kontrol et” düğmesine tıklayın.",
   "auth.telegram-optional-qr": "ya da QR kodunu okutun",
   "auth.telegram-qr": "Telegram QR kodu",
-  "auth.user-not-found": "Kullanıcı bulunamadı",
   "auth.username": "Kullanıcı adı",
   "authPanel.disable-comments": "Yorumları devre dışı bırak",
   "authPanel.disabled-cookies": "Giriş yapabilmek ve yorum yapabilmek için çerezleri etkinleştirmeniz gerekmekte",

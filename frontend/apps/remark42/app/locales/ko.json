@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "그 후, 아래 “확인”을 클릭하세요.",
   "auth.telegram-optional-qr": "또는 QR 코드로",
   "auth.telegram-qr": "텔레그램 QR 코드",
-  "auth.user-not-found": "사용자를 찾을 수 없음",
   "auth.username": "사용자 이름",
   "authPanel.disable-comments": "댓글 비활성화",
   "authPanel.disabled-cookies": "로그인하거나 댓글을 열기 위해 타사 쿠키 차단을 사용 중지해야 함",

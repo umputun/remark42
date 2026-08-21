@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "その後、以下の「チェック」をクリックしてください。",
   "auth.telegram-optional-qr": "または QR コードで",
   "auth.telegram-qr": "Telegram QR コード",
-  "auth.user-not-found": "ユーザーが見つかりませんでした",
   "auth.username": "ユーザー名",
   "authPanel.disable-comments": "コメントの無効化",
   "authPanel.disabled-cookies": "サードパーティの Cookie を無効にしてログインするか次でコメントを開いてください:",

@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "ثم انقر «تأكد» أسفله.",
   "auth.telegram-optional-qr": "أو عبر مسح رمز QR",
   "auth.telegram-qr": "رمز QR للتيليجرام",
-  "auth.user-not-found": "لا مستخدم بهذا الاسم",
   "auth.username": "اسم المستخدم",
   "authPanel.disable-comments": "عطّل التعليقات",
   "authPanel.disabled-cookies": "ألغِ حظرَ كوكيز الطرف الثالث للدخول أو أنشئ تعليقاً في",

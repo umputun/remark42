@@ -17,10 +17,6 @@ export const messages = defineMessages<string>({
     id: 'auth.symbols-restriction',
     defaultMessage: 'Username must contain only letters, numbers, underscores or spaces',
   },
-  userNotFound: {
-    id: 'auth.user-not-found',
-    defaultMessage: 'No user was found',
-  },
   emailAddress: {
     id: 'auth.email-address',
     defaultMessage: 'Email Address',

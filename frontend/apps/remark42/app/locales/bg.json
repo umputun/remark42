@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "След това натиснете „Провери“ по-долу.",
   "auth.telegram-optional-qr": "или чрез сканиране на QR кода",
   "auth.telegram-qr": "Telegram QR код",
-  "auth.user-not-found": "Не бе намерен потребител",
   "auth.username": "Потребителско име",
   "authPanel.disable-comments": "Забрани коментарите",
   "authPanel.disabled-cookies": "Забрани бисквитки от трета страна блокиращи входа или коментарите",

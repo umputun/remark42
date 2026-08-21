@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "之后，点击下方的“检查”。",
   "auth.telegram-optional-qr": "或扫描二维码",
   "auth.telegram-qr": "Telegram 二维码",
-  "auth.user-not-found": "未找到用户",
   "auth.username": "用户名",
   "authPanel.disable-comments": "关闭评论",
   "authPanel.disabled-cookies": "禁用第三方 Cookie，以登录或在以下方面打开评论：",

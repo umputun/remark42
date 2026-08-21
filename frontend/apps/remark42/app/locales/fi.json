@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Paina sen jälkeen alla olevaa ”Tarkista”-painiketta.",
   "auth.telegram-optional-qr": "tai skannaamalla QR-koodin",
   "auth.telegram-qr": "Telegramin QR-koodi",
-  "auth.user-not-found": "Käyttäjää ei löytynyt",
   "auth.username": "Käyttäjätunnus",
   "authPanel.disable-comments": "Poista kommentit käytöstä",
   "authPanel.disabled-cookies": "Poista kolmansien osapuolien evästeiden estäminen käytöstä kirjautuaksesi tai kommenttien avataksesi",
