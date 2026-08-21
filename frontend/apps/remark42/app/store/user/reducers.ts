@@ -1,10 +1,10 @@
 import type { User, BlockedUser } from 'common/types';
 
+import type { USER_ACTIONS } from './types';
 import {
   USER_SET,
   USER_BAN,
   USER_UNBAN,
-  USER_ACTIONS,
   USER_BANLIST_SET,
   USER_HIDELIST_SET,
   USER_HIDE,

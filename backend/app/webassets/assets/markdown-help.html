@@ -181,7 +181,7 @@
 
       .visuallyhidden {
         border: 0;
-        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
         height: 1px;
         margin: -1px;
         overflow: hidden;
@@ -192,7 +192,7 @@
 
       .visuallyhidden.focusable:active,
       .visuallyhidden.focusable:focus {
-        clip: auto;
+        clip-path: none;
         height: auto;
         margin: 0;
         overflow: visible;
@@ -253,7 +253,7 @@
         pre,
         blockquote {
           border: 1px solid #999;
-          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         thead {
@@ -262,7 +262,7 @@
 
         tr,
         img {
-          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         img {
@@ -278,7 +278,7 @@
 
         h2,
         h3 {
-          page-break-after: avoid;
+          break-after: avoid;
         }
       }
     </style>
@@ -366,8 +366,7 @@
 |------------ | -------------|
 |Content from cell 1 | Content from cell 2|
 |Content in the first column | Content in the second column|
-                </pre
-          >
+                </pre>
         </article>
 
         <aside>

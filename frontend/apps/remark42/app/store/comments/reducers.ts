@@ -1,25 +1,27 @@
-import { Node, Comment, CommentMode, Sorting } from 'common/types';
+import type { Node, Comment, CommentMode, Sorting } from 'common/types';
 import { combineReducers } from 'redux';
 
-import {
-  COMMENTS_SET,
+import type {
   COMMENTS_SET_ACTION,
-  COMMENT_MODE_SET,
   COMMENT_MODE_SET_ACTION,
   COMMENTS_APPEND_ACTION,
-  COMMENTS_APPEND,
   COMMENTS_EDIT_ACTION,
+  COMMENTS_PATCH_ACTION,
+  COMMENTS_SET_SORT_ACTION,
+  COMMENTS_REQUEST_ACTIONS,
+  COMMENT_PATCH_ACTION,
+} from './types';
+import {
+  COMMENTS_SET,
+  COMMENT_MODE_SET,
+  COMMENTS_APPEND,
   COMMENTS_EDIT,
   COMMENTS_PATCH,
-  COMMENTS_PATCH_ACTION,
   COMMENTS_SET_SORT,
-  COMMENTS_SET_SORT_ACTION,
   COMMENTS_REQUEST_FETCHING,
   COMMENTS_REQUEST_SUCCESS,
   COMMENTS_REQUEST_FAILURE,
-  COMMENTS_REQUEST_ACTIONS,
   COMMENT_PATCH,
-  COMMENT_PATCH_ACTION,
 } from './types';
 import { getPinnedComments, getInitialSort } from './utils';
 import { cmpRef } from 'utils/cmpRef';
@@ -99,11 +101,7 @@ const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comm
 export const allComments = (
   state: Record<Comment['id'], Comment> = {},
   action:
-    | COMMENTS_SET_ACTION
-    | COMMENTS_APPEND_ACTION
-    | COMMENTS_EDIT_ACTION
-    | COMMENTS_PATCH_ACTION
-    | COMMENT_PATCH_ACTION
+    COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION | COMMENT_PATCH_ACTION
 ): Record<Comment['id'], Comment> => {
   switch (action.type) {
     case COMMENTS_SET: {

@@ -126,8 +126,8 @@ export function useErrorMessage(): [string | null, (e: unknown) => void] {
         err instanceof RequestError || isObject(err)
           ? (err as Record<'error', string>).error
           : err instanceof Error
-          ? err.message
-          : 0;
+            ? err.message
+            : 0;
 
       setInvalidReason(errorReason);
     }

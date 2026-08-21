@@ -1,4 +1,4 @@
-import { Sorting, Theme } from './types';
+import type { Sorting, Theme } from './types';
 
 export { BASE_URL, API_BASE, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from './constants.config';
 export const MAX_SHOWN_ROOT_COMMENTS = 10;

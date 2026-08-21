@@ -1,8 +1,9 @@
-import { Comment } from 'common/types';
+import type { Comment } from 'common/types';
 import { siteId, url } from 'common/settings';
 
-import { StoreAction } from '../index';
-import { THREAD_SET_COLLAPSE, THREAD_RESTORE_COLLAPSE_ACTION, THREAD_RESTORE_COLLAPSE } from './types';
+import type { StoreAction } from '../index';
+import type { THREAD_RESTORE_COLLAPSE_ACTION } from './types';
+import { THREAD_SET_COLLAPSE, THREAD_RESTORE_COLLAPSE } from './types';
 import { saveCollapsedComments, getCollapsedComments } from './utils';
 
 export const restoreCollapsedThreads = (): THREAD_RESTORE_COLLAPSE_ACTION => ({

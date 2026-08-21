@@ -1,4 +1,5 @@
-import { h, VNode, type ButtonHTMLAttributes } from 'preact';
+import type { VNode } from 'preact';
+import { h, type ButtonHTMLAttributes } from 'preact';
 import clsx from 'clsx';
 
 import styles from './button.module.css';

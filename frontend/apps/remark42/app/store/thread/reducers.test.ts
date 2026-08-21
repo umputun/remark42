@@ -1,5 +1,5 @@
-import { Comment } from 'common/types';
-import { StoreState } from 'store';
+import type { Comment } from 'common/types';
+import type { StoreState } from 'store';
 
 import { setCollapse } from './actions';
 import { THREAD_SET_COLLAPSE } from './types';
@@ -13,7 +13,7 @@ describe('collapsedThreads', () => {
     const getState = jest.fn(() => state);
 
     setCollapse(comment.id, true)(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: THREAD_SET_COLLAPSE,
       id: 'some-id',
       collapsed: true,
@@ -28,7 +28,7 @@ describe('collapsedThreads', () => {
     getState.mockReturnValue({ collapsedThreads: { 'some-id': true }, comments: [node] });
 
     setCollapse(comment.id, false)(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: THREAD_SET_COLLAPSE,
       id: 'some-id',
       collapsed: false,

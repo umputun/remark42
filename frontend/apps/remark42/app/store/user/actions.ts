@@ -1,12 +1,13 @@
 import * as api from 'common/api';
 import { logout } from 'components/auth/auth.api';
-import { User, BlockedUser, BlockTTL } from 'common/types';
+import type { User, BlockedUser, BlockTTL } from 'common/types';
 import { ttlToTime } from 'utils/ttl-to-time';
 import { getHiddenUsers } from 'utils/get-hidden-users';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { setItem } from 'common/local-storage';
 
-import { StoreAction } from '../index';
+import type { StoreAction } from '../index';
+import type { USER_SET_ACTION } from './types';
 import {
   USER_BAN,
   USER_SET,
@@ -16,7 +17,6 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
-  USER_SET_ACTION,
 } from './types';
 import { fetchComments, unsetCommentMode } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';

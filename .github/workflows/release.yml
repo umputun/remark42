@@ -45,7 +45,7 @@ jobs:
       - name: install node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -121,7 +121,7 @@ jobs:
       - name: install node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 

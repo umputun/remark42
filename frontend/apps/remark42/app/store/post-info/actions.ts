@@ -1,7 +1,8 @@
-import { PostInfo } from 'common/types';
+import type { PostInfo } from 'common/types';
 
-import { StoreAction } from '../index';
-import { POST_INFO_SET, POST_INFO_SET_ACTION } from './types';
+import type { StoreAction } from '../index';
+import type { POST_INFO_SET_ACTION } from './types';
+import { POST_INFO_SET } from './types';
 import { disableComments, enableComments } from 'common/api';
 import { unsetCommentMode } from '../comments/actions';
 

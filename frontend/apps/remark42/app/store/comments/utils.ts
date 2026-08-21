@@ -1,4 +1,4 @@
-import { Comment, Node, Sorting } from 'common/types';
+import type { Comment, Node, Sorting } from 'common/types';
 import { LS_SORT_KEY, DEFAULT_SORT } from 'common/constants';
 import { getItem } from 'common/local-storage';
 

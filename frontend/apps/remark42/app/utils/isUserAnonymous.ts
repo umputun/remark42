@@ -1,4 +1,4 @@
-import { User } from 'common/types';
+import type { User } from 'common/types';
 
 /**
  * Defines whether current client is logged in via `Anonymous provider`

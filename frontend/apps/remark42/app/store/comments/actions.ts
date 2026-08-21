@@ -1,21 +1,20 @@
 import * as api from 'common/api';
-import { Tree, Comment, CommentMode, Node, Sorting } from 'common/types';
+import type { Tree, Comment, Node, Sorting } from 'common/types';
+import { CommentMode } from 'common/types';
 
-import { StoreAction, StoreState } from '../index';
+import type { StoreAction, StoreState } from '../index';
 import { setPostInfo } from '../post-info/actions';
 import { filterTree } from './utils';
+import type { COMMENT_MODE_SET_ACTION, COMMENT_PATCH_ACTION, COMMENTS_EDIT_ACTION } from './types';
 import {
   COMMENTS_SET,
   COMMENT_MODE_SET,
   COMMENTS_APPEND,
   COMMENTS_EDIT,
-  COMMENT_MODE_SET_ACTION,
   COMMENTS_SET_SORT,
   COMMENTS_REQUEST_FETCHING,
   COMMENTS_REQUEST_SUCCESS,
   COMMENT_PATCH,
-  COMMENT_PATCH_ACTION,
-  COMMENTS_EDIT_ACTION,
 } from './types';
 import { setItem } from 'common/local-storage';
 import { LS_SORT_KEY } from 'common/constants';

@@ -1,5 +1,5 @@
 import { mockStore } from '__stubs__/store';
-import { User } from 'common/types';
+import type { User } from 'common/types';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { COMMENTS_PATCH } from 'store/comments/types';
 

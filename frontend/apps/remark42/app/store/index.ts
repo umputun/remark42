@@ -1,8 +1,10 @@
-import { createStore, applyMiddleware, AnyAction, compose, combineReducers } from 'redux';
+import type { AnyAction } from 'redux';
+import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
 import { useDispatch, useSelector, type TypedUseSelectorHook } from './context';
-import thunk, { ThunkAction, ThunkDispatch } from 'redux-thunk';
+import type { ThunkAction, ThunkDispatch } from 'redux-thunk';
+import thunk from 'redux-thunk';
 import { rootProvider } from './reducers';
-import { ACTIONS } from './actions';
+import type { ACTIONS } from './actions';
 
 const reducers = combineReducers(rootProvider);
 const middleware = applyMiddleware(thunk);

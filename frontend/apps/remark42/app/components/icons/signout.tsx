@@ -1,4 +1,5 @@
-import { h, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h } from 'preact';
 
 type Props = Omit<JSX.SVGAttributes<SVGSVGElement>, 'size'> & {
   size?: number | string;

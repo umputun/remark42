@@ -2,7 +2,8 @@ import '@ungap/custom-elements';
 import '@github/markdown-toolbar-element';
 import { h, Component } from 'preact';
 
-import { defineMessages, IntlShape } from 'common/intl';
+import type { IntlShape } from 'common/intl';
+import { defineMessages } from 'common/intl';
 import styles from './markdown-toolbar.module.css';
 
 // TODO: Use SVGR

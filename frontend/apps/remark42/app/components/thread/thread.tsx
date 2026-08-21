@@ -1,12 +1,14 @@
-import { h, FunctionComponent, type AriaRole } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h, type AriaRole } from 'preact';
 import { shallowEqual } from 'store/context';
 import { useCallback } from 'preact/hooks';
 import clsx from 'clsx';
 
 import { useIntl } from 'common/intl';
-import { Comment as CommentInterface } from 'common/types';
+import type { Comment as CommentInterface } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
-import { StoreState, useAppDispatch, useAppSelector } from 'store';
+import type { StoreState } from 'store';
+import { useAppDispatch, useAppSelector } from 'store';
 import { setCollapse } from 'store/thread/actions';
 import { getThreadIsCollapsed } from 'store/thread/getters';
 import { InView } from 'components/root/in-view/in-view';

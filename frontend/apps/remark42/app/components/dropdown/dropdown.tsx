@@ -1,7 +1,8 @@
-import { h, Component, createRef, RenderableProps } from 'preact';
+import type { RenderableProps } from 'preact';
+import { h, Component, createRef } from 'preact';
 import clsx from 'clsx';
 
-import { Theme } from 'common/types';
+import type { Theme } from 'common/types';
 import { sleep } from 'utils/sleep';
 import { Button } from 'components/button';
 import { parseMessage } from 'utils/post-message';

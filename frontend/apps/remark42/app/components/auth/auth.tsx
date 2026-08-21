@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { h, Fragment, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useRef } from 'preact/hooks';
 import { useDispatch } from 'store/context';
 
@@ -37,7 +38,7 @@ export function Auth() {
 
   // UI State
   const [isLoading, setLoading] = useState(false);
-  const [view, setView] = useState<typeof formProviders[number] | 'token' | 'telegram'>(formProviders[0]);
+  const [view, setView] = useState<(typeof formProviders)[number] | 'token' | 'telegram'>(formProviders[0]);
   const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
@@ -98,7 +99,7 @@ export function Auth() {
   function handleProviderChange(evt: Event) {
     const { value } = evt.currentTarget as HTMLInputElement;
 
-    setView(value as typeof formProviders[number]);
+    setView(value as (typeof formProviders)[number]);
     setError(null);
   }
 

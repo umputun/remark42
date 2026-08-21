@@ -12,7 +12,7 @@
 }
 
 .rootFocused {
-  box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.4);
+  box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
   outline: none;
 }
 

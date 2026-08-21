@@ -1,8 +1,9 @@
 import { h, Component, createRef, Fragment } from 'preact';
 import clsx from 'clsx';
 
-import { FormattedMessage, IntlShape, defineMessages } from 'common/intl';
-import { User, Theme, Image } from 'common/types';
+import type { IntlShape } from 'common/intl';
+import { FormattedMessage, defineMessages } from 'common/intl';
+import type { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';

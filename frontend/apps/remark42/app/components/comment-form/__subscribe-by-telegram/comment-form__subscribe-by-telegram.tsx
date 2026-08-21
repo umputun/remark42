@@ -1,12 +1,14 @@
 import clsx from 'clsx';
-import { h, FunctionComponent, Fragment } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useSelector } from 'store/context';
 
 import { useIntl, defineMessages } from 'common/intl';
-import { User } from 'common/types';
-import { StoreState } from 'store';
-import { FetcherError, RequestError, extractErrorMessageFromResponse } from 'utils/errorUtils';
+import type { User } from 'common/types';
+import type { StoreState } from 'store';
+import type { FetcherError, RequestError } from 'utils/errorUtils';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
 import { useSessionStorage } from 'hooks/useSessionState';
 import { telegramSubscribe, telegramCurrentSubscribtion, telegramUnsubcribe } from 'common/api';

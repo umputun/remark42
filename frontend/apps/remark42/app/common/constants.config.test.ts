@@ -1,3 +1,9 @@
+/**
+ * jsdom seals window.location, so the https protocol these tests need is set through the
+ * environment URL rather than by redefining the property
+ *
+ * @jest-environment-options {"url": "https://test.com"}
+ */
 import { getBaseUrl } from './constants.config';
 
 describe('constants.config', () => {
@@ -16,15 +22,9 @@ describe('constants.config', () => {
   });
 
   describe('BASE_URL validation', () => {
-    beforeEach(() => {
-      Object.defineProperty(window, 'location', {
-        value: { protocol: 'https:' },
-        writable: true,
-      });
-    });
     it('should throw error if host is not defined', () => {
       window.remark_config.host = undefined;
-      expect(() => getBaseUrl()).toThrowError(`Remark42: remark_config.host wasn't configured.`);
+      expect(() => getBaseUrl()).toThrow(`Remark42: remark_config.host wasn't configured.`);
     });
     it('should show mismatch error', () => {
       expect(getBaseUrl()).toBe('http://test.com');
@@ -33,14 +33,14 @@ describe('constants.config', () => {
     });
     it('should throw error when BASE_URL has wrong protocol', () => {
       window.remark_config.host = 'data:application/json;base64';
-      expect(() => getBaseUrl()).toThrowError('Remark42: Invalid host URL.');
+      expect(() => getBaseUrl()).toThrow('Remark42: Invalid host URL.');
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
       expect(consoleErrorSpy).toHaveBeenNthCalledWith(1, 'Remark42: Protocol mismatch.');
       expect(consoleErrorSpy).toHaveBeenNthCalledWith(2, 'Remark42: Wrong protocol in host URL.');
     });
     it('should throw error when BASE_URL is invalid', () => {
       window.remark_config.host = 'asfasdfa!asds';
-      expect(() => getBaseUrl()).toThrowError('Remark42: Invalid host URL.');
+      expect(() => getBaseUrl()).toThrow('Remark42: Invalid host URL.');
       expect(consoleErrorSpy).toHaveBeenCalledTimes(0);
     });
   });

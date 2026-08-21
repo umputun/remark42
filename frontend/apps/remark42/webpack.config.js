@@ -7,11 +7,9 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const RefreshPlugin = require('@prefresh/webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
-const babelConfig = require('./.babelrc.js');
 
 const NODE_ID = 'remark42';
 const PUBLIC_PATH = '/web/';
@@ -44,18 +42,6 @@ function getLocalIdent(loaderContext, _, localName, options) {
 
   return `${m.id}_${m.classNames[localName]}`;
 }
-
-/**
- * Generates excludes for babel-loader
- *
- * Exclude is a module that has >=es6 code and resides in node_modules.
- * By default, babel-loader ignores everything from node_modules,
- * so we have to exclude from ignore these modules
- */
-const exclude = [
-  '@github/markdown-toolbar-element',
-  '@github/text-expander-element',
-].map((m) => path.resolve(__dirname, 'node_modules', m));
 
 const htmlMinifyOptions = {
   minifyCSS: true,
@@ -97,7 +83,7 @@ module.exports = (_, { mode, analyze }) => {
     publicPath: PUBLIC_PATH,
   };
 
-  const getTsRule = (babelConfig = {}) => {
+  const getTsRule = () => {
     return {
       test: /\.tsx?$/,
       exclude: /node_modules/,
@@ -105,18 +91,7 @@ module.exports = (_, { mode, analyze }) => {
         {
           loader: 'babel-loader',
           options: {
-            exclude,
             cacheDirectory: true,
-            ...babelConfig,
-          },
-        },
-        {
-          loader: 'ts-loader',
-          options: {
-            transpileOnly: true,
-            // tsconfig targets the automatic runtime so type checking resolves JSX from
-            // preact; the bundle keeps JSX intact here so babel can still strip test ids
-            compilerOptions: { jsx: 'preserve' },
           },
         },
       ],
@@ -141,11 +116,10 @@ module.exports = (_, { mode, analyze }) => {
                   browsers: 'defaults, not IE 11, not samsung 12',
                   stage: 0,
                   features: {
-                    'custom-properties': CUSTOM_PROPERTIES_PATH,
+                    'custom-properties': false,
                   },
                 },
               ],
-              'cssnano',
             ],
           },
         },
@@ -165,6 +139,10 @@ module.exports = (_, { mode, analyze }) => {
           modules: {
             localIdentName: '[name]__[local]_[hash:5]',
             getLocalIdent: isDev ? undefined : getLocalIdent,
+            // css-loader 7 defaults CSS modules to named exports; the components import the
+            // whole map as a default, and several class names are not valid identifiers
+            namedExport: false,
+            exportLocalsConvention: 'as-is',
           },
         },
       },
@@ -173,11 +151,7 @@ module.exports = (_, { mode, analyze }) => {
         options: {
           sourceMap: isDev,
           postcssOptions: {
-            plugins: [
-              ['postcss-preset-env', { stage: 0 }],
-              ['postcss-custom-properties', { importFrom: CUSTOM_PROPERTIES_PATH }],
-              'cssnano',
-            ],
+            plugins: [['postcss-preset-env', { stage: 0, features: { 'custom-properties': false } }]],
           },
         },
       },
@@ -188,11 +162,10 @@ module.exports = (_, { mode, analyze }) => {
     test: /\.(png|jpg|jpeg|gif|svg)$/,
     exclude: /node_modules/,
     use: {
-      loader: 'url-loader',
+      loader: 'file-loader',
       options: {
         name: '[name].[ext]',
         publicPath: PUBLIC_PATH,
-        limit: false,
       },
     },
   };
@@ -231,7 +204,7 @@ module.exports = (_, { mode, analyze }) => {
   };
 
   const plugins = [
-    ...(isDev ? [new CleanWebpackPlugin(), new RefreshPlugin()] : []),
+    new CleanWebpackPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
@@ -254,30 +227,6 @@ module.exports = (_, { mode, analyze }) => {
     optimization,
   };
 
-  const legacyConfig = {
-    ...config,
-    output: {
-      ...output,
-      filename: '[name].js',
-      chunkFilename: '[name].js',
-    },
-    module: {
-      rules: [getTsRule(), ...rules],
-    },
-    plugins: [
-      ...plugins,
-      ...(analyze
-        ? [
-            new BundleAnalyzerPlugin({
-              analyzerMode: 'static',
-              reportFilename: 'report-legacy.html',
-              reportTitle: 'Legacy build',
-            }),
-          ]
-        : []),
-    ],
-  };
-
   const modernConfig = {
     ...config,
     output: {
@@ -286,13 +235,7 @@ module.exports = (_, { mode, analyze }) => {
       chunkFilename: '[name].mjs',
     },
     module: {
-      rules: [
-        getTsRule({
-          ...babelConfig.env.modern,
-          plugins: [...babelConfig.env.modern.plugins, ...(isDev ? ['@prefresh/babel-plugin'] : [])],
-        }),
-        ...rules,
-      ],
+      rules: [getTsRule(), ...rules],
     },
     plugins: [
       ...plugins,
@@ -337,8 +280,8 @@ module.exports = (_, { mode, analyze }) => {
         ? [
             new BundleAnalyzerPlugin({
               analyzerMode: 'static',
-              reportFilename: 'report-modern.html',
-              reportTitle: 'Modern build',
+              reportFilename: 'report.html',
+              reportTitle: 'Bundle',
             }),
           ]
         : []),
@@ -346,12 +289,7 @@ module.exports = (_, { mode, analyze }) => {
     devServer,
   };
 
-  if (isDev) {
-    return modernConfig;
-  }
-
-  return [legacyConfig, modernConfig];
+  return modernConfig;
 };
 
 module.exports.CUSTOM_PROPERTIES_PATH = CUSTOM_PROPERTIES_PATH;
-module.exports.exclude = exclude;

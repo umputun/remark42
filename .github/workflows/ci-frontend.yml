@@ -22,7 +22,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [20]
+        node: [24]
 
     steps:
       - name: Checkout
@@ -58,7 +58,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [20]
+        node: [24]
 
     steps:
       - name: Checkout
@@ -94,7 +94,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [20]
+        node: [24]
 
     steps:
       - name: Checkout
@@ -158,7 +158,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [20]
+        node: [24]
 
     steps:
       - name: Checkout

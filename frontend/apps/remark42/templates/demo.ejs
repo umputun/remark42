@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Demo | Remark42</title>
     <style>
-      /* stylelint-disable mavrin/stylelint-declaration-use-css-custom-properties */
       body {
         padding: 0;
         margin: 0;
@@ -144,12 +143,10 @@
         var r = d.head || d.body;
         for (var i = 0; i < c.length; i++) {
           var s = d.createElement('script');
-          var m = 'noModule' in s;
-          var e = m ? '.mjs' : '.js';
-          m && (s.type = 'module');
+          s.type = 'module';
           s.async = true;
           s.defer = true;
-          s.src = remark_config.host + '/web/' + c[i] + e;
+          s.src = remark_config.host + '/web/' + c[i] + '.mjs';
           r.appendChild(s);
         }
       })(remark_config.components || ['embed'], document);

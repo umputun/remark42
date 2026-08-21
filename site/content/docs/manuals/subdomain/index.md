@@ -8,7 +8,7 @@ aliases:
 
 All documentation examples show configurations with remark42 on its own subdomain, i.e., `https://remark42.example.com`. However, it is possible and sometimes desirable to run remark42 without a subdomain, but just under some path, i.e., `https://example.com/remark42`.
 
-- The frontend URL looks like this: `s.src = 'https://example.com/remark42/web/embed.js;`
+- The frontend URL looks like this: `s.src = 'https://example.com/remark42/web/embed.mjs'`
 
 - The backend `REMARK_URL` parameter will be `https://example.com/remark42`. `ALLOWED_HOSTS="'self'"` and `AUTH_SAME_SITE=strict` to make comments work only from the same domain.
 

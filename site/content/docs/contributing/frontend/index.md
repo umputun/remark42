@@ -21,7 +21,7 @@ While developing, we set up environment which imitates real world example. We se
 
 You must have at least 2GB RAM or swap enabled for building.
 
-- install [Node.js 20](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
+- install [Node.js 24](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
 - install [PNPM 10](https://pnpm.io/installation)
 - run `pnpm i` inside `./frontend`
 
@@ -99,7 +99,7 @@ so prettier, stylelint and `pnpm lint` do not see them.
 - The project uses TypeScript to analyze code statically
 - The project uses Eslint and Stylelint to check the frontend code. You can manually run via `pnpm lint`
 - Git Hooks (via husky) installed automatically on `pnpm i`. They check and try to fix code style if possible, otherwise commit will be rejected
-- If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Also, you have configured Eslint for work in subdirectory. For example, you have to add configuration for VSCode like that `"eslint.workingDirectories": ["frontend/apps/remark42"]`
+- If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Eslint reads `eslint.config.mjs` from the directory it is run in, so point your editor at the app directory: for VSCode, `"eslint.workingDirectories": ["frontend/apps/remark42"]`
 
 ## CSS Styles
 

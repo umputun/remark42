@@ -1,4 +1,4 @@
-import { User } from 'common/types';
+import type { User } from 'common/types';
 import { getItem } from 'common/local-storage';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 
@@ -10,7 +10,7 @@ export function getHiddenUsers() {
       return hiddenUsers;
     }
   } catch (e) {
-    console.error('incorrect hidden user data in local storage', e); // eslint-disable-line no-console
+    console.error('incorrect hidden user data in local storage', e);
   }
 
   return {};

@@ -258,7 +258,7 @@ describe('every shipped catalogue', () => {
       (file) =>
         [file.replace('.json', ''), JSON.parse(readFileSync(join(localesDir, file), 'utf8'))] as [
           string,
-          Record<string, string>
+          Record<string, string>,
         ]
     );
 

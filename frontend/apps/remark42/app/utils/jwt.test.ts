@@ -17,7 +17,7 @@ describe('JWT', () => {
     });
 
     it('should throw error', () => {
-      expect(() => parseJwt(invalidToken)).toThrowError('The string to be decoded contains invalid characters.');
+      expect(() => parseJwt(invalidToken)).toThrow('The string to be decoded contains invalid characters.');
     });
   });
 

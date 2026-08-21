@@ -1,4 +1,5 @@
-import { h, FunctionComponent } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h } from 'preact';
 import { useMemo } from 'preact/hooks';
 
 import { useIntl, defineMessages } from 'common/intl';

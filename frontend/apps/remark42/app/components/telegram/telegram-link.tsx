@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { h, Fragment, FunctionComponent } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { messages } from './telegram.messages';
 import { BASE_URL, API_BASE } from 'common/constants.config';
 import { Button } from 'components/button';

@@ -1,4 +1,5 @@
-import { setAttributes, setStyles, StylesDeclaration } from 'utils/set-dom-props';
+import type { StylesDeclaration } from 'utils/set-dom-props';
+import { setAttributes, setStyles } from 'utils/set-dom-props';
 import { createIframe } from 'utils/create-iframe';
 import type { Profile } from 'common/types';
 

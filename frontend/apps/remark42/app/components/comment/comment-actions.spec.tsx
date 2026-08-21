@@ -1,6 +1,7 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
-import { CommentActions, Props } from './comment-actions';
+import type { Props } from './comment-actions';
+import { CommentActions } from './comment-actions';
 import { render } from 'tests/utils';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
 

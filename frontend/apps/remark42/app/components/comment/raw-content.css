@@ -209,7 +209,7 @@
 
 .dark .raw-content {
   /* Syntax Highlight Colors */
-  --chroma-bg: rgba(255, 255, 255, 0.05);
+  --chroma-bg: rgb(255, 255, 255, 0.05);
   --chroma-base: #a0b2b2;
   --chroma-c: #586e75;
   --chroma-01: #9ef203;

@@ -8,7 +8,7 @@ import { RequestError } from 'utils/errorUtils';
 import { sleep } from 'utils/sleep';
 
 import { SubscribeByTelegram } from '.';
-import { StoreState } from 'store';
+import type { StoreState } from 'store';
 
 const initialStore = {
   user,
@@ -78,7 +78,7 @@ describe('<SubscribeByTelegram />', () => {
     fireEvent.click(button); // close modal
     fireEvent.click(button);
 
-    expect(api.telegramSubscribe).toBeCalledTimes(1);
+    expect(api.telegramSubscribe).toHaveBeenCalledTimes(1);
   });
 
   it('should subscribe', async () => {
@@ -93,7 +93,7 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(api.telegramCurrentSubscribtion).toBeCalledTimes(1);
+    expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/You have been subscribed/)).toBeInTheDocument();
   });
 
@@ -112,7 +112,7 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(api.telegramUnsubcribe).toBeCalledTimes(1);
+    expect(api.telegramUnsubcribe).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/You have been unsubscribed/)).toBeInTheDocument();
   });
 
@@ -134,7 +134,7 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(api.telegramUnsubcribe).toBeCalledTimes(1);
+    expect(api.telegramUnsubcribe).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/You have been unsubscribed/)).toBeInTheDocument();
   });
 
@@ -155,7 +155,7 @@ describe('<SubscribeByTelegram />', () => {
 
     fireEvent.click(await screen.findByText('Resubscribe'));
     fireEvent.click(await screen.findByText('Check'));
-    expect(api.telegramCurrentSubscribtion).toBeCalledTimes(2);
+    expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(2);
     expect(await screen.findByText(/You have been subscribed/)).toBeInTheDocument();
   });
 

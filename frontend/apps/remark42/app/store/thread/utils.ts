@@ -1,7 +1,7 @@
 import { siteId, url } from 'common/settings';
 import { LS_COLLAPSE_KEY } from 'common/constants';
 import { setItem as localStorageSetItem, getItem as localStorageGetItem } from 'common/local-storage';
-import { Comment } from 'common/types';
+import type { Comment } from 'common/types';
 
 function getFromLocalStorage(): string[] {
   return JSON.parse(localStorageGetItem(LS_COLLAPSE_KEY) || '[]');

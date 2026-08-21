@@ -6,7 +6,7 @@
   transform: translateX(100%);
   transition: transform 0.5s ease-out;
 
-  @media (min-width: 448px) {
+  @media (width >= 448px) {
     transform: translateX(448px);
   }
 }
@@ -29,7 +29,7 @@
   width: 100%;
   height: 100%;
 
-  @media (min-width: 448px) {
+  @media (width >= 448px) {
     width: 400px;
   }
 }
@@ -42,7 +42,7 @@
   box-sizing: border-box;
   color: rgb(var(--secondary-text-color));
 
-  @media (min-width: 448px) {
+  @media (width >= 448px) {
     position: initial;
     width: 100%;
     padding: 4px;
@@ -144,7 +144,7 @@
     color: inherit;
   }
 
-  @media (min-width: 448px) {
+  @media (width >= 448px) {
     margin-right: 0;
   }
 }
@@ -166,8 +166,8 @@
     height: 20px;
     background-image: linear-gradient(
       0deg,
-      rgba(var(--primary-background-color), 0),
-      rgba(var(--primary-background-color), 1)
+      rgb(var(--primary-background-color), 0),
+      rgb(var(--primary-background-color), 1)
     );
   }
 }

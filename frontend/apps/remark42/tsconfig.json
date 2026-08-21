@@ -3,23 +3,21 @@
     "incremental": true,
     "target": "es6",
     "module": "esnext",
-    "lib": ["es2019", "dom"],
+    "lib": ["es2021", "dom"],
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "noEmit": true,
     "strict": true,
-    "allowJs": true,
     "moduleResolution": "node",
+    "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "baseUrl": "app",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "sourceMap": true,
     "paths": {
       "preact": ["../node_modules/preact"],
       "preact/*": ["../node_modules/preact/*"]
     }
   },
-  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"]
 }

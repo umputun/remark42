@@ -1,4 +1,4 @@
-import { PostInfo } from 'common/types';
+import type { PostInfo } from 'common/types';
 
 export const POST_INFO_SET = 'POST_INFO/SET';
 

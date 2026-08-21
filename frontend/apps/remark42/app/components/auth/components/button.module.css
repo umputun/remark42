@@ -23,7 +23,7 @@
   }
 
   &:focus {
-    box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.4);
+    box-shadow: 0 0 0 2px rgb(var(--primary-color), 0.4);
     outline: none;
   }
 
@@ -48,7 +48,7 @@
     left: 0;
     content: '';
     height: 36px;
-    border-left: 1px solid rgba(var(--white-color), 0.2);
+    border-left: 1px solid rgb(var(--white-color), 0.2);
   }
 }
 
@@ -67,11 +67,11 @@
 }
 
 .transparent {
-  background-color: rgba(var(--primary-color), 0.1);
+  background-color: rgb(var(--primary-color), 0.1);
   color: rgb(var(--primary-color));
 
   &:hover {
-    background-color: rgba(var(--primary-color), 0.2);
+    background-color: rgb(var(--primary-color), 0.2);
     color: rgb(var(--primary-color));
   }
 }
@@ -83,7 +83,7 @@
   width: auto;
 
   &:hover {
-    background-color: rgba(var(--primary-color), 0.1);
+    background-color: rgb(var(--primary-color), 0.1);
   }
 }
 
@@ -101,12 +101,12 @@
 
 .link[disabled] {
   background-color: unset;
-  color: rgba(var(--primary-color), 0.9);
+  color: rgb(var(--primary-color), 0.9);
 }
 
 :global(.dark) {
   & .button {
-    border-color: rgba(var(--white-color), 0.1);
+    border-color: rgb(var(--white-color), 0.1);
   }
 
   & .transparent {

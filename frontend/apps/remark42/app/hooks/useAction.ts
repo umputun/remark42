@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'preact/hooks';
 import { useDispatch } from 'store/context';
-import { BoundActionCreator, BoundActionCreators } from 'utils/actionBinder';
+import type { BoundActionCreator, BoundActionCreators } from 'utils/actionBinder';
 
 /** binds actions to dispatch */
 export const useActions = <Actions extends { [key: string]: Function }>(
