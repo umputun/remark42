@@ -1,0 +1,9 @@
+{{ define "main" }}
+<article class="page">
+  <header class="page__header">
+    <h1 class="page__title" id="{{ .Title | anchorize }}">{{ .Title }}</h1>
+    {{ with .Description }}<p class="page__description">{{ . }}</p>{{ end }}
+  </header>
+  <div class="prose">{{ .Content }}</div>
+</article>
+{{ end }}

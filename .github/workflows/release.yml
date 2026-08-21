@@ -15,7 +15,7 @@ on:
       - "README.md"
       - "LICENSE"
       - "CLAUDE.md"
-      - "site/src/docs/getting-started/installation/index.md"
+      - "site/content/docs/getting-started/installation/index.md"
 
 permissions:
   contents: read
