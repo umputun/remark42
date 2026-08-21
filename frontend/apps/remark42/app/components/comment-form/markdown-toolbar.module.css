@@ -14,7 +14,7 @@
 .item {
   background: none;
   border: 0;
-  color: var(--color37);
+  color: rgb(var(--secondary-text-color));
   display: flex;
   float: left;
   height: 24px;
@@ -24,7 +24,7 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--color9);
+    color: rgb(var(--primary-color));
   }
 }
 
@@ -43,9 +43,9 @@
 }
 
 :global(.dark) .item {
-  color: var(--color20);
+  color: rgb(var(--secondary-text-color));
 
   &:hover {
-    color: var(--color9);
+    color: rgb(var(--primary-brighter-color));
   }
 }

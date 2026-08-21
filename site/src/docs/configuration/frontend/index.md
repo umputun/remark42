@@ -22,6 +22,8 @@ title: Frontend Configuration
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – overrides the parameter from the backend minimized UI with basic info only
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
+- **`__font__`**`: string` (optional, `system-ui` by default) - a string containing the fonts being used for the iframe module, delimited by commas for alternative fonts if the first one doesn't exist on the system.
+- **`__colors__`**`: {'--primary-color': 'r, g, b', '--primary-text-color': 'r, g, b', .., '--shadow-color': 'r, g, b, a'}` (optional) - An object containing different rgb values for changing the interface colors for the iframe module, and an rgba value for changing the shadows. Many of these settings will be overwritten by using the dark theme, so this is mainly to be used with the light theme as the base setting. Colors not included in the object will have their default values. Note that interface elements might change their default color group in the future, so any changes made here are likely to break with future updates. Previous versions included numbered colors as well (e.g. --color11), but these have been replaced with the named colors.
 
 Example with all of the params:
 
@@ -29,15 +31,43 @@ Example with all of the params:
 <script>
 	var remark_config = {
 		host: 'https://remark42.example.com',
+		url: '/blog/my-first-blog-post/',
 		site_id: 'my_site',
 		components: ['embed', 'last-comments'],
 		max_shown_comments: 100,
-		theme: 'dark',
+		max_last_comments: 100,
+		theme: 'light',
 		page_title: 'My custom title for a page',
 		locale: 'es',
 		show_email_subscription: false,
+		show_telegram_subscription: false,
+		show_rss_subscription: false,
 		simple_view: true,
-		no_footer: false
+		no_footer: false,
+		__font__: 'Comic Sans MS, Comic Sans, Chalkboard SE, Comic Neue, sans-serif',
+		__colors__: {
+		  '--primary-background-color': '0, 0, 255',
+			'--secondary-background-color': '255, 0, 0',
+			'--primary-color': '255, 255, 0',
+			'--primary-brighter-color': '255, 255, 0',
+			'--primary-text-color': '255, 255, 255',
+			'--secondary-text-color': '255, 255, 0',
+			'--inverse-text-color': '255, 0, 0',
+			'--lighter-text-color': '255, 255, 255',
+			'--line-color': '0, 0, 0',
+			'--line-brighter-color': '0, 0, 0',
+			'--deactivated-color': '255, 0, 0',
+			'--highlight-color': '255, 0, 255',
+			'--selection-color': '255, 255, 0',
+			'--downvote-color': '255, 0, 0',
+			'--upvote-color': '0, 255, 0',
+			'--verified-color': '0, 0, 255',
+			'--ghost-color': '0, 0, 0',
+			'--white-color': '255, 255, 255',
+			'--error-color': '255, 0, 0',
+			'--error-background': '255, 255, 0',
+			'--shadow-color': '0, 0, 0, 0.5'
+		}
 	}
 </script>
 ```
