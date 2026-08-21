@@ -1,0 +1,36 @@
+{
+  "docs/backup/restore/index.md": {
+    "importrestore-without-removing-existing-comments": "import/restore-without-removing-existing-comments"
+  },
+  "docs/configuration/email/index.md": {
+    "email_confirmation_loginhtmltmpl--login-confirmation": "email_confirmation_login.html.tmpl-—-login-confirmation",
+    "email_confirmation_subscriptionhtmltmpl--subscription-confirmation": "email_confirmation_subscription.html.tmpl-—-subscription-confirmation",
+    "email_replyhtmltmpl--comment-notification": "email_reply.html.tmpl-—-comment-notification",
+    "fgribreausmtp-to-sendgrid-gateway": "fgribreau/smtp-to-sendgrid-gateway",
+    "mailgun-or-sendgrid-without-exposing-your-servers-ip": "mailgun-or-sendgrid-without-exposing-your-server's-ip",
+    "stevenolenmailgun-smtp-server": "stevenolen/mailgun-smtp-server"
+  },
+  "docs/configuration/parameters/index.md": {
+    "security-considerations-for-authsend-jwt-header": "security-considerations-for-auth.send-jwt-header"
+  },
+  "docs/manuals/integration-with-astro/index.md": {
+    "astro-component-card": "astro-component-(card)",
+    "astro-layout-page": "astro-layout-(page)",
+    "blogcardastro-partial-astro-component": "blogcard.astro-(partial-astro-component)",
+    "blogpagelayoutastro-partial-astro-layout": "blogpagelayout.astro-(partial-astro-layout)",
+    "commenttsx": "comment.tsx",
+    "here-how-to-use-it-in-your-astro-component": "here-how-to-use-it-in-your-astro-component.",
+    "remark42-countersvelte": "remark42-counter.svelte",
+    "remark42-embedsvelte": "remark42-embed.svelte",
+    "svelte-component-counter": "svelte-component-(counter)",
+    "svelte-component-embedded-frame": "svelte-component-(embedded-frame)",
+    "w-reactpreact-components": "w/-react/preact-components",
+    "w-svelte-components": "w/-svelte-components"
+  },
+  "docs/manuals/separate-domain/index.md": {
+    "what-doesnt-work-so-far": "what-doesn't-work-so-far?"
+  },
+  "privacy.md": {
+    "childrens-privacy": "children’s-privacy"
+  }
+}

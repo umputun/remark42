@@ -7,12 +7,10 @@ Non-obvious constraints in the frontend toolchain and widget. Read before bumpin
 CI staying green does **not** mean every pin is consistent — `.nvmrc` in particular is never read by CI, so it can silently drift. After changing the node or pnpm version, grep the whole repo and update every one of these, not just the ones CI exercises:
 
 - `Dockerfile` (production image) — `FROM node:X-alpine` and `npm i -g pnpm@X.Y.Z`
-- `site/Dockerfile`, `site/Dockerfile.dev` — `FROM node:X-alpine` (site uses yarn, not pnpm)
-- `frontend/.nvmrc`, `site/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
+- `frontend/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
 - Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json`) and `frontend/apps/remark42/package.json`'s `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
-- `site/package.json`'s `engines.node` and `engines.yarn` (site uses yarn, so its `packageManager` moves independently)
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
@@ -55,21 +53,17 @@ without `import { h }` would type-check and lint clean, then throw at runtime, b
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
 - `eslint` 8 (9/10 need flat-config migration), `stylelint` 14 (16 has breaking rule changes), `babel` 7, `jest` 28 (30 needs config changes)
-- `redux` 4, `tailwindcss` 3.4 (v4 is a full config rewrite), `@11ty/eleventy` 2 (v3 is an ESM migration) in `site/`
-
-## `html-minifier` is abandoned — use `html-minifier-terser`
-
-`site/.eleventy.js` uses `html-minifier-terser` (a maintained fork), not `html-minifier` (unpatched ReDoS advisory, no fix ever released). The eleventy transform had to become `async` for this fork's API.
+- `redux` 4
 
 ## Verifying a build didn't regress
 
 There's no automated build-output diff in CI. Before merging a dependency PR that touches the bundler/build tooling, manually diff the build output against a clean `master` checkout:
 - `apps/remark42`: expect webpack module-id numbers and css-module class tokens (e.g. `.F_A` → `.L_A`) to differ — that's normal churn from a webpack/css-loader bump. HTML, CSS values, and translation content should be byte-identical.
-- `site`: expect the `?v=<timestamp>` cache-bust query string to differ on every HTML file — that's expected. Anything else differing is a real regression.
+- `site`: asset URLs carry a content hash, so a stylesheet or script change moves the filename on every page referencing it. Anything else differing is a real regression.
 
 ## Where the alerts actually were
 
-When clearing Dependabot/audit alerts, check whether the flagged package is actually reachable from production code or only from the dev/test toolchain — `pnpm audit`/`yarn audit` don't distinguish. Several alerts here were in build-time-only tooling (webpack-dev-server, laravel-mix-equivalent dev deps) with no patched release available; those are lower-risk than a runtime dependency with the same severity label.
+When clearing Dependabot/audit alerts, check whether the flagged package is actually reachable from production code or only from the dev/test toolchain — `pnpm audit` does not distinguish. Several alerts here were in build-time-only tooling (webpack-dev-server, laravel-mix-equivalent dev deps) with no patched release available; those are lower-risk than a runtime dependency with the same severity label.
 
 ## Don't import `preact/compat`
 

@@ -1,1 +1,1 @@
-../../../site/src/docs/contributing/frontend/index.md
+../../../site/content/docs/contributing/frontend/index.md

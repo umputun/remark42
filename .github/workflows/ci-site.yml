@@ -19,6 +19,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: Build site image (pull request)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: build image without pushing
+        uses: docker/build-push-action@v7
+        with:
+          context: ./site
+          load: true
+          push: false
+          cache-from: |
+            type=gha,scope=site-pr
+            type=gha,scope=site-linux/amd64
+          cache-to: type=gha,scope=site-pr,mode=max,ignore-error=true
+
   build:
     name: Build site image (${{ matrix.platform }})
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
@@ -60,7 +87,7 @@ jobs:
           context: ./site
           platforms: ${{ matrix.platform }}
           cache-from: type=gha,scope=site-${{ matrix.platform }}
-          cache-to: type=gha,scope=site-${{ matrix.platform }},mode=max
+          cache-to: type=gha,scope=site-${{ matrix.platform }},mode=max,ignore-error=true
           outputs: type=image,name=ghcr.io/umputun/remark42-site,push-by-digest=true,name-canonical=true,push=true
 
       - name: export digest

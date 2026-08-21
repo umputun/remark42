@@ -12,10 +12,12 @@ services:
         max-size: '10m'
         max-file: '5'
 
+    # without this the bind mount below leaves root-owned public/ and resources/
+    # in the checkout on linux; docker desktop remaps ownership and hides it
+    user: '${UID:-1000}:${GID:-1000}'
+
     ports:
-      - '3001:3001'
-      - '8080:8080'
+      - '1313:1313'
 
     volumes:
-      - ./src:/site/src
-      - ./build:/site/build
+      - ./:/site

@@ -1,4 +1,4 @@
-node_modules
-yarn-*.log
-.tmp
+public
 build
+resources
+.hugo_build.lock

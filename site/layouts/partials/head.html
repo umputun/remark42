@@ -1,0 +1,16 @@
+{{- $style := resources.Get "styles.css" | resources.Minify | resources.Fingerprint -}}
+{{- $script := resources.Get "script.js" | resources.Minify | resources.Fingerprint -}}
+{{- $inline := resources.Get "inline.js" | resources.ExecuteAsTemplate "inline.js" . | resources.Minify -}}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <title>{{ with .Title }}{{ . }} | {{ site.Title }}{{ else }}{{ site.Title }}{{ end }}</title>
+  <meta name="description" content="{{ with .Params.metaDescription }}{{ . }}{{ else }}{{ with .Description }}{{ . }}{{ else }}{{ site.Params.description }}{{ end }}{{ end }}">
+  <link rel="stylesheet" href="{{ $style.RelPermalink }}">
+  <script>{{ $inline.Content | safeJS }}</script>
+  <script defer src="{{ $script.RelPermalink }}"></script>
+</head>
