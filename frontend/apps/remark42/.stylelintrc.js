@@ -39,7 +39,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['*.html', '**/*.html', '*.ejs', '**/*.ejs'],
+      files: ['*.ejs', '**/*.ejs'],
       customSyntax: 'postcss-html',
     },
   ],

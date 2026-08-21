@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -27,6 +26,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/webassets"
 )
 
 // Rest is a rest access server
@@ -45,7 +45,7 @@ type Rest struct {
 
 	AnonVote        bool
 	WebRoot         string
-	WebFS           embed.FS
+	WebFS           fs.FS
 	RemarkURL       string
 	ReadOnlyAge     int
 	SharedSecret    string
@@ -385,8 +385,16 @@ func (s *Rest) routes() http.Handler {
 		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
-	// file server for static content from s.WebRoot on path /web
-	addFileServer(router, s.WebFS, s.WebRoot, s.Version)
+	// file server for /web: the frontend build first, then the assets embedded in the binary.
+	// the build is embedded under web/ by app/cmd, so that prefix is stripped here. fs.Sub only
+	// fails for an fs.SubFS that refuses, and a nil result would panic on the first request, so
+	// serve nothing from the frontend rather than serving it at the wrong paths
+	embeddedFrontend, err := fs.Sub(s.WebFS, "web")
+	if err != nil {
+		log.Printf("[WARN] no embedded frontend, serving built-in assets only: %v", err)
+		embeddedFrontend = emptyFS{}
+	}
+	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version)
 	return router
 }
 
@@ -499,20 +507,20 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, cnf)
 }
 
-// serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
-func addFileServer(r *routegroup.Bundle, embedFS embed.FS, webRoot, version string) {
-	var webFS http.Handler
+// serves /web from the frontend build, falling back to the assets embedded in the binary for
+// names the build does not produce. the frontend build is read from webRoot on disk, or from the
+// copy embedded at app/cmd/web when that directory is absent.
+func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version string) {
+	frontendFS := embeddedFrontend
 
 	if _, err := os.Stat(webRoot); err == nil {
 		log.Printf("[INFO] run file server from %s from the disk", webRoot)
-		webFS = http.FileServer(http.Dir(webRoot))
+		frontendFS = os.DirFS(webRoot)
 	} else {
 		log.Printf("[INFO] run file server, embedded")
-		var contentFS, _ = fs.Sub(embedFS, "web")
-		webFS = http.FileServer(http.FS(contentFS))
 	}
 
-	webFS = http.StripPrefix("/web", webFS)
+	webFS := http.StripPrefix("/web", http.FileServer(http.FS(webFiles{frontend: frontendFS, embedded: webassets.FS})))
 	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),

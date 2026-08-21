@@ -5,7 +5,6 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const RefreshPlugin = require('@prefresh/webpack');
@@ -20,6 +19,7 @@ const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
 const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || `http://127.0.0.1:${PORT}`;
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
+const WEB_ASSETS_PATH = path.resolve(__dirname, '../../../backend/app/webassets/assets');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
 const genId = incstr.idGenerator();
@@ -209,15 +209,16 @@ module.exports = (_, { mode, analyze }) => {
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
     },
-    static: {
-      staticOptions: {
-        contentBase: PUBLIC_FOLDER_PATH,
-        watchOptions: {
-          ignored: [PUBLIC_FOLDER_PATH, path.resolve(__dirname, 'node_modules')],
-        },
-      },
-      watch: true,
-    },
+    static: [
+      // entries are consulted in order, so the build output comes first here for the same reason
+      // it does in the backend's file server
+      // the bundler serves its own output from memory and wipes this directory on every dev build,
+      // so watching it would only ever fire on the build's own writes
+      { directory: PUBLIC_FOLDER_PATH, publicPath: PUBLIC_PATH, watch: false },
+      // the assets the bundler does not build are served by the backend in production, so the dev
+      // server reads them straight from where they live, or links to them 404 on this port
+      { directory: WEB_ASSETS_PATH, publicPath: PUBLIC_PATH, watch: false },
+    ],
     allowedHosts: 'all',
     hot: true,
     proxy: [
@@ -295,14 +296,6 @@ module.exports = (_, { mode, analyze }) => {
     },
     plugins: [
       ...plugins,
-      new CopyPlugin({
-        patterns: [
-          {
-            from: path.resolve(__dirname, 'templates/400x400.jpeg'),
-            to: PUBLIC_FOLDER_PATH,
-          },
-        ],
-      }),
       new ForkTsCheckerWebpackPlugin(),
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/iframe.ejs'),
@@ -338,18 +331,6 @@ module.exports = (_, { mode, analyze }) => {
         filename: 'deleteme.html',
         inject: false,
         REMARK_URL,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/markdown-help.html'),
-        filename: 'markdown-help.html',
-        inject: false,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/privacy.html'),
-        filename: 'privacy.html',
-        inject: false,
         minify: htmlMinifyOptions,
       }),
       ...(analyze

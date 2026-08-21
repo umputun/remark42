@@ -4,16 +4,20 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
@@ -22,6 +26,7 @@ import (
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -36,6 +41,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/webassets"
 )
 
 // To generate a token, enter one of the tokens here into https://jwt.io, change the secret to one you're using in your test
@@ -115,6 +121,182 @@ func TestRest_FileServerStaticAssets(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode, "directory listings must be blocked")
+	})
+}
+
+// TestRest_FileServerBackendAssets covers the assets embedded in the binary and the rule that a
+// name the frontend build provides is served from there instead. WebRoot is a fresh empty
+// directory so the frontend side is known, rather than the shared temp dir startupT defaults to.
+func TestRest_FileServerBackendAssets(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.WebRoot = t.TempDir() })
+	defer teardown()
+
+	t.Run("serves every embedded asset byte for byte", func(t *testing.T) {
+		for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg"} {
+			t.Run(name, func(t *testing.T) {
+				want, err := fs.ReadFile(webassets.FS, name)
+				require.NoError(t, err)
+
+				body, code := get(t, ts.URL+"/web/"+name)
+				assert.Equal(t, http.StatusOK, code)
+				assert.Equal(t, string(want), body, "the bytes must come from the embedded assets")
+			})
+		}
+	})
+
+	t.Run("serves the image with its own content type", func(t *testing.T) {
+		resp, err := http.Get(ts.URL + "/web/400x400.jpeg")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "image/jpeg", resp.Header.Get("Content-Type"))
+	})
+
+	t.Run("head is served", func(t *testing.T) {
+		resp, err := http.Head(ts.URL + "/web/privacy.html")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("frontend output wins over the embedded copy", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(srv.WebRoot+"/privacy.html", []byte("operator's own policy"), 0o600))
+		t.Cleanup(func() { _ = os.Remove(srv.WebRoot + "/privacy.html") })
+
+		body, code := get(t, ts.URL+"/web/privacy.html")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, "operator's own policy", body)
+	})
+
+	t.Run("traversal out of the asset root is refused", func(t *testing.T) {
+		for _, p := range []string{"/web/../../etc/passwd", "/web/..%2f..%2fetc%2fpasswd", "/web/%2e%2e/%2e%2e/etc/passwd"} {
+			t.Run(p, func(t *testing.T) {
+				body, code := get(t, ts.URL+p)
+				assert.NotContains(t, body, "root:", "must never serve a file outside the served roots")
+				assert.NotEqual(t, http.StatusInternalServerError, code, "a rejected name must not surface as 500")
+			})
+		}
+	})
+
+	t.Run("missing in both still returns 404", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/neither-source-has-this.html")
+		assert.Equal(t, http.StatusNotFound, code)
+	})
+}
+
+// TestRest_FileServerEmbeddedFrontend covers the branch taken when no web root exists on disk,
+// which is how the released binary runs. The frontend stands in for the copy embedded at
+// app/cmd/web, so a name it provides and a name only the assets provide are both exercised.
+func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
+	frontend := fstest.MapFS{"index.html": {Data: []byte("embedded frontend index")}}
+	router := routegroup.New(http.NewServeMux())
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version")
+
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	t.Run("serves the embedded frontend", func(t *testing.T) {
+		body, code := get(t, ts.URL+"/web/index.html")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, "embedded frontend index", body)
+	})
+
+	for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg"} {
+		t.Run("falls back to "+name, func(t *testing.T) {
+			want, err := fs.ReadFile(webassets.FS, name)
+			require.NoError(t, err)
+
+			body, code := get(t, ts.URL+"/web/"+name)
+			assert.Equal(t, http.StatusOK, code)
+			assert.Equal(t, string(want), body)
+		})
+	}
+
+	t.Run("a name neither source has is missing", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/nothing-here.html")
+		assert.Equal(t, http.StatusNotFound, code)
+	})
+
+	t.Run("a name the operating system rejects is missing, not an error", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/a%00b.html")
+		assert.Equal(t, http.StatusNotFound, code)
+	})
+}
+
+// TestRest_FileServerRoutesEmbedded drives the whole router the released binary runs: no web root
+// on disk, and the frontend read from WebFS. It is what pins the web/ prefix routes() strips, which
+// a test calling addFileServer directly cannot see.
+func TestRest_FileServerRoutesEmbedded(t *testing.T) {
+	frontend := fstest.MapFS{
+		"web/index.html":  {Data: []byte("embedded index")},
+		"web/iframe.html": {Data: []byte("embedded iframe")},
+		"web/remark.mjs":  {Data: []byte("embedded bundle")},
+	}
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.WebRoot = filepath.Join(t.TempDir(), "absent")
+		srv.WebFS = frontend
+	})
+	defer teardown()
+
+	t.Run("serves the frontend from under the web prefix", func(t *testing.T) {
+		for name, want := range map[string]string{
+			"index.html":  "embedded index",
+			"iframe.html": "embedded iframe",
+			"remark.mjs":  "embedded bundle",
+		} {
+			t.Run(name, func(t *testing.T) {
+				body, code := get(t, ts.URL+"/web/"+name)
+				assert.Equal(t, http.StatusOK, code)
+				assert.Equal(t, want, body)
+			})
+		}
+	})
+
+	t.Run("the prefix is stripped rather than exposed", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/web/index.html")
+		assert.Equal(t, http.StatusNotFound, code, "the web/ prefix must not be reachable as a path")
+	})
+
+	t.Run("the embedded assets still answer alongside it", func(t *testing.T) {
+		want, err := fs.ReadFile(webassets.FS, "privacy.html")
+		require.NoError(t, err)
+
+		body, code := get(t, ts.URL+"/web/privacy.html")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, string(want), body)
+	})
+}
+
+// refusingSubFS is an fs.FS whose Sub refuses, which is the only way fs.Sub returns a nil
+// filesystem. routes() has to survive it, since a nil frontend would panic on the first request.
+type refusingSubFS struct{}
+
+func (refusingSubFS) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+}
+func (refusingSubFS) Sub(string) (fs.FS, error) { return nil, errors.New("refused") }
+
+// TestRest_FileServerFrontendSourceRefused covers the branch where the frontend source cannot be
+// sub-rooted: /web must keep serving the embedded assets rather than panicking.
+func TestRest_FileServerFrontendSourceRefused(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.WebRoot = filepath.Join(t.TempDir(), "absent")
+		srv.WebFS = refusingSubFS{}
+	})
+	defer teardown()
+
+	t.Run("the embedded assets still serve", func(t *testing.T) {
+		want, err := fs.ReadFile(webassets.FS, "privacy.html")
+		require.NoError(t, err)
+
+		body, code := get(t, ts.URL+"/web/privacy.html")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, string(want), body)
+	})
+
+	t.Run("a frontend name is missing rather than fatal", func(t *testing.T) {
+		_, code := get(t, ts.URL+"/web/iframe.html")
+		assert.Equal(t, http.StatusNotFound, code)
 	})
 }
 

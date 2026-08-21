@@ -170,7 +170,7 @@ services:
 | allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |
 | port                           | REMARK_PORT                    | `8080`                  | web server port                                          |
-| web-root                       | REMARK_WEB_ROOT                | `./web`                 | web server root directory                                |
+| web-root                       | REMARK_WEB_ROOT                | `./web`                 | web server root, supplies the frontend when it exists    |
 | update-limit                   | UPDATE_LIMIT                   | `0.5`                   | updates/sec limit                                        |
 | trusted-proxy                  | TRUSTED_PROXY                  | none (trust any)        | reverse-proxy networks (CIDR/IP, comma-separated) trusted to set the client IP; see [Trusted proxies and client IP](#trusted-proxies-and-client-ip) |
 | subscribers-only               | SUBSCRIBERS_ONLY               | `false`                 | enable commenting only for Patreon subscribers           |

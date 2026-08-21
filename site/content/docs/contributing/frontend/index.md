@@ -88,6 +88,12 @@ Remark42 frontend can be built statically, and that's how the production version
 
 Run `pnpm build` inside `./frontend`, and result files will be saved in `./frontend/apps/remark42/public`.
 
+`/web` is served from two sources. This build output comes first; anything it does not emit is
+served from `backend/app/webassets/assets`, embedded in the backend binary, which is where
+`privacy.html`, `markdown-help.html` and `400x400.jpeg` live. A plain page or image the bundler
+does not process belongs there rather than here. Those files sit outside the frontend toolchain,
+so prettier, stylelint and `pnpm lint` do not see them.
+
 ## Code Style
 
 - The project uses TypeScript to analyze code statically
