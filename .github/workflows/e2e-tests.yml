@@ -5,22 +5,32 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
-      - "frontend/apps/remark42/**"
-      - "frontend/e2e/**"
-      - "frontend/Dockerfile.e2e"
+      - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
+      - "compose-e2e-test.yml"
+      - "Dockerfile"
 
   pull_request:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
-      - "frontend/apps/remark42/**"
-      - "frontend/e2e/**"
-      - "frontend/Dockerfile.e2e"
+      - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
+      - "compose-e2e-test.yml"
+      - "Dockerfile"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
-    name: Tests
-    timeout-minutes: 60
+  # cheap gate: catches a compile break or a lint regression in the build-tagged suite
+  # without paying for the docker build and the browser download
+  vet:
+    name: Vet
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,13 +40,67 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build & run containers
-        id: tests
-        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
-
-      - uses: actions/upload-artifact@v7
-        if: always()
+      - name: Set up Go
+        uses: actions/setup-go@v7
         with:
-          name: playwright-report
-          path: ./playwright-report/
+          go-version-file: e2e/go.mod
+          cache-dependency-path: e2e/go.sum
+
+      - name: Vet
+        run: cd e2e && go vet -tags=e2e ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.1
+          working-directory: e2e
+          args: --build-tags=e2e --config ../backend/.golangci.yml
+
+  tests:
+    name: Tests
+    needs: vet
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: e2e/go.mod
+          cache-dependency-path: e2e/go.sum
+
+      # two directories: the driver (node plus the npm package) and the browser builds,
+      # which include firefox and webkit for the rendering tests
+      - name: Cache playwright driver and browsers
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/ms-playwright-go
+          key: playwright-${{ hashFiles('e2e/go.sum') }}
+          restore-keys: playwright-
+
+      - name: Build & start the stack
+        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
+
+      - name: Run e2e
+        run: cd e2e && go test -tags=e2e -count 1 -timeout 20m -v ./...
+
+      - name: Server logs on failure
+        if: failure()
+        run: docker compose -f compose-e2e-test.yml logs --tail=200
+
+      - name: Upload browser traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: e2e/traces/
           retention-days: 30
+          if-no-files-found: ignore

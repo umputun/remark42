@@ -7,14 +7,12 @@ Non-obvious constraints in the frontend toolchain and widget. Read before bumpin
 CI staying green does **not** mean every pin is consistent — `.nvmrc` in particular is never read by CI, so it can silently drift. After changing the node or pnpm version, grep the whole repo and update every one of these, not just the ones CI exercises:
 
 - `Dockerfile` (production image) — `FROM node:X-alpine` and `npm i -g pnpm@X.Y.Z`
-- `frontend/Dockerfile.e2e` — `FROM mcr.microsoft.com/playwright:vX.Y.Z-noble` **and** `corepack prepare pnpm@X.Y.Z`
 - `site/Dockerfile`, `site/Dockerfile.dev` — `FROM node:X-alpine` (site uses yarn, not pnpm)
 - `frontend/.nvmrc`, `site/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
-- Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json` — `frontend/e2e/package.json` has none) and `frontend/apps/remark42/package.json`'s `engines` block
+- Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json`) and `frontend/apps/remark42/package.json`'s `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
 - `site/package.json`'s `engines.node` and `engines.yarn` (site uses yarn, so its `packageManager` moves independently)
-- `frontend/e2e/package.json`'s `@playwright/test`/`playwright` versions must match `frontend/Dockerfile.e2e`'s base image tag exactly, or the e2e container's bundled browser revision mismatches what the npm package expects.
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 

@@ -25,20 +25,15 @@ updates:
     groups:
       "Go modules updates":
         dependency-type: "production"
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
+  - package-ecosystem: "gomod"
+    directory: "/e2e"
     schedule:
       interval: "monthly"
     groups:
-      "NPM modules updates":
+      "Go modules updates":
         dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
   - package-ecosystem: "npm"
-    directory: "/frontend/e2e"
+    directory: "/frontend"
     open-pull-requests-limit: 0
     ignore:
       - dependency-name: "*"
