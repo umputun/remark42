@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { h } from 'preact';
 import { useState } from 'preact/hooks';
-import { defineMessages, useIntl } from 'react-intl';
 
+import { defineMessages, useIntl } from 'common/intl';
 import { useDispatch } from 'store/context';
 import { patchComment } from 'store/comments/actions';
 import { putCommentVote } from 'common/api';

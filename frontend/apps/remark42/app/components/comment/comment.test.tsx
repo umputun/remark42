@@ -1,8 +1,8 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
-import { useIntl, IntlShape } from 'react-intl';
 
+import { useIntl, IntlShape } from 'common/intl';
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 

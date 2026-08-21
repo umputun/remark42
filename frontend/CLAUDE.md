@@ -1,6 +1,6 @@
-# Frontend dependency updates
+# Frontend gotchas
 
-Non-obvious things that bit us during the pnpm 8→10 / node 16→20 migration (PR #2091, fixing #2085). Read before bumping dependencies or the node/pnpm toolchain again.
+Non-obvious constraints in the frontend toolchain and widget. Read before bumping dependencies or the node/pnpm versions, and before changing how the widget renders or how translations are extracted.
 
 ## The node/pnpm version is pinned in many places, not one
 
@@ -22,10 +22,8 @@ When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `e
 
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
-A few deps needed pinning specifically because of pnpm 10's hoisting changes, not because of the deps themselves:
-- `react-intl` 6.0.5 — newer versions' type declarations break the preact-compat alias setup
+One dep is pinned specifically because of pnpm 10's hoisting changes, not because of the dep itself:
 - `@types/minimatch` 5.1.2 — 6.x is an empty stub that the hoisted layout picks up instead of the real types
-- `cheerio` 1.0.0-rc.12 — 1.2 is ESM-only and breaks under jest 28
 
 If a dependency bump mysteriously breaks types or module resolution only after a pnpm major bump, suspect the layout change before suspecting the dependency.
 
@@ -59,8 +57,7 @@ without `import { h }` would type-check and lint clean, then throw at runtime, b
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
 - `eslint` 8 (9/10 need flat-config migration), `stylelint` 14 (16 has breaking rule changes), `babel` 7, `jest` 28 (30 needs config changes)
-- `react`/`react-dom` (the app uses `preact` aliased as `react`/`react-dom` via `preact/compat` — don't "fix" this by installing real react)
-- `redux`/`react-redux`, `tailwindcss` 3.4 (v4 is a full config rewrite), `@11ty/eleventy` 2 (v3 is an ESM migration) in `site/`
+- `redux` 4, `tailwindcss` 3.4 (v4 is a full config rewrite), `@11ty/eleventy` 2 (v3 is an ESM migration) in `site/`
 
 ## `html-minifier` is abandoned — use `html-minifier-terser`
 
@@ -75,3 +72,52 @@ There's no automated build-output diff in CI. Before merging a dependency PR tha
 ## Where the alerts actually were
 
 When clearing Dependabot/audit alerts, check whether the flagged package is actually reachable from production code or only from the dev/test toolchain — `pnpm audit`/`yarn audit` don't distinguish. Several alerts here were in build-time-only tooling (webpack-dev-server, laravel-mix-equivalent dev deps) with no patched release available; those are lower-risk than a runtime dependency with the same severity label.
+
+## Don't import `preact/compat`
+
+It installs hooks on preact's shared `options` that remap `onFocus`/`onBlur` to
+`focusin`/`focusout` on every element and make `@testing-library/preact` rewrite `change` to
+`input`, so one import changes event behaviour across the whole widget, and it adds about
+3.8 kB gzipped.
+
+`forwardRef` lives only there, so a component that needs a ref takes it as an ordinary prop;
+`TextareaAutosize` is the pattern. For a component type annotation use `FunctionComponent`
+from `preact`, not `React.FC`.
+
+## i18n is a hand-written binding whose export names are fixed by the extractor
+
+`app/common/intl.tsx` provides `IntlProvider`, `useIntl`, `createIntl`, `defineMessages`,
+`FormattedMessage` and `IntlShape`. `formatjs extract` (`translation:extract`) finds messages
+by recognising the identifiers `defineMessages`, `FormattedMessage` and `intl.formatMessage`
+in the AST, not by import source, so those three names are fixed. Rename any of them and
+extraction returns nothing, with no error and a zero exit code.
+
+The damage lands on the next step. `translation:check` compares locale keys against extracted
+keys and fails loudly, but `tasks/generateDictionary.js` calls `removeAbandonedKeys`, so
+`translation:generate` after a rename deletes the now-unextracted keys from all 24 files in
+`app/locales/` and writes them back, after which the check passes. Extract-then-generate is
+the documented translator workflow, so the destructive order is the normal one.
+
+After any rename or refactor touching those identifiers, verify the count rather than the exit
+code:
+
+```sh
+pnpm translation:extract
+node -e "console.log(Object.keys(require('./extracted-messages/messages')).length)"
+```
+
+It must match the key count in `app/locales/en.json`, not drop to 0.
+
+The binding implements `{name}` interpolation and paired `<tag>text</tag>` rich text, and
+nothing else of ICU: no plural, select or selectordinal, no typed arguments such as
+`{n, number}`, and no apostrophe quoting. A plural or select form has braces the placeholder
+rule rejects, so it falls back to English wherever values are passed and shows its raw text
+where they are not; `''` simply stays as two apostrophes.
+
+`translation:check` validates every translated value's markup and placeholders against the
+English string it translates, mirroring the binding's rule, and the catalogue sweep in
+`app/common/intl.test.tsx` additionally renders the two messages that carry a link. What
+neither catches is unsupported ICU syntax, since a plural form is well-formed text as far as
+both are concerned. A message the binding cannot resolve falls back to the English source
+rather than reaching the page, so without these checks a broken translation is invisible in
+the interface.

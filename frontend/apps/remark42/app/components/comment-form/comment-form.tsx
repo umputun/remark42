@@ -1,7 +1,7 @@
 import { h, Component, createRef, Fragment } from 'preact';
-import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
+import { FormattedMessage, IntlShape, defineMessages } from 'common/intl';
 import { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
@@ -454,7 +454,7 @@ export class CommentForm extends Component<Props, State> {
           <TextExpander>
             <TextareaAutosize
               id={this.textareaId}
-              ref={this.textareaRef}
+              textareaRef={this.textareaRef}
               onPaste={this.onPaste}
               className={styles.field}
               placeholder={placeholderMessage}

@@ -1,9 +1,8 @@
-import { mount } from 'enzyme';
+import '@testing-library/jest-dom';
+import { fireEvent, screen } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
-import { Provider } from 'store/context';
-import { Middleware } from 'redux';
-import createMockStore from 'redux-mock-store';
-import { IntlProvider } from 'react-intl';
+
+import { render } from 'tests/utils';
 
 jest.mock('common/api');
 
@@ -11,11 +10,9 @@ import { user, anonymousUser } from '__stubs__/user';
 import { validToken } from '__stubs__/jwt';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
 import { sleep } from 'utils/sleep';
-import { Input } from 'components/input';
-import { Button } from 'components/button';
-import { Dropdown } from 'components/dropdown';
 import { persistEmail } from 'components/auth/auth.utils';
-import enMessages from 'locales/en.json';
+
+import { StoreState } from 'store';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
 import { RequestError } from '../../../utils/errorUtils';
@@ -38,126 +35,105 @@ const initialStore = {
   theme: 'light',
 } as const;
 
-const mockStore = createMockStore([] as Middleware[]);
-
-const makeInputEvent = (value: string) => ({
-  preventDefault: jest.fn(),
-  target: {
-    value,
-  },
-});
-
 jest.mock('utils/jwt', () => ({
   isJwtExpired: jest.fn(() => false),
 }));
 
+// call history accumulates across the file otherwise, so a toHaveBeenCalledWith can be
+// satisfied by an earlier test. only the history is cleared, since the module-scope
+// mockImplementation above has to survive into every test
+beforeEach(() => {
+  emailVerificationForSubscribeMock.mockClear();
+  emailConfirmationForSubscribeMock.mockClear();
+  unsubscribeFromEmailUpdatesMock.mockClear();
+});
+
 describe('<SubscribeByEmail/>', () => {
-  const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
-    mount(
-      <IntlProvider locale="en" messages={enMessages}>
-        <Provider store={store}>
-          <SubscribeByEmail />
-        </Provider>
-      </IntlProvider>
-    );
+  const createWrapper = (state: Partial<StoreState> = initialStore) => render(<SubscribeByEmail />, state);
 
   it('should be rendered with disabled email button when user is anonymous', () => {
-    const store = mockStore({ ...initialStore, user: anonymousUser });
-    const wrapper = createWrapper(store);
-    const dropdown = wrapper.find(Dropdown);
+    const { container } = createWrapper({ ...initialStore, user: anonymousUser });
+    const button = screen.getByRole('button');
 
-    expect(dropdown.prop('disabled')).toEqual(true);
-    expect(dropdown.prop('buttonTitle')).toEqual('Available only for registered users');
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(button).toBeDisabled();
+    expect(button.getAttribute('title')).toEqual('Available only for registered users');
   });
 
   it('should be rendered with enabled email button when user is registrated', () => {
-    const store = mockStore(initialStore);
-    const wrapper = createWrapper(store);
-    const dropdown = wrapper.find(Dropdown);
+    const { container } = createWrapper(initialStore);
+    const button = screen.getByRole('button');
 
-    expect(dropdown.prop('disabled')).toEqual(false);
-    expect(dropdown.prop('buttonTitle')).toEqual('Subscribe by Email');
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(button).not.toBeDisabled();
+    expect(button.getAttribute('title')).toEqual('Subscribe by Email');
   });
 });
 
 describe('<SubscribeByEmailForm/>', () => {
-  const createWrapper = (store: ReturnType<typeof mockStore> = mockStore(initialStore)) =>
-    mount(
-      <IntlProvider locale="en" messages={enMessages}>
-        <Provider store={store}>
-          <SubscribeByEmailForm />
-        </Provider>
-      </IntlProvider>
-    );
-  it('should render email form by default', () => {
-    const store = mockStore(initialStore);
-    const wrapper = createWrapper(store);
-    const title = wrapper.find(`.${styles.title}`);
-    const button = wrapper.find(Button);
+  const createWrapper = (state: Partial<StoreState> = initialStore) => render(<SubscribeByEmailForm />, state);
 
-    expect(title.text()).toEqual('Subscribe to replies');
-    expect(button.prop('children')).toEqual('Submit');
-    expect(button.prop('disabled')).toEqual(true);
+  it('should render email form by default', () => {
+    const { container } = createWrapper(initialStore);
+    expect(container.querySelector(`.${styles.title}`)?.textContent).toEqual('Subscribe to replies');
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
   });
 
   it('should render subscribed state if user subscribed', () => {
-    const store = mockStore({ ...initialStore, user: { email_subscription: true } });
-    const wrapper = createWrapper(store);
+    const { container } = createWrapper({ ...initialStore, user: { ...user, email_subscription: true } });
 
-    expect(wrapper.find(`.${styles.subscribed}`)).toHaveLength(1);
-    expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
+    expect(container.querySelectorAll(`.${styles.subscribed}`)).toHaveLength(1);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(container.textContent?.startsWith('You are subscribed on updates by email')).toBe(true);
   });
 
   it('should pass through subscribe process', async () => {
-    const wrapper = createWrapper();
+    const { container } = createWrapper();
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = container.querySelector('input') as HTMLInputElement;
 
-    const input = wrapper.find('input');
-    const form = wrapper.find('form');
-
-    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
-    input.simulate('input');
-    form.simulate('submit');
+    fireEvent.input(input, { target: { value: 'some@email.com' } });
+    fireEvent.submit(form);
 
     expect(emailVerificationForSubscribeMock).toHaveBeenCalledWith('some@email.com');
 
-    await sleep();
-    wrapper.update();
+    await act(() => sleep(0));
 
-    const textarea = wrapper.find('textarea');
-    const button = wrapper.find('button');
+    // order matters here, and a lookup by name would not catch a swap
+    const buttons = container.querySelectorAll('button');
 
-    expect(button.at(0).text()).toEqual('Back');
-    expect(button.at(1).text()).toEqual('Subscribe');
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].textContent).toBe('Back');
+    expect(buttons[1].textContent).toBe('Subscribe');
 
-    textarea.getDOMNode<HTMLTextAreaElement>().value = 'tokentokentoken';
-    textarea.simulate('input');
-    form.simulate('submit');
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.input(textarea, { target: { value: 'tokentokentoken' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
 
     expect(emailConfirmationForSubscribeMock).toHaveBeenCalledWith('tokentokentoken');
 
-    await sleep(0);
-    wrapper.update();
+    await act(() => sleep(0));
 
-    expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
-    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
 
   it('should handle http error 409: already subscribed', async () => {
     emailVerificationForSubscribeMock.mockImplementationOnce(() => Promise.reject(new RequestError('', 409)));
 
-    const wrapper = createWrapper();
+    const { container } = createWrapper();
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = container.querySelector('input') as HTMLInputElement;
 
-    const input = wrapper.find('input');
-    const form = wrapper.find('form');
+    fireEvent.input(input, { target: { value: 'some@email.com' } });
+    fireEvent.submit(form);
 
-    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
-    input.simulate('input');
-    form.simulate('submit');
+    await act(() => sleep(0));
 
-    await sleep();
-    wrapper.update();
-
-    expect(wrapper.text().startsWith('You are subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You are subscribed on updates by email')).toBe(true);
   });
 
   it('should pass through subscribe process without confirmation', async () => {
@@ -165,74 +141,63 @@ describe('<SubscribeByEmailForm/>', () => {
       Promise.resolve({ address: email, updated: true })
     );
 
-    const wrapper = createWrapper();
+    const { container } = createWrapper();
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = container.querySelector('input') as HTMLInputElement;
 
-    const input = wrapper.find('input');
-    const form = wrapper.find('form');
-
-    input.getDOMNode<HTMLInputElement>().value = 'some@email.com';
-    input.simulate('input');
-    form.simulate('submit');
+    fireEvent.input(input, { target: { value: 'some@email.com' } });
+    fireEvent.submit(form);
 
     expect(emailVerificationForSubscribeMock).toHaveBeenCalledWith('some@email.com');
 
-    await sleep();
-    wrapper.update();
+    await act(() => sleep(0));
 
-    expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
-    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
 
   it('should fill in email from local storage', async () => {
     const expected = 'someone@email.com';
-    persistEmail(expected);
-    const wrapper = createWrapper();
-    const form = wrapper.find('form');
 
-    expect(form.find('input').props().value).toBe(expected);
+    persistEmail(expected);
+
+    const { container } = createWrapper();
+
+    expect(container.querySelector('input')?.value).toBe(expected);
   });
 
   it('should send form by paste valid token', async () => {
-    const wrapper = createWrapper();
-    const onInputEmail = wrapper.find(Input).prop('onInput') as Function;
-    const form = wrapper.find('form');
+    const { container } = createWrapper();
+    const input = container.querySelector('input') as HTMLInputElement;
 
-    expect(typeof onInputEmail === 'function').toBe(true);
+    fireEvent.input(input, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
 
-    act(() => onInputEmail(makeInputEvent('some@email.com')));
+    await act(() => sleep(0));
 
-    form.simulate('submit');
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
-    await sleep(0);
-    wrapper.update();
+    fireEvent.input(textarea, { target: { value: validToken } });
 
-    const textarea = wrapper.find('textarea');
+    await act(() => sleep(0));
 
-    textarea.getDOMNode<HTMLTextAreaElement>().value = validToken;
-    textarea.simulate('input');
-
-    await sleep(0);
-    wrapper.update();
-
-    expect(wrapper.text().startsWith('You have been subscribed on updates by email')).toBe(true);
-    expect(wrapper.find(Button).text()).toEqual('Unsubscribe');
+    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
 
   it('should pass throw unsubscribe process', async () => {
-    const store = mockStore({ ...initialStore, user: { email_subscription: true } });
-    const wrapper = createWrapper(store);
-    const onClick = wrapper.find(Button).prop('onClick') as Function;
+    const { container } = createWrapper({ ...initialStore, user: { ...user, email_subscription: true } });
 
-    expect(typeof onClick === 'function').toBe(true);
-
-    act(() => onClick());
+    fireEvent.click(screen.getByRole('button', { name: 'Unsubscribe' }));
 
     expect(unsubscribeFromEmailUpdatesMock).toHaveBeenCalled();
 
-    await sleep(0);
-    wrapper.update();
+    await act(() => sleep(0));
 
-    expect(wrapper.text().startsWith('You have been unsubscribed by email to updates')).toBe(true);
-    expect(wrapper.find(Button).text()).toEqual('Close');
+    expect(container.textContent?.startsWith('You have been unsubscribed by email to updates')).toBe(true);
+    expect(container.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   });
 });

@@ -1,7 +1,7 @@
 import { h, JSX, Component, createRef, ComponentType } from 'preact';
-import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
 import clsx from 'clsx';
 
+import { FormattedMessage, IntlShape, defineMessages } from 'common/intl';
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 import { StaticStore } from 'common/static-store';

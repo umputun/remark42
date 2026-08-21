@@ -1,9 +1,9 @@
 import clsx from 'clsx';
 import { h, Fragment, JSX } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useIntl } from 'react-intl';
 import { useDispatch } from 'store/context';
 
+import { useIntl } from 'common/intl';
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';

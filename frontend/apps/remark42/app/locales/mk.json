@@ -119,7 +119,7 @@
   "profile.request-to-delete-data": "Барање за бришење на моите податоци",
   "retry": "Обиди се повторно",
   "root.pinned-comments": "Пинувани коментари",
-  "root.powered-by": "Овозможено од <a href='diosfera.codeberg.page'>Диосфера</a>",
+  "root.powered-by": "Овозможено од <a>Remark42</a>",
   "root.show-more": "Прикажи повеќе",
   "settings.block": "блокирај",
   "settings.block-time": "до {day} во {time}",

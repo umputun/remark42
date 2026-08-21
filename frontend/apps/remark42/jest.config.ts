@@ -29,7 +29,6 @@ const config: Config = {
     '\\.css': 'identity-obj-proxy',
     '\\.svg': '<rootDir>/app/__stubs__/svg.tsx',
   },
-  setupFiles: ['<rootDir>/jest.setup.ts'],
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',
     '<rootDir>/app/__mocks__/localstorage.ts',

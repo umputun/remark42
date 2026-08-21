@@ -1,8 +1,8 @@
 import { h, render } from 'preact';
 import { bindActionCreators } from 'redux';
 import { Provider } from 'store/context';
-import { IntlProvider } from 'react-intl';
 
+import { IntlProvider } from 'common/intl';
 import { loadLocale } from 'utils/loadLocale';
 import { parseMessage } from 'utils/post-message';
 import { ConnectedRoot } from 'components/root';

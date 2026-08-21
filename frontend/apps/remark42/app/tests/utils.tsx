@@ -1,8 +1,8 @@
 import { h, ComponentChild } from 'preact';
-import { IntlProvider } from 'react-intl';
 import { render as originalRender } from '@testing-library/preact';
 import { Provider } from 'store/context';
 
+import { IntlProvider } from 'common/intl';
 import en from 'locales/en.json';
 import { mockStore } from '__stubs__/store';
 import { StoreState } from 'store';

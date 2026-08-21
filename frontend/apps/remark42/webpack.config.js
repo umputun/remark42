@@ -55,9 +55,6 @@ function getLocalIdent(loaderContext, _, localName, options) {
 const exclude = [
   '@github/markdown-toolbar-element',
   '@github/text-expander-element',
-  'react-intl',
-  'intl-messageformat',
-  'intl-messageformat-parser',
 ].map((m) => path.resolve(__dirname, 'node_modules', m));
 
 const htmlMinifyOptions = {

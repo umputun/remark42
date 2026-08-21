@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 import * as localStorageModule from 'common/local-storage';

@@ -1,4 +1,4 @@
-import { IntlShape, defineMessages } from 'react-intl';
+import { IntlShape, defineMessages } from 'common/intl';
 import { ApiError } from '../common/types';
 
 export const errorMessages = defineMessages<string | number>({
