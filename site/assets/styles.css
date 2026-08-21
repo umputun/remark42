@@ -815,6 +815,14 @@ kbd {
 
 /* -------------------------------------------------------- header anchors */
 
+/* an empty target carrying a heading's previous id; needs the heading's own offset so
+   landing on it does not put the heading under the fixed header */
+.legacy-anchor {
+  display: block;
+  height: 0;
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
 
 /* ------------------------------------------------- syntax highlighting */
 

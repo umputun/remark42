@@ -1,5 +1,5 @@
 ---
-title: Gatsby Integration
+title: Using Remark42 in Gatsby projects
 ---
 
 ## React component written in Javascript

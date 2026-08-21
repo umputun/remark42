@@ -1,5 +1,5 @@
 ---
-title: Astro Integration (w/Svelte)
+title: Using Remark42 in Astro
 ---
 
 [Astro](https://astro.build/) is an all-in-one web framework for building fast, content-focused websites.

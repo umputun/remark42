@@ -1,0 +1,12 @@
+{{- /* markdown-it built anchors that kept punctuation goldmark strips, so a heading whose id
+       changed also carries its previous one as an empty target. data/anchor_aliases.json maps
+       content path -> current anchor -> previous anchor. */ -}}
+{{- $legacy := "" -}}
+{{- with .Page.File -}}
+  {{- with index (hugo.Data.anchor_aliases | default dict) .Path -}}
+    {{- $legacy = index . $.Anchor -}}
+  {{- end -}}
+{{- end -}}
+{{- with $legacy }}<span id="{{ . }}" class="legacy-anchor"></span>
+{{ end -}}
+<h{{ .Level }} id="{{ .Anchor }}">{{ .Text }}</h{{ .Level }}>
