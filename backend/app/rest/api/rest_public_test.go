@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -986,13 +987,26 @@ func TestRest_QR(t *testing.T) {
 	assert.Equal(t, "image/png", r.Header.Get("Content-Type"))
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 
-	// compare the image
+	// compare the decoded image rather than the encoded bytes: the pixels are what the endpoint
+	// promises, while the byte stream is whatever the toolchain's png encoder produces, and
+	// pinning that fails on a go release that changes it
 	fh, err := os.Open("testdata/qr_test.png")
 	defer func() { assert.NoError(t, fh.Close()) }()
-	assert.NoError(t, err)
-	img, err := io.ReadAll(fh)
-	assert.NoError(t, err)
-	assert.Equal(t, img, bdy)
+	require.NoError(t, err)
+
+	want, err := png.Decode(fh)
+	require.NoError(t, err)
+	got, err := png.Decode(bytes.NewReader(bdy))
+	require.NoError(t, err, "the endpoint did not return a decodable png")
+
+	require.Equal(t, want.Bounds(), got.Bounds(), "the qr code is not the size it used to be")
+	for y := want.Bounds().Min.Y; y < want.Bounds().Max.Y; y++ {
+		for x := want.Bounds().Min.X; x < want.Bounds().Max.X; x++ {
+			if want.At(x, y) != got.At(x, y) {
+				t.Fatalf("the qr code differs at %d,%d: want %v, got %v", x, y, want.At(x, y), got.At(x, y))
+			}
+		}
+	}
 }
 
 func TestRest_Info(t *testing.T) {
