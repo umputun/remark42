@@ -1,5 +1,6 @@
-import { IntlShape, defineMessages } from 'common/intl';
-import { ApiError } from '../common/types';
+import type { IntlShape } from 'common/intl';
+import { defineMessages } from 'common/intl';
+import type { ApiError } from '../common/types';
 
 export const errorMessages = defineMessages<string | number>({
   'fetch-error': {

@@ -1,4 +1,4 @@
-import { BlockTTL } from 'common/types';
+import type { BlockTTL } from 'common/types';
 
 export function ttlToDate(ttl: BlockTTL): Date {
   const date = new Date();

@@ -6,7 +6,8 @@ import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 import * as localStorageModule from 'common/local-storage';
 
-import { CommentForm, Props, messages } from './comment-form';
+import type { Props } from './comment-form';
+import { CommentForm, messages } from './comment-form';
 import { updatePersistedComments, getPersistedComments } from './comment-form.persist';
 
 const user: Props['user'] = {
@@ -19,7 +20,7 @@ const user: Props['user'] = {
   verified: false,
 };
 
-function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeof StaticStore['config']> = {}) {
+function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<(typeof StaticStore)['config']> = {}) {
   Object.assign(StaticStore.config, overrideConfig);
 
   const props = {

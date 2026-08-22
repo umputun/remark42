@@ -1,4 +1,5 @@
-import { h, JSX, type RefObject, type TextareaHTMLAttributes } from 'preact';
+import type { JSX } from 'preact';
+import { h, type RefObject, type TextareaHTMLAttributes } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 
 function autoResize(textarea: HTMLTextAreaElement) {

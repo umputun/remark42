@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { h, JSX, FunctionComponent } from 'preact';
+import type { JSX, FunctionComponent } from 'preact';
+import { h } from 'preact';
 
 import styles from './dropdown-item.module.css';
 

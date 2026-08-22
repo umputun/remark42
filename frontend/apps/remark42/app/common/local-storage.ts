@@ -6,20 +6,20 @@ const failMessage = 'remark42: localStorage access denied, check browser prefere
 export const setItem = IS_STORAGE_AVAILABLE
   ? localStorage.setItem.bind(localStorage)
   : () => {
-      console.error(failMessage); // eslint-disable-line no-console
+      console.error(failMessage);
     };
 
 export const getItem = IS_STORAGE_AVAILABLE
   ? localStorage.getItem.bind(localStorage)
   : () => {
-      console.error(failMessage); // eslint-disable-line no-console
+      console.error(failMessage);
       return null;
     };
 
 export const removeItem = IS_STORAGE_AVAILABLE
   ? localStorage.removeItem.bind(localStorage)
   : () => {
-      console.error(failMessage); // eslint-disable-line no-console
+      console.error(failMessage);
     };
 
 export function getJsonItem<T = unknown>(key: string): T | null {
@@ -34,7 +34,7 @@ export function getJsonItem<T = unknown>(key: string): T | null {
 
     return data;
   } catch (e) {
-    console.error(`remark42: error on read JSON from ${key} in localStorage`, e); // eslint-disable-line no-console
+    console.error(`remark42: error on read JSON from ${key} in localStorage`, e);
     return null;
   }
 }
@@ -43,7 +43,7 @@ export function setJsonItem<T = unknown>(key: string, data: T) {
   try {
     setItem(key, JSON.stringify(data));
   } catch (e) {
-    console.error(`remark42: error on parse JSON from ${key} in localStorage`, e); // eslint-disable-line no-console
+    console.error(`remark42: error on parse JSON from ${key} in localStorage`, e);
   }
 }
 

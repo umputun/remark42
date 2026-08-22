@@ -1,12 +1,13 @@
 import { h, Component } from 'preact';
 import clsx from 'clsx';
 
-import { FormattedMessage, IntlShape, useIntl } from 'common/intl';
-import { User, Theme, PostInfo } from 'common/types';
+import type { IntlShape } from 'common/intl';
+import { FormattedMessage, useIntl } from 'common/intl';
+import type { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
 import { getHandleClickProps } from 'common/accessibility';
-import { StoreState } from 'store';
+import type { StoreState } from 'store';
 import { useTheme } from 'hooks/useTheme';
 import { Button } from 'components/button';
 import { Auth } from 'components/auth';

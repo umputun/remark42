@@ -276,7 +276,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.post(apiUri, {}, data);
 
-      expect(window.fetch).toBeCalledWith(apiUrl, {
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'post',
         headers: headersWithContentType,
         body: JSON.stringify(dataShouldBe),

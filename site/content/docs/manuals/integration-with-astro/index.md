@@ -31,11 +31,11 @@ While Astro supports numerous front-end framework [integrations](https://docs.as
     !(function (e, n) {
       for (var o = 0; o < e.length; o++) {
         var r = n.createElement("script"),
-          c = ".js",
           d = n.head || n.body;
-        "noModule" in r ? ((r.type = "module"), (c = ".mjs")) : (r.async = !0),
+        (r.type = "module"),
+          (r.async = !0),
           (r.defer = !0),
-          (r.src = remark_config.host + "/web/" + e[o] + c),
+          (r.src = remark_config.host + "/web/" + e[o] + ".mjs"),
           d.appendChild(r);
       }
     })(remark_config.components || ["embed"], document);
@@ -93,11 +93,11 @@ Note the use of the `client:visible` directive which will hydrate the component 
     !(function (e, n) {
       for (var o = 0; o < e.length; o++) {
         var r = n.createElement("script"),
-          c = ".js",
           d = n.head || n.body;
-        "noModule" in r ? ((r.type = "module"), (c = ".mjs")) : (r.async = !0),
+        (r.type = "module"),
+          (r.async = !0),
           (r.defer = !0),
-          (r.src = remark_config.host + "/web/" + e[o] + c),
+          (r.src = remark_config.host + "/web/" + e[o] + ".mjs"),
           d.appendChild(r);
       }
     })(remark_config.components || ["embed"], document);
@@ -177,7 +177,7 @@ const insertScript = (id: string, parentElement: HTMLElement) => {
       theme: "dark",
       components: ["counter", "embed"],
     };
-    !function(e,n){for(var o=0;o<e.length;o++){var r=n.createElement("script"),c=".js",d=n.head||n.body;"noModule"in r?(r.type="module",c=".mjs"):r.async=!0,r.defer=!0,r.src=remark_config.host+"/web/"+e[o]+c,d.appendChild(r)}}(remark_config.components||["embed"],document);`
+    !function(e,n){for(var o=0;o<e.length;o++){var r=n.createElement("script"),d=n.head||n.body;r.type="module",r.async=!0,r.defer=!0,r.src=remark_config.host+"/web/"+e[o]+".mjs",d.appendChild(r)}}(remark_config.components||["embed"],document);`
 
 	// Append the script to the parent element.
 	parentElement.appendChild(script)

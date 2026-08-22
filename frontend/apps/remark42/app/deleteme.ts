@@ -1,8 +1,7 @@
-/* eslint-disable no-console */
 import { NODE_ID } from 'common/constants';
 import { approveDeleteMe, getUser } from 'common/api';
 import { token } from 'common/settings';
-import { ApiError } from 'common/types';
+import type { ApiError } from 'common/types';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

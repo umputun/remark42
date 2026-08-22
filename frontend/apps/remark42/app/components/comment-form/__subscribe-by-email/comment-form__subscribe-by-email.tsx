@@ -1,14 +1,17 @@
-import { h, FunctionComponent, Fragment } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useCallback, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'store/context';
 import clsx from 'clsx';
 
-import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'common/intl';
-import { User } from 'common/types';
-import { StoreState } from 'store';
+import type { IntlShape } from 'common/intl';
+import { useIntl, defineMessages, FormattedMessage } from 'common/intl';
+import type { User } from 'common/types';
+import type { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
 import { sleep } from 'utils/sleep';
-import { extractErrorMessageFromResponse, RequestError } from 'utils/errorUtils';
+import type { RequestError } from 'utils/errorUtils';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
 import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';

@@ -72,9 +72,12 @@ export function oauthSignin(url: string): Promise<User | null> {
       unsubscribe();
     }
 
-    setTimeout(() => {
-      reject();
-    }, 5 * 60 * 1000);
+    setTimeout(
+      () => {
+        reject();
+      },
+      5 * 60 * 1000
+    );
 
     document.addEventListener('visibilitychange', handleWindowVisibilityChange);
     window.addEventListener('focus', handleWindowVisibilityChange);

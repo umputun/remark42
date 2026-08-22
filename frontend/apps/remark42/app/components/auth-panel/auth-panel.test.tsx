@@ -1,13 +1,14 @@
 import { render } from '@testing-library/preact';
 import createMockStore from 'redux-mock-store';
-import { Middleware } from 'redux';
+import type { Middleware } from 'redux';
 import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
 import type { User } from 'common/types';
 import enMessages from 'locales/en.json';
 
-import { AuthPanel, Props } from './auth-panel';
+import type { Props } from './auth-panel';
+import { AuthPanel } from './auth-panel';
 import styles from './auth-panel.module.css';
 
 const DefaultProps = {

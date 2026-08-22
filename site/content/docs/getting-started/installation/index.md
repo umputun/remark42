@@ -32,7 +32,7 @@ _This is the recommended way to run Remark42_
 - download [archive for the stable release](https://github.com/umputun/remark42/releases)
 - unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
-- alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`. Source binary builds require Go 1.25, Node 20+, PNPM 10, and Perl because the frontend assets are built and embedded locally.
+- alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`. Source binary builds require Go 1.25, Node 24+, PNPM 10, and Perl because the frontend assets are built and embedded locally.
 
 #### Installation as a systemd Service
 
@@ -106,7 +106,7 @@ After that place the code snippet right after config.
 
 <!-- prettier-ignore-start -->
 ```html
-<script>!function(e,n){for(var o=0;o<e.length;o++){var r=n.createElement("script"),c=".js",d=n.head||n.body;"noModule"in r?(r.type="module",c=".mjs"):r.async=!0,r.defer=!0,r.src=remark_config.host+"/web/"+e[o]+c,d.appendChild(r)}}(remark_config.components||["embed"],document);</script>
+<script>!function(e,n){for(var o=0;o<e.length;o++){var r=n.createElement("script"),d=n.head||n.body;r.type="module",r.async=!0,r.defer=!0,r.src=remark_config.host+"/web/"+e[o]+".mjs",d.appendChild(r)}}(remark_config.components||["embed"],document);</script>
 ```
 <!-- prettier-ignore-end -->
 
@@ -132,4 +132,4 @@ To verify if Remark42 has been properly installed, check a demo page at `${REMAR
 ### Build from the source
 
 - to build Docker container - `make docker`. This command will produce container `ghcr.io/umputun/remark42`
-- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This requires Go 1.25, Node 20+, PNPM 10, and Perl, builds frontend assets locally, and produces an executable `remark42` file with everything embedded
+- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This requires Go 1.25, Node 24+, PNPM 10, and Perl, builds frontend assets locally, and produces an executable `remark42` file with everything embedded

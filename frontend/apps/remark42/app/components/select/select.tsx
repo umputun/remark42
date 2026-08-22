@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { h, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h } from 'preact';
 import { useState } from 'preact/hooks';
 
 import { ArrowIcon } from 'components/icons/arrow';

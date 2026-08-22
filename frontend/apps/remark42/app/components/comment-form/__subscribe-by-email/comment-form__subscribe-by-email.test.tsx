@@ -12,7 +12,7 @@ import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscri
 import { sleep } from 'utils/sleep';
 import { persistEmail } from 'components/auth/auth.utils';
 
-import { StoreState } from 'store';
+import type { StoreState } from 'store';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
 import { RequestError } from '../../../utils/errorUtils';

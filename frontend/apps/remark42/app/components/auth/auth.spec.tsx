@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, waitFor, screen } from '@testing-library/preact';
 import { render } from 'tests/utils';
 
-import { OAuthProvider, User } from 'common/types';
+import type { OAuthProvider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { BASE_URL } from 'common/constants.config';
 import * as userActions from 'store/user/actions';
@@ -177,7 +177,7 @@ describe('<Auth/>', () => {
   it('should send email and then verify forms', async () => {
     StaticStore.config.auth_providers = ['email'];
     jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
-    jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({} as User));
+    jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({}) as User);
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
     jest.spyOn(utils, 'persistEmail').mockImplementationOnce(jest.fn());
 
@@ -191,8 +191,8 @@ describe('<Auth/>', () => {
     fireEvent.click(screen.getByText('Submit'));
 
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
-    await waitFor(() => expect(api.emailSignin).toBeCalled());
-    expect(api.emailSignin).toBeCalledWith('email@email.com', 'username');
+    await waitFor(() => expect(api.emailSignin).toHaveBeenCalled());
+    expect(api.emailSignin).toHaveBeenCalledWith('email@email.com', 'username');
 
     expect(screen.getByText('Back')).toHaveClass('auth-back-button');
     expect(screen.getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
@@ -204,9 +204,9 @@ describe('<Auth/>', () => {
 
     fireEvent.click(screen.getByText('Submit'));
 
-    await waitFor(() => expect(api.verifyEmailSignin).toBeCalled());
-    expect(api.verifyEmailSignin).toBeCalledWith('token');
-    expect(utils.persistEmail).toBeCalledWith('email@email.com');
+    await waitFor(() => expect(api.verifyEmailSignin).toHaveBeenCalled());
+    expect(api.verifyEmailSignin).toHaveBeenCalledWith('token');
+    expect(utils.persistEmail).toHaveBeenCalledWith('email@email.com');
   });
 
   it('should show validation error for token', async () => {
@@ -221,7 +221,7 @@ describe('<Auth/>', () => {
       target: { value: 'email@email.com' },
     });
     fireEvent.click(getByText('Submit'));
-    await waitFor(() => expect(emailSignin).toBeCalled());
+    await waitFor(() => expect(emailSignin).toHaveBeenCalled());
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
@@ -229,9 +229,9 @@ describe('<Auth/>', () => {
 
     fireEvent.change(getByPlaceholderText('Copy and paste the token from the email'), { target: { value: 'token' } });
     fireEvent.click(getByText('Submit'));
-    await waitFor(() => expect(utils.getTokenInvalidReason).toBeCalled());
+    await waitFor(() => expect(utils.getTokenInvalidReason).toHaveBeenCalled());
 
-    expect(utils.getTokenInvalidReason).toBeCalledWith('token');
+    expect(utils.getTokenInvalidReason).toHaveBeenCalledWith('token');
 
     await waitFor(() => expect(getByText('Token is invalid')).toBeInTheDocument());
     expect(getByText('Token is invalid')).toHaveClass('auth-error');
@@ -239,7 +239,7 @@ describe('<Auth/>', () => {
 
   it('should send anonym form', async () => {
     StaticStore.config.auth_providers = ['anonymous'];
-    jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({} as User));
+    jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({}) as User);
 
     render(<Auth />);
 
@@ -248,7 +248,7 @@ describe('<Auth/>', () => {
     fireEvent.click(screen.getByText('Submit'));
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
     expect(screen.getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
-    await waitFor(() => expect(api.anonymousSignin).toBeCalled());
+    await waitFor(() => expect(api.anonymousSignin).toHaveBeenCalled());
   });
 
   it.each`
@@ -321,11 +321,11 @@ describe('<Auth/>', () => {
       fireEvent.click(screen.getByText('Sign In'));
       await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
       await waitFor(() =>
-        expect(oauthSignin).toBeCalledWith(
+        expect(oauthSignin).toHaveBeenCalledWith(
           `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
-      expect(setUser).toBeCalledTimes(0);
+      expect(setUser).toHaveBeenCalledTimes(0);
       expect(screen.getByText('Sign In')).toBeInTheDocument();
     });
 
@@ -342,11 +342,11 @@ describe('<Auth/>', () => {
       await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
 
       await waitFor(() =>
-        expect(oauthSignin).toBeCalledWith(
+        expect(oauthSignin).toHaveBeenCalledWith(
           `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
-      expect(setUser).toBeCalledWith(user);
+      expect(setUser).toHaveBeenCalledWith(user);
     });
 
     it('should use custom provider route', async () => {
@@ -360,7 +360,7 @@ describe('<Auth/>', () => {
       await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Customoidc')));
 
       await waitFor(() =>
-        expect(oauthSignin).toBeCalledWith(
+        expect(oauthSignin).toHaveBeenCalledWith(
           `${BASE_URL}/auth/customoidc/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
@@ -381,7 +381,7 @@ describe('<Auth/>', () => {
 
       fireEvent.click(screen.getByText('Sign In'));
       fireEvent.click(screen.getByTitle('Sign In with Telegram'));
-      await waitFor(() => expect(getTelegramSigninParams).toBeCalledTimes(1));
+      await waitFor(() => expect(getTelegramSigninParams).toHaveBeenCalledTimes(1));
       const telegramLink = screen.getByText('by the link').getAttribute('href');
       expect(typeof telegramLink === 'string').toBe(true);
       const telegramUrl = new URL(telegramLink as string);
@@ -389,7 +389,7 @@ describe('<Auth/>', () => {
       expect(telegramUrl.searchParams.get('start')).toBe('tokentokentoken');
       expect(telegramUrl.pathname.startsWith(`/botid`)).toBeTruthy();
       fireEvent.click(screen.getByText('Check'));
-      await waitFor(() => expect(verifyTelegramSignin).toBeCalledTimes(1));
+      await waitFor(() => expect(verifyTelegramSignin).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(setUser).toHaveBeenCalledWith(user));
     });
   });

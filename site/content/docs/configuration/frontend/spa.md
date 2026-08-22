@@ -2,23 +2,22 @@
 title: API for Single-Page Application
 ---
 
-Add the following JavaScript to your `index.html`, which in this case, it is identical to `<script defer src="$HOST/web/embed.js"></script>`
+Add the following JavaScript to your `index.html`, which in this case, it is identical to `<script defer type="module" src="$HOST/web/embed.mjs"></script>`
 
 ```js
 ;(function () {
-  var host = // Your remark42 host
+  var host = 'https://demo.remark42.com' // Your remark42 host
   var components = ['embed'] // Your choice of remark42 components
 
-  ;(function(c) {
-    for (let i = 0; i < c.length; i++) {
-      const d = document
-      const s = d.createElement('script')
-      s.src = remark_config.host + '/web/' + c[i] + '.js'
-      s.defer = true
-      ;(d.head || d.body).appendChild(s)
-    }
-  })(components)
-})
+  for (var i = 0; i < components.length; i++) {
+    var d = document
+    var s = d.createElement('script')
+    s.src = host + '/web/' + components[i] + '.mjs'
+    s.type = 'module'
+    s.defer = true
+    ;(d.head || d.body).appendChild(s)
+  }
+})()
 ```
 
 Created `remark42Instance` when the `div` containing remark42 has appeared, usually at `mounted` or `componentDidMount` of the SPA lifecycle. Destroy the previous instance first, if necessary.

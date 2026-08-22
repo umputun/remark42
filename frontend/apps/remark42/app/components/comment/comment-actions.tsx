@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 
 import { defineMessages, useIntl } from 'common/intl';
-import { BlockTTL } from 'common/types';
+import type { BlockTTL } from 'common/types';
 import { Select } from 'components/select';
 import { Countdown } from 'components/countdown';
 import { Button } from 'components/auth/components/button';

@@ -1,4 +1,5 @@
-import { h, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h } from 'preact';
 import clsx from 'clsx';
 
 import { useIntl } from 'common/intl';

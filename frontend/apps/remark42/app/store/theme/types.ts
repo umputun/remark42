@@ -1,4 +1,4 @@
-import { Theme } from 'common/types';
+import type { Theme } from 'common/types';
 
 export const THEME_SET = 'THEME/SET';
 

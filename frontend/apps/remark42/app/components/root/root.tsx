@@ -2,7 +2,8 @@ import { h, Component, Fragment } from 'preact';
 import { useSelector } from 'store/context';
 import clsx from 'clsx';
 
-import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'common/intl';
+import type { IntlShape } from 'common/intl';
+import { useIntl, FormattedMessage, defineMessages } from 'common/intl';
 import 'styles/global.css';
 import type { StoreState } from 'store';
 import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';

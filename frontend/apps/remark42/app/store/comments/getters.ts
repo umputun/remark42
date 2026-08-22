@@ -1,5 +1,6 @@
-import { Comment, CommentMode } from 'common/types';
-import { StoreState } from '../index';
+import type { Comment } from 'common/types';
+import { CommentMode } from 'common/types';
+import type { StoreState } from '../index';
 
 export const getCommentMode =
   (id: Comment['id']) =>

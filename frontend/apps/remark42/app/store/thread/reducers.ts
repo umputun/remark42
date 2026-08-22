@@ -1,4 +1,5 @@
-import { THREAD_SET_COLLAPSE, THREAD_ACTIONS, THREAD_RESTORE_COLLAPSE } from './types';
+import type { THREAD_ACTIONS } from './types';
+import { THREAD_SET_COLLAPSE, THREAD_RESTORE_COLLAPSE } from './types';
 
 export interface CollapsedThreadsState {
   [key: string]: boolean;

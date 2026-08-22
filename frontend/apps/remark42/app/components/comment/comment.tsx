@@ -1,22 +1,25 @@
-import { h, JSX, Component, createRef, ComponentType } from 'preact';
+import type { JSX, ComponentType } from 'preact';
+import { h, Component, createRef } from 'preact';
 import clsx from 'clsx';
 
-import { FormattedMessage, IntlShape, defineMessages } from 'common/intl';
+import type { IntlShape } from 'common/intl';
+import { FormattedMessage, defineMessages } from 'common/intl';
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
 
 import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
 import { copy } from 'common/copy';
-import { Theme, BlockTTL, Comment as CommentType, PostInfo, User, CommentMode, Profile } from 'common/types';
+import type { Theme, BlockTTL, Comment as CommentType, PostInfo, User, Profile } from 'common/types';
+import { CommentMode } from 'common/types';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 
-import { Props as CommentFormProps } from 'components/comment-form';
+import type { Props as CommentFormProps } from 'components/comment-form';
 import { Avatar } from 'components/avatar';
 import { VerificationIcon } from 'components/icons/verification';
-import { getPreview, uploadImage } from 'common/api';
+import type { getPreview, uploadImage } from 'common/api';
 import { postMessageToParent } from 'utils/post-message';
 import { getBlockingDurations } from './getBlockingDurations';
-import { boundActions } from './connected-comment';
+import type { boundActions } from './connected-comment';
 import { CommentVotes } from './comment-votes';
 import { CommentActions } from './comment-actions';
 
@@ -300,8 +303,8 @@ export class Comment extends Component<CommentProps, State> {
         props.view === 'preview'
           ? getTextSnippet(props.data.text)
           : props.data.delete
-          ? intl.formatMessage(messages.deletedComment)
-          : props.data.text,
+            ? intl.formatMessage(messages.deletedComment)
+            : props.data.text,
       time: new Date(props.data.time),
       orig: props.data.orig,
       user: props.data.user,

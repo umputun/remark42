@@ -1,6 +1,7 @@
 import { BASE_URL } from 'common/constants.config';
 import { parseMessage } from 'utils/post-message';
-import { setStyles, setAttributes, StylesDeclaration } from 'utils/set-dom-props';
+import type { StylesDeclaration } from 'utils/set-dom-props';
+import { setStyles, setAttributes } from 'utils/set-dom-props';
 
 type Params = {
   [key: string]: unknown;

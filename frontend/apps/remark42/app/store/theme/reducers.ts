@@ -1,7 +1,8 @@
-import { Theme } from 'common/types';
+import type { Theme } from 'common/types';
 import * as settings from 'common/settings';
 
-import { THEME_SET_ACTION, THEME_SET } from './types';
+import type { THEME_SET_ACTION } from './types';
+import { THEME_SET } from './types';
 
 export function theme(state: Theme = settings.theme, action: THEME_SET_ACTION): Theme {
   switch (action.type) {

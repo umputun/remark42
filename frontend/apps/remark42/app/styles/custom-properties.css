@@ -18,11 +18,11 @@
   --color1: #aaa;
   --color35: #d1d5db;
   --color20: #ddd;
-  --color46: rgba(27, 31, 35, 0.15);
-  --color45: rgba(0, 0, 0, 0.1);
+  --color46: rgb(27, 31, 35, 0.15);
+  --color45: rgb(0, 0, 0, 0.1);
   --color41: #efefef;
   --color5: #eee;
-  --color44: rgba(255, 255, 255, 0.3);
+  --color44: rgb(255, 255, 255, 0.3);
   --color6: #fff;
   --color3: #e2efef;
   --color4: #edf6f7;
@@ -36,8 +36,8 @@
   --color40: #9cdddb;
   --color43: #b7dddd;
   --color42: #c6efef;
-  --color48: rgba(37, 156, 154, 0.6);
-  --color47: rgba(37, 156, 154, 0.4);
+  --color48: rgb(37, 156, 154, 0.6);
+  --color47: rgb(37, 156, 154, 0.4);
   --color28: #672323;
   --color25: #9a0000;
   --color38: #ef0000;
@@ -47,7 +47,7 @@
   --color12: 37, 158, 6;
 
   /* code-highlight */
-  --chroma-bg: rgba(0, 0, 0, 0.05);
+  --chroma-bg: rgb(0, 0, 0, 0.05);
   --chroma-base: #586e75;
   --chroma-c: #7d7d7d;
   --chroma-01: #589000;

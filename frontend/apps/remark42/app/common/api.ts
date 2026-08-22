@@ -1,6 +1,6 @@
 import { siteId, url } from './settings';
 import { BASE_URL, API_BASE } from './constants';
-import {
+import type {
   Config,
   Comment,
   Tree,

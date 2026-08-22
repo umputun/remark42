@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "prepare": "if [ -z \"$CI\" ]; then cd .. && husky install frontend/.husky; else echo \"Skip Husky Hooks\"; fi",
-    "lint-staged": "lint-staged",
+    "lint": "pnpm --filter @remark42/app lint",
+    "test": "pnpm --filter @remark42/app test",
+    "build": "pnpm --filter @remark42/app build",
     "dev:app": "pnpm --filter @remark42/app dev"
   },
   "packageManager": "pnpm@10.10.0",
@@ -85,7 +87,9 @@
       "undici@>=7.0.0 <8.0.0": ">=7.29.0 <8.0.0",
       "body-parser@<1.20.6": ">=1.20.6 <2.0.0",
       "preact": "10.29.8",
-      "@types/minimatch": "5.1.2"
+      "@types/minimatch": "5.1.2",
+      "@babel/core": "^8.0.1",
+      "eslint-config-preact>@babel/core": "^7.29.7"
     }
   }
 }

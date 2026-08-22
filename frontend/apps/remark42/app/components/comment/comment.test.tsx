@@ -2,11 +2,13 @@ import { h } from 'preact';
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
-import { useIntl, IntlShape } from 'common/intl';
+import type { IntlShape } from 'common/intl';
+import { useIntl } from 'common/intl';
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 
-import { Comment, CommentProps } from './comment';
+import type { CommentProps } from './comment';
+import { Comment } from './comment';
 import { CommentForm } from 'components/comment-form';
 import { CommentMode } from 'common/types';
 
