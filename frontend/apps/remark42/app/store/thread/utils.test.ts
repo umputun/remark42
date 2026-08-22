@@ -74,6 +74,20 @@ describe('collapsed comments storage', () => {
     expect(getCollapsedComments()).toEqual([]);
   });
 
+  it('reads as empty when the stored value is not json', () => {
+    localStorage.setItem(LS_COLLAPSE_KEY, '{oops');
+
+    expect(getCollapsedComments()).toEqual([]);
+  });
+
+  it('starts a fresh entry when the stored value is not json', () => {
+    localStorage.setItem(LS_COLLAPSE_KEY, '{oops');
+
+    saveCollapsedComments(siteId, url, ['c1']);
+
+    expect(getCollapsedComments()).toEqual(['c1']);
+  });
+
   it('reads as empty when the entry for the page is not a list of ids', () => {
     localStorage.setItem(LS_COLLAPSE_KEY, JSON.stringify({ [siteId]: { [url]: 'c1' } }));
 

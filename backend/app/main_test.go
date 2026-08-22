@@ -128,8 +128,8 @@ func TestGetDump(t *testing.T) {
 	t.Logf("\n dump: %s", dump)
 }
 
-// chooseUnusedPort asks the kernel for a free port from the ephemeral range, so concurrently
-// running package test binaries never land on the same number
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a
+// collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
 	ln, err := net.Listen("tcp", ":0")

@@ -59,8 +59,8 @@ jobs:
   tests:
     name: Tests
     needs: vet
-    # generous against the docker build plus two go test invocations: a job cancelled on
-    # timeout skips its own failure steps, so the run would end with neither logs nor traces
+    # generous against the docker build plus one 8m go test: a job cancelled on timeout skips
+    # its own failure steps, so the run would end with neither logs nor traces
     timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:
@@ -91,43 +91,25 @@ jobs:
       - name: Build & start the stack
         run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
-      - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@v1.13.0
-
-      # each rerun is its own `go test` process carrying the same timeout, so the ceiling is
-      # 8m for the first attempt plus 4 x 8m of reruns, inside the job's 45. a job cancelled on
-      # timeout skips its own upload steps, which is the one outcome worth designing against.
-      # four failures covers one test failing across all three engines, counted as its three
-      # subtests plus their parent; more than that is a regression and should not be rerun.
-      # a browser suite has a flake floor no amount of care removes, and one flake failing the
-      # build is what makes people stop trusting it. one rerun, not two: a rerun stops at the
-      # first pass, so each further attempt only widens the window in which a real intermittent
-      # regression is absorbed. what needed a rerun is written to a report and uploaded, since
-      # a green job is a job nobody reads the log of
+      # no retry: a failure here is evidence about a suite too young to have a flake rate,
+      # and a rerun is how an intermittent regression becomes invisible. revisit when there
+      # are failures on record to look at
       - name: Run e2e
-        # shared across the rerun so it exercises the same threads as the attempt that failed
+        # stamps this run's comment threads with the CI run, so a thread url in a trace or a
+        # log names the run it came from
         env:
           E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          cd e2e && gotestsum \
-            --rerun-fails=1 \
-            --rerun-fails-max-failures=4 \
-            --rerun-fails-report=rerun-report.txt \
-            --packages=./... \
-            --format standard-verbose \
-            -- -tags=e2e -count 1 -timeout 8m
+        run: cd e2e && go test -tags=e2e -count 1 -timeout 8m -v ./...
 
       - name: Server logs on failure
         if: failure()
         run: docker compose -f compose-e2e-test.yml logs --tail=200
 
-      - name: Upload browser traces and any rerun report
+      - name: Upload browser traces
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
-          path: |
-            e2e/traces/
-            e2e/rerun-report.txt
+          path: e2e/traces/
           retention-days: 30
           if-no-files-found: ignore

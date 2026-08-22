@@ -43,9 +43,9 @@ The build tag keeps these out of `go test ./...`; nothing runs without `-tags=e2
 
 ## When something fails
 
-A failed test writes a Playwright trace to `e2e/traces/`, which CI uploads as an artifact whether or not the job went green. Open one with `npx playwright show-trace e2e/traces/<name>.zip`.
+A failed test writes a Playwright trace to `e2e/traces/`, which CI uploads as an artifact. Nothing else writes one, so a run carrying the artifact is a run with a failure to look at. Open one with `npx playwright show-trace e2e/traces/<name>.zip`.
 
-CI runs the suite through `gotestsum` and gives a failing test one rerun, so a test that fails and then passes leaves the job green. That is the case worth looking at: it is named in `rerun-report.txt`, uploaded beside the traces. Only attempts that failed leave a trace, and they do not overwrite each other, so a flake leaves exactly one to open. `make e2e` locally does not rerun anything, so a test red on a laptop and green in CI is a flake with a report to read rather than a disagreement.
+CI does not retry a failing test. The suite is young enough that a failure is evidence about the suite itself, and a retry is what would hide an intermittent regression. `E2E_RUN_ID` stamps the threads a run uses with the CI run id, so a thread url in a trace names the run it came from. It does not carry the data across: the stack is disposable, and a local run against the same id gets those urls on an empty database.
 
 Beyond that: `docker compose -f compose-e2e-test.yml logs` for the server side, and mailpit's web UI on <http://127.0.0.1:8025> for anything email.
 

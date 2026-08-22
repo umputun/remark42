@@ -1,6 +1,6 @@
 import { siteId, url } from 'common/settings';
 import { LS_COLLAPSE_KEY } from 'common/constants';
-import { setItem as localStorageSetItem, getItem as localStorageGetItem } from 'common/local-storage';
+import { setItem as localStorageSetItem, getJsonItem } from 'common/local-storage';
 import type { Comment } from 'common/types';
 
 /**
@@ -14,7 +14,10 @@ import type { Comment } from 'common/types';
 type CollapsedComments = Record<string, Record<string, Comment['id'][]>>;
 
 function getFromLocalStorage(): CollapsedComments {
-  const stored: unknown = JSON.parse(localStorageGetItem(LS_COLLAPSE_KEY) || '{}');
+  // getJsonItem rather than a bare parse: the value is whatever is in the browser's storage,
+  // and a throw here would take down the restore this runs from, leaving the widget with no
+  // thread at all over a view preference
+  const stored = getJsonItem<unknown>(LS_COLLAPSE_KEY);
 
   // anything of another shape, including the flat list this used to keep, reads as empty:
   // collapsed threads are a view preference, so re-expanding them once costs the reader

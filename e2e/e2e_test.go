@@ -73,9 +73,8 @@ var (
 	extraBrowsersMu sync.Mutex
 
 	// distinguishes this run's threads from those a previous run left in the database.
-	// a rerun is a fresh process, so without E2E_RUN_ID it would get its own threads and a
-	// failure caused by ordering or by state an earlier test left behind would pass on the
-	// second attempt whatever the code did
+	// E2E_RUN_ID pins it, so the urls a CI run works on name that run rather than the moment
+	// the process started
 	runID = firstNonEmpty(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
 
 	authGate     sync.Mutex
@@ -271,9 +270,8 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 			}
 			// say so rather than swallowing it: this runs only on a test that already failed,
 			// and a silently missing trace is what the reader goes looking for
-			// the pid distinguishes attempts: a rerun is a fresh process that shares runID
-			// with the attempt it is retrying and restarts its own counter, so without it the
-			// rerun would overwrite the trace of the attempt that actually failed
+			// the pid keeps two processes sharing a run id, and so a trace directory, from
+			// overwriting each other: the counter restarts with every process
 			name := strings.ReplaceAll(t.Name(), "/", "-")
 			path := filepath.Join(traceDir, fmt.Sprintf("%s-%d-%d.zip", name, os.Getpid(), seq))
 			if serr := ctx.Tracing().Stop(path); serr != nil {
