@@ -26,7 +26,7 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 
 	poster := newPage(t)
 	frame := openThread(t, poster)
-	signInAnon(t, frame, "lastcommenter")
+	signInAnon(t, poster, frame, "lastcommenter")
 	postComment(t, frame, text)
 
 	page := newPage(t)
@@ -72,7 +72,7 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 
 	poster := newPage(t)
 	frame := openThread(t, poster)
-	signInAnon(t, frame, "countertester")
+	signInAnon(t, poster, frame, "countertester")
 
 	before := commentCount(t, poster, counted)
 	for i := range 2 {
@@ -136,7 +136,7 @@ func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
 
 	poster := newPage(t)
 	frame := openThread(t, poster)
-	signInAnon(t, frame, "aliastester")
+	signInAnon(t, poster, frame, "aliastester")
 	postComment(t, frame, "alias "+runID)
 
 	want := strconv.Itoa(commentCount(t, poster, thread))

@@ -30,11 +30,12 @@ func signInDev(t *testing.T, page playwright.Page, frame playwright.FrameLocator
 	// frame to make it re-read auth state
 	pauseForAuthLimit()
 	require.NoError(t, page.Locator("#remark42 iframe").Press("Tab"))
-	assertSignedIn(t, frame)
+	assertSignedIn(t, page, frame)
 }
 
-// signInAnon signs in through the anonymous provider, an in-frame form with no popup
-func signInAnon(t *testing.T, frame playwright.FrameLocator, username string) {
+// signInAnon signs in through the anonymous provider, an in-frame form with no popup. it takes
+// the page because assertSignedIn may have to nudge it, see there
+func signInAnon(t *testing.T, page playwright.Page, frame playwright.FrameLocator, username string) {
 	t.Helper()
 
 	pauseForAuthLimit()
@@ -50,7 +51,7 @@ func signInAnon(t *testing.T, frame playwright.FrameLocator, username string) {
 	require.NoError(t, frame.Locator(".auth-input-username").Fill(username))
 	require.NoError(t, frame.Locator(".auth-submit").Click())
 
-	assertSignedIn(t, frame)
+	assertSignedIn(t, page, frame)
 }
 
 func TestAuth_DevProviderSignsIn(t *testing.T) {
@@ -58,15 +59,15 @@ func TestAuth_DevProviderSignsIn(t *testing.T) {
 	frame := openThread(t, page)
 
 	signInDev(t, page, frame)
-	assertSignedIn(t, frame)
+	assertSignedIn(t, page, frame)
 }
 
 func TestAuth_AnonymousSignsIn(t *testing.T) {
 	page := newPage(t)
 	frame := openThread(t, page)
 
-	signInAnon(t, frame, "anontester")
-	assertSignedIn(t, frame)
+	signInAnon(t, page, frame, "anontester")
+	assertSignedIn(t, page, frame)
 
 	name, err := frame.Locator(`[title="Open My Profile"]`).InnerText()
 	require.NoError(t, err)
@@ -99,16 +100,35 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 	require.NoError(t, frame.Locator(".auth-token-textarea").Fill(token))
 	require.NoError(t, frame.Locator(".auth-submit").Click())
 
-	assertSignedIn(t, frame)
+	assertSignedIn(t, page, frame)
 }
 
 // assertSignedIn checks the panel has swapped Sign In for the signed-in user's own controls.
-// Sign Out is an icon button, so its title is the only text it carries
-func assertSignedIn(t *testing.T, frame playwright.FrameLocator) {
+// Sign Out is an icon button, so its title is the only text it carries.
+//
+// The first wait is deliberately short. Everything under /auth/ is capped at two requests a
+// second for the whole suite, a bare literal at backend/app/rest/api/rest.go:242, and a case
+// that signs in on two pages spends that budget twice over. When the read that repaints the
+// panel is the request the limiter refuses, the widget shows signed out over a session that
+// exists, and waiting longer cannot help because nothing will ask again. So on the short wait
+// expiring, hand focus back to the frame: the widget re-probes on visibilitychange and window
+// focus while a sign-in is pending, and by then the cookie is long since set. A sign-in that
+// genuinely failed still fails here, since the second read finds no state either
+func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLocator) {
 	t.Helper()
-	waitVisible(t, frame.Locator(`[title="Sign Out"]`))
+
+	signOut := frame.Locator(`[title="Sign Out"]`)
+	if err := signOut.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: playwright.Float(float64(authRepaintWait.Milliseconds())),
+	}); err != nil {
+		pauseForAuthLimit()
+		require.NoError(t, page.Locator("#remark42 iframe").Press("Tab"))
+	}
+
+	waitVisible(t, signOut)
 	waitVisible(t, frame.Locator(`[title="Open My Profile"]`))
-	waitHidden(t, frame.Locator(".auth-button"))
+	waitHidden(t, frame.Locator(".auth-button"), "the panel still offers sign-in after a sign-in")
 }
 
 // verificationToken pulls the JWT out of the confirmation mail

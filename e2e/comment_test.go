@@ -102,7 +102,7 @@ func TestComment_EditExpiresAfterTheDeadline(t *testing.T) {
 	page := newPage(t)
 	url := threadURLOn(t, shortEditURL)
 	frame := openURL(t, page, url)
-	signInAnon(t, frame, "expirytester")
+	signInAnon(t, page, frame, "expirytester")
 
 	text := "expires " + runID
 	postComment(t, frame, text)
@@ -140,7 +140,7 @@ func TestComment_DeleteRemovesTheText(t *testing.T) {
 	// deliberately not the dev user: ADMIN_SHARED_ID makes that one an admin, and the widget
 	// sends admins to the admin endpoint, so signing in there would leave the path every
 	// ordinary reader takes untested
-	signInAnon(t, frame, "deletetester")
+	signInAnon(t, page, frame, "deletetester")
 
 	text := "doomed " + runID
 	survivor := "survivor " + runID
@@ -264,7 +264,7 @@ func TestComment_AdminPinsAndVerifies(t *testing.T) {
 	// off and wait for a badge that is being taken away
 	author := newPage(t)
 	authorFrame := openThread(t, author)
-	signInAnon(t, authorFrame, "moderated"+runID[len(runID)-6:])
+	signInAnon(t, author, authorFrame, "moderated"+runID[len(runID)-6:])
 	postComment(t, authorFrame, text)
 
 	admin := newPage(t)
@@ -385,7 +385,7 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 	// only be postable once: every later run would find the author already blocked
 	author := newPage(t)
 	authorFrame := openThread(t, author)
-	signInAnon(t, authorFrame, "blocked"+runID[len(runID)-6:])
+	signInAnon(t, author, authorFrame, "blocked"+runID[len(runID)-6:])
 	postComment(t, authorFrame, text)
 
 	admin := newPage(t)

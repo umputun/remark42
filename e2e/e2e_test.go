@@ -6,6 +6,7 @@
 // up itself when nothing is listening. Files:
 //
 //   - e2e_test.go: TestMain, shared helpers, constants
+//   - harness_test.go: the stale-stack guard and the browser failures no assertion covers
 //   - auth_test.go: dev, anonymous and email sign-in
 //   - comment_test.go: post, reply, edit, delete
 //   - vote_test.go: voting and its failure path
@@ -56,6 +57,11 @@ const (
 
 	// generous because CI runners are slower and less predictable than a laptop
 	waitTimeout = 15 * time.Second
+
+	// how long assertSignedIn waits before nudging the widget into re-reading auth state. short
+	// enough that a refused status read costs a fraction of a test rather than a whole timeout,
+	// long enough that the ordinary path never takes the nudge
+	authRepaintWait = 3 * time.Second
 
 	// what a single locator call inside a poll body gets. playwright's own default is 30s,
 	// twice the budget of the loops here, so without this a missing element would block one
@@ -154,11 +160,22 @@ func TestMain(m *testing.M) {
 
 // ensureStack waits for a running stack and starts one with compose when there is none
 func ensureStack() error {
+	// the digest of the sources the image is built from, exported so compose stamps the build
+	// with it. read back off the running stack below, since answering on the right ports says
+	// nothing about which checkout the code came from
+	stamp, err := sourceStamp()
+	if err != nil {
+		return err
+	}
+	if err := os.Setenv(stampEnv, stamp); err != nil {
+		return fmt.Errorf("exporting %s: %w", stampEnv, err)
+	}
+
 	// every service, not just the first: compose-dev-backend.yml and `make rundev` also
 	// publish 8080, and adopting one of those would run the suite against a developer's own
 	// database and fail later as unexplained locator timeouts
 	if stackReady(2 * time.Second) {
-		return nil
+		return assertStackMatches(stamp, true)
 	}
 
 	log.Printf("[INFO] no complete stack on 127.0.0.1, bringing one up from %s", composeFile)
@@ -179,7 +196,9 @@ func ensureStack() error {
 	if !stackReady(waitTimeout) {
 		return fmt.Errorf("compose reported the stack healthy but it does not answer")
 	}
-	return nil
+	// checked after our own build too, so a stamp that never reaches the image is a failure
+	// here rather than a guard that silently passes everything for the rest of its life
+	return assertStackMatches(stamp, false)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -292,12 +311,17 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 
 	page, err := ctx.NewPage()
 	require.NoError(t, err)
+	// before the first navigation, so nothing the page reports on its way up is missed
+	watchPage(t, page)
 	debug := os.Getenv("E2E_DEBUG") != ""
 	page.OnResponse(func(r playwright.Response) {
 		switch {
 		case r.Status() == http.StatusTooManyRequests:
 			// the rate limiter answers the widget, not the test, so without this the failure
-			// arrives as an unexplained locator timeout
+			// arrives as an unexplained locator timeout. recorded as well as logged: a lost
+			// /auth/status renders as signed out, and every sign-in assertion then fails
+			// somewhere that does not name the cause
+			recordPageIssue(page, "rate limited", r.URL())
 			log.Printf("[WARN] rate limited: %s", r.URL())
 		case debug && r.Status() >= 400:
 			body, _ := r.Text()
@@ -400,6 +424,53 @@ func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLoc
 	})
 	require.NoError(t, err)
 	return widget(t, page)
+}
+
+// embedConfig loads a page carrying a remark_config of the test's choosing and runs the embed
+// script against it.
+//
+// The demo page cannot be used for this: it writes its own remark_config, so anything a test
+// needs to vary has to go into a page that carries no widget of its own. privacy.html is served
+// by the instance and has none, which also keeps the widget on its own origin, where its CSP
+// allows the chunks it loads. host, site_id and url are filled in when the caller leaves them out
+func embedConfig(t *testing.T, page playwright.Page, config map[string]any) {
+	t.Helper()
+
+	for key, value := range map[string]any{"host": baseURL, "site_id": "remark", "url": threadURL(t)} {
+		if _, ok := config[key]; !ok {
+			config[key] = value
+		}
+	}
+
+	pauseForAuthLimit()
+	_, err := page.Goto(baseURL + "/web/privacy.html")
+	require.NoError(t, err)
+
+	_, err = page.Evaluate(`(config) => {
+		window.remark_config = config;
+		const node = document.createElement('div');
+		node.id = 'remark42';
+		document.body.appendChild(node);
+	}`, config)
+	require.NoError(t, err)
+
+	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/embed.mjs")})
+	require.NoError(t, err)
+}
+
+// stubSignedOut answers the widget's auth probe from the browser, for a page that never signs
+// in. /auth/ is capped at two requests a second for the whole suite and the widget probes on
+// every load, so a case that only needs a signed-out widget should not spend that budget: the
+// tests that do sign in are the ones that cannot fake it
+func stubSignedOut(t *testing.T, page playwright.Page) {
+	t.Helper()
+	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
+		require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+			Status:      playwright.Int(http.StatusOK),
+			ContentType: playwright.String("application/json"),
+			Body:        playwright.String(`{"status":"not logged in"}`),
+		}))
+	}))
 }
 
 // reload re-navigates and returns the widget once the thread itself has loaded.

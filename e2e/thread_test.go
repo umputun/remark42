@@ -132,13 +132,13 @@ func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 
 	author := newPage(t)
 	authorFrame := openThread(t, author)
-	signInAnon(t, authorFrame, "hidetarget")
+	signInAnon(t, author, authorFrame, "hidetarget")
 	postComment(t, authorFrame, hidden)
 	postComment(t, authorFrame, hidden+" second")
 
 	other := newPage(t)
 	otherFrame := openURL(t, other, threadURL(t))
-	signInAnon(t, otherFrame, "hidekeeper")
+	signInAnon(t, other, otherFrame, "hidekeeper")
 	postComment(t, otherFrame, kept)
 
 	reader := newPage(t)

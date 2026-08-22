@@ -12,6 +12,11 @@ services:
       args:
         - SKIP_BACKEND_TEST=true
         - SKIP_FRONTEND_TEST=true
+        # digest of the sources going into the image, from e2e/stamp.sh. the Dockerfile puts it
+        # in the revision label, and the suite refuses a running stack carrying a different one:
+        # every checkout builds this same image tag, so a stack from another worktree answers on
+        # these ports and passes every readiness probe while serving code nobody is looking at
+        - GITHUB_SHA=${E2E_STAMP:-unstamped}
 
     image: ghcr.io/umputun/remark42:dev
     container_name: "remark42-e2e"

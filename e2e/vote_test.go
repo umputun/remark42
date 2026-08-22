@@ -24,7 +24,7 @@ func voteScenario(t *testing.T, author, text string) (playwright.Page, playwrigh
 
 	authorPage := newPage(t)
 	authorFrame := openThread(t, authorPage)
-	signInAnon(t, authorFrame, author)
+	signInAnon(t, authorPage, authorFrame, author)
 	postComment(t, authorFrame, text)
 
 	voter := newPage(t)
