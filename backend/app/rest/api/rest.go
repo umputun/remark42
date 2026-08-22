@@ -394,7 +394,7 @@ func (s *Rest) routes() http.Handler {
 		log.Printf("[WARN] no embedded frontend, serving built-in assets only: %v", err)
 		embeddedFrontend = emptyFS{}
 	}
-	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version)
+	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version, s.RemarkURL)
 	return router
 }
 
@@ -510,7 +510,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 // serves /web from the frontend build, falling back to the assets embedded in the binary for
 // names the build does not produce. the frontend build is read from webRoot on disk, or from the
 // copy embedded at app/cmd/web when that directory is absent.
-func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version string) {
+func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version, remarkURL string) {
 	frontendFS := embeddedFrontend
 
 	if _, err := os.Stat(webRoot); err == nil {
@@ -520,12 +520,22 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 		log.Printf("[INFO] run file server, embedded")
 	}
 
-	webFS := http.StripPrefix("/web", http.FileServer(http.FS(webFiles{frontend: frontendFS, embedded: webassets.FS})))
+	// wrapped rather than substituted once at startup: the disk root can change under a running
+	// server, and the docker image has already substituted its copy, where this is a no-op
+	sources := templatedFS{
+		fs:        webFiles{frontend: frontendFS, embedded: webassets.FS},
+		remarkURL: remarkURL,
+	}
+	webFS := http.StripPrefix("/web", http.FileServer(http.FS(sources)))
 	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
 		R.Timeout(10*time.Second),
-		cacheControl(time.Hour, version),
+		// the served body now depends on remarkURL, so it has to be part of the validator. Without
+		// it an operator who corrects a wrong REMARK_URL and restarts the same binary keeps getting
+		// 304 on revalidation, and the client keeps a bundle addressed to the old host for good,
+		// since no-cache means it revalidates rather than aging out
+		cacheControl(time.Hour, version+":"+remarkURL),
 	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {

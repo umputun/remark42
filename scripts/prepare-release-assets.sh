@@ -7,7 +7,7 @@ PUBLIC_DIR="$APP_DIR/public"
 EMBED_DIR="$ROOT/backend/app/cmd/web"
 PREPARED_MARKER="$EMBED_DIR/.release-assets-prepared"
 
-for cmd in git pnpm perl; do
+for cmd in git pnpm; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "error: $cmd is required to build release assets" >&2
     exit 1
@@ -48,11 +48,11 @@ mkdir -p "$EMBED_DIR"
 
 cp -R "$PUBLIC_DIR"/. "$EMBED_DIR"/
 
-find "$EMBED_DIR" -type f \( -name '*.html' -o -name '*.js' -o -name '*.mjs' \) \
-  -exec perl -pi -e 's|\{\% REMARK_URL \%\}|http://127.0.0.1:8080|g' {} +
-
-if grep -R "{% REMARK_URL %}" "$EMBED_DIR" >/dev/null; then
-  echo "error: unreplaced REMARK_URL placeholder in $EMBED_DIR" >&2
+# the placeholder stays in: the server fills it with its own REMARK_URL when it serves these files,
+# which is the only chance the binary gets. substituting a value here would bake one instance's
+# address into every copy of the release
+if ! grep -Rq "{% REMARK_URL %}" "$EMBED_DIR"; then
+  echo "error: no REMARK_URL placeholder in $EMBED_DIR, the build stopped templating it" >&2
   exit 1
 fi
 

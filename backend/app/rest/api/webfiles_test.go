@@ -3,10 +3,14 @@ package api
 import (
 	"io"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
+
+	"github.com/go-pkgz/routegroup"
 
 	"github.com/umputun/remark42/backend/app/webassets"
 
@@ -217,4 +221,123 @@ func TestWebFiles_OpenUnreadableFrontendFile(t *testing.T) {
 	if err == nil {
 		_ = f.Close()
 	}
+}
+
+func TestTemplatedFS_SubstitutesTheInstanceURL(t *testing.T) {
+	const placeholder = "host: '" + remarkURLPlaceholder + "'"
+	source := fstest.MapFS{
+		"iframe.html":  {Data: []byte(placeholder)},
+		"embed.mjs":    {Data: []byte(placeholder)},
+		"embed.js":     {Data: []byte(placeholder)},
+		"remark.css":   {Data: []byte(placeholder)},
+		"nothing.html": {Data: []byte("no marker here")},
+	}
+	tfs := templatedFS{fs: source, remarkURL: "https://remark.example.com"}
+
+	tbl := []struct {
+		name string
+		want string
+	}{
+		{"iframe.html", "host: 'https://remark.example.com'"},
+		{"embed.mjs", "host: 'https://remark.example.com'"},
+		{"embed.js", "host: 'https://remark.example.com'"},
+		// the docker image rewrites html, js and mjs and nothing else, and a stylesheet carrying
+		// the marker would mean the frontend started templating a file type this does not cover
+		{"remark.css", placeholder},
+		{"nothing.html", "no marker here"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := tfs.Open(tt.name)
+			require.NoError(t, err)
+			defer func() { assert.NoError(t, f.Close()) }()
+
+			body, err := io.ReadAll(f)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(body))
+
+			info, err := f.Stat()
+			require.NoError(t, err)
+			assert.Equal(t, int64(len(tt.want)), info.Size(),
+				"the size has to be the substituted one, or the response is truncated or left hanging")
+			assert.Equal(t, tt.name, info.Name())
+		})
+	}
+}
+
+func TestTemplatedFS_PassesErrorsThrough(t *testing.T) {
+	tfs := templatedFS{fs: fstest.MapFS{}, remarkURL: "https://remark.example.com"}
+
+	_, err := tfs.Open("absent.html")
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+}
+
+// TestRest_FileServerFillsInTheInstanceURL covers the reason templatedFS exists: the binary serves
+// the frontend build embedded in itself, and nothing else fills the placeholder in for it.
+func TestRest_FileServerFillsInTheInstanceURL(t *testing.T) {
+	frontend := fstest.MapFS{
+		"embed.mjs":  {Data: []byte("host=\"" + remarkURLPlaceholder + "\"")},
+		"logo.svg":   {Data: []byte(remarkURLPlaceholder)},
+		"plain.html": {Data: []byte("nothing to fill in")},
+	}
+	router := routegroup.New(http.NewServeMux())
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com")
+
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	t.Run("the bundle carries the configured url", func(t *testing.T) {
+		body, code := get(t, ts.URL+"/web/embed.mjs")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, `host="https://remark.example.com"`, body)
+	})
+
+	t.Run("the legacy js name carries it too", func(t *testing.T) {
+		body, code := get(t, ts.URL+"/web/embed.js")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, `host="https://remark.example.com"`, body)
+	})
+
+	t.Run("other types are served untouched", func(t *testing.T) {
+		body, code := get(t, ts.URL+"/web/logo.svg")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, remarkURLPlaceholder, body)
+	})
+
+	t.Run("a file without the marker is unchanged", func(t *testing.T) {
+		body, code := get(t, ts.URL+"/web/plain.html")
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, "nothing to fill in", body)
+	})
+}
+
+// TestRest_FileServerEtagVariesWithTheInstanceURL covers the case this substitution exists for. An
+// operator who notices the widget is addressed to the wrong host corrects REMARK_URL and restarts,
+// and the binary and so the version is unchanged. If the validator ignores remarkURL the client
+// revalidates, gets 304 and keeps the bundle pointing at the old host. Cache-Control is no-cache,
+// so it revalidates every time and never ages out of that state.
+func TestRest_FileServerEtagVariesWithTheInstanceURL(t *testing.T) {
+	frontend := fstest.MapFS{"embed.mjs": {Data: []byte("host=\"" + remarkURLPlaceholder + "\"")}}
+
+	etagFor := func(remarkURL string) string {
+		router := routegroup.New(http.NewServeMux())
+		addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", remarkURL)
+		ts := httptest.NewServer(router)
+		defer ts.Close()
+
+		resp, err := http.Get(ts.URL + "/web/embed.mjs")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		return resp.Header.Get("Etag")
+	}
+
+	first := etagFor("https://old.example.com")
+	second := etagFor("https://new.example.com")
+
+	require.NotEmpty(t, first, "the file server has to send a validator at all")
+	assert.NotEqual(t, first, second,
+		"same version and same path, different instance url: the validator has to change or the "+
+			"client keeps a bundle addressed to the old host")
 }
