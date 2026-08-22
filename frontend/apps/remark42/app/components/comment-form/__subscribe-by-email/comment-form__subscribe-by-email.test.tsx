@@ -201,3 +201,23 @@ describe('<SubscribeByEmailForm/>', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   });
 });
+
+describe('<SubscribeByEmail/> dropdown', () => {
+  it('keeps the dropdown open after unsubscribing so the confirmation is visible (#2209)', async () => {
+    const { container } = render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
+
+    // open the dropdown
+    fireEvent.click(screen.getByTitle('Subscribe by Email'));
+
+    expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unsubscribe' }));
+
+    await act(() => sleep(0));
+
+    // the dropdown must survive the step change: the confirmation and the
+    // Close button are only rendered while it is open
+    expect(screen.getByText('You have been unsubscribed by email to updates')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+  });
+});

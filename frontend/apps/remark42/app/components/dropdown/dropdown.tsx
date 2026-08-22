@@ -173,12 +173,17 @@ export class Dropdown extends Component<Props, State> {
   }
 
   componentDidMount() {
-    document.addEventListener('click', this.onOutsideClick);
+    // The verdict must be reached in the capture phase, before the click
+    // reaches inner controls: a click handler that rerenders and detaches the
+    // clicked element (e.g. a step change inside the dropdown) would otherwise
+    // make `contains(target)` false by the time the bubble phase runs, and the
+    // dropdown would close itself on an inside click (#2209).
+    document.addEventListener('click', this.onOutsideClick, { capture: true });
     window.addEventListener('message', this.receiveMessage);
   }
 
   componentWillUnmount() {
-    document.removeEventListener('click', this.onOutsideClick);
+    document.removeEventListener('click', this.onOutsideClick, { capture: true });
     window.removeEventListener('message', this.receiveMessage);
   }
 
