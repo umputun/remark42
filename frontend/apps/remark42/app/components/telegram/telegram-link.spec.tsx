@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom';
-import { screen } from '@testing-library/preact';
+import { screen, render as renderRaw } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
+import { IntlProvider } from 'common/intl';
+import en from 'locales/en.json';
+import ja from 'locales/ja.json';
 
 import { TelegramLink } from './telegram-link';
 
@@ -26,6 +29,29 @@ describe('<TelegramLink/>', () => {
       },
     });
   });
+  it.each([
+    ['ja', ja, ''],
+    ['en', en, ' '],
+    // loadLocale matches catalogue names exactly, so an unconventional casing loads English;
+    // the separator has to follow the catalogue that loaded rather than the requested name
+    ['zh-TW', en, ' '],
+  ])('joins the paragraph fragments correctly for %s', (locale, messages, gap) => {
+    const m = messages as Record<string, string>;
+    const { container, unmount } = renderRaw(
+      <IntlProvider locale={locale} messages={m}>
+        <TelegramLink {...defaultProps} />
+      </IntlProvider>
+    );
+    const text = container.querySelector('p')?.textContent ?? '';
+    const parts = [m['auth.telegram-message-1'], m['auth.telegram-link']];
+    if (window.screen.width >= 768) {
+      parts.push(m['auth.telegram-optional-qr']);
+    }
+    parts.push(m['auth.telegram-message-2']);
+    expect(text).toBe(parts.join(gap) + m['auth.telegram-message-3']);
+    unmount();
+  });
+
   it('should render text', () => {
     render(<TelegramLink {...defaultProps} />);
     expect(screen.getByText(/Open Telegram/)).toBeInTheDocument();

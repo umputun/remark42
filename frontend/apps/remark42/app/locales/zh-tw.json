@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "然後，點擊下方的「驗證登入」按鈕。",
   "auth.telegram-optional-qr": "或掃描 QR 碼",
   "auth.telegram-qr": "Telegram QR 碼",
-  "auth.user-not-found": "未發現任何使用者",
   "auth.username": "使用者名稱",
   "authPanel.disable-comments": "禁用留言",
   "authPanel.disabled-cookies": "禁用第三方 Cookie 以封鎖登入和留言功能。",

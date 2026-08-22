@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "หลังจากนั้นคลิก “ตรวจสอบ” ด้านล่าง",
   "auth.telegram-optional-qr": "หรือสแกน QR โค้ด",
   "auth.telegram-qr": "เทเลแกรม QRCODE",
-  "auth.user-not-found": "ไม่พบผู้ใช้งาน",
   "auth.username": "ชื่อผู้ใช้",
   "authPanel.disable-comments": "ปิดใช้งานแสดงความคิดเห็น",
   "authPanel.disabled-cookies": "ไม่อนุญาตให้คุ๊กกี้ของบุคคลที่สามปิดกั้นระบบแสดงความคิดเห็นค่ะ",

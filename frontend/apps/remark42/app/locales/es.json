@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Una vez autorizado por el bot, regresa aquí y haz clic en “Verificar”.",
   "auth.telegram-optional-qr": "o escaneando el código QR",
   "auth.telegram-qr": "Código QR de Telegram",
-  "auth.user-not-found": "No se encontró el usuario",
   "auth.username": "Nombre de usuario",
   "authPanel.disable-comments": "Deshabilitar comentarios",
   "authPanel.disabled-cookies": "Deshabilita el bloqueo de cookies de terceros para acceder y comentar",

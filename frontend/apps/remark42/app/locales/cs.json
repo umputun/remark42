@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Poté klepněte na tlačítko „Zkontrolovat“ níže.",
   "auth.telegram-optional-qr": "nebo naskenováním QR kódu",
   "auth.telegram-qr": "Telegram QR kód",
-  "auth.user-not-found": "Nebyl nalezen žádný uživatel",
   "auth.username": "Uživatelské jméno",
   "authPanel.disable-comments": "Zakázat komentáře",
   "authPanel.disabled-cookies": "Zakázat blokování souborů cookie třetích stran pro přihlášení nebo otevření komentářů",

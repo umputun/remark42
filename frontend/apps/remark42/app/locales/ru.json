@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Затем нажмите кнопку «Проверить».",
   "auth.telegram-optional-qr": "или по QR-коду",
   "auth.telegram-qr": "QR-код для Telegram",
-  "auth.user-not-found": "Пользователь не найден",
   "auth.username": "Имя пользователя",
   "authPanel.disable-comments": "Отключить комментарии",
   "authPanel.disabled-cookies": "Отключите блокировку сторонних файлов cookie, чтобы авторизоваться или открыть комментарии в",

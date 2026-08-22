@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Afterwards, click “Check” below.",
   "auth.telegram-optional-qr": "or by scanning the QR code",
   "auth.telegram-qr": "Telegram QR-code",
-  "auth.user-not-found": "No user was found",
   "auth.username": "Username",
   "authPanel.disable-comments": "Disable comments",
   "authPanel.disabled-cookies": "Disable third-party cookies blocking to login or open comments in",

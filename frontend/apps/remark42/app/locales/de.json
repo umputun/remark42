@@ -18,7 +18,6 @@
   "auth.telegram-message-3": "Klicken Sie anschließend unten auf „Überprüfen“.",
   "auth.telegram-optional-qr": "oder durch Scannen des QR-Codes",
   "auth.telegram-qr": "QR-Code für Telegram",
-  "auth.user-not-found": "Benutzer konnte nicht gefunden werden",
   "auth.username": "Benutzername",
   "authPanel.disable-comments": "Kommentarfunktion deaktivieren",
   "authPanel.disabled-cookies": "Deaktivieren Sie die Blockierung von Drittanbieter-Cookies, um sich anzumelden oder Kommentare im Folgenden zu öffnen:",
