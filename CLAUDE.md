@@ -6,7 +6,7 @@
   - Build: `make backend`
   - Race test: `make race_test`
 - **Backend Testing**:
-  - Run all tests: `cd backend/app && go test -timeout=60s -count 1 ./...`
+  - Run all tests: `cd backend/app && go test -timeout=300s -count 1 ./...`
   - Run single test: `cd backend/app && go test -run TestName ./path/to/package`
   - **IMPORTANT**: Run example tests: `cd backend/_example/memory_store && go test -race ./... && go build -race ./...`
 - **Frontend**:
@@ -24,6 +24,22 @@
   - The example module replaces `github.com/umputun/remark42/backend` with `../../`, so it carries the backend's dependencies as indirect entries. Leaving them stale fails the `test examples` CI step with `go: updates to go.mod needed; to update it: go mod tidy`.
   - This applies to Dependabot pull requests too: the bot updates `backend/` only, so its Go module PRs need the example tidied before they can go green.
 
+
+## Backend Test Determinism
+
+Backend tests must never depend on how fast the machine is. CI runs them under `-race` with coverage on a shared runner, so any test that assumes an operation finishes within some duration eventually fails on a rerun-and-it-passes basis.
+
+- **Wait on a condition, never on a duration.** Use `require.Eventually` / `require.EventuallyWithT` to poll for the state the assertion needs, and `require.Never` when the point is that something did *not* happen. A bare `time.Sleep` before an assertion is a defect; sleeping until a deadline you computed, as `waitPastMillisecond` does, is not.
+- **Polling closures must not touch `*testing.T`.** testify runs them on a separate goroutine, where `t.FailNow` is undefined behaviour. Assert on the `*assert.CollectT` that `EventuallyWithT` hands the closure, so the real error also lands in the failure message.
+- **Mind the rate limiter when polling over HTTP.** Route groups are capped independently and most of the caps are hard-coded in `rest.go`, out of reach of a test: `/auth/` at 2 req/s and the admin, protected and image routes at 10 req/s. Only the open-route group is settable, via `openRouteLimiter` (100 in `startupT`). Poll with the existing constants rather than a new number, `httpPoll` for anything issuing an HTTP request and `pollInterval` only for in-process or filesystem checks, or the poll manufactures the 429s it then has to interpret.
+- **When a test needs time to have passed, pin the clock input rather than waiting for it:** `os.Chtimes` for file ages, an explicit `store.Comment.Timestamp` for anything that formats a timestamp.
+- **Prefer a `testing/synctest` bubble** where the code under test has no real I/O. Inside one the clock is fake, so `time.Sleep` is instant and deterministic. `app/notify`, `app/store/service`, `app/store/image`, `app/store/engine`, `app/providers`, `app/migrator` and `_example/memory_store/accessor` already use it, and most surviving `time.Sleep` calls live in them.
+- **Helpers fail loudly.** A wait that gives up must call `t.Fatal`/`require` naming what it was waiting for, never return silently and leave the next assertion to fail with something unrelated. Because these packages run `goleak.VerifyTestMain`, a failing helper also exits the test goroutine, so anything that started a server in a goroutine must `defer cancel()` or `defer srv.Shutdown()` right after launching it; otherwise a failed readiness wait is reported as a goroutine leak rather than the failure that caused it.
+- **Take ports and paths from outside the test.** Ports come from the kernel with `net.Listen("tcp", ":0")`, files from `t.TempDir()`. `go test ./...` runs package binaries concurrently, so a number out of a fixed range or a fixed name under `/tmp` lets two of them collide.
+- **Close idle connections before shutting a test server down.** Clients built as `http.Client{Timeout: x}` share `http.DefaultTransport`, and `Shutdown` waits on their keep-alive connections until its own deadline expires.
+- **Keep the test timeout budgets aligned.** `Makefile`, `ci-backend.yml`, `release.yml` and the command above all use `-timeout=300s`; the wait helpers allow 30s per condition, so a shorter per-package budget turns a slow runner into a timeout panic instead of a readable failure.
+
+`chooseUnusedPort` and the server-start wait helpers are duplicated in `app`, `app/cmd`, `app/rest/api` and `_example/memory_store/server`. Nothing shares them today; keep the copies in step when changing one.
 
 ## Release Procedure
 

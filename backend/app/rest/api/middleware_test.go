@@ -50,6 +50,39 @@ func TestRouteTimeout(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "route without R.Timeout runs to completion")
 }
 
+// TestRateLimiter covers the middleware guarding every route group: a burst past the per-second
+// allowance is refused with 429, and a client under the allowance is not. The limiter keys on
+// RemoteAddr, so the two cases use different ones rather than waiting for a bucket to refill.
+func TestRateLimiter(t *testing.T) {
+	router := routegroup.New(http.NewServeMux())
+	router.With(rateLimiter(1)).HandleFunc("GET /limited", func(http.ResponseWriter, *http.Request) {})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	call := func(remoteAddr string) int {
+		req := httptest.NewRequest("GET", "http://example.com/limited", http.NoBody)
+		req.RemoteAddr = remoteAddr
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		resp := w.Result()
+		assert.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// one request a second is allowed, so the first of a burst passes and the rest are refused
+	assert.Equal(t, http.StatusOK, call("1.2.3.4:1000"), "first request within the allowance")
+	refused := 0
+	for range 5 {
+		if call("1.2.3.4:1000") == http.StatusTooManyRequests {
+			refused++
+		}
+	}
+	assert.Equal(t, 5, refused, "burst past the allowance is refused")
+
+	// a different client has its own bucket and is unaffected
+	assert.Equal(t, http.StatusOK, call("5.6.7.8:1000"), "limit is per client, not global")
+}
+
 func TestRealIPMiddleware(t *testing.T) {
 	// call runs mw with the given peer and (optional) X-Real-IP header and returns what the
 	// downstream handler observes; state is per-call, so subtests don't share closure locals.

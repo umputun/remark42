@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -368,20 +367,25 @@ func TestRest_AvatarMounts(t *testing.T) {
 
 func TestRest_Shutdown(t *testing.T) {
 	srv := Rest{Authenticator: &auth.Service{}, ImageProxy: &proxy.Image{}}
+	port := chooseUnusedPort(t)
 	done := make(chan bool)
 
 	// without waiting for channel close at the end goroutine will stay alive after test finish
 	// which would create data race with next test
 	go func() {
-		time.Sleep(200 * time.Millisecond)
-		srv.Shutdown()
+		srv.Run("127.0.0.1", port)
 		close(done)
 	}()
 
-	st := time.Now()
-	srv.Run("127.0.0.1", 0)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100ms")
-	<-done
+	defer srv.Shutdown() // a failed readiness wait must not leave srv.Run behind for goleak
+	waitForServerStart(t, port)
+	srv.Shutdown()
+
+	select {
+	case <-done:
+	case <-time.After(serverStopTimeout):
+		t.Fatal("rest server did not stop after Shutdown")
+	}
 }
 
 func TestRest_filterComments(t *testing.T) {
@@ -400,7 +404,7 @@ func TestRest_filterComments(t *testing.T) {
 }
 
 func TestRest_RunStaticSSLMode(t *testing.T) {
-	sslPort := chooseRandomUnusedPort()
+	sslPort := chooseUnusedPort(t)
 	srv := Rest{
 		Authenticator: auth.NewService(auth.Opts{
 			AvatarStore:       avatar.NewLocalFS("/tmp"),
@@ -417,12 +421,12 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	go func() {
 		srv.Run("", port)
 	}()
 
-	waitForHTTPSServerStart(sslPort)
+	waitForServerStart(t, sslPort, port)
 
 	client := http.Client{
 		// prevent http redirect
@@ -455,7 +459,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 }
 
 func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
-	sslPort := chooseRandomUnusedPort()
+	sslPort := chooseUnusedPort(t)
 	srv := Rest{
 		Authenticator: &auth.Service{},
 		ImageProxy:    &proxy.Image{},
@@ -466,13 +470,13 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 		RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort),
 	}
 
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	go func() {
 		// can't check https server locally, just only http server
 		srv.Run("", port)
 	}()
 
-	waitForHTTPSServerStart(sslPort)
+	waitForServerStart(t, sslPort, port)
 
 	client := http.Client{
 		// prevent http redirect
@@ -586,25 +590,11 @@ func TestRest_frameAncestors(t *testing.T) {
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors *;")
 }
 
-// randomPath pick a file or folder name which is not in use for sure
-func randomPath(tempDir, basename, suffix string) (string, error) {
-	for range 10 {
-		fname := fmt.Sprintf("/%s/%s-%d%s", tempDir, basename, rand.Int31(), suffix)
-		fmt.Printf("fname %q", fname)
-		_, err := os.Stat(fname)
-		if err != nil {
-			return fname, nil
-		}
-	}
-	return "", fmt.Errorf("cannot create temp file in %s", tempDir)
-}
-
 // startupT runs fully configured testing server
 // srvHook is an optional func to set some Rest param after the creation but prior to Run
 func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest, teardown func()) {
 	tmp := os.TempDir()
-	testDB, err := randomPath(tmp, "test-remark", ".db")
-	require.NoError(t, err)
+	testDB := filepath.Join(t.TempDir(), "test-remark.db") // per-test dir, removed when the test ends
 
 	_ = os.RemoveAll(tmp + "/ava-remark42")
 	_ = os.RemoveAll(tmp + "/pics-remark42")
@@ -685,12 +675,49 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		_ = os.Remove(testDB)
 		_ = os.RemoveAll(tmp + "/ava-remark42")
 		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown
+}
+
+const (
+	// outer bound before a wait is called a hang, generous enough for a loaded CI runner
+	waitTimeout  = 30 * time.Second
+	pollInterval = 10 * time.Millisecond
+
+	// budget for a server to stop once asked, tight enough to catch a shutdown that hangs
+	serverStopTimeout = 10 * time.Second
+
+	// connect budget for a single probe, kept off the poll interval so a slow loopback connect
+	// on a loaded runner does not look like a server that is not listening
+	probeDialTimeout = time.Second
+
+	// window to prove something did not happen
+	notifySettle = 300 * time.Millisecond
+
+	// poll interval for waits that issue an HTTP request. the admin routes allow 10 req/s and
+	// the open ones 100 in tests, so this stays below the tighter of the two and the poll
+	// cannot manufacture the 429s it would then have to interpret
+	httpPoll = 150 * time.Millisecond
+)
+
+// waitForCount blocks until got reaches want, failing the test with the last value it saw.
+// for work that is delivered asynchronously, such as notifications reaching a mock destination
+func waitForCount(t *testing.T, want int, got func() int, msgAndArgs ...any) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, want, got(), msgAndArgs...)
+	}, waitTimeout, pollInterval)
+}
+
+// waitForCountSettled waits for got to reach want and then holds it there, so a delivery
+// arriving late is caught rather than passing because the count was read the instant it matched
+func waitForCountSettled(t *testing.T, want int, got func() int, msgAndArgs ...any) {
+	t.Helper()
+	waitForCount(t, want, got, msgAndArgs...)
+	require.Never(t, func() bool { return got() != want }, notifySettle, pollInterval, msgAndArgs...)
 }
 
 // fake auth middleware make user authenticated and uses query's fake_id for ID and fake_name for Name
@@ -716,7 +743,7 @@ func get(t *testing.T, url string) (response string, statusCode int) {
 	return string(body), r.StatusCode
 }
 
-func sendReq(_ *testing.T, r *http.Request, tkn string) (*http.Response, error) {
+func sendReq(r *http.Request, tkn string) (*http.Response, error) {
 	client := http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
 	if tkn != "" {
@@ -798,7 +825,6 @@ func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server
 	crResp := R.JSON{}
 	err = json.Unmarshal(b, &crResp)
 	require.NoError(t, err)
-	time.Sleep(time.Nanosecond * 10)
 	created, err = time.Parse(time.RFC3339, crResp["time"].(string))
 	require.NoError(t, err)
 	return crResp["id"].(string), created
@@ -810,37 +836,41 @@ func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 }
 
 func requireAdminOnly(t *testing.T, req *http.Request) {
-	resp, err := sendReq(t, req, "") // no-auth user
+	resp, err := sendReq(req, "") // no-auth user
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	resp, err = sendReq(t, req, devToken) // non-admin user
+	resp, err = sendReq(req, devToken) // non-admin user
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
-func chooseRandomUnusedPort() (port int) {
-	for range 10 {
-		port = 40000 + int(rand.Int31n(10000))
-		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
-			_ = ln.Close()
-			break
-		}
-	}
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a
+// collision between concurrently running package test binaries very unlikely
+func chooseUnusedPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", ":0")
+	require.NoError(t, err, "no free port available")
+	port := ln.Addr().(*net.TCPAddr).Port
+	require.NoError(t, ln.Close())
 	return port
 }
 
-func waitForHTTPSServerStart(port int) {
-	// wait for up to 3 seconds for HTTPS server to start
-	for range 300 {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if conn != nil {
+// waitForServerStart blocks until something accepts on every listed port, failing the test
+// naming the port that never came up
+func waitForServerStart(t *testing.T, ports ...int) {
+	t.Helper()
+	for _, port := range ports {
+		require.Eventually(t, func() bool {
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), probeDialTimeout)
+			if err != nil {
+				return false
+			}
 			_ = conn.Close()
-			break
-		}
+			return true
+		}, waitTimeout, pollInterval, "server on port %d didn't start", port)
 	}
 }
 
@@ -849,5 +879,9 @@ func TestMain(m *testing.M) {
 		m,
 		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
 		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+		// regexp2, pulled in by chroma for syntax highlighting, keeps one shared clock goroutine
+		// alive for up to a second after the last match with a timeout, sleeping in 100ms ticks.
+		// it ends on its own, but a binary that finishes inside that window is reported as leaking
+		goleak.IgnoreAnyFunction("github.com/dlclark/regexp2/v2.runClock"),
 	)
 }

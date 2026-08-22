@@ -26,7 +26,7 @@ release:
 		goreleaser release --snapshot --clean --skip=publish
 
 race_test:
-	cd backend/app && go test -race -timeout=60s -count 1 ./...
+	cd backend/app && go test -race -timeout=300s -count 1 ./...
 
 backend:
 	docker compose -f compose-dev-backend.yml build

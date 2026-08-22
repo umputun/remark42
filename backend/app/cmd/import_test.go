@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/jessevdk/go-flags"
@@ -133,15 +132,14 @@ func TestImport_ExecuteFailed(t *testing.T) {
 }
 
 func TestImport_ExecuteTimeout(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, "blah\nblah2\n12345678\n", string(body))
-		time.Sleep(500 * time.Millisecond)
-		fmt.Fprintln(w, "some response")
-		fmt.Fprintln(w, string(body))
+		// hold the response until the client gives up on its own timeout
+		<-r.Context().Done()
 	}))
 	defer ts.Close()
 

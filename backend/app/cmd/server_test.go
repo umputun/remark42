@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -25,15 +24,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	// budget for a server to bind and answer, generous enough for a loaded CI runner
+	serverStartTimeout = 30 * time.Second
+	serverStartPoll    = 10 * time.Millisecond
+
+	// budget for a server to stop once asked. tight enough to catch a shutdown that hangs,
+	// loose enough not to depend on how loaded the runner is
+	serverStopTimeout = 10 * time.Second
+
+	// connect budget for a single probe. kept off the poll interval so a slow loopback connect
+	// on a loaded runner does not look like a server that is not listening
+	probeDialTimeout = time.Second
+
+	// the /auth/ group is limited to 2 req/s, so retries sit at its refill interval rather than
+	// above it, which would only manufacture more 429s
+	authRetryPoll = 500 * time.Millisecond
+)
+
 func TestServerApp(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -68,7 +85,7 @@ func TestServerApp(t *testing.T) {
 }
 
 func TestServerApp_DevMode(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
@@ -77,7 +94,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 11+1, len(providers), "extra auth provider")
@@ -97,7 +114,7 @@ func TestServerApp_DevMode(t *testing.T) {
 }
 
 func TestServerApp_CustomOAuthProvider(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Custom.Name = "oidc"
@@ -110,7 +127,7 @@ func TestServerApp_CustomOAuthProvider(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 11+1, len(providers), "extra auth provider")
@@ -121,7 +138,7 @@ func TestServerApp_CustomOAuthProvider(t *testing.T) {
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
@@ -129,7 +146,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 11+1, len(providers), "extra auth provider for anon")
@@ -148,8 +165,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -168,57 +184,43 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// try to login with non-latin name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port))
-	require.NoError(t, err)
+	nonLatin := fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port)
+	resp = getRetryThrottled(t, &client, nonLatin)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to login with bad name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in prefix
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in suffix
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with long name
-	time.Sleep(time.Second)
 	ln := strings.Repeat("x", 65)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with admin name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as anonymous with admin name
-	time.Sleep(time.Second)
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
@@ -250,12 +252,12 @@ func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn s
 
 func TestServerApp_WithSSL(t *testing.T) {
 	opts := ServerCommand{}
-	sslPort := chooseRandomUnusedPort()
+	sslPort := chooseUnusedPort(t)
 	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
@@ -270,8 +272,9 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // this context is not the one createAppFromCmd registers for cleanup
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPSServerStart(sslPort)
+	waitForServerStart(t, sslPort, port) // the redirect check below uses the plain http port
 
 	client := http.Client{
 		// prevent http redirect
@@ -312,7 +315,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
 		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
@@ -326,8 +329,9 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // this context is not the one createAppFromCmd registers for cleanup
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -516,34 +520,117 @@ func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = chooseRandomUnusedPort()
+		o.Port = port
 		return o
 	})
-	time.AfterFunc(100*time.Millisecond, func() {
-		cancel()
-	})
-	st := time.Now()
-	err := app.run(ctx)
-	assert.NoError(t, err)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100msec")
+
+	// cancel once the server actually answers, so the test measures shutdown and not startup.
+	// the deferred cancel also covers a failed wait, keeping app.run from racing the next test
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+	defer cancel()
+	waitForHTTPServerStart(t, port)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		assert.NoError(t, err)
+	case <-time.After(serverStopTimeout):
+		t.Fatal("server app did not stop after context cancel")
+	}
 	app.Wait()
 }
 
-func TestServerApp_MainSignal(t *testing.T) {
-	done := make(chan struct{})
-	go func() {
-		<-done
-		time.Sleep(250 * time.Millisecond)
-		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+// TestServerApp_ClaimsUpd covers the hook the authenticator runs on every token mint, refresh
+// included: it stamps admin, blocked and email onto the claims and blocks impersonation of a
+// restricted name. Calling the updater directly keeps it independent of when a token expires.
+func TestServerApp_ClaimsUpd(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		return o
+	})
+
+	// the app owns stores and services that only run closes, so it goes through the usual
+	// lifecycle here rather than being built and abandoned
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+	defer app.Wait()
+	defer cancel()
+
+	upd := app.restSrv.Authenticator.TokenService().ClaimsUpd
+	require.NotNil(t, upd, "claims updater wired into the token service")
+
+	claimsFor := func(id, name string) token.Claims {
+		return token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}},
+			User:             &token.User{ID: id, Name: name},
+		}
+	}
+
+	t.Run("plain user gets no attributes", func(t *testing.T) {
+		res := upd.Update(claimsFor("provider1_dev", "developer"))
+		assert.False(t, res.User.IsAdmin(), "not an admin")
+		assert.False(t, res.User.BoolAttr("blocked"), "not blocked")
+		assert.Empty(t, res.User.Email, "no email on file")
+	})
+
+	t.Run("admin from the admin store", func(t *testing.T) {
+		res := upd.Update(claimsFor("id1", "admin one"))
+		assert.True(t, res.User.IsAdmin(), "id1 is listed as admin")
+	})
+
+	t.Run("blocked user carries the blocked attribute", func(t *testing.T) {
+		require.NoError(t, app.restSrv.DataService.SetBlock("remark", "blocked_user", true, time.Hour))
+		res := upd.Update(claimsFor("blocked_user", "blocked"))
+		assert.True(t, res.User.BoolAttr("blocked"), "block is reflected on refresh")
+	})
+
+	t.Run("email is read from the store", func(t *testing.T) {
+		_, err := app.restSrv.DataService.SetUserEmail("remark", "with_email", "user@example.com")
 		require.NoError(t, err)
-	}()
+		res := upd.Update(claimsFor("with_email", "someone"))
+		assert.Equal(t, "user@example.com", res.User.Email)
+	})
+
+	t.Run("anonymous impersonating a restricted name is blocked", func(t *testing.T) {
+		res := upd.Update(claimsFor("anonymous_x", " UmpUtun "))
+		assert.True(t, res.User.BoolAttr("blocked"), "restricted name matched case and space insensitively")
+	})
+
+	t.Run("email user impersonating a restricted name is blocked", func(t *testing.T) {
+		res := upd.Update(claimsFor("email_x", "bobuk"))
+		assert.True(t, res.User.BoolAttr("blocked"))
+	})
+
+	t.Run("regular user may carry a restricted name", func(t *testing.T) {
+		res := upd.Update(claimsFor("provider1_someone", "umputun"))
+		assert.False(t, res.User.BoolAttr("blocked"), "only anonymous and email logins are checked")
+	})
+
+	t.Run("claims without a user pass through", func(t *testing.T) {
+		res := upd.Update(token.Claims{RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}}})
+		assert.Nil(t, res.User)
+	})
+
+	t.Run("claims without exactly one audience pass through", func(t *testing.T) {
+		c := claimsFor("id1", "admin one")
+		c.Audience = jwt.ClaimStrings{"remark", "second"}
+		res := upd.Update(c)
+		assert.False(t, res.User.IsAdmin(), "attributes need a single audience to resolve the site")
+	})
+}
+
+func TestServerApp_MainSignal(t *testing.T) {
+	sigErr := make(chan error, 1)
 
 	s := ServerCommand{}
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&s, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/xyz")
@@ -551,15 +638,26 @@ func TestServerApp_MainSignal(t *testing.T) {
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
-	st := time.Now()
-	close(done)
+	// the signal goes out only once the server answers: SIGTERM landing before the handler is
+	// installed kills the test process, so a wait that timed out reports instead of sending it
+	go func() {
+		started := waitForServerPort(port, serverStartTimeout)
+		// signal either way: Execute blocks until it gets one, so bailing out here would hang
+		// the test until the package timeout instead of failing with the reason
+		killErr := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		if !started {
+			killErr = fmt.Errorf("server on port %d didn't start", port)
+		}
+		sigErr <- killErr
+	}()
+
 	err = s.Execute(args)
 	assert.NoError(t, err, "execute should be without errors")
-	assert.True(t, time.Since(st).Seconds() < 5, "should take under five sec", time.Since(st).Seconds())
+	require.NoError(t, <-sigErr, "SIGTERM not delivered")
 }
 
 func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
@@ -569,17 +667,19 @@ func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
 	errCh := make(chan error, 1)
 	go func() { errCh <- app.run(ctx) }()
 
+	// the budget is generous on purpose: the assertion is that run exits rather than hangs, and
+	// store construction can take a while on a loaded runner
 	select {
 	case err := <-errCh:
 		require.NoError(t, err)
 		app.Wait()
-	case <-time.After(time.Second):
-		waitForHTTPServerStart(port)
+	case <-time.After(serverStartTimeout):
+		waitForHTTPServerStart(t, port)
 		app.restSrv.Shutdown()
 		select {
 		case <-errCh:
 			app.Wait()
-		case <-time.After(time.Second):
+		case <-time.After(serverStartTimeout):
 			t.Fatal("server app did not stop after forced REST shutdown")
 		}
 		t.Fatal("server app should exit when context is canceled before REST server starts")
@@ -747,24 +847,25 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
-	// make a token for user dev
+	// make a token for user dev. nothing here checks expiry, so the lifetime only has to
+	// outlast the whole test
 	tkService := app.restSrv.Authenticator.TokenService()
-	tkService.TokenDuration = time.Second
+	tkService.TokenDuration = time.Hour
 
 	claims := token.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  jwt.ClaimStrings{"remark"},
 			Issuer:    "remark",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
@@ -867,8 +968,7 @@ func TestServerAuthHooks(t *testing.T) {
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
-		"blocked user can't post, \n"+tk+"\n"+string(body))
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post, \n"+tk+"\n"+string(body))
 
 	cancel()
 	app.Wait()
@@ -968,40 +1068,79 @@ func Test_getAllowedRedirectHosts(t *testing.T) {
 	}
 }
 
-func chooseRandomUnusedPort() (port int) {
-	for range 10 {
-		port = 40000 + int(rand.Int31n(10000))
-		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
-			_ = ln.Close()
-			break
-		}
-	}
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a
+// collision between concurrently running package test binaries very unlikely
+func chooseUnusedPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", ":0")
+	require.NoError(t, err, "no free port available")
+	port := ln.Addr().(*net.TCPAddr).Port
+	require.NoError(t, ln.Close())
 	return port
 }
 
-func waitForHTTPServerStart(port int) {
-	// wait for up to 3 seconds for server to start before returning it
+// waitForHTTPServerStart blocks until the server on port answers, failing the test naming the
+// port if it never does
+func waitForHTTPServerStart(t *testing.T, port int) {
+	t.Helper()
 	client := http.Client{Timeout: time.Second}
 	defer client.CloseIdleConnections()
-	for range 300 {
-		time.Sleep(time.Millisecond * 10)
-		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
-			_ = resp.Body.Close()
-			return
+	require.Eventually(t, func() bool {
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return false
 		}
+		_ = resp.Body.Close()
+		return true
+	}, serverStartTimeout, serverStartPoll, "http server on port %d didn't start", port)
+}
+
+// waitForServerStart blocks until something accepts on every listed port, failing the test
+// naming the port that never came up
+func waitForServerStart(t *testing.T, ports ...int) {
+	t.Helper()
+	for _, port := range ports {
+		require.True(t, waitForServerPort(port, serverStartTimeout), "server on port %d didn't start", port)
 	}
 }
 
-func waitForHTTPSServerStart(port int) {
-	// wait for up to 3 seconds for HTTPS server to start
-	for range 300 {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if conn != nil {
-			_ = conn.Close()
-			break
+// getRetryThrottled issues a GET and retries while the auth routes answer 429, since the /auth/
+// group is limited to 2 req/s and this test logs in more often than that. a transport error is
+// retried a couple of times and then reported as itself, so a dead server is not read as throttling
+func getRetryThrottled(t *testing.T, client *http.Client, url string) *http.Response {
+	t.Helper()
+	const transportRetries = 2
+	errCount := 0
+	for deadline := time.Now().Add(serverStartTimeout); time.Now().Before(deadline); time.Sleep(authRetryPoll) {
+		r, err := client.Get(url)
+		if err != nil {
+			errCount++
+			require.LessOrEqual(t, errCount, transportRetries, "request to %s failed: %v", url, err)
+			continue
 		}
+		if r.StatusCode == http.StatusTooManyRequests {
+			_ = r.Body.Close()
+			continue
+		}
+		return r
 	}
+	t.Fatalf("request to %s kept being rate limited", url)
+	return nil
+}
+
+// waitForServerPort blocks until something accepts on port, reporting whether it came up.
+// unlike the require-based helpers it is safe to call off the test goroutine.
+func waitForServerPort(port int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), probeDialTimeout)
+		if err == nil {
+			_ = conn.Close()
+			return true
+		}
+		time.Sleep(serverStartPoll)
+	}
+	return false
 }
 
 func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
@@ -1064,6 +1203,9 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 
 func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
+	// a require in a readiness wait exits the test goroutine, so without this an app started in
+	// a goroutine would never be stopped and goleak would report it instead of the failure
+	t.Cleanup(cancel)
 	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
 	return app, ctx, cancel
@@ -1073,8 +1215,14 @@ func TestMain(m *testing.M) {
 	// ignore is added only for GitHub Actions, can't reproduce locally
 	goleak.VerifyTestMain(
 		m,
+		// the shutdown goroutine in serverApp.run is not joined by Wait, and Rest.Shutdown gives
+		// httpServer.Shutdown a second, which can outlast goleak's retry budget on a loaded runner
 		goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"),
 		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
 		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+		// regexp2, pulled in by chroma for syntax highlighting, keeps one shared clock goroutine
+		// alive for up to a second after the last match with a timeout, sleeping in 100ms ticks.
+		// it ends on its own, but a binary that finishes inside that window is reported as leaking
+		goleak.IgnoreAnyFunction("github.com/dlclark/regexp2/v2.runClock"),
 	)
 }

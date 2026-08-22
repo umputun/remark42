@@ -38,6 +38,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
 		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
 	}
+	beforeCreate := time.Now()
 	id, err := b.Create(comment)
 	assert.NoError(t, err)
 	assert.True(t, id != "", id)
@@ -46,7 +47,7 @@ func TestService_CreateFromEmpty(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "text", res.Text)
-	assert.True(t, time.Since(res.Timestamp).Seconds() < 1)
+	assert.WithinRange(t, res.Timestamp, beforeCreate, time.Now(), "timestamp set during create")
 	assert.Equal(t, "user", res.User.ID)
 	assert.Equal(t, "name", res.User.Name)
 	assert.Equal(t, "23f97cf4d5c29ef788ca2bdd1c9e75656c0e4149", res.User.IP)

@@ -8,7 +8,6 @@ package server
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"testing"
@@ -20,27 +19,31 @@ import (
 	"github.com/umputun/remark42/memory_store/accessor"
 )
 
-func chooseRandomUnusedPort() (port int) {
-	for range 10 {
-		port = 40000 + int(rand.Int31n(10000))
-		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
-			_ = ln.Close()
-			break
-		}
-	}
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, so concurrently
+// running package test binaries never land on the same number
+func chooseUnusedPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", ":0")
+	require.NoError(t, err, "no free port available")
+	port := ln.Addr().(*net.TCPAddr).Port
+	require.NoError(t, ln.Close())
 	return port
 }
 
-func waitForHTTPServerStart(port int) {
-	// wait for up to 3 seconds for server to start before returning it
+// waitForHTTPServerStart blocks until the server on port answers, failing the test naming the
+// port if it never does
+func waitForHTTPServerStart(t *testing.T, port int) {
+	t.Helper()
 	client := http.Client{Timeout: time.Second}
-	for range 300 {
-		time.Sleep(time.Millisecond * 10)
-		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
-			_ = resp.Body.Close()
-			return
+	defer client.CloseIdleConnections()
+	require.Eventually(t, func() bool {
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return false
 		}
-	}
+		_ = resp.Body.Close()
+		return true
+	}, 30*time.Second, 10*time.Millisecond, "http server on port %d didn't start", port)
 }
 
 func prepTestStore(t *testing.T) (port int, teardown func()) {
@@ -61,14 +64,17 @@ func prepTestStore(t *testing.T) (port int, teardown func()) {
 	admRecDisabled.Enabled = false
 	adm.Set("test-site-disabled", admRecDisabled)
 
-	port = chooseRandomUnusedPort()
+	port = chooseUnusedPort(t)
 	go func() {
 		_ = s.Run(port)
 	}()
 
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	return port, func() {
+		// every test client here uses http.DefaultTransport, so their keep-alive connections
+		// sit in one shared pool; Shutdown waits on them and hits its own 5s deadline otherwise
+		http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 		require.NoError(t, s.Shutdown())
 	}
 }
