@@ -14,22 +14,29 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 )
 
+// rssPubTime returns a second-aligned base timestamp and formats it the way the feed does, so
+// comment pubDates are pinned rather than dependent on when in the second the test runs.
+func rssPubTime() (base time.Time, pubDate string) {
+	base = time.Now().Truncate(time.Second)
+	return base, base.Format(time.RFC1123Z)
+}
+
 func TestServer_RssPost(t *testing.T) {
 	ts, rst, teardown := startupT(t)
 	defer teardown()
 
-	waitOnSecChange()
+	base, pubDate := rssPubTime()
 
 	c1 := store.Comment{
-		ID:      "1234567890",
-		Text:    "test 123",
-		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:    store.User{ID: "u1", Name: "developer one"},
+		ID:        "1234567890",
+		Text:      "test 123",
+		Timestamp: base,
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "u1", Name: "developer one"},
 	}
 	id1, err := rst.DataService.Create(c1)
 	require.NoError(t, err)
 	assert.Equal(t, "1234567890", id1)
-	pubDate := time.Now().Format(time.RFC1123Z)
 
 	res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, http.StatusOK, code)
@@ -63,21 +70,21 @@ func TestServer_RssSite(t *testing.T) {
 	ts, rst, teardown := startupT(t)
 	defer teardown()
 
-	waitOnSecChange()
-
-	pubDate := time.Now().Format(time.RFC1123Z)
+	base, pubDate := rssPubTime()
 
 	c1 := store.Comment{
-		ID:      "comment-id-1",
-		Text:    "test 123",
-		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
-		User:    store.User{ID: "u1", Name: "developer one"},
+		ID:        "comment-id-1",
+		Text:      "test 123",
+		Timestamp: base,
+		Locator:   store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
+		User:      store.User{ID: "u1", Name: "developer one"},
 	}
 	c2 := store.Comment{
-		ID:      "comment-id-2",
-		Text:    "xyz test",
-		Locator: store.Locator{URL: "https://radio-t.com/blah11", SiteID: "remark42"},
-		User:    store.User{ID: "u1", Name: "developer one"},
+		ID:        "comment-id-2",
+		Text:      "xyz test",
+		Timestamp: base.Add(time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah11", SiteID: "remark42"},
+		User:      store.User{ID: "u1", Name: "developer one"},
 	}
 
 	_, err := rst.DataService.Create(c1)
@@ -126,22 +133,22 @@ func TestServer_RssWithReply(t *testing.T) {
 	ts, rst, teardown := startupT(t)
 	defer teardown()
 
-	waitOnSecChange()
-
-	pubDate := time.Now().Format(time.RFC1123Z)
+	base, pubDate := rssPubTime()
 
 	c1 := store.Comment{
-		ID:      "comment-id-1",
-		Text:    "test 123",
-		Locator: store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
-		User:    store.User{ID: "u1", Name: "developer one"},
+		ID:        "comment-id-1",
+		Text:      "test 123",
+		Timestamp: base,
+		Locator:   store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
+		User:      store.User{ID: "u1", Name: "developer one"},
 	}
 	c2 := store.Comment{
-		ID:       "comment-id-2",
-		ParentID: "comment-id-1",
-		Text:     "xyz test",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
-		User:     store.User{ID: "u1", Name: "developer one"},
+		ID:        "comment-id-2",
+		ParentID:  "comment-id-1",
+		Text:      "xyz test",
+		Timestamp: base.Add(time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah10", SiteID: "remark42"},
+		User:      store.User{ID: "u1", Name: "developer one"},
 	}
 
 	_, err := rst.DataService.Create(c1)
@@ -186,42 +193,45 @@ func TestServer_RssReplies(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	waitOnSecChange()
-
-	pubDate := time.Now().Format(time.RFC1123Z)
+	base, pubDate := rssPubTime()
 
 	c1 := store.Comment{
-		ID:      "comment-1",
-		Text:    "c1",
-		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:    store.User{ID: "user1", Name: "user1"},
+		ID:        "comment-1",
+		Text:      "c1",
+		Timestamp: base,
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "user1", Name: "user1"},
 	}
 	c2 := store.Comment{
-		ID:       "comment-2",
-		Text:     "reply to c1 from user2",
-		ParentID: "comment-1",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:     store.User{ID: "user2", Name: "user2"},
+		ID:        "comment-2",
+		Text:      "reply to c1 from user2",
+		ParentID:  "comment-1",
+		Timestamp: base.Add(time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "user2", Name: "user2"},
 	}
 	c3 := store.Comment{
-		ID:       "comment-3",
-		Text:     "reply to c1 from user3",
-		ParentID: "comment-1",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:     store.User{ID: "user3", Name: "user3"},
+		ID:        "comment-3",
+		Text:      "reply to c1 from user3",
+		ParentID:  "comment-1",
+		Timestamp: base.Add(2 * time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "user3", Name: "user3"},
 	}
 	c4 := store.Comment{
-		ID:       "comment-4",
-		Text:     "reply to c2 from developer one",
-		ParentID: "comment-2",
-		Locator:  store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:     store.User{ID: "dev", Name: "developer one"},
+		ID:        "comment-4",
+		Text:      "reply to c2 from developer one",
+		ParentID:  "comment-2",
+		Timestamp: base.Add(3 * time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "dev", Name: "developer one"},
 	}
 	c5 := store.Comment{
-		ID:      "comment-5",
-		Text:    "developer one",
-		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
-		User:    store.User{ID: "dev", Name: "developer one"},
+		ID:        "comment-5",
+		Text:      "developer one",
+		Timestamp: base.Add(4 * time.Millisecond),
+		Locator:   store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"},
+		User:      store.User{ID: "dev", Name: "developer one"},
 	}
 
 	_, err := srv.DataService.Create(c1)
@@ -268,12 +278,6 @@ func TestServer_RssReplies(t *testing.T) {
 
 	_, code = get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42-bad")
 	assert.Equal(t, http.StatusBadRequest, code)
-}
-
-func waitOnSecChange() {
-	for time.Now().Nanosecond() >= 100000000 {
-		time.Sleep(10 * time.Nanosecond)
-	}
 }
 
 // clean formatting, i.e. multiple spaces, \t, \n

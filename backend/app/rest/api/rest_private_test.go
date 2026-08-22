@@ -144,7 +144,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 
 		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
 		// retrieve the image from the cache
-		imgURL := strings.Split(strings.Split(string(b), "src=\"")[1], "\"")[0]
+		imgURL, _, _ := strings.Cut(strings.Split(string(b), "src=\"")[1], "\"")
 		// replace srv.RemarkURL with ts.URL
 		imgURL = strings.ReplaceAll(imgURL, srv.RemarkURL, ts.URL)
 		resp, err = http.Get(imgURL)
@@ -432,6 +432,7 @@ func TestRest_Update(t *testing.T) {
 		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
 	assert.NoError(t, err)
 	req.Header.Add("X-JWT", devToken)
+	beforeUpdate := time.Now()
 	b, err := client.Do(req)
 	assert.NoError(t, err)
 	body, err := io.ReadAll(b.Body)
@@ -447,7 +448,7 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, "<p>updated text</p>\n", c2.Text)
 	assert.Equal(t, "updated text", c2.Orig)
 	assert.Equal(t, "my edit", c2.Edit.Summary)
-	assert.True(t, time.Since(c2.Edit.Timestamp) < 1*time.Second)
+	assert.WithinRange(t, c2.Edit.Timestamp, beforeUpdate, time.Now(), "edit stamped during the update")
 
 	// read updated comment
 	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
@@ -596,7 +597,7 @@ func TestRest_DeleteChildThenParent(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, idC2), http.NoBody)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -784,7 +785,7 @@ func TestRest_Vote(t *testing.T) {
 	req, err := http.NewRequest("GET",
 		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), http.NoBody)
 	assert.NoError(t, err)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	cr = store.Comment{}
@@ -974,9 +975,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	parentComment := store.Comment{}
 	require.NoError(t, json.Unmarshal(body, &parentComment))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 1, len(mockDestination.Get()))
+	waitForCount(t, 1, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[0].Emails)
 
 	// create child comment from another user, email notification only to admin expected
@@ -994,9 +993,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.Get()))
+	waitForCount(t, 2, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[1].Emails)
 
 	// send confirmation token for email
@@ -1013,9 +1010,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 1, len(mockDestination.GetVerify()))
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
 	assert.Equal(t, "good@example.com", mockDestination.GetVerify()[0].Email)
 	verificationToken := mockDestination.GetVerify()[0].Token
 
@@ -1087,9 +1082,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 3, len(mockDestination.Get()))
+	waitForCount(t, 3, func() int { return len(mockDestination.Get()) })
 	assert.Equal(t, []string{"good@example.com"}, mockDestination.Get()[2].Emails)
 
 	// delete user's email
@@ -1117,9 +1110,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 4, len(mockDestination.Get()))
+	waitForCountSettled(t, 4, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[3].Emails)
 
 	// confirm email via subscribe call with query params, old behavior, email notification is expected
@@ -1136,9 +1127,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.GetVerify()), "verification email was sent")
+	waitForCount(t, 2, func() int { return len(mockDestination.GetVerify()) }, "verification email was sent")
 
 	// get email user information to verify there is no subscription yet
 	req, err = http.NewRequest(
@@ -1173,9 +1162,7 @@ func TestRest_EmailNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.GetVerify()), "no new verification email was sent")
+	waitForCountSettled(t, 2, func() int { return len(mockDestination.GetVerify()) }, "no new verification email was sent")
 
 	// get email user information to verify the subscription happened without the confirmation call
 	req, err = http.NewRequest(
@@ -1224,9 +1211,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
 	parentComment := store.Comment{}
 	require.NoError(t, json.Unmarshal(body, &parentComment))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 1, len(mockDestination.Get()))
+	waitForCount(t, 1, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[0].Telegrams)
 
 	// create child comment from another user, telegram notification only to admin expected
@@ -1244,9 +1229,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 2, len(mockDestination.Get()))
+	waitForCount(t, 2, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[1].Telegrams)
 
 	// subscribe to telegram while the telegram destination is absent
@@ -1357,9 +1340,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 3, len(mockDestination.Get()))
+	waitForCount(t, 3, func() int { return len(mockDestination.Get()) })
 	assert.Equal(t, []string{"good_telegram"}, mockDestination.Get()[2].Telegrams)
 
 	// delete user's telegram
@@ -1387,9 +1368,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
-	// wait for mock notification Submit to kick off
-	time.Sleep(time.Millisecond * 30)
-	require.Equal(t, 4, len(mockDestination.Get()))
+	waitForCountSettled(t, 4, func() int { return len(mockDestination.Get()) })
 	assert.Empty(t, mockDestination.Get()[3].Telegrams)
 }
 
@@ -1412,7 +1391,7 @@ func TestRest_UserAllData(t *testing.T) {
 	_, err = srv.DataService.Create(c3)
 	require.NoError(t, err)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", http.NoBody)
 	require.NoError(t, err)
@@ -1465,7 +1444,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 		_, err := srv.DataService.Create(c)
 		require.NoError(t, err)
 	}
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/userdata?site=remark42", http.NoBody)
 	require.NoError(t, err)
@@ -1608,7 +1587,9 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		Staging:  "/tmp/remark42/images.staging",
 		Location: "/tmp/remark42/images",
 	}, image.ServiceParams{
-		EditDuration: 100 * time.Millisecond,
+		// the "not moved yet" checks below run right after the comment POST returns, so the
+		// commit window has to be wide enough that a stalled runner cannot close it first
+		EditDuration: 3 * time.Second,
 		MaxSize:      2000,
 		ImageAPI:     svc.RemarkURL + "/api/v1/picture/",
 		ProxyAPI:     svc.RemarkURL + "/api/v1/img",
@@ -1671,11 +1652,12 @@ func TestRest_CreateWithPictures(t *testing.T) {
 		assert.Error(t, err, "picture %d not moved from staging yet", i)
 	}
 
-	time.Sleep(1500 * time.Millisecond)
-
+	// the commit runs once EditDuration expires
 	for i := range ids {
-		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
-		assert.NoError(t, err, "picture %d moved from staging and available in permanent location", i)
+		require.Eventually(t, func() bool {
+			_, e := os.Stat("/tmp/remark42/images/" + ids[i])
+			return e == nil
+		}, waitTimeout, pollInterval, "picture %d moved from staging and available in permanent location", i)
 	}
 }
 

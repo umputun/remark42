@@ -5,13 +5,13 @@ added: 2026-08-18
 ---
 # TestRest_securityHeaders deadlocks the whole api suite on macOS
 
-`cd backend/app && go test -timeout=60s -count 1 ./...` fails on macOS with the `app/rest/api` package
+`cd backend/app && go test -timeout=300s -count 1 ./...` fails on macOS with the `app/rest/api` package
 timing out. It reproduced 3 times out of 3 in isolation with
 `go test -run 'TestRest_securityHeaders$' -timeout=40s`, so it is deterministic rather than flaky, and it
 takes the whole package down with it: 14 of 15 packages pass, that one never finishes. CI is unaffected,
 the `Tests` job passes on Linux.
 
-The test blocks in `startupT`'s teardown (`rest_test.go:504`), inside `httptest.Server.Close()`, which
+The test blocks in `startupT`'s teardown (`rest_test.go:676`), inside `httptest.Server.Close()`, which
 waits on the server's `WaitGroup` for handlers still in flight. The handler it is waiting on sits in IO
 wait on a socket write:
 

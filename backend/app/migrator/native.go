@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sync/atomic"
 
 	log "github.com/go-pkgz/lgr"
@@ -46,8 +47,8 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 	log.Printf("[DEBUG] exporting %d topics", len(topics))
 	commentsCount := 0
-	for i := len(topics) - 1; i >= 0; i-- { // topics from List sorted in opposite direction
-		topic := topics[i]
+	for _, topic := range slices.Backward(topics) { // topics from List sorted in opposite direction
+
 		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time", adminUser)
 		if e != nil {
 			return commentsCount, e

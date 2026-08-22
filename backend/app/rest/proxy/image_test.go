@@ -813,8 +813,8 @@ func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 			return
 		}
 		if r.URL.Path == "/image/img-slow.png" {
-			time.Sleep(500 * time.Millisecond)
-			w.WriteHeader(500)
+			// hold the response until the proxy gives up on its own timeout
+			<-r.Context().Done()
 			return
 		}
 		t.Log("http img request - not found", r.URL)

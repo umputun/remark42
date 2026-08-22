@@ -34,7 +34,7 @@ func TestMigrator_Import(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah2"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 
 	r := strings.NewReader(strings.ReplaceAll(xmlTestWP, "'", "`"))
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=wordpress", r)
 	assert.NoError(t, err)
@@ -170,7 +170,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 "email":"somegreatmail@gmail.com","name":"User5276","link":"https://example.com/profile/257","photo":"https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",
 "provider":"sso:example.com","joinDate":"2021-03-19T19:27:25.954285Z","isModerator":false}]}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
 	assert.NoError(t, err)
@@ -211,7 +211,7 @@ func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
 	r, err := os.Open("testdata/commento.json")
 	require.NoError(t, err)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
 	assert.NoError(t, err)
@@ -258,7 +258,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah2"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native&secret=XYZ", r)
 	assert.NoError(t, err)
@@ -281,7 +281,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
@@ -380,7 +380,7 @@ func TestMigrator_Export(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	// import comments first
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
@@ -573,7 +573,7 @@ func TestMigrator_RemapReject(t *testing.T) {
 	defer teardown()
 
 	// without admin credentials
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*`)
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)

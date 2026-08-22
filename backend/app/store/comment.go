@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,8 +152,8 @@ func (c *Comment) Snippet(limit int) string {
 	}
 	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
-	for i := len(snippet) - 1; i >= 0; i-- {
-		if snippet[i] == ' ' {
+	for i, s := range slices.Backward(snippet) {
+		if s == ' ' {
 			snippet = snippet[:i]
 			break
 		}

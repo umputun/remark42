@@ -62,7 +62,7 @@ func TestAdmin_Delete(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), http.NoBody)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -75,14 +75,22 @@ func TestAdmin_Delete(t *testing.T) {
 	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
 
-	time.Sleep(250 * time.Millisecond)
-	// check last comments updated
-	res, code = get(t, ts.URL+"/api/v1/last/2?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	comments = []store.Comment{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(comments), "should have 1 comments")
+	// the last-comments list refreshes asynchronously after the delete. the polling closure runs
+	// off the test goroutine, so it asserts on the CollectT it is handed rather than on t, which
+	// also puts the real transport or decode error in the failure message
+	pollClient := http.Client{Timeout: waitTimeout}
+	defer pollClient.CloseIdleConnections()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		lastResp, gErr := pollClient.Get(ts.URL + "/api/v1/last/2?site=remark42")
+		if !assert.NoError(c, gErr) {
+			return
+		}
+		defer lastResp.Body.Close()
+		assert.Equal(c, http.StatusOK, lastResp.StatusCode)
+		last := []store.Comment{}
+		assert.NoError(c, json.NewDecoder(lastResp.Body).Decode(&last))
+		assert.Len(c, last, 1, "should have 1 comments")
+	}, waitTimeout, httpPoll)
 
 	// check count updated
 	res, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah")
@@ -139,7 +147,7 @@ func TestAdmin_Title(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL), http.NoBody)
 	assert.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -174,7 +182,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42", ts.URL, "id2"), http.NoBody)
 	assert.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	assert.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -275,7 +283,7 @@ func TestAdmin_Block(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPut, url, http.NoBody)
 		assert.NoError(t, err)
 		requireAdminOnly(t, req)
-		resp, err := sendReq(t, req, adminUmputunToken)
+		resp, err := sendReq(req, adminUmputunToken)
 		require.NoError(t, err)
 		body, err = io.ReadAll(resp.Body)
 		assert.NoError(t, err)
@@ -333,10 +341,12 @@ func TestAdmin_Block(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, j["block"])
 
-	// block with ttl
+	// block with ttl, checked in place rather than through another admin request, which would
+	// push this test over the 10 req/s limit on that route
 	makeTwoComments()
-	code, _ = block(1, "50ms")
+	code, _ = block(1, "500ms")
 	require.Equal(t, http.StatusOK, code)
+	require.True(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"), "user1 blocked with ttl")
 
 	// get as regular user
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
@@ -350,7 +360,13 @@ func TestAdmin_Block(t *testing.T) {
 
 	srv.pubRest.cache = cache.NewScache[[]byte](cache.NewNopCache[[]byte]()) // TODO: with lru cache it won't be refreshed and invalidated for long
 	// time
-	time.Sleep(50 * time.Millisecond)
+
+	// the ttl above is wide enough that the checks in between cannot outlast it, so reaching
+	// here still inside the block, and the wait below observes it lapse
+	require.Eventually(t, func() bool {
+		return !srv.adminRest.dataService.IsBlocked("remark42", "user1")
+	}, waitTimeout, pollInterval, "block with ttl did not expire")
+
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
 	assert.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
@@ -383,23 +399,23 @@ func TestAdmin_BlockedList(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", 1), http.NoBody)
 	assert.NoError(t, err)
-	res, err := sendReq(t, req, adminUmputunToken)
+	res, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, res.Body.Close())
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
-	// block user2
+	// block user2 for long enough that the "two users blocked" check below cannot race the ttl
 	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), http.NoBody)
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=1h", ts.URL, "user2", 1), http.NoBody)
 	assert.NoError(t, err)
-	res, err = sendReq(t, req, adminUmputunToken)
+	res, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, res.Body.Close())
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", http.NoBody)
 	require.NoError(t, err)
-	res, err = sendReq(t, req, adminUmputunToken)
+	res, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, res.StatusCode)
 	users := []store.BlockedUser{}
@@ -412,18 +428,33 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.Equal(t, "user2", users[1].ID)
 	assert.Equal(t, "user2 name", users[1].Name)
 	t.Logf("%+v", users)
-	time.Sleep(150 * time.Millisecond)
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", http.NoBody)
+	// re-block user2 with a short ttl and wait for it to lapse, so the lapse is observed
+	// independently of the check above
+	req, err = http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), http.NoBody)
 	require.NoError(t, err)
-	res, err = sendReq(t, req, adminUmputunToken)
+	res, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	users = []store.BlockedUser{}
-	err = json.NewDecoder(res.Body).Decode(&users)
-	assert.NoError(t, err)
 	require.NoError(t, res.Body.Close())
-	assert.Equal(t, 1, len(users), "one user left blocked")
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	// the closure runs off the test goroutine and asserts on the CollectT it is handed, never on t
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		blockedReq, reqErr := http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", http.NoBody)
+		if !assert.NoError(c, reqErr) {
+			return
+		}
+		blockedResp, sendErr := sendReq(blockedReq, adminUmputunToken)
+		if !assert.NoError(c, sendErr) {
+			return
+		}
+		defer blockedResp.Body.Close()
+		assert.Equal(c, http.StatusOK, blockedResp.StatusCode)
+		blocked := []store.BlockedUser{}
+		assert.NoError(c, json.NewDecoder(blockedResp.Body).Decode(&blocked))
+		assert.Len(c, blocked, 1, "one user left blocked")
+	}, waitTimeout, httpPoll)
 }
 
 func TestAdmin_ReadOnly(t *testing.T) {
@@ -448,11 +479,11 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)
-	resp, err := sendReq(t, req, "") // non-admin user
+	resp, err := sendReq(req, "") // non-admin user
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -467,7 +498,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.NoError(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", bytes.NewBuffer(b))
 	require.NoError(t, err)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
@@ -476,7 +507,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), http.NoBody)
 	assert.NoError(t, err)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -491,7 +522,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.NoError(t, err, "can't marshal comment %+v", c)
 	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site="+c.Locator.SiteID, bytes.NewBuffer(b))
 	require.NoError(t, err)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -506,7 +537,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -553,7 +584,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -565,7 +596,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), http.NoBody)
 	assert.NoError(t, err)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
@@ -594,7 +625,7 @@ func TestAdmin_Verify(t *testing.T) {
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=1", ts.URL), http.NoBody)
 	assert.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -613,7 +644,7 @@ func TestAdmin_Verify(t *testing.T) {
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=0", ts.URL), http.NoBody)
 	assert.NoError(t, err)
-	resp, err = sendReq(t, req, adminUmputunToken)
+	resp, err = sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -664,7 +695,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42&mode=file", http.NoBody)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
