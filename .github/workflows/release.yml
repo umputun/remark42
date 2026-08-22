@@ -12,10 +12,10 @@ on:
       - "scripts/**"
       - "backend/**"
       - "frontend/**"
+      - "!backend/**.md"
+      - "!frontend/**.md"
       - "README.md"
       - "LICENSE"
-      - "CLAUDE.md"
-      - "site/content/docs/getting-started/installation/index.md"
 
 permissions:
   contents: read
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: test and build backend
         run: |
@@ -67,7 +67,7 @@ jobs:
 
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: frontend
+        working-directory: frontend/apps/remark42
         env:
           CI: "true"
 
@@ -123,11 +123,11 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: frontend
+        working-directory: frontend/apps/remark42
         env:
           CI: "true"
 
