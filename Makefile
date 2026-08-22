@@ -42,6 +42,7 @@ rundev:
 # stamped the same way the suite stamps a stack it starts itself, so one brought up here is
 # accepted instead of rejected as belonging to another checkout
 e2e-up:
+	./e2e/tls/generate.sh
 	E2E_STAMP=$$(./e2e/stamp.sh) docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
 e2e-down:

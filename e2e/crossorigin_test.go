@@ -22,11 +22,11 @@ import (
 // which means its document loaded and reported itself inited through postMessage across origins,
 // and that the thread it renders is the one the page's own address names.
 //
-// Signing in is deliberately not asserted. An embedded cookie needs SameSite=None, which browsers
-// only accept as Secure, and this stack speaks http, so the form cannot be delivered here at all;
-// see "What this suite cannot reach" in the README. Give the stack TLS and the case to add is
-// signing in and then reloading, since the widget holds its token in memory for the life of a
-// page and a sign-in that never reloads passes while persistence is broken
+// Signing in is deliberately not asserted here. An embedded cookie needs SameSite=None, which
+// browsers only accept as Secure, and this page is served over http, so the form cannot be
+// delivered at all. That half is covered over TLS in https_test.go, where the assertion that
+// matters is the reload: the widget holds its token in memory for the life of a page, so a
+// sign-in that never reloads passes while persistence is broken
 func TestCrossOrigin_WidgetRendersOnAnotherOrigin(t *testing.T) {
 	thread := fmt.Sprintf("%s/post.html?e2e=%s-%s", hostSiteURL, "crossorigin", runID)
 	text := "cross origin " + runID

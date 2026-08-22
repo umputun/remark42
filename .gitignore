@@ -32,3 +32,6 @@ http-client.env.json
 
 # traces from failed e2e runs
 /e2e/traces/
+
+# self-signed certificate for the e2e https services, made by e2e/tls/generate.sh
+/e2e/tls/*.pem
