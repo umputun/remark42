@@ -12,10 +12,10 @@ on:
       - "scripts/**"
       - "backend/**"
       - "frontend/**"
+      - "!backend/**.md"
+      - "!frontend/**.md"
       - "README.md"
       - "LICENSE"
-      - "CLAUDE.md"
-      - "site/content/docs/getting-started/installation/index.md"
 
 permissions:
   contents: read

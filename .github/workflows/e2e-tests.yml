@@ -10,6 +10,7 @@ on:
       - "e2e/**"
       - "compose-e2e-test.yml"
       - "Dockerfile"
+      - "!**.md"
 
   pull_request:
     branches: [master]
@@ -20,6 +21,7 @@ on:
       - "e2e/**"
       - "compose-e2e-test.yml"
       - "Dockerfile"
+      - "!**.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
