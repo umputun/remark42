@@ -39,8 +39,10 @@ rundev:
 		docker compose -f compose-private.yml build
 	docker compose -f compose-private.yml up
 
+# stamped the same way the suite stamps a stack it starts itself, so one brought up here is
+# accepted instead of rejected as belonging to another checkout
 e2e-up:
-	docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
+	E2E_STAMP=$$(./e2e/stamp.sh) docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
 e2e-down:
 	docker compose -f compose-e2e-test.yml down -v

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>A page on somebody else's site</title>
+  </head>
+  <body>
+    <h1>A page on somebody else's site</h1>
+    <p>
+      This page is served from a different origin than the comments it embeds, which is the
+      separate-domain setup in the manuals and the one nothing else in the suite covers.
+    </p>
+    <div id="remark42"></div>
+    <script>
+      var remark_config = {
+        host: 'http://remark42:8080',
+        site_id: 'remark',
+        components: ['embed'],
+        // the whole address, as the demo page does. left to itself the widget uses origin and
+        // path only, so every query string would share one thread and the suite could not give a
+        // case a thread of its own
+        url: window.location.href,
+      };
+
+      (function (c, d) {
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          s.type = 'module';
+          s.async = true;
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + '.mjs';
+          (d.head || d.body).appendChild(s);
+        }
+      })(remark_config.components, document);
+    </script>
+  </body>
+</html>

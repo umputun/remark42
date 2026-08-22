@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"fmt"
+	neturl "net/url"
 	"strings"
 	"testing"
 
@@ -13,8 +14,8 @@ import (
 )
 
 // firstCommentText returns the text of the topmost comment in the thread. it returns the
-// error rather than failing, because every caller polls it while the list re-renders and a
-// momentarily empty list has to be retried rather than fail the test
+// error instead of failing, because every caller polls it while the list re-renders and a
+// momentarily empty list has to be retried, not fail the test
 func firstCommentText(frame playwright.FrameLocator) (string, error) {
 	return pollText(frame.Locator("article").First())
 }
@@ -84,7 +85,7 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 	submitForm(t, replyForm(t, frame), reply)
 	waitVisible(t, comment(frame, reply))
 
-	// anchor on the comment's own id rather than its text: collapsing hides the text, which
+	// anchor on the comment's own id, not its text: collapsing hides the text, which
 	// would make a hasText filter stop matching the element under test. the id also excludes
 	// the RSS dropdown, the other thing on the page carrying aria-expanded
 	id, err := comment(frame, parent).GetAttribute("id")
@@ -103,14 +104,14 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 		v, aerr := pollAttr(thread, "aria-expanded")
 		return aerr == nil && v == "false"
 	})
-	// counting rather than filtering on the reply's text, which an off-screen comment would
+	// counting instead of filtering on the reply's text, which an off-screen comment would
 	// satisfy just as well as a collapsed one
 	eventually(t, waitTimeout, "the reply was still rendered after collapsing", func() bool {
 		n, err := frame.Locator("article").Count()
 		return err == nil && n == 1
 	})
 
-	// collapse is client-only state, kept in localStorage rather than on the server
+	// collapse is client-only state, kept in localStorage and not on the server
 	frame = reload(t, page)
 	thread = frame.Locator(threadSel)
 	eventually(t, waitTimeout, "collapse did not survive reload", func() bool {
@@ -119,4 +120,80 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 	})
 
 	assert.Equal(t, 1, articleCount(t, frame), "a collapsed thread should not render its replies after reload")
+}
+
+// TestThread_HideUserRemovesTheirCommentsOnly covers hiding an author, which is a reader-side
+// setting and not a moderator action: it patches every comment already on screen, persists in the
+// browser and not on the server, and has to be undone from the settings panel. The second author
+// is what makes it a test of hiding one person and not of emptying the thread
+func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
+	hidden := "hidden author " + runID
+	kept := "kept author " + runID
+
+	author := newPage(t)
+	authorFrame := openThread(t, author)
+	signInAnon(t, author, authorFrame, "hidetarget")
+	postComment(t, authorFrame, hidden)
+	postComment(t, authorFrame, hidden+" second")
+
+	other := newPage(t)
+	otherFrame := openURL(t, other, threadURL(t))
+	signInAnon(t, other, otherFrame, "hidekeeper")
+	postComment(t, otherFrame, kept)
+
+	reader := newPage(t)
+	frame := openURL(t, reader, threadURL(t))
+	signInDev(t, reader, frame)
+	before := articleCount(t, frame)
+	require.Equal(t, 3, before, "the three seeded comments have to be on screen before hiding one author")
+
+	reader.OnDialog(func(d playwright.Dialog) { _ = d.Accept() })
+	require.NoError(t, actions(frame, hidden).Locator(`button:has-text("Hide")`).Click())
+
+	eventually(t, waitTimeout, "hiding the author did not remove both of their comments", func() bool {
+		return articleCount(t, frame) == before-2
+	})
+	waitVisible(t, comment(frame, kept))
+
+	frame = reload(t, reader)
+	assert.Equal(t, before-2, articleCount(t, frame), "hiding has to survive a reload, it is stored in the browser")
+	waitVisible(t, comment(frame, kept))
+
+	require.NoError(t, frame.Locator(`button:has-text("Show settings")`).Click())
+	// the restore control is a span and not a button, and "show" appears in the settings
+	// toggle as well, so match it exactly and only inside the hidden users region
+	hiddenUsers := frame.Locator(`[role="region"][aria-label="Hidden users"]`)
+	waitVisible(t, hiddenUsers)
+	require.NoError(t, hiddenUsers.GetByText("show", playwright.LocatorGetByTextOptions{
+		Exact: playwright.Bool(true),
+	}).Click())
+
+	frame = reload(t, reader)
+	assert.Equal(t, before, articleCount(t, frame), "restoring the author has to bring their comments back")
+}
+
+// TestThread_WidgetDocumentServesItsOwnChunks covers the widget document loaded directly on the
+// instance's origin, which is how a reader's browser loads it and how nothing else here does:
+// TestWidgets_EveryLocaleLoadsAndRenders injects a config of its own into a plain page, so it
+// exercises the translations and not the delivery.
+//
+// The distinction is the point. The bundle addresses the host the build was substituted with and
+// its CSP is `self`, so a mismatch between the two blocks the widget's own chunks with nothing in
+// the page to say why. A locale is the payload because it is the one thing loaded as a separate
+// chunk after boot, so it fails when the origin is wrong and renders English instead of throwing.
+func TestThread_WidgetDocumentServesItsOwnChunks(t *testing.T) {
+	page := newPage(t)
+
+	pauseForAuthLimit()
+	// the widget document, not the demo page, since nothing there can pass a locale. it has to
+	// be opened on the instance's own origin: the bundle addresses the host the build was
+	// substituted with, and its CSP is `self`, so a mismatched origin blocks its own chunk
+	_, err := page.Goto(fmt.Sprintf("%s/web/iframe.html?site_id=remark&locale=ru&url=%s",
+		baseURL, neturl.QueryEscape(threadURL(t))))
+	require.NoError(t, err)
+
+	// two strings, not one, and both from the chunk and not from the code's own
+	// defaults: the sort label is always present, and the sign-in button only while signed out
+	waitVisible(t, page.Locator("text=Сортировать по"))
+	waitVisible(t, page.Locator(`text=Войти`))
 }
