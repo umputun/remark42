@@ -62,7 +62,6 @@ RUN apk --no-cache add gcc libc-dev
 ADD backend /build/backend
 # to embed the frontend files statically into Remark42 binary
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
-RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 WORKDIR /build/backend
 
 RUN echo go version: `go version`

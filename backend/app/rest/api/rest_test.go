@@ -189,7 +189,7 @@ func TestRest_FileServerBackendAssets(t *testing.T) {
 func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 	frontend := fstest.MapFS{"index.html": {Data: []byte("embedded frontend index")}}
 	router := routegroup.New(http.NewServeMux())
-	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version")
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com")
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()

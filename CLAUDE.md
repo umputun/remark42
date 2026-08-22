@@ -60,7 +60,7 @@ git push origin backend/vX.Y.Z
 
 GoReleaser must ignore `backend/*` tags in `.goreleaser.yml` so release notes and current-tag detection use only product tags. Docker image publishing stays separate and is handled by the existing Docker workflow.
 
-For local artifact runs, install GoReleaser, Go 1.25, Node 24+, PNPM 10, and Perl, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
+For local artifact runs, install GoReleaser, Go 1.25, Node 24+ and PNPM 10, then use `make release`. The target runs a snapshot/no-publish GoReleaser build, leaves local artifacts and metadata in `dist/`, and cleans generated frontend embed files after GoReleaser exits. Do not run raw `goreleaser release` for local artifacts unless you also run `./scripts/cleanup-release-assets.sh` afterward.
 
 ## Milestones and Issue Labels
 

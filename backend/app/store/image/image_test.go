@@ -41,13 +41,15 @@ func TestService_SaveAndLoad(t *testing.T) {
 	assert.Equal(t, "test_id", store.LoadCalls()[0].ID)
 }
 
+// the resized dimensions are what resize promises; the encoded length is whatever the compressor
+// in the toolchain happens to produce, and pinning it fails on a go release that changes it
 func TestService_Resize(t *testing.T) {
 	img, err := readAndValidateImage(gopherPNG(), 1500)
 	assert.NoError(t, err)
-	assert.Equal(t, 1462, len(img))
+	assert.NotEmpty(t, img)
 
 	img = resize(img, 32, 32)
-	assert.Equal(t, 1135, len(img))
+	assertImageFits(t, img, 32, 32)
 }
 
 func TestService_ResizeJpeg(t *testing.T) {
@@ -57,10 +59,24 @@ func TestService_ResizeJpeg(t *testing.T) {
 
 	img, err := readAndValidateImage(fh, 32000)
 	assert.NoError(t, err)
-	assert.InDelta(t, 16756, len(img), 100)
+	assert.NotEmpty(t, img)
 
 	img = resize(img, 400, 300)
-	assert.InDelta(t, 10913, len(img), 100)
+	assertImageFits(t, img, 400, 300)
+}
+
+// assertImageFits decodes the image and checks it is inside the box resize was given, and that it
+// touches one side of it, which is what fitting to a box rather than merely shrinking means
+func assertImageFits(t *testing.T, data []byte, limitW, limitH int) {
+	t.Helper()
+
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	require.NoError(t, err, "the resized image does not decode")
+
+	assert.LessOrEqual(t, cfg.Width, limitW, "wider than the box it was resized into")
+	assert.LessOrEqual(t, cfg.Height, limitH, "taller than the box it was resized into")
+	assert.True(t, cfg.Width == limitW || cfg.Height == limitH,
+		"%dx%d touches neither side of the %dx%d box, so it was not fitted to it", cfg.Width, cfg.Height, limitW, limitH)
 }
 
 func TestService_SaveTooLarge(t *testing.T) {
