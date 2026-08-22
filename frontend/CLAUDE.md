@@ -16,6 +16,25 @@ When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `e
 
 `engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11` and `size-limit` 13 wants `^22.18 || ^24 || >=26`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
 
+## preact's version is pinned twice, and the override is the one that wins
+
+- `frontend/apps/remark42/package.json`: the app's own dependency, an exact version
+- `frontend/package.json`: a `pnpm.overrides` entry holding an exact version too
+
+The override is authoritative over both, which is the part worth knowing. Give the app pin a
+different version and pnpm installs the override's version anyway, and writes the override's version
+into `pnpm-lock.yaml` as the app's own specifier. Move the override instead and that is what
+installs. Either way exactly one preact resolves.
+
+So editing the app manifest on its own achieves nothing except making it misstate what is installed,
+and nothing reports that. `pnpm install --frozen-lockfile` still succeeds with the manifest and the
+lockfile naming different versions, because the specifier the lockfile carries is the one the
+override produced. There is no syncpack or equivalent in the workflows, the package scripts or
+`tasks/` to compare the two either.
+
+Grep for the version rather than editing whichever manifest you happened to open, and change both in
+the same commit.
+
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
 One dep is pinned specifically because of pnpm 10's hoisting changes, not because of the dep itself:
