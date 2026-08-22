@@ -19,8 +19,8 @@ import (
 	"github.com/umputun/remark42/memory_store/accessor"
 )
 
-// chooseUnusedPort asks the kernel for a free port from the ephemeral range, so concurrently
-// running package test binaries never land on the same number
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a
+// collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
 	ln, err := net.Listen("tcp", ":0")
