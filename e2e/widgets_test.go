@@ -26,13 +26,36 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	postComment(t, frame, text)
 
 	page := newPage(t)
+
+	// the stylesheet is appended at runtime and nothing waits for it, so the comments render
+	// whether or not it arrives. wait for the response itself rather than sampling afterwards,
+	// which reads whatever has landed by then and passes when the miss is still in flight
 	pauseForAuthLimit()
-	_, err := page.Goto(baseURL + "/web/last-comments.html")
-	require.NoError(t, err)
+	css, err := page.ExpectResponse("**/last-comments.css", func() error {
+		_, gerr := page.Goto(baseURL + "/web/last-comments.html")
+		return gerr
+	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "the page never asked for its stylesheet")
+	assert.Equal(t, 200, css.Status(), "the last-comments stylesheet did not load")
 
 	list := page.Locator(".remark42__last-comments")
 	waitVisible(t, list)
 	waitVisible(t, list.Locator("text="+text))
+}
+
+// TestWidgets_DeleteMePageServesAndRuns covers the GDPR delete page, which nothing else opens. It
+// needs an admin token to do its work, so this drives the branch it takes without one: reaching
+// that message proves the html and its bundle were both served and executed.
+func TestWidgets_DeleteMePageServesAndRuns(t *testing.T) {
+	page := newPage(t)
+
+	pauseForAuthLimit()
+	resp, err := page.Goto(baseURL + "/web/deleteme.html")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 200, resp.Status())
+
+	waitVisible(t, page.Locator("text=You are not logged in"))
 }
 
 // TestWidgets_CounterFillsInTheCommentCount covers the other host-page script.

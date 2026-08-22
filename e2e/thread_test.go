@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"fmt"
+	neturl "net/url"
 	"strings"
 	"testing"
 
@@ -119,4 +120,25 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 	})
 
 	assert.Equal(t, 1, articleCount(t, frame), "a collapsed thread should not render its replies after reload")
+}
+
+// TestThread_LocaleLoadsItsTranslationChunk covers the locale bundles, which nothing else asks
+// for. loadLocale imports the chunk dynamically and falls back to the English defaults on any
+// error, so a missing or broken chunk renders a perfectly good English widget and says nothing.
+// The widget document is opened directly, since the demo page has no way to pass a locale.
+func TestThread_LocaleLoadsItsTranslationChunk(t *testing.T) {
+	page := newPage(t)
+
+	pauseForAuthLimit()
+	// the widget document, not the demo page, since nothing there can pass a locale. it has to
+	// be opened on the instance's own origin: the bundle addresses the host the build was
+	// substituted with, and its CSP is `self`, so a mismatched origin blocks its own chunk
+	_, err := page.Goto(fmt.Sprintf("%s/web/iframe.html?site_id=remark&locale=ru&url=%s",
+		baseURL, neturl.QueryEscape(threadURL(t))))
+	require.NoError(t, err)
+
+	// two strings rather than one, and both from the chunk rather than from the code's own
+	// defaults: the sort label is always present, and the sign-in button only while signed out
+	waitVisible(t, page.Locator("text=Сортировать по"))
+	waitVisible(t, page.Locator(`text=Войти`))
 }
