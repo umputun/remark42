@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -323,6 +324,86 @@ func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
 			}
 			waitVisible(t, toolbar)
 			waitVisible(t, preview)
+		})
+	}
+}
+
+// TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin covers /web/comments.html, which is where the
+// widget sends a reader whose browser blocks third-party storage: the auth panel links it, and the
+// page mounts the widget on the instance's own origin, where the storage is first-party.
+//
+// The page is built from templates/comments.ejs by HtmlWebpackPlugin, and the build stopped
+// emitting it while the link went on pointing at it, so readers who followed it reached a 404.
+// Nothing noticed, because it is the one page no other test opens.
+func TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin(t *testing.T) {
+	thread := threadURL(t)
+	text := "cookie fallback " + runID
+
+	poster := newPage(t)
+	posted := openURL(t, poster, thread)
+	signInAnon(t, poster, posted, "fallbackposter")
+	postComment(t, posted, text)
+
+	page := newPage(t)
+	pauseForAuthLimit()
+	resp, err := page.Goto(fmt.Sprintf("%s/web/comments.html?site_id=remark&url=%s",
+		baseURL, neturl.QueryEscape(thread)))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, 200, resp.Status(),
+		"the page the auth panel links to when third-party storage is blocked is not served")
+
+	// it reads the thread out of its own query string and mounts the widget itself, so reaching
+	// the comment proves the page was served, its inline script ran, and it asked for the right
+	// thread. a 200 alone would be satisfied by any page the server happened to return
+	frame := widget(t, page)
+	waitVisible(t, comment(frame, text))
+}
+
+// TestWidgets_CommentsPageRefusesInjectedMarkup covers the reflected injection the fallback page
+// carried. It puts the url from its own query string into the title, and building that with
+// innerHTML let a crafted url run script in a top-level document on the instance's own origin,
+// which is where the reader's session lives; inside the widget frame the same payload would be
+// far less use. The hole and the page arrived together, since it is only reachable at all now
+// that the build emits it again
+func TestWidgets_CommentsPageRefusesInjectedMarkup(t *testing.T) {
+	for _, tc := range []struct {
+		name, url string
+	}{
+		{"markup", `"><img src=x onerror=window.__xss=1>`},
+		{"javascript scheme", "javascript:window.__xss=1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			page := newPage(t)
+
+			pauseForAuthLimit()
+			// %20 and not +, which is what a browser produces and what the page's own parser
+			// reads back: it decodes with decodeURIComponent, which leaves a + as a plus
+			escaped := strings.ReplaceAll(neturl.QueryEscape(tc.url), "+", "%20")
+			_, err := page.Goto(fmt.Sprintf("%s/web/comments.html?site_id=remark&url=%s", baseURL, escaped))
+			require.NoError(t, err)
+			waitVisible(t, page.Locator("#title"))
+
+			// nothing the url asked for became an element
+			imgs, err := page.Locator("#title img").Count()
+			require.NoError(t, err)
+			assert.Zero(t, imgs, "the url reached the page as markup, so a crafted one runs script "+
+				"on the instance's own origin")
+
+			ran, err := page.Evaluate(`() => Boolean(window.__xss)`)
+			require.NoError(t, err)
+			assert.Equal(t, false, ran, "the injected script ran")
+
+			// and the title still shows what it was given, so what changed is the escaping and
+			// not the feature
+			txt, err := page.Locator("#title").InnerText()
+			require.NoError(t, err)
+			assert.Contains(t, txt, tc.url, "the title should carry the url as text")
+
+			// only http(s) reaches href, or the anchor itself becomes the payload
+			href, err := page.Locator("#title a").First().GetAttribute("href")
+			require.NoError(t, err)
+			assert.Empty(t, href, "a url the page will not navigate to should not become a link")
 		})
 	}
 }

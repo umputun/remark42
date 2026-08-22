@@ -4,7 +4,7 @@ import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
 import { loadLocale } from 'utils/loadLocale';
-import { parseMessage } from 'utils/post-message';
+import { parseMessage, isFromParent } from 'utils/post-message';
 import { ConnectedRoot } from 'components/root';
 import { Profile } from 'components/profile';
 import { store } from 'store';
@@ -36,6 +36,10 @@ async function init(): Promise<void> {
   node.innerHTML = '';
 
   window.addEventListener('message', (evt) => {
+    if (!isFromParent(evt)) {
+      return;
+    }
+
     const data = parseMessage(evt);
 
     if (data.theme === 'light') {

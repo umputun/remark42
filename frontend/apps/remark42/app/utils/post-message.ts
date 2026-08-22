@@ -50,6 +50,22 @@ export function postMessageToIframe(target: HTMLIFrameElement, data: ChildMessag
 }
 
 /**
+ * Whether a message reaching the widget document came from the page embedding it.
+ *
+ * The embed script is the only legitimate sender, and it always posts from the parent. Browser
+ * extensions post their own messages into the frame, and so can any window holding a reference to
+ * it, which matters because the child acts on `signout` and `theme`. The origin cannot be checked
+ * instead: the host page is whatever site embeds the widget, so there is no fixed value to compare
+ * against, and `ALLOWED_HOSTS` is enforced server side through `frame-ancestors` rather than here.
+ *
+ * A widget opened directly rather than embedded has `window.parent === window`, so its own messages
+ * still pass, which is what the counter and last-comments pages rely on.
+ */
+export function isFromParent(evt: MessageEvent): boolean {
+  return evt.source === window.parent;
+}
+
+/**
  * Parses data from post message that was received in iframe
  *
  * @param evt post message event

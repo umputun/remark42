@@ -75,6 +75,10 @@
     <script>
       window.addEventListener('message', function receiveMessages(event) {
         try {
+          // only the page embedding this document. any window holding a reference can post here,
+          // and this handler navigates through location.replace and sets the document title
+          if (event.source !== window.parent) return;
+
           const data = event.data;
           const isObj = typeof data === 'object' && data !== null && !Array.isArray(data);
           if (!isObj) return;

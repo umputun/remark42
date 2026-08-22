@@ -63,7 +63,17 @@
       })();
       if (query.site_id && query.url) {
         var titleElement = document.getElementById('title');
-        titleElement.innerHTML = 'Comments for <a href="' + query.url + '">' + query.url + '</a>';
+        // built through the DOM rather than innerHTML: query.url is attacker-controlled and this
+        // page is a top-level document on the instance origin, so an injected script would run
+        // there rather than inside the sandboxed widget frame
+        var link = document.createElement('a');
+        link.textContent = query.url;
+        // and only http(s) reaches href, or a javascript: url survives the escaping
+        if (/^https?:\/\//i.test(query.url)) {
+          link.href = query.url;
+        }
+        titleElement.textContent = 'Comments for ';
+        titleElement.appendChild(link);
         var remark_config = {
           site_id: query.site_id,
           host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
