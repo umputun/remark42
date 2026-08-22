@@ -1,0 +1,37 @@
+name: docs versions
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/ci-docs-versions.yml"
+      - "scripts/check-documented-versions.sh"
+      - "site/content/docs/getting-started/installation/index.md"
+      - "backend/go.mod"
+      - "frontend/apps/remark42/package.json"
+      - "frontend/.nvmrc"
+  pull_request:
+    paths:
+      - ".github/workflows/ci-docs-versions.yml"
+      - "scripts/check-documented-versions.sh"
+      - "site/content/docs/getting-started/installation/index.md"
+      - "backend/go.mod"
+      - "frontend/apps/remark42/package.json"
+      - "frontend/.nvmrc"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Documented versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check documented versions against the repository
+        run: ./scripts/check-documented-versions.sh
