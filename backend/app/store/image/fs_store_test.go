@@ -215,15 +215,24 @@ func TestFsStore_Cleanup(t *testing.T) {
 		return img
 	}
 
+	// age is read from the file's modification time, so every file gets its mtime stamped right
+	// before each call: far past the ttl for the ones meant to go, at now for the ones meant to
+	// survive, leaving no window for a stalled runner to age a survivor into the wrong bucket
+	const ttl = 300 * time.Millisecond
+	age := func(file string, d time.Duration) {
+		mtime := time.Now().Add(-d)
+		require.NoError(t, os.Chtimes(file, mtime, mtime))
+	}
+
 	// save 3 images to staging
 	img1 := save("blah_ff1.png", "user1")
-	time.Sleep(100 * time.Millisecond)
 	img2 := save("blah_ff2.png", "user1")
-	time.Sleep(100 * time.Millisecond)
 	img3 := save("blah_ff3.png", "user2")
 
-	time.Sleep(200 * time.Millisecond) // make first image expired
-	err := svc.Cleanup(context.Background(), time.Millisecond*300)
+	age(img1, time.Hour) // past the ttl, collected
+	age(img2, 0)         // fresh, survives
+	age(img3, 0)
+	err := svc.Cleanup(context.Background(), ttl)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img1)
@@ -242,10 +251,11 @@ func TestFsStore_Cleanup(t *testing.T) {
 	_, err = os.Stat(img3)
 	assert.NoError(t, err, "file on staging")
 
-	time.Sleep(200 * time.Millisecond)                // make all images expired
+	age(img2, time.Hour)
+	age(img3, time.Hour)
 	err = svc.ResetCleanupTimer("user2/blah_ff3.png") // reset the time to cleanup for third image
 	assert.NoError(t, err)
-	err = svc.Cleanup(context.Background(), time.Millisecond*300)
+	err = svc.Cleanup(context.Background(), ttl)
 	assert.NoError(t, err)
 
 	_, err = os.Stat(img2)
