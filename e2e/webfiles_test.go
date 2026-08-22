@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// the e2e stack's container, named in compose-e2e-test.yml. addressed directly rather than
+	// the e2e stack's container, named in compose-e2e-test.yml. addressed directly and not
 	// through `docker compose exec`, which resolves the service through a project name taken from
 	// the directory the compose file sits in: run the suite from a git worktree and it looks for a
 	// project named after the worktree instead of the stack that is answering
@@ -43,7 +43,7 @@ const (
 // the /web paths the documentation publishes, plus the legacy names of the same files. each is
 // held by somebody outside this repository: an operator pastes privacy.html into an OAuth
 // application, an nginx config proxies index.html, the integration guides start from the embed
-// script, and the comment form links markdown-help.html. written out rather than derived, because
+// script, and the comment form links markdown-help.html. written out and not derived, because
 // the documentation decides the list, so a name joining or leaving is an edit made on purpose
 var documentedWebPaths = []struct {
 	path string
@@ -98,7 +98,7 @@ func TestWeb_UnknownNameIs404(t *testing.T) {
 }
 
 // TestWeb_EveryBundleServesUnderBothSuffixes covers the names the list above does not, and takes
-// its input from the build rather than from a list somebody maintains, so a locale joining or
+// its input from the build and not from a list somebody maintains, so a locale joining or
 // leaving needs no edit here. Whatever the bundler emitted has to answer under its legacy .js name
 // with the same bytes and the same type, and has to parse as a classic script, which is the premise
 // serving one under the other rests on
@@ -143,7 +143,7 @@ type webResponse struct {
 }
 
 // getWeb requests a path from the stack. Redirects are followed, because whoever holds a
-// documented URL cares whether the page arrives rather than how many hops it took: /web and
+// documented URL cares whether the page arrives, not how many hops it took: /web and
 // /web/index.html both answer 301 towards the directory
 func getWeb(t *testing.T, path string) webResponse {
 	t.Helper()
@@ -156,7 +156,7 @@ func getWeb(t *testing.T, path string) webResponse {
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NotEqual(t, http.StatusTooManyRequests, resp.StatusCode,
-		"%s was rate limited, which is this file pacing itself wrong rather than a broken URL", path)
+		"%s was rate limited, which is this file pacing itself wrong and not a broken URL", path)
 
 	return webResponse{status: resp.StatusCode, mime: resp.Header.Get("Content-Type"), body: string(body)}
 }
@@ -242,7 +242,7 @@ func classicScriptError(t *testing.T, page playwright.Page, src string) string {
 	require.NoError(t, err)
 
 	msg, ok := v.(string)
-	require.True(t, ok, "the parse probe returned %T rather than a string", v)
+	require.True(t, ok, "the parse probe returned %T instead of a string", v)
 	return msg
 }
 

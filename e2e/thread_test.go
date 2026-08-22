@@ -14,8 +14,8 @@ import (
 )
 
 // firstCommentText returns the text of the topmost comment in the thread. it returns the
-// error rather than failing, because every caller polls it while the list re-renders and a
-// momentarily empty list has to be retried rather than fail the test
+// error instead of failing, because every caller polls it while the list re-renders and a
+// momentarily empty list has to be retried, not fail the test
 func firstCommentText(frame playwright.FrameLocator) (string, error) {
 	return pollText(frame.Locator("article").First())
 }
@@ -85,7 +85,7 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 	submitForm(t, replyForm(t, frame), reply)
 	waitVisible(t, comment(frame, reply))
 
-	// anchor on the comment's own id rather than its text: collapsing hides the text, which
+	// anchor on the comment's own id, not its text: collapsing hides the text, which
 	// would make a hasText filter stop matching the element under test. the id also excludes
 	// the RSS dropdown, the other thing on the page carrying aria-expanded
 	id, err := comment(frame, parent).GetAttribute("id")
@@ -104,14 +104,14 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 		v, aerr := pollAttr(thread, "aria-expanded")
 		return aerr == nil && v == "false"
 	})
-	// counting rather than filtering on the reply's text, which an off-screen comment would
+	// counting instead of filtering on the reply's text, which an off-screen comment would
 	// satisfy just as well as a collapsed one
 	eventually(t, waitTimeout, "the reply was still rendered after collapsing", func() bool {
 		n, err := frame.Locator("article").Count()
 		return err == nil && n == 1
 	})
 
-	// collapse is client-only state, kept in localStorage rather than on the server
+	// collapse is client-only state, kept in localStorage and not on the server
 	frame = reload(t, page)
 	thread = frame.Locator(threadSel)
 	eventually(t, waitTimeout, "collapse did not survive reload", func() bool {
@@ -123,9 +123,9 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 }
 
 // TestThread_HideUserRemovesTheirCommentsOnly covers hiding an author, which is a reader-side
-// setting rather than a moderator action: it patches every comment already on screen, persists in
-// the browser rather than on the server, and has to be undone from the settings panel. The second
-// author is what makes it a test of hiding one person rather than of emptying the thread
+// setting and not a moderator action: it patches every comment already on screen, persists in the
+// browser and not on the server, and has to be undone from the settings panel. The second author
+// is what makes it a test of hiding one person and not of emptying the thread
 func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 	hidden := "hidden author " + runID
 	kept := "kept author " + runID
@@ -160,7 +160,7 @@ func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 	waitVisible(t, comment(frame, kept))
 
 	require.NoError(t, frame.Locator(`button:has-text("Show settings")`).Click())
-	// the restore control is a span rather than a button, and "show" appears in the settings
+	// the restore control is a span and not a button, and "show" appears in the settings
 	// toggle as well, so match it exactly and only inside the hidden users region
 	hiddenUsers := frame.Locator(`[role="region"][aria-label="Hidden users"]`)
 	waitVisible(t, hiddenUsers)
@@ -172,11 +172,16 @@ func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 	assert.Equal(t, before, articleCount(t, frame), "restoring the author has to bring their comments back")
 }
 
-// TestThread_LocaleLoadsItsTranslationChunk covers the locale bundles, which nothing else asks
-// for. loadLocale imports the chunk dynamically and falls back to the English defaults on any
-// error, so a missing or broken chunk renders a perfectly good English widget and says nothing.
-// The widget document is opened directly, since the demo page has no way to pass a locale.
-func TestThread_LocaleLoadsItsTranslationChunk(t *testing.T) {
+// TestThread_WidgetDocumentServesItsOwnChunks covers the widget document loaded directly on the
+// instance's origin, which is how a reader's browser loads it and how nothing else here does:
+// TestWidgets_EveryLocaleLoadsAndRenders injects a config of its own into a plain page, so it
+// exercises the translations and not the delivery.
+//
+// The distinction is the point. The bundle addresses the host the build was substituted with and
+// its CSP is `self`, so a mismatch between the two blocks the widget's own chunks with nothing in
+// the page to say why. A locale is the payload because it is the one thing loaded as a separate
+// chunk after boot, so it fails when the origin is wrong and renders English instead of throwing.
+func TestThread_WidgetDocumentServesItsOwnChunks(t *testing.T) {
 	page := newPage(t)
 
 	pauseForAuthLimit()
@@ -187,7 +192,7 @@ func TestThread_LocaleLoadsItsTranslationChunk(t *testing.T) {
 		baseURL, neturl.QueryEscape(threadURL(t))))
 	require.NoError(t, err)
 
-	// two strings rather than one, and both from the chunk rather than from the code's own
+	// two strings, not one, and both from the chunk and not from the code's own
 	// defaults: the sort label is always present, and the sign-in button only while signed out
 	waitVisible(t, page.Locator("text=Сортировать по"))
 	waitVisible(t, page.Locator(`text=Войти`))

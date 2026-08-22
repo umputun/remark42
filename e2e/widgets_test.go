@@ -19,7 +19,7 @@ import (
 )
 
 // TestWidgets_LastCommentsRendersIntoTheHostPage covers the one component that writes into the
-// embedding page rather than into the widget's iframe, so a change to the embed script can
+// embedding page and not into the widget's iframe, so a change to the embed script can
 // break it without any iframe test noticing
 func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	text := "last comments " + runID
@@ -32,7 +32,7 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	page := newPage(t)
 
 	// the stylesheet is appended at runtime and nothing waits for it, so the comments render
-	// whether or not it arrives. wait for the response itself rather than sampling afterwards,
+	// whether or not it arrives. wait for the response itself instead of sampling afterwards,
 	// which reads whatever has landed by then and passes when the miss is still in flight
 	pauseForAuthLimit()
 	css, err := page.ExpectResponse("**/last-comments.css", func() error {
@@ -123,7 +123,7 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 		})
 	}
 
-	// and the data-url branch resolves to its own thread rather than the page's
+	// and the data-url branch resolves to its own thread and not the page's
 	own := strconv.Itoa(commentCount(t, poster, thread))
 	eventually(t, waitTimeout, "the data-url counter did not report its own thread", func() bool {
 		txt, ierr := pollText(page.Locator("#own-thread-counter"))
@@ -190,7 +190,7 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
 
-	// match on the page parameter rather than the word: the widget's own src carries the
+	// match on the page parameter and not the word: the widget's own src carries the
 	// thread url, which contains this test's name
 	profile := page.Locator(`iframe[src*="page=profile"]`)
 	before, err := profile.Count()
@@ -218,12 +218,12 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 // TestWidgets_EveryLocaleLoadsAndRenders drives the dynamic import behind every translation, once
 // per catalog. The catalogs are separate chunks the bundle fetches at runtime, so a change to
 // how chunks are named or emitted breaks them without touching a line of widget code, and the
-// failure is silent: loadLocale falls back to english rather than throwing, which is also what an
+// failure is silent: loadLocale falls back to english instead of throwing, which is also what an
 // unrecognized name does. Each case therefore compares against the catalog on disk, so english
-// coming back is a failure rather than a pass.
+// coming back is a failure and not a pass.
 //
-// The catalog set comes from the locales directory rather than a list here, so a language added
-// to the app is covered without an edit, and injected into a plain page rather than the demo one,
+// The catalog set comes from the locales directory and not a list here, so a language added to
+// the app is covered without an edit, and injected into a plain page and not the demo one,
 // which is the only way to hand the widget a remark_config of this test's choosing
 func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 	const localesDir = "../frontend/apps/remark42/app/locales"
@@ -282,6 +282,47 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			got, perr := textarea.GetAttribute("placeholder")
 			require.NoError(t, perr)
 			assert.Equal(t, want, got, "the %s catalog did not render, so the widget fell back to english", locale)
+		})
+	}
+}
+
+// TestWidgets_SimpleViewHidesTheEditingFurniture covers simple_view, the one mode of this kind
+// that is a query parameter and not a server flag, so both branches run against the same
+// instance. It takes the markdown toolbar and the preview away and leaves everything else,
+// including the markdown help line, which is why that is not asserted either way. The full-view
+// branch is the control: without it these would hold on a widget that never had a toolbar
+func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		simple bool
+	}{
+		{"full view", false},
+		{"simple view", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			page := newPage(t)
+
+			config := map[string]any{}
+			if tc.simple {
+				config["simple_view"] = true
+			}
+			embedConfig(t, page, config)
+			frame := widget(t, page)
+			// signed in, since the preview button is only offered to somebody who could post
+			signInAnon(t, page, frame, anonName("simpleview"))
+
+			// by element name and not by test id, which the production bundle strips, or by
+			// class, which it hashes
+			toolbar := frame.Locator(`md-bold`).First()
+			preview := frame.Locator(`button:has-text("Preview")`).First()
+
+			if tc.simple {
+				waitHidden(t, toolbar, "simple_view left the markdown toolbar in place")
+				waitHidden(t, preview, "simple_view left the preview button in place")
+				return
+			}
+			waitVisible(t, toolbar)
+			waitVisible(t, preview)
 		})
 	}
 }

@@ -76,7 +76,7 @@ func TestComment_EditWithinTheDeadline(t *testing.T) {
 	submitForm(t, replyForm(t, frame), edited)
 
 	waitVisible(t, comment(frame, edited))
-	// an edit replaces the comment rather than adding one, and counting is the only sound
+	// an edit replaces the comment instead of adding one, and counting is the only sound
 	// way to say the old text is gone: a text filter cannot tell absent from off screen
 	assert.Equal(t, 1, articleCount(t, frame), "editing should not add a comment")
 	txt, err := frame.Locator("article").First().InnerText()
@@ -158,7 +158,7 @@ func TestComment_DeleteRemovesTheText(t *testing.T) {
 	// scrolled out of view would also satisfy
 	waitVisible(t, comment(frame, "This comment was deleted"))
 
-	// and it stays gone rather than reappearing from cache on the next load. the survivor is
+	// and it stays gone instead of reappearing from cache on the next load. the survivor is
 	// what makes this assertion mean anything: without it a thread that had not rendered yet
 	// would satisfy "the deleted text is absent" just as well
 	frame = reload(t, page)
@@ -224,7 +224,7 @@ func TestComment_DraftSurvivesReloadAndClearsAfterPost(t *testing.T) {
 
 // TestComment_PostFailureKeepsTheText covers the path a reader hits when the server refuses the
 // comment. The text is the only copy they have, so it has to stay in the form, and the failure has
-// to say something rather than swallowing itself
+// to say something instead of swallowing itself
 func TestComment_PostFailureKeepsTheText(t *testing.T) {
 	page := newPage(t)
 	frame := openThread(t, page)
@@ -255,7 +255,7 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 
 // TestComment_AdminPinsAndVerifies covers two moderator actions that change what every reader
 // sees. Both are server-side, so the assertions come after a reload on a second reader's page
-// rather than from the moderator's own optimistic render
+// and not from the moderator's own optimistic render
 func TestComment_AdminPinsAndVerifies(t *testing.T) {
 	text := "moderated " + runID
 
@@ -264,7 +264,7 @@ func TestComment_AdminPinsAndVerifies(t *testing.T) {
 	// off and wait for a badge that is being taken away
 	author := newPage(t)
 	authorFrame := openThread(t, author)
-	signInAnon(t, author, authorFrame, "moderated"+runID[len(runID)-6:])
+	signInAnon(t, author, authorFrame, anonName("moderated"))
 	postComment(t, authorFrame, text)
 
 	admin := newPage(t)
@@ -289,7 +289,7 @@ func TestComment_AdminPinsAndVerifies(t *testing.T) {
 	waitVisible(t, pinned.Locator("article", playwright.LocatorLocatorOptions{HasText: text}))
 	waitVisible(t, comment(readerFrame, text).Locator(`[title="Verified user"]`).First())
 
-	// unpinning has to reach every reader too, so the region goes away rather than merely
+	// unpinning has to reach every reader too, so the region goes away instead of merely
 	// emptying on the moderator's own page
 	require.NoError(t, actions(adminFrame, text).Locator(`button:has-text("Unpin")`).Click())
 
@@ -308,7 +308,7 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
 
-	// a 1x1 png, written out rather than fetched so the case does not depend on a fixture file
+	// a 1x1 png, written out inline so the case does not depend on a fixture file
 	png, err := base64.StdEncoding.DecodeString(
 		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
 	require.NoError(t, err)
@@ -377,7 +377,7 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 
 // TestComment_BlockedAuthorCannotPost covers the refusal a blocked author meets. The backend
 // answers with its own code, and the widget has to turn that into something the reader can read
-// rather than swallowing it, which is the half no unit test can speak for
+// instead of swallowing it, which is the half no unit test can speak for
 func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 	text := "before the block " + runID
 
@@ -385,7 +385,7 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 	// only be postable once: every later run would find the author already blocked
 	author := newPage(t)
 	authorFrame := openThread(t, author)
-	signInAnon(t, author, authorFrame, "blocked"+runID[len(runID)-6:])
+	signInAnon(t, author, authorFrame, anonName("blocked"))
 	postComment(t, authorFrame, text)
 
 	admin := newPage(t)
@@ -410,14 +410,14 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 
 // TestComment_ReadOnlyThreadTakesTheFormAway covers the admin switch that closes a thread. A
 // reader arriving afterwards has to find no way to post, and the state has to come from the
-// server rather than from the admin's own page
+// server and not from the admin's own page
 func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
 	page := newPage(t)
 	url := threadURL(t)
 	frame := openURL(t, page, url)
 	signInDev(t, page, frame)
 
-	// the admin panel swaps its own button rather than showing the read-only notice, which is
+	// the admin panel swaps its own button instead of showing the read-only notice, which is
 	// what an ordinary reader gets
 	require.NoError(t, frame.Locator(`button:has-text("Disable comments")`).Click())
 	waitVisible(t, frame.Locator(`button:has-text("Enable comments")`))

@@ -65,7 +65,7 @@ func TestIframe_ParentAndDocumentAgreeOnColorScheme(t *testing.T) {
 		for theme, scheme := range schemes {
 			t.Run(engine+"/"+theme, func(t *testing.T) {
 				page := newPageOn(t, browserFor(t, engine))
-				// the demo page reads prefers-color-scheme rather than a query parameter
+				// the demo page reads prefers-color-scheme, not a query parameter
 				require.NoError(t, page.EmulateMedia(playwright.PageEmulateMediaOptions{ColorScheme: scheme}))
 
 				pauseForAuthLimit()
@@ -129,6 +129,17 @@ const iframeMarkScript = `(() => {
   if (window.top !== window) { return; }
   if (window.__r42Marks) { return; }
   window.__r42Marks = {};
+  // every height the widget asks the parent for, in order and against the same clock. installed
+  // here and not in the test because embed.ts applies the first one during page load, and a
+  // listener added afterwards sees only what the widget reports from then on, which is exactly
+  // the part that was never wrong
+  window.__r42Marks.heights = [];
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data && typeof data === 'object' && typeof data.height === 'number') {
+      window.__r42Marks.heights.push({h: data.height, t: performance.now()});
+    }
+  });
   const watch = (frame) => {
     if (window.__r42Marks.created !== undefined) { return; }
     window.__r42Marks.created = performance.now();
@@ -142,7 +153,7 @@ const iframeMarkScript = `(() => {
     style.observe(frame, {attributes: true, attributeFilter: ['style']});
     seen();
   };
-  // document rather than documentElement: an init script runs before the root element
+  // document and not documentElement: an init script runs before the root element
   // exists, and observing null would throw before any of this could take effect
   const tree = new MutationObserver(() => { scan(); });
   const scan = () => {
@@ -159,13 +170,19 @@ const iframeMarkScript = `(() => {
   scan();
 })()`
 
-// evalMillis reads a number out of the page. it takes int as well as float64, because the
-// driver hands back whichever the value happens to be and a bare float64 assertion turns an
-// integral sentinel into a silent zero
-func evalMillis(t *testing.T, page playwright.Page, script string) float64 {
+// evalNumber reads a number out of the page
+func evalNumber(t *testing.T, page playwright.Page, script string) float64 {
 	t.Helper()
 	v, err := page.Evaluate(script)
 	require.NoError(t, err)
+	return asNumber(t, v)
+}
+
+// asNumber converts what the driver hands back. it takes int as well as float64, because the
+// driver returns whichever the value happens to be and a bare float64 assertion turns an
+// integral sentinel into a silent zero
+func asNumber(t *testing.T, v any) float64 {
+	t.Helper()
 
 	switch n := v.(type) {
 	case float64:
@@ -186,7 +203,7 @@ func evalMillis(t *testing.T, page playwright.Page, script string) float64 {
 // here reads slightly short: bounds below a budget are conservative, bounds above it are not
 func iframeAge(t *testing.T, page playwright.Page) time.Duration {
 	t.Helper()
-	ms := evalMillis(t, page, `() => window.__r42Marks && window.__r42Marks.created !== undefined
+	ms := evalNumber(t, page, `() => window.__r42Marks && window.__r42Marks.created !== undefined
 		? performance.now() - window.__r42Marks.created : -1`)
 	require.GreaterOrEqual(t, ms, float64(0), "the iframe element has not been created yet")
 	return time.Duration(ms) * time.Millisecond
@@ -196,7 +213,7 @@ func iframeAge(t *testing.T, page playwright.Page) time.Duration {
 // reports false while the frame is still hidden
 func revealDelay(t *testing.T, page playwright.Page) (time.Duration, bool) {
 	t.Helper()
-	ms := evalMillis(t, page, `() => {
+	ms := evalNumber(t, page, `() => {
 		const m = window.__r42Marks;
 		if (!m || m.created === undefined) { return -2; }
 		return m.revealed !== undefined ? m.revealed - m.created : -1;
@@ -268,13 +285,13 @@ func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
 			return ok
 		})
 
-		// the reveal has to have come from the message rather than the fallback, and the two
+		// the reveal has to have come from the message and not the fallback, and the two
 		// are only distinguishable against the frame's own clock: navigation can outlast the
 		// whole 5s window without the widget being at fault
 		delay, ok := revealDelay(t, page)
 		require.True(t, ok, "the frame reported no reveal at all")
 		assert.Less(t, delay, messageRevealBudget,
-			"the reveal was slow enough to have come from the fallback rather than the message")
+			"the reveal was slow enough to have come from the fallback and not the message")
 		waitVisible(t, page.Locator("#remark42 iframe"))
 	})
 }
@@ -293,7 +310,7 @@ func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
 		// and not before it: without a lower bound, shortening the fallback to a value that
 		// defeats its purpose would still pass. against the frame's own clock, so that a slow
 		// navigation cannot be mistaken for the timer having run
-		// close to the fallback rather than three quarters of it: measured in the page there is
+		// close to the fallback and not three quarters of it: measured in the page there is
 		// no navigation to make room for, and a wider floor tolerates a fallback shortened
 		// enough to defeat its purpose
 		delay, ok := revealDelay(t, page)

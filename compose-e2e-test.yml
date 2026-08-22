@@ -12,11 +12,6 @@ services:
       args:
         - SKIP_BACKEND_TEST=true
         - SKIP_FRONTEND_TEST=true
-        # digest of the sources going into the image, from e2e/stamp.sh. the Dockerfile puts it
-        # in the revision label, and the suite refuses a running stack carrying a different one:
-        # every checkout builds this same image tag, so a stack from another worktree answers on
-        # these ports and passes every readiness probe while serving code nobody is looking at
-        - GITHUB_SHA=${E2E_STAMP:-unstamped}
 
     image: ghcr.io/umputun/remark42:dev
     container_name: "remark42-e2e"
@@ -26,7 +21,7 @@ services:
       # dev oauth2 provider, registered from the REMARK_URL hostname
       - "127.0.0.1:8084:8084"
 
-    # the hostname has to be a name rather than 127.0.0.1: the dev oauth2 server binds the
+    # the hostname has to be a name, not 127.0.0.1: the dev oauth2 server binds the
     # host it reads out of REMARK_URL, and a loopback bind inside the container cannot be
     # published. the suite maps the name back to 127.0.0.1 in the browser, see e2e/
     environment:
@@ -40,13 +35,27 @@ services:
       - ADMIN_SHARED_ID=dev_user # set admin flag for default user on local oauth2
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
-      # the auth sender reads AUTH_EMAIL_FROM; NOTIFY_EMAIL_FROM feeds the notify module,
-      # which this stack does not enable
+      # the auth sender reads AUTH_EMAIL_FROM, the notify module reads NOTIFY_EMAIL_FROM. both
+      # go to mailpit, which the suite reads back over HTTP
       - AUTH_EMAIL_FROM=remark42@example.com
+      # without this email_notifications is false and the subscribe control never renders, so
+      # the whole subscribe, confirm and unsubscribe flow is unreachable from a browser
+      - NOTIFY_USERS=email
+      - NOTIFY_EMAIL_FROM=notify@example.com
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
       # default is 0.5/sec, which the suite exceeds whenever a test posts twice in a row
       - UPDATE_LIMIT=100
+      # digest of the sources this stack was brought up from, from e2e/stamp.sh, which the suite
+      # reads back and compares against the checkout it is running in. every checkout builds the
+      # image tag above, so a stack from another worktree answers on these ports and passes every
+      # readiness probe while serving code nobody is looking at. remark42 ignores it.
+      #
+      # set as the environment and not as a build argument on purpose: an argument reaching
+      # the backend stage is part of the go build's cache key, so every frontend edit would
+      # rebuild the backend too. the cost is that `docker compose up` without --build would stamp
+      # a stale image, which neither `make e2e-up` nor the suite does
+      - E2E_SOURCE_STAMP=${E2E_STAMP:-unstamped}
     volumes:
       - remark42-e2e-var:/srv/var
     depends_on:
@@ -93,6 +102,149 @@ services:
       timeout: 3s
       retries: 30
 
+  # ADMIN_EDIT gives admins an unlimited edit window, which #1986 reported the frontend ignoring.
+  # a separate instance because the setting is global and removes the countdown the ordinary
+  # deadline cases assert on
+  remark42-adminedit:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-adminedit"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+      mailpit:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8082:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-adminedit:8082
+      - SECRET=12345
+      - ADMIN_EDIT=true
+      # email auth, because its user id is the only one that can be written down ahead of time.
+      # the dev provider's port is fixed at 8084 and cannot be published twice, and the anonymous
+      # id is hashed from the name AND the client address (server.go:1220), which differs between
+      # a laptop and a runner, so an id pinned here would make an admin of nobody on CI.
+      # the email id is sha1 of the address alone (go-pkgz/auth provider/verify.go:92), so this is
+      # email_$(printf adminedit@example.com | shasum) and the test signs in as that address
+      - AUTH_EMAIL_ENABLE=true
+      - AUTH_EMAIL_FROM=remark42@example.com
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - ADMIN_SHARED_ID=email_0212c0d9ebf846e898888d617f82d4147747bdc3
+      # short, so "after the deadline" is a few seconds instead of the default five minutes
+      - EDIT_TIME=15s
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-adminedit-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # AUTH_SEND_JWT_HEADER moves the token out of the cookie and into a header the frontend has to
+  # keep for itself, which #1877 reported losing on every reload
+  remark42-jwtheader:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-jwtheader"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8083:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-jwtheader:8083
+      - SECRET=12345
+      - AUTH_ANON=true
+      - AUTH_SEND_JWT_HEADER=true
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-jwtheader-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # no auth provider at all, which #1456 reported rendering as a widget with nothing to say. it
+  # cannot be a setting on another instance: the absence is the configuration
+  remark42-noauth:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-noauth"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8085:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-noauth:8085
+      - SECRET=12345
+      # its own address and nothing else, so this instance also serves as the negative case for
+      # embedding: the browser refuses to frame it anywhere but here, and the widget document
+      # never runs to report itself inited
+      - ALLOWED_HOSTS=http://remark42-noauth:8085
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-noauth-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # anonymous voting, which the default configuration refuses: rest_private.go turns down a vote
+  # from an anonymous user unless ANON_VOTE is set, and it only works alongside VOTES_IP, which
+  # is what scopes it
+  remark42-anonvote:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-anonvote"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8086:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-anonvote:8086
+      - SECRET=12345
+      - AUTH_ANON=true
+      - ANON_VOTE=true
+      - VOTES_IP=true
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-anonvote-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # a page on an origin the widget is not served from, which is the separate-domain setup the
+  # manuals describe and the one readers actually hit problems with. every other host page in the
+  # suite is served by remark42 itself, so nothing else exercises a cross-origin embed
+  host-site:
+    image: nginx:1.29-alpine
+    container_name: "remark42-e2e-hostsite"
+    ports:
+      - "127.0.0.1:8090:80"
+    volumes:
+      - ./e2e/hostsite:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/post.html"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   # catches the email-auth verification message; the suite reads it back over the HTTP API
   mailpit:
     image: axllent/mailpit:v1.30.7
@@ -107,8 +259,12 @@ services:
       timeout: 3s
       retries: 30
 
-# named rather than bind mounts, so `docker compose down -v` really does discard the
+# named volumes, not bind mounts, so `docker compose down -v` really does discard the
 # databases and a run can start from an empty site
 volumes:
   remark42-e2e-var:
   remark42-e2e-shortedit-var:
+  remark42-e2e-adminedit-var:
+  remark42-e2e-jwtheader-var:
+  remark42-e2e-noauth-var:
+  remark42-e2e-anonvote-var:

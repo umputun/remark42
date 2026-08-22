@@ -12,6 +12,13 @@
 //   - vote_test.go: voting and its failure path
 //   - thread_test.go: sorting and collapse persistence
 //   - iframe_test.go: the iframe's color scheme and reveal handshake
+//   - geometry_test.go: the height the widget reports and the parent applies
+//   - embed_test.go: the surface the host page holds, placeholder to destroy
+//   - config_test.go: the remark_config surface an integrator sets
+//   - crossorigin_test.go: a host page on an origin the widget is not served from
+//   - deployment_test.go: the instances whose configuration is the thing under test
+//   - subscribe_test.go: the email subscription round trip
+//   - webfiles_test.go: the published /web surface
 //   - widgets_test.go: last-comments, counter and the profile iframe
 package e2e
 
@@ -29,22 +36,37 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	// what the browser asks for. these have to be names rather than 127.0.0.1: the dev oauth2
+	// what the browser asks for. these have to be names, not 127.0.0.1: the dev oauth2
 	// server binds whatever host it reads out of REMARK_URL, and a loopback bind inside the
 	// container cannot be published, so the browser resolves the names back with
 	// --host-resolver-rules and reaches the published ports
 	baseURL      = "http://remark42:8080"
 	shortEditURL = "http://remark42-shortedit:8081"
+	// the deployment modes that cannot be a setting on an instance shared with anything else,
+	// each covering a regression the default configuration cannot reach. see compose-e2e-test.yml
+	adminEditURL = "http://remark42-adminedit:8082"
+	jwtHeaderURL = "http://remark42-jwtheader:8083"
+	noAuthURL    = "http://remark42-noauth:8085"
+	anonVoteURL  = "http://remark42-anonvote:8086"
+
+	// a page on an origin the widget is not served from, see compose-e2e-test.yml
+	hostSiteURL = "http://host-site:8090"
 
 	// what this process asks for, since it is not the browser and has no resolver rules
 	probeURL          = "http://127.0.0.1:8080"
 	shortEditProbeURL = "http://127.0.0.1:8081"
+	adminEditProbeURL = "http://127.0.0.1:8082"
+	jwtHeaderProbeURL = "http://127.0.0.1:8083"
+	noAuthProbeURL    = "http://127.0.0.1:8085"
+	anonVoteProbeURL  = "http://127.0.0.1:8086"
+	hostSiteProbeURL  = "http://127.0.0.1:8090"
 	mailpitURL        = "http://127.0.0.1:8025"
 
 	composeFile = "../compose-e2e-test.yml"
@@ -59,7 +81,7 @@ const (
 	waitTimeout = 15 * time.Second
 
 	// how long assertSignedIn waits before nudging the widget into re-reading auth state. short
-	// enough that a refused status read costs a fraction of a test rather than a whole timeout,
+	// enough that a refused status read costs a fraction of a test instead of a whole timeout,
 	// long enough that the ordinary path never takes the nudge
 	authRepaintWait = 3 * time.Second
 
@@ -79,7 +101,7 @@ var (
 	extraBrowsersMu sync.Mutex
 
 	// distinguishes this run's threads from those a previous run left in the database.
-	// E2E_RUN_ID pins it, so the urls a CI run works on name that run rather than the moment
+	// E2E_RUN_ID pins it, so the urls a CI run works on name that run and not the moment
 	// the process started
 	runID = firstNonEmpty(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
 
@@ -94,12 +116,12 @@ var (
 )
 
 // everything under /auth/ is rate limited to 2 requests a second, and that figure is a bare
-// literal at backend/app/rest/api/rest.go:242 rather than a setting, so the suite has to pace
+// literal at backend/app/rest/api/rest.go:242 and not a setting, so the suite has to pace
 // itself: the widget calls /auth/status on every load, and again on visibilitychange or
 // window focus while an oauth popup sign-in is pending. without this the limiter starts
 // answering 429 and the widget renders as signed out
 func pauseForAuthLimit() {
-	// 1200ms rather than the 700 this started at: the widget fires an unpaced /auth/status on
+	// 1200ms, up from the 700 this started at: the widget fires an unpaced /auth/status on
 	// every load and again on visibilitychange, so the paced side has to stay well under the
 	// 2/s cap to leave room for them. at 700 the suite manufactured its own 429s, and a lost
 	// probe renders as signed out, which fails whichever test happens to be signing in
@@ -139,7 +161,10 @@ func TestMain(m *testing.M) {
 		Headless: playwright.Bool(headless),
 		SlowMo:   playwright.Float(slowMo),
 		Args: []string{
-			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1",
+			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
+				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
+				"MAP remark42-noauth 127.0.0.1, MAP remark42-anonvote 127.0.0.1, " +
+				"MAP host-site 127.0.0.1",
 		},
 	})
 	if err != nil {
@@ -197,7 +222,7 @@ func ensureStack() error {
 		return fmt.Errorf("compose reported the stack healthy but it does not answer")
 	}
 	// checked after our own build too, so a stamp that never reaches the image is a failure
-	// here rather than a guard that silently passes everything for the rest of its life
+	// here, and not a guard that silently passes everything for the rest of its life
 	return assertStackMatches(stamp, false)
 }
 
@@ -215,6 +240,11 @@ func stackReady(timeout time.Duration) bool {
 	for _, url := range []string{
 		probeURL + "/ping",
 		shortEditProbeURL + "/ping",
+		adminEditProbeURL + "/ping",
+		jwtHeaderProbeURL + "/ping",
+		noAuthProbeURL + "/ping",
+		anonVoteProbeURL + "/ping",
+		hostSiteProbeURL + "/post.html",
 		mailpitURL + "/api/v1/messages",
 	} {
 		if err := serverReady(url, timeout); err != nil {
@@ -269,11 +299,18 @@ func newPage(t *testing.T) playwright.Page {
 
 func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 	t.Helper()
-	ctx, err := b.NewContext()
+	return newPageInContext(t, b, playwright.BrowserNewContextOptions{})
+}
+
+// newPageInContext is newPageOn with the context configured, for the cases where what the browser
+// says about itself is the thing under test
+func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.BrowserNewContextOptions) playwright.Page {
+	t.Helper()
+	ctx, err := b.NewContext(opts)
 	require.NoError(t, err)
 
 	// the reveal timers start when the iframe element is created, so the tests that bound
-	// them have to measure from there rather than from anything this process can time
+	// them have to measure from there and not from anything this process can time
 	require.NoError(t, ctx.AddInitScript(playwright.Script{Content: playwright.String(iframeMarkScript)}))
 
 	tracing := ctx.Tracing().Start(playwright.TracingStartOptions{
@@ -291,7 +328,7 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 				_ = ctx.Close()
 				return
 			}
-			// say so rather than swallowing it: this runs only on a test that already failed,
+			// say so instead of swallowing it: this runs only on a test that already failed,
 			// and a silently missing trace is what the reader goes looking for
 			// the pid keeps two processes sharing a run id, and so a trace directory, from
 			// overwriting each other: the counter restarts with every process
@@ -410,6 +447,31 @@ func threadURLOn(t *testing.T, base string) string {
 	return fmt.Sprintf("%s/web/?e2e=%s-%s", base, name, runID)
 }
 
+// anonName builds a username no earlier run has used. Blocking a user and verifying one are
+// properties of the user, and the stack's database outlives the run, so a name that comes back
+// arrives already blocked or already verified: the case then toggles the state off and waits for
+// something that is being taken away.
+//
+// The run id alone is not enough, since E2E_RUN_ID pins it and a second run against a surviving
+// stack repeats it, which is exactly what `make e2e-up` invites. The pid distinguishes those
+// while leaving CI, where every job is one process, with the run id it wants in the name.
+//
+// Everything outside [\p{L}\d\s_] is dropped, because the form validates its input against that
+// pattern (auth.tsx:332) and the browser refuses to submit anything else: no request is made, and
+// the test waits out its timeout on a panel that was never going to change. E2E_RUN_ID is
+// "<run id>-<attempt>" on CI, whose hyphen is exactly such a character
+func anonName(prefix string) string {
+	var b strings.Builder
+	b.WriteString(prefix)
+	for _, r := range runID {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+			b.WriteRune(r)
+		}
+	}
+	fmt.Fprintf(&b, "_%d", os.Getpid())
+	return b.String()
+}
+
 // openThread loads the demo page on this test's own thread and waits for the widget
 func openThread(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	t.Helper()
@@ -433,7 +495,16 @@ func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLoc
 // needs to vary has to go into a page that carries no widget of its own. privacy.html is served
 // by the instance and has none, which also keeps the widget on its own origin, where its CSP
 // allows the chunks it loads. host, site_id and url are filled in when the caller leaves them out
-func embedConfig(t *testing.T, page playwright.Page, config map[string]any) {
+// placeholder, when given, is markup left inside the root before the widget runs, which the
+// documentation promises is cleared once the iframe reports itself inited
+func embedConfig(t *testing.T, page playwright.Page, config map[string]any, placeholder ...string) {
+	t.Helper()
+	embedConfigOn(t, page, "/web/privacy.html", config, placeholder...)
+}
+
+// embedConfigOn is embedConfig on a chosen host page, for the cases where the page's own address
+// is part of what is under test
+func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config map[string]any, placeholder ...string) {
 	t.Helper()
 
 	for key, value := range map[string]any{"host": baseURL, "site_id": "remark", "url": threadURL(t)} {
@@ -443,15 +514,16 @@ func embedConfig(t *testing.T, page playwright.Page, config map[string]any) {
 	}
 
 	pauseForAuthLimit()
-	_, err := page.Goto(baseURL + "/web/privacy.html")
+	_, err := page.Goto(baseURL + hostPage)
 	require.NoError(t, err)
 
-	_, err = page.Evaluate(`(config) => {
+	_, err = page.Evaluate(`([config, placeholder]) => {
 		window.remark_config = config;
 		const node = document.createElement('div');
 		node.id = 'remark42';
+		node.innerHTML = placeholder;
 		document.body.appendChild(node);
-	}`, config)
+	}`, []any{config, strings.Join(placeholder, "")})
 	require.NoError(t, err)
 
 	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/embed.mjs")})
@@ -512,7 +584,7 @@ func postCommentMatching(t *testing.T, frame playwright.FrameLocator, source, ma
 }
 
 // submitForm fills a comment form and submits it. the submit label is Send, Reply or Save
-// depending on the form's mode, so match on the type rather than the text
+// depending on the form's mode, so match on the type and not the text
 func submitForm(t *testing.T, form playwright.Locator, text string) {
 	t.Helper()
 	require.NoError(t, form.Locator("textarea").Fill(text))
@@ -562,7 +634,7 @@ func actions(frame playwright.FrameLocator, text string) playwright.Locator {
 }
 
 // widget returns the widget's iframe once its own content has rendered. it waits on the
-// comment form rather than the auth panel, because .auth is only present while signed out
+// comment form and not the auth panel, because .auth is only present while signed out
 func widget(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	t.Helper()
 	frame := page.FrameLocator("#remark42 iframe")

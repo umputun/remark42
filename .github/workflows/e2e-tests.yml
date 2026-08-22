@@ -88,8 +88,12 @@ jobs:
           key: playwright-${{ hashFiles('e2e/go.sum') }}
           restore-keys: playwright-
 
+      # E2E_STAMP is what the suite compares the running stack against, so a stack started here
+      # has to carry the same value `make e2e-up` and the suite itself would give it
       - name: Build & start the stack
-        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
+        run: |
+          COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 E2E_STAMP=$(./e2e/stamp.sh) \
+            docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
       # no retry: a failure here is evidence about a suite too young to have a flake rate,
       # and a rerun is how an intermittent regression becomes invisible. revisit when there
@@ -99,7 +103,10 @@ jobs:
         # log names the run it came from
         env:
           E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: cd e2e && go test -tags=e2e -count 1 -timeout 8m -v ./...
+        # 20m, matching the Makefile. the suite runs about four minutes on a laptop and a runner
+        # is slower, so a tighter budget turns a loaded runner into a timeout panic instead of a
+        # readable failure. the job's own timeout above is what bounds a wedged run
+        run: cd e2e && go test -tags=e2e -count 1 -timeout 20m -v ./...
 
       - name: Server logs on failure
         if: failure()
