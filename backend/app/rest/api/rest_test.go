@@ -573,9 +573,12 @@ func TestRest_frameAncestors(t *testing.T) {
 	client := http.Client{}
 	resp, err := client.Get(ts.URL + "/web/index.html")
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self' https://example.com;")
+	// httptest.Server.Close waits on connections still in use, and a deferred close does not run
+	// until the test ends, so the body has to be released before the server is torn down here
+	require.NoError(t, resp.Body.Close())
+	client.CloseIdleConnections()
 	teardown()
 
 	// test case without frame-ancestors
