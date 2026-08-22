@@ -2,8 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-FRONTEND_DIR="$ROOT/frontend"
-APP_DIR="$FRONTEND_DIR/apps/remark42"
+APP_DIR="$ROOT/frontend/apps/remark42"
 PUBLIC_DIR="$APP_DIR/public"
 EMBED_DIR="$ROOT/backend/app/cmd/web"
 PREPARED_MARKER="$EMBED_DIR/.release-assets-prepared"
@@ -40,11 +39,10 @@ rm -rf "$PUBLIC_DIR" "$EMBED_DIR"
 mkdir -p "$EMBED_DIR"
 
 (
-  cd "$FRONTEND_DIR"
+  cd "$APP_DIR"
   if [[ "${SKIP_PNPM_INSTALL:-}" != "true" ]]; then
     CI=true pnpm install --frozen-lockfile
   fi
-  cd "$APP_DIR"
   CI=true pnpm build
 )
 

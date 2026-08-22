@@ -41,11 +41,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: ./frontend
+        working-directory: ./frontend/apps/remark42
 
       - name: Translations check
         run: pnpm translation-check
@@ -77,11 +77,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: ./frontend
+        working-directory: ./frontend/apps/remark42
 
       - name: Run type check
         run: pnpm type-check
@@ -113,11 +113,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: ./frontend
+        working-directory: ./frontend/apps/remark42
 
       - name: Run linters
         run: pnpm lint
@@ -177,11 +177,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: ./frontend
+        working-directory: ./frontend/apps/remark42
 
       - name: Test & Coverage
         run: pnpm coverage

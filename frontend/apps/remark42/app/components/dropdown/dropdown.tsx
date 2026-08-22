@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import type { Theme } from 'common/types';
 import { sleep } from 'utils/sleep';
 import { Button } from 'components/button';
-import { parseMessage } from 'utils/post-message';
+import { parseMessage, isFromParent } from 'utils/post-message';
 
 import styles from './dropdown.module.css';
 
@@ -136,6 +136,10 @@ export class Dropdown extends Component<Props, State> {
   }
 
   receiveMessage(evt: MessageEvent) {
+    if (!isFromParent(evt)) {
+      return;
+    }
+
     const data = parseMessage(evt);
 
     if (!data.clickOutside || !this.state.isActive) {

@@ -8,13 +8,23 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 
 - `Dockerfile` (production image) — `FROM node:X-alpine` and `npm i -g pnpm@X.Y.Z`
 - `frontend/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
-- Every `package.json`'s `packageManager` field (`frontend/package.json`, `frontend/apps/remark42/package.json`) and `frontend/apps/remark42/package.json`'s `engines` block
+- `frontend/apps/remark42/package.json`, both its `packageManager` field and its `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
 `engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11` and `size-limit` 13 wants `^22.18 || ^24 || >=26`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
+
+## One manifest, at `frontend/apps/remark42`
+
+`frontend/` holds no `package.json`, no lockfile and no `pnpm-workspace.yaml`. Everything pnpm reads
+lives in `frontend/apps/remark42`: the dependencies, `packageManager`, `engines` and the
+`pnpm.overrides` block. Install and run from there, not from `frontend/`.
+
+The directory nesting is kept because every path in the repository points at it, from the Dockerfile
+and the workflows to the published contributing docs. `frontend/` still carries `.nvmrc`, `.husky`
+and this file, none of which pnpm reads.
 
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
@@ -74,11 +84,11 @@ Keep both in step. If babel were left on the classic `pragma: 'h'` transform, a 
 without `import { h }` would type-check and lint clean, then throw at runtime, because
 `eslint-config-preact` sets `react/react-in-jsx-scope` to 0 and the local config turns `no-undef` off.
 
-## `@babel/core` is pinned to 8 for the whole workspace
+## `@babel/core` is pinned to 8 for the whole dependency tree
 
 `@jest/transform` and `istanbul-lib-instrument` depend on `@babel/core` 7 outright, and a babel 8
 preset loaded into a babel 7 core fails on the first `enum` it meets. The `pnpm.overrides` entry in
-`frontend/package.json` is what stops that. `eslint-config-preact` is the one consumer that cannot
+`frontend/apps/remark42/package.json` is what stops that. `eslint-config-preact` is the one consumer that cannot
 take it: its `@babel/eslint-parser` loads babel 7 syntax plugins that babel 8 rejects, so a second
 scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
@@ -103,8 +113,8 @@ directory second, matching the backend's order, so links to them resolve on the 
 
 `eslint.config.mjs` lives in `apps/remark42`, and eslint loads the config next to the directory it
 is *run from* rather than the one nearest the file being linted. Anything that invokes eslint has
-to have `apps/remark42` as its working directory: the workspace-root `lint` script filters to the
-app, `.husky/pre-commit` cd's into it, and an IDE integration needs
+to have `apps/remark42` as its working directory: it is where every script runs, `.husky/pre-commit`
+cd's into it, and an IDE integration needs
 `"eslint.workingDirectories": ["frontend/apps/remark42"]`.
 
 Rules that only exist under a plugin's flat-config export are spread in explicitly; the block that

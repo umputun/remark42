@@ -34,7 +34,7 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
+import { postMessageToParent, parseMessage, isFromParent, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
@@ -185,6 +185,10 @@ export class Root extends Component<Props, State> {
   };
 
   onMessage = (event: MessageEvent) => {
+    if (!isFromParent(event)) {
+      return;
+    }
+
     const data = parseMessage(event);
 
     if (data.signout === true) {

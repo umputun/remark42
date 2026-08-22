@@ -42,12 +42,20 @@ export function oauthSignin(url: string): Promise<User | null> {
     return Promise.resolve(null);
   }
 
+  subscribed = true;
+
   return new Promise((resolve, reject) => {
+    // closure-local rather than the module-level `subscribed`, because a second oauthSignin can
+    // start while this one's getUser is still resolving and would clear a flag it does not own
+    let stopped = false;
+
     function unsubscribe() {
+      stopped = true;
       document.removeEventListener('visibilitychange', handleWindowVisibilityChange);
       window.removeEventListener('focus', handleWindowVisibilityChange);
       subscribed = false;
       clearTimeout(timeout);
+      clearTimeout(giveUp);
     }
 
     async function handleWindowVisibilityChange() {
@@ -56,6 +64,12 @@ export function oauthSignin(url: string): Promise<User | null> {
       }
 
       const user = await getUser();
+
+      // the request was in flight when the deadline passed, so there is nothing left to clear the
+      // retry this would otherwise schedule
+      if (stopped) {
+        return;
+      }
 
       clearTimeout(timeout);
 
@@ -72,9 +86,15 @@ export function oauthSignin(url: string): Promise<User | null> {
       unsubscribe();
     }
 
-    setTimeout(
+    // giving up has to tear the subscription down as well. the retry above reschedules itself
+    // for as long as getUser keeps returning null, which is the permanent state whenever the
+    // widget is embedded cross-domain and the cookie never becomes readable, so leaving the
+    // listeners attached leaves a poll of /auth/user running for the life of the page against
+    // a route limited to 2 req/s
+    const giveUp = setTimeout(
       () => {
-        reject();
+        unsubscribe();
+        reject(new Error('Timed out waiting for the authorization window'));
       },
       5 * 60 * 1000
     );

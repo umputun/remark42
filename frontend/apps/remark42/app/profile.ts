@@ -87,6 +87,13 @@ export function openProfile(params: Profile & Record<string, string | unknown>) 
   window.addEventListener('keydown', handleKeydown);
 }
 
+// ownsWindow reports whether the message came from the profile frame this module created. The
+// host page's listener has no other way to tell it apart: any frame on the page can post to the
+// parent, and nothing about the message itself says where it came from
+export function ownsWindow(source: MessageEventSource | null): boolean {
+  return source !== null && iframe !== null && source === iframe.contentWindow;
+}
+
 export function closeProfile() {
   window.removeEventListener('keydown', handleKeydown);
   animateDisappear().then(() => {

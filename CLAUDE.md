@@ -10,13 +10,13 @@
   - Run single test: `cd backend/app && go test -run TestName ./path/to/package`
   - **IMPORTANT**: Run example tests: `cd backend/_example/memory_store && go test -race ./... && go build -race ./...`
 - **Frontend**:
-  - Development: `cd frontend && pnpm dev:app`
-  - Tests: `cd frontend && pnpm test`
+  - Development: `cd frontend/apps/remark42 && pnpm dev`
+  - Tests: `cd frontend/apps/remark42 && pnpm test`
 - **End-to-end**: `make e2e` drives the widget in a real browser; see `e2e/README.md`. Build-tagged, so `go test ./...` never runs it.
 - **Lint**:
   - Backend: `cd backend && golangci-lint run`
   - **IMPORTANT**: Example lint: `cd backend/_example/memory_store && golangci-lint run --config ../../.golangci.yml`
-  - Frontend: `cd frontend && pnpm lint`
+  - Frontend: `cd frontend/apps/remark42 && pnpm lint`
   - **Before committing**: Always run tests and linter on both main backend AND examples
 - **Go module changes**:
   - **Any** change to `backend/go.mod` or `backend/go.sum` requires `go mod tidy` in `backend/_example/memory_store` in the same commit. That covers dependency bumps, adding or removing a dependency, and changing the `go` directive, not only version updates.

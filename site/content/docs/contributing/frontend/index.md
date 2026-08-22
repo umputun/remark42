@@ -23,7 +23,7 @@ You must have at least 2GB RAM or swap enabled for building.
 
 - install [Node.js 24](https://nodejs.org/en/) or higher (we recommend using [NVM](https://github.com/nvm-sh/nvm) for node version autoswitch)
 - install [PNPM 10](https://pnpm.io/installation)
-- run `pnpm i` inside `./frontend`
+- run `pnpm i` inside `./frontend/apps/remark42`
 
 Running `pnpm i` will set up pre-commit hooks into your git repository. They are used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
 
@@ -37,7 +37,7 @@ Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS
 
 You can run frontend against demo instance of Remark42. This method of running Remark42 frontend code is preferred when you make a translation or visual adjustments that are easy to see without extensive testing. For this method we use our demo instance of Remark42 served on https://demo.remark42.com
 
-For local development mode with Hot Reloading, use `pnpm dev:app`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
+For local development mode with Hot Reloading, use `pnpm dev`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
 
 You can attach the frontend to the locally running backend from `frontend/apps/remark42` folder and providing the `REMARK_URL` environment variable.
 
@@ -66,8 +66,8 @@ docker compose -f compose-private.yml up --build
 Then in the new terminal tab or window, run the following to start the frontend with Hot Reloading:
 
 ```shell
-cd frontend
-pnpm dev:app
+cd frontend/apps/remark42
+pnpm dev
 ```
 
 Developer build running by `webpack-dev-server` supports devtools for [React](https://reactjs.org/blog/2019/08/15/new-react-devtools.html#how-do-i-get-the-new-devtools) and [Redux](https://github.com/reduxjs/redux-devtools).
@@ -86,7 +86,7 @@ Before submitting your changes as a Pull Request, run the backend using the `doc
 
 Remark42 frontend can be built statically, and that's how the production version works: frontend is built and then resulting files embedded into the backend, which serves them as-is. Node is not running when a user starts Remark42, only the backend written in Go programming language, which also serves pre-built frontend HTML and JS and CSS files.
 
-Run `pnpm build` inside `./frontend`, and result files will be saved in `./frontend/apps/remark42/public`.
+Run `pnpm build` inside `./frontend/apps/remark42`, and result files will be saved in `./frontend/apps/remark42/public`.
 
 `/web` is served from two sources. This build output comes first; anything it does not emit is
 served from `backend/app/webassets/assets`, embedded in the backend binary, which is where

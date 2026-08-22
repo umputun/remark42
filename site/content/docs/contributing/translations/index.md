@@ -48,7 +48,7 @@ below to have your translation available to all remark42 users and included in t
     ```
 
 1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
-1.  Run `pnpm i` in the `frontend` folder
+1.  Run `pnpm i` in the `frontend/apps/remark42` folder
 1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder
 1.  Run `pnpm translation:generate` in the `frontend/apps/remark42` folder
 1.  Translate all values in the newly created JSON file in

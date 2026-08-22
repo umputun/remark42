@@ -50,4 +50,82 @@ describe('embed', () => {
     expect(root.querySelectorAll('iframe')).toHaveLength(1);
     expect(root.querySelector(MARKED)).toBe(first);
   });
+
+  it('does not stack listeners when createInstance is called again', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+    // the second call reuses the iframe rather than building one, so without a teardown the first
+    // call's handlers stay attached and both react to every message
+    window.REMARK42.createInstance(window.remark_config);
+    window.REMARK42.createInstance(window.remark_config);
+
+    let resizes = 0;
+    Object.defineProperty(iframe.style, 'height', {
+      set() {
+        resizes += 1;
+      },
+      get: () => '',
+      configurable: true,
+    });
+
+    window.dispatchEvent(new MessageEvent('message', { data: { height: 500 }, source: iframe.contentWindow }));
+
+    expect(resizes).toBe(1);
+  });
+
+  it('detaches every listener on destroy, however many instances were created', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+    window.REMARK42.createInstance(window.remark_config);
+    window.REMARK42.destroy!();
+
+    let resized = false;
+    Object.defineProperty(iframe.style, 'height', {
+      set() {
+        resized = true;
+      },
+      get: () => '',
+      configurable: true,
+    });
+
+    window.dispatchEvent(new MessageEvent('message', { data: { height: 500 }, source: iframe.contentWindow }));
+
+    expect(resized).toBe(false);
+  });
+
+  it('resizes for its own iframe', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+    window.dispatchEvent(new MessageEvent('message', { data: { height: 500 }, source: iframe.contentWindow }));
+
+    expect(iframe.style.height).toBe('500px');
+  });
+
+  it('ignores a message from a frame it does not own', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    iframe.style.height = '100px';
+
+    // every frame on a page can reach window.parent, an advertisement among them, and the handler
+    // resizes the widget, scrolls the page and opens the profile overlay
+    const foreign = document.createElement('iframe');
+    document.body.appendChild(foreign);
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { height: 9000, scrollTo: 5000, profile: { id: 'anyone' } },
+        source: foreign.contentWindow,
+      })
+    );
+
+    expect(iframe.style.height).toBe('100px');
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.querySelectorAll('iframe')).toHaveLength(2);
+
+    scrollTo.mockRestore();
+  });
 });

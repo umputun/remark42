@@ -80,7 +80,10 @@ module.exports = (_, { mode, analyze }) => {
 
   const output = {
     path: PUBLIC_FOLDER_PATH,
-    publicPath: PUBLIC_PATH,
+    // derived from the url the bundle was loaded from rather than fixed to the domain root: an
+    // instance mounted under a path, which manuals/separate-domain documents, would otherwise ask
+    // for /web/<asset> and miss its own prefix
+    publicPath: 'auto',
   };
 
   const getTsRule = () => {
@@ -164,8 +167,8 @@ module.exports = (_, { mode, analyze }) => {
     use: {
       loader: 'file-loader',
       options: {
+        // no publicPath here, so the emitted url goes through the runtime one above
         name: '[name].[ext]',
-        publicPath: PUBLIC_PATH,
       },
     },
   };
@@ -272,6 +275,15 @@ module.exports = (_, { mode, analyze }) => {
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/deleteme.ejs'),
         filename: 'deleteme.html',
+        inject: false,
+        REMARK_URL,
+        minify: htmlMinifyOptions,
+      }),
+      // the page the widget links to when third-party cookies are blocked, which is the only way
+      // a reader in that state can reach the comments at all
+      new HtmlWebpackPlugin({
+        template: path.resolve(__dirname, 'templates/comments.ejs'),
+        filename: 'comments.html',
         inject: false,
         REMARK_URL,
         minify: htmlMinifyOptions,
