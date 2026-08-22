@@ -93,7 +93,11 @@ var (
 // window focus while an oauth popup sign-in is pending. without this the limiter starts
 // answering 429 and the widget renders as signed out
 func pauseForAuthLimit() {
-	const spacing = 700 * time.Millisecond
+	// 1200ms rather than the 700 this started at: the widget fires an unpaced /auth/status on
+	// every load and again on visibilitychange, so the paced side has to stay well under the
+	// 2/s cap to leave room for them. at 700 the suite manufactured its own 429s, and a lost
+	// probe renders as signed out, which fails whichever test happens to be signing in
+	const spacing = 1200 * time.Millisecond
 
 	authGate.Lock()
 	defer authGate.Unlock()
@@ -503,12 +507,15 @@ func waitVisible(t *testing.T, loc playwright.Locator) {
 	}))
 }
 
-func waitHidden(t *testing.T, loc playwright.Locator) {
+// waitHidden waits for the element to go away. msgAndArgs says what its staying would mean,
+// since the failure otherwise names a selector and not the behavior that broke
+func waitHidden(t *testing.T, loc playwright.Locator, msgAndArgs ...any) {
 	t.Helper()
-	require.NoError(t, loc.WaitFor(playwright.LocatorWaitForOptions{
+	err := loc.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateHidden,
 		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
-	}))
+	})
+	require.NoError(t, err, msgAndArgs...)
 }
 
 // pollText reads an element's text with a timeout short enough to be used inside eventually

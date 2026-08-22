@@ -3,8 +3,12 @@
 package e2e
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net/http"
 	neturl "net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -160,4 +164,276 @@ func TestComment_DeleteRemovesTheText(t *testing.T) {
 	frame = reload(t, page)
 	waitVisible(t, comment(frame, survivor))
 	assert.Equal(t, 1, articleCount(t, frame), "the deleted comment should be gone from the thread")
+}
+
+// TestComment_EditKeepsTheOriginalSource covers what the widget puts back in the textarea when a
+// comment is edited. The thread shows rendered html, so the form has to hold the source it was
+// posted with: #2040 shipped a version that handed back the rendered text, and everything the
+// author had written in entities or markup was lost on the next save
+func TestComment_EditKeepsTheOriginalSource(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	// entities, markup and a character outside latin1, each of which a render-and-read-back
+	// round trip mangles differently
+	source := "5 &lt; 10 &amp; **bold** <b>tag</b> ю " + runID
+	postCommentMatching(t, frame, source, runID)
+
+	require.NoError(t, actions(frame, runID).Locator(`button:has-text("Edit")`).Click())
+	form := replyForm(t, frame)
+
+	got, err := form.Locator("textarea").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, source, got, "the edit form has to hold the source that was posted, not the rendered comment")
+
+	submitForm(t, form, source+" edited")
+	waitVisible(t, comment(frame, "edited"))
+
+	frame = reload(t, page)
+	require.NoError(t, actions(frame, runID).Locator(`button:has-text("Edit")`).Click())
+	got, err = replyForm(t, frame).Locator("textarea").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, source+" edited", got, "the stored source has to survive the round trip through the backend")
+}
+
+// TestComment_DraftSurvivesReloadAndClearsAfterPost covers the local draft. A reader who reloads
+// mid-sentence keeps what they typed, and a reader who posts does not get it handed back
+func TestComment_DraftSurvivesReloadAndClearsAfterPost(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	draft := "half written " + runID
+	require.NoError(t, frame.Locator(commentFormSel).First().Locator("textarea").Fill(draft))
+
+	frame = reload(t, page)
+	textarea := frame.Locator(commentFormSel).First().Locator("textarea")
+	eventually(t, waitTimeout, "the draft was not restored after the reload", func() bool {
+		v, err := textarea.InputValue()
+		return err == nil && v == draft
+	})
+
+	postCommentMatching(t, frame, draft, draft)
+
+	frame = reload(t, page)
+	got, err := frame.Locator(commentFormSel).First().Locator("textarea").InputValue()
+	require.NoError(t, err)
+	assert.Empty(t, got, "a posted draft has to be cleared, or the reader is handed their own comment back")
+}
+
+// TestComment_PostFailureKeepsTheText covers the path a reader hits when the server refuses the
+// comment. The text is the only copy they have, so it has to stay in the form, and the failure has
+// to say something rather than swallowing itself
+func TestComment_PostFailureKeepsTheText(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	require.NoError(t, page.Route("**/api/v1/comment?**", func(route playwright.Route) {
+		require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+			Status:      playwright.Int(http.StatusBadRequest),
+			ContentType: playwright.String("application/json"),
+			Body:        playwright.String(`{"code":19,"details":"comment contains restricted words","error":"rejected"}`),
+		}))
+	}))
+
+	text := "rejected " + runID
+	form := frame.Locator(commentFormSel).First()
+	submitForm(t, form, text)
+
+	waitVisible(t, form.Locator(`p[role="alert"]`))
+
+	got, err := form.Locator("textarea").InputValue()
+	require.NoError(t, err)
+	assert.Equal(t, text, got, "a refused comment has to stay in the form, it is the only copy the reader has")
+
+	require.NoError(t, page.Unroute("**/api/v1/comment?**"))
+	require.NoError(t, form.Locator(`button[type="submit"]`).Click())
+	waitVisible(t, comment(frame, text))
+}
+
+// TestComment_AdminPinsAndVerifies covers two moderator actions that change what every reader
+// sees. Both are server-side, so the assertions come after a reload on a second reader's page
+// rather than from the moderator's own optimistic render
+func TestComment_AdminPinsAndVerifies(t *testing.T) {
+	text := "moderated " + runID
+
+	// verification is a property of the user and outlives the run in the stack's database, so a
+	// fixed name is only verifiable once: the next run would toggle an already verified author
+	// off and wait for a badge that is being taken away
+	author := newPage(t)
+	authorFrame := openThread(t, author)
+	signInAnon(t, authorFrame, "moderated"+runID[len(runID)-6:])
+	postComment(t, authorFrame, text)
+
+	admin := newPage(t)
+	adminFrame := openURL(t, admin, threadURL(t))
+	signInDev(t, admin, adminFrame)
+
+	admin.OnDialog(func(d playwright.Dialog) { _ = d.Accept() })
+	require.NoError(t, actions(adminFrame, text).Locator(`button:has-text("Pin")`).Click())
+	// pinning re-renders the thread, and a click that lands during that render is lost, so wait
+	// for the pinned region to exist before touching the same comment again
+	waitVisible(t, adminFrame.Locator(`[role="region"][aria-label="Pinned comments"]`))
+
+	// the verification toggle sits in the comment header beside the author, not in the action bar
+	require.NoError(t, comment(adminFrame, text).Locator(`[title="Toggle verification"]`).First().Click())
+	waitVisible(t, comment(adminFrame, text).Locator(`[title="Verified user"]`).First())
+
+	reader := newPage(t)
+	readerFrame := openURL(t, reader, threadURL(t))
+
+	pinned := readerFrame.Locator(`[role="region"][aria-label="Pinned comments"]`)
+	waitVisible(t, pinned)
+	waitVisible(t, pinned.Locator("article", playwright.LocatorLocatorOptions{HasText: text}))
+	waitVisible(t, comment(readerFrame, text).Locator(`[title="Verified user"]`).First())
+
+	// unpinning has to reach every reader too, so the region goes away rather than merely
+	// emptying on the moderator's own page
+	require.NoError(t, actions(adminFrame, text).Locator(`button:has-text("Unpin")`).Click())
+
+	readerFrame = reload(t, reader)
+	waitHidden(t, readerFrame.Locator(`[role="region"][aria-label="Pinned comments"]`),
+		"the comment was unpinned but readers still see the pinned region")
+}
+
+// TestComment_ImageUploadRendersAndRecovers covers the upload path end to end, which nothing
+// exercised in a browser: the file input, the temporary markdown the form writes while the request
+// is in flight, the final picture URL, and the image actually loading in the posted comment.
+// The second half is the part a reader notices most, since a failed upload that leaves the
+// placeholder behind corrupts what they were writing
+func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	// a 1x1 png, written out rather than fetched so the case does not depend on a fixture file
+	png, err := base64.StdEncoding.DecodeString(
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	path := filepath.Join(t.TempDir(), "pixel.png")
+	require.NoError(t, os.WriteFile(path, png, 0o600))
+
+	form := frame.Locator(commentFormSel).First()
+	textarea := form.Locator("textarea")
+
+	t.Run("a failed upload leaves the text as it was", func(t *testing.T) {
+		require.NoError(t, page.Route("**/api/v1/picture**", func(route playwright.Route) {
+			// held briefly so the in-flight state is observable: without it the placeholder
+			// comes and goes inside one frame, and "the text is unchanged" would hold just as
+			// well for an upload that never started
+			time.Sleep(300 * time.Millisecond)
+			require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+				Status:      playwright.Int(http.StatusInternalServerError),
+				ContentType: playwright.String("application/json"),
+				Body:        playwright.String(`{"code":0,"details":"upload failed","error":"nope"}`),
+			}))
+		}))
+		defer func() { require.NoError(t, page.Unroute("**/api/v1/picture**")) }()
+
+		written := "before the upload " + runID
+		require.NoError(t, textarea.Fill(written))
+		require.NoError(t, form.Locator(`input[type="file"]`).SetInputFiles(path))
+
+		eventually(t, waitTimeout, "the form never showed the upload in progress", func() bool {
+			v, verr := textarea.InputValue()
+			return verr == nil && v != written
+		})
+
+		waitVisible(t, form.Locator(`p[role="alert"]`))
+		eventually(t, waitTimeout, "the upload placeholder was left in the text after the failure", func() bool {
+			v, verr := textarea.InputValue()
+			return verr == nil && v == written
+		})
+	})
+
+	t.Run("an uploaded image is posted and renders", func(t *testing.T) {
+		require.NoError(t, textarea.Fill("with an image "+runID+" "))
+		require.NoError(t, form.Locator(`input[type="file"]`).SetInputFiles(path))
+
+		eventually(t, waitTimeout, "the upload never produced a picture url", func() bool {
+			v, verr := textarea.InputValue()
+			return verr == nil && strings.Contains(v, "/api/v1/picture/")
+		})
+
+		require.NoError(t, form.Locator(`button[type="submit"]`).Click())
+		posted := comment(frame, "with an image "+runID)
+		waitVisible(t, posted)
+
+		img := posted.Locator(`img[src*="/api/v1/picture/"]`).First()
+		waitVisible(t, img)
+
+		// visible is not loaded: a broken src renders as an empty box, and naturalWidth is the
+		// only thing that says the bytes came back
+		eventually(t, waitTimeout, "the posted image never loaded", func() bool {
+			w, jerr := img.Evaluate("el => el.naturalWidth", nil)
+			n, ok := w.(int)
+			return jerr == nil && ok && n > 0
+		})
+	})
+}
+
+// TestComment_BlockedAuthorCannotPost covers the refusal a blocked author meets. The backend
+// answers with its own code, and the widget has to turn that into something the reader can read
+// rather than swallowing it, which is the half no unit test can speak for
+func TestComment_BlockedAuthorCannotPost(t *testing.T) {
+	text := "before the block " + runID
+
+	// the block is permanent and the stack's database outlives the run, so a fixed name would
+	// only be postable once: every later run would find the author already blocked
+	author := newPage(t)
+	authorFrame := openThread(t, author)
+	signInAnon(t, authorFrame, "blocked"+runID[len(runID)-6:])
+	postComment(t, authorFrame, text)
+
+	admin := newPage(t)
+	adminFrame := openURL(t, admin, threadURL(t))
+	signInDev(t, admin, adminFrame)
+
+	admin.OnDialog(func(d playwright.Dialog) { _ = d.Accept() })
+	_, err := actions(adminFrame, text).Locator("select").SelectOption(playwright.SelectOptionValues{
+		Values: &[]string{"permanently"},
+	})
+	require.NoError(t, err)
+
+	// the author's own page still believes it can post, which is the point: the refusal has to
+	// come back from the server and be shown
+	form := authorFrame.Locator(commentFormSel).First()
+	submitForm(t, form, "after the block "+runID)
+
+	// not scoped to the form: the widget re-renders the whole panel once the server reports the
+	// author as blocked, so where the message lands is not the point, only that it is said
+	waitVisible(t, authorFrame.Locator("text=blocked").First())
+}
+
+// TestComment_ReadOnlyThreadTakesTheFormAway covers the admin switch that closes a thread. A
+// reader arriving afterwards has to find no way to post, and the state has to come from the
+// server rather than from the admin's own page
+func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
+	page := newPage(t)
+	url := threadURL(t)
+	frame := openURL(t, page, url)
+	signInDev(t, page, frame)
+
+	// the admin panel swaps its own button rather than showing the read-only notice, which is
+	// what an ordinary reader gets
+	require.NoError(t, frame.Locator(`button:has-text("Disable comments")`).Click())
+	waitVisible(t, frame.Locator(`button:has-text("Enable comments")`))
+
+	// not openURL: it waits for a comment form, and a read-only thread is exactly the case with
+	// no form to wait for
+	reader := newPage(t)
+	pauseForAuthLimit()
+	_, err := reader.Goto(url, playwright.PageGotoOptions{WaitUntil: playwright.WaitUntilStateDomcontentloaded})
+	require.NoError(t, err)
+
+	readerFrame := reader.FrameLocator("#remark42 iframe")
+	waitVisible(t, readerFrame.Locator(`text=Read-only`))
+	waitHidden(t, readerFrame.Locator(commentFormSel).First(),
+		"the thread is read-only but a reader is still shown a comment form")
+
+	require.NoError(t, frame.Locator(`button:has-text("Enable comments")`).Click())
+	waitVisible(t, frame.Locator(commentFormSel).First())
 }

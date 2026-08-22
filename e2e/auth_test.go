@@ -118,3 +118,24 @@ func verificationToken(t *testing.T, body string) string {
 	require.NotEmpty(t, m, "no token in message body:\n%s", body)
 	return m
 }
+
+// TestAuth_SignOutEndsTheSession covers the one half of authentication nothing tested at any
+// level: that signing out actually ends the session rather than only repainting the panel. The
+// assertion after the reload is the point, since a cleared store with a live cookie looks
+// identical until the page comes back
+func TestAuth_SignOutEndsTheSession(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	signInDev(t, page, frame)
+
+	pauseForAuthLimit()
+	require.NoError(t, frame.Locator(`[title="Sign Out"]`).Click())
+	waitVisible(t, frame.Locator(".auth-button"))
+	waitHidden(t, frame.Locator(`[title="Sign Out"]`))
+
+	frame = reload(t, page)
+	waitVisible(t, frame.Locator(".auth-button"))
+	waitHidden(t, frame.Locator(`[title="Sign Out"]`),
+		"the panel signed out but the session survived the reload, so the cookie was never cleared")
+}

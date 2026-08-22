@@ -5,7 +5,11 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -26,13 +30,36 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	postComment(t, frame, text)
 
 	page := newPage(t)
+
+	// the stylesheet is appended at runtime and nothing waits for it, so the comments render
+	// whether or not it arrives. wait for the response itself rather than sampling afterwards,
+	// which reads whatever has landed by then and passes when the miss is still in flight
 	pauseForAuthLimit()
-	_, err := page.Goto(baseURL + "/web/last-comments.html")
-	require.NoError(t, err)
+	css, err := page.ExpectResponse("**/last-comments.css", func() error {
+		_, gerr := page.Goto(baseURL + "/web/last-comments.html")
+		return gerr
+	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "the page never asked for its stylesheet")
+	assert.Equal(t, 200, css.Status(), "the last-comments stylesheet did not load")
 
 	list := page.Locator(".remark42__last-comments")
 	waitVisible(t, list)
 	waitVisible(t, list.Locator("text="+text))
+}
+
+// TestWidgets_DeleteMePageServesAndRuns covers the GDPR delete page, which nothing else opens. It
+// needs an admin token to do its work, so this drives the branch it takes without one: reaching
+// that message proves the html and its bundle were both served and executed.
+func TestWidgets_DeleteMePageServesAndRuns(t *testing.T) {
+	page := newPage(t)
+
+	pauseForAuthLimit()
+	resp, err := page.Goto(baseURL + "/web/deleteme.html")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 200, resp.Status())
+
+	waitVisible(t, page.Locator("text=You are not logged in"))
 }
 
 // TestWidgets_CounterFillsInTheCommentCount covers the other host-page script.
@@ -186,4 +213,75 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 	inWidget, err := page.Locator(`#remark42 iframe[src*="page=profile"]`).Count()
 	require.NoError(t, err)
 	assert.Zero(t, inWidget)
+}
+
+// TestWidgets_EveryLocaleLoadsAndRenders drives the dynamic import behind every translation, once
+// per catalog. The catalogs are separate chunks the bundle fetches at runtime, so a change to
+// how chunks are named or emitted breaks them without touching a line of widget code, and the
+// failure is silent: loadLocale falls back to english rather than throwing, which is also what an
+// unrecognized name does. Each case therefore compares against the catalog on disk, so english
+// coming back is a failure rather than a pass.
+//
+// The catalog set comes from the locales directory rather than a list here, so a language added
+// to the app is covered without an edit, and injected into a plain page rather than the demo one,
+// which is the only way to hand the widget a remark_config of this test's choosing
+func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
+	const localesDir = "../frontend/apps/remark42/app/locales"
+
+	entries, err := os.ReadDir(localesDir)
+	require.NoError(t, err, "reading %s", localesDir)
+	require.NotEmpty(t, entries, "no catalogs in %s, so this test would assert nothing", localesDir)
+
+	for _, entry := range entries {
+		locale, found := strings.CutSuffix(entry.Name(), ".json")
+		if !found {
+			continue
+		}
+
+		t.Run(locale, func(t *testing.T) {
+			raw, rerr := os.ReadFile(filepath.Join(localesDir, entry.Name())) //nolint:gosec // name from the walk
+			require.NoError(t, rerr)
+
+			var catalog map[string]string
+			require.NoError(t, json.Unmarshal(raw, &catalog))
+			want := catalog["commentForm.input-placeholder"]
+			require.NotEmpty(t, want, "%s carries no placeholder message to compare against", entry.Name())
+
+			page := newPage(t)
+			// this case never signs in, and the widget probes /auth/status on every load. that
+			// probe is capped at 2/s for the whole suite, so twenty four of them would spend a
+			// budget the sign-in cases need and manufacture 429s for whichever test runs next
+			require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
+				require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+					Status:      playwright.Int(http.StatusOK),
+					ContentType: playwright.String("application/json"),
+					Body:        playwright.String(`{"status":"not logged in"}`),
+				}))
+			}))
+
+			_, gerr := page.Goto(baseURL + "/web/privacy.html")
+			require.NoError(t, gerr)
+
+			_, eerr := page.Evaluate(`([host, url, locale]) => {
+				window.remark_config = { host, site_id: 'remark', url, locale };
+				const node = document.createElement('div');
+				node.id = 'remark42';
+				document.body.appendChild(node);
+			}`, []any{baseURL, threadURL(t), locale})
+			require.NoError(t, eerr)
+
+			_, aerr := page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/embed.mjs")})
+			require.NoError(t, aerr)
+
+			// not widget(): commentFormSel matches the form's aria-label, which is itself
+			// translated, so the shared helper only ever finds an english widget
+			frame := page.FrameLocator("#remark42 iframe")
+			textarea := frame.Locator("form textarea").First()
+			waitVisible(t, textarea)
+
+			got, perr := textarea.GetAttribute("placeholder")
+			require.NoError(t, perr)
+			assert.Equal(t, want, got, "the %s catalog did not render, so the widget fell back to english", locale)
+		})
+	}
 }
