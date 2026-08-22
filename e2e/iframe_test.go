@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"math"
 	"regexp"
 	"testing"
 	"time"
@@ -102,23 +103,111 @@ const (
 
 // openWithBlockedIframeDoc loads the demo page with the widget document aborted, so the
 // iframe element exists but never reports itself inited
-func openWithBlockedIframeDoc(t *testing.T, page playwright.Page) time.Time {
+func openWithBlockedIframeDoc(t *testing.T, page playwright.Page) {
 	t.Helper()
 	require.NoError(t, page.Route(regexp.MustCompile(`/web/iframe\.html`), func(route playwright.Route) {
 		_ = route.Abort()
 	}))
 
-	// the gate's sleep happens before the iframe exists, so it must not count against the
-	// reveal budgets: start the clock with the navigation
 	pauseForAuthLimit()
-	start := time.Now()
 	_, err := page.Goto(renderURL(t))
 	require.NoError(t, err)
 	require.NoError(t, page.Locator("#remark42 iframe").WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateAttached,
 		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
 	}))
-	return start
+}
+
+// iframeMarkScript records, in the page, when the widget's iframe element is created and when
+// it is first revealed. create-iframe.ts starts its fallback timer at creation, and neither
+// moment can be timed from outside the page: navigation alone can outlast the budgets, which
+// would let a bound pass without the assertion it guards ever running
+const iframeMarkScript = `(() => {
+  // top document only. playwright runs an init script in every frame, and inside the widget
+  // document the selector below never matches, so the observer would run for the life of the
+  // busiest DOM in the suite without ever finding a reason to disconnect
+  if (window.top !== window) { return; }
+  if (window.__r42Marks) { return; }
+  window.__r42Marks = {};
+  const watch = (frame) => {
+    if (window.__r42Marks.created !== undefined) { return; }
+    window.__r42Marks.created = performance.now();
+    const style = new MutationObserver(() => { seen(); });
+    const seen = () => {
+      if (window.__r42Marks.revealed === undefined && frame.style.visibility === 'visible') {
+        window.__r42Marks.revealed = performance.now();
+        style.disconnect();
+      }
+    };
+    style.observe(frame, {attributes: true, attributeFilter: ['style']});
+    seen();
+  };
+  // document rather than documentElement: an init script runs before the root element
+  // exists, and observing null would throw before any of this could take effect
+  const tree = new MutationObserver(() => { scan(); });
+  const scan = () => {
+    const frame = document.querySelector('#remark42 iframe');
+    if (frame) { watch(frame); tree.disconnect(); }
+  };
+  tree.observe(document, {childList: true, subtree: true});
+  document.addEventListener('DOMContentLoaded', scan);
+  // and stop looking once the page has loaded. embed.ts creates the frame no later than
+  // DOMContentLoaded, so a page still without one never will have one, and the suite opens
+  // several: the widget document itself, the counter page and the last-comments page, whose
+  // own rendering would otherwise keep this observer busy for the life of the page
+  window.addEventListener('load', () => { tree.disconnect(); });
+  scan();
+})()`
+
+// evalMillis reads a number out of the page. it takes int as well as float64, because the
+// driver hands back whichever the value happens to be and a bare float64 assertion turns an
+// integral sentinel into a silent zero
+func evalMillis(t *testing.T, page playwright.Page, script string) float64 {
+	t.Helper()
+	v, err := page.Evaluate(script)
+	require.NoError(t, err)
+
+	switch n := v.(type) {
+	case float64:
+		require.False(t, math.IsNaN(n) || math.IsInf(n, 0), "got a non-finite number from the page")
+		return n
+	case int:
+		return float64(n)
+	default:
+		t.Fatalf("expected a number from the page, got %T (%v)", v, v)
+		return 0
+	}
+}
+
+// iframeAge is how long the iframe element has existed, measured in the page.
+//
+// the mark is taken when the element is inserted, while create-iframe.ts starts its fallback
+// a moment earlier, when the detached element is built. the gap is one task, so every age
+// here reads slightly short: bounds below a budget are conservative, bounds above it are not
+func iframeAge(t *testing.T, page playwright.Page) time.Duration {
+	t.Helper()
+	ms := evalMillis(t, page, `() => window.__r42Marks && window.__r42Marks.created !== undefined
+		? performance.now() - window.__r42Marks.created : -1`)
+	require.GreaterOrEqual(t, ms, float64(0), "the iframe element has not been created yet")
+	return time.Duration(ms) * time.Millisecond
+}
+
+// revealDelay is how long after creation the iframe was revealed, measured in the page. it
+// reports false while the frame is still hidden
+func revealDelay(t *testing.T, page playwright.Page) (time.Duration, bool) {
+	t.Helper()
+	ms := evalMillis(t, page, `() => {
+		const m = window.__r42Marks;
+		if (!m || m.created === undefined) { return -2; }
+		return m.revealed !== undefined ? m.revealed - m.created : -1;
+	}`)
+	// -2 is the harness, -1 is the widget. without the distinction a broken selector reads as
+	// "the frame was never revealed" and the failure names the wrong thing
+	require.NotEqual(t, float64(-2), ms, "the iframe element was never seen by the page marks")
+	if ms < 0 {
+		return 0, false
+	}
+	return time.Duration(ms) * time.Millisecond, true
 }
 
 func iframeVisibility(t *testing.T, page playwright.Page) string {
@@ -134,17 +223,23 @@ func iframeVisibility(t *testing.T, page playwright.Page) string {
 
 func TestIframe_StaysHiddenUntilTheDocumentReportsInited(t *testing.T) {
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
-		start := openWithBlockedIframeDoc(t, page)
+		openWithBlockedIframeDoc(t, page)
 
-		// sampling once would pass against a widget that revealed a frame moments later, so
-		// hold the assertion for a stretch of the window in which it must stay hidden
-		for time.Since(start) < revealTimeout/2 {
+		// unconditional: the loop below is bounded by the frame's own age, and on a slow
+		// enough load that bound can already be spent, which would leave the test asserting
+		// nothing at all about visibility
+		require.Equal(t, "hidden", iframeVisibility(t, page))
+
+		// then hold it for almost the whole fallback window. stopping halfway would only prove
+		// the fallback is not shorter than that, and a widget that revealed on anything other
+		// than `inited` would still pass. measured from the element's creation, since that is
+		// when the fallback it must not have used starts counting
+		for iframeAge(t, page) < revealTimeout-500*time.Millisecond {
 			require.Equal(t, "hidden", iframeVisibility(t, page))
 			time.Sleep(100 * time.Millisecond)
 		}
-		// a slow run could have let the fallback fire, which would make the assertion above
-		// pass or fail for the wrong reason. fail loudly instead of flaking
-		assert.Less(t, time.Since(start), revealTimeout)
+		_, revealed := revealDelay(t, page)
+		assert.False(t, revealed, "the frame was revealed before its document reported inited")
 	})
 }
 
@@ -165,14 +260,21 @@ func forEachEngine(t *testing.T, body func(t *testing.T, page playwright.Page)) 
 func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
 		pauseForAuthLimit()
-		start := time.Now()
 		_, err := page.Goto(renderURL(t))
 		require.NoError(t, err)
 
-		eventually(t, messageRevealBudget, "iframe was not revealed by the inited message", func() bool {
-			return iframeVisibility(t, page) == "visible"
+		eventually(t, waitTimeout, "iframe was never revealed", func() bool {
+			_, ok := revealDelay(t, page)
+			return ok
 		})
-		assert.Less(t, time.Since(start), revealTimeout)
+
+		// the reveal has to have come from the message rather than the fallback, and the two
+		// are only distinguishable against the frame's own clock: navigation can outlast the
+		// whole 5s window without the widget being at fault
+		delay, ok := revealDelay(t, page)
+		require.True(t, ok, "the frame reported no reveal at all")
+		assert.Less(t, delay, messageRevealBudget,
+			"the reveal was slow enough to have come from the fallback rather than the message")
 		waitVisible(t, page.Locator("#remark42 iframe"))
 	})
 }
@@ -181,14 +283,22 @@ func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
 // visibility assertion on geometry would fail. Assert the property the fallback actually sets.
 func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
-		start := openWithBlockedIframeDoc(t, page)
+		openWithBlockedIframeDoc(t, page)
+
+		eventually(t, revealTimeout*2, "fallback never revealed the iframe", func() bool {
+			_, ok := revealDelay(t, page)
+			return ok
+		})
 
 		// and not before it: without a lower bound, shortening the fallback to a value that
-		// defeats its purpose would still pass
-		eventually(t, revealTimeout*2, "fallback never revealed the iframe", func() bool {
-			return iframeVisibility(t, page) == "visible"
-		})
-		assert.Greater(t, time.Since(start), revealTimeout*3/4,
+		// defeats its purpose would still pass. against the frame's own clock, so that a slow
+		// navigation cannot be mistaken for the timer having run
+		// close to the fallback rather than three quarters of it: measured in the page there is
+		// no navigation to make room for, and a wider floor tolerates a fallback shortened
+		// enough to defeat its purpose
+		delay, ok := revealDelay(t, page)
+		require.True(t, ok, "the frame reported no reveal at all")
+		assert.Greater(t, delay, revealTimeout-500*time.Millisecond,
 			"the reveal came too early to have been the fallback timer")
 	})
 }
