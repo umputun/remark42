@@ -85,6 +85,11 @@ export function useDropdown(disableClosing?: boolean) {
     return () => {
       document.body.style.removeProperty('min-height');
       observer.disconnect();
+      // the panel is positioned absolutely, so closing it resizes no box any observer here
+      // watches: the one above is gone with the element and the document one in root never sees
+      // a change. without a report of its own the parent keeps the open panel's height, leaving
+      // a hole under the widget for as long as the reader stays on the page
+      updateIframeHeight();
     };
   }, [showDropdown]);
 

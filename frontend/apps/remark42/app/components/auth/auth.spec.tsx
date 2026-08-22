@@ -7,6 +7,7 @@ import type { OAuthProvider, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { BASE_URL } from 'common/constants.config';
 import * as userActions from 'store/user/actions';
+import * as postMessage from 'utils/post-message';
 
 import { Auth } from './auth';
 import * as utils from './auth.utils';
@@ -88,6 +89,25 @@ describe('<Auth/>', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+    });
+
+    // the panel is positioned absolutely, so it grows the iframe without growing the document:
+    // the parent is told a height nothing else will ever correct, and closing the panel resizes
+    // no box either observer watches. a close that reports nothing leaves the iframe at the open
+    // panel's height, which is a hole in the embedding page under the widget
+    it('should report the height when the dropdown closes', async () => {
+      const updateIframeHeight = jest.spyOn(postMessage, 'updateIframeHeight');
+      const { container } = render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign In'));
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
+
+      updateIframeHeight.mockClear();
+      fireEvent.click(document);
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
+
+      // with no element, so the height is the document's own and not the panel that just went
+      await waitFor(() => expect(updateIframeHeight).toHaveBeenCalledWith());
     });
 
     it('should not close dropdown by clickOutside message from a foreign source', async () => {
