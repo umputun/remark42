@@ -271,11 +271,14 @@ func TestRest_securityHeaders(t *testing.T) {
 	client := http.Client{}
 	resp, err := client.Get(ts.URL + "/web/index.html")
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "img-src *;")
 	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
 	assert.Equal(t, "strict-origin-when-cross-origin", resp.Header.Get("Referrer-Policy"))
+	// httptest.Server.Close waits on connections still in use, and a deferred close does not run
+	// until the test ends, so the body has to be released before the server is torn down here
+	require.NoError(t, resp.Body.Close())
+	client.CloseIdleConnections()
 	teardown()
 
 	// check CSP with proxy enabled
