@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -50,9 +51,7 @@ func TestBackup_MakeBackup(t *testing.T) {
 	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
 	assert.Equal(t, expFile, fname)
 
-	fi, err := os.Lstat(expFile)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(52), fi.Size())
+	assert.Equal(t, exportedPayload, gzContent(t, expFile))
 }
 
 func TestBackup_Do(t *testing.T) {
@@ -71,15 +70,31 @@ func TestBackup_Do(t *testing.T) {
 		bk.Do(ctx)
 
 		expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
-		fi, err := os.Lstat(expFile)
-		assert.NoError(t, err)
-		assert.Equal(t, int64(52), fi.Size())
+		assert.Equal(t, exportedPayload, gzContent(t, expFile))
 	})
+}
+
+const exportedPayload = "some export blah blah 1234567890"
+
+// the compressed size is not assertable: it moves with the compress/flate version
+func gzContent(t *testing.T, name string) string {
+	t.Helper()
+	fh, err := os.Open(name) //nolint:gosec // path is built by the test
+	require.NoError(t, err)
+	defer func() { assert.NoError(t, fh.Close()) }()
+
+	gz, err := gzip.NewReader(fh)
+	require.NoError(t, err)
+	defer func() { assert.NoError(t, gz.Close()) }()
+
+	b, err := io.ReadAll(gz)
+	require.NoError(t, err)
+	return string(b)
 }
 
 type mockExporter struct{}
 
 func (mock *mockExporter) Export(w io.Writer, _ string) (int, error) {
-	_, err := w.Write([]byte("some export blah blah 1234567890"))
+	_, err := w.Write([]byte(exportedPayload))
 	return 1000, err
 }

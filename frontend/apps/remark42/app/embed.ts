@@ -4,6 +4,10 @@ import { createIframe } from 'utils/create-iframe';
 import type { Theme } from 'common/types';
 import { closeProfile, openProfile } from 'profile';
 
+// marks the iframe this module owns, so a second createInstance reuses it instead of adopting
+// whatever the integrator left in the root as a loading placeholder
+const IFRAME_MARKER = 'data-remark42-iframe';
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -36,7 +40,8 @@ function createInstance(config: typeof window.remark_config) {
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const iframe = (root.firstElementChild as HTMLIFrameElement) || createIframe(config);
+  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(config);
+  iframe.setAttribute(IFRAME_MARKER, '');
 
   root.appendChild(iframe);
 

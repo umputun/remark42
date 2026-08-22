@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"strings"
 )
 
 // webFiles serves /web from two sources: a name present in the frontend build is served from there,
@@ -13,15 +14,38 @@ type webFiles struct {
 	embedded fs.FS
 }
 
-// Open looks the name up in the frontend build first. Only a missing file falls through to the
-// embedded assets; every other error is returned so an unreadable file keeps reporting as one
-// rather than being replaced by the embedded copy or reported as missing.
+// Open resolves the name against both sources, and answers a missing .js with the .mjs sibling.
+// The build stopped emitting .js while integrations still request it; the bundles carry no module
+// syntax, so the same bytes serve both names.
 func (w webFiles) Open(name string) (fs.File, error) {
 	// fs.ValidPath alone is not enough: it accepts names the operating system rejects, NUL among
 	// them, and os.DirFS turns those into fs.ErrInvalid, which renders as 500 rather than 404
 	if _, err := filepath.Localize(name); err != nil || !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
+
+	f, err := w.open(name)
+	if err == nil {
+		return f, nil
+	}
+	if !errors.Is(err, fs.ErrNotExist) || !strings.HasSuffix(name, ".js") {
+		return nil, err
+	}
+
+	alias, aliasErr := w.open(strings.TrimSuffix(name, ".js") + ".mjs")
+	if aliasErr == nil {
+		return alias, nil
+	}
+	if !errors.Is(aliasErr, fs.ErrNotExist) {
+		return nil, aliasErr
+	}
+	return nil, err
+}
+
+// open looks the name up in the frontend build first. Only a missing file falls through to the
+// embedded assets; every other error is returned so an unreadable file keeps reporting as one
+// rather than being replaced by the embedded copy or reported as missing.
+func (w webFiles) open(name string) (fs.File, error) {
 	f, err := w.frontend.Open(name)
 	if err == nil {
 		return f, nil

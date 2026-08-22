@@ -54,6 +54,79 @@ func TestWebFiles_Open(t *testing.T) {
 	}
 }
 
+func TestWebFiles_OpenJSAlias(t *testing.T) {
+	frontend := fstest.MapFS{
+		"embed.mjs":   {Data: []byte("module embed")},
+		"counter.js":  {Data: []byte("operator's own counter")},
+		"counter.mjs": {Data: []byte("module counter")},
+		"widget.mjs":  {Data: []byte("module widget")},
+	}
+	embedded := fstest.MapFS{
+		"legacy.mjs": {Data: []byte("module legacy")},
+		"widget.js":  {Data: []byte("embedded widget")},
+	}
+	w := webFiles{frontend: frontend, embedded: embedded}
+
+	tbl := []struct {
+		name    string
+		lookup  string
+		want    string
+		wantErr error
+	}{
+		{name: "missing js served from the mjs sibling", lookup: "embed.js", want: "module embed"},
+		{name: "alias reaches the embedded assets too", lookup: "legacy.js", want: "module legacy"},
+		{name: "a real js file wins over its sibling", lookup: "counter.js", want: "operator's own counter"},
+		{name: "an embedded js wins over a frontend sibling", lookup: "widget.js", want: "embedded widget"},
+		{name: "mjs is still served directly", lookup: "embed.mjs", want: "module embed"},
+		{name: "neither name present", lookup: "absent.js", wantErr: fs.ErrNotExist},
+		{name: "only js aliases, not other extensions", lookup: "embed.html", wantErr: fs.ErrNotExist},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := w.Open(tt.lookup)
+			if tt.wantErr != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			defer f.Close()
+			b, err := io.ReadAll(f)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(b))
+		})
+	}
+}
+
+func TestWebFiles_OpenJSAliasNamesTheRequestedFile(t *testing.T) {
+	w := webFiles{frontend: fstest.MapFS{}, embedded: fstest.MapFS{}}
+
+	_, err := w.Open("absent.js")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+	assert.Contains(t, err.Error(), "absent.js")
+	assert.NotContains(t, err.Error(), "absent.mjs")
+}
+
+func TestWebFiles_OpenJSAliasUnreadableSibling(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file permissions")
+	}
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "embed.mjs"), []byte("module embed"), 0o000))
+	w := webFiles{frontend: os.DirFS(dir), embedded: fstest.MapFS{}}
+
+	f, err := w.Open("embed.js")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, fs.ErrPermission)
+	assert.NotErrorIs(t, err, fs.ErrNotExist, "an unreadable sibling must not render as 404")
+	if err == nil {
+		_ = f.Close()
+	}
+}
+
 // TestEmptyFS_ServesNothing pins the stand-in used when the frontend source cannot be opened:
 // every name must report as missing rather than panicking, since it backs a nil-free fallback.
 func TestEmptyFS_ServesNothing(t *testing.T) {

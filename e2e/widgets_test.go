@@ -104,6 +104,44 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 	})
 }
 
+func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
+	thread := threadURL(t)
+
+	poster := newPage(t)
+	frame := openThread(t, poster)
+	signInAnon(t, frame, "aliastester")
+	postComment(t, frame, "alias "+runID)
+
+	want := strconv.Itoa(commentCount(t, poster, thread))
+
+	page := newPage(t)
+	pauseForAuthLimit()
+	_, err := page.Goto(baseURL + "/web/privacy.html")
+	require.NoError(t, err)
+
+	_, err = page.Evaluate(`([host, url]) => {
+		window.remark_config = { host, site_id: 'remark' };
+		const node = document.createElement('span');
+		node.className = 'remark42__counter';
+		node.dataset.url = url;
+		document.body.appendChild(node);
+	}`, []any{baseURL, thread})
+	require.NoError(t, err)
+
+	counter := page.Locator(".remark42__counter")
+	blank, err := pollText(counter)
+	require.NoError(t, err)
+	require.Empty(t, blank, "the counter must start blank or the assertion below is vacuous")
+
+	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/counter.js")})
+	require.NoError(t, err)
+
+	eventually(t, waitTimeout, "the legacy counter.js url never filled the counter", func() bool {
+		txt, ierr := pollText(counter)
+		return ierr == nil && txt == want
+	})
+}
+
 // commentCount asks the API what the counter should be showing
 func commentCount(t *testing.T, page playwright.Page, url string) int {
 	t.Helper()
