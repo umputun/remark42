@@ -49,7 +49,7 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 
 	before := commentCount(t, poster, counted)
 	for i := range 2 {
-		status, body := pageFetch(t, poster, "POST", baseURL+"/api/v1/comment?site=remark", map[string]interface{}{
+		status, body := pageFetch(t, poster, "POST", baseURL+"/api/v1/comment?site=remark", map[string]any{
 			"text":    fmt.Sprintf("counted %d %s", i, runID),
 			"locator": map[string]string{"site": "remark", "url": counted},
 		})

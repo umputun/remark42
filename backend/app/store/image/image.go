@@ -43,8 +43,8 @@ type Service struct {
 	wg          sync.WaitGroup
 	submitCh    chan submitReq
 	once        sync.Once
-	term        int32 // term value used atomically to detect emergency termination
-	submitCount int32 // atomic increment for counting submitted images
+	term        atomic.Int32 // term value used atomically to detect emergency termination
+	submitCount atomic.Int32 // atomic increment for counting submitted images
 }
 
 // ServiceParams contains externally adjustable parameters of Service
@@ -113,7 +113,7 @@ func (s *Service) Submit(idsFn func() []string) {
 		s.wg.Go(func() {
 			for req := range s.submitCh {
 				// wait for EditDuration expiration with emergency pass on term
-				for atomic.LoadInt32(&s.term) == 0 && time.Since(req.TS) <= s.EditDuration {
+				for s.term.Load() == 0 && time.Since(req.TS) <= s.EditDuration {
 					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
 				}
 				err := s.Commit(req.idsFn)
@@ -121,13 +121,13 @@ func (s *Service) Submit(idsFn func() []string) {
 					log.Printf("[WARN] image commit error %v", err)
 				}
 
-				atomic.AddInt32(&s.submitCount, -1)
+				s.submitCount.Add(-1)
 			}
 			log.Printf("[INFO] image submitter terminated")
 		})
 	})
 
-	atomic.AddInt32(&s.submitCount, 1)
+	s.submitCount.Add(1)
 
 	// reset cleanup timer before submitting the images
 	// to prevent them from being cleaned up while waiting for EditDuration to expire
@@ -196,14 +196,14 @@ func (s *Service) Close(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if atomic.LoadInt32(&s.submitCount) == 0 {
+				if s.submitCount.Load() == 0 {
 					return
 				}
 			}
 		}
 	}
 
-	atomic.StoreInt32(&s.term, 1) // enforce non-delayed commits for all ids left in submitCh
+	s.term.Store(1) // enforce non-delayed commits for all ids left in submitCh
 	waitForTerm(ctx)
 
 	if s.submitCh != nil {

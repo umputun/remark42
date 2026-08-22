@@ -44,10 +44,10 @@ func TestTitle_GetTitle(t *testing.T) {
 func TestTitle_Get(t *testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
-	var hits int32
+	var hits atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/good" {
-			atomic.AddInt32(&hits, 1)
+			hits.Add(1)
 			_, err := w.Write([]byte("<html><title>\n\n blah 123\n</title><body> 2222</body></html>"))
 			assert.NoError(t, err)
 			return
@@ -68,7 +68,7 @@ func TestTitle_Get(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "blah 123", r)
 	}
-	assert.Equal(t, int32(1), atomic.LoadInt32(&hits))
+	assert.Equal(t, int32(1), hits.Load())
 }
 
 func TestTitle_GetConcurrent(t *testing.T) {
@@ -78,10 +78,10 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	}
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
-	var hits int32
+	var hits atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.String(), "/good") {
-			atomic.AddInt32(&hits, 1)
+			hits.Add(1)
 			_, err := fmt.Fprintf(w, "<html><title>blah 123 %s</title><body>%s</body></html>", r.URL.String(), body.String())
 			assert.NoError(t, err)
 			return
@@ -100,15 +100,15 @@ func TestTitle_GetConcurrent(t *testing.T) {
 		})
 	}
 	g.Wait()
-	assert.Equal(t, int32(100), atomic.LoadInt32(&hits))
+	assert.Equal(t, int32(100), hits.Load())
 }
 
 func TestTitle_GetFailed(t *testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
-	var hits int32
+	var hits atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		atomic.AddInt32(&hits, 1)
+		hits.Add(1)
 		w.WriteHeader(404)
 	}))
 	defer ts.Close()
@@ -121,7 +121,7 @@ func TestTitle_GetFailed(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "", r)
 	}
-	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "hit once, errors cached")
+	assert.Equal(t, int32(1), hits.Load(), "hit once, errors cached")
 }
 
 func TestTitle_DoubleClosed(t *testing.T) {

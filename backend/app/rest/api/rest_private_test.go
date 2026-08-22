@@ -144,7 +144,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 
 		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
 		// retrieve the image from the cache
-		imgURL := strings.Split(strings.Split(string(b), "src=\"")[1], "\"")[0]
+		imgURL, _, _ := strings.Cut(strings.Split(string(b), "src=\"")[1], "\"")
 		// replace srv.RemarkURL with ts.URL
 		imgURL = strings.ReplaceAll(imgURL, srv.RemarkURL, ts.URL)
 		resp, err = http.Get(imgURL)

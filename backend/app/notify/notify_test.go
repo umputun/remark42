@@ -2,7 +2,6 @@ package notify
 
 import (
 	"fmt"
-	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
@@ -298,7 +297,7 @@ func TestService_Nop(t *testing.T) {
 	s := NopService
 	s.Submit(Request{Comment: store.Comment{}})
 	s.Close()
-	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.closed))
+	assert.Equal(t, uint32(1), s.closed.Load())
 }
 
 type mockStore struct {

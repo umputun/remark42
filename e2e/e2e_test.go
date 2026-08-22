@@ -520,7 +520,7 @@ func eventually(t *testing.T, timeout time.Duration, msg string, fn func() bool)
 
 // pageFetch issues a request from the page's own session, so it carries the browser's cookies
 // and the XSRF header the widget's own calls carry. body may be nil for a bodyless request
-func pageFetch(t *testing.T, page playwright.Page, method, url string, body interface{}) (status int, respBody string) {
+func pageFetch(t *testing.T, page playwright.Page, method, url string, body any) (status int, respBody string) {
 	t.Helper()
 
 	payload := ""
@@ -542,10 +542,10 @@ func pageFetch(t *testing.T, page playwright.Page, method, url string, body inte
 			body: payload === '' ? undefined : payload,
 		});
 		return {status: resp.status, body: await resp.text()};
-	}`, map[string]interface{}{"method": method, "url": url, "payload": payload})
+	}`, map[string]any{"method": method, "url": url, "payload": payload})
 	require.NoError(t, err)
 
-	out, ok := res.(map[string]interface{})
+	out, ok := res.(map[string]any)
 	require.True(t, ok, "unexpected shape from the page: %#v", res)
 	switch v := out["status"].(type) {
 	case int:

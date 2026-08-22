@@ -62,9 +62,9 @@ func TestMain_WithWebhook(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	var webhookSent int32
+	var webhookSent atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		atomic.StoreInt32(&webhookSent, 1)
+		webhookSent.Store(1)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		b, e := io.ReadAll(r.Body)
@@ -116,7 +116,7 @@ func TestMain_WithWebhook(t *testing.T) {
 
 	// wait for webhook to be sent before shutting down
 	assert.Eventually(t, func() bool {
-		return atomic.LoadInt32(&webhookSent) == int32(1)
+		return webhookSent.Load() == int32(1)
 	}, 30*time.Second, 10*time.Millisecond, "webhook was not sent")
 }
 

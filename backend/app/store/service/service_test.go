@@ -219,9 +219,9 @@ func TestService_Put(t *testing.T) {
 }
 
 func TestService_SetTitle(t *testing.T) {
-	var titleEnable int32
+	var titleEnable atomic.Int32
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.LoadInt32(&titleEnable) == 0 {
+		if titleEnable.Load() == 0 {
 			w.WriteHeader(404)
 		}
 		if r.URL.String() == "/post1" {
@@ -263,7 +263,7 @@ func TestService_SetTitle(t *testing.T) {
 
 	b.TitleExtractor.cache.Purge()
 
-	atomic.StoreInt32(&titleEnable, 1)
+	titleEnable.Store(1)
 	c, err := b.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", c.PostTitle)
@@ -1886,8 +1886,8 @@ func TestService_alterCommentsFlagCaching(t *testing.T) {
 		}
 		svc := DataStore{Engine: &engineMock}
 
-		var comments []store.Comment
-		for i := 0; i < 5; i++ {
+		comments := make([]store.Comment, 0, 5)
+		for i := range 5 {
 			comments = append(comments, store.Comment{ID: fmt.Sprintf("c%d", i),
 				User: store.User{ID: "u1"}, Locator: store.Locator{SiteID: "site1"}})
 		}
