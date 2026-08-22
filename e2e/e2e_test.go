@@ -274,6 +274,11 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 			// overwriting each other: the counter restarts with every process
 			name := strings.ReplaceAll(t.Name(), "/", "-")
 			path := filepath.Join(traceDir, fmt.Sprintf("%s-%d-%d.zip", name, os.Getpid(), seq))
+			// the driver creates the parent of the trace path too, but nothing here states or
+			// tests that, so the suite makes the directory itself
+			if derr := os.MkdirAll(traceDir, 0o750); derr != nil {
+				t.Logf("could not create %s: %v", traceDir, derr)
+			}
 			if serr := ctx.Tracing().Stop(path); serr != nil {
 				t.Logf("could not write the trace to %s: %v", path, serr)
 			}
