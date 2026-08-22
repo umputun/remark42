@@ -14,6 +14,7 @@ import {
   AUTH_COOKIE_TTL_SECONDS,
 } from './fetcher';
 import * as cookies from './cookies';
+import { StaticStore } from './static-store';
 
 type FetchImplementationProps = {
   status?: number;
@@ -355,6 +356,47 @@ describe('fetcher', () => {
       });
 
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Something went wrong.', 0));
+    });
+  });
+
+  describe('server clock skew', () => {
+    beforeEach(() => {
+      delete StaticStore.serverClientTimeDiffMs;
+    });
+
+    it('records the skew in milliseconds', async () => {
+      // consumers add this to an epoch in milliseconds, so seconds would be out by 1000x and
+      // the correction it exists to apply would effectively not happen
+      mockFetch({ headers: { date: new Date(Date.now() - 60_000).toUTCString() } });
+      await apiFetcher.get('/anything');
+
+      expect(StaticStore.serverClientTimeDiffMs).toBeGreaterThan(55_000);
+      expect(StaticStore.serverClientTimeDiffMs).toBeLessThan(65_000);
+    });
+
+    it('leaves the skew alone when the response carries no usable date', async () => {
+      // an unparsable header used to fall back to a zero timestamp, which makes the "skew"
+      // the whole epoch and pushes anything derived from it decades into the future
+      StaticStore.serverClientTimeDiffMs = 1234;
+
+      mockFetch({ headers: {} });
+      await apiFetcher.get('/anything');
+      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
+
+      mockFetch({ headers: { date: 'not a date' } });
+      await apiFetcher.get('/anything');
+      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
+    });
+
+    it('ignores a skew too large to be a clock difference', async () => {
+      // Date.parse is lenient: '0' is a valid date to it, so an implausible reading arrives
+      // through the branch that parses rather than the one that rejects
+      StaticStore.serverClientTimeDiffMs = 1234;
+
+      mockFetch({ headers: { date: '0' } });
+      await apiFetcher.get('/anything');
+
+      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
     });
   });
 });

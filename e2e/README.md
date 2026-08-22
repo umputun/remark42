@@ -69,7 +69,7 @@ Three settings exist for the tests rather than for realism, and each is there fo
 
 Each test gets its own comment thread from a query string on the demo page, since the demo page passes `window.location.href` as `remark_config.url` and remark42 keys comments by it. A per-run id keeps threads apart from those an earlier run left behind.
 
-The thread URL carries no underscores on purpose: collapse persistence stores its localStorage keys as `siteID_url_commentID` and splits them on `_`, so an underscore anywhere in the page URL makes the entry unreadable on the next load.
+Thread URLs deliberately keep the underscores a test name carries, since collapse persistence keys off the page url and a url containing an underscore is the case worth covering.
 
 ## Browsers
 

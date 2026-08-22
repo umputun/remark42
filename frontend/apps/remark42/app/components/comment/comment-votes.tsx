@@ -21,7 +21,7 @@ type Props = {
   disabled?: boolean;
 };
 
-export function CommentVotes({ id, votes, vote, disabled }: Props) {
+export function CommentVotes({ id, votes, vote, controversy, disabled }: Props) {
   const intl = useIntl();
   const dispatch = useDispatch();
   const [loadingState, setLoadingState] = useState<{ vote: number; votes: number } | null>(null);
@@ -72,8 +72,11 @@ export function CommentVotes({ id, votes, vote, disabled }: Props) {
         }}
       >
         <div
-          title={intl.formatMessage(messages.score)}
-          // title={intl.formatMessage(messages.controversy, { value: controversy })}
+          title={
+            controversy
+              ? intl.formatMessage(messages.controversy, { value: controversy.toFixed(2) })
+              : intl.formatMessage(messages.score)
+          }
           className={clsx(styles.votes, {
             [styles.votesNegative]: votes < 0,
             [styles.votesPositive]: votes > 0,
