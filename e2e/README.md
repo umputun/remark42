@@ -61,7 +61,7 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 
 ## The stack
 
-`compose-e2e-test.yml` at the repository root runs six services, each bound to the loopback interface since it holds a known secret and an admin shared id:
+`compose-e2e-test.yml` at the repository root runs ten services, each bound to the loopback interface since it holds a known secret and an admin shared id:
 
 - **remark42** on `:8080`, with the dev oauth2 provider on `:8084`, anonymous and email sign-in
 - **remark42-shortedit** on `:8081`, with `EDIT_TIME=15s` and anonymous sign-in only, since the dev oauth2 provider's port is fixed at 8084 and cannot be published twice. It exists so the expired-edit path is observable without holding a test open for the default five minutes
@@ -70,11 +70,15 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 - **remark42-noauth** on `:8085`, with no auth provider at all, which the widget has to say something about, and with `ALLOWED_HOSTS` set to its own address so it doubles as the instance that refuses to be framed elsewhere
 - **remark42-anonvote** on `:8086`, with `ANON_VOTE` and the `VOTES_IP` it depends on, since the default configuration turns an anonymous vote down
 - **host-site** on `:8090`, an nginx serving `e2e/hostsite/`, which is a page on an origin the widget is not served from. Every other host page here is served by remark42 itself, so without it the separate-domain setup the manuals describe is never exercised. `post.html` embeds the main instance; `restricted.html` embeds the one whose `ALLOWED_HOSTS` names only itself, which is the refusal case
+- **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the widget write its own cookies through `setAuthCookie`, so the attributes it chooses are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the writer keys off the `X-JWT` header rather than off the provider, and that is an assumption worth measuring rather than asserting
+- **host-site-https** on `:8444`, an nginx serving the same `e2e/hostsite/` over TLS, so the embed is cross-site *and* secure. `post-https.html` is its page
 - **mailpit** on `:8025`, which catches the email-auth verification message and the subscription token for the suite to read back
+
+Both TLS services read a self-signed certificate from `e2e/tls/`, which `e2e/tls/generate.sh` writes and `.gitignore` keeps out of the tree. `make e2e-up`, the workflow and `ensureStack` all run it before compose, so bringing the stack up by hand with a bare `docker compose up` is the one path that needs it run first. Every browser context and the readiness client accept that certificate, and they talk to nothing else.
 
 The main instance enables the notify module (`NOTIFY_USERS=email`). Without it `email_notifications` is false in the config, the widget never renders the subscribe control, and the whole subscribe, confirm and unsubscribe flow is unreachable from a browser.
 
-The four remark42 instances beyond the first offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` gets its admin from `ADMIN_SHARED_ID`, since the anonymous provider derives the user id from the name and the id for a chosen name can be written into the compose file ahead of time.
+The remark42 instances beyond the first offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` gets its admin from `ADMIN_SHARED_ID`, since the anonymous provider derives the user id from the name and the id for a chosen name can be written into the compose file ahead of time.
 
 Three settings exist for the tests and not for realism, and each is there for a reason:
 
@@ -84,22 +88,22 @@ Three settings exist for the tests and not for realism, and each is there for a 
 
 ## What this suite cannot reach
 
-Every service here speaks http, and nothing in it holds a certificate. Any behaviour the browser gates on the page protocol is therefore invisible: a cookie the widget writes with `Secure`, anything keyed on `window.location.protocol`, and the whole third-party cookie form of `SameSite=None; Secure; Partitioned`, which is the only one browsers still accept from an embedded frame.
+The stack now carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. What is still out of reach is a browser engine other than Chromium for them, since the resolver rules the hostnames need are a Chromium flag.
 
-That is not hypothetical. `setAuthCookie` prefixed its cookies with `__Host-` on any https page, so a real deployment stored `__Host-JWT` while the backend looked for `JWT`; it survived because the prefix comes from the page protocol and every test and the dev server run on http. Fixed in #2197, under a second suite pinned to an https page, because this one cannot show it.
-
-There is a second trap waiting for whoever gives the stack TLS and then tries to prove the third-party case. Playwright's own default `--disable-features` argument carries `ThirdPartyStoragePartitioning`, and it beats both `--test-third-party-cookie-phaseout` and `--block-third-party-cookies` passed through `Args`. A run configured that way keeps an ordinary third-party cookie exactly as it would with no flags at all, so it proves nothing while looking like it proved something. The lever is `IgnoreDefaultArgs` on the launch options: drop that default entry and re-supply `--disable-features` without that one feature. Measured on a cross-site https embed:
+The trap that remains is which cookie policy a run is under. Playwright's own default `--disable-features` argument carries `ThirdPartyStoragePartitioning`, and it beats both `--test-third-party-cookie-phaseout` and `--block-third-party-cookies` passed through `Args`. A run configured that way keeps an ordinary third-party cookie exactly as it would with no flags at all, so it proves nothing while looking like it proved something. The lever is `IgnoreDefaultArgs` on the launch options: drop that default entry and re-supply `--disable-features` without that one feature, which is what `TestHTTPS_SessionSurvivesThirdPartyCookieBlocking` does. Measured on a cross-site https embed:
 
 | | ordinary third-party cookie | `Partitioned` cookie |
 |---|---|---|
 | Playwright defaults | kept | kept |
 | partitioning left enabled | dropped | stored, with its partition key |
 
-So a blocking run has to assert a control before anything it reports can be believed: set an ordinary `SameSite=None` cookie from inside the widget frame and require the browser to drop it. If it survives, the run is not blocking anything.
+So a blocking run has to assert a control before anything it reports can be believed: set an ordinary `SameSite=None` cookie from inside the widget frame and require the browser to drop it. If it survives, the run is not blocking anything. The argument list is Playwright's own and version-specific, so that control is what keeps it from rotting silently.
+
+That control has to read the cookie back through `document.cookie` in the same frame evaluate that writes it, never through `page.Context().Cookies()`. The two are separate channels with no ordering between them: in the Chromium that Playwright 1.62.1 ships, `CookieJar::SetCookie` queues the write and returns, and the renderer's own `document.cookie` getter is the barrier that forces it to settle, while Playwright's context read is a browser-session `Storage.getCookies` that never touches that frame's jar. A control read that way can find the name absent because the write has not landed, which is the one outcome it exists to rule out. It also writes a valid `Secure; SameSite=None; Partitioned` sentinel and requires that one to be present, so "the browser refused the control" is distinguishable from "nothing was written at all".
 
 None of that reaches the widget's own storage fallback, which the auth panel offers as `comments.html` when `IS_THIRD_PARTY && !IS_STORAGE_AVAILABLE`. `IS_STORAGE_AVAILABLE` stays true even with partitioning properly enforced, because Chromium partitions `localStorage` instead of denying it, so the probe behind that constant never throws and the condition cannot fire. That case needs WebKit, not a Chromium flag.
 
-The practical consequence is for the cross-origin case in `crossorigin_test.go`, which asserts rendering and deliberately not signing in. Give the stack TLS and signing in there becomes testable, and the assertion that matters is **the reload**: the widget holds its token in memory for the life of a page, so a case that signs in and posts without reloading passes while persistence is entirely broken.
+Partitioned cookies do not make cross-domain OAuth work, whatever the plan once implied. The partition key is the top-level site at the moment the cookie is set, and `oauthSignin` opens a popup, which is its own top-level context: the callback cookie is keyed to the auth host while the frame is keyed to the embedder, and the two never match. The forms that do work embedded are the ones whose cookie is written inside the frame, which is anonymous, email and telegram. A case asserting OAuth works cross-domain would be asserting something untrue.
 
 ## Isolation
 

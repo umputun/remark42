@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>A page on somebody else's site, over TLS</title>
+  </head>
+  <body>
+    <h1>A page on somebody else's site, over TLS</h1>
+    <p>
+      Served from a different origin than the comments it embeds, and over https, which is the only
+      way the widget's cookies can carry Secure, SameSite=None and Partitioned.
+    </p>
+    <div id="remark42"></div>
+    <script>
+      var remark_config = {
+        host: 'https://remark42-https:8443',
+        site_id: 'remark',
+        components: ['embed'],
+        url: window.location.href,
+      };
+
+      (function (c, d) {
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          s.type = 'module';
+          s.async = true;
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + '.mjs';
+          (d.head || d.body).appendChild(s);
+        }
+      })(remark_config.components, document);
+    </script>
+  </body>
+</html>

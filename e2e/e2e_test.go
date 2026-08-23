@@ -16,6 +16,7 @@
 //   - embed_test.go: the surface the host page holds, placeholder to destroy
 //   - config_test.go: the remark_config surface an integrator sets
 //   - crossorigin_test.go: a host page on an origin the widget is not served from
+//   - https_test.go: the widget over TLS, where the browser's protocol gates apply
 //   - deployment_test.go: the instances whose configuration is the thing under test
 //   - subscribe_test.go: the email subscription round trip
 //   - webfiles_test.go: the published /web surface
@@ -24,6 +25,7 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -59,6 +61,10 @@ const (
 	// a page on an origin the widget is not served from, see compose-e2e-test.yml
 	hostSiteURL = "http://host-site:8090"
 
+	// the host page over TLS, which is the only way to reach what the browser gates on the page
+	// protocol. the certificate is self-signed, so every context passes IgnoreHTTPSErrors
+	httpsHostSiteURL = "https://host-site-https:8444"
+
 	// what this process asks for, since it is not the browser and has no resolver rules
 	probeURL          = "http://127.0.0.1:8080"
 	shortEditProbeURL = "http://127.0.0.1:8081"
@@ -67,6 +73,8 @@ const (
 	noAuthProbeURL    = "http://127.0.0.1:8085"
 	anonVoteProbeURL  = "http://127.0.0.1:8086"
 	hostSiteProbeURL  = "http://127.0.0.1:8090"
+	httpsProbeURL     = "https://127.0.0.1:8443"
+	httpsHostProbeURL = "https://127.0.0.1:8444"
 	mailpitURL        = "http://127.0.0.1:8025"
 
 	composeFile = "../compose-e2e-test.yml"
@@ -112,7 +120,12 @@ var (
 
 	// the default client has no timeout, so a port that accepts and then stalls would block
 	// a probe well past its own deadline and leave TestMain looking hung
-	probeClient = &http.Client{Timeout: 5 * time.Second}
+	probeClient = &http.Client{
+		Timeout: 5 * time.Second,
+		// the https services in the stack are self-signed, and this client only ever talks to
+		// them, so refusing the certificate would only stop the readiness probe
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, //nolint:gosec // test stack
+	}
 )
 
 // everything under /auth/ is rate limited to 2 requests a second, and that figure is a bare
@@ -164,7 +177,8 @@ func TestMain(m *testing.M) {
 			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
 				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
 				"MAP remark42-noauth 127.0.0.1, MAP remark42-anonvote 127.0.0.1, " +
-				"MAP host-site 127.0.0.1",
+				"MAP host-site 127.0.0.1, " +
+				"MAP remark42-https 127.0.0.1, MAP host-site-https 127.0.0.1",
 		},
 	})
 	if err != nil {
@@ -201,6 +215,11 @@ func ensureStack() error {
 	// database and fail later as unexplained locator timeouts
 	if stackReady(2 * time.Second) {
 		return assertStackMatches(stamp, true)
+	}
+
+	// the https services will not start without one, and compose cannot make it itself
+	if out, gerr := exec.Command("./tls/generate.sh").CombinedOutput(); gerr != nil {
+		return fmt.Errorf("generating the test certificate: %w\n%s", gerr, out)
 	}
 
 	log.Printf("[INFO] no complete stack on 127.0.0.1, bringing one up from %s", composeFile)
@@ -245,6 +264,8 @@ func stackReady(timeout time.Duration) bool {
 		noAuthProbeURL + "/ping",
 		anonVoteProbeURL + "/ping",
 		hostSiteProbeURL + "/post.html",
+		httpsProbeURL + "/ping",
+		httpsHostProbeURL + "/post-https.html",
 		mailpitURL + "/api/v1/messages",
 	} {
 		if err := serverReady(url, timeout); err != nil {
@@ -306,6 +327,10 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 // says about itself is the thing under test
 func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.BrowserNewContextOptions) playwright.Page {
 	t.Helper()
+	// the https services carry a self-signed certificate, and a context that refuses it cannot
+	// reach them at all. harmless for the http ones
+	opts.IgnoreHttpsErrors = playwright.Bool(true)
+
 	ctx, err := b.NewContext(opts)
 	require.NoError(t, err)
 
