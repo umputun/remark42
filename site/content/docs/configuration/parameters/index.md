@@ -78,9 +78,9 @@ services:
 | image.resize-width             | IMAGE_RESIZE_WIDTH             | `2400`                  | width of a resized image                                 |
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                   | height of a resized image                                |
 | auth.ttl.jwt                   | AUTH_TTL_JWT                   | `5m`                    | JWT TTL                                                  |
-| auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                  | cookie TTL                                               |
+| auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                  | TTL of the server-set auth cookie. Note it does not govern the cookie the frontend writes under `auth.send-jwt-header`, which is fixed at 200h |
 | auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; the server-set cookies are still sent. [See security considerations](#security-considerations-for-authsend-jwt-header). |
-| auth.same-site                 | AUTH_SAME_SITE                 | `default`               | set same site policy for cookies (`default`, `none`, `lax` or `strict`) |
+| auth.same-site                 | AUTH_SAME_SITE                 | `default`               | SameSite attribute for the server-set auth cookies (`default`, `none`, `lax` or `strict`). `default` emits no attribute at all and leaves the choice to the browser, which is not the same as `lax` |
 | auth.apple.cid                 | AUTH_APPLE_CID                 |                         | Apple client ID (App ID or Services ID)                  |
 | auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple service ID                                         |
 | auth.apple.kid                 | AUTH_APPLE_KID                 |                         | Apple Private key ID                                     |
