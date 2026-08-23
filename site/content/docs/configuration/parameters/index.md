@@ -197,8 +197,10 @@ When `auth.send-jwt-header=true` is enabled:
   - `SameSite=Strict` when the widget and the page share an origin, which is what prevents the
     cookie being sent from another site
   - `SameSite=None; Secure; Partitioned` when the widget is embedded on another domain, where
-    `Strict` would never be sent at all. `Partitioned` confines the cookie to that embedding site,
-    so it is not readable from any other page the browser visits
+    `Strict` would never be sent at all. `Partitioned` keys the cookie to the embedding top-level
+    site, so a different site gets a separate cookie and cannot reach this one. Pages and
+    subdomains under that same site do share it, since the partition key is the site rather than
+    the page
   - Secure flag automatically added on HTTPS connections
   - Double Submit Cookie pattern with XSRF token matching the JWT ID
 

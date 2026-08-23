@@ -12,7 +12,7 @@ Unless discussion [#1139](https://github.com/umputun/remark42/discussions/1139) 
 
 Set `ALLOWED_HOSTS="'self',https://example1.org,https://example2.org"` with your domain names, `AUTH_SAME_SITE=none`, and `AUTH_SEND_JWT_HEADER=true`.
 
-`AUTH_SEND_JWT_HEADER` is the one that keeps a reader signed in across a page reload on a browser that blocks third-party cookies, which today means Safari always and Chrome increasingly. Read [its security considerations](@/docs/configuration/parameters/index.md#security-considerations-for-authsend-jwt-header) before enabling it: it puts the token in a cookie JavaScript can read, which costs XSS exposure that a server-set `HttpOnly` cookie does not.
+`AUTH_SEND_JWT_HEADER` is the one that keeps a reader signed in across a page reload on Safari, in Chrome Incognito, and in any browser configured to block third-party cookies. Read [its security considerations](../../configuration/parameters/#security-considerations-for-authsend-jwt-header) before enabling it: it puts the token in a cookie JavaScript can read, which costs XSS exposure that a server-set `HttpOnly` cookie does not.
 
 The `'self'` in `ALLOWED_HOSTS` value means "domain where Remark42 is installed on" and needed if you want `remark42.example.com/web/` to work in case you want to test something with it.
 
