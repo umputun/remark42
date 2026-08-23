@@ -33,13 +33,46 @@ The `'self'` in `ALLOWED_HOSTS` value means "domain where Remark42 is installed 
 
 `ALLOWED_HOSTS` sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which, once enabled, limits the domains where Remark42 would work. The default value is `*` so that it would work on any domain.
 
-`AUTH_SAME_SITE` sets the [SAME_SITE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute for authorisation cookies, allowing Remark42 either on the original domain and subdomains there (default value, which equals to `Lax`) or allows setting authorisation cookies on any domain where remark42 is shown (`None` setting).
+`AUTH_SAME_SITE` sets the [SameSite](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute on the cookies the server sets. `none` lets those cookies be set on any domain where Remark42 is shown.
+
+The `default` setting does not mean `Lax`. It means Remark42 emits no `SameSite` attribute at all and leaves the choice to the browser, and browsers differ: Chromium treats a missing attribute as `Lax` and so refuses the cookie cross-site, while Firefox accepts it. That difference is not a detail, because it decides which of the two cookie pairs below a reader actually ends up with.
 
 `SameSite=None` is not sufficient on its own, and with `AUTH_SEND_JWT_HEADER` it is not necessary either. A browser that blocks third-party cookies drops a cookie set by Remark42 for a reader on another domain no matter what its `SameSite` value is, unless the cookie is explicitly marked [`Partitioned`](https://developer.mozilla.org/en-US/docs/Web/Privacy/Privacy_sandbox/Partitioned_cookies), and the server-set cookies are not. `AUTH_SEND_JWT_HEADER=true` is what closes that: the token comes back in an `X-JWT` response header and the widget stores it in its own cookie, written from inside the embedded frame and marked `SameSite=None; Secure; Partitioned`, so the browser keeps it for that embedding site and sends it back after a reload. That cookie is the widget's own doing and owes nothing to `AUTH_SAME_SITE`, which reaches only the pair the server sets.
 
 A browser that refuses a cross-site `Set-Cookie` lacking `SameSite=None` refuses it outright, so with the setting left at its default the server's pair is absent from the jar, not present with a stricter attribute.
 
 Note that this applies to Email, Telegram and anonymous authorisation, which the widget performs from inside the frame. It does not rescue oAuth, which completes in a popup that is a top-level page of its own, so the cookie set there belongs to the Remark42 domain and the embedded frame never sees it.
+
+### What each browser actually does
+
+Measured on real domains over real certificates, with Remark42 on one registrable domain and the
+host page on another, signing in and then reloading. Every "blocked" column below was verified with
+a control cookie: an ordinary third-party cookie written from inside the widget frame has to be
+dropped, or the run is not blocking anything and proves nothing.
+
+| configuration | Chrome, default | Chrome, third-party cookies blocked | Firefox, default | Firefox, "block all third-party" | Safari |
+| --- | --- | --- | --- | --- | --- |
+| `AUTH_SEND_JWT_HEADER` only | works | works | works | fails | works |
+| `AUTH_SAME_SITE=none` only | works | fails | works | fails | fails |
+| both | works | works | works | fails | works |
+
+Three things in that table are worth spelling out.
+
+**Safari needs no configuring to break the old recipe.** It blocks third-party cookies out of the
+box, so `AUTH_SAME_SITE=none` on its own has already stopped working there for every reader. This
+is not a future deprecation to plan for.
+
+**Firefox reaches "works" by a different route, and a weaker one.** Chrome and Safari refuse the
+server's cookie when it carries no `SameSite` attribute, which leaves the field clear for the
+widget to write its own partitioned pair. Firefox accepts that cookie, and because the server's
+`JWT` is `HttpOnly`, the browser then refuses to let the widget's script overwrite it: a cookie set
+by JavaScript may not replace an `HttpOnly` one of the same name. So on Firefox the session rides
+on an ordinary unpartitioned third-party cookie even with the header flag on, and it disappears the
+moment the reader blocks those.
+
+**No configuration survives Firefox's "block all third-party cookies" setting.** That mode discards
+partitioned cookies too, so the `Partitioned` escape hatch does not apply. A reader who has turned
+it on cannot stay signed in on an embedded widget, and nothing in Remark42 can change that.
 
 Here are all possible combinations of these two:
 
