@@ -79,7 +79,7 @@ services:
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                   | height of a resized image                                |
 | auth.ttl.jwt                   | AUTH_TTL_JWT                   | `5m`                    | JWT TTL                                                  |
 | auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                  | cookie TTL                                               |
-| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | send JWT as a header instead of a server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie. [See security considerations](#security-considerations-for-authsend-jwt-header). |
+| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; the server-set cookies are still sent. [See security considerations](#security-considerations-for-authsend-jwt-header). |
 | auth.same-site                 | AUTH_SAME_SITE                 | `default`               | set same site policy for cookies (`default`, `none`, `lax` or `strict`) |
 | auth.apple.cid                 | AUTH_APPLE_CID                 |                         | Apple client ID (App ID or Services ID)                  |
 | auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple service ID                                         |
