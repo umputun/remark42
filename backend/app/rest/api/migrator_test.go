@@ -280,10 +280,14 @@ func TestMigrator_ImportDouble(t *testing.T) {
 	for i := range 50 {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
-	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
+	// each request needs its own reader. client.Do returns once the response headers are in, which
+	// for an accepted import is before the transport's writeLoop has finished copying the body, so
+	// handing the same strings.Reader to the second NewRequest races that copy: NewRequest reads
+	// Len() to set ContentLength while WriteTo is still advancing it
+	body := `{"version":1}` + strings.Join(recs, "\n")
 	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", strings.NewReader(body))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
@@ -294,7 +298,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 
 	client = &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", strings.NewReader(body))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
