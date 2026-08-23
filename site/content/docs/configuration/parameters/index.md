@@ -194,9 +194,12 @@ When `auth.send-jwt-header=true` is enabled:
 - **Security Impact**: JWT tokens are stored in client-accessible cookies that can be accessed by JavaScript
 - **Vulnerability**: This increases vulnerability to XSS attacks compared to server-set HttpOnly cookies
 - **Implementation Mitigations**:
-  - SameSite=Strict cookies to prevent CSRF attacks
+  - `SameSite=Strict` when the widget and the page share an origin, which is what prevents the
+    cookie being sent from another site
+  - `SameSite=None; Secure; Partitioned` when the widget is embedded on another domain, where
+    `Strict` would never be sent at all. `Partitioned` confines the cookie to that embedding site,
+    so it is not readable from any other page the browser visits
   - Secure flag automatically added on HTTPS connections
-  - __Host- prefix added on HTTPS to prevent subdomain attacks
   - Double Submit Cookie pattern with XSRF token matching the JWT ID
 
 This configuration should only be used when:
