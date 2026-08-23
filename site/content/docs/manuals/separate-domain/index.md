@@ -46,9 +46,11 @@ Note that this applies to Email, Telegram and anonymous authorisation, which the
 ### What each browser actually does
 
 Measured on real domains over real certificates, with Remark42 on one registrable domain and the
-host page on another, signing in and then reloading. Every "blocked" column below was verified with
-a control cookie: an ordinary third-party cookie written from inside the widget frame has to be
-dropped, or the run is not blocking anything and proves nothing.
+host page on another, signing in and then reloading. Chrome and Firefox were driven through
+Playwright, Safari 27 through its own WebDriver, so the Safari column is Safari itself and not an
+approximation of it. Every "blocked" column below was verified with a control cookie: an ordinary
+third-party cookie written from inside the widget frame has to be dropped, or the run is not
+blocking anything and proves nothing.
 
 | configuration | Chrome, default | Chrome, third-party cookies blocked | Firefox, default | Firefox, "block all third-party" | Safari |
 | --- | --- | --- | --- | --- | --- |
@@ -59,8 +61,9 @@ dropped, or the run is not blocking anything and proves nothing.
 Three things in that table are worth spelling out.
 
 **Safari needs no configuring to break the old recipe.** It blocks third-party cookies out of the
-box, so `AUTH_SAME_SITE=none` on its own has already stopped working there for every reader. This
-is not a future deprecation to plan for.
+box while still honouring `Partitioned`, so `AUTH_SAME_SITE=none` on its own has already stopped
+working there for every reader. This is not a future deprecation to plan for. With the header flag
+the widget's own partitioned cookie is readable in the frame and the session survives the reload.
 
 **Firefox reaches "works" by a different route, and a weaker one.** Chrome and Safari refuse the
 server's cookie when it carries no `SameSite` attribute, which leaves the field clear for the
