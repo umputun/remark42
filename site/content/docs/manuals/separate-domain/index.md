@@ -6,7 +6,7 @@ title: Configure Instance on a different domain
 
 ### What doesn't work so far?
 
-Unless discussion [#1139](https://github.com/umputun/remark42/discussions/1139) has a marked answer, authorisation using oAuth like GitHub or Google is impossible on domains other than the original one. Telegram, Email and anonymous auth would work everywhere.
+Unless discussion [#1139](https://github.com/umputun/remark42/discussions/1139) has a marked answer, authorisation using oAuth like GitHub or Google is impossible on domains other than the original one. Telegram, Email and anonymous auth work on allowed HTTPS embedding domains when `AUTH_SEND_JWT_HEADER=true`.
 
 ### Setup
 
@@ -31,7 +31,7 @@ The `'self'` in `ALLOWED_HOSTS` value means "domain where Remark42 is installed 
 
 ### Technical details
 
-`ALLOWED_HOSTS` sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which, once enabled, limits the domains where Remark42 would work. The default value is `*` so that it would work on any domain`.
+`ALLOWED_HOSTS` sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which, once enabled, limits the domains where Remark42 would work. The default value is `*` so that it would work on any domain.
 
 `AUTH_SAME_SITE` sets the [SAME_SITE](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute for authorisation cookies, allowing Remark42 either on the original domain and subdomains there (default value, which equals to `Lax`) or allows setting authorisation cookies on any domain where remark42 is shown (`None` setting).
 
@@ -44,7 +44,7 @@ Note that this applies to Email, Telegram and anonymous authorisation, which the
 Here are all possible combinations of these two:
 
 - Default setup with unaltered variables: comments are shown on any domain, but the authorisation wouldn't work anywhere, except on the same domain Remark42 is installed on and subdomains of it.
-- `ALLOWED_HOSTS` set to a set of domains: comments are shown only on listed domains, and authorisation wouldn't work anywhere, expect on the same domain Remark42 is installed on and subdomains of it.
+- `ALLOWED_HOSTS` set to a set of domains: comments are shown only on listed domains, and authorisation wouldn't work anywhere, except on the same domain Remark42 is installed on and subdomains of it.
 - `AUTH_SAME_SITE` set to `None`: comments are shown on any domain. Authorisation works on browsers that still permit third-party cookies, and stops working on the ones that block them.
 - `ALLOWED_HOSTS` set to a set of domains and `AUTH_SAME_SITE` set to `None`: comments are shown on listed domains, with the same authorisation caveat.
 - `ALLOWED_HOSTS` and `AUTH_SEND_JWT_HEADER=true`, with `AUTH_SAME_SITE` left alone: comments are shown on listed domains, and Email, Telegram and anonymous authorisation survives a reload whatever the browser's third-party cookie policy. This is the recommended arrangement. Adding `AUTH_SAME_SITE=none` on top changes nothing about whether a reader stays signed in; it only adds the server's unpartitioned cookies where the browser still takes them.
