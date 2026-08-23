@@ -10,8 +10,6 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = `${window.location.origin}/web/`;
-
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
