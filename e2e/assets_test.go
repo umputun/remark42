@@ -81,3 +81,60 @@ func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
 		"the widget addressed %q rather than this instance", configURL)
 	assert.NotContains(t, configURL, remarkURLPlaceholder)
 }
+
+// TestAssets_WidgetImagesActuallyLoad covers a class of defect the unit suite structurally cannot
+// see. Asset URLs come from webpack's public path, and the jest stub for `.svg` returns a relative
+// string, so a component that prefixes an already-absolute asset URL with the instance origin
+// looks right under test and ships a doubled URL. That is how the oauth provider icons and the
+// ghost avatar came to 404 on every master build: `${BASE_URL}${icon}` produced
+// `https://hosthttps://host/web/google.svg`.
+//
+// naturalWidth is the discriminator. A broken <img> still exists in the DOM with its src attribute
+// intact, so asserting the element or the attribute proves nothing; only a decoded image has a
+// non-zero natural size. That catches a 404, a malformed URL and a CSP refusal alike.
+func TestAssets_WidgetImagesActuallyLoad(t *testing.T) {
+	page := newPage(t)
+
+	pauseForAuthLimit()
+	_, err := page.Goto(threadURL(t))
+	require.NoError(t, err)
+
+	frame := page.FrameLocator("#remark42 iframe")
+
+	// the auth panel is where the provider icons live, and they are the case that regressed
+	require.NoError(t, frame.Locator(".auth-button").Click())
+	waitVisible(t, frame.Locator(".auth-dropdown"))
+	waitVisible(t, frame.Locator(".oauth-icon").First())
+
+	report, err := frame.Locator(":root").Evaluate(`() => {
+		const imgs = [...document.querySelectorAll('img')];
+		return imgs.map(i => ({
+			src: i.getAttribute('src') || '',
+			loaded: i.complete && i.naturalWidth > 0,
+		}));
+	}`, nil)
+	require.NoError(t, err)
+
+	entries, ok := report.([]any)
+	require.True(t, ok, "unexpected probe shape %T", report)
+	require.NotEmpty(t, entries, "no images in the widget, so this asserts nothing")
+
+	checked := 0
+	for _, e := range entries {
+		m, ok := e.(map[string]any)
+		require.True(t, ok)
+		src, _ := m["src"].(string)
+		loaded, _ := m["loaded"].(bool)
+		if src == "" {
+			continue
+		}
+		checked++
+
+		// the doubling is worth naming separately, because "did not load" alone sends the reader
+		// looking at the file rather than at the url that asked for it
+		assert.LessOrEqual(t, strings.Count(src, "://"), 1,
+			"image url carries more than one origin, so something prefixed an absolute asset url: %s", src)
+		assert.True(t, loaded, "image did not load: %s", src)
+	}
+	require.NotZero(t, checked, "every image had an empty src, so nothing was checked")
+}
