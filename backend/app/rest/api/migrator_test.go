@@ -21,6 +21,86 @@ import (
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
+type gatedReadError struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (r *gatedReadError) Read([]byte) (int, error) {
+	close(r.started)
+	<-r.release
+	return 0, io.ErrUnexpectedEOF
+}
+
+type immediateReadError struct{}
+
+func (immediateReadError) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+
+func TestMigrator_ImportClaimsSiteWhileReadingBody(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("TMPDIR", tempDir)
+	m := Migrator{}
+	firstBody := &gatedReadError{started: make(chan struct{}), release: make(chan struct{})}
+	firstDone := make(chan struct{})
+
+	go func() {
+		defer close(firstDone)
+		m.importCtrl(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/?site=remark42", firstBody))
+	}()
+
+	select {
+	case <-firstBody.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first import did not start reading its body")
+	}
+
+	competing := httptest.NewRecorder()
+	m.importCtrl(competing, httptest.NewRequest(http.MethodPost, "/?site=remark42", immediateReadError{}))
+
+	close(firstBody.release)
+	select {
+	case <-firstDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first import did not return after its body failed")
+	}
+	require.Equal(t, http.StatusConflict, competing.Code, "a concurrent import acquired the same site")
+	require.False(t, m.isBusy("remark42"), "a failed upload kept the migration slot")
+	entries, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	require.Empty(t, entries, "a failed upload left its temporary file behind")
+}
+
+func TestMigrator_ImportFormClaimsSiteWhileReadingBody(t *testing.T) {
+	m := Migrator{}
+	firstBody := &gatedReadError{started: make(chan struct{}), release: make(chan struct{})}
+	firstDone := make(chan struct{})
+	firstRequest := httptest.NewRequest(http.MethodPost, "/?site=remark42", firstBody)
+	firstRequest.Header.Set("Content-Type", "multipart/form-data; boundary=test-boundary")
+
+	go func() {
+		defer close(firstDone)
+		m.importFormCtrl(httptest.NewRecorder(), firstRequest)
+	}()
+
+	select {
+	case <-firstBody.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first form import did not start reading its body")
+	}
+
+	competing := httptest.NewRecorder()
+	m.importCtrl(competing, httptest.NewRequest(http.MethodPost, "/?site=remark42", immediateReadError{}))
+
+	close(firstBody.release)
+	select {
+	case <-firstDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first form import did not return after its body failed")
+	}
+	require.Equal(t, http.StatusConflict, competing.Code, "a concurrent import acquired the same site")
+	require.False(t, m.isBusy("remark42"), "a rejected form upload kept the migration slot")
+}
+
 func TestMigrator_Import(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -573,7 +653,7 @@ func TestMigrator_Remap(t *testing.T) {
 }
 
 func TestMigrator_RemapReject(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// without admin credentials
@@ -586,6 +666,13 @@ func TestMigrator_RemapReject(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	require.True(t, srv.Migrator.setBusyIfFree("remark42"))
+	t.Cleanup(func() { srv.Migrator.clearBusy("remark42") })
+	resp, err = post(t, ts.URL+"/api/v1/admin/remap?site=remark42", "https://remark42.com/* https://www.remark42.com/*")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusConflict, resp.StatusCode)
 }
 
 func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {
