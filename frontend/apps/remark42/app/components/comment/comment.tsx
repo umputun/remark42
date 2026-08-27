@@ -343,7 +343,7 @@ export class Comment extends Component<CommentProps, State> {
     if (props.view === 'preview') {
       return (
         <article className={rootClassName}>
-          <div className={styles.body} dir="auto">
+          <div className={styles.body}>
             {!!o.title && (
               <div className={styles.title}>
                 <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
@@ -364,6 +364,7 @@ export class Comment extends Component<CommentProps, State> {
               className={clsx(styles.text, 'raw-content')}
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
+              dir="auto"
             />
           </div>
         </article>
