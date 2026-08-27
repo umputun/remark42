@@ -6,13 +6,13 @@
   width: 200px;
   box-sizing: border-box;
   line-height: 1.2;
-  text-align: left;
+  text-align: start;
 }
 
 .subscribed,
 .unsubscribed {
   padding: 8px 12px;
-  text-align: left;
+  text-align: start;
   font-size: 14px;
 }
 

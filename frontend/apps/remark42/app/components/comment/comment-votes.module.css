@@ -3,10 +3,10 @@
   align-items: center;
   position: absolute;
   top: 5px;
-  right: 0;
+  inset-inline-end: 0;
   min-width: 72px;
   font-weight: 700;
-  text-align: right;
+  text-align: end;
   line-height: 16px;
   user-select: none;
 }

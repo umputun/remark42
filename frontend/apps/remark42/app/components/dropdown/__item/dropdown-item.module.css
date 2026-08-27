@@ -3,7 +3,7 @@
   & > a,
   & > [data-dropdown] {
     display: inline-block;
-    text-align: left;
+    text-align: start;
     padding: 5px;
   }
 }
