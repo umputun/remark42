@@ -44,7 +44,7 @@ github.com/dlclark/regexp2/v2/syntax
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.2.0
+# github.com/go-pkgz/auth/v2 v2.3.0
 ## explicit; go 1.25.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
@@ -69,7 +69,7 @@ github.com/go-pkgz/lcw/v2/eventbus
 # github.com/go-pkgz/lgr v0.12.4
 ## explicit; go 1.21
 github.com/go-pkgz/lgr
-# github.com/go-pkgz/notify v1.4.0
+# github.com/go-pkgz/notify v1.5.0
 ## explicit; go 1.25.0
 github.com/go-pkgz/notify
 # github.com/go-pkgz/repeater/v2 v2.2.0

@@ -97,6 +97,23 @@ describe('<SubscribeByTelegram />', () => {
     expect(screen.getByText(/You have been subscribed/)).toBeInTheDocument();
   });
 
+  it('should clear a failed check when a later check succeeds', async () => {
+    jest
+      .spyOn(api, 'telegramCurrentSubscribtion')
+      .mockRejectedValueOnce(new RequestError('failed', 500))
+      .mockResolvedValueOnce({ address: '223211010', updated: true });
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+
+    fireEvent.click(await screen.findByText('Check'));
+    expect(await screen.findByText('Something went wrong.')).toHaveClass('auth-error');
+
+    fireEvent.click(screen.getByText('Check'));
+    expect(await screen.findByText(/You have been subscribed/)).toBeInTheDocument();
+    expect(screen.queryByText('Something went wrong.')).not.toBeInTheDocument();
+  });
+
   it('should subscribe and then unsubscribe', async () => {
     createWrapper();
     const button = screen.getByTitle('Subscribe by Telegram');
@@ -114,6 +131,24 @@ describe('<SubscribeByTelegram />', () => {
 
     expect(api.telegramUnsubcribe).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/You have been unsubscribed/)).toBeInTheDocument();
+  });
+
+  it('should clear a failed unsubscribe when a later unsubscribe succeeds', async () => {
+    jest
+      .spyOn(api, 'telegramUnsubcribe')
+      .mockRejectedValueOnce(new RequestError('failed', 500))
+      .mockResolvedValueOnce({ deleted: true });
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+    fireEvent.click(await screen.findByText('Check'));
+
+    fireEvent.click(await screen.findByText('Unsubscribe'));
+    expect(await screen.findByText('Something went wrong.')).toHaveClass('auth-error');
+
+    fireEvent.click(screen.getByText('Unsubscribe'));
+    expect(await screen.findByText(/You have been unsubscribed/)).toBeInTheDocument();
+    expect(screen.queryByText('Something went wrong.')).not.toBeInTheDocument();
   });
 
   it('should subscribe, close window and then unsubscribe', async () => {
@@ -154,9 +189,36 @@ describe('<SubscribeByTelegram />', () => {
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
     fireEvent.click(await screen.findByText('Resubscribe'));
+    expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
     fireEvent.click(await screen.findByText('Check'));
     expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(2);
     expect(await screen.findByText(/You have been subscribed/)).toBeInTheDocument();
+  });
+
+  it('should resubscribe after loading an existing subscription', async () => {
+    jest
+      .spyOn(api, 'telegramSubscribe')
+      .mockRejectedValueOnce(new RequestError('Conflict.', 409))
+      .mockResolvedValueOnce({ bot: 'foo_bot', token: 'fresh_token' });
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+    fireEvent.click(await screen.findByText('Unsubscribe'));
+    await screen.findByText(/You have been unsubscribed/);
+
+    fireEvent.click(screen.getByText('Resubscribe'));
+
+    expect(await screen.findByText(/by the link/)).toHaveAttribute('href', 'https://t.me/foo_bot/?start=fresh_token');
+    expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
+  });
+
+  it('should show an error when starting the subscription fails', async () => {
+    jest.spyOn(api, 'telegramSubscribe').mockRejectedValueOnce(new RequestError('not enabled', 17));
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+
+    expect(await screen.findByText('Action rejected. Please try again a bit later.')).toHaveClass('auth-error');
   });
 
   it('should show subscribed interface if user is already subscribed', async () => {

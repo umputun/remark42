@@ -3,10 +3,12 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -14,8 +16,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
+	log "github.com/go-pkgz/lgr"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
@@ -97,7 +101,7 @@ func TestServerApp_DevMode(t *testing.T) {
 	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -130,7 +134,7 @@ func TestServerApp_CustomOAuthProvider(t *testing.T) {
 	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
 
 	cancel()
@@ -149,7 +153,7 @@ func TestServerApp_AnonMode(t *testing.T) {
 	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 11+1, len(providers), "extra auth provider for anon")
+	require.Equal(t, 10+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	client := http.Client{Timeout: 10 * time.Second}
@@ -708,7 +712,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--auth.email.template=file.tmpl",
 		"--notify.telegram.token=abcd",
 		"--notify.telegram.timeout=3m",
-		"--notify.telegram.api=http://example.org",
+		"--notify.telegram.api=http://example.org/bot",
 		"--auth.twitter.cid=123",
 		"--auth.twitter.csec=456",
 	}
@@ -735,7 +739,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
-			{Old: "notify.telegram.api", Version: "1.9"},
+			{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"},
 			{Old: "auth.twitter.cid", Version: "1.14"},
 			{Old: "auth.twitter.csec", Version: "1.14"},
 		},
@@ -746,6 +750,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Equal(t, "test_user", s.SMTP.Username)
 	assert.Equal(t, "test_password", s.SMTP.Password)
 	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
+	assert.Equal(t, "http://example.org", s.Telegram.APIURL)
 }
 
 func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
@@ -772,6 +777,8 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 		"--telegram.token=dcba",
 		"--notify.telegram.timeout=3m",
 		"--telegram.timeout=5m",
+		"--notify.telegram.api=http://old.example.org/bot",
+		"--telegram.api-url=http://new.example.org",
 	}
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
@@ -786,6 +793,7 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 			{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true},
 			{Old: "notify.telegram.token", New: "telegram.token", Collision: true},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true},
+			{Old: "notify.telegram.api", New: "telegram.api-url", Collision: true},
 		},
 		deprecatedFlagsCollisions)
 
@@ -996,6 +1004,93 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 	}
 }
 
+func TestServerCommand_TelegramAuthAcceptsLoginBeforeFirstSharedPoll(t *testing.T) {
+	telegramAPI := newTelegramAPITestServer(t)
+
+	client := &http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
+	authAPI, err := provider.NewTelegramAPIWithBaseURL("stub-token", client, telegramAPI.URL)
+	require.NoError(t, err)
+	authHandler := &provider.TelegramHandler{ProviderName: "telegram", Telegram: authAPI, L: log.Default()}
+
+	cmd := ServerCommand{}
+	cmd.Telegram.Token = "stub-token"
+	cmd.Telegram.Timeout = time.Second
+	cmd.Telegram.APIURL = telegramAPI.URL
+
+	ctx := t.Context()
+	tg, err := cmd.startTelegramAuthAndNotify(ctx, authHandler)
+	require.NoError(t, err)
+	require.NotNil(t, tg, "telegram auth needs the shared update source even when notifications are off")
+
+	recorder := httptest.NewRecorder()
+	authHandler.LoginHandler(recorder, httptest.NewRequest(http.MethodGet, "/auth/telegram/login?site=remark", http.NoBody))
+	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
+
+	var response struct {
+		Token string `json:"token"`
+		Bot   string `json:"bot"`
+	}
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
+	assert.NotEmpty(t, response.Token)
+	assert.Equal(t, "remark42_test_bot", response.Bot)
+}
+
+func TestServerApp_TelegramAuthAloneDoesNotOfferNotifications(t *testing.T) {
+	telegramAPI := newTelegramAPITestServer(t)
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(cmd ServerCommand) ServerCommand {
+		cmd.Port = port
+		cmd.Auth.Telegram = true
+		cmd.Telegram.Token = "stub-token"
+		cmd.Telegram.Timeout = time.Second
+		cmd.Telegram.APIURL = telegramAPI.URL
+		return cmd
+	})
+
+	require.Nil(t, app.restSrv.TelegramService,
+		"telegram auth alone must not put a typed nil or an update-only client behind the subscription endpoint")
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+	cancel()
+	app.Wait()
+}
+
+func TestServerCommand_TelegramCustomAPIErrorStopsRequestedFeature(t *testing.T) {
+	t.Run("auth", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Auth.Telegram = true
+		cmd.Telegram.APIURL = "://bad"
+
+		_, err := cmd.makeTelegramAuth(&auth.Service{})
+		require.ErrorContains(t, err, "failed to make telegram auth")
+	})
+
+	t.Run("notifications", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Notify.Users = []string{"telegram"}
+		cmd.Telegram.APIURL = "://bad"
+
+		_, err := cmd.startTelegramAuthAndNotify(context.Background(), nil)
+		require.ErrorContains(t, err, "failed to make telegram update source")
+	})
+}
+
+func newTelegramAPITestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	telegramAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/getUpdates") {
+			_, _ = io.WriteString(w, `{"ok":true,"result":[]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ok":true,"result":{"id":1,"is_bot":true,"username":"remark42_test_bot"}}`)
+	}))
+	t.Cleanup(telegramAPI.Close)
+	return telegramAPI
+}
+
 func Test_splitAtCommas(t *testing.T) {
 	tbl := []struct {
 		inp string
@@ -1163,8 +1258,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Twitter.CSEC, cmd.Auth.Twitter.CID = "csec", "cid"
 	cmd.Auth.Patreon.CSEC, cmd.Auth.Patreon.CID = "csec", "cid"
 	cmd.Auth.Discord.CSEC, cmd.Auth.Discord.CID = "csec", "cid"
-	cmd.Auth.Telegram = true
-	cmd.Telegram.Token = "token"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
