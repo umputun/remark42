@@ -11,10 +11,10 @@
 }
 
 .typeReply {
-  margin-left: 17px;
+  margin-inline-start: 17px;
 
   @media (pointer: coarse) and (width <= 768px) {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 }
 
@@ -55,11 +55,20 @@
   &:disabled {
     color: var(--color10);
   }
+
+  /* dir="auto" only sniffs the field's own value, never the placeholder, so an
+     empty field stays direction: ltr even when its placeholder is Hebrew or Arabic.
+     Falling back to the ancestor's direction while the placeholder is showing fixes that,
+     since the placeholder text always matches the active locale's direction; it stops applying
+     the moment real input exists, so mid-typing auto-detection is unaffected. */
+  &:placeholder-shown {
+    direction: inherit;
+  }
 }
 
 .counter {
   position: absolute;
-  right: 4px;
+  inset-inline-end: 4px;
   bottom: 4px;
   font-size: 10px;
   font-weight: 700;
@@ -84,11 +93,11 @@
 }
 
 .button {
-  margin-right: 8px;
+  margin-inline-end: 8px;
   align-self: flex-start;
 
   &:last-child {
-    margin-right: 20px;
+    margin-inline-end: 20px;
   }
 }
 

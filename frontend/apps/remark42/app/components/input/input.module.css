@@ -31,6 +31,15 @@
     color: var(--color11);
     -webkit-text-fill-color: var(--color11);
   }
+
+  /* dir="auto" only sniffs the field's own value, never the placeholder, so an
+     empty field stays direction: ltr even when its placeholder is Hebrew or Arabic.
+     Falling back to the ancestor's direction while the placeholder is showing fixes that,
+     since the placeholder text always matches the active locale's direction; it stops applying
+     the moment real input exists, so mid-typing auto-detection is unaffected. */
+  &:placeholder-shown {
+    direction: inherit;
+  }
 }
 
 .input:-webkit-autofill {

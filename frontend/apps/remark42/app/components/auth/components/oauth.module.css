@@ -12,7 +12,7 @@
 }
 
 .item + .item {
-  margin-left: 12px;
+  margin-inline-start: 12px;
 }
 
 .button {
@@ -62,7 +62,7 @@
 
   &::after {
     display: inline-block;
-    margin-left: 8px;
+    margin-inline-start: 8px;
     content: attr(data-provider-name);
   }
 }

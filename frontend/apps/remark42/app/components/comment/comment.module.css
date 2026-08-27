@@ -5,7 +5,7 @@
 }
 
 .user > * + * {
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 
 .verificationButton {
@@ -61,11 +61,11 @@
 .avatar {
   width: 24px;
   height: 24px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }
 
 .body {
-  padding-left: 17px;
+  padding-inline-start: 17px;
 }
 
 .info {
@@ -73,7 +73,7 @@
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 12px;
-  padding-right: 84px;
+  padding-inline-end: 84px;
   font-size: 14px;
   position: relative;
 }
@@ -83,7 +83,7 @@
 }
 
 .status {
-  margin-left: 8px;
+  margin-inline-start: 8px;
   vertical-align: middle;
   font-weight: 700;
 }
@@ -94,13 +94,13 @@
 }
 
 .time {
-  margin-left: 8px;
-  margin-right: 8px;
+  margin-inline-start: 8px;
+  margin-inline-end: 8px;
   vertical-align: middle;
   text-decoration: none;
 
   &:first-child {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   &:hover {
@@ -119,11 +119,12 @@
 }
 
 .level6 .text {
-  padding-left: 0;
+  padding-inline-start: 0;
 }
 
 .collapsed {
-  padding: 12px 0 12px 28px;
+  padding-block: 12px;
+  padding-inline: 28px 0;
 
   & > .body {
     & .text {
@@ -163,8 +164,8 @@
     }
 
     & .input {
-      border-left-width: 0;
-      border-right-width: 0;
+      border-inline-start-width: 0;
+      border-inline-end-width: 0;
       border-bottom-width: 0;
       border-top-width: 8px;
     }
@@ -180,7 +181,7 @@
     border: 8px solid;
 
     & .info {
-      padding-left: 8px;
+      padding-inline-start: 8px;
     }
 
     & .body {
@@ -188,8 +189,8 @@
     }
 
     & .input {
-      border-left-width: 0;
-      border-right-width: 0;
+      border-inline-start-width: 0;
+      border-inline-end-width: 0;
       border-bottom-width: 0;
       border-top-width: 8px;
     }
@@ -241,7 +242,7 @@
 
     & .info {
       display: inline;
-      padding-right: 0;
+      padding-inline-end: 0;
       font-weight: 700;
       color: var(--color10);
 
@@ -273,7 +274,7 @@
   }
 
   & .body {
-    padding-left: 0;
+    padding-inline-start: 0;
   }
 
   & .titleLink {

@@ -6,15 +6,15 @@
 
 .buttonArrow {
   position: relative;
-  padding-left: 8px;
-  margin-left: 12px;
+  padding-inline-start: 8px;
+  margin-inline-start: 12px;
   height: 100%;
 
   &::before {
     position: absolute;
     content: '';
     height: 100%;
-    border-left: 1px solid rgb(var(--white-color), 0.5);
+    border-inline-start: 1px solid rgb(var(--white-color), 0.5);
   }
 }
 
@@ -22,7 +22,7 @@
   position: absolute;
   z-index: 1;
   top: calc(100% + 8px);
-  left: 0;
+  inset-inline-start: 0;
   min-width: 240px;
   padding: 16px;
   background-color: rgb(var(--primary-background-color));
@@ -98,7 +98,7 @@
 }
 
 .provider + .provider {
-  margin-left: 16px;
+  margin-inline-start: 16px;
 }
 
 .radio {
@@ -139,8 +139,8 @@
 
 .backButtonArrow {
   display: inline-block;
-  margin-left: -4px;
-  margin-right: 2px;
+  margin-inline-start: -4px;
+  margin-inline-end: 2px;
 }
 
 .closeButton {
@@ -148,7 +148,7 @@
   display: inline-flex;
   width: 28px;
   height: 28px;
-  margin-left: auto;
+  margin-inline-start: auto;
   border-radius: 2px;
   color: inherit;
   justify-content: center;

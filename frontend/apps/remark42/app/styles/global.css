@@ -59,7 +59,7 @@ a {
   border-radius: 50%;
   width: 10px;
   height: 10px;
-  text-align: left;
+  text-align: start;
   animation-name: bouncing;
   animation-timing-function: ease-in-out;
   animation-fill-mode: both;
