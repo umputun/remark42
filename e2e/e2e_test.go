@@ -142,9 +142,14 @@ var (
 	}
 )
 
-// Everything under /auth/ is a token bucket refilling twice a second per instance and client IP.
-// Each browser context has its own forwarded IP, so one refill interval is enough between auth
-// actions by the same reader. Fresh contexts need no delay because their bucket starts full.
+// Everything under /auth/ is a token bucket refilling twice a second, keyed by instance, client IP
+// and request path, with a burst equal to the rate. Each browser context has its own forwarded IP,
+// so one refill interval is enough between repeat requests by one reader to one path, and two
+// paths never compete.
+//
+// The sleep is unconditional at every call site. A fresh context starts with a full bucket and
+// needs none of it, so most of these are paid for nothing; the ones that earn it are the repeated
+// requests inside a single context, and the probeClient calls this process makes to /auth/.
 func pauseForAuthLimit() {
 	time.Sleep(600 * time.Millisecond)
 }
