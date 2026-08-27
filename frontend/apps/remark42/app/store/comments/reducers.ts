@@ -23,7 +23,8 @@ import {
   COMMENTS_REQUEST_FAILURE,
   COMMENT_PATCH,
 } from './types';
-import { getPinnedComments, getInitialSort } from './utils';
+import { getInitialSort } from './utils';
+import { getPinnedComments } from './comment-tree';
 import { cmpRef } from 'utils/cmpRef';
 
 export const topComments = (

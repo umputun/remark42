@@ -7,6 +7,10 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "noEmit": true,
+    // the dependency-free tests and every module they reach import with an explicit .ts
+    // extension, which is the only form node --test resolves; webpack, jest and this compiler all
+    // accept it. shipped modules are among them, so the option is not test-only
+    "allowImportingTsExtensions": true,
     "strict": true,
     "moduleResolution": "node",
     "verbatimModuleSyntax": true,

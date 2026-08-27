@@ -1,5 +1,5 @@
-import type { IntlShape } from 'common/intl';
-import { defineMessages } from 'common/intl';
+import type { IntlShape } from '../common/intl-message.ts';
+import { defineMessages } from '../common/intl-message.ts';
 import type { ApiError } from '../common/types';
 
 export const errorMessages = defineMessages<string | number>({
@@ -120,8 +120,10 @@ export function extractErrorMessageFromResponse(response: FetcherError, intl: In
     return response;
   }
 
+  // a code with no entry falls back instead of indexing to undefined: this is the error path, so
+  // a throw here replaces whatever went wrong with nothing at all for the reader
   if (response instanceof RequestError) {
-    return intl.formatMessage(errorMessages[response.code]);
+    return intl.formatMessage(errorMessages[response.code] ?? errorMessages[0]);
   }
 
   return intl.formatMessage(errorMessages[0]);

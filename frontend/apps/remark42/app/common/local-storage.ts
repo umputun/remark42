@@ -1,5 +1,11 @@
-import { isObject } from 'utils/is-object';
 import { IS_STORAGE_AVAILABLE } from './constants';
+import { readJson, updateJson, writeJson } from './json-store';
+
+/**
+ * Where the JSON helpers in json-store.ts meet localStorage, plus the guarded accessors used
+ * directly. Storage can be switched off in browser preferences, and every one of these has to keep
+ * working when it is: the widget stores nothing it cannot do without.
+ */
 
 const failMessage = 'remark42: localStorage access denied, check browser preferences';
 
@@ -22,51 +28,20 @@ export const removeItem = IS_STORAGE_AVAILABLE
       console.error(failMessage);
     };
 
+/** The storage the helpers below read and write, honouring the guards above. */
+const store = { getItem: (key: string) => getItem(key), setItem: (key: string, value: string) => setItem(key, value) };
+
 export function getJsonItem<T = unknown>(key: string): T | null {
-  try {
-    const json = getItem(key);
-
-    if (json === null) {
-      return null;
-    }
-
-    const data = JSON.parse(json);
-
-    return data;
-  } catch (e) {
-    console.error(`remark42: error on read JSON from ${key} in localStorage`, e);
-    return null;
-  }
+  return readJson<T>(store, key);
 }
 
 export function setJsonItem<T = unknown>(key: string, data: T) {
-  try {
-    setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error(`remark42: error on parse JSON from ${key} in localStorage`, e);
-  }
+  writeJson(store, key, data);
 }
 
 export function updateJsonItem<T = Record<string, unknown>>(key: string, value: (data: T) => T): void;
 export function updateJsonItem<T = Record<string, unknown>>(key: string, value: T): void;
 export function updateJsonItem<T = unknown[]>(key: string, value: T): void;
 export function updateJsonItem<T>(key: string, value: T) {
-  const savedData = getJsonItem<T>(key);
-
-  if (Array.isArray(value) && Array.isArray(savedData)) {
-    setJsonItem(key, [...savedData, ...value]);
-    return;
-  }
-
-  if (isObject(value)) {
-    setJsonItem(key, { ...savedData, ...value });
-    return;
-  }
-
-  if (typeof value === 'function') {
-    setJsonItem(key, value(savedData));
-    return;
-  }
-
-  throw new Error(`remark42: error on update JSON for ${key} in localStorage`);
+  updateJson(store, key, value);
 }

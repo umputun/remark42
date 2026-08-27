@@ -11,6 +11,7 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 - `frontend/apps/remark42/package.json`, both its `packageManager` field and its `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
+- the two dependency-free test commands live in `package.json` as `test:unit` and `test:unit:node`, are called by name from `release.yml`, and are **repeated inline** in the `unit` job of `ci-frontend.yml`, which carries no pnpm by design. Change either script and that job keeps running the old one, green
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
@@ -145,7 +146,10 @@ from `preact`, not `React.FC`.
 ## i18n is a hand-written binding whose export names are fixed by the extractor
 
 `app/common/intl.tsx` provides `IntlProvider`, `useIntl`, `createIntl`, `defineMessages`,
-`FormattedMessage` and `IntlShape`. `formatjs extract` (`translation:extract`) finds messages
+`FormattedMessage` and `IntlShape`. The formatting itself lives in `app/common/intl-message.ts`,
+whose only preact reference is a type-only import that erases at build time, so it pulls in nothing at runtime, and which is where every rule below is implemented; `intl.tsx` is the
+binding over it and re-exports `createIntl` and `defineMessages` unchanged, so no call site can tell
+the two apart. `formatjs extract` (`translation:extract`) finds messages
 by recognising the identifiers `defineMessages`, `FormattedMessage` and `intl.formatMessage`
 in the AST, not by import source, so those three names are fixed. Rename any of them and
 extraction returns nothing, with no error and a zero exit code.
@@ -174,8 +178,46 @@ where they are not; `''` simply stays as two apostrophes.
 
 `translation:check` validates every translated value's markup and placeholders against the
 English string it translates, mirroring the binding's rule, and the catalogue sweep in
-`app/common/intl.test.tsx` additionally renders the two messages that carry a link. What
+`app/common/intl.test.tsx` additionally renders the two messages that carry a link.
+`app/common/intl-message.unit.test.ts` covers the formatter's own edge cases -- broken markup, an
+unclosed tag, a regex metacharacter in a tag name -- which are the ones no shipped catalogue can
+produce and so no sweep can reach. What
 neither catches is unsupported ICU syntax, since a plural form is well-formed text as far as
 both are concerned. A message the binding cannot resolve falls back to the English source
 rather than reaching the page, so without these checks a broken translation is invisible in
 the interface.
+
+## `*.unit.test.ts` runs with no toolchain, and that is what it is for
+
+Two test layers, split by what they need to run. Jest owns anything with a DOM in it; `*.unit.test.ts`
+files import nothing but the module under test, its fixtures and `node:test`, and run under plain
+node straight from source:
+
+```sh
+pnpm test:unit
+```
+
+The `unit` job in `ci-frontend.yml` runs them with **no `pnpm install` step**, deliberately.
+`release.yml` runs the same script after an install, as a second gate. The layer's value is that a
+function over plain values can be tested without a bundler, a jsdom or a `node_modules`, and the
+absent install is the only thing that keeps that true: add an import that needs resolving and the
+job goes red instead of quietly acquiring the dependency. `jest.config.mjs` excludes the suffix, so
+a file is in exactly one layer.
+
+`node --test` exits 0 on a glob that matches nothing, so it cannot tell a renamed suffix from a
+passing run. The CI step counts the files first and fails when none match. Two import rules follow
+from node's ESM resolver, and they contradict the repository's usual style, so they are local to
+this layer:
+
+- **write the extension in full**, `./types.ts`. This is why `app/store/thread/reducers.ts` and
+  `app/store/user/reducers.ts` import `./types.ts` while their neighbours do not, and why
+  `app/common/json-store.ts` and `app/utils/errorUtils.ts` carry it too. `allowImportingTsExtensions` in `tsconfig.json` is what
+  stops `tsc` rejecting it, and webpack and jest resolve the explicit path unchanged
+- **import by relative path**, never through the `common/…` alias, which only webpack, jest and
+  `tsc` know about. A type-only import of an alias is fine, since it erases before either runtime
+  sees the file
+
+A module that mixes computation with browser state gets split instead of skipped:
+`app/common/intl-message.ts` and `app/hooks/session-storage.ts` are the pure halves of `intl.tsx`
+and `useSessionState.ts`, and `session-storage.ts` takes the store as an argument instead of reading
+the `sessionStorage` global, which is what lets a test hand it a plain object.

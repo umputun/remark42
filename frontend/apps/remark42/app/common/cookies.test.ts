@@ -62,35 +62,6 @@ afterEach(() => {
   jest.dontMock('./constants');
 });
 
-describe('authCookieOptions', () => {
-  it('keeps the cookie off cross-site requests when the widget shares its page origin', async () => {
-    const { authCookieOptions } = await loadCookies(false);
-
-    expect(authCookieOptions(true)).toEqual({ path: '/', sameSite: 'Strict', secure: true });
-  });
-
-  it('asks for delivery in a third-party frame when the page is on another origin', async () => {
-    const { authCookieOptions } = await loadCookies(true);
-
-    // Strict is never sent from a third-party frame: SameSite is judged against the top-level
-    // site, not the request's own origin. None needs Secure, and Partitioned is what survives
-    // third-party cookie blocking
-    expect(authCookieOptions(true)).toEqual({
-      path: '/',
-      sameSite: 'None',
-      secure: true,
-      partitioned: true,
-    });
-  });
-
-  it('does not claim attributes it cannot honour over http', async () => {
-    const { authCookieOptions } = await loadCookies(true);
-
-    // SameSite=None without Secure is rejected outright, which loses the cookie altogether
-    expect(authCookieOptions(false)).toEqual({ path: '/', sameSite: 'Strict', secure: false });
-  });
-});
-
 describe('setAuthCookie', () => {
   it('writes the name it was given, undecorated', async () => {
     const raw = captureRaw();

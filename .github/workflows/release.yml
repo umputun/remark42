@@ -76,6 +76,7 @@ jobs:
           pnpm lint
           pnpm type-check
           pnpm test --runInBand
+          pnpm test:unit
         working-directory: frontend/apps/remark42
         env:
           CI: "true"

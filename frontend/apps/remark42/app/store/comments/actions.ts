@@ -4,7 +4,7 @@ import { CommentMode } from 'common/types';
 
 import type { StoreAction, StoreState } from '../index';
 import { setPostInfo } from '../post-info/actions';
-import { filterTree } from './utils';
+import { filterTree } from './comment-tree';
 import type { COMMENT_MODE_SET_ACTION, COMMENT_PATCH_ACTION, COMMENTS_EDIT_ACTION } from './types';
 import {
   COMMENTS_SET,

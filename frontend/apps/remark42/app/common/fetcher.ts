@@ -4,13 +4,22 @@ import { siteId } from './settings';
 import { getCookie, setAuthCookie, clearAuthCookie } from './cookies';
 import { StaticStore } from './static-store';
 import { BASE_URL, API_BASE, MAX_CLOCK_SKEW_MS } from './constants';
+import {
+  authHeaders,
+  clockSkewMs,
+  JWT_HEADER,
+  XSRF_HEADER,
+  jwtPayload,
+  requestBody,
+  requestURL,
+  type Payload,
+  type QueryParams,
+} from './fetcher-core';
 
-/** Header name for JWT token */
-export const JWT_HEADER = 'X-JWT';
+export { JWT_HEADER, XSRF_HEADER };
+
 /** Cookie name for JWT token when using AUTH_SEND_JWT_HEADER */
 export const JWT_COOKIE_NAME = 'JWT';
-/** Header name for XSRF token */
-export const XSRF_HEADER = 'X-XSRF-TOKEN';
 /** Cookie field with XSRF token */
 export const XSRF_COOKIE = 'XSRF-TOKEN';
 /**
@@ -20,27 +29,6 @@ export const XSRF_COOKIE = 'XSRF-TOKEN';
  */
 export const AUTH_COOKIE_TTL_SECONDS = 200 * 60 * 60;
 
-/**
- * Safely parses JWT payload with proper base64url handling
- * @param token - JWT token string
- * @returns parsed payload or null if parsing fails
- */
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const base64Url = token.split('.')[1];
-    if (!base64Url) return null;
-
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const rawPayload = window.atob(base64);
-    return JSON.parse(rawPayload);
-  } catch (e) {
-    console.error('Failed to parse JWT payload', e);
-    return null;
-  }
-}
-
-type QueryParams = Record<string, string | number | undefined>;
-type Payload = BodyInit | Record<string, unknown> | null;
 type BodylessMethod = <T>(url: string, query?: QueryParams) => Promise<T>;
 type BodyMethod = <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>;
 type Methods = {
@@ -63,46 +51,19 @@ const createFetcher = (baseUrl: string = ''): Methods => {
    * @body - data for sending to the server. If you pass object it will be stringified. If you pass form data it will be sent as is. Content type headers will be added automatically.
    */
   const request = async (method: string, uri: string, query: QueryParams = {}, body?: Payload) => {
-    const queryString = new URLSearchParams({ site: siteId, ...query });
-    const url = `${baseUrl}${uri}?${queryString}`;
-    const headers: Record<string, string> = {};
-    const params: RequestInit = { method };
-
-    // Save token in memory and pass it into headers in case if storing cookies is disabled
-    if (activeJwtToken) {
-      headers[JWT_HEADER] = activeJwtToken;
-    }
-
-    // An HTTP header cannot be empty.
-    // Although some webservers allow this (nginx, Apache), others answer 400 Bad Request (lighttpd).
-    const xsrfToken = getCookie(XSRF_COOKIE);
-    if (xsrfToken !== undefined) {
-      headers[XSRF_HEADER] = xsrfToken;
-    }
-
-    if (body instanceof FormData) {
-      // Shouldn't add any kind of `Content-Type` if we send `FormData`
-      // Now FormData is sent only in case of uploading file
-      params.body = body;
-    } else if (typeof body === 'object' && body !== null) {
-      headers['Content-Type'] = 'application/json';
-      params.body = JSON.stringify({ ...body, site: siteId });
-    } else {
-      params.body = body;
-    }
+    const url = requestURL(baseUrl, uri, query, siteId);
+    const sending = requestBody(body, siteId);
+    // the jwt is kept in memory as well as in a cookie, so a request still carries it where
+    // storing cookies is disabled
+    const headers = { ...authHeaders(activeJwtToken, getCookie(XSRF_COOKIE)), ...sending.headers };
+    const params: RequestInit = { method, body: sending.body };
 
     try {
       const res = await fetch(url, { ...params, headers });
-      // milliseconds, because every consumer adds it to an epoch in milliseconds.
-      //
-      // an implausible result is dropped rather than stored. the previous code fell back to a
-      // zero timestamp on a missing header, which made the "skew" the whole epoch, and
-      // Date.parse is lenient enough to turn junk into a date of its own accord, so trusting
-      // whatever comes back would keep a deadline computed from it open indefinitely
-      const timestamp = Date.parse(res.headers.get('date') || '');
-      const diff = new Date().getTime() - timestamp;
-      if (!isNaN(diff) && Math.abs(diff) < MAX_CLOCK_SKEW_MS) {
-        StaticStore.serverClientTimeDiffMs = diff;
+      const skew = clockSkewMs(res.headers.get('date'), new Date().getTime(), MAX_CLOCK_SKEW_MS);
+
+      if (skew !== null) {
+        StaticStore.serverClientTimeDiffMs = skew;
       }
 
       // backend could update jwt in any time. so, we should handle it
@@ -111,7 +72,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
 
         // Store the JWT token in cookies for persistence across page reloads
         try {
-          const payload = parseJwtPayload(activeJwtToken);
+          const payload = jwtPayload(activeJwtToken);
           if (payload && payload.jti) {
             // Set XSRF cookie with the JWT ID using enhanced security
             setAuthCookie(XSRF_COOKIE, payload.jti as string, {

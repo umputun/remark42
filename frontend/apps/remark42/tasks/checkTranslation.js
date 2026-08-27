@@ -46,7 +46,7 @@ function tagsIn(message) {
   return new Set(Array.from(message.matchAll(/<(\w+)>/g), (match) => match[1]));
 }
 
-// mirrors app/common/intl.tsx: a self-closing tag is text, and only `</` or `<` opening a
+// mirrors app/common/intl-message.ts: a self-closing tag is text, and only `</` or `<` opening a
 // tag name is markup that has to resolve. testing for any angle bracket instead would
 // reject ordinary text such as "under < 10"
 const SELF_CLOSING = /<[a-zA-Z][\w-]*\s*\/>/g;

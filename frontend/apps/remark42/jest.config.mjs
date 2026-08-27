@@ -13,6 +13,10 @@ process.env.BABEL_ENV = 'test';
  */
 const config = {
   testEnvironment: 'jsdom',
+  // the dependency-free layer, run by `pnpm test:unit` under plain node. jest is not the runner for
+  // those files, and running them here would say nothing about whether they still work with no
+  // bundler, which is the property they exist to hold
+  testPathIgnorePatterns: ['/node_modules/', '\\.unit\\.test\\.ts$'],
   // babel-jest would otherwise skip node_modules, where .babelrc.js does not reach: passing it as
   // configFile applies the same config the bundle uses to the ESM-only packages below
   transform: {
@@ -33,6 +37,10 @@ const config = {
   ],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',
+    // jest excludes a file it ran as a test from coverage, but these it never runs, so without
+    // this they are counted as source that nothing covers and drag the whole figure down. their
+    // own coverage is reported by the node run in the unit CI job
+    '!**/*.unit.test.ts',
     '!**/__mocks__/**',
     '!**/__stubs__/**',
     '!app/locales/**',
