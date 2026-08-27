@@ -19,6 +19,8 @@
 //   - https_test.go: the widget over TLS, where the browser's protocol gates apply
 //   - deployment_test.go: the instances whose configuration is the thing under test
 //   - subscribe_test.go: the email subscription round trip
+//   - hostframe_test.go: sender checks on both sides of the iframe boundary
+//   - profile_test.go: the reader's own-comment overlay
 //   - webfiles_test.go: the published /web surface
 //   - widgets_test.go: last-comments, counter and the profile iframe
 package e2e
@@ -30,9 +32,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -113,10 +118,19 @@ var (
 	// the process started
 	runID = firstNonEmpty(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
 
-	authGate     sync.Mutex
-	lastAuthCall time.Time
-
 	contextSeq atomic.Int64
+
+	// Intercept only traffic going to a Remark42 instance. Routing every resource disables the
+	// browser cache and puts unrelated host-page traffic through Playwright's driver pipe, which
+	// distorts the iframe timing cases this suite measures.
+	readerIPRoutePattern = func() *regexp.Regexp {
+		// the dots in an address are escaped, so they cannot stand for any character
+		quoted := make([]string, 0, len(readerIPAuthorities))
+		for _, authority := range readerIPAuthorities {
+			quoted = append(quoted, regexp.QuoteMeta(authority))
+		}
+		return regexp.MustCompile(`^https?://(?:` + strings.Join(quoted, "|") + `)(?:/|$)`)
+	}()
 
 	// the default client has no timeout, so a port that accepts and then stalls would block
 	// a probe well past its own deadline and leave TestMain looking hung
@@ -128,24 +142,11 @@ var (
 	}
 )
 
-// everything under /auth/ is rate limited to 2 requests a second, and that figure is a bare
-// literal at backend/app/rest/api/rest.go:242 and not a setting, so the suite has to pace
-// itself: the widget calls /auth/status on every load, and again on visibilitychange or
-// window focus while an oauth popup sign-in is pending. without this the limiter starts
-// answering 429 and the widget renders as signed out
+// Everything under /auth/ is a token bucket refilling twice a second per instance and client IP.
+// Each browser context has its own forwarded IP, so one refill interval is enough between auth
+// actions by the same reader. Fresh contexts need no delay because their bucket starts full.
 func pauseForAuthLimit() {
-	// 1200ms, up from the 700 this started at: the widget fires an unpaced /auth/status on
-	// every load and again on visibilitychange, so the paced side has to stay well under the
-	// 2/s cap to leave room for them. at 700 the suite manufactured its own 429s, and a lost
-	// probe renders as signed out, which fails whichever test happens to be signing in
-	const spacing = 1200 * time.Millisecond
-
-	authGate.Lock()
-	defer authGate.Unlock()
-	if wait := spacing - time.Since(lastAuthCall); wait > 0 {
-		time.Sleep(wait)
-	}
-	lastAuthCall = time.Now()
+	time.Sleep(600 * time.Millisecond)
 }
 
 func TestMain(m *testing.M) {
@@ -327,12 +328,36 @@ func newPageOn(t *testing.T, b playwright.Browser) playwright.Page {
 // says about itself is the thing under test
 func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.BrowserNewContextOptions) playwright.Page {
 	t.Helper()
+	seq := contextSeq.Add(1)
+
 	// the https services carry a self-signed certificate, and a context that refuses it cannot
 	// reach them at all. harmless for the http ones
 	opts.IgnoreHttpsErrors = playwright.Bool(true)
 
 	ctx, err := b.NewContext(opts)
 	require.NoError(t, err)
+
+	// Inject the reader address after the browser has made its CORS decision. Extra HTTP headers
+	// would turn cross-origin script loads into preflighted requests, while routing at the transport
+	// boundary leaves their browser-visible shape unchanged.
+	// RealIP deliberately rejects special-use ranges. These globally routable-form values stay
+	// inside the loopback-only stack and give more than enough distinct readers for one process.
+	readerIP := forwardedReaderIP(0, seq)
+	require.NoError(t, ctx.Route(readerIPRoutePattern, func(route playwright.Route) {
+		continueRequest := func(options ...playwright.RouteContinueOptions) {
+			if routeErr := route.Continue(options...); routeErr != nil &&
+				!strings.Contains(strings.ToLower(routeErr.Error()), "target closed") {
+				t.Errorf("continue routed request: %v", routeErr)
+			}
+		}
+		if !requestNeedsReaderIP(route.Request().URL()) {
+			continueRequest()
+			return
+		}
+		headers := route.Request().Headers()
+		headers["X-Real-IP"] = readerIP
+		continueRequest(playwright.RouteContinueOptions{Headers: headers})
+	}))
 
 	// the reveal timers start when the iframe element is created, so the tests that bound
 	// them have to measure from there and not from anything this process can time
@@ -345,7 +370,6 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 	// a test that opens two contexts would otherwise have them write the same file, and
 	// cleanup runs last-in-first-out, so the surviving trace would be of the page that was
 	// only setting the scenario up
-	seq := contextSeq.Add(1)
 	t.Cleanup(func() {
 		if tracing {
 			if !t.Failed() {
@@ -391,6 +415,52 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 		}
 	})
 	return page
+}
+
+// forwardedReaderIP returns a globally routable-form address that stays inside the loopback-only
+// stack. The second octet separates browser traffic from harness probes, while seq separates the
+// limiter, vote-deduplication and anonymous-reader state of each browser context.
+func forwardedReaderIP(second byte, seq int64) string {
+	const addressSpace = int64(256 * 254)
+	// Different test processes may share a kept stack. Spacing each process's first slot widely
+	// apart keeps their short context sequences from reusing one limiter and voter identity.
+	slot := (int64(os.Getpid())*7919 + seq - 1) % addressSpace
+	return fmt.Sprintf("8.%d.%d.%d", second, slot/254, slot%254+1)
+}
+
+// readerIPAuthorities lists every host and port through which a browser can reach a remark42
+// instance, by name inside the compose network and over the loopback the demo pages are built on.
+// Host pages and Mailpit are absent on purpose: they must keep their ordinary transport identity.
+var readerIPAuthorities = []string{
+	"remark42:8080",
+	"remark42:8084", // the dev oauth2 provider, whose port the provider fixes
+	"remark42-shortedit:8081",
+	"remark42-adminedit:8082",
+	"remark42-jwtheader:8083",
+	"remark42-noauth:8085",
+	"remark42-anonvote:8086",
+	"remark42-https:8443",
+	"127.0.0.1:8080",
+	"127.0.0.1:8081",
+	"127.0.0.1:8082",
+	"127.0.0.1:8083",
+	"127.0.0.1:8085",
+	"127.0.0.1:8086",
+	"127.0.0.1:8443",
+}
+
+// requestNeedsReaderIP answers whether a request is going to a remark42 instance. The port is part
+// of the answer: an address is matched whole, so a host reached on a port the stack does not serve
+// is not one of ours.
+func requestNeedsReaderIP(rawURL string) bool {
+	u, err := neturl.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	return slices.Contains(readerIPAuthorities, u.Host)
 }
 
 // installOpts asks for the browser system libraries on CI only: install-deps shells out to
@@ -505,7 +575,6 @@ func openThread(t *testing.T, page playwright.Page) playwright.FrameLocator {
 
 func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLocator {
 	t.Helper()
-	pauseForAuthLimit()
 	_, err := page.Goto(url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateDomcontentloaded,
 	})
@@ -538,7 +607,6 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 		}
 	}
 
-	pauseForAuthLimit()
 	_, err := page.Goto(baseURL + hostPage)
 	require.NoError(t, err)
 
@@ -555,18 +623,18 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 	require.NoError(t, err)
 }
 
-// stubSignedOut answers the widget's auth probe from the browser, for a page that never signs
-// in. /auth/ is capped at two requests a second for the whole suite and the widget probes on
-// every load, so a case that only needs a signed-out widget should not spend that budget: the
-// tests that do sign in are the ones that cannot fake it
+// stubSignedOut keeps a case whose subject is outside authentication independent of the auth
+// deployment. Cases that exercise identity use the endpoint itself.
 func stubSignedOut(t *testing.T, page playwright.Page) {
 	t.Helper()
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-		require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusOK),
 			ContentType: playwright.String("application/json"),
 			Body:        playwright.String(`{"status":"not logged in"}`),
-		}))
+		}); err != nil {
+			t.Errorf("fulfill signed-out auth status: %v", err)
+		}
 	}))
 }
 

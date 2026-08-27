@@ -38,6 +38,8 @@ const (
 // preloader is the whole difference between the working and the broken version, and not one step
 // in a sequence that legitimately grows as comments arrive.
 func TestGeometry_FirstReportedHeightIsRenderedContent(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{})
@@ -60,6 +62,8 @@ func TestGeometry_FirstReportedHeightIsRenderedContent(t *testing.T) {
 // embed sat inset with 24px of empty space underneath. Both halves are asserted, since the
 // arithmetic and the padding failed independently
 func TestGeometry_ReportedHeightMatchesTheDocument(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{})
@@ -87,6 +91,8 @@ func TestGeometry_ReportedHeightMatchesTheDocument(t *testing.T) {
 // Both modes run, because the footer-shown case is the control: it is what says the parameter
 // reached the widget at all instead of being quietly ignored.
 func TestGeometry_NoFooterKeepsTheContentInsideTheFrame(t *testing.T) {
+	t.Parallel()
+
 	thread := threadURL(t)
 
 	poster := newPage(t)
@@ -149,6 +155,8 @@ func TestGeometry_NoFooterKeepsTheContentInsideTheFrame(t *testing.T) {
 // the document directly. Both have to come back down again, or the widget leaves a hole in the
 // page for as long as the reader stays on it
 func TestGeometry_HeightFollowsTheAuthPanelAndTheTextarea(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{})
@@ -251,6 +259,8 @@ func waitHeightNear(t *testing.T, page playwright.Page, want float64, msg string
 // all of them while leaving a hole in the page under every collapsed thread for as long as the
 // reader stays on it
 func TestGeometry_CollapsingAThreadShrinksTheFrame(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInAnon(t, page, frame, anonName("collapsegeometry"))

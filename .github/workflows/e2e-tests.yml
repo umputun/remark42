@@ -61,7 +61,7 @@ jobs:
   tests:
     name: Tests
     needs: vet
-    # generous against the docker build plus one 8m go test: a job cancelled on timeout skips
+    # generous against the docker build plus the full browser suite: a job cancelled on timeout skips
     # its own failure steps, so the run would end with neither logs nor traces
     timeout-minutes: 45
     runs-on: ubuntu-latest
@@ -106,10 +106,9 @@ jobs:
         # log names the run it came from
         env:
           E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        # 20m, matching the Makefile. the suite runs about four minutes on a laptop and a runner
-        # is slower, so a tighter budget turns a loaded runner into a timeout panic instead of a
-        # readable failure. the job's own timeout above is what bounds a wedged run
-        run: cd e2e && go test -tags=e2e -count 1 -timeout 20m -v ./...
+        # 20m and four parallel tests, matching the Makefile. the timeout leaves a loaded runner
+        # room to produce a readable test failure; the job's own timeout bounds a wedged run
+        run: cd e2e && go test -tags=e2e -count 1 -parallel 4 -timeout 20m -v ./...
 
       - name: Server logs on failure
         if: failure()

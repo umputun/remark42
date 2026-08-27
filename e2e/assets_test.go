@@ -22,9 +22,10 @@ const remarkURLPlaceholder = "{% REMARK_URL %}"
 // The demo pages set remark_config.host from location.origin themselves, so the compiled-in
 // fallback is never read and the marker could survive into a release without a test noticing.
 func TestAssets_InstanceURLIsFilledIn(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
-	pauseForAuthLimit()
 	_, err := page.Goto(baseURL + "/web/")
 	require.NoError(t, err)
 
@@ -52,6 +53,8 @@ func TestAssets_InstanceURLIsFilledIn(t *testing.T) {
 // The demo pages cannot show this. Their loader builds the bundle's own script url from
 // remark_config.host, so a page without one never gets as far as loading the widget.
 func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
 	var configURL string
@@ -61,7 +64,6 @@ func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
 		}
 	})
 
-	pauseForAuthLimit()
 	_, err := page.Goto(fmt.Sprintf("%s/web/iframe.html?site_id=remark&url=%s",
 		baseURL, neturl.QueryEscape(threadURL(t))))
 	require.NoError(t, err)
@@ -93,9 +95,10 @@ func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
 // intact, so asserting the element or the attribute proves nothing; only a decoded image has a
 // non-zero natural size. That catches a 404, a malformed URL and a CSP refusal alike.
 func TestAssets_WidgetImagesActuallyLoad(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
-	pauseForAuthLimit()
 	_, err := page.Goto(threadURL(t))
 	require.NoError(t, err)
 

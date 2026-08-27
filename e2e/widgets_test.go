@@ -23,6 +23,7 @@ import (
 // embedding page and not into the widget's iframe, so a change to the embed script can
 // break it without any iframe test noticing
 func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
+	// The endpoint is a site-wide feed, so this case stays serial while other tests create comments.
 	text := "last comments " + runID
 
 	poster := newPage(t)
@@ -35,7 +36,6 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	// the stylesheet is appended at runtime and nothing waits for it, so the comments render
 	// whether or not it arrives. wait for the response itself instead of sampling afterwards,
 	// which reads whatever has landed by then and passes when the miss is still in flight
-	pauseForAuthLimit()
 	css, err := page.ExpectResponse("**/last-comments.css", func() error {
 		_, gerr := page.Goto(baseURL + "/web/last-comments.html")
 		return gerr
@@ -52,9 +52,10 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 // needs an admin token to do its work, so this drives the branch it takes without one: reaching
 // that message proves the html and its bundle were both served and executed.
 func TestWidgets_DeleteMePageServesAndRuns(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
-	pauseForAuthLimit()
 	resp, err := page.Goto(baseURL + "/web/deleteme.html")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -69,6 +70,9 @@ func TestWidgets_DeleteMePageServesAndRuns(t *testing.T) {
 // hold just as well if the script always wrote a constant. Post to that same url and assert
 // the rendered number moves by exactly as many comments as were added.
 func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
+	// The fixed demo URL is used only by this case, which keeps its seeded count deterministic.
+	t.Parallel()
+
 	const counted = "https://remark42.com/demo/"
 
 	poster := newPage(t)
@@ -101,7 +105,6 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	pauseForAuthLimit()
 	_, err = page.Goto(baseURL + "/web/counter.html")
 	require.NoError(t, err)
 
@@ -133,6 +136,8 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 }
 
 func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
+	t.Parallel()
+
 	thread := threadURL(t)
 
 	poster := newPage(t)
@@ -143,7 +148,6 @@ func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
 	want := strconv.Itoa(commentCount(t, poster, thread))
 
 	page := newPage(t)
-	pauseForAuthLimit()
 	_, err := page.Goto(baseURL + "/web/privacy.html")
 	require.NoError(t, err)
 
@@ -187,6 +191,8 @@ func commentCount(t *testing.T, page playwright.Page, url string) int {
 // TestWidgets_ProfileOpensInItsOwnIframe covers the postMessage handoff: the widget asks the
 // parent to open the profile, and the parent creates a second iframe outside #remark42
 func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -227,6 +233,8 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 // the app is covered without an edit, and injected into a plain page and not the demo one,
 // which is the only way to hand the widget a remark_config of this test's choosing
 func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
+	t.Parallel()
+
 	const localesDir = "../frontend/apps/remark42/app/locales"
 
 	entries, err := os.ReadDir(localesDir)
@@ -249,15 +257,16 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			require.NotEmpty(t, want, "%s carries no placeholder message to compare against", entry.Name())
 
 			page := newPage(t)
-			// this case never signs in, and the widget probes /auth/status on every load. that
-			// probe is capped at 2/s for the whole suite, so twenty four of them would spend a
-			// budget the sign-in cases need and manufacture 429s for whichever test runs next
+			// auth state is outside this translation case. keeping its status response local means
+			// a translation failure cannot be caused by an auth deployment beside it.
 			require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-				require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+				if err := route.Fulfill(playwright.RouteFulfillOptions{
 					Status:      playwright.Int(http.StatusOK),
 					ContentType: playwright.String("application/json"),
 					Body:        playwright.String(`{"status":"not logged in"}`),
-				}))
+				}); err != nil {
+					t.Errorf("fulfill signed-out status for locale %s: %v", locale, err)
+				}
 			}))
 
 			_, gerr := page.Goto(baseURL + "/web/privacy.html")
@@ -293,6 +302,8 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 // including the markdown help line, which is why that is not asserted either way. The full-view
 // branch is the control: without it these would hold on a widget that never had a toolbar
 func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name   string
 		simple bool
@@ -336,6 +347,8 @@ func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
 // emitting it while the link went on pointing at it, so readers who followed it reached a 404.
 // Nothing noticed, because it is the one page no other test opens.
 func TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin(t *testing.T) {
+	t.Parallel()
+
 	thread := threadURL(t)
 	text := "cookie fallback " + runID
 
@@ -345,7 +358,6 @@ func TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin(t *testing.T) {
 	postComment(t, posted, text)
 
 	page := newPage(t)
-	pauseForAuthLimit()
 	resp, err := page.Goto(fmt.Sprintf("%s/web/comments.html?site_id=remark&url=%s",
 		baseURL, neturl.QueryEscape(thread)))
 	require.NoError(t, err)
@@ -367,6 +379,8 @@ func TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin(t *testing.T) {
 // far less use. The hole and the page arrived together, since it is only reachable at all now
 // that the build emits it again
 func TestWidgets_CommentsPageRefusesInjectedMarkup(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name, url string
 	}{
@@ -376,7 +390,6 @@ func TestWidgets_CommentsPageRefusesInjectedMarkup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			page := newPage(t)
 
-			pauseForAuthLimit()
 			// %20 and not +, which is what a browser produces and what the page's own parser
 			// reads back: it decodes with decodeURIComponent, which leaves a + as a plus
 			escaped := strings.ReplaceAll(neturl.QueryEscape(tc.url), "+", "%20")

@@ -41,6 +41,8 @@ func voteScenario(t *testing.T, author, text string) (playwright.Page, playwrigh
 }
 
 func TestVote_UpvoteCountsOnce(t *testing.T) {
+	t.Parallel()
+
 	text := "vote target " + runID
 	voter, voterFrame, target := voteScenario(t, "voteauthor", text)
 
@@ -70,6 +72,8 @@ func TestVote_UpvoteCountsOnce(t *testing.T) {
 // The score is optimistic, so a failed request has to put it back instead of leaving the
 // reader believing a vote landed.
 func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
+	t.Parallel()
+
 	text := "vote failure " + runID
 	voter, voterFrame, target := voteScenario(t, "votefailauthor", text)
 
@@ -87,11 +91,13 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 		// everything else to a generic "something went wrong", which is also what it shows when
 		// error handling fails altogether. asserting a distinct string is what makes this
 		// assertion mean anything
-		_ = route.Fulfill(playwright.RouteFulfillOptions{
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(409),
 			ContentType: playwright.String("application/json"),
 			Body:        `{"code":19,"details":"vote rejected","error":"failed"}`,
-		})
+		}); err != nil {
+			t.Errorf("fulfill refused vote response: %v", err)
+		}
 	}))
 
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
@@ -119,6 +125,8 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 // instance, since both are server flags. The vote and the author are separate anonymous users
 // because remark42 hides the buttons on your own comment either way
 func TestVote_AnonymousVoterCounts(t *testing.T) {
+	t.Parallel()
+
 	thread := threadURLOn(t, anonVoteURL)
 	text := "anon vote target " + runID
 
@@ -153,6 +161,8 @@ func TestVote_AnonymousVoterCounts(t *testing.T) {
 // remark42 does not offer the buttons on your own comment, and the backend refuses the vote even
 // when the buttons are put back. Both halves, since the widget hiding them is only politeness
 func TestVote_OwnCommentCannotBeVotedOn(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInAnon(t, page, frame, anonName("selfvoter"))
@@ -181,6 +191,8 @@ func TestVote_OwnCommentCannotBeVotedOn(t *testing.T) {
 // reader who changes their mind has to be able to, and the score has to end where the second vote
 // leaves it. Nothing covered downvoting at all
 func TestVote_DownvoteAndCorrection(t *testing.T) {
+	t.Parallel()
+
 	text := "downvote target " + runID
 	voter, voterFrame, target := voteScenario(t, "downvoteauthor", text)
 
@@ -221,6 +233,8 @@ func TestVote_DownvoteAndCorrection(t *testing.T) {
 // src among them, is always anonymous and why the widget hydrates its user over XHR. Anyone
 // designing around that needs it pinned, since nothing else here would notice the check going
 func TestVote_WithoutTheXSRFHeaderIsRefused(t *testing.T) {
+	t.Parallel()
+
 	text := "xsrf vote " + runID
 	voter, voterFrame, target := voteScenario(t, "xsrfauthor", text)
 
@@ -229,7 +243,9 @@ func TestVote_WithoutTheXSRFHeaderIsRefused(t *testing.T) {
 	require.NoError(t, voter.Route("**/api/v1/vote/**", func(route playwright.Route) {
 		headers := route.Request().Headers()
 		delete(headers, "x-xsrf-token")
-		_ = route.Continue(playwright.RouteContinueOptions{Headers: headers})
+		if err := route.Fallback(playwright.RouteFallbackOptions{Headers: headers}); err != nil {
+			t.Errorf("forward vote without XSRF header: %v", err)
+		}
 	}))
 
 	resp, err := voter.ExpectResponse("**/api/v1/vote/**", func() error {

@@ -19,6 +19,8 @@ import (
 )
 
 func TestComment_PostRendersMarkdownAndSurvivesReload(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -43,6 +45,8 @@ func TestComment_PostRendersMarkdownAndSurvivesReload(t *testing.T) {
 }
 
 func TestComment_ReplyNestsUnderItsParent(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -61,6 +65,8 @@ func TestComment_ReplyNestsUnderItsParent(t *testing.T) {
 }
 
 func TestComment_EditWithinTheDeadline(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -99,6 +105,8 @@ func TestComment_EditWithinTheDeadline(t *testing.T) {
 const editWindow = 15 * time.Second
 
 func TestComment_EditExpiresAfterTheDeadline(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	url := threadURLOn(t, shortEditURL)
 	frame := openURL(t, page, url)
@@ -135,6 +143,8 @@ func TestComment_EditExpiresAfterTheDeadline(t *testing.T) {
 }
 
 func TestComment_DeleteRemovesTheText(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	// deliberately not the dev user: ADMIN_SHARED_ID makes that one an admin, and the widget
@@ -171,6 +181,8 @@ func TestComment_DeleteRemovesTheText(t *testing.T) {
 // posted with: #2040 shipped a version that handed back the rendered text, and everything the
 // author had written in entities or markup was lost on the next save
 func TestComment_EditKeepsTheOriginalSource(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -200,6 +212,8 @@ func TestComment_EditKeepsTheOriginalSource(t *testing.T) {
 // TestComment_DraftSurvivesReloadAndClearsAfterPost covers the local draft. A reader who reloads
 // mid-sentence keeps what they typed, and a reader who posts does not get it handed back
 func TestComment_DraftSurvivesReloadAndClearsAfterPost(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -226,16 +240,20 @@ func TestComment_DraftSurvivesReloadAndClearsAfterPost(t *testing.T) {
 // comment. The text is the only copy they have, so it has to stay in the form, and the failure has
 // to say something instead of swallowing itself
 func TestComment_PostFailureKeepsTheText(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
 
 	require.NoError(t, page.Route("**/api/v1/comment?**", func(route playwright.Route) {
-		require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusBadRequest),
 			ContentType: playwright.String("application/json"),
 			Body:        playwright.String(`{"code":19,"details":"comment contains restricted words","error":"rejected"}`),
-		}))
+		}); err != nil {
+			t.Errorf("fulfill refused comment response: %v", err)
+		}
 	}))
 
 	text := "rejected " + runID
@@ -257,6 +275,8 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 // sees. Both are server-side, so the assertions come after a reload on a second reader's page
 // and not from the moderator's own optimistic render
 func TestComment_AdminPinsAndVerifies(t *testing.T) {
+	t.Parallel()
+
 	text := "moderated " + runID
 
 	// verification is a property of the user and outlives the run in the stack's database, so a
@@ -304,6 +324,8 @@ func TestComment_AdminPinsAndVerifies(t *testing.T) {
 // The second half is the part a reader notices most, since a failed upload that leaves the
 // placeholder behind corrupts what they were writing
 func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -325,11 +347,13 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 			// comes and goes inside one frame, and "the text is unchanged" would hold just as
 			// well for an upload that never started
 			time.Sleep(300 * time.Millisecond)
-			require.NoError(t, route.Fulfill(playwright.RouteFulfillOptions{
+			if err := route.Fulfill(playwright.RouteFulfillOptions{
 				Status:      playwright.Int(http.StatusInternalServerError),
 				ContentType: playwright.String("application/json"),
 				Body:        playwright.String(`{"code":0,"details":"upload failed","error":"nope"}`),
-			}))
+			}); err != nil {
+				t.Errorf("fulfill failed upload response: %v", err)
+			}
 		}))
 		defer func() { require.NoError(t, page.Unroute("**/api/v1/picture**")) }()
 
@@ -379,6 +403,8 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 // answers with its own code, and the widget has to turn that into something the reader can read
 // instead of swallowing it, which is the half no unit test can speak for
 func TestComment_BlockedAuthorCannotPost(t *testing.T) {
+	t.Parallel()
+
 	text := "before the block " + runID
 
 	// the block is permanent and the stack's database outlives the run, so a fixed name would
@@ -412,6 +438,8 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 // reader arriving afterwards has to find no way to post, and the state has to come from the
 // server and not from the admin's own page
 func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	url := threadURL(t)
 	frame := openURL(t, page, url)
@@ -425,7 +453,6 @@ func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
 	// not openURL: it waits for a comment form, and a read-only thread is exactly the case with
 	// no form to wait for
 	reader := newPage(t)
-	pauseForAuthLimit()
 	_, err := reader.Goto(url, playwright.PageGotoOptions{WaitUntil: playwright.WaitUntilStateDomcontentloaded})
 	require.NoError(t, err)
 

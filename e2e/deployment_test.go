@@ -29,6 +29,8 @@ const adminEditAddress = "adminedit@example.com"
 // wait is the same one TestComment_EditExpiresAfterTheDeadline pays, and both halves are asserted
 // against it: no countdown at any point, and an edit that still lands afterwards
 func TestComment_AdminEditHasNoDeadline(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	url := threadURLOn(t, adminEditURL)
 	frame := openURL(t, page, url)
@@ -69,6 +71,8 @@ func TestComment_AdminEditHasNoDeadline(t *testing.T) {
 // nothing in hand. Signing out matters as much as signing in: a token kept somewhere the sign-out
 // does not clear leaves a session that outlives the button
 func TestAuth_HeaderJWTSurvivesReload(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openURL(t, page, threadURLOn(t, jwtHeaderURL))
 	signInAnon(t, page, frame, anonName("headerjwt"))
@@ -90,6 +94,8 @@ func TestAuth_HeaderJWTSurvivesReload(t *testing.T) {
 // sign-in panel offering nothing and no explanation, so the operator's own misconfiguration read
 // as the widget being broken
 func TestAuth_NoProvidersSaysSo(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openURL(t, page, threadURLOn(t, noAuthURL))
 

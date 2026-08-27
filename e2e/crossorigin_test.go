@@ -28,6 +28,8 @@ import (
 // matters is the reload: the widget holds its token in memory for the life of a page, so a
 // sign-in that never reloads passes while persistence is broken
 func TestCrossOrigin_WidgetRendersOnAnotherOrigin(t *testing.T) {
+	t.Parallel()
+
 	thread := fmt.Sprintf("%s/post.html?e2e=%s-%s", hostSiteURL, "crossorigin", runID)
 	text := "cross origin " + runID
 
@@ -44,7 +46,6 @@ func TestCrossOrigin_WidgetRendersOnAnotherOrigin(t *testing.T) {
 
 	page := newPage(t)
 	stubSignedOut(t, page)
-	pauseForAuthLimit()
 	_, err := page.Goto(thread)
 	require.NoError(t, err)
 
@@ -65,10 +66,11 @@ func TestCrossOrigin_WidgetRendersOnAnotherOrigin(t *testing.T) {
 // would be left with a permanently invisible widget and nothing in the page to say why, and
 // without the refusal ALLOWED_HOSTS would be doing nothing at all
 func TestCrossOrigin_DisallowedHostNeverReportsInited(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 
-	pauseForAuthLimit()
 	_, err := page.Goto(fmt.Sprintf("%s/restricted.html?e2e=%s-%s", hostSiteURL, "crossorigin-blocked", runID))
 	require.NoError(t, err)
 

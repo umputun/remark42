@@ -94,11 +94,12 @@ func httpsThread(t *testing.T, label string) string {
 // This runs under the browser's default policy, where third-party cookies are allowed.
 // TestHTTPS_SessionSurvivesThirdPartyCookieBlocking is the same question with them blocked.
 func TestHTTPS_CrossOriginSignInSurvivesAReload(t *testing.T) {
+	t.Parallel()
+
 	for _, flow := range httpsFlows {
 		t.Run(flow.name, func(t *testing.T) {
 			page := newPage(t)
 
-			pauseForAuthLimit()
 			_, err := page.Goto(httpsThread(t, "https-signin-"+flow.name))
 			require.NoError(t, err)
 
@@ -129,9 +130,10 @@ func TestHTTPS_CrossOriginSignInSurvivesAReload(t *testing.T) {
 // value as a header, and go-pkgz/auth refuses a cookie-borne token whose header does not match, so
 // a JWT arriving beside an XSRF cookie the frame cannot receive authenticates nobody.
 func TestHTTPS_AuthCookiesCarryTheThirdPartyForm(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
-	pauseForAuthLimit()
 	_, err := page.Goto(httpsThread(t, "https-cookies"))
 	require.NoError(t, err)
 
@@ -198,6 +200,8 @@ func TestHTTPS_AuthCookiesCarryTheThirdPartyForm(t *testing.T) {
 // outright, so a run configured wrongly keeps every third-party cookie and this case would pass
 // while asserting nothing at all.
 func TestHTTPS_SessionSurvivesThirdPartyCookieBlocking(t *testing.T) {
+	t.Parallel()
+
 	blocking, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
 		Headless:          playwright.Bool(os.Getenv("E2E_HEADLESS") != "false"),
 		IgnoreDefaultArgs: []string{playwrightDisabledFeatures},
@@ -215,7 +219,6 @@ func TestHTTPS_SessionSurvivesThirdPartyCookieBlocking(t *testing.T) {
 			// a context of its own, so neither case inherits what the other stored
 			page := newPageOn(t, blocking)
 
-			pauseForAuthLimit()
 			_, err := page.Goto(httpsThread(t, "https-blocked-"+flow.name))
 			require.NoError(t, err)
 			frame := widget(t, page)
