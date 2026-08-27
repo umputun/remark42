@@ -4,6 +4,7 @@ import clsx from 'clsx';
 
 import type { IntlShape } from 'common/intl';
 import { useIntl, FormattedMessage, defineMessages } from 'common/intl';
+import { getDirection } from 'common/direction';
 import 'styles/global.css';
 import type { StoreState } from 'store';
 import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
@@ -358,7 +359,10 @@ export function ConnectedRoot() {
   const actions = useActions(boundActions);
 
   return (
-    <div className={clsx(styles.root, props.theme === 'dark' ? styles.themeDark : styles.themeLight, props.theme)}>
+    <div
+      dir={getDirection(intl.locale)}
+      className={clsx(styles.root, props.theme === 'dark' ? styles.themeDark : styles.themeLight, props.theme)}
+    >
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
         <p className={styles.copyright} role="contentinfo">

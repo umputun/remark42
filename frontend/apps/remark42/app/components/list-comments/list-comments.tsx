@@ -1,6 +1,7 @@
 import { h } from 'preact';
 
 import { useIntl } from 'common/intl';
+import { getDirection } from 'common/direction';
 import type { Comment as CommentType } from 'common/types';
 import { Comment } from 'components/comment';
 
@@ -14,7 +15,7 @@ export function ListComments({ comments = [] }: Props) {
   const intl = useIntl();
 
   return (
-    <div>
+    <div dir={getDirection(intl.locale)}>
       {comments.map((comment) => (
         <Comment
           intl={intl}

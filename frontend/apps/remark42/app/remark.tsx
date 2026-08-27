@@ -3,6 +3,7 @@ import { bindActionCreators } from 'redux';
 import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
+import { getDirection } from 'common/direction';
 import { loadLocale } from 'utils/loadLocale';
 import { parseMessage, isFromParent } from 'utils/post-message';
 import { ConnectedRoot } from 'components/root';
@@ -34,6 +35,10 @@ async function init(): Promise<void> {
   const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads }, store.dispatch);
 
   node.innerHTML = '';
+
+  // locale is fixed for the life of the page (no message updates it after init), so this only
+  // needs to run once, unlike the theme below which a parent page can flip at any time
+  document.documentElement.dir = getDirection(locale);
 
   window.addEventListener('message', (evt) => {
     if (!isFromParent(evt)) {

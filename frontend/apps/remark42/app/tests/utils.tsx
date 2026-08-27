@@ -8,9 +8,9 @@ import en from 'locales/en.json';
 import { mockStore } from '__stubs__/store';
 import type { StoreState } from 'store';
 
-export function render(children: ComponentChild, s: Partial<StoreState> = {}) {
+export function render(children: ComponentChild, s: Partial<StoreState> = {}, locale = 'en') {
   const props = originalRender(
-    <IntlProvider locale="en" messages={en}>
+    <IntlProvider locale={locale} messages={en}>
       <Provider store={mockStore(s)}>{children}</Provider>
     </IntlProvider>
   );
@@ -19,7 +19,7 @@ export function render(children: ComponentChild, s: Partial<StoreState> = {}) {
     ...props,
     rerender(children: ComponentChild) {
       props.rerender(
-        <IntlProvider locale="en" messages={en}>
+        <IntlProvider locale={locale} messages={en}>
           <Provider store={mockStore(s)}>{children}</Provider>
         </IntlProvider>
       );

@@ -71,4 +71,13 @@ describe('<ConnectedRoot />', () => {
       jest.useRealTimers();
     }
   });
+
+  it('sets dir on the root element from the active locale (direction mapping itself is covered by common/direction.test.ts)', () => {
+    jest.spyOn(api, 'getUser').mockImplementation(() => new Promise(() => undefined));
+    jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
+
+    const { container } = render(<ConnectedRoot />, stateStub, 'he');
+
+    expect(container.firstElementChild).toHaveAttribute('dir', 'rtl');
+  });
 });
