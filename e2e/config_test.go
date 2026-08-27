@@ -23,6 +23,8 @@ import (
 // document, in templates/iframe.ejs, reads it back before the bundle runs. Nothing else opens
 // window.name, so the whole path could be removed unnoticed
 func TestConfig_ColorsReachTheWidget(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{"__colors__": map[string]any{"--color15": "rgb(1, 2, 3)"}})
@@ -45,6 +47,8 @@ func TestConfig_ColorsReachTheWidget(t *testing.T) {
 // conversation in two. One parameter and not two: a url containing "&" cannot be commented on
 // at all, see #2204
 func TestConfig_URLOverrideDecidesTheThread(t *testing.T) {
+	t.Parallel()
+
 	shared := fmt.Sprintf("%s/web/?e2e=config-url-%s", baseURL, runID)
 	text := "shared thread " + runID
 
@@ -77,6 +81,8 @@ func TestConfig_URLOverrideDecidesTheThread(t *testing.T) {
 // common/settings.ts. The both-shown case is the control: without it these would hold on a
 // widget that offers neither
 func TestConfig_SubscriptionControlsCanBeHidden(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name        string
 		config      map[string]any
@@ -116,6 +122,8 @@ func TestConfig_SubscriptionControlsCanBeHidden(t *testing.T) {
 // locale=xx is all a caller can be promised. Without this, a build that stopped resolving
 // catalogs altogether would still look correct to anyone reading English
 func TestConfig_UnknownLocaleFallsBackToEnglish(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{"locale": "xx"})
@@ -133,6 +141,8 @@ func TestConfig_UnknownLocaleFallsBackToEnglish(t *testing.T) {
 // this working. Kiritimati is UTC+14, far enough that a wrong timezone usually lands on the wrong
 // day as well as the wrong hour
 func TestConfig_TimesRenderInTheReadersTimezone(t *testing.T) {
+	t.Parallel()
+
 	const zone = "Pacific/Kiritimati"
 
 	page := newPageInContext(t, browser, playwright.BrowserNewContextOptions{
@@ -187,6 +197,8 @@ func TestConfig_TimesRenderInTheReadersTimezone(t *testing.T) {
 // with the comment, and the backend stores it against the thread. It is what a feed and the admin
 // listing show, and nothing else here would notice it going
 func TestConfig_PageTitleReachesTheStoredComment(t *testing.T) {
+	t.Parallel()
+
 	title := "A title only this test uses " + runID
 
 	page := newPage(t)

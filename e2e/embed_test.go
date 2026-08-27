@@ -20,6 +20,8 @@ import (
 // A text node and an element, because only the element was ever adopted and a test carrying text
 // alone passes against the defect.
 func TestEmbed_PlaceholderGivesWayToOneOwnedIframe(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{},
@@ -59,6 +61,8 @@ func TestEmbed_PlaceholderGivesWayToOneOwnedIframe(t *testing.T) {
 // single-page app holds, documented in configuration/frontend/spa.md and exercised by nothing.
 // Neither half is observable from inside the widget, which is where the rest of this suite looks
 func TestEmbed_DestroyRemovesTheWidgetAndCreateInstanceBringsItBack(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{})
@@ -85,6 +89,8 @@ func TestEmbed_DestroyRemovesTheWidgetAndCreateInstanceBringsItBack(t *testing.T
 // path the demo page's own toggle takes, and the one an integrator calls when a reader switches
 // themes on the host page
 func TestEmbed_ThemeChangesReachTheWidgetAfterLoad(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{"theme": "light"})

@@ -34,6 +34,8 @@ func setSort(t *testing.T, frame playwright.FrameLocator, value string) {
 }
 
 func TestThread_SortChangeReordersComments(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -73,6 +75,8 @@ func TestThread_SortChangeReordersComments(t *testing.T) {
 }
 
 func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -127,6 +131,8 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 // browser and not on the server, and has to be undone from the settings panel. The second author
 // is what makes it a test of hiding one person and not of emptying the thread
 func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
+	t.Parallel()
+
 	hidden := "hidden author " + runID
 	kept := "kept author " + runID
 
@@ -182,9 +188,10 @@ func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 // the page to say why. A locale is the payload because it is the one thing loaded as a separate
 // chunk after boot, so it fails when the origin is wrong and renders English instead of throwing.
 func TestThread_WidgetDocumentServesItsOwnChunks(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 
-	pauseForAuthLimit()
 	// the widget document, not the demo page, since nothing there can pass a locale. it has to
 	// be opened on the instance's own origin: the bundle addresses the host the build was
 	// substituted with, and its CSP is `self`, so a mismatched origin blocks its own chunk

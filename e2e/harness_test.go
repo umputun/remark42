@@ -5,14 +5,17 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // stampEnv carries the source digest into compose, which sets it on the remark42 service.
@@ -22,6 +25,141 @@ const stampEnv = "E2E_STAMP"
 
 // stampVar is what compose names it inside the container
 const stampVar = "E2E_SOURCE_STAMP"
+
+var limiterProbeSeq atomic.Int64
+
+func TestHarness_ReaderIPRequestScope(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		rawURL string
+		want   bool
+	}{
+		{name: "named instance", rawURL: baseURL + "/auth/status", want: true},
+		{name: "dev oauth provider", rawURL: "http://remark42:8084/login/oauth/authorize", want: true},
+		{name: "named deployment mode", rawURL: shortEditURL + "/auth/status", want: true},
+		{name: "named tls instance", rawURL: "https://remark42-https:8443/auth/status", want: true},
+		{name: "loopback instance", rawURL: probeURL + "/auth/status", want: true},
+		{name: "loopback tls instance", rawURL: httpsProbeURL + "/auth/status", want: true},
+		{name: "host page", rawURL: hostSiteURL + "/post.html", want: false},
+		{name: "tls host page", rawURL: httpsHostSiteURL + "/post-https.html", want: false},
+		{name: "mailpit", rawURL: mailpitURL + "/api/v1/messages", want: false},
+		{name: "unrelated similar host", rawURL: "https://remark42.example.com/file", want: false},
+		{name: "remark url in host-page query", rawURL: hostSiteURL + "/?next=" + baseURL, want: false},
+		{name: "non-http scheme", rawURL: "ftp://remark42:8080/file", want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, requestNeedsReaderIP(tc.rawURL), tc.rawURL)
+			assert.Equal(t, tc.want, readerIPRoutePattern.MatchString(tc.rawURL), "route pattern: "+tc.rawURL)
+		})
+	}
+}
+
+func TestHarness_ForwardedIPSeparatesAuthLimiter(t *testing.T) {
+	t.Parallel()
+
+	type result struct {
+		status int
+		err    error
+	}
+	status := func(ip string) result {
+		req, err := http.NewRequest(http.MethodGet, probeURL+"/auth/status?site=remark", http.NoBody)
+		if err != nil {
+			return result{err: err}
+		}
+		req.Header.Set("X-Real-IP", ip)
+
+		resp, err := probeClient.Do(req)
+		if err != nil {
+			return result{err: err}
+		}
+		if err = resp.Body.Close(); err != nil {
+			return result{err: err}
+		}
+		return result{status: resp.StatusCode}
+	}
+
+	seq := limiterProbeSeq.Add(1) - 1
+	clientIP := forwardedReaderIP(255, seq*2+1)
+	freshIP := forwardedReaderIP(255, seq*2+2)
+
+	first := status(clientIP)
+	require.NoError(t, first.err)
+	require.Equal(t, http.StatusOK, first.status)
+
+	const burst = 8
+	results := make(chan result, burst)
+	for range burst {
+		go func() { results <- status(clientIP) }()
+	}
+	refused := false
+	for range burst {
+		got := <-results
+		require.NoError(t, got.err)
+		require.Contains(t, []int{http.StatusOK, http.StatusTooManyRequests}, got.status)
+		refused = refused || got.status == http.StatusTooManyRequests
+	}
+	require.True(t, refused, "one forwarded IP should share one auth-limiter bucket")
+
+	// A new forwarded IP receives its own allowance, proving that the stack configuration and
+	// RealIP classification preserve the isolation every parallel browser context relies on.
+	fresh := status(freshIP)
+	require.NoError(t, fresh.err)
+	require.Equal(t, http.StatusOK, fresh.status,
+		"a fresh forwarded IP did not get its own bucket; check TRUSTED_PROXY and RealIP classification")
+}
+
+func TestHarness_BrowserContextsHaveIndependentAuthLimiters(t *testing.T) {
+	t.Parallel()
+
+	pages := []playwright.Page{newPage(t), newPage(t)}
+	for _, page := range pages {
+		resp, err := page.Goto(probeURL + "/web/privacy.html")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, http.StatusOK, resp.Status())
+	}
+
+	type burstResult struct {
+		statuses []int
+		err      error
+	}
+	burst := func(page playwright.Page) burstResult {
+		value, err := page.Evaluate(`url => Promise.all([fetch(url), fetch(url)]).then(rs => rs.map(r => r.status))`,
+			probeURL+"/auth/status?site=remark")
+		if err != nil {
+			return burstResult{err: err}
+		}
+		raw, ok := value.([]any)
+		if !ok {
+			return burstResult{err: fmt.Errorf("auth burst returned %T", value)}
+		}
+		statuses := make([]int, 0, len(raw))
+		for _, item := range raw {
+			switch n := item.(type) {
+			case int:
+				statuses = append(statuses, n)
+			case float64:
+				statuses = append(statuses, int(n))
+			default:
+				return burstResult{err: fmt.Errorf("auth burst status is %T", item)}
+			}
+		}
+		return burstResult{statuses: statuses}
+	}
+
+	results := make(chan burstResult, len(pages))
+	for _, page := range pages {
+		go func() { results <- burst(page) }()
+	}
+	for range pages {
+		got := <-results
+		require.NoError(t, got.err)
+		require.Equal(t, []int{http.StatusOK, http.StatusOK}, got.statuses,
+			"two browser contexts shared one auth bucket, so the Playwright reader-IP route is not reaching the backend")
+	}
+}
 
 // sourceStamp digests the sources that end up in the image. Shelling out keeps one definition of
 // what the digest covers, since the Makefile needs the same value and cannot call into this package

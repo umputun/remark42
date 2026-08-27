@@ -74,6 +74,8 @@ var documentedWebPaths = []struct {
 // an OAuth application set up years ago holds these URLs for good, and the build changing shape is
 // not their problem
 func TestWeb_DocumentedURLsResolve(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range documentedWebPaths {
 		t.Run(strings.TrimPrefix(tc.path, "/"), func(t *testing.T) {
 			resp := getWeb(t, tc.path)
@@ -92,6 +94,8 @@ func TestWeb_DocumentedURLsResolve(t *testing.T) {
 // TestWeb_UnknownNameIs404 is the negative control for the case above: without it a fallback
 // serving one page for everything under /web would keep every assertion there green
 func TestWeb_UnknownNameIs404(t *testing.T) {
+	t.Parallel()
+
 	resp := getWeb(t, "/web/no-such-file.html")
 	assert.Equal(t, http.StatusNotFound, resp.status, "an unknown name has to 404, or the cases "+
 		"above cannot tell a served file from a fallback")
@@ -103,6 +107,8 @@ func TestWeb_UnknownNameIs404(t *testing.T) {
 // with the same bytes and the same type, and has to parse as a classic script, which is the premise
 // serving one under the other rests on
 func TestWeb_EveryBundleServesUnderBothSuffixes(t *testing.T) {
+	t.Parallel()
+
 	names := emittedBundles(t)
 	// a listing from the wrong place, or one that lost most of its entries to a chunk directory,
 	// would leave a handful of cases running and report green. every locale is a chunk of its own,
@@ -180,7 +186,7 @@ func emittedBundles(t *testing.T) []string {
 	require.NoError(t, err, "listing %s in %s: %s", stackWebRoot, stackContainer, exitStderr(err))
 
 	var names []string
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if name := strings.TrimPrefix(strings.TrimSpace(line), stackWebRoot+"/"); name != "" {
 			names = append(names, name)
 		}

@@ -24,6 +24,8 @@ make e2e
 make e2e-down
 ```
 
+The default run admits four top-level tests at once. Each browser context has isolated cookies, storage, a unique thread URL and a stable test-only client IP, so the backend's per-IP controls remain local to one reader. The last-comments case reads a site-wide feed, so it stays serial.
+
 Run from `e2e/`; the compose path is relative to it. A single test:
 
 ```
@@ -78,17 +80,20 @@ Both TLS services read a self-signed certificate from `e2e/tls/`, which `e2e/tls
 
 The main instance enables the notify module (`NOTIFY_USERS=email`). Without it `email_notifications` is false in the config, the widget never renders the subscribe control, and the whole subscribe, confirm and unsubscribe flow is unreachable from a browser.
 
-The remark42 instances beyond the first offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` gets its admin from `ADMIN_SHARED_ID`, since the anonymous provider derives the user id from the name and the id for a chosen name can be written into the compose file ahead of time.
+The remark42 instances beyond the first offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` enables email authentication and sets `ADMIN_SHARED_ID` to the SHA-1-derived ID of `adminedit@example.com`, which is the address its browser case uses.
 
-Three settings exist for the tests and not for realism, and each is there for a reason:
+Four settings exist for the tests and not for realism, and each is there for a reason:
 
 - `REMARK_URL` uses a **hostname**, not `127.0.0.1`. The dev oauth2 server binds whatever host it reads out of `REMARK_URL` (`localBindAddr` in go-pkgz/auth), and a loopback bind inside a container cannot be published. The browser maps the names back with `--host-resolver-rules`.
 - `UPDATE_LIMIT=100`, because the default of 0.5 updates a second rejects any test that posts twice in a row.
-- The suite paces its own calls to `/auth/`, which is limited to two requests a second by a bare literal at `backend/app/rest/api/rest.go:242` and not by a setting. See `pauseForAuthLimit`.
+- Each browser context has its own forwarded client IP. Fresh contexts use the limiter's initial allowance; later auth actions wait one token-refill interval through `pauseForAuthLimit`. The limit is a bare literal at `backend/app/rest/api/rest.go:242`, not a setting.
+- `TRUSTED_PROXY` stays unset. The stack is loopback-only, and the harness verifies that its per-context `X-Real-IP` reaches the backend and separates auth limiter buckets.
+
+`VOTES_IP` follows the same reader model: one browser context is one voter IP. A vote-deduplication case that needs repeated actions from one reader must perform them in the same context.
 
 ## What this suite cannot reach
 
-The stack now carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. What is still out of reach is a browser engine other than Chromium for them, since the resolver rules the hostnames need are a Chromium flag.
+The stack carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. What is still out of reach is a browser engine other than Chromium for them, since the resolver rules the hostnames need are a Chromium flag.
 
 The trap that remains is which cookie policy a run is under. Playwright's own default `--disable-features` argument carries `ThirdPartyStoragePartitioning`, and it beats both `--test-third-party-cookie-phaseout` and `--block-third-party-cookies` passed through `Args`. A run configured that way keeps an ordinary third-party cookie exactly as it would with no flags at all, so it proves nothing while looking like it proved something. The lever is `IgnoreDefaultArgs` on the launch options: drop that default entry and re-supply `--disable-features` without that one feature, which is what `TestHTTPS_SessionSurvivesThirdPartyCookieBlocking` does. Measured on a cross-site https embed:
 

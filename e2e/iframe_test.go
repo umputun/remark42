@@ -18,6 +18,8 @@ import (
 // opaque white instead of staying transparent. Blocking the bundle freezes the document in
 // that pre-script state, so these assert the inline head script has already applied the scheme.
 func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name     string
 		query    string
@@ -33,10 +35,11 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 			t.Run(engine+"/"+tc.name, func(t *testing.T) {
 				page := newPageOn(t, browserFor(t, engine))
 				require.NoError(t, page.Route(regexp.MustCompile(`remark\.m?js$`), func(route playwright.Route) {
-					_ = route.Abort()
+					if err := route.Abort(); err != nil {
+						t.Errorf("abort widget bundle: %v", err)
+					}
 				}))
 
-				pauseForAuthLimit()
 				_, err := page.Goto(probeURL + "/web/iframe.html" + tc.query)
 				require.NoError(t, err)
 
@@ -57,6 +60,8 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 // parent puts on the iframe element would not disturb them, and it is the disagreement
 // between the two that paints the opaque canvas.
 func TestIframe_ParentAndDocumentAgreeOnColorScheme(t *testing.T) {
+	t.Parallel()
+
 	schemes := map[string]*playwright.ColorScheme{
 		"dark":  playwright.ColorSchemeDark,
 		"light": playwright.ColorSchemeLight,
@@ -68,7 +73,6 @@ func TestIframe_ParentAndDocumentAgreeOnColorScheme(t *testing.T) {
 				// the demo page reads prefers-color-scheme, not a query parameter
 				require.NoError(t, page.EmulateMedia(playwright.PageEmulateMediaOptions{ColorScheme: scheme}))
 
-				pauseForAuthLimit()
 				_, err := page.Goto(renderURL(t))
 				require.NoError(t, err)
 				widget(t, page)
@@ -106,10 +110,11 @@ const (
 func openWithBlockedIframeDoc(t *testing.T, page playwright.Page) {
 	t.Helper()
 	require.NoError(t, page.Route(regexp.MustCompile(`/web/iframe\.html`), func(route playwright.Route) {
-		_ = route.Abort()
+		if err := route.Abort(); err != nil {
+			t.Errorf("abort iframe document: %v", err)
+		}
 	}))
 
-	pauseForAuthLimit()
 	_, err := page.Goto(renderURL(t))
 	require.NoError(t, err)
 	require.NoError(t, page.Locator("#remark42 iframe").WaitFor(playwright.LocatorWaitForOptions{
@@ -239,6 +244,8 @@ func iframeVisibility(t *testing.T, page playwright.Page) string {
 }
 
 func TestIframe_StaysHiddenUntilTheDocumentReportsInited(t *testing.T) {
+	t.Parallel()
+
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
 		openWithBlockedIframeDoc(t, page)
 
@@ -275,8 +282,9 @@ func forEachEngine(t *testing.T, body func(t *testing.T, page playwright.Page)) 
 // when the iframe is created, partway through the navigation, so bounding only the poll leaves
 // the navigation window unmeasured. Time the whole thing.
 func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
+	t.Parallel()
+
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
-		pauseForAuthLimit()
 		_, err := page.Goto(renderURL(t))
 		require.NoError(t, err)
 
@@ -299,6 +307,8 @@ func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
 // The aborted document never reports its height, so the iframe box stays empty and a
 // visibility assertion on geometry would fail. Assert the property the fallback actually sets.
 func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
+	t.Parallel()
+
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
 		openWithBlockedIframeDoc(t, page)
 

@@ -1,5 +1,10 @@
 # compose for the e2e suite; the tests themselves run on the host, see e2e/
 #
+# TRUSTED_PROXY stays unset on every instance. The loopback-only harness gives each browser context
+# a distinct X-Real-IP, and the backend honours a forwarding header from any client only while no
+# trusted proxy is configured. Setting one collapses every context onto the docker gateway address
+# and puts the whole parallel run in one rate-limit and vote-dedup bucket.
+#
 # every port is bound to the loopback interface on purpose. this stack runs with a known
 # secret, dev oauth2 and an admin shared id, and `go test` can start it unattended, so it
 # must not be reachable from the network. the suite only ever talks to 127.0.0.1.

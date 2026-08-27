@@ -24,6 +24,9 @@ func signInDev(t *testing.T, page playwright.Page, frame playwright.FrameLocator
 	})
 	require.NoError(t, err)
 
+	// Opening the provider and completing its callback are separate /auth/ requests. The initial
+	// status probe may still occupy the other token in this reader's bucket.
+	pauseForAuthLimit()
 	require.NoError(t, popup.Locator("text=Authorize").Click())
 
 	// the popup closes itself through the ?selfClose stub. while an oauth sign-in is pending
@@ -64,6 +67,8 @@ func signInAnon(t *testing.T, page playwright.Page, frame playwright.FrameLocato
 }
 
 func TestAuth_DevProviderSignsIn(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 
@@ -72,6 +77,8 @@ func TestAuth_DevProviderSignsIn(t *testing.T) {
 }
 
 func TestAuth_AnonymousSignsIn(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 
@@ -87,6 +94,8 @@ func TestAuth_AnonymousSignsIn(t *testing.T) {
 // mail catcher, and submit it. The token is what the widget sends, so a broken template or a
 // broken token round-trip fails here and not silently in production.
 func TestAuth_EmailSignsIn(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 
@@ -127,13 +136,12 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 // Sign Out is an icon button, so its title is the only text it carries.
 //
 // The first wait is deliberately short. Everything under /auth/ is capped at two requests a
-// second for the whole suite, a bare literal at backend/app/rest/api/rest.go:242, and a case
-// that signs in on two pages spends that budget twice over. When the read that repaints the
-// panel is the request the limiter refuses, the widget shows signed out over a session that
-// exists, and waiting longer cannot help because nothing will ask again. So on the short wait
-// expiring, hand focus back to the frame: the widget re-probes on visibilitychange and window
-// focus while a sign-in is pending, and by then the cookie is long since set. A sign-in that
-// genuinely failed still fails here, since the second read finds no state either
+// second per reader, a bare literal at backend/app/rest/api/rest.go:242. The initial status and
+// login can spend the bucket before the read that repaints the panel, leaving the widget signed
+// out over a session that exists. Waiting longer cannot help because nothing will ask again, so
+// on the short wait expiring, hand focus back to the frame: the widget re-probes on
+// visibilitychange and window focus while a sign-in is pending. A sign-in that genuinely failed
+// still fails here, since the second read finds no state either
 func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLocator) {
 	t.Helper()
 
@@ -164,6 +172,8 @@ func verificationToken(t *testing.T, body string) string {
 // assertion after the reload is the point, since a cleared store with a live cookie looks
 // identical until the page comes back
 func TestAuth_SignOutEndsTheSession(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 
@@ -191,6 +201,8 @@ func TestAuth_SignOutEndsTheSession(t *testing.T) {
 // delivered in order, so a widget that has visibly acted on the later message has already had the
 // title message. Without it this would assert on a dropdown that simply has not closed yet.
 func TestAuth_HostPageMessageDoesNotCloseTheDropdown(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	stubSignedOut(t, page)
 	embedConfig(t, page, map[string]any{"theme": "light"})
@@ -230,6 +242,8 @@ func TestAuth_HostPageMessageDoesNotCloseTheDropdown(t *testing.T) {
 // response says nothing about it. A reader on a flaky connection otherwise appears to be logged
 // out and cannot get back without signing in again
 func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
@@ -237,11 +251,13 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 	// one failure, then out of the way. Unroute and not a counter, so the restored state is the
 	// real endpoint and not a stub standing in for it
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-		_ = route.Fulfill(playwright.RouteFulfillOptions{
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
 			ContentType: playwright.String("application/json"),
 			Body:        playwright.String(`{"error":"failed"}`),
-		})
+		}); err != nil {
+			t.Errorf("fulfill transient auth failure: %v", err)
+		}
 	}))
 
 	pauseForAuthLimit()

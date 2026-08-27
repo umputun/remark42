@@ -30,6 +30,8 @@ import (
 // which a control to submit it can be located; the request carries the token that arrived in the
 // message either way, which is what the exchange is.
 func TestSubscribe_EmailRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	page := newPage(t)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
