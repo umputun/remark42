@@ -1,27 +1,9 @@
 import assert from 'node:assert/strict';
-import { afterEach, describe, it } from 'node:test';
+import { describe, it } from 'node:test';
 
 import type { User } from '../common/types.ts';
 
 import { parseHiddenUsers } from './hidden-users.ts';
-
-function captureErrors() {
-  const real = console.error;
-  const seen: unknown[][] = [];
-
-  console.error = (...args: unknown[]) => {
-    seen.push(args);
-  };
-
-  return { seen, restore: () => (console.error = real) };
-}
-
-let capture: ReturnType<typeof captureErrors> | undefined;
-
-afterEach(() => {
-  capture?.restore();
-  capture = undefined;
-});
 
 /**
  * The record is keyed by user id and the caller indexes it directly, so anything of another shape
@@ -60,17 +42,17 @@ describe('parseHiddenUsers', () => {
     assert.deepEqual(parseHiddenUsers('true'), {});
   });
 
-  it('returns nothing hidden and reports when the value is not JSON', () => {
-    capture = captureErrors();
+  it('returns nothing hidden and reports when the value is not JSON', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
     assert.deepEqual(parseHiddenUsers('"{:"""'), {});
-    assert.equal(capture.seen.length, 1);
+    assert.equal(errors.mock.callCount(), 1);
   });
 
-  it('reads an empty string as nothing stored instead of as broken JSON', () => {
-    capture = captureErrors();
+  it('reads an empty string as nothing stored instead of as broken JSON', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
     assert.deepEqual(parseHiddenUsers(''), {});
-    assert.deepEqual(capture.seen, []);
+    assert.equal(errors.mock.callCount(), 0);
   });
 });

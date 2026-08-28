@@ -3,18 +3,6 @@ import { describe, it } from 'node:test';
 
 import { authHeaders, clockSkewMs, jwtPayload, requestBody, requestURL } from './fetcher-core.ts';
 
-/** Swaps console.error out so a case that expects a report can assert it, and print nothing. */
-function captureErrors() {
-  const real = console.error;
-  const seen: unknown[][] = [];
-
-  console.error = (...args: unknown[]) => {
-    seen.push(args);
-  };
-
-  return { seen, restore: () => (console.error = real) };
-}
-
 /**
  * base64url is not base64: `-` stands in for `+` and `_` for `/`. The payload below is chosen to
  * carry both, so a decoder that skips the substitution cannot pass by luck.
@@ -54,15 +42,11 @@ describe('jwtPayload', () => {
 
   // a token this widget cannot decode leaves the auth cookies unwritten, and that path is where a
   // base64url regression shows first, so it has to leave a trace
-  it('reports a payload it cannot decode', () => {
-    const capture = captureErrors();
+  it('reports a payload it cannot decode', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
-    try {
-      assert.equal(jwtPayload('h.!!!!.s'), null);
-      assert.equal(capture.seen.length, 1);
-    } finally {
-      capture.restore();
-    }
+    assert.equal(jwtPayload('h.!!!!.s'), null);
+    assert.equal(errors.mock.callCount(), 1);
   });
 });
 

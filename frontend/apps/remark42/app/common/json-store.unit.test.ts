@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { afterEach, describe, it } from 'node:test';
+import { describe, it } from 'node:test';
 
 import { type JsonStore, readJson, updateJson, writeJson } from './json-store.ts';
 
@@ -28,25 +28,6 @@ function refusingStore(): JsonStore {
   };
 }
 
-/** Swaps console.error out so a case that expects a report can assert it, and print nothing. */
-function captureErrors() {
-  const real = console.error;
-  const seen: unknown[][] = [];
-
-  console.error = (...args: unknown[]) => {
-    seen.push(args);
-  };
-
-  return { seen, restore: () => (console.error = real) };
-}
-
-let capture: ReturnType<typeof captureErrors> | undefined;
-
-afterEach(() => {
-  capture?.restore();
-  capture = undefined;
-});
-
 describe('readJson', () => {
   it('reads back what was written', () => {
     assert.deepEqual(readJson(store({ k: '{"a":1}' }), 'k'), { a: 1 });
@@ -69,19 +50,19 @@ describe('readJson', () => {
 
   // anything on the page can write this key. the caller gets nothing instead of a throw, and the
   // report is what says the value was unreadable
-  it('returns null and reports when the value is not JSON', () => {
-    capture = captureErrors();
+  it('returns null and reports when the value is not JSON', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
     assert.equal(readJson(store({ k: 'asdas' }), 'k'), null);
     assert.equal(readJson(store({ k: '"{:"""' }), 'k'), null);
-    assert.equal(capture.seen.length, 2);
+    assert.equal(errors.mock.callCount(), 2);
   });
 
-  it('returns null and reports when the storage itself refuses', () => {
-    capture = captureErrors();
+  it('returns null and reports when the storage itself refuses', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
     assert.equal(readJson(refusingStore(), 'k'), null);
-    assert.equal(capture.seen.length, 1);
+    assert.equal(errors.mock.callCount(), 1);
   });
 });
 
@@ -103,20 +84,20 @@ describe('writeJson', () => {
   });
 
   // everything kept here is a preference, and losing one is not worth taking down the caller
-  it('reports instead of throwing when the storage refuses', () => {
-    capture = captureErrors();
+  it('reports instead of throwing when the storage refuses', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
 
     assert.doesNotThrow(() => writeJson(refusingStore(), 'k', { a: 1 }));
-    assert.equal(capture.seen.length, 1);
+    assert.equal(errors.mock.callCount(), 1);
   });
 
-  it('reports instead of throwing on a value JSON cannot represent', () => {
-    capture = captureErrors();
+  it('reports instead of throwing on a value JSON cannot represent', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
     const circular: Record<string, unknown> = {};
 
     circular.self = circular;
     assert.doesNotThrow(() => writeJson(store(), 'k', circular));
-    assert.equal(capture.seen.length, 1);
+    assert.equal(errors.mock.callCount(), 1);
   });
 });
 

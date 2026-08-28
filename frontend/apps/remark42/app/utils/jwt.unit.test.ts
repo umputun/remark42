@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { afterEach, describe, it } from 'node:test';
+import { describe, it } from 'node:test';
 
 import { validToken, invalidToken } from '../__stubs__/jwt.ts';
 
@@ -44,26 +44,20 @@ describe('parseJwt', () => {
 });
 
 describe('isJwtExpired', () => {
-  const realNow = Date.now;
-
-  afterEach(() => {
-    Date.now = realNow;
-  });
-
   // exp is in seconds, Date.now in milliseconds, and getting that conversion wrong is the mistake
   // worth catching: a token would then read as valid for a thousand times its lifetime
-  it('is not expired a second before exp', () => {
-    Date.now = () => 1579986981 * 1000;
+  it('is not expired a second before exp', (t) => {
+    t.mock.method(Date, 'now', () => 1579986981 * 1000);
     assert.equal(isJwtExpired(validToken), false);
   });
 
-  it('is not expired exactly at exp', () => {
-    Date.now = () => 1579986982 * 1000;
+  it('is not expired exactly at exp', (t) => {
+    t.mock.method(Date, 'now', () => 1579986982 * 1000);
     assert.equal(isJwtExpired(validToken), false);
   });
 
-  it('is expired a second after exp', () => {
-    Date.now = () => 1579986983 * 1000;
+  it('is expired a second after exp', (t) => {
+    t.mock.method(Date, 'now', () => 1579986983 * 1000);
     assert.equal(isJwtExpired(validToken), true);
   });
 });
