@@ -11,6 +11,7 @@ import {
   JWT_HEADER,
   JWT_COOKIE_NAME,
   XSRF_COOKIE,
+  XSRF_HEADER,
   AUTH_COOKIE_TTL_SECONDS,
 } from './fetcher';
 import * as cookies from './cookies';
@@ -119,6 +120,19 @@ describe('fetcher', () => {
       // Clear cookies before each test
       document.cookie = `${JWT_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       document.cookie = `${XSRF_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+
+    it('sends no xsrf header when the cookie is present but empty', async () => {
+      expect.assertions(1);
+
+      // an `XSRF-TOKEN=;` cookie reads back as an empty string, not as undefined, and an empty
+      // header is what a strict proxy answers 400 to. Nothing is lost by omitting it: the backend
+      // reads the header with `Header.Get`, which returns that same empty string either way.
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => '');
+      mockFetch();
+      await apiFetcher.get(apiUri);
+
+      expect((window.fetch as jest.Mock).mock.calls[0][1].headers).not.toHaveProperty(XSRF_HEADER);
     });
 
     it('should set active token and than clean it on unauthorized response', async () => {
