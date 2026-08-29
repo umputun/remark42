@@ -77,10 +77,20 @@ RUN \
       echo "skip backend tests and linter" \
     ; fi
 
+# COVERAGE builds an instrumented binary that writes a profile to GOCOVERDIR as it exits, which
+# is what lets the e2e suite report what it reached. It is an argument and not an environment
+# variable because the instrumented binary is a different build, and it must not be what a
+# published image ships.
+ARG COVERAGE
+
 RUN \
     version="$(/script/version.sh)" && \
     echo "version=$version" && \
-    go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
+    if [ "$COVERAGE" = "1" ] ; then \
+        go build -cover -covermode=atomic -coverpkg=./... -o remark42 -ldflags "-X main.revision=${version}" ./app ; \
+    else \
+        go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app ; \
+    fi
 
 FROM umputun/baseimage:app-v1.17.0
 

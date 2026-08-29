@@ -33,4 +33,13 @@ digest() {
 	git diff HEAD -- $sources
 	# shellcheck disable=SC2086
 	git status --porcelain -- $sources
+	# an instrumented build is a different binary from the same sources, so it has to be a
+	# different stamp: without this a coverage stack is accepted for a plain run, and a plain
+	# stack for a coverage run, which reports no coverage at all and looks like untested code
+	# only "1" instruments, which is the Dockerfile's test too: anything else has to digest as
+	# the plain build, or E2E_COVERAGE=0 becomes a third stamp for a stack built the ordinary way
+	case "${E2E_COVERAGE:-}" in
+	1) printf 'coverage=1\n' ;;
+	*) printf 'coverage=\n' ;;
+	esac
 } | digest | cut -c1-16

@@ -43,6 +43,55 @@ Rate-limit responses are logged whether or not `E2E_DEBUG` is set, because they 
 
 The build tag keeps these out of `go test ./...`; nothing runs without `-tags=e2e`.
 
+## Coverage
+
+```
+make e2e-cover
+```
+
+Reports what the suite reaches in the backend. The code under test runs in a container instead of
+in the test process, so `go test -cover` cannot see it; `compose-e2e-coverage.yml` overlays the
+stack to build the image with `go build -cover` and mount a profile directory per instance, and
+`e2e/coverage.sh` runs the suite, stops the instances so the profiles flush, merges them into
+`e2e/coverage/e2e.cov` and prints the total.
+
+The overlay is a separate file because a bind mount in the short form creates its host path when
+it is missing. Carried in `compose-e2e-test.yml`, it would have an ordinary `make e2e` create
+`e2e/coverage` itself, owned by whatever the daemon runs as. A plain run leaves no trace of
+coverage, and `compose-e2e-test.yml` is what a plain run uses.
+
+Three ways this could report nothing and still look like a result, so each one fails instead:
+
+- **A killed instance writes no profile.** The instances are asked to stop with a 30 second grace,
+  and every directory is then checked rather than the total, because six clean exits and one kill
+  merge into a plausible report with that instance's code reading as unreached. The failure names
+  the services that produced nothing.
+- **A failing suite still has coverage worth keeping.** The run's exit status is preserved, but the
+  instances are stopped and the profiles merged either way, so the run that most needed explaining
+  is not the one that discards its evidence.
+- **A plain stack answers for an instrumented one.** `E2E_COVERAGE` feeds `e2e/stamp.sh` as well as
+  the image build, so the two stacks carry different stamps and the suite refuses the one it was
+  not built for. Only the value `1` instruments, in the stamp and in the Dockerfile alike, so
+  `E2E_COVERAGE=0` is the plain build and not a third variant.
+
+The profile is written in `atomic` mode and with the same `_mock.go` exclusion the unit run
+applies, so the two are one population and can be reported as a single figure. Appending it to the
+unit profile without repeating the `mode:` header is enough:
+
+```
+cat profile.cov > combined.cov && tail -n +2 e2e/coverage/e2e.cov >> combined.cov
+cd backend && go tool cover -func=../combined.cov
+```
+
+The read has to run from `backend/`. `covdata` writes file names as full import paths, and
+`go tool cover` resolves them through `go list`, so from the repository root, which has no
+`go.mod`, it reports that no module provides the package instead of anything about coverage.
+
+`atomic` is also the only mode `-race` accepts, so the instrumented build stays compatible if the
+binary is ever built with it.
+
+The instrumented binary is a build argument and never what a published image ships.
+
 ## When something fails
 
 A failed test writes a Playwright trace to `e2e/traces/`, which CI uploads as an artifact. Nothing else writes one, so a run carrying the artifact is a run with a failure to look at. Open one with `npx playwright show-trace e2e/traces/<name>.zip`.

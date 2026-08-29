@@ -35,3 +35,6 @@ http-client.env.json
 
 # self-signed certificate for the e2e https services, made by e2e/tls/generate.sh
 /e2e/tls/*.pem
+
+# profiles from `make e2e-cover`
+e2e/coverage/

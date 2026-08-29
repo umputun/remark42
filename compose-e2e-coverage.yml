@@ -1,0 +1,55 @@
+# coverage overlay for the e2e stack, used only by `make e2e-cover`.
+#
+# Kept out of compose-e2e-test.yml on purpose. A bind mount in the short form creates its host
+# path if it is missing, so carrying these in the base file would have an ordinary `make e2e`
+# create e2e/coverage itself, owned by whatever the daemon runs as. A plain run must leave no
+# trace of coverage at all.
+#
+# Only the first service carries the build argument: every instance runs the one image the first
+# builds, so instrumenting it instruments all of them.
+
+services:
+  remark42:
+    build:
+      args:
+        - COVERAGE=1
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42:/coverage
+
+  remark42-shortedit:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-shortedit:/coverage
+
+  remark42-adminedit:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-adminedit:/coverage
+
+  remark42-jwtheader:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-jwtheader:/coverage
+
+  remark42-noauth:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-noauth:/coverage
+
+  remark42-anonvote:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-anonvote:/coverage
+
+  remark42-https:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-https:/coverage
