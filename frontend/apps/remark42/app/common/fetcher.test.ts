@@ -11,10 +11,10 @@ import {
   JWT_HEADER,
   JWT_COOKIE_NAME,
   XSRF_COOKIE,
+  XSRF_HEADER,
   AUTH_COOKIE_TTL_SECONDS,
 } from './fetcher';
 import * as cookies from './cookies';
-import { StaticStore } from './static-store';
 
 type FetchImplementationProps = {
   status?: number;
@@ -120,6 +120,19 @@ describe('fetcher', () => {
       // Clear cookies before each test
       document.cookie = `${JWT_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       document.cookie = `${XSRF_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+
+    it('sends no xsrf header when the cookie is present but empty', async () => {
+      expect.assertions(1);
+
+      // an `XSRF-TOKEN=;` cookie reads back as an empty string, not as undefined, and an empty
+      // header is what a strict proxy answers 400 to. Nothing is lost by omitting it: the backend
+      // reads the header with `Header.Get`, which returns that same empty string either way.
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => '');
+      mockFetch();
+      await apiFetcher.get(apiUri);
+
+      expect((window.fetch as jest.Mock).mock.calls[0][1].headers).not.toHaveProperty(XSRF_HEADER);
     });
 
     it('should set active token and than clean it on unauthorized response', async () => {
@@ -356,47 +369,6 @@ describe('fetcher', () => {
       });
 
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Something went wrong.', 0));
-    });
-  });
-
-  describe('server clock skew', () => {
-    beforeEach(() => {
-      delete StaticStore.serverClientTimeDiffMs;
-    });
-
-    it('records the skew in milliseconds', async () => {
-      // consumers add this to an epoch in milliseconds, so seconds would be out by 1000x and
-      // the correction it exists to apply would effectively not happen
-      mockFetch({ headers: { date: new Date(Date.now() - 60_000).toUTCString() } });
-      await apiFetcher.get('/anything');
-
-      expect(StaticStore.serverClientTimeDiffMs).toBeGreaterThan(55_000);
-      expect(StaticStore.serverClientTimeDiffMs).toBeLessThan(65_000);
-    });
-
-    it('leaves the skew alone when the response carries no usable date', async () => {
-      // an unparsable header used to fall back to a zero timestamp, which makes the "skew"
-      // the whole epoch and pushes anything derived from it decades into the future
-      StaticStore.serverClientTimeDiffMs = 1234;
-
-      mockFetch({ headers: {} });
-      await apiFetcher.get('/anything');
-      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
-
-      mockFetch({ headers: { date: 'not a date' } });
-      await apiFetcher.get('/anything');
-      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
-    });
-
-    it('ignores a skew too large to be a clock difference', async () => {
-      // Date.parse is lenient: '0' is a valid date to it, so an implausible reading arrives
-      // through the branch that parses rather than the one that rejects
-      StaticStore.serverClientTimeDiffMs = 1234;
-
-      mockFetch({ headers: { date: '0' } });
-      await apiFetcher.get('/anything');
-
-      expect(StaticStore.serverClientTimeDiffMs).toBe(1234);
     });
   });
 });

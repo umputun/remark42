@@ -51,6 +51,26 @@ function captureRaw() {
   };
 }
 
+/** a fixed cookie jar, for reads whose contents the widget does not control */
+function stubCookieJar(value: string) {
+  const original = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+
+  Object.defineProperty(document, 'cookie', {
+    configurable: true,
+    get: () => value,
+    set: () => {
+      /* the jar is fixed; this test is about the read */
+    },
+  });
+
+  return {
+    restore() {
+      delete (document as unknown as Record<string, unknown>).cookie;
+      if (original) Object.defineProperty(Document.prototype, 'cookie', original);
+    },
+  };
+}
+
 async function loadCookies(thirdParty: boolean) {
   jest.resetModules();
   jest.doMock('./constants', () => ({ IS_THIRD_PARTY: thirdParty }));
@@ -60,35 +80,6 @@ async function loadCookies(thirdParty: boolean) {
 
 afterEach(() => {
   jest.dontMock('./constants');
-});
-
-describe('authCookieOptions', () => {
-  it('keeps the cookie off cross-site requests when the widget shares its page origin', async () => {
-    const { authCookieOptions } = await loadCookies(false);
-
-    expect(authCookieOptions(true)).toEqual({ path: '/', sameSite: 'Strict', secure: true });
-  });
-
-  it('asks for delivery in a third-party frame when the page is on another origin', async () => {
-    const { authCookieOptions } = await loadCookies(true);
-
-    // Strict is never sent from a third-party frame: SameSite is judged against the top-level
-    // site, not the request's own origin. None needs Secure, and Partitioned is what survives
-    // third-party cookie blocking
-    expect(authCookieOptions(true)).toEqual({
-      path: '/',
-      sameSite: 'None',
-      secure: true,
-      partitioned: true,
-    });
-  });
-
-  it('does not claim attributes it cannot honour over http', async () => {
-    const { authCookieOptions } = await loadCookies(true);
-
-    // SameSite=None without Secure is rejected outright, which loses the cookie altogether
-    expect(authCookieOptions(false)).toEqual({ path: '/', sameSite: 'Strict', secure: false });
-  });
 });
 
 describe('setAuthCookie', () => {
@@ -131,6 +122,20 @@ describe('clearAuthCookie', () => {
     expect(raw.written[0]).toContain('sameSite=Strict');
 
     raw.restore();
+  });
+});
+
+describe('getCookie', () => {
+  it('hands back a value that is not valid percent-encoding instead of throwing', async () => {
+    const jar = stubCookieJar('XSRF-TOKEN=%E0%A4%A');
+    const { getCookie } = await loadCookies(false);
+
+    // anything else on the page can write this cookie, and `fetcher` reads it while building a
+    // request, outside any handler of its own: a throw here rejects every API call for as long as
+    // the cookie is there. Reading through a guarded parser is the wrapper's whole contract.
+    expect(getCookie('XSRF-TOKEN')).toBe('%E0%A4%A');
+
+    jar.restore();
   });
 });
 

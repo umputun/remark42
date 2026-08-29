@@ -112,16 +112,58 @@ so prettier, stylelint and `pnpm lint` do not see them.
 ## Imports
 
 - Imports for TypeScript, JavaScript files should be without extension: `./index`, not `./index.ts`
+- Both of the two rules above are reversed inside the dependency-free test layer described under
+  Testing, and in any module it imports: node's ESM resolver refuses an extensionless specifier and
+  knows nothing of the alias, so those files write `./types.ts` in full and never `common/…`.
+  Webpack, Jest and `tsc` all resolve the explicit relative form too, which is why the exception
+  costs nothing outside those files. It applies to value imports only; a type-only import erases
+  before either runtime sees it, and keeps the ordinary style
 - If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
 - Otherwise, it should be imported by absolute path relative to `src` folder like `common/store` which mapped to `./app/common/store.ts` in webpack, tsconfig, and Jest
 
 ## Testing
 
+Tests come in two layers, and which one a test belongs in is decided by what it needs to run.
+
+### Component and integration tests, under Jest
+
 - Project uses [Jest](https://jestjs.io) as test framework
 - [Testing Library](https://testing-library.com) is used for UI tests
-- Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`
+- Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`, and skips `*.unit.test.ts`
 - Tests are running on push attempt
 - Example tests can be found in `./app/components/auth/auth.spec.tsx`, `./app/store/user/reducers.test.ts`
+
+### Dependency-free tests, `*.unit.test.ts`
+
+Anything that is a function over plain values -- a parser, a reducer, a decoder -- is tested without
+a framework, a bundler or `node_modules`. These files import nothing but the module under test, its
+fixtures and `node:test`, and the runtime strips the types itself:
+
+```shell
+pnpm test:unit
+```
+
+It needs nothing you do not already have.
+
+The `unit` job in `ci-frontend.yml` runs them with **no `pnpm install` step at all**. That missing
+step is the point: a test that starts needing `node_modules` to pass has quietly acquired a
+dependency, and the job fails instead of hiding it. `release.yml` runs the same script after an install,
+as a second gate and not as the dependency check.
+
+`node --test` exits 0 on a glob that matches nothing, so on its own it cannot tell a renamed
+suffix from a passing run. The CI step counts the files first and fails when none match.
+
+Two rules follow from having no bundler, and both apply to **value** imports only. A type-only
+import is erased before node sees the file, so it may keep the alias and drop the extension, which is why `import type { Comment } from 'common/types'` is correct inside this layer:
+
+- import with the extension in full, `./types.ts`, since node resolves nothing else
+- import by relative path, never by the `common/…` alias, which only webpack, Jest and `tsc` know
+  about
+
+Prefer this layer whenever the thing under test does not genuinely need a DOM. Where a module mixes
+the two -- a hook that both reads `sessionStorage` and computes something -- split the computation
+out and test that half here; `app/common/intl-message.ts` and `app/hooks/session-storage.ts` are the
+pure halves of `intl.tsx` and `useSessionState.ts`, kept apart for exactly this reason.
 
 ## Notes
 

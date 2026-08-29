@@ -1,6 +1,6 @@
 import type { User, BlockedUser } from 'common/types';
 
-import type { USER_ACTIONS } from './types';
+import type { USER_ACTIONS } from './types.ts';
 import {
   USER_SET,
   USER_BAN,
@@ -10,7 +10,7 @@ import {
   USER_HIDE,
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
-} from './types';
+} from './types.ts';
 
 export const user = (state: User | null = null, action: USER_ACTIONS): User | null => {
   switch (action.type) {

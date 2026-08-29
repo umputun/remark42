@@ -12,6 +12,7 @@
     "lint:styles": "stylelint \"app/**/*.css\" \"templates/**\"",
     "lint:scripts": "eslint --max-warnings=0 \"**/*.{ts?(x),?(c)js,mjs}\"",
     "test": "jest",
+    "test:unit": "node --test \"app/**/*.unit.test.ts\"",
     "coverage": "jest --coverage",
     "format": "prettier --write \"./**/*.{js,mjs,ts,tsx,css,html}\"",
     "size-check": "cross-env NODE_ENV=production npm run build && size-limit",

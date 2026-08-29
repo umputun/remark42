@@ -151,6 +151,60 @@ jobs:
           directory: ./frontend/apps/remark42
           package_manager: pnpm
 
+  unit:
+    name: Dependency-free unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        node: [24]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      # deliberately no pnpm install: these tests import nothing but the module under test and
+      # node:test, and the runtime strips the types itself. a run that needs node_modules to pass
+      # has picked up a dependency, and the missing install step is what says so.
+      #
+      # the file count is checked first because node --test exits 0 on a glob that matches
+      # nothing, so on its own it cannot tell a renamed suffix from a passing run
+      - name: Run unit tests
+        run: |
+          count=$(find app -name '*.unit.test.ts' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "no *.unit.test.ts files matched; the suffix or the layout has moved"
+            exit 1
+          fi
+          mkdir -p coverage
+          node --test --experimental-test-coverage \
+            --test-reporter=lcov --test-reporter-destination=./coverage/lcov.info \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            "app/**/*.unit.test.ts"
+        working-directory: ./frontend/apps/remark42
+
+      # the modules this layer covers are reached by jest only indirectly, and some not at all,
+      # so without this upload moving code into them reads as a coverage regression
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          working-directory: ./frontend/apps/remark42
+          # both paths are resolved from working-directory above, so they must be relative to it:
+          # repeating the prefix doubles it, the file is never found, and the upload survives only
+          # on codecov's own search
+          codecov_yml_path: ./codecov.yml
+          files: ./coverage/lcov.info
+          flags: unit
+
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
@@ -192,4 +246,4 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          codecov_yml_path: ./frontend/apps/remark42/codecov.yml
+          codecov_yml_path: ./codecov.yml
