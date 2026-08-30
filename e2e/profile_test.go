@@ -4,6 +4,11 @@ package e2e
 
 import (
 	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -73,6 +78,16 @@ func TestProfile_ListsTheReadersOwnCommentsAndPaginates(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, absent, "the oldest comment is on the first page, so the page size is not being applied")
 
+	// the count beside the heading, which nothing else reads. The class is kept outside the css
+	// modules for this; the unit suite selects the same element by a data-testid the production
+	// bundle strips
+	counter := overlay.Locator(".comments-counter").First()
+	waitVisible(t, counter)
+	eventually(t, waitTimeout, "the profile never showed the number of comments the reader has", func() bool {
+		shown, err := counter.TextContent()
+		return err == nil && strings.TrimSpace(shown) == strconv.Itoa(total)
+	})
+
 	loadMore := overlay.Locator(`button:has-text("Load more")`)
 	waitVisible(t, loadMore)
 
@@ -133,4 +148,63 @@ func TestProfile_AnonymousReaderIsNotOfferedRemoval(t *testing.T) {
 
 		waitVisible(t, overlay.Locator(removal))
 	})
+}
+
+// TestProfile_LoadingAndFailureStates covers the two states the profile shows instead of a list,
+// which nothing else reaches: every other case answers at once and succeeds, so a profile that
+// never says it is working, or that swallows a failure and shows an empty list, passes them all.
+func TestProfile_LoadingAndFailureStates(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInAnon(t, page, frame, anonName("profilestates"))
+	postComment(t, frame, "profile states "+runID)
+
+	// held open so the loading state can be read, then failed so the error state follows
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unblock()
+
+	// a regexp and not a glob: `?` is a single-character wildcard in playwright's url matching, so
+	// a pattern written with the query string never matches the request it names
+	profileList := regexp.MustCompile(`/api/v1/comments\?.*user=`)
+	require.NoError(t, page.Route(profileList, func(route playwright.Route) {
+		<-release
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
+			Status:      playwright.Int(http.StatusInternalServerError),
+			ContentType: playwright.String("application/json"),
+			Body:        playwright.String(`{"error":"failed"}`),
+		}); err != nil {
+			t.Errorf("fulfill profile comments failure: %v", err)
+		}
+	}))
+
+	overlay := profileFrame(t, page, frame)
+
+	// while the list is out: the preloader, and none of what a settled profile shows
+	waitVisible(t, overlay.Locator(".preloader"))
+	waitHidden(t, overlay.Locator(`button:has-text("Retry")`),
+		"the profile offered a retry before anything had failed")
+	waitHidden(t, overlay.Locator(".comments-counter"),
+		"the profile showed a comment count before the list arrived")
+	waitHidden(t, overlay.Locator(`button:has-text("Load more")`),
+		"the profile offered another page before the first had arrived")
+	waitHidden(t, overlay.Locator("h3.profile-title"),
+		"the profile showed its comments heading before the list arrived")
+
+	unblock()
+
+	// after it fails: the message and a way to try again, and still no count
+	waitVisible(t, overlay.Locator(".profile-error"))
+	waitVisible(t, overlay.Locator(`button:has-text("Retry")`))
+	waitHidden(t, overlay.Locator(".preloader"),
+		"the profile was still loading after the request had failed")
+	waitHidden(t, overlay.Locator(".comments-counter"),
+		"the profile showed a comment count after the list failed to load")
+	waitHidden(t, overlay.Locator(`button:has-text("Load more")`),
+		"the profile offered another page after the list failed to load")
+	waitHidden(t, overlay.Locator("h3.profile-title"),
+		"the profile showed its comments heading after the list failed to load")
 }
