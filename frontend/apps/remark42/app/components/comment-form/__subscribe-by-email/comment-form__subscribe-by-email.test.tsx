@@ -204,7 +204,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
 describe('<SubscribeByEmail/> dropdown', () => {
   it('keeps the dropdown open after unsubscribing so the confirmation is visible (#2209)', async () => {
-    const { container } = render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
+    render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
 
     // open the dropdown
     fireEvent.click(screen.getByTitle('Subscribe by Email'));
