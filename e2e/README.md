@@ -207,9 +207,11 @@ Everything else runs in Chromium alone, for the same reason inverted: those test
 
 ## Selectors
 
-The production bundle strips `data-testid`, so tests use what ships: the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.sort-picker`, `.preloader`), `title` attributes on icon-only controls, and visible text. Three shapes are worth knowing:
+The production bundle strips `data-testid`, so tests use what ships: the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
 
 - `.auth` only exists while signed out, so waiting on it hangs after sign-in. `widget()` waits on the comment form, which is present either way.
 - The production build hashes every css-module class name to a short opaque id, so a component's own class is not something a test can hold. `role` is: the footer is `[role="contentinfo"]` and the edit countdown is `[role="timer"]`.
 - Comments render through an IntersectionObserver, so one below the fold is an empty `article` with no text in it. That makes any absence assertion written as a text filter pass whether the comment is gone or merely off screen; count articles instead, which is what `articleCount` is for.
 - Collapsing a thread hides the comment text, so a locator filtered by that text stops matching the element under test. `TestThread_CollapsePersistsAcrossReload` anchors on the comment's id instead.
+- `text=Foo` matches a case-insensitive substring, so a comment whose own text contains the phrase satisfies a locator meant for the page's own copy, and two matches is a strict-mode failure. `text="Foo"` matches exactly. This surfaces late: a comment below the fold is empty under the IntersectionObserver, so the collision can pass locally and fail in CI.
+- `?` is a single-character wildcard in the glob `page.Route` takes, so a pattern written with a query string never matches the request it names, the route is never intercepted, and the case passes against an unmodified response. Use a regexp for anything with a query string, as `TestProfile_LoadingAndFailureStates` does.

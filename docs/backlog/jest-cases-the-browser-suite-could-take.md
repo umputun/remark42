@@ -9,8 +9,9 @@ Removing a jest case is only safe when a named e2e case asserts the same behavio
 assertion. Working through the suites on that rule, the cases that stay divide into a few recurring
 causes, and most of them are a gap in the browser suite rather than something it cannot reach.
 
-This is the list to work from. It is deliberately not acted on in the same change as the deletions:
-each item is an e2e case to write, and the jest cases it releases can then go with it.
+This was the list to work from. The items marked **done** below have their browser case and their
+jest cases have gone with them; what is left is what is still open, and the reasons it is open are
+worth more than the list itself.
 
 ## Selectors the browser cannot reach
 
@@ -18,25 +19,30 @@ each item is an e2e case to write, and the jest cases it releases can then go wi
 browser case cannot select by it. Only one of the elements these jest cases assert through is
 actually stuck behind that:
 
-- `comments-counter` in `profile.spec.tsx`, asserted in four cases, is
+- **done.** `comments-counter` in `profile.spec.tsx` is
   `<div className={styles.container} data-testid="comments-counter">`. Its only class is hashed by
   the CSS modules, so nothing outside the bundle can name it. Giving it a stable class, the way
   `.auth-button`, `.auth-submit`, `.comment-actions` and `.sort-picker` are kept outside the
   modules for this reason, is what makes the counter assertable in a browser
 
-Three others are already reachable and simply have no browser case written yet, which is a smaller
+Two others are already reachable and simply have no browser case written yet, which is a smaller
 job than it looked:
 
-- `spinner` renders `clsx('spinner', styles.root, …)` with `role="presentation"`
-- `preloader` renders `clsx('preloader', className)` with `aria-label="Loading..."`
-- `comment-actions-additional` renders `clsx('comment-actions-additional', …)`, so the order of the
-  admin actions can be asserted from a browser case today
+- `spinner` renders `clsx('spinner', styles.root, …)` and is still open. It is the *between-pages*
+  indicator at `profile.tsx:162-165`, shown in place of the Load more button once a page is being
+  fetched, so it is reachable only when `comments` is not null. The profile's initial load and its
+  failure are a different element, the `Preloader` at `profile.tsx:221`, and that one is covered by
+  `TestProfile_LoadingAndFailureStates`; the two are easy to conflate and are not the same thing
+- **done for the telegram panel.** `preloader` renders `clsx('preloader', className)`, asserted
+  by `TestTelegramSub_ThePanelSaysItIsWorking`
+- **done.** `comment-actions-additional` carries a stable class, and the order is asserted by
+  `TestComment_AdminActionsKeepTheirOrder`
 
 ## Transient states nothing waits on
 
-- buttons disabled while a vote request is in flight (`comment-votes.spec.tsx`, three cases)
-- the loading indicator in the telegram subscription panel
-- the spinner between pages of the profile list
+- **done.** buttons disabled while a vote request is in flight, `TestVote_BothButtonsAreDisabledWhileTheVoteIsInFlight`
+- **done.** the loading indicator in the telegram subscription panel
+- **done.** the profile's loading and error states
 - the preloader that must not reappear after a load-more click
 
 Each needs a browser case that holds the request open, which the suite already knows how to do:
@@ -47,23 +53,24 @@ before releasing it.
 
 The browser suite asserts what appears far more readily than what does not. Cases kept for this:
 
-- the Reply action gone in a read-only thread. `TestComment_ReadOnlyThreadTakesTheFormAway`
-  asserts the comment form is gone and says nothing about the action
-- Hide absent on a reader's own comment, Delete absent on another reader's
-- the verification icon absent on an unverified user
+- **done.** the Reply action gone in a read-only thread, now asserted in
+  `TestComment_ReadOnlyThreadTakesTheFormAway`, which posts a comment first so the assertion has
+  something to be about
+- **done.** Hide absent on a reader's own comment, Delete absent on another reader's,
+  `TestComment_ActionsDependOnWhoseCommentItIs`
+- **done.** the verification icon absent before an admin verifies
 - the auth dropdown starting closed
 
 ## Configurations no instance runs
 
-- `email_notifications` and `telegram_notifications` off. The stack covers
-  `show_rss_subscription` and `show_email_subscription`, which are different settings
+- **done.** `email_notifications` and `telegram_notifications` off, each instance being the
+  other's negative case
 - upvote-only voting, and voting hidden altogether
 - the controversy tooltip, which needs a comment with controversy in it
 
 ## Values inside an element, where the browser case only waits for the element
 
-- the edit countdown's remaining seconds. `TestComment_EditWithinTheDeadline` waits for the timer
-  and `TestComment_EditExpiresAfterTheDeadline` waits for it to go, so a blank timer passes both
+- **done.** the edit countdown's value, `TestComment_EditCountdownCountsDown`
 - the telegram link's full `https://t.me/<bot>/?start=<token>`, where the browser helper parses out
   the `start` parameter and never looks at the host or the bot name
 
@@ -71,7 +78,8 @@ The browser suite asserts what appears far more readily than what does not. Case
 
 - the generic fallback message for an unrecognised code. The browser suite fulfils a 409 and
   asserts the catalogued string, which never enters that branch
-- a failed check or unsubscribe being cleared by a later success, in the telegram panel
+- **done.** a failed check or unsubscribe cleared by a later success, driven separately because
+  the two handlers clear their own error
 
 ## What is not worth moving
 
@@ -79,3 +87,13 @@ Call counts and call arguments (`api.telegramSubscribe` called once, `getUserCom
 a page size) assert how a client method was used, not what a reader gets. The browser suite asserts
 the request and the response instead, which is the better test of the same thing, so these stay in
 jest or go away on their own when the code changes.
+
+
+## What the static build would settle on its own
+
+Thirty-four of the cases still in jest exist because of the build rather than because of the
+behaviour: eighteen assert a hashed css-module class and sixteen select by a `data-testid` the
+production bundle strips. With static css there is no hash to pin and the class in the source is
+the class in the browser, so those assertions have nothing left to say and the browser can select
+what ships. Covering them now would mean writing browser cases whose purpose disappears with the
+build, which is why they are left here rather than done.
