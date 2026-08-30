@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "익명 사용자는 이미지 업로드가 비활성화되어 있습니다. 이미지를 첨부하려면 익명 사용자로 로그인하지 마십시오.",
   "commentForm.exceeded-size": "{fileName}이(가) {maxImageSize}의 크기 제한을 초과함",
   "commentForm.input-placeholder": "여기에 댓글 입력",
+  "commentForm.input-placeholder-reply": "여기에 댓글 입력",
   "commentForm.new-comment": "새 댓글",
   "commentForm.notice-about-styling": "<a>Markdown</a>을 사용한 스타일링 지원",
   "commentForm.preview": "미리보기",

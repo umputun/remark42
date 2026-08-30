@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Анонимни потребители не могат да качват картинки. Моля влезте като потребител за да добавите картини.",
   "commentForm.exceeded-size": "{fileName} е по-голям от лимита от {maxImageSize}",
   "commentForm.input-placeholder": "Вашият коментар тук",
+  "commentForm.input-placeholder-reply": "Вашият коментар тук",
   "commentForm.new-comment": "Нов коментар",
   "commentForm.notice-about-styling": "Поддържа се стил <a>Markdown</a>",
   "commentForm.preview": "Преглед",

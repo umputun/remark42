@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "匿名ユーザーは画像をアップロードできません。画像を添付するには、匿名ではないユーザーでログインしてください。",
   "commentForm.exceeded-size": "{fileName} のサイズが上限値の {maxImageSize} を超えています",
   "commentForm.input-placeholder": "コメントをここに入力してください",
+  "commentForm.input-placeholder-reply": "コメントをここに入力してください",
   "commentForm.new-comment": "新規コメント",
   "commentForm.notice-about-styling": "<a>Markdown</a> 記法がサポートされています",
   "commentForm.preview": "プレビュー",

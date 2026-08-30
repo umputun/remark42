@@ -30,6 +30,11 @@ export type Props = {
   value?: string;
   mix?: string | string[];
   mode?: 'main' | 'edit' | 'reply';
+  /**
+   * Only meaningful when `mode` is `'edit'`: whether the comment being edited is itself a reply
+   * (has its own parent), so its placeholder should match the reply form rather than the main one.
+   */
+  isReply?: boolean;
   theme: Theme;
   autofocus?: boolean;
 
@@ -413,7 +418,7 @@ export class CommentForm extends Component<Props, State> {
   };
 
   render() {
-    const { theme, mode, mix, uploadImage, autofocus, user, intl } = this.props;
+    const { theme, mode, mix, uploadImage, autofocus, user, intl, isReply } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
     const charactersLeft = StaticStore.config.max_comment_size - text.length;
     const errorMessage = this.props.errorMessage || this.state.errorMessage;
@@ -423,7 +428,12 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
     const label = buttonText || Labels[mode || 'main'];
-    const placeholderMessage = intl.formatMessage(messages.placeholder);
+    // in edit mode there is no separate placeholder: the comment being edited is itself either a
+    // top-level comment or a reply, so its placeholder matches whichever one it already is
+    const isReplyPlaceholder = mode === 'reply' || (mode === 'edit' && isReply);
+    const placeholderMessage = isReplyPlaceholder
+      ? intl.formatMessage(messages.replyPlaceholder)
+      : intl.formatMessage(messages.placeholder);
     const isSimpleView = StaticStore.config.simple_view;
 
     return (
@@ -537,6 +547,10 @@ export const messages = defineMessages({
   placeholder: {
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
+  },
+  replyPlaceholder: {
+    id: 'commentForm.input-placeholder-reply',
+    defaultMessage: 'Your reply here',
   },
   uploadFileFail: {
     id: 'commentForm.upload-file-fail',
