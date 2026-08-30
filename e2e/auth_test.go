@@ -260,6 +260,7 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 		}
 	}))
 
+	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.Reload()
 	require.NoError(t, err)
