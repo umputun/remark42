@@ -203,7 +203,10 @@ describe('<SubscribeByEmailForm/>', () => {
 });
 
 describe('<SubscribeByEmail/> dropdown', () => {
-  it('keeps the dropdown open after unsubscribing so the confirmation is visible (#2209)', async () => {
+  // jsdom keeps contains(target) true in both phases, so nothing here can distinguish the capture
+  // listener from the bubble one. That distinction is what the issue is about and it is covered in
+  // e2e/subscribe_test.go; these two cases pin what the component does with the step and the close.
+  it('shows the confirmation and a Close button after unsubscribing', async () => {
     render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
 
     // open the dropdown
@@ -219,5 +222,20 @@ describe('<SubscribeByEmail/> dropdown', () => {
     // Close button are only rendered while it is open
     expect(screen.getByText('You have been unsubscribed by email to updates')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
+  });
+
+  it('closes the dropdown when Close is pressed', async () => {
+    render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
+
+    fireEvent.click(screen.getByTitle('Subscribe by Email'));
+    fireEvent.click(screen.getByRole('button', { name: 'Unsubscribe' }));
+    await act(() => sleep(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await act(() => sleep(0));
+
+    // the panel itself has to go, not merely its contents: the old trick rendered null inside a
+    // dropdown that stayed open, which left an empty listbox on the page
+    expect(document.querySelector('div[role="listbox"]')).toBeNull();
   });
 });

@@ -26,14 +26,14 @@ describe('<Dropdown/>', () => {
     fireEvent.click(screen.getByTitle('Subscribe by Email'));
     expect(screen.getByRole('button', { name: 'Inner' })).toBeTruthy();
 
-    const outside = document.createElement('button');
-    document.body.appendChild(outside);
-    fireEvent.click(outside);
+    // document.body is itself outside the dropdown, so this needs no node of its own and leaves
+    // nothing behind for the next case to trip over
+    fireEvent.click(document.body);
 
     expect(screen.queryByRole('button', { name: 'Inner' })).toBeNull();
   });
 
-  it('stays open when an inner click rerenders and detaches the clicked node (#2209)', () => {
+  it('stays open when an inner click rerenders and detaches the clicked node', () => {
     createWrapper();
 
     fireEvent.click(screen.getByTitle('Subscribe by Email'));
