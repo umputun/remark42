@@ -17,7 +17,7 @@ import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
-import { Dropdown } from 'components/dropdown';
+import { Dropdown, useDropdown } from 'components/dropdown';
 import { Preloader } from 'components/preloader';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { getPersistedEmail } from 'components/auth/auth.utils';
@@ -31,7 +31,6 @@ const emailRegexp = /[^@]+@[^.]+\..+/;
 enum Step {
   Email,
   Token,
-  Close,
   Subscribed,
   Unsubscribed,
 }
@@ -121,6 +120,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const intl = useIntl();
+  const { close } = useDropdown();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
@@ -236,14 +236,6 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
     }
   }, [setLoading, setStep, setError, dispatch, intl]);
 
-  /**
-   * It needs for dropdown closing by click on button
-   * More info below
-   */
-  if (step === Step.Close) {
-    return null;
-  }
-
   if (step === Step.Subscribed) {
     const text = justSubscribed.current
       ? intl.formatMessage(messages.haveSubscribed)
@@ -260,25 +252,13 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   }
 
   if (step === Step.Unsubscribed) {
-    /**
-     * It works because click on button changes step
-     * And dropdown doesn't find event target in rerendered view
-     * NOTE: If you can suggest more elegant solve you can open issue or PR
-     */
-
     return (
       <div className={styles.unsubscribed}>
         <FormattedMessage
           id="subscribeByEmail.have-been-unsubscribed"
           defaultMessage="You have been unsubscribed by email to updates"
         />
-        <Button
-          kind="primary"
-          size="middle"
-          className={styles.button}
-          theme={theme}
-          onClick={() => setStep(Step.Close)}
-        >
+        <Button kind="primary" size="middle" className={styles.button} theme={theme} onClick={close}>
           <FormattedMessage id="subscribeByEmail.close" defaultMessage="Close" />
         </Button>
       </div>
