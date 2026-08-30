@@ -1,10 +1,14 @@
 #!/bin/sh
-# Digest of everything that ends up in the e2e image.
+# Digest of everything that ends up in an image the stack runs.
 #
 # The compose stack tags its image ghcr.io/umputun/remark42:dev, which every checkout of this
 # repository shares, so a stack brought up from one worktree answers on the same ports as one
 # brought up from another. The suite stamps the image it builds with this value and refuses a
 # running stack carrying a different one, so it never tests code nobody is looking at.
+#
+# e2e/telegramstub is in the list because compose builds it too: it is a second image made from
+# sources in this repository, and leaving it out let an edited stub run behind a stack the guard
+# had just accepted.
 #
 # Tracked content is covered exactly; an untracked file changes the digest when it appears,
 # by name, but later edits to it do not.
@@ -12,7 +16,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-sources="backend frontend Dockerfile docker-init.sh"
+sources="backend frontend Dockerfile docker-init.sh e2e/telegramstub"
 
 digest() {
 	if command -v sha256sum >/dev/null 2>&1; then

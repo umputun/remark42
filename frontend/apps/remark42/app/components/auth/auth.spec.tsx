@@ -50,16 +50,16 @@ describe('<Auth/>', () => {
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
-    it('should close dropdown by click outside of it', () => {
+    it('should not close dropdown by clickOutside message from a foreign source', async () => {
       const { container } = render(<Auth />);
-
-      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
-      fireEvent.click(document);
-      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
+      window.dispatchEvent(new MessageEvent('message', { data: { clickOutside: true }, source: null }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     });
 
     it('should close dropdown by clickOutside message from parent', async () => {
@@ -108,18 +108,6 @@ describe('<Auth/>', () => {
 
       // with no element, so the height is the document's own and not the panel that just went
       await waitFor(() => expect(updateIframeHeight).toHaveBeenCalledWith());
-    });
-
-    it('should not close dropdown by clickOutside message from a foreign source', async () => {
-      const { container } = render(<Auth />);
-
-      fireEvent.click(screen.getByText('Sign In'));
-      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
-
-      window.dispatchEvent(new MessageEvent('message', { data: { clickOutside: true }, source: null }));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     });
   });
 

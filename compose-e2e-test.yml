@@ -176,6 +176,59 @@ services:
       timeout: 3s
       retries: 30
 
+  # answers as the Telegram bot API, so the auth flow that ends inside Telegram becomes drivable.
+  # the provider's configurable base url directs both authentication and notifications here
+  telegram-stub:
+    build:
+      context: ./e2e/telegramstub
+    container_name: "remark42-e2e-telegram-stub"
+    ports:
+      - "127.0.0.1:8091:8091"
+    environment:
+      - STUB_ADDR=:8091
+      - STUB_BOT_USERNAME=remark42_e2e_bot
+      # the token the stub demands in the path, and the one the instance below presents
+      - STUB_BOT_TOKEN=stub-token
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8091/botstub-token/getMe"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # telegram auth on its own instance: adding it to the main one would change the provider list
+  # every other case reads out of the auth panel
+  remark42-telegram:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-telegram"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+      telegram-stub:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8087:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-telegram:8087
+      - SECRET=12345
+      - AUTH_TELEGRAM=true
+      - TELEGRAM_TOKEN=stub-token
+      # the whole reason this instance exists: every bot call goes to the stub instead of Telegram
+      - TELEGRAM_API_URL=http://telegram-stub:8091
+      # notifications through the same stub, which is what makes the telegram subscription flow
+      # drivable: the update poll runs through the notify service, so both halves have to agree
+      - NOTIFY_USERS=telegram
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-telegram-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   # no auth provider at all, which #1456 reported rendering as a widget with nothing to say. it
   # cannot be a setting on another instance: the absence is the configuration
   remark42-noauth:
@@ -335,6 +388,7 @@ volumes:
   remark42-e2e-var:
   remark42-e2e-shortedit-var:
   remark42-e2e-adminedit-var:
+  remark42-e2e-telegram-var:
   remark42-e2e-jwtheader-var:
   remark42-e2e-noauth-var:
   remark42-e2e-anonvote-var:

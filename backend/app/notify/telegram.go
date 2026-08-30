@@ -19,6 +19,7 @@ type TelegramParams struct {
 	Timeout              time.Duration // http client timeout
 	UserNotifications    bool          // flag which enables user notifications
 	ErrorMsg, SuccessMsg string        // messages for successful and unsuccessful subscription requests to bot
+	APIURL               string        // bot API base url, for a proxy or a test double; the public API when empty
 }
 
 // Telegram implements notify.Destination for telegram
@@ -36,6 +37,7 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 		Timeout:    params.Timeout,
 		ErrorMsg:   params.ErrorMsg,
 		SuccessMsg: params.SuccessMsg,
+		APIURL:     params.APIURL,
 	})
 	if err != nil {
 		return nil, err

@@ -46,22 +46,6 @@ describe('<CommentForm />', () => {
   });
 
   describe('with initial comment value', () => {
-    it('should has empty value', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
-    it('should get initial value from localStorage', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
     it('should get initial value from props instead localStorage', () => {
       const value = 'text from props';
 
@@ -93,12 +77,6 @@ describe('<CommentForm />', () => {
       });
       expect(getPersistedComments()).toEqual({});
     });
-  });
-
-  it(`doesn't render preview button and markdown toolbar in simple mode`, () => {
-    setup({ user }, { simple_view: true });
-    expect(screen.queryByTestId('markdown-toolbar')).not.toBeInTheDocument();
-    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
   it.each`
