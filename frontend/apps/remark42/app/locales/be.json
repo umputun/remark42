@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Загрузка выяў забароненая для ананімных карыстальнікаў. Калі ласка, увайдзіце як не ананімны карыстальнік, каб прымацоўваць выявы.",
   "commentForm.exceeded-size": "Памер файла {fileName} мусіць быць меншым за {maxImageSize}",
   "commentForm.input-placeholder": "Напісаць каментар",
+  "commentForm.input-placeholder-reply": "Напісаць каментар",
   "commentForm.new-comment": "Новы каментар",
   "commentForm.notice-about-styling": "Падтрымоўваецца <a>Markdown</a> фарматаванне",
   "commentForm.preview": "Перадпрагляд",
