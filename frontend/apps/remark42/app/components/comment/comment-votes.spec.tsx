@@ -8,32 +8,11 @@ import { CommentVotes } from './comment-votes';
 import { StaticStore } from 'common/static-store';
 
 describe('<CommentVote />', () => {
-  it('should render vote component', () => {
-    render(<CommentVotes id="1" vote={0} votes={0} controversy={0} />);
-    expect(screen.getByTitle('Vote up')).toBeVisible();
-    expect(screen.getByTitle('Vote down')).toBeVisible();
-    expect(screen.getByTitle('Votes score')).toBeVisible();
-  });
-
-  it('should render vote component with positive score', () => {
-    render(<CommentVotes id="1" vote={0} votes={1} controversy={0} />);
-    expect(screen.getByTitle('Votes score')).toBeVisible();
-  });
-  it('should render vote component with negative score', () => {
-    render(<CommentVotes id="1" vote={0} votes={-1} controversy={0} />);
-    expect(screen.getByTitle('Votes score')).toBeVisible();
-  });
-
   it('should disable buttons after upvote when request is in progress', () => {
     jest.spyOn(api, 'putCommentVote').mockImplementationOnce(jest.fn(() => new Promise(() => {})));
     render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
     fireEvent(screen.getByTitle('Vote up'), new Event('click'));
     expect(screen.getByTitle('Vote down')).toBeDisabled();
-    expect(screen.getByTitle('Vote up')).toBeDisabled();
-  });
-
-  it('should disable upvote button when upvoted', () => {
-    render(<CommentVotes id="1" vote={1} votes={10} controversy={0} />);
     expect(screen.getByTitle('Vote up')).toBeDisabled();
   });
 

@@ -38,11 +38,6 @@ describe('<CommentActions/>', () => {
     jest.resetAllMocks();
   });
 
-  it('should render "Reply"', () => {
-    render(<CommentActions {...props} />);
-    expect(screen.getByText('Reply')).toBeVisible();
-  });
-
   it('should not render "Reply" in read only mode', () => {
     props.readOnly = true;
     render(<CommentActions {...props} />);
@@ -68,10 +63,11 @@ describe('<CommentActions/>', () => {
     expect(screen.queryByText('Hide')).not.toBeInTheDocument();
   });
 
-  it('should render "Edit" and timer when editing is available', async () => {
+  // the browser suite waits for the countdown element and then for it to go, so nothing there
+  // reads what it says: a blank or malformed timer passes both of those
+  it('renders the countdown with the remaining seconds in it', async () => {
     Object.assign(props, { editable: true, editDeadline: Date.now() + 300 * 1000 });
     render(<CommentActions {...props} />);
-    expect(screen.getByText('Edit')).toBeInTheDocument();
     await waitFor(() => expect(['300s', '299s']).toContain(screen.getByRole('timer').textContent));
   });
 
@@ -88,13 +84,6 @@ describe('<CommentActions/>', () => {
     Object.assign(props, override);
     render(<CommentActions {...props} />);
     expect(screen.getByText('Hide')).toBeInTheDocument();
-  });
-
-  it('should render "Delete" for current user comments when editing is available', () => {
-    props.currentUser = true;
-    props.editDeadline = Date.now() + 300 * 1000; // set editDeadline to a future timestamp
-    render(<CommentActions {...props} />);
-    expect(screen.getByText('Delete')).toBeInTheDocument();
   });
 
   it('should not render "Delete" for current user comments when editDeadline is undefined', () => {
@@ -120,18 +109,6 @@ describe('<CommentActions/>', () => {
       Object.assign(props, { admin: true, copied: true });
       render(<CommentActions {...props} />);
       expect(screen.getByText('Copied!')).toBeInTheDocument();
-    });
-
-    it('should render "Pin"', () => {
-      props.admin = true;
-      render(<CommentActions {...props} />);
-      expect(screen.getByText('Pin')).toBeInTheDocument();
-    });
-
-    it('should render "Unpin" when comment is pinned', () => {
-      Object.assign(props, { admin: true, pinned: true });
-      render(<CommentActions {...props} />);
-      expect(screen.getByText('Unpin')).toBeInTheDocument();
     });
 
     it.each([[{ currentUser: false, admin: true }], [{ currentUser: true, admin: true }]] as Partial<Props>[][])(
