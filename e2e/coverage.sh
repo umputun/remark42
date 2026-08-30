@@ -1,9 +1,11 @@
 #!/bin/sh
-# Statement coverage of the backend as the browser suite exercises it.
+# What the browser suite reaches, in the backend and in the widget.
 #
-# The code under test runs in a container instead of in the test process, so `go test -cover`
-# cannot see it. The image is built with `go build -cover` instead, each instance writes a profile
-# to a mounted directory as it exits, and the profiles are merged here.
+# Neither half is visible to the tool that usually measures it. The backend runs in a container
+# instead of in the test process, so `go test -cover` sees nothing; the widget runs in the
+# browser, and jest reports only what its own suites reach. Both are therefore instrumented at
+# build time: the backend with `go build -cover`, which writes a profile as each instance exits,
+# and the bundle with babel-plugin-istanbul, which counts on the page for the suite to read.
 #
 # The instrumented services are read out of the coverage overlay, so that file is the only place
 # the list is written down.
@@ -13,6 +15,14 @@ cd "$(dirname "$0")/.."
 
 compose="-f compose-e2e-test.yml -f compose-e2e-coverage.yml"
 instances=$(awk '/^  [a-z0-9-]*:$/ { gsub(/[ :]/, ""); print }' compose-e2e-coverage.yml)
+
+# checked before the build rather than after the suite, since the widget half cannot be reported
+# without it and the run costs several minutes either way
+if [ ! -d frontend/apps/remark42/node_modules ]; then
+	echo "frontend/apps/remark42/node_modules is missing, so the widget counters could not be reported"
+	echo "run pnpm install there first"
+	exit 1
+fi
 
 ./e2e/tls/generate.sh
 
@@ -28,6 +38,11 @@ rm -rf e2e/coverage
 for i in $instances; do
 	install -d -m 0777 "e2e/coverage/$i"
 done
+
+# the stack comes down however this ends. Everything below can exit under `set -e`, and a running
+# or half-stopped stack is what the next plain run would then find
+# shellcheck disable=SC2064 # $compose is meant to expand now, while it is still in scope
+trap "docker compose $compose down -v >/dev/null 2>&1 || true" EXIT
 
 # shellcheck disable=SC2086 # the compose file list is deliberately split into arguments
 E2E_COVERAGE=1 E2E_STAMP=$(E2E_COVERAGE=1 ./e2e/stamp.sh) \
@@ -67,9 +82,22 @@ else
 	(cd backend && go tool cover -func=../e2e/coverage/e2e.cov | tail -1)
 fi
 
-# the profiles are on the host, so the stack has nothing left to hold, and leaving it half stopped
-# is what the next plain run would find
-# shellcheck disable=SC2086
-docker compose $compose down -v >/dev/null 2>&1
+# The widget half. The bundle counts what runs and the suite reads the counters out of each page
+# as it closes, so an empty directory means the pages were never asked, not that nothing ran.
+if [ -z "$(find e2e/coverage/frontend -name '*.json' 2>/dev/null)" ]; then
+	echo "no widget coverage was collected: the bundle was not instrumented, or no page was read"
+	status=1
+else
+	# nyc merges the directory itself, and it runs from the package so the rewritten paths resolve.
+	# its failure folds into the status the same way the suite's does, since errexit would
+	# otherwise end the run here and say nothing about the half that did work
+	(
+		cd frontend/apps/remark42 &&
+			pnpm exec nyc report \
+				--temp-dir ../../../e2e/coverage/frontend \
+				--report-dir ../../../e2e/coverage/frontend-report \
+				--reporter=lcov --reporter=text-summary
+	) || status=$?
+fi
 
 exit $status
