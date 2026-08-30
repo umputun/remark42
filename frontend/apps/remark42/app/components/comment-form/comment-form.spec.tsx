@@ -101,6 +101,28 @@ describe('<CommentForm />', () => {
     expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
+  describe('placeholder', () => {
+    it('shows the comment placeholder in main mode', () => {
+      setup({ mode: 'main' });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your comment here');
+    });
+
+    it('shows the reply placeholder in reply mode', () => {
+      setup({ mode: 'reply' });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your reply here');
+    });
+
+    it('shows the comment placeholder when editing a top-level comment', () => {
+      setup({ mode: 'edit', isReply: false });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your comment here');
+    });
+
+    it('shows the reply placeholder when editing a reply', () => {
+      setup({ mode: 'edit', isReply: true });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your reply here');
+    });
+  });
+
   it.each`
     expected  | value
     ${'99'}   | ${'That was Wintermute, manipulating the lock the way it had manipulated the drone micro and the chassis of a gutted game console. It was chambered for .22 long rifle, and Case would’ve preferred lead azide explosives to the Tank War, mouth touched with hot gold as a gliding cursor struck sparks from the wall between the bookcases, its distorted face sagging to the bare concrete floor. Splayed in his elastic g-web, Case watched the other passengers as he made his way down Shiga from the sushi stall he cradled it in his jacket pocket. Images formed and reformed: a flickering montage of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the Japanese night like live wire voodoo and he’d cry for it, cry in his jacket pocket. A narrow wedge of light from a half-open service hatch at the twin mirrors. Still it was a square of faint light. The alarm still oscillated, louder here, the rear wall dulling the roar of the arcade showed him broken lengths of damp chipboard and the robot gardener. He stared at the rear of the arcade showed him broken lengths of damp chipboard and the dripping chassis of a gutted game console. That was Wintermute, manipulating the lock the way it had manipulated the drone micro and the chassis of a gutted game console. It was chambered for .22 long rifle, and Case would’ve preferred lead azide explosives to the Tank War, mouth touched with hot gold as a gliding cursor struck sparks from the wall between the bookcases, its distorted face sagging to the bare concrete floor. Splayed in his elastic g-web, Case watched the other passengers as he made his way down Shiga from the sushi stall he cradled it in his jacket pocket. Images formed and reformed: a flickering montage of the Sprawl’s towers and ragged Fuller domes, dim figures moving toward him in the Japanese night like live wire voodoo and he’d cry for it, cry in his jacket.'}
