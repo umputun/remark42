@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Anonim kullanıcılar resim yükleme özelliğini kullanamazlar, lütfen resim ekleyebilmek için giriş yapın.",
   "commentForm.exceeded-size": "{fileName} dosyası boyut limitini ({maxImageSize}) aşıyor",
   "commentForm.input-placeholder": "Bir yorum yazın",
+  "commentForm.input-placeholder-reply": "Bir yorum yazın",
   "commentForm.new-comment": "Yeni yorum",
   "commentForm.notice-about-styling": "<a>Markdown</a> ile şekillendirebilirsiniz",
   "commentForm.preview": "Önizleme",

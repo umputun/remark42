@@ -423,7 +423,12 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
     const label = buttonText || Labels[mode || 'main'];
-    const placeholderMessage = intl.formatMessage(messages.placeholder);
+    const Placeholders = {
+      main: intl.formatMessage(messages.placeholder),
+      edit: intl.formatMessage(messages.placeholder),
+      reply: intl.formatMessage(messages.replyPlaceholder),
+    };
+    const placeholderMessage = Placeholders[mode || 'main'];
     const isSimpleView = StaticStore.config.simple_view;
 
     return (
@@ -537,6 +542,10 @@ export const messages = defineMessages({
   placeholder: {
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
+  },
+  replyPlaceholder: {
+    id: 'commentForm.input-placeholder-reply',
+    defaultMessage: 'Your reply here',
   },
   uploadFileFail: {
     id: 'commentForm.upload-file-fail',

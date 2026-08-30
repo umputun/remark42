@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Tính năng tải ảnh lên bị tắt đối với người dùng ẩn danh. Vui lòng đăng nhập bằng tài khoản không ẩn danh để có thể đính kèm ảnh.",
   "commentForm.exceeded-size": "{fileName} vượt kích thước giới hạn {maxImageSize}",
   "commentForm.input-placeholder": "Nhập bình luận của bạn tại đây",
+  "commentForm.input-placeholder-reply": "Nhập bình luận của bạn tại đây",
   "commentForm.new-comment": "Bình luận mới",
   "commentForm.notice-about-styling": "Hỗ trợ định dạng <a>Markdown</a>",
   "commentForm.preview": "Xem trước",

@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Încărcarea imaginilor este dezactivată pentru utilizatorii anonimi. Autentifică-te cu un cont neanonim pentru a putea atașa imagini.",
   "commentForm.exceeded-size": "{fileName} depășește limita de mărime de {maxImageSize}",
   "commentForm.input-placeholder": "Comentariul tău aici",
+  "commentForm.input-placeholder-reply": "Comentariul tău aici",
   "commentForm.new-comment": "Comentariu nou",
   "commentForm.notice-about-styling": "Stilizarea cu Markdown este acceptată",
   "commentForm.preview": "Previzualizare",

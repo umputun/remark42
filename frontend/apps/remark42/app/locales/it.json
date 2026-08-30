@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Il caricamento delle immagini è disabilitato per gli utenti anonimi. Perfavore accedi come utente non anonimo per poter allegare delle immagini",
   "commentForm.exceeded-size": "{fileName} ha superato il limite massimo di {maxImageSize}",
   "commentForm.input-placeholder": "Qui il tuo commento",
+  "commentForm.input-placeholder-reply": "Qui il tuo commento",
   "commentForm.new-comment": "Nuovo commento",
   "commentForm.notice-about-styling": "Il <a>Markdown</a> è sopportato",
   "commentForm.preview": "Anteprima",

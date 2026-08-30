@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "رفع الصور مُعطّل للمجهولين. فضلاً سجل الدخول لإرفاق صور.",
   "commentForm.exceeded-size": "{fileName} يتجاوز حد الرفع: {maxImageSize}",
   "commentForm.input-placeholder": "تعليقك هنا",
+  "commentForm.input-placeholder-reply": "تعليقك هنا",
   "commentForm.new-comment": "تعليق جديد",
   "commentForm.notice-about-styling": "تنميط الكتابة <a>بالماركداون</a> مدعوم",
   "commentForm.preview": "عاين",

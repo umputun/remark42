@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "O upload de imagens está desabilitado para usuários anônimos. Não faça login como um usuário anônimo para poder anexar imagens.",
   "commentForm.exceeded-size": "{fileName} excede o limite de tamanho de {maxImageSize}",
   "commentForm.input-placeholder": "Seu comentário aqui",
+  "commentForm.input-placeholder-reply": "Seu comentário aqui",
   "commentForm.new-comment": "Novo comentário",
   "commentForm.notice-about-styling": "Há suporte para definir o estilo com <a>Markdown</a>",
   "commentForm.preview": "Demonstração",
