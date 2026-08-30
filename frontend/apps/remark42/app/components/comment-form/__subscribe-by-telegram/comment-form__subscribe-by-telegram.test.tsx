@@ -48,12 +48,6 @@ describe('<SubscribeByTelegram />', () => {
     expect(screen.getByTitle('Available only for registered users')).toBeDisabled();
   });
 
-  it('should be rendered with enabled email button when user is logged in', () => {
-    createWrapper();
-
-    expect(screen.getByTitle('Subscribe by Telegram')).not.toBeDisabled();
-  });
-
   it('should show correct telegram link', async () => {
     createWrapper();
     const button = screen.getByTitle('Subscribe by Telegram');

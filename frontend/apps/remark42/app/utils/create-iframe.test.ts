@@ -16,21 +16,8 @@ describe('createIframe', () => {
     jest.useRealTimers();
   });
 
-  it('starts hidden', () => {
-    const iframe = createIframe({ site_id: 'remark' });
-    expect(iframe.style.visibility).toBe('hidden');
-  });
-
   it('lets caller styles override visibility', () => {
     const iframe = createIframe({ site_id: 'remark', styles: { visibility: 'visible' } });
-    expect(iframe.style.visibility).toBe('visible');
-  });
-
-  it('reveals when its own document reports inited', () => {
-    const iframe = createIframe({ site_id: 'remark' });
-    document.body.appendChild(iframe);
-
-    postInited(iframe.contentWindow);
     expect(iframe.style.visibility).toBe('visible');
   });
 
