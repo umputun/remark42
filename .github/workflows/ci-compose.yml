@@ -36,7 +36,12 @@ jobs:
           while IFS= read -r -d '' f; do
             docker compose -f "$f" config --quiet
             n=$((n + 1))
-          done < <(git ls-files -z '*compose*.yml' '*compose*.yaml' ':!:*/vendor/*' ':!:.github/*')
+          done < <(git ls-files -z '*compose*.yml' '*compose*.yaml' ':!:*/vendor/*' ':!:.github/*' ':!:compose-e2e-coverage.yml')
+          # compose-e2e-coverage.yml is an overlay: its services carry no image and no build
+          # context of their own, so it parses only merged onto the base it extends, which is
+          # the only way anything runs it
+          docker compose -f compose-e2e-test.yml -f compose-e2e-coverage.yml config --quiet
+          n=$((n + 1))
           if [ "$n" -eq 0 ]; then
             echo "no compose files found" >&2
             exit 1

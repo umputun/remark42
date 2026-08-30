@@ -56,4 +56,10 @@ e2e:
 e2e-ui:
 	cd e2e && E2E_HEADLESS=false E2E_KEEP=1 go test -tags=e2e -count 1 -parallel 4 -v -timeout 20m ./...
 
-.PHONY: bin docker dockerx release race_test backend frontend rundev e2e e2e-up e2e-down e2e-ui
+# what the browser suite reaches in the backend, which the unit profile cannot show: the code runs
+# in a container, so it is measured by instrumenting the binary instead of the test process.
+# compose-e2e-coverage.yml is the overlay that does it, and it names the instrumented instances
+e2e-cover:
+	./e2e/coverage.sh
+
+.PHONY: bin docker dockerx release race_test backend frontend rundev e2e e2e-up e2e-down e2e-ui e2e-cover
