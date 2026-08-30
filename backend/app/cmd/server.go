@@ -246,6 +246,7 @@ type AdminGroup struct {
 type TelegramGroup struct {
 	Token   string        `long:"token" env:"TOKEN" description:"telegram token (used for auth and telegram notifications)"`
 	Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
+	APIURL  string        `long:"api-url" env:"API_URL" description:"telegram bot api base url, for a proxy or a test double; the public api when unset"`
 }
 
 // SMTPGroup defines options for SMTP server connection, used in auth and notify modules
@@ -437,8 +438,13 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.Telegram.Timeout = s.Notify.Telegram.Timeout
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
-	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	if s.Notify.Telegram.API != "https://api.telegram.org/bot" && s.Telegram.APIURL == "" {
+		if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok {
+			s.Telegram.APIURL = base
+			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"})
+		} else {
+			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+		}
 	}
 	if s.Auth.Twitter.CID != "" {
 		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
@@ -481,7 +487,19 @@ func (s *ServerCommand) findDeprecatedFlagsCollisions() (result []DeprecatedFlag
 	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout != telegramDefaultTimeout && s.Notify.Telegram.Timeout != s.Telegram.Timeout {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true})
 	}
+	if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok &&
+		s.Notify.Telegram.API != "https://api.telegram.org/bot" && stringsSetAndDifferent(base, s.Telegram.APIURL) {
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Collision: true})
+	}
 	return result
+}
+
+func telegramAPIBaseFromDeprecated(prefix string) (string, bool) {
+	trimmed := strings.TrimSuffix(prefix, "/")
+	if !strings.HasSuffix(trimmed, "/bot") {
+		return "", false
+	}
+	return strings.TrimSuffix(trimmed, "/bot"), true
 }
 
 func (s *ServerCommand) handleDeprecatedNotifications() {
@@ -656,8 +674,19 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	authRefreshCache := newAuthRefreshCache()
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 
-	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
-	telegramService := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	// telegram auth requires the TelegramAPI listener started below
+	telegramAuth, err := s.makeTelegramAuth(authenticator)
+	if err != nil {
+		_ = dataService.Close()
+		_ = authRefreshCache.Close()
+		return nil, err
+	}
+	telegramService, err := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	if err != nil {
+		_ = dataService.Close()
+		_ = authRefreshCache.Close()
+		return nil, err
+	}
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
@@ -721,7 +750,6 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Authenticator:              authenticator,
 		Cache:                      loadingCache,
 		NotifyService:              notifyService,
-		TelegramService:            telegramService,
 		SSLConfig:                  sslConfig,
 		UpdateLimiter:              s.UpdateLimit,
 		ImageService:               imageService,
@@ -737,6 +765,14 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
+	}
+
+	// assigned only when there is one: telegramService is an interface field, so a nil
+	// *notify.Telegram put in it is a non-nil interface, and the handler's own `== nil` guard then
+	// lets a dereference through as a 500. Telegram auth without telegram notifications is an
+	// ordinary reachable configuration
+	if telegramService != nil && contains("telegram", s.Notify.Users) {
+		srv.TelegramService = telegramService
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -1230,20 +1266,36 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
-func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) providers.TGUpdatesReceiver {
-	if s.Auth.Telegram {
-		telegram := &provider.TelegramHandler{
-			ProviderName: "telegram",
-			SuccessMsg:   "✅ You have successfully authenticated, check the web!",
-			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
-			L:            log.Default(),
-			TokenService: authenticator.TokenService(),
-			AvatarSaver:  authenticator.AvatarProxy(),
-		}
-		authenticator.AddCustomHandler(telegram)
-		return telegram
+func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) (*provider.TelegramHandler, error) {
+	if !s.Auth.Telegram {
+		return nil, nil
 	}
-	return nil
+
+	client := &http.Client{Timeout: s.Telegram.Timeout}
+
+	// the public api unless an operator points it elsewhere. A bad base url stops the server because
+	// every request carries the bot token in its path; a base that resolves somewhere unintended
+	// ships the token there, and an operator who set the option meant it to be used
+	tgAPI := provider.NewTelegramAPI(s.Telegram.Token, client)
+	if s.Telegram.APIURL != "" {
+		withBase, err := provider.NewTelegramAPIWithBaseURL(s.Telegram.Token, client, s.Telegram.APIURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make telegram auth: %w", err)
+		}
+		tgAPI = withBase
+	}
+
+	telegram := &provider.TelegramHandler{
+		ProviderName: "telegram",
+		ErrorMsg:     "Authentication request was not found or expired.",
+		SuccessMsg:   "✅ You have successfully authenticated, check the web!",
+		Telegram:     tgAPI,
+		L:            log.Default(),
+		TokenService: authenticator.TokenService(),
+		AvatarSaver:  authenticator.AvatarProxy(),
+	}
+	authenticator.AddCustomHandler(telegram)
+	return telegram, nil
 }
 
 func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinations []notify.Destination, telegram *notify.Telegram) *notify.Service {
@@ -1355,7 +1407,11 @@ func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 		UserNotifications: contains("telegram", s.Notify.Users),
 		Token:             s.Telegram.Token,
 		Timeout:           s.Telegram.Timeout,
-		SuccessMsg:        "✅ You have successfully subscribed for notifications, check the web!",
+		// the same base as auth: the update poll runs through this service, so leaving it on the
+		// public API would send the bot token there while everything else went where the operator
+		// pointed it
+		APIURL:     s.Telegram.APIURL,
+		SuccessMsg: "✅ You have successfully subscribed for notifications, check the web!",
 	}
 	tg, err := notify.NewTelegram(telegramParams)
 	if err != nil {
@@ -1481,27 +1537,44 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 	}
 }
 
-// startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
+// startTelegramAuthAndNotify initializes telegram notify and the shared Telegram Bot update loop.
 // Does nothing if telegram auth and notifications are disabled.
-func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram) {
-	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
-		return nil
+func (s *ServerCommand) startTelegramAuthAndNotify(
+	ctx context.Context, telegramAuth *provider.TelegramHandler,
+) (tg *notify.Telegram, err error) {
+	notifyWanted := contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins)
+	if !notifyWanted && telegramAuth == nil {
+		return nil, nil
 	}
 
-	var err error
 	if tg, err = s.makeTelegramNotify(); err != nil {
+		// Auth cannot serve a request without an update source. A caller-supplied base is also
+		// security-sensitive because the bot token travels in its path, so either configuration
+		// fails startup instead of leaving the requested feature silently disabled.
+		if telegramAuth != nil || s.Telegram.APIURL != "" {
+			return nil, fmt.Errorf("failed to make telegram update source: %w", err)
+		}
 		log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		return nil
+		return nil, nil
 	}
 
-	telegramReceivers := []providers.TGUpdatesReceiver{tg}
+	telegramReceivers := make([]providers.TGUpdatesReceiver, 0, 2)
+	if notifyWanted {
+		telegramReceivers = append(telegramReceivers, tg)
+	}
 	if telegramAuth != nil {
+		// ProcessUpdate owns the auth handler's request state when the shared dispatcher is used.
+		// Set it up before the HTTP server can accept a login: the dispatcher's first poll is
+		// five seconds away, and a login before that otherwise fails as if no listener existed.
+		if err := telegramAuth.ProcessUpdate(ctx, `{"ok":true,"result":[]}`); err != nil {
+			return nil, fmt.Errorf("failed to set up telegram auth update receiver: %w", err)
+		}
 		telegramReceivers = append(telegramReceivers, telegramAuth)
 	}
 	// start bot messages receiver for both notify and auth services
 	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
 
-	return tg
+	return tg, nil
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.

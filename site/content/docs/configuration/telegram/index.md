@@ -6,6 +6,8 @@ You can enable Telegram for a user or admin [notifications](https://remark42.com
 
 To set up notifications or auth with Telegram, first, you need to create a bot and write its access token to the remark42 configuration.
 
+`TELEGRAM_API_URL` can point both features at a compatible proxy or Bot API server. Set it to an HTTP or HTTPS origin with an optional base path, without the trailing `/bot`; for example, `https://telegram-proxy.example.com/api`. Remark42 appends `/bot<TELEGRAM_TOKEN>/<method>`, so the token is present in every API request path. Use an endpoint and request logs that protect it as a secret. An invalid custom URL stops startup when Telegram authentication or notifications request it.
+
 ## Getting bot token for Telegram
 
 To get a token, talk to [BotFather](https://core.telegram.org/bots#6-botfather). All you need is to send `/newbot` command and choose the name for your bot (it must end in `bot`). That is it, and you got a token which you'll need to write down into remark42 configuration as `TELEGRAM_TOKEN`.
