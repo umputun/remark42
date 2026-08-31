@@ -459,6 +459,57 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
+func TestRest_UpdateNotification(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &notify.MockDest{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 2, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	c1 := store.Comment{Text: "innocuous text",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+	waitForCount(t, 1, func() int { return len(mockDestination.Get()) }, "create announced")
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+
+	// the edited text is announced too, so swapping the text inside the edit window can't slip past
+	// the admin notification channels the original had to clear
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"spam text", "summary":"my edit"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	waitForCount(t, 2, func() int { return len(mockDestination.Get()) }, "edit announced")
+	sent := mockDestination.Get()[1].Comment
+	assert.Equal(t, id, sent.ID)
+	assert.Equal(t, "<p>spam text</p>\n", sent.Text, "announced the edited text, not the original")
+	require.NotNil(t, sent.Edit, "announced comment carries the edit mark")
+	assert.Equal(t, "my edit", sent.Edit.Summary)
+
+	// a delete is not announced, mailing the removed text out would defeat the removal
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete":true, "summary":"removed"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	waitForCountSettled(t, 2, func() int { return len(mockDestination.Get()) }, "delete not announced")
+}
+
 func TestRest_UpdateDelete(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
