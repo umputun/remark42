@@ -4,14 +4,14 @@ go 1.25.0
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
-	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
-	github.com/go-pkgz/auth/v2 v2.2.0
+	github.com/go-pkgz/auth/v2 v2.3.0
 	github.com/go-pkgz/jrpc v0.4.2
 	github.com/go-pkgz/lcw/v2 v2.1.0
 	github.com/go-pkgz/lgr v0.12.4
-	github.com/go-pkgz/notify v1.4.0
+	github.com/go-pkgz/notify v1.5.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.1
