@@ -48,6 +48,7 @@ Ongoing goquery development is tested on the latest 2 versions of Go.
 
 **Note that goquery's API is now stable, and will not break.**
 
+*    **2026-08-27 (v1.13.0)** : Performance improvements (thanks [@jvoisin][jvs]), add top-level `Text` function with options similar to BeautifulSoup's `get_text` (thanks [@ChrisJr404][chrisjr]), update `go.mod` dependencies, add go1.27 to the test matrix.
 *    **2026-03-15 (v1.12.0)** : Update `go.mod` dependencies, add go1.26 to the test matrix, **goquery now requires Go version 1.25+**.
 *    **2025-11-16 (v1.11.0)** : Update `go.mod` dependencies, add go1.25 to the test matrix, **goquery now requires Go version 1.24+**.
 *    **2025-04-11 (v1.10.3)** : Update `go.mod` dependencies, small optimization (thanks [@myxzlpltk](https://github.com/myxzlpltk)).
@@ -216,3 +217,5 @@ The [BSD 3-Clause license][bsd], the same as the [Go language][golic]. Cascadia'
 [goq]: https://github.com/andrewstuart/goq
 [thiemok]: https://github.com/thiemok
 [djw]: https://github.com/davidjwilkins
+[jvs]: https://github.com/jvoisin
+[chrisjr]: https://github.com/ChrisJr404
