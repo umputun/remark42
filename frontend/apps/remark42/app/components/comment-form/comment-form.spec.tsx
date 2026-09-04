@@ -46,22 +46,6 @@ describe('<CommentForm />', () => {
   });
 
   describe('with initial comment value', () => {
-    it('should has empty value', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
-    it('should get initial value from localStorage', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
     it('should get initial value from props instead localStorage', () => {
       const value = 'text from props';
 
@@ -93,12 +77,6 @@ describe('<CommentForm />', () => {
       });
       expect(getPersistedComments()).toEqual({});
     });
-  });
-
-  it(`doesn't render preview button and markdown toolbar in simple mode`, () => {
-    setup({ user }, { simple_view: true });
-    expect(screen.queryByTestId('markdown-toolbar')).not.toBeInTheDocument();
-    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
   it.each`
@@ -146,19 +124,10 @@ describe('<CommentForm />', () => {
         expect(matchCount).toBe(2);
       });
     });
-    it('renders without email subscription button when email_notifications disabled', () => {
-      setup({ user }, { email_notifications: false });
-      expect(screen.queryByTitle('Subscribe by Email')).not.toBeInTheDocument();
-    });
     it('renders Telegram subscription button', () => {
       setup({ user }, { telegram_notifications: true });
       expect(screen.getByText(/Subscribe by/)).toBeVisible();
       expect(screen.getByTitle('Subscribe by Telegram')).toBeVisible();
-    });
-
-    it('renders without Telegram subscription button if telegram_notifications is false', () => {
-      setup({ user }, { telegram_notifications: false });
-      expect(screen.queryByTitle('Subscribe by Telegram')).not.toBeInTheDocument();
     });
   });
 

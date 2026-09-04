@@ -26,6 +26,8 @@ FROM --platform=$BUILDPLATFORM frontend-deps AS build-frontend
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
+# the same argument the backend stage reads, so one flag instruments both halves of the stack
+ARG COVERAGE
 ENV CI=true
 
 WORKDIR /srv/frontend/apps/remark42/
@@ -41,7 +43,7 @@ RUN \
 
 RUN \
   if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
-    pnpm build; \
+    E2E_COVERAGE=$COVERAGE pnpm build; \
   else \
     mkdir /srv/frontend/apps/remark42/public; \
     echo 'Skip frontend build'; \

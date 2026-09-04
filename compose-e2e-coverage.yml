@@ -18,6 +18,12 @@ services:
     volumes:
       - ./e2e/coverage/remark42:/coverage
 
+  remark42-telegram:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-telegram:/coverage
+
   remark42-shortedit:
     environment:
       - GOCOVERDIR=/coverage

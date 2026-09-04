@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
@@ -197,6 +198,11 @@ func TestVote_DownvoteAndCorrection(t *testing.T) {
 	voter, voterFrame, target := voteScenario(t, "downvoteauthor", text)
 
 	require.NoError(t, target.Locator(`button[title="Vote down"]`).Click())
+	// Asserting that the button is disabled once the vote is cast looks like it belongs here and
+	// does not: it holds with the isDownvoted guard removed, both straight after the click, where
+	// the in-flight guard disables the button anyway, and after the score settles. Nothing in the
+	// browser separates the two, so the assertion would pass against a widget that had lost the
+	// rule. comment-votes.spec.tsx keeps it.
 	eventually(t, waitTimeout, "the downvote did not register", func() bool {
 		v, err := pollText(score(voterFrame, text))
 		return err == nil && v == "-1"
@@ -261,4 +267,59 @@ func TestVote_WithoutTheXSRFHeaderIsRefused(t *testing.T) {
 		v, err := pollText(score(voterFrame, text))
 		return err == nil && v == "0"
 	})
+}
+
+// TestVote_BothButtonsAreDisabledWhileTheVoteIsInFlight covers the window between the click and the
+// server's answer, which nothing else in this suite observes: the other vote cases answer at once,
+// so they pass whether or not the widget guards against a second vote landing on top of the first.
+//
+// Both buttons are asserted, not just the one clicked. Leaving the opposite one live is the more
+// interesting defect, since a reader who changes their mind mid-request sends a correction against
+// a score the server has not settled yet.
+func TestVote_BothButtonsAreDisabledWhileTheVoteIsInFlight(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ name, title string }{
+		{"upvote", "Vote up"},
+		{"downvote", "Vote down"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			text := "vote inflight " + tc.name + " " + runID
+			voter, _, target := voteScenario(t, "voteinflight"+tc.name, text)
+
+			// held open so the in-flight state can be read; an instant answer leaves nothing to see
+			release := make(chan struct{})
+			// buffered, so the handler never blocks on a test that has already given up
+			continued := make(chan error, 1)
+			var releaseOnce sync.Once
+			unblock := func() { releaseOnce.Do(func() { close(release) }) }
+			defer unblock()
+
+			require.NoError(t, voter.Route("**/api/v1/vote/**", func(route playwright.Route) {
+				<-release
+				continued <- route.Continue()
+			}))
+
+			require.NoError(t, target.Locator(`button[title="`+tc.title+`"]`).Click())
+
+			for _, title := range []string{"Vote up", "Vote down"} {
+				eventually(t, waitTimeout, title+" stayed live while a vote was in flight", func() bool {
+					disabled, err := target.Locator(`button[title="` + title + `"]`).IsDisabled()
+					return err == nil && disabled
+				})
+			}
+
+			unblock()
+			// Click returns while the request is still held, so cleanup can close the context
+			// with the handler inside Continue. Waiting on the call itself is what settles that;
+			// every state the widget shows is already true before the release, the optimistic
+			// score included, so none of them can stand in for it
+			select {
+			case err := <-continued:
+				require.NoError(t, err, "the held vote request could not be released")
+			case <-time.After(waitTimeout):
+				t.Fatal("the held vote request was never released")
+			}
+		})
+	}
 }

@@ -22,6 +22,8 @@
 //   - hostframe_test.go: sender checks on both sides of the iframe boundary
 //   - profile_test.go: the reader's own-comment overlay
 //   - webfiles_test.go: the published /web surface
+//   - telegram_test.go: Telegram authentication through the bot API stub
+//   - telegramsub_test.go: the Telegram notification subscription round trip
 //   - widgets_test.go: last-comments, counter and the profile iframe
 package e2e
 
@@ -63,6 +65,9 @@ const (
 	noAuthURL    = "http://remark42-noauth:8085"
 	anonVoteURL  = "http://remark42-anonvote:8086"
 
+	// telegram auth against a stub standing in for the bot api, see compose-e2e-test.yml
+	telegramURL = "http://remark42-telegram:8087"
+
 	// a page on an origin the widget is not served from, see compose-e2e-test.yml
 	hostSiteURL = "http://host-site:8090"
 
@@ -77,6 +82,10 @@ const (
 	jwtHeaderProbeURL = "http://127.0.0.1:8083"
 	noAuthProbeURL    = "http://127.0.0.1:8085"
 	anonVoteProbeURL  = "http://127.0.0.1:8086"
+	telegramProbeURL  = "http://127.0.0.1:8087"
+	// the stub is driven from this process because the step it stands in for happens inside
+	// Telegram, where no page can reach
+	telegramStubURL   = "http://127.0.0.1:8091"
 	hostSiteProbeURL  = "http://127.0.0.1:8090"
 	httpsProbeURL     = "https://127.0.0.1:8443"
 	httpsHostProbeURL = "https://127.0.0.1:8444"
@@ -183,6 +192,7 @@ func TestMain(m *testing.M) {
 			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
 				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
 				"MAP remark42-noauth 127.0.0.1, MAP remark42-anonvote 127.0.0.1, " +
+				"MAP remark42-telegram 127.0.0.1, " +
 				"MAP host-site 127.0.0.1, " +
 				"MAP remark42-https 127.0.0.1, MAP host-site-https 127.0.0.1",
 		},
@@ -269,6 +279,8 @@ func stackReady(timeout time.Duration) bool {
 		jwtHeaderProbeURL + "/ping",
 		noAuthProbeURL + "/ping",
 		anonVoteProbeURL + "/ping",
+		telegramProbeURL + "/ping",
+		telegramStubURL + "/botstub-token/getMe",
 		hostSiteProbeURL + "/post.html",
 		httpsProbeURL + "/ping",
 		httpsHostProbeURL + "/post-https.html",
@@ -402,6 +414,9 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 
 	page, err := ctx.NewPage()
 	require.NoError(t, err)
+	// cleanups run last registered first, so this reads the counters while the context above is
+	// still open. A closed context has no frames left to ask.
+	t.Cleanup(func() { snapshotJSCoverage(t, page) })
 	// before the first navigation, so nothing the page reports on its way up is missed
 	watchPage(t, page)
 	debug := os.Getenv("E2E_DEBUG") != ""
@@ -444,6 +459,7 @@ var readerIPAuthorities = []string{
 	"remark42-jwtheader:8083",
 	"remark42-noauth:8085",
 	"remark42-anonvote:8086",
+	"remark42-telegram:8087",
 	"remark42-https:8443",
 	"127.0.0.1:8080",
 	"127.0.0.1:8081",
@@ -451,6 +467,7 @@ var readerIPAuthorities = []string{
 	"127.0.0.1:8083",
 	"127.0.0.1:8085",
 	"127.0.0.1:8086",
+	"127.0.0.1:8087",
 	"127.0.0.1:8443",
 }
 
@@ -580,6 +597,8 @@ func openThread(t *testing.T, page playwright.Page) playwright.FrameLocator {
 
 func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLocator {
 	t.Helper()
+	// a page that is already showing something has counted something, and Goto discards it
+	snapshotJSCoverage(t, page)
 	_, err := page.Goto(url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateDomcontentloaded,
 	})
@@ -612,6 +631,9 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 		}
 	}
 
+	// the other navigation boundary: every caller happens to pass a fresh page today, and nothing
+	// says they must
+	snapshotJSCoverage(t, page)
 	_, err := page.Goto(baseURL + hostPage)
 	require.NoError(t, err)
 
@@ -650,6 +672,7 @@ func stubSignedOut(t *testing.T, page playwright.Page) {
 // that a comment is absent would otherwise pass against a thread that has not rendered yet
 func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	t.Helper()
+	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.ExpectResponse("**/api/v1/find**", func() error {
 		_, rerr := page.Reload()

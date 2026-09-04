@@ -48,12 +48,6 @@ describe('<SubscribeByTelegram />', () => {
     expect(screen.getByTitle('Available only for registered users')).toBeDisabled();
   });
 
-  it('should be rendered with enabled email button when user is logged in', () => {
-    createWrapper();
-
-    expect(screen.getByTitle('Subscribe by Telegram')).not.toBeDisabled();
-  });
-
   it('should show correct telegram link', async () => {
     createWrapper();
     const button = screen.getByTitle('Subscribe by Telegram');
@@ -154,9 +148,36 @@ describe('<SubscribeByTelegram />', () => {
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
     fireEvent.click(await screen.findByText('Resubscribe'));
+    expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
     fireEvent.click(await screen.findByText('Check'));
     expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(2);
     expect(await screen.findByText(/You have been subscribed/)).toBeInTheDocument();
+  });
+
+  it('should resubscribe after loading an existing subscription', async () => {
+    jest
+      .spyOn(api, 'telegramSubscribe')
+      .mockRejectedValueOnce(new RequestError('Conflict.', 409))
+      .mockResolvedValueOnce({ bot: 'foo_bot', token: 'fresh_token' });
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+    fireEvent.click(await screen.findByText('Unsubscribe'));
+    await screen.findByText(/You have been unsubscribed/);
+
+    fireEvent.click(screen.getByText('Resubscribe'));
+
+    expect(await screen.findByText(/by the link/)).toHaveAttribute('href', 'https://t.me/foo_bot/?start=fresh_token');
+    expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
+  });
+
+  it('should show an error when starting the subscription fails', async () => {
+    jest.spyOn(api, 'telegramSubscribe').mockRejectedValueOnce(new RequestError('not enabled', 17));
+
+    createWrapper();
+    fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+
+    expect(await screen.findByText('Action rejected. Please try again a bit later.')).toHaveClass('auth-error');
   });
 
   it('should show subscribed interface if user is already subscribed', async () => {

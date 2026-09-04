@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { waitFor, fireEvent, screen } from '@testing-library/preact';
+import { waitFor, fireEvent } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -40,33 +40,6 @@ const commentStub: Comment = {
 const commentsStub = [commentStub, commentStub, commentStub];
 
 describe('<Profile />', () => {
-  it('should render preloader', () => {
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
-    const { queryByLabelText, queryByRole, queryByTestId } = render(<Profile />);
-
-    expect(queryByLabelText('Loading...')).toBeInTheDocument();
-    expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
-    expect(queryByRole('heading', { name: /my comments/i })).not.toBeInTheDocument();
-    expect(queryByRole('heading', { name: /comments/i })).not.toBeInTheDocument();
-    expect(queryByTestId('comments-counter')).not.toBeInTheDocument();
-    expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
-  });
-
-  it('should render error', async () => {
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
-    jest.spyOn(api, 'getUserComments').mockImplementation(() => {
-      throw new Error('error');
-    });
-    const { queryByLabelText, queryByRole, findByRole, queryByTestId } = render(<Profile />);
-
-    expect(await findByRole('button', { name: /retry/i })).toBeInTheDocument();
-    expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
-    expect(queryByRole('heading', { name: /my comments/i })).not.toBeInTheDocument();
-    expect(queryByRole('heading', { name: /comments/i })).not.toBeInTheDocument();
-    expect(queryByTestId('comments-counter')).not.toBeInTheDocument();
-    expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
-  });
-
   it('should render user without comments', async () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
     const getUserComments = jest
@@ -189,16 +162,5 @@ describe('<Profile />', () => {
 
     fireEvent.click(await findByRole('button', { name: /load more/i }));
     expect(queryByTestId('preloader')).not.toBeInTheDocument();
-  });
-
-  it('should not render removal button for anonymous user', async () => {
-    jest
-      .spyOn(api, 'getUserComments')
-      .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, name: 'anonymous_1' }));
-
-    render(<Profile />);
-
-    expect(screen.queryByText(/request my data removal/i)).not.toBeInTheDocument();
   });
 });

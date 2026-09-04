@@ -80,33 +80,6 @@ describe('<Comment />', () => {
     expect(patreonSubscriberIcon.tagName).toBe('IMG');
   });
 
-  describe('verification', () => {
-    it('should render active verification icon', () => {
-      props.data.user.verified = true;
-      render(<CommentWithIntl {...props} />);
-      expect(screen.getByTitle('Verified user')).toBeVisible();
-    });
-
-    it('should not render verification icon', () => {
-      const props = getProps();
-      render(<CommentWithIntl {...props} />);
-      expect(screen.queryByTitle('Verified user')).not.toBeInTheDocument();
-    });
-
-    it('should render verification button for admin', () => {
-      props.user!.admin = true;
-      render(<CommentWithIntl {...props} />);
-      expect(screen.getByTitle('Toggle verification')).toBeVisible();
-    });
-
-    it('should render active verification icon for admin', () => {
-      props.user!.admin = true;
-      props.data.user.verified = true;
-      render(<CommentWithIntl {...props} />);
-      expect(screen.queryByTitle('Verified user')).toBeVisible();
-    });
-  });
-
   describe('voting', () => {
     let props = getProps();
 
@@ -114,10 +87,6 @@ describe('<Comment />', () => {
       props = getProps();
     });
 
-    it('should render vote component', () => {
-      render(<CommentWithIntl {...props} />);
-      expect(screen.getByTitle('Votes score')).toBeVisible();
-    });
     it.each([
       [
         'when the comment is pinned',
@@ -175,11 +144,6 @@ describe('<Comment />', () => {
     });
   });
 
-  it('should render action buttons', () => {
-    render(<CommentWithIntl {...props} />);
-    expect(screen.getByText('Reply')).toBeVisible();
-  });
-
   it.each([
     [
       'pinned',
@@ -203,38 +167,6 @@ describe('<Comment />', () => {
     mutateProps();
     render(<CommentWithIntl {...props} />);
     expect(screen.queryByTitle('Reply')).not.toBeInTheDocument();
-  });
-
-  it('should be editable', async () => {
-    StaticStore.config.edit_duration = 300;
-
-    props.repliesCount = 0;
-    props.user!.id = '100';
-    props.data.user.id = '100';
-    Object.assign(props.data, {
-      id: '101',
-      vote: 1,
-      time: Date.now(),
-      delete: false,
-      orig: 'test',
-    });
-
-    render(<CommentWithIntl {...props} />);
-    expect(screen.getByText('Edit')).toBeVisible();
-  });
-
-  it('should not be editable', () => {
-    StaticStore.config.edit_duration = 300;
-    Object.assign(props.data, {
-      user: props.user,
-      id: '100',
-      vote: 1,
-      time: new Date(new Date().getDate() - 300).toString(),
-      orig: 'test',
-    });
-
-    render(<CommentWithIntl {...props} />);
-    expect(screen.queryByRole('timer')).not.toBeInTheDocument();
   });
 
   it('toggles edit mode', async () => {

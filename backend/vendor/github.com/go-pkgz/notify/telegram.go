@@ -26,7 +26,13 @@ type TelegramParams struct {
 	Timeout              time.Duration // http client timeout
 	ErrorMsg, SuccessMsg string        // messages for successful and unsuccessful subscription requests to bot
 
-	apiPrefix string // changed only in tests
+	// APIURL points the client at something other than the public bot API, for a proxy standing in
+	// front of Telegram or a test double answering as it. Empty means the public API. Every request
+	// carries the bot token in its path, so this is validated rather than trusted: see
+	// validateTelegramBaseURL for what is refused and why.
+	APIURL string
+
+	apiPrefix string // derived from APIURL, or the public API
 }
 
 // Telegram notifications client
@@ -78,8 +84,20 @@ const tgCleanupInterval = time.Minute * 5
 func NewTelegram(params TelegramParams) (*Telegram, error) {
 	res := Telegram{TelegramParams: params}
 
-	if res.apiPrefix == "" {
+	switch {
+	case res.APIURL != "":
+		base, err := validateTelegramBaseURL(res.APIURL)
+		if err != nil {
+			return nil, err
+		}
+		// the "bot" literal belongs to the API's own shape rather than to the operator's base, so
+		// it is appended here: a caller passes https://proxy.example.com and the URLs come out as
+		// https://proxy.example.com/bot<token>/<method>, which is what Telegram itself serves
+		res.apiPrefix = base + "/bot"
+	case res.apiPrefix == "":
 		res.apiPrefix = telegramAPIPrefix
+	default:
+		// a prefix set directly, which the package's own tests do
 	}
 	if res.Timeout == 0 {
 		res.Timeout = telegramTimeOut
@@ -450,6 +468,45 @@ func (t *Telegram) botInfo(ctx context.Context) (*TelegramBotInfo, error) {
 	return resp.Result, nil
 }
 
+// validateTelegramBaseURL checks a caller-supplied API base and returns it without its trailing
+// slash. Every request built from it carries the bot token in its path, so a base that resolves
+// somewhere unintended ships the token there: "https://api.telegram.org@evil.tld" is a valid URL
+// whose host is evil.tld, and a bare scheme or an opaque form silently produces a request to
+// somewhere else again. A path prefix is allowed, for a proxy mounted under one.
+//
+// No rejection echoes the value. It is configuration that can carry credentials in its userinfo, a
+// secret in its query or a password where the port belongs, and the error travels to whatever logs
+// the constructor failure. The parse error is dropped for the same reason: *url.Error prints the
+// URL it was given, and the inner error quotes the input back as well.
+func validateTelegramBaseURL(baseURL string) (string, error) {
+	baseURL = strings.TrimRight(baseURL, "/")
+
+	u, err := neturl.Parse(baseURL)
+	if err != nil {
+		return "", errors.New("telegram api url is not a valid url")
+	}
+
+	switch {
+	case u.Opaque != "":
+		return "", errors.New("telegram api url must not be opaque")
+	case u.Scheme != "http" && u.Scheme != "https":
+		return "", fmt.Errorf("telegram api url must be http or https, got %q", u.Scheme)
+	case u.Hostname() == "":
+		// u.Host is non-empty for "http://:9000", which resolves to the local machine
+		return "", errors.New("telegram api url must have a host")
+	case u.User != nil:
+		return "", errors.New("telegram api url must not carry userinfo")
+	case u.RawQuery != "" || u.ForceQuery:
+		return "", errors.New("telegram api url must not carry a query")
+	case u.Fragment != "" || strings.HasSuffix(baseURL, "#"):
+		return "", errors.New("telegram api url must not carry a fragment")
+	}
+
+	// rebuilt from what was checked, so the string validated is the string used
+	u.Path = strings.TrimRight(u.Path, "/")
+	return u.String(), nil
+}
+
 // Request makes a request to the Telegram API and return the result
 func (t *Telegram) Request(ctx context.Context, method string, b []byte, data any) error {
 	return repeater.NewFixed(3, time.Millisecond*250).Do(ctx, func() error {
@@ -469,7 +526,16 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data an
 			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		}
 
-		client := http.Client{Timeout: t.Timeout}
+		// refusing redirects: Go copies the previous URL into Referer on any hop that is not
+		// https-to-http, and every URL here carries the bot token in its path, so following one
+		// hands the destination the token, usually into its access log. Telegram does not redirect;
+		// something standing in for it can
+		client := http.Client{
+			Timeout: t.Timeout,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return errors.New("refusing to follow a telegram api redirect: the bot token travels in the URL")
+			},
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to send request: %w", t.redactToken(err))
@@ -477,7 +543,7 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data an
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return t.parseError(resp.Body, resp.StatusCode)
+			return t.redactToken(t.parseError(resp.Body, resp.StatusCode))
 		}
 
 		if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
@@ -488,14 +554,91 @@ func (t *Telegram) Request(ctx context.Context, method string, b []byte, data an
 	})
 }
 
-// redactToken hides the bot token in the URL of *url.Error returned by the http client,
-// as the token is a part of every API URL and otherwise leaks into the logs of the caller printing the error
+// redactToken removes the bot token from an error before it reaches a caller's log.
+//
+// Two routes, and the second only exists once APIURL can point somewhere the operator chose. The
+// token is part of every API URL, so a transport failure carries it in *url.Error's URL field. And
+// the upstream decides the text of an API error: something standing in for Telegram can echo the
+// request URI into its description, in whatever encoding it likes, so scrubbing the token itself is
+// what holds rather than matching a URL shape.
 func (t *Telegram) redactToken(err error) error {
-	var urlErr *neturl.Error
-	if t.Token == "" || !errors.As(err, &urlErr) || !strings.Contains(urlErr.URL, t.Token) {
+	if err == nil || t.Token == "" {
 		return err
 	}
-	return &neturl.Error{Op: urlErr.Op, URL: strings.ReplaceAll(urlErr.URL, t.Token, "<redacted>"), Err: urlErr.Err}
+
+	var urlErr *neturl.Error
+	if errors.As(err, &urlErr) && strings.Contains(urlErr.URL, t.Token) {
+		return &neturl.Error{
+			Op: urlErr.Op, URL: strings.ReplaceAll(urlErr.URL, t.Token, "<redacted>"), Err: urlErr.Err,
+		}
+	}
+
+	// the text scrub is for something that could actually be a bot token. Telegram issues them as
+	// "<bot id>:<secret>", and blanking a short arbitrary string out of a diagnostic corrupts more
+	// than it protects: a token of "404" would turn every "status code 404" into "status code
+	// <redacted>". The URL-field redaction above stays unconditional, since there the token is
+	// whatever the caller configured and the field is nothing else
+	if !looksLikeBotToken(t.Token) {
+		return err
+	}
+
+	msg := err.Error()
+	for _, form := range []string{t.Token, neturl.QueryEscape(t.Token), neturl.PathEscape(t.Token)} {
+		msg = strings.ReplaceAll(msg, form, "<redacted>")
+	}
+
+	// substitution only catches encodings we thought of, and the upstream picks the encoding, so the
+	// result is checked once more against a decoded copy. If the token is still recoverable by any
+	// of those routes the text goes rather than the token stays
+	if tokenRecoverable(msg, t.Token) {
+		return errors.New("unexpected telegram API error, text withheld: the bot token could not be ruled out of it")
+	}
+
+	if msg == err.Error() {
+		return err
+	}
+	return errors.New(msg)
+}
+
+// looksLikeBotToken reports whether token has the shape Telegram issues, "<bot id>:<secret>". Used
+// to keep the text scrub off values that cannot be one, where it would damage diagnostics for
+// nothing
+func looksLikeBotToken(token string) bool {
+	id, secret, found := strings.Cut(token, ":")
+	if !found || len(secret) < 8 {
+		return false
+	}
+	if _, err := strconv.Atoi(id); err != nil {
+		return false
+	}
+	return true
+}
+
+// tokenRecoverable reports whether token can still be read out of msg after undoing the encodings
+// an upstream might have applied to it.
+//
+// Fails closed: after a decode error, or after the cap runs out while the text is still changing,
+// absence was never established, and withholding is the only answer that cannot leak. One stray "%"
+// in whatever the upstream echoed is enough to reach that.
+func tokenRecoverable(msg, token string) bool {
+	lowered := strings.ToLower(token)
+	seen := msg
+	for i := 0; i < 5; i++ {
+		if strings.Contains(strings.ToLower(seen), lowered) {
+			return true
+		}
+		next, err := neturl.QueryUnescape(seen)
+		if err != nil {
+			return true
+		}
+		if next == seen {
+			// decoding has converged and every form has been examined, so the token is absent
+			// rather than undecided
+			return false
+		}
+		seen = next
+	}
+	return true
 }
 
 func (t *Telegram) parseError(r io.Reader, statusCode int) error {

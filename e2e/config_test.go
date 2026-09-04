@@ -102,6 +102,12 @@ func TestConfig_SubscriptionControlsCanBeHidden(t *testing.T) {
 			rss := frame.Locator(`[title="Subscribe by RSS"]`)
 			byMail := frame.Locator(`[title="Subscribe by Email"]`)
 
+			// this instance runs NOTIFY_USERS=email, so the telegram control has to be absent
+			// whatever the display settings say. The email control beside it is the positive
+			// control: a widget offering no subscriptions at all would satisfy the absence alone
+			waitHidden(t, frame.Locator(`[title="Subscribe by Telegram"]`),
+				"the telegram control was offered on an instance with telegram notifications off")
+
 			if tc.rss {
 				waitVisible(t, rss)
 			} else {

@@ -9,6 +9,8 @@ import (
 	neturl "net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -77,6 +79,10 @@ func TestComment_EditWithinTheDeadline(t *testing.T) {
 	// the countdown only renders while the comment is still editable
 	waitVisible(t, actions(frame, original).Locator(`[role="timer"]`))
 	require.NoError(t, actions(frame, original).Locator(`button:has-text("Edit")`).Click())
+	// the action becomes its own way out; leaving Edit in place strands a reader in the editor
+	waitVisible(t, actions(frame, original).Locator(`button:has-text("Cancel")`))
+	waitHidden(t, actions(frame, original).Locator(`button:has-text("Edit")`),
+		"the Edit action stayed beside Cancel while the comment was being edited")
 
 	edited := "after edit " + runID
 	submitForm(t, replyForm(t, frame), edited)
@@ -298,6 +304,9 @@ func TestComment_AdminPinsAndVerifies(t *testing.T) {
 	waitVisible(t, adminFrame.Locator(`[role="region"][aria-label="Pinned comments"]`))
 
 	// the verification toggle sits in the comment header beside the author, not in the action bar
+	// nothing marks an author verified until an admin says so, and the icon is what says it did
+	waitHidden(t, comment(adminFrame, text).Locator(`[title="Verified user"]`).First(),
+		"the author was shown as verified before anyone verified them")
 	require.NoError(t, comment(adminFrame, text).Locator(`[title="Toggle verification"]`).First().Click())
 	waitVisible(t, comment(adminFrame, text).Locator(`[title="Verified user"]`).First())
 
@@ -445,6 +454,12 @@ func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
 	frame := openURL(t, page, url)
 	signInDev(t, page, frame)
 
+	// a comment to hang the Reply action on. Without one the thread is empty and an assertion that
+	// Reply is gone passes whether or not read-only has anything to do with it
+	text := "locked thread reply " + runID
+	postComment(t, frame, text)
+	waitVisible(t, actions(frame, text).Locator(`button:has-text("Reply")`))
+
 	// the admin panel swaps its own button instead of showing the read-only notice, which is
 	// what an ordinary reader gets
 	require.NoError(t, frame.Locator(`button:has-text("Disable comments")`).Click())
@@ -457,10 +472,150 @@ func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
 	require.NoError(t, err)
 
 	readerFrame := reader.FrameLocator("#remark42 iframe")
-	waitVisible(t, readerFrame.Locator(`text=Read-only`))
+	// an exact match on the status: `text=` is a case-insensitive substring, so any comment whose
+	// own text contains the phrase would satisfy it too, and two matches is a strict-mode failure
+	waitVisible(t, readerFrame.Locator(`text="Read-only"`))
 	waitHidden(t, readerFrame.Locator(commentFormSel).First(),
 		"the thread is read-only but a reader is still shown a comment form")
+	// the form and the per-comment Reply action are separate controls, and a thread that takes one
+	// away has to take the other with it
+	waitVisible(t, comment(readerFrame, text))
+	waitHidden(t, readerFrame.Locator(`button:has-text("Reply")`).First(),
+		"the thread is read-only but a reader is still offered Reply on a comment")
 
 	require.NoError(t, frame.Locator(`button:has-text("Enable comments")`).Click())
 	waitVisible(t, frame.Locator(commentFormSel).First())
+}
+
+// TestComment_AdminActionsKeepTheirOrder covers the order of the moderation actions, which nothing
+// else asserts: every other case reaches one of them by name, so any arrangement passes.
+//
+// The order is what a moderator's hand learns, and Delete sits at the end of it deliberately. A
+// reshuffle that moved Delete next to Hide would pass every other case in this file while making
+// the destructive action the neighbor of a routine one.
+func TestComment_AdminActionsKeepTheirOrder(t *testing.T) {
+	t.Parallel()
+
+	text := "admin action order " + runID
+	author := newPage(t)
+	authorFrame := openThread(t, author)
+	signInAnon(t, author, authorFrame, anonName("actionorder"))
+	postComment(t, authorFrame, text)
+
+	admin := newPage(t)
+	adminFrame := openURL(t, admin, threadURL(t))
+	signInDev(t, admin, adminFrame)
+
+	// the class is kept outside the css modules for this: the production bundle hashes the rest
+	// and strips the data-testid the unit suite selects by
+	additional := comment(adminFrame, text).Locator(".comment-actions-additional").First()
+	waitVisible(t, additional)
+
+	labels, err := additional.Locator("> *").AllTextContents()
+	require.NoError(t, err)
+	require.Len(t, labels, 5, "the moderation menu no longer holds five actions: %v", labels)
+
+	want := []string{"Hide", "Copy", "Pin", "Block", "Delete"}
+	for i, expected := range want {
+		assert.Contains(t, labels[i], expected,
+			"the moderation actions are out of order, wanted %v, got %v", want, labels)
+	}
+
+	// the label switches, which is the render branch under test. It says nothing about the
+	// clipboard: copyComment sets isCopied outside its own catch, so the label appears whether the
+	// write succeeded or threw
+	require.NoError(t, additional.Locator(`button:has-text("Copy")`).Click())
+	waitVisible(t, additional.Locator(`button:has-text("Copied!")`))
+}
+
+// TestComment_EditCountdownCountsDown covers what the countdown says, which nothing else reads.
+// TestComment_EditWithinTheDeadline waits for the element and TestComment_EditExpiresAfterTheDeadline
+// waits for it to go, so a timer rendering blank, showing the wrong unit, or frozen at its starting
+// value passes both of them while telling the reader nothing about how long they have left.
+//
+// Runs against the short-edit instance so the window is small enough to watch a tick.
+func TestComment_EditCountdownCountsDown(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openURL(t, page, threadURLOn(t, shortEditURL))
+	signInAnon(t, page, frame, anonName("countdown"))
+
+	text := "countdown " + runID
+	postedAt := time.Now()
+	postComment(t, frame, text)
+
+	timer := actions(frame, text).Locator(`[role="timer"]`)
+	waitVisible(t, timer)
+
+	// the whole shape, not just the digits: trimming a suffix that is not there and parsing what
+	// is left accepts a bare number, and the unit is part of what the reader is being told
+	countdownShape := regexp.MustCompile(`^\d+s$`)
+	seconds := func() int {
+		t.Helper()
+		// pollText and not TextContent: this runs inside eventually, and a bare read carries
+		// playwright's own 30s default, which outlives the loop's budget and reports the wrong
+		// failure
+		shown, err := pollText(timer)
+		require.NoError(t, err)
+		trimmed := strings.TrimSpace(shown)
+		require.Truef(t, countdownShape.MatchString(trimmed),
+			"the countdown reads %q, which is not a number of seconds", shown)
+		n, convErr := strconv.Atoi(strings.TrimSuffix(trimmed, "s"))
+		require.NoError(t, convErr)
+		return n
+	}
+
+	first := seconds()
+	// bounded from below as well as above, or a countdown starting at 2s would satisfy the shape,
+	// stay under the window and still decrease while telling the reader something wrong. The floor
+	// comes from the time actually spent since the comment was posted rather than a fixed number,
+	// since under -parallel 4 the setup can take seconds the scheduler decides
+	spent := int(time.Since(postedAt).Seconds())
+	assert.GreaterOrEqual(t, first, int(editWindow.Seconds())-spent-1,
+		"the countdown started %ds below the edit window, having spent %ds getting there", int(editWindow.Seconds())-first, spent)
+	// the widget rounds the remaining time up, so a fifteen second window reads 16 at the moment
+	// the comment lands
+	assert.LessOrEqual(t, first, int(editWindow.Seconds())+1,
+		"the countdown starts above the edit window the instance was given")
+
+	// it has to move, or a value hard-coded at the window would satisfy everything above
+	eventually(t, waitTimeout, "the countdown never decreased", func() bool {
+		return seconds() < first
+	})
+}
+
+// TestComment_ActionsDependOnWhoseCommentItIs covers which moderation actions an ordinary reader is
+// offered, which the rest of the suite only ever exercises as an admin: TestThread_HideUserRemovesTheirCommentsOnly
+// clicks Hide from a reader signed in with signInDev, and the stack gives that user ADMIN_SHARED_ID,
+// so making either action admin-only would pass every other case here.
+//
+// One reader, two comments, so each half is the other's positive control: a rule that dropped both
+// actions everywhere would satisfy an absence assertion on its own.
+func TestComment_ActionsDependOnWhoseCommentItIs(t *testing.T) {
+	t.Parallel()
+
+	other := newPage(t)
+	otherFrame := openThread(t, other)
+	signInAnon(t, other, otherFrame, anonName("actorsforeign"))
+	foreign := "foreign comment " + runID
+	postComment(t, otherFrame, foreign)
+
+	reader := newPage(t)
+	readerFrame := openURL(t, reader, threadURL(t))
+	signInAnon(t, reader, readerFrame, anonName("actorsown"))
+	own := "own comment " + runID
+	postComment(t, readerFrame, own)
+
+	waitVisible(t, comment(readerFrame, foreign))
+
+	// on their own comment the reader may delete but has nobody to hide
+	waitVisible(t, actions(readerFrame, own).Locator(`button:has-text("Delete")`))
+	waitHidden(t, actions(readerFrame, own).Locator(`button:has-text("Hide")`),
+		"the widget offered to hide the reader's own author")
+
+	// on another reader's comment the reverse: hideable, not deletable
+	waitVisible(t, actions(readerFrame, foreign).Locator(`button:has-text("Hide")`))
+	waitHidden(t, actions(readerFrame, foreign).Locator(`button:has-text("Delete")`),
+		"the widget offered an ordinary reader the delete action on someone else's comment")
 }
