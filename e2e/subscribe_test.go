@@ -99,3 +99,63 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	require.NoError(t, closeButton.Click())
 	waitHidden(t, frame.Locator(`div[role="listbox"]`))
 }
+
+// TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget pins the phase of the dropdown's
+// outside-click listener. The panel used to close on a click inside itself whenever the click's
+// own handler rerendered the clicked node away: by the time a bubble-phase listener on the
+// document asked whether the target was inside the panel, the target was no longer anywhere, and
+// the answer was no. Deciding in the capture phase asks while the node is still attached.
+//
+// No flow in the widget detaches its clicked control inside the click's task today, so this case
+// drives the detach itself, from a capture listener on the panel that removes the target. That is
+// the shape from dropdown.test.tsx, and the reason it lives here as well is that jsdom keeps
+// contains(target) true in both phases and so cannot tell the two apart, while a real engine can:
+// with the document listener back in the bubble phase, this case closes the panel and fails.
+//
+// Not parallel: it needs the email step, so it clears the shared dev user's subscription, and the
+// round trip above subscribes that same user in the middle of its run.
+func TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	status, body := pageFetch(t, page, "DELETE", baseURL+"/api/v1/email?site=remark", nil)
+	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
+		"could not clear a subscription left by an earlier run: %s", body)
+	frame = reload(t, page)
+
+	subscribe := frame.Locator(`[title="Subscribe by Email"]`)
+	waitVisible(t, subscribe)
+	require.NoError(t, subscribe.Click())
+
+	email := frame.Locator(`input[placeholder="Email"]`)
+	waitVisible(t, email)
+
+	// the panel's own capture listener runs after the document's, so with the fix the document has
+	// already answered "inside" by the time the target goes; without it the document asks in the
+	// bubble phase, after this has run, and the target is gone. the handle is kept so the removal
+	// itself can be asserted, or a listener that never fired would pass this vacuously
+	panel := frame.Locator(`div[role="listbox"]`)
+	_, err := panel.Evaluate(`(node) => {
+		node.addEventListener('click', (e) => {
+			window.__e2eDetached = e.target;
+			e.target.remove();
+		}, { capture: true, once: true });
+	}`, nil)
+	require.NoError(t, err)
+
+	// the click's own dispatch removes its target, which the playwright documentation says throws
+	// for detachment during an action. Under the pinned 1.62.1 it completes, because the
+	// attachment checks run before the input is dispatched. If a bump makes this line fail, that
+	// is playwright and not the phase: the assertion for the phase is the last line of the case
+	require.NoError(t, email.Click())
+
+	detached, err := frame.Locator("body").Evaluate(
+		`() => window.__e2eDetached instanceof Node && !window.__e2eDetached.isConnected`, nil)
+	require.NoError(t, err)
+	require.Equal(t, true, detached, "the click did not detach its target, so the phase was never exercised")
+
+	// the assertion the case exists for: a click inside the panel, whatever it did to its own
+	// target, is not an outside click
+	waitVisible(t, panel)
+}
