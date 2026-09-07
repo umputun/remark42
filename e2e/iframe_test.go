@@ -100,9 +100,12 @@ const (
 	// be satisfied by the fallback alone and says nothing about the message path. bound the
 	// message-path assertions well under it
 	revealTimeout = 5 * time.Second
-	// generous enough for a cold navigation on a loaded runner, and still well under the
-	// fallback, which is the point of the assertion
-	messageRevealBudget = 3 * time.Second
+	// the line the three reveal cases are judged against, measured from the element's creation
+	// and not from anything this process can time. a timer cannot fire early, so below this the
+	// reveal can only have come from the message, and above it only from the fallback. a budget
+	// chosen for how long an engine takes instead would be a bet on the slowest one: webkit has
+	// reported inited 2.6s after creation on a loaded machine
+	revealCutoff = revealTimeout - 500*time.Millisecond
 )
 
 // openWithBlockedIframeDoc loads the demo page with the widget document aborted, so the
@@ -249,21 +252,19 @@ func TestIframe_StaysHiddenUntilTheDocumentReportsInited(t *testing.T) {
 	forEachEngine(t, func(t *testing.T, page playwright.Page) {
 		openWithBlockedIframeDoc(t, page)
 
-		// unconditional: the loop below is bounded by the frame's own age, and on a slow
-		// enough load that bound can already be spent, which would leave the test asserting
-		// nothing at all about visibility
-		require.Equal(t, "hidden", iframeVisibility(t, page))
-
-		// then hold it for almost the whole fallback window. stopping halfway would only prove
-		// the fallback is not shorter than that, and a widget that revealed on anything other
-		// than `inited` would still pass. measured from the element's creation, since that is
-		// when the fallback it must not have used starts counting
-		for iframeAge(t, page) < revealTimeout-500*time.Millisecond {
-			require.Equal(t, "hidden", iframeVisibility(t, page))
+		// hold for almost the whole fallback window. stopping halfway would only prove the
+		// fallback is not shorter than that, and a widget that revealed on anything other than
+		// `inited` would still pass
+		for iframeAge(t, page) < revealCutoff {
 			time.Sleep(100 * time.Millisecond)
 		}
-		_, revealed := revealDelay(t, page)
-		assert.False(t, revealed, "the frame was revealed before its document reported inited")
+
+		// the mark and not what is visible when the read lands: the two are separated by the
+		// margin above, and an evaluate round trip on a loaded engine outlasts it, which reads
+		// a fallback that fired exactly on time as an early reveal
+		delay, revealed := revealDelay(t, page)
+		assert.False(t, revealed && delay < revealCutoff,
+			"the frame was revealed %v after it was created, before its document reported inited", delay)
 	})
 }
 
@@ -298,7 +299,7 @@ func TestIframe_IsRevealedByTheInitedMessage(t *testing.T) {
 		// whole 5s window without the widget being at fault
 		delay, ok := revealDelay(t, page)
 		require.True(t, ok, "the frame reported no reveal at all")
-		assert.Less(t, delay, messageRevealBudget,
+		assert.Less(t, delay, revealCutoff,
 			"the reveal was slow enough to have come from the fallback and not the message")
 		waitVisible(t, page.Locator("#remark42 iframe"))
 	})
@@ -320,12 +321,9 @@ func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
 		// and not before it: without a lower bound, shortening the fallback to a value that
 		// defeats its purpose would still pass. against the frame's own clock, so that a slow
 		// navigation cannot be mistaken for the timer having run
-		// close to the fallback and not three quarters of it: measured in the page there is
-		// no navigation to make room for, and a wider floor tolerates a fallback shortened
-		// enough to defeat its purpose
 		delay, ok := revealDelay(t, page)
 		require.True(t, ok, "the frame reported no reveal at all")
-		assert.Greater(t, delay, revealTimeout-500*time.Millisecond,
+		assert.Greater(t, delay, revealCutoff,
 			"the reveal came too early to have been the fallback timer")
 	})
 }

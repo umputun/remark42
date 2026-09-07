@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -269,4 +270,40 @@ func pauseForWebLimit() {
 		time.Sleep(wait)
 	}
 	lastWebGet = time.Now()
+}
+
+// TestWeb_NoBundleHardcodesTheWebRoot pins the fix for #2203, which shipped with no test at any
+// level. The bundler used to bake a fixed public path into every entry, so an instance mounted
+// under a prefix, which manuals/subdomain documents, asked the domain root for its provider icons
+// and got nothing. The path is derived from the URL the bundle was loaded from now, which is
+// correct for both arrangements.
+//
+// What separates the two builds is the assignment webpack emits for its runtime public path: a
+// literal when the path is fixed, and a computed value when it is derived. Asset filenames appear
+// bare either way, so a case looking for a rooted "/web/name.svg" string finds nothing in either
+// build and proves nothing; this asserts the assignment instead.
+//
+// Every emitted bundle is checked rather than the obvious one: the original defect put fifteen
+// icons in remark.mjs and one in last-comments.mjs, so a case reading a single entry would have
+// gone green with half of it still live.
+func TestWeb_NoBundleHardcodesTheWebRoot(t *testing.T) {
+	names := emittedBundles(t)
+	require.Contains(t, names, "remark.mjs", "listing is not the served web root: %v", names)
+	require.Contains(t, names, "last-comments.mjs",
+		"the entry carrying the second half of #2203 is missing from the listing: %v", names)
+
+	// webpack writes its public path to the `p` property of the runtime object. A baked-in path
+	// is a string literal there; a derived one is an expression
+	baked := regexp.MustCompile("\\.p\\s*=\\s*[\"'`]/web/[\"'`]")
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			body := getWeb(t, "/web/"+name).body
+			require.NotEmpty(t, body, "%s serves nothing, so this asserts nothing", name)
+
+			assert.NotRegexp(t, baked, body,
+				"%s bakes the public path in rather than deriving it, so an instance mounted under "+
+					"a prefix fetches its assets from the domain root", name)
+		})
+	}
 }
