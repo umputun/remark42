@@ -77,14 +77,25 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	unsubscribe := frame.Locator(`button:text-is("Unsubscribe")`)
 	waitVisible(t, unsubscribe)
 
-	// the panel confirming an unsubscribe is not observable: the click changes the step, and the
-	// dropdown closes on an element no longer in the rerendered view, which the component notes
-	// as a known awkwardness of its own. So assert what the server was asked and what it
-	// answered, which is what decides whether the reader still gets mail
 	resp, err = page.ExpectResponse("**/api/v1/email**", func() error {
 		return unsubscribe.Click()
 	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, "DELETE", resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the unsubscribe")
+
+	// the confirmation the panel shows afterwards, which nothing asserted before: the comment that
+	// used to stand here said it was unobservable because the dropdown closed over it. Note what
+	// this does not pin. It passes with the capture listener reverted, because the unsubscribe is
+	// awaited and the step changes a whole task after the click has finished propagating, so the
+	// button is still in the tree when a bubble-phase listener asks. The phase only decides a
+	// detach that lands inside the click, which is what dropdown.test.tsx drives directly.
+	waitVisible(t, frame.Locator(`text=You have been unsubscribed by email to updates`))
+
+	// the panel closes when asked to, which is the half a null render used to fake: the old trick
+	// emptied the content and left the listbox itself open on the page
+	closeButton := frame.Locator(`button:text-is("Close")`)
+	waitVisible(t, closeButton)
+	require.NoError(t, closeButton.Click())
+	waitHidden(t, frame.Locator(`div[role="listbox"]`))
 }
