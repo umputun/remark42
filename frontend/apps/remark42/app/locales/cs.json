@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Nahrávání obrázků je pro anonymní uživatele zakázáno. Abyste mohli přikládat obrázky, nepřihlašujte se jako anonymní uživatelé.",
   "commentForm.exceeded-size": "{fileName} překračuje limit velikosti souborů (max. {maxImageSize})",
   "commentForm.input-placeholder": "Zde napište Váš komentář",
+  "commentForm.input-placeholder-reply": "Zde napište Váš komentář",
   "commentForm.new-comment": "Nový komentář",
   "commentForm.notice-about-styling": "Pole podporuje <a>Markdown</a> syntax",
   "commentForm.preview": "Náhled",

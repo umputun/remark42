@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "匿名使用者無法上傳圖片，請登入以使用上傳功能。",
   "commentForm.exceeded-size": "{fileName} 的檔案大小超過了最大上限( {maxImageSize} )",
   "commentForm.input-placeholder": "寫下你的留言",
+  "commentForm.input-placeholder-reply": "寫下你的留言",
   "commentForm.new-comment": "新留言",
   "commentForm.notice-about-styling": "支援使用 <a>Markdown</a> 格式",
   "commentForm.preview": "預覽",

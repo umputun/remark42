@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Завантаження зображень анонімними користувачами заборонено. Будь ласка, увійдіть як не анонімний користувач.",
   "commentForm.exceeded-size": "Розмір файлу {fileName} повинен бути менший ніж {maxImageSize}",
   "commentForm.input-placeholder": "Написати коментар",
+  "commentForm.input-placeholder-reply": "Написати коментар",
   "commentForm.new-comment": "Новий коментар",
   "commentForm.notice-about-styling": "Підтримується <a>Markdown</a> форматування",
   "commentForm.preview": "Предперегляд",
