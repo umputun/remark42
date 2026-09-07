@@ -11,6 +11,20 @@
   }
 }
 
+/* the docking side (justify-content: flex-end) already flips with dir via flexbox's own
+   writing-mode-aware "end", but the off-screen shift above is a transform, which has no logical
+   equivalent and always points physically rightward. In rtl the sidebar docks left instead of
+   right, so the same rightward shift no longer clears it off-screen; it has to point left instead.
+   :not(.rootAppear) keeps this out of the cascade once .rootAppear's translateX(0) is added to the
+   same element, rather than relying on which of the two ties in specificity happens to win */
+.root[dir='rtl']:not(.rootAppear) {
+  transform: translateX(-100%);
+
+  @media (width >= 448px) {
+    transform: translateX(-448px);
+  }
+}
+
 .rootAppear {
   transform: translateX(0);
 }
@@ -37,7 +51,7 @@
 .closeButtonWrapper {
   position: absolute;
   z-index: 1;
-  right: 10px;
+  inset-inline-end: 10px;
   top: 18px;
   box-sizing: border-box;
   color: rgb(var(--secondary-text-color));
@@ -48,7 +62,7 @@
     padding: 4px;
     box-sizing: border-box;
     color: rgb(var(--white-color));
-    text-align: right; /* Position close button at right */
+    text-align: end; /* Position close button at the trailing edge */
   }
 }
 
@@ -95,9 +109,8 @@
 
 .footer {
   position: sticky;
-  right: 0;
+  inset-inline: 0;
   bottom: 0;
-  left: 0;
   padding: 16px;
   text-align: center;
 }
@@ -106,13 +119,13 @@
   flex-shrink: 0;
   height: 32px;
   width: 32px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }
 
 .info {
   max-width: 100%;
   margin: 0;
-  padding-right: 8px;
+  padding-inline-end: 8px;
   overflow: hidden;
   line-height: 1;
 }
@@ -136,8 +149,8 @@
 }
 
 .signout {
-  margin-left: auto;
-  margin-right: 28px;
+  margin-inline-start: auto;
+  margin-inline-end: 28px;
   color: rgb(var(--secondary-text-color));
 
   &:hover {
@@ -145,14 +158,23 @@
   }
 
   @media (width >= 448px) {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
+}
+
+/* the icon's arrow points away from its door frame, meaning "outward" in ltr where this button
+   sits at the end of the header row; margin-inline-start:auto above still docks it at that same
+   inline-end edge in rtl, just now the physical left instead of the physical right, so without
+   this the same unmirrored glyph would point back in, toward the username, instead of continuing
+   to point away from the content */
+:global([dir='rtl']) .signout svg {
+  transform: scaleX(-1);
 }
 
 .titleWrapper {
   position: sticky;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   margin: 0 0 4px;
   background-color: rgb(var(--primary-background-color));
   z-index: 1;
@@ -160,7 +182,7 @@
   &::after {
     position: absolute;
     top: 100%;
-    left: 0;
+    inset-inline-start: 0;
     content: '';
     width: 100%;
     height: 20px;
@@ -175,7 +197,7 @@
 .title {
   display: inline;
   margin: 0;
-  padding-right: 6px;
+  padding-inline-end: 6px;
   vertical-align: middle;
 }
 

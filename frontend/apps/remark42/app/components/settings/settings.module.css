@@ -7,7 +7,7 @@
 }
 
 .action {
-  margin-left: 8px;
+  margin-inline-start: 8px;
   font-weight: 700;
   color: var(--color9);
   cursor: pointer;
@@ -18,12 +18,13 @@
 
   &::before {
     content: '•';
-    margin-right: 8px;
+    margin-inline-end: 8px;
   }
 }
 
 .list {
-  padding: 0 0 0 20px;
+  padding: 0;
+  padding-inline-start: 20px;
 }
 
 .listItem {

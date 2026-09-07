@@ -24,9 +24,10 @@
   }
 
   & blockquote {
-    padding: 12px 8px 12px 16px;
-    border-left: 2px solid;
-    border-left-color: var(--color45);
+    padding-block: 12px;
+    padding-inline: 16px 8px;
+    border-inline-start: 2px solid;
+    border-inline-start-color: var(--color45);
   }
 
   & p,
@@ -41,7 +42,7 @@
     border-collapse: collapse;
 
     & th {
-      text-align: left;
+      text-align: start;
       font-weight: 600;
     }
 
@@ -219,7 +220,7 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-left-color: var(--color44);
+    border-inline-start-color: var(--color44);
   }
 
   & table {

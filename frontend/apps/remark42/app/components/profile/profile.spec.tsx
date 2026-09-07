@@ -201,4 +201,12 @@ describe('<Profile />', () => {
 
     expect(screen.queryByText(/request my data removal/i)).not.toBeInTheDocument();
   });
+
+  it('sets dir on the root element from the active locale (direction mapping itself is covered by common/direction.test.ts)', () => {
+    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
+
+    const { container } = render(<Profile />, {}, 'he');
+
+    expect(container.querySelector('.profile')).toHaveAttribute('dir', 'rtl');
+  });
 });
