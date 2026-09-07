@@ -32,7 +32,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.27"
           check-latest: true
           cache-dependency-path: backend/go.sum
 
@@ -109,7 +109,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.27"
           check-latest: true
           cache-dependency-path: backend/go.sum
 

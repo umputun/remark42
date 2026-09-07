@@ -1,7 +1,7 @@
 # The stub is stdlib only, so it is compiled straight from the one source file with a throwaway
 # module. Building it as part of the e2e module instead would pull playwright-go and its browser
 # tooling into an image that needs none of it.
-FROM golang:1.25-alpine AS build
+FROM golang:1.27-alpine AS build
 
 WORKDIR /src
 COPY main.go .
