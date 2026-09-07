@@ -24,7 +24,7 @@ make e2e
 make e2e-down
 ```
 
-The default run admits four top-level tests at once. Each browser context has isolated cookies, storage, a unique thread URL and a stable test-only client IP, so the backend's per-IP controls remain local to one reader. The last-comments case reads a site-wide feed, so it stays serial.
+The default run admits four top-level tests at once. Each browser context has isolated cookies, storage, a unique thread URL and a stable test-only client IP, so the backend's per-IP controls remain local to one reader. The Telegram cases share one bot stub, and the last-comments case reads a site-wide feed, so those groups stay serial.
 
 Run from `e2e/`; the compose path is relative to it. A single test:
 
@@ -106,13 +106,13 @@ A failing test also logs whatever the browser wrote to its console, which is whe
 
 The suite refuses a running stack that was not brought up from the sources under test. Every checkout builds the image tag the compose file names, so a stack from another worktree, or from this one before an edit, answers on these ports and passes every readiness probe while serving code nobody is looking at.
 
-`e2e/stamp.sh` digests the content of `backend`, `frontend`, `Dockerfile` and `docker-init.sh`; compose puts it in the container's environment and the suite reads it back. It digests content and not `HEAD`, so a commit touching only the suite does not invalidate a stack. `make e2e-up` stamps the same way, so a stack started by hand is accepted. On a mismatch the failure says to run `make e2e-down`.
+`e2e/stamp.sh` digests the content of `backend`, `frontend`, `Dockerfile`, `docker-init.sh` and `e2e/telegramstub`, which is the second image compose builds from sources here; compose puts it in the container's environment and the suite reads it back. It digests content and not `HEAD`, so a commit touching only the suite does not invalidate a stack. `make e2e-up` stamps the same way, so a stack started by hand is accepted. On a mismatch the failure says to run `make e2e-down`.
 
 Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --build-tags=e2e --config ../backend/.golangci.yml`. CI runs both, and neither is covered by a plain `go vet ./...` because of the build tag.
 
 ## The stack
 
-`compose-e2e-test.yml` at the repository root runs ten services, each bound to the loopback interface since it holds a known secret and an admin shared id:
+`compose-e2e-test.yml` at the repository root runs twelve services, each bound to the loopback interface since it holds a known secret and an admin shared id:
 
 - **remark42** on `:8080`, with the dev oauth2 provider on `:8084`, anonymous and email sign-in
 - **remark42-shortedit** on `:8081`, with `EDIT_TIME=15s` and anonymous sign-in only, since the dev oauth2 provider's port is fixed at 8084 and cannot be published twice. It exists so the expired-edit path is observable without holding a test open for the default five minutes
@@ -123,13 +123,15 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 - **host-site** on `:8090`, an nginx serving `e2e/hostsite/`, which is a page on an origin the widget is not served from. Every other host page here is served by remark42 itself, so without it the separate-domain setup the manuals describe is never exercised. `post.html` embeds the main instance; `restricted.html` embeds the one whose `ALLOWED_HOSTS` names only itself, which is the refusal case
 - **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the widget write its own cookies through `setAuthCookie`, so the attributes it chooses are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the writer keys off the `X-JWT` header rather than off the provider, and that is an assumption worth measuring rather than asserting
 - **host-site-https** on `:8444`, an nginx serving the same `e2e/hostsite/` over TLS, so the embed is cross-site *and* secure. `post-https.html` is its page
+- **remark42-telegram** on `:8087`, telegram auth pointed at the stub below through `TELEGRAM_API_URL`. It has its own instance because telegram is an auth provider, and adding it to the main one would change the provider list every other case reads out of the auth panel
+- **telegram-stub** on `:8091`, which answers as the Telegram bot API for the four calls the auth flow makes, takes an injected update through `/control/send`, and exposes the bot's replies through `/control/sent`. Those endpoints represent the exchange inside Telegram that a browser cannot perform. Its source is `e2e/telegramstub`, the one file in this module without the `e2e` build tag, and compose builds it as its own image from a throwaway module so the suite's browser tooling stays out of it
 - **mailpit** on `:8025`, which catches the email-auth verification message and the subscription token for the suite to read back
 
 Both TLS services read a self-signed certificate from `e2e/tls/`, which `e2e/tls/generate.sh` writes and `.gitignore` keeps out of the tree. `make e2e-up`, the workflow and `ensureStack` all run it before compose, so bringing the stack up by hand with a bare `docker compose up` is the one path that needs it run first. Every browser context and the readiness client accept that certificate, and they talk to nothing else.
 
 The main instance enables the notify module (`NOTIFY_USERS=email`). Without it `email_notifications` is false in the config, the widget never renders the subscribe control, and the whole subscribe, confirm and unsubscribe flow is unreachable from a browser.
 
-The remark42 instances beyond the first offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` enables email authentication and sets `ADMIN_SHARED_ID` to the SHA-1-derived ID of `adminedit@example.com`, which is the address its browser case uses.
+The remark42 instances beyond the first and `remark42-telegram` offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` enables email authentication and sets `ADMIN_SHARED_ID` to the SHA-1-derived ID of `adminedit@example.com`, which is the address its browser case uses.
 
 Four settings exist for the tests and not for realism, and each is there for a reason:
 
@@ -143,6 +145,8 @@ Four settings exist for the tests and not for realism, and each is there for a r
 ## What this suite cannot reach
 
 The stack carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. What is still out of reach is a browser engine other than Chromium for them, since the resolver rules the hostnames need are a Chromium flag.
+
+The Telegram fixture reaches both authentication and subscription. The stub answers `getMe`, `getUpdates`, `sendMessage` and `getUserProfilePhotos`, so it does not hold the widget against the public bot API's semantics, and the reader's handoff into the Telegram client is injected from the test process. The suite exercises both consumers of `TELEGRAM_API_URL`: auth signs a reader in through the bot, while notifications confirm, persist, remove and repeat a subscription through the same update poll.
 
 The trap that remains is which cookie policy a run is under. Playwright's own default `--disable-features` argument carries `ThirdPartyStoragePartitioning`, and it beats both `--test-third-party-cookie-phaseout` and `--block-third-party-cookies` passed through `Args`. A run configured that way keeps an ordinary third-party cookie exactly as it would with no flags at all, so it proves nothing while looking like it proved something. The lever is `IgnoreDefaultArgs` on the launch options: drop that default entry and re-supply `--disable-features` without that one feature, which is what `TestHTTPS_SessionSurvivesThirdPartyCookieBlocking` does. Measured on a cross-site https embed:
 

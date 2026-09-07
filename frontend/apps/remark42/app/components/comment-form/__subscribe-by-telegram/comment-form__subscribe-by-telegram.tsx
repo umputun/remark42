@@ -59,32 +59,42 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [telegram, setTelegram] = useSessionStorage<{ token: string; bot: string }>('telegram-subscription-telegram');
+  const [telegram, setTelegram] = useSessionStorage<{ token: string; bot: string } | null>(
+    'telegram-subscription-telegram',
+    null
+  );
 
-  useEffect(() => {
-    const fetchTelegram = async () => {
+  const fetchTelegram = async (showLoading = true): Promise<boolean> => {
+    if (showLoading) {
       setLoading(true);
-      try {
-        const { token, bot } = await telegramSubscribe();
-        setTelegram({ token, bot });
-      } catch (e) {
-        if ((e as RequestError).error === 'already subscribed') {
-          setStep('subscribed');
-          return;
-        }
-        if ((e as RequestError).code === 409) {
-          setStep('subscribed');
-          return;
-        }
-        setError(extractErrorMessageFromResponse(e as FetcherError, intl));
-      } finally {
+    }
+    try {
+      const { token, bot } = await telegramSubscribe();
+      setTelegram({ token, bot });
+      return true;
+    } catch (e) {
+      if ((e as RequestError).error === 'already subscribed') {
+        setStep('subscribed');
+        return false;
+      }
+      if ((e as RequestError).code === 409) {
+        setStep('subscribed');
+        return false;
+      }
+      setError(extractErrorMessageFromResponse(e as FetcherError, intl));
+      return false;
+    } finally {
+      if (showLoading) {
         setLoading(false);
       }
-    };
+    }
+  };
+
+  useEffect(() => {
     if (telegram) {
       return;
     }
-    fetchTelegram();
+    void fetchTelegram();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telegram]);
 
@@ -95,6 +105,7 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
         setLoading(true);
       }, 0);
       const { updated } = await telegramCurrentSubscribtion({ token });
+      setError(null);
       if (!updated) {
         return;
       }
@@ -120,6 +131,7 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
         setLoading(true);
       }, 0);
       await telegramUnsubcribe();
+      setError(null);
       setStep('unsubscribed');
     } catch (err) {
       setError(extractErrorMessageFromResponse(err, intl));
@@ -129,11 +141,15 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
   };
 
   const handleTelegramResubscribe = async () => {
-    setStep('initial');
+    setError(null);
+    if (await fetchTelegram(false)) {
+      setStep('initial');
+    }
   };
   return (
     <div className={clsx(styles.root)}>
       {loading && <Preloader className={clsx(styles.preloader)} />}
+      {!loading && error && (!telegram || step !== 'initial') && <div className="auth-error">{error}</div>}
       {!loading && telegram && step === 'initial' && (
         <TelegramLink errorMessage={error} onSubmit={handleTelegramCheck} bot={telegram.bot} token={telegram.token} />
       )}

@@ -132,6 +132,7 @@ services:
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification`    | verification message subject                             |
 | telegram.token                 | TELEGRAM_TOKEN                 |                         | Telegram token (used for auth and Telegram notifications) |
 | telegram.timeout               | TELEGRAM_TIMEOUT               | `5s`                    | Telegram connection timeout                              |
+| telegram.api-url               | TELEGRAM_API_URL               |                         | Telegram Bot API origin/base path for auth and notifications, without `/bot`; the bot token is appended to request paths, and the public API is used when unset |
 | smtp.host                      | SMTP_HOST                      |                         | SMTP host                                                |
 | smtp.port                      | SMTP_PORT                      |                         | SMTP port                                                |
 | smtp.helo_host                 | SMTP_HELO_HOST                 |                         | SMTP HELO/EHLO hostname                                  |
