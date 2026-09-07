@@ -46,12 +46,19 @@ func TestVote_UpvoteCountsOnce(t *testing.T) {
 	text := "vote target " + runID
 	voter, voterFrame, target := voteScenario(t, "voteauthor", text)
 
+	// visibility is asserted beside every value read below, and separately from the text: the
+	// score is read through innerText, which returns the text of an element that is not rendered
+	// at all, so a display:none on the counter would satisfy every text assertion in this file
+	// while the reader saw nothing
+	waitVisible(t, score(voterFrame, text))
+
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
 
 	eventually(t, waitTimeout, "score did not reach 1", func() bool {
 		v, err := pollText(score(voterFrame, text))
 		return err == nil && v == "1"
 	})
+	waitVisible(t, score(voterFrame, text))
 
 	// the vote is stored and not only reflected in local state
 	voterFrame = reload(t, voter)
@@ -201,6 +208,9 @@ func TestVote_DownvoteAndCorrection(t *testing.T) {
 		v, err := pollText(score(voterFrame, text))
 		return err == nil && v == "-1"
 	})
+	// a negative score is styled differently from a positive one, so it is asserted visible on
+	// its own and not inferred from the positive case
+	waitVisible(t, score(voterFrame, text))
 
 	// and it is the server's, not the optimistic state the click set
 	voterFrame = reload(t, voter)

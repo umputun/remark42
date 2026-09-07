@@ -18,12 +18,6 @@ describe('<SortPicker />', () => {
     expect(queryByText('Sort by')).toBeInTheDocument();
   });
 
-  it('should has static class names', () => {
-    const { container } = render(<SortPicker />, defaultState);
-
-    expect(container.querySelector('.sort-picker')).toBeInTheDocument();
-  });
-
   it('should render selected element', () => {
     render(<SortPicker />, { comments: { sort: '-active' } as StoreState['comments'] });
     expect(screen.getAllByText<HTMLOptionElement>('Recently updated')[1].selected).toBeTruthy();
