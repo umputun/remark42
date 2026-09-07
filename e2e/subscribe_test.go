@@ -144,8 +144,8 @@ func TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget(t *testing.T)
 	}`, nil)
 	require.NoError(t, err)
 
-	// the click's own dispatch removes its target, which the playwright documentation says throws
-	// for detachment during an action. Under the pinned 1.62.1 it completes, because the
+	// the click's own dispatch removes its target. The playwright documentation says an action
+	// throws when its target detaches, but under the pinned 1.62.1 the click completes, because the
 	// attachment checks run before the input is dispatched. If a bump makes this line fail, that
 	// is playwright and not the phase: the assertion for the phase is the last line of the case
 	require.NoError(t, email.Click())
