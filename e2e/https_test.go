@@ -110,6 +110,7 @@ func TestHTTPS_CrossOriginSignInSurvivesAReload(t *testing.T) {
 			postComment(t, frame, text)
 
 			// the assertion the whole file exists for
+			snapshotJSCoverage(t, page)
 			pauseForAuthLimit()
 			_, err = page.Reload()
 			require.NoError(t, err)
@@ -241,6 +242,7 @@ func TestHTTPS_SessionSurvivesThirdPartyCookieBlocking(t *testing.T) {
 				"remark42-https is most likely no longer configured with AUTH_SEND_JWT_HEADER. stored: %v",
 				cookieNames(written))
 
+			snapshotJSCoverage(t, page)
 			pauseForAuthLimit()
 			_, err = page.Reload()
 			require.NoError(t, err)

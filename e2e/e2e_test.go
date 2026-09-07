@@ -414,6 +414,9 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 
 	page, err := ctx.NewPage()
 	require.NoError(t, err)
+	// cleanups run last registered first, so this reads the counters while the context above is
+	// still open. A closed context has no frames left to ask.
+	t.Cleanup(func() { snapshotJSCoverage(t, page) })
 	// before the first navigation, so nothing the page reports on its way up is missed
 	watchPage(t, page)
 	debug := os.Getenv("E2E_DEBUG") != ""
@@ -594,6 +597,8 @@ func openThread(t *testing.T, page playwright.Page) playwright.FrameLocator {
 
 func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLocator {
 	t.Helper()
+	// a page that is already showing something has counted something, and Goto discards it
+	snapshotJSCoverage(t, page)
 	_, err := page.Goto(url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateDomcontentloaded,
 	})
@@ -626,6 +631,9 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 		}
 	}
 
+	// the other navigation boundary: every caller happens to pass a fresh page today, and nothing
+	// says they must
+	snapshotJSCoverage(t, page)
 	_, err := page.Goto(baseURL + hostPage)
 	require.NoError(t, err)
 
@@ -664,6 +672,7 @@ func stubSignedOut(t *testing.T, page playwright.Page) {
 // that a comment is absent would otherwise pass against a thread that has not rendered yet
 func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	t.Helper()
+	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.ExpectResponse("**/api/v1/find**", func() error {
 		_, rerr := page.Reload()

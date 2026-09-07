@@ -56,9 +56,10 @@ e2e:
 e2e-ui:
 	cd e2e && E2E_HEADLESS=false E2E_KEEP=1 go test -tags=e2e -count 1 -parallel 4 -v -timeout 20m ./...
 
-# what the browser suite reaches in the backend, which the unit profile cannot show: the code runs
-# in a container, so it is measured by instrumenting the binary instead of the test process.
-# compose-e2e-coverage.yml is the overlay that does it, and it names the instrumented instances
+# what the browser suite reaches, in the backend and in the widget, neither of which the profiles
+# from `go test` and jest can show: the binary and the bundle are both instrumented at build time
+# instead. compose-e2e-coverage.yml is the overlay that does it, and it names the instrumented
+# instances. Needs frontend/apps/remark42/node_modules for the widget report.
 e2e-cover:
 	./e2e/coverage.sh
 

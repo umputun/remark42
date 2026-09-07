@@ -68,6 +68,8 @@ func TestEmbed_DestroyRemovesTheWidgetAndCreateInstanceBringsItBack(t *testing.T
 	embedConfig(t, page, map[string]any{})
 	widget(t, page)
 
+	// destroy takes the iframe out of the page, and the widget document goes with it
+	snapshotJSCoverage(t, page)
 	_, err := page.Evaluate(`() => window.REMARK42.destroy()`)
 	require.NoError(t, err)
 
