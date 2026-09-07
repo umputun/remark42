@@ -42,7 +42,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.27"
           check-latest: true
           cache-dependency-path: backend
 
@@ -66,13 +66,13 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: "v2.13.1"
+          version: "v2.13.2"
           working-directory: backend/app
 
       - name: golangci-lint on example directory
         uses: golangci/golangci-lint-action@v9
         with:
-          version: "v2.13.1"
+          version: "v2.13.2"
           args: --config ../../.golangci.yml
           working-directory: backend/_example/memory_store
 
@@ -98,7 +98,7 @@ jobs:
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.25"
+          go-version: "1.27"
           check-latest: true
           # both go.sum files so the cache key covers the main and example modules scanned below
           cache-dependency-path: |
