@@ -1,5 +1,6 @@
 import type { RenderableProps } from 'preact';
-import { h, Component, createRef } from 'preact';
+import { h, Component, createContext, createRef } from 'preact';
+import { useContext } from 'preact/hooks';
 import clsx from 'clsx';
 
 import type { Theme } from 'common/types';
@@ -8,6 +9,17 @@ import { Button } from 'components/button';
 import { parseMessage, isFromParent } from 'utils/post-message';
 
 import styles from './dropdown.module.css';
+
+/**
+ * Lets the content close the dropdown it is rendered in. Without it a child can only close the
+ * panel by removing the clicked node from the tree and relying on the outside-click handler
+ * failing to find it, which stops working the moment that handler runs in the capture phase.
+ */
+export const DropdownContext = createContext<{ close: () => void }>({ close: () => undefined });
+
+export function useDropdown() {
+  return useContext(DropdownContext);
+}
 
 type Props = RenderableProps<{
   title: string;
@@ -46,7 +58,11 @@ export class Dropdown extends Component<Props, State> {
     this.receiveMessage = this.receiveMessage.bind(this);
     this.__onOpen = this.__onOpen.bind(this);
     this.__onClose = this.__onClose.bind(this);
+    this.close = this.close.bind(this);
   }
+
+  // stable across renders, so consumers do not re-run effects on every parent render
+  dropdownContext = { close: () => this.close() };
 
   onTitleClick = () => {
     const isActive = !this.state.isActive;
@@ -158,6 +174,20 @@ export class Dropdown extends Component<Props, State> {
     );
   }
 
+  close() {
+    if (!this.state.isActive) return;
+    this.setState(
+      {
+        contentTranslateX: 0,
+        isActive: false,
+      },
+      () => {
+        this.__onClose();
+        this.props.onClose?.(this.rootNode.current!);
+      }
+    );
+  }
+
   onOutsideClick(e: MouseEvent) {
     if (!this.rootNode.current || this.rootNode.current.contains(e.target as Node) || !this.state.isActive) return;
     this.setState(
@@ -173,12 +203,17 @@ export class Dropdown extends Component<Props, State> {
   }
 
   componentDidMount() {
-    document.addEventListener('click', this.onOutsideClick);
+    // The verdict must be reached in the capture phase, before the click
+    // reaches inner controls: a click handler that rerenders and detaches the
+    // clicked element (e.g. a step change inside the dropdown) would otherwise
+    // make `contains(target)` false by the time the bubble phase runs, and the
+    // dropdown would close itself on an inside click (#2209).
+    document.addEventListener('click', this.onOutsideClick, { capture: true });
     window.addEventListener('message', this.receiveMessage);
   }
 
   componentWillUnmount() {
-    document.removeEventListener('click', this.onOutsideClick);
+    document.removeEventListener('click', this.onOutsideClick, { capture: true });
     window.removeEventListener('message', this.receiveMessage);
   }
 
@@ -214,7 +249,9 @@ export class Dropdown extends Component<Props, State> {
             role="listbox"
             style={{ transform: `translateX(${this.state.contentTranslateX}px)` }}
           >
-            <div className={styles.items}>{children}</div>
+            <div className={styles.items}>
+              <DropdownContext.Provider value={this.dropdownContext}>{children}</DropdownContext.Provider>
+            </div>
           </div>
         )}
       </div>

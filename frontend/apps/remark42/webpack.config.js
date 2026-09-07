@@ -179,6 +179,10 @@ module.exports = (_, { mode, analyze }) => {
     port: PORT,
     devMiddleware: {
       stats: 'minimal',
+      // serve the in-memory build output under the same PUBLIC_PATH the devServer.static entries
+      // and every template's script tags use. output.publicPath stays 'auto' for the runtime
+      // bundle; this only affects where the dev server itself serves its own output from.
+      publicPath: PUBLIC_PATH,
     },
     headers: {
       'Access-Control-Allow-Origin': '*',
