@@ -1,10 +1,10 @@
 module github.com/umputun/remark42/backend
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/Depado/bfchroma/v2 v2.0.0
-	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/didip/tollbooth/v8 v8.0.1
 	github.com/go-pkgz/auth/v2 v2.3.0
@@ -28,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/goleak v1.3.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/image v0.45.0
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.36.0
