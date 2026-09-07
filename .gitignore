@@ -38,3 +38,7 @@ http-client.env.json
 
 # profiles from `make e2e-cover`
 e2e/coverage/
+
+# git worktrees, kept inside the repo so they are easy to find and easy to forget
+.worktrees/
+.claude/worktrees/

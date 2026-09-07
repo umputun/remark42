@@ -1,37 +1,45 @@
-/logs/
-/target/
-/var/
-/.vscode/
-/.idea/
-/bin/
-/.git/
+# A whitelist, not a blacklist: everything is excluded and only the paths the images build
+# from are restored. Anything new at the repo root then stays out of the build context by
+# default, which is what the previous blacklist kept getting wrong as directories appeared
+# beside it.
+*
 
-# frontend files not needed in docker image
-/frontend/node_modules/
-/frontend/apps/remark42/node_modules/
-/frontend/apps/remark42/public/
+# the backend module. the main image builds ./app from it, and the memory_store example
+# image builds backend/_example/memory_store out of this same context
+!backend
 
-# source files
-docker-compose.yml
-compose-dev-backend.yml
-compose-dev-frontend.yml
-compose-private-backend.yml
-compose-private-frontend.yml
-compose-e2e-test.yml
-compose-private.yml
-rest-client.env.json
-Makefile
+# the widget. package.json and pnpm-lock.yaml prime the dependency layer, the rest of the
+# directory feeds the build stage
+!frontend/apps/remark42
 
-# generated files
-*.cov
+# installed as /srv/init.sh in the final image
+!docker-init.sh
+
+# dependencies and build output are produced inside the image, so a local copy is dead
+# weight that also invalidates the layer it lands in
+**/node_modules
+frontend/apps/remark42/public
+backend/_example/*/vendor
+backend/var
+backend/app/var
+backend/app/cmd/var
+
+# the frontend build stage supplies these; the committed placeholder has to stay, because
+# a SKIP_FRONTEND_BUILD image has nothing else to satisfy the go:embed with
+backend/app/cmd/web
+!backend/app/cmd/web/index.html
+
+# binaries built by hand in the tree. the images build their own, and a stale one here is both
+# dead weight and a chance of being copied over the real thing
+backend/remark42
+backend/debug
+
+# local test and profiling residue
+**/.idea
+**/.vscode
+**/coverage
+**/.DS_Store
+**/*.cov
+**/*.prof
+**/*.test
 .cover
-target
-debug
-debug.test
-*.prof
-*.test
-remark42
-/backend/var/
-
-# go e2e suite, never built into the image
-/e2e/
