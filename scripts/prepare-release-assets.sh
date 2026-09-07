@@ -56,4 +56,21 @@ if ! grep -Rq "{% REMARK_URL %}" "$EMBED_DIR"; then
   exit 1
 fi
 
+# `//go:embed web` in app/cmd/server.go takes the default pattern rules, which skip every name
+# beginning with a dot or an underscore. A bundle emitted under such a name would be absent from
+# the binary while still present in frontend/apps/remark42/public, so it would serve correctly from
+# --web-root and 404 from a released binary, which is the arrangement nobody tests. Nothing emits
+# one today; this fails the release if that ever changes, instead of shipping the hole.
+# The marker below is written after this check because it is itself such a name.
+# sed, not head: head closes the pipe once it has its five lines, and on a tree with enough of
+# them sort dies of SIGPIPE, which pipefail turns into a failed assignment and errexit turns into
+# an exit before the message below is ever printed
+hidden=$(find "$EMBED_DIR" -mindepth 1 \( -name '.*' -o -name '_*' \) | sort | sed -n '1,5p')
+if [[ -n "$hidden" ]]; then
+  echo "error: go:embed would drop these from the binary, since it ignores names starting with a" >&2
+  echo "dot or an underscore, and they would 404 from a release while working under --web-root:" >&2
+  echo "$hidden" >&2
+  exit 1
+fi
+
 touch "$PREPARED_MARKER"
