@@ -5,10 +5,9 @@
 
 version: 2
 
-# npm updates are switched off entirely. open-pull-requests-limit bounds version
-# updates only, so the ignore entries below are what also stops security updates;
-# removing the npm entries would not work, as security updates come from alerts
-# rather than from this file.
+# npm version updates are switched off: open-pull-requests-limit bounds them, and the
+# ignore entry below is scoped to version updates so that security updates, which come
+# from alerts and not from this file, still open pull requests for the widget.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -33,22 +32,14 @@ updates:
       "Go modules updates":
         dependency-type: "production"
   - package-ecosystem: "npm"
-    directory: "/frontend"
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
-    schedule:
-      interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
     directory: "/frontend/apps/remark42"
     open-pull-requests-limit: 0
     ignore:
       - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
     schedule:
       interval: "monthly"
     groups:
