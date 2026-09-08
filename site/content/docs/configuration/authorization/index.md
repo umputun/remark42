@@ -4,7 +4,7 @@ title: Authorization
 
 ## OAuth Providers
 
-Authentication is handled by external providers. You should set up OAuth2 for at least one to allow users to comment. It is not mandatory to have all of them, but one should be correctly configured.
+Users can sign in through external providers, [email](https://remark42.com/docs/configuration/email/) or [anonymous login](#anonymous). Configure at least one method to allow commenting; OAuth2 is optional when email or anonymous login is enabled.
 
 ### Apple
 

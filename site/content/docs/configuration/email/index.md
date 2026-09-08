@@ -234,7 +234,7 @@ If the file is mounted correctly, the page will render the new file content imme
 
 ### Template variables
 
-Each template has access to different variables. All templates use Go's [text/template](https://pkg.go.dev/text/template) syntax.
+Each template has access to different variables. Email templates use Go's [html/template](https://pkg.go.dev/html/template), which escapes ordinary values for HTML output.
 
 #### `email_reply.html.tmpl` — comment notification
 
@@ -277,33 +277,20 @@ Sent when a user logs in via email authentication.
 |----------|------|-------------|
 | `{{.User}}` | string | Username |
 | `{{.Token}}` | string | Login token |
-| `{{.Email}}` | string | Recipient email address |
 | `{{.Site}}` | string | Site name |
 | `{{.Address}}` | string | Recipient address |
 
 ### Plain-text emails
 
-The default templates produce HTML emails. To send plain-text emails instead, set `AUTH_EMAIL_CONTENT_TYPE=text/plain` (for login confirmation) or `NOTIFY_EMAIL_CONTENT_TYPE=text/plain` (for notifications), and provide custom templates that output plain text instead of HTML.
+For plain-text login confirmations, set `AUTH_EMAIL_CONTENT_TYPE=text/plain` and provide a plain-text `email_confirmation_login.html.tmpl`:
 
-Note that `{{.CommentText}}` and `{{.ParentCommentText}}` contain HTML markup. There is no built-in HTML-to-text conversion, so for comments with rich formatting the output will include raw HTML tags.
+```text
+Confirmation for {{.User}} on site {{.Site}}
 
-Example plain-text notification template (`email_reply.html.tmpl`):
+Copy this token into the login form:
+{{.Token}}
 
+Sent to {{.Address}}
 ```
-New reply from {{.UserName}}{{if .PostTitle}} on "{{.PostTitle}}"{{end}}
 
-{{.CommentText}}
-{{.CommentDate.Format "02.01.2006 at 15:04"}}
-{{.CommentLink}}
-{{- if .ParentCommentText}}
-
-In reply to {{.ParentUserName}}:
-{{.ParentCommentText}}
-{{.ParentCommentLink}}
-{{- end}}
-
-Sent to {{.Email}}
-{{- if .UnsubscribeLink}}
-Unsubscribe: {{.UnsubscribeLink}}
-{{- end}}
-```
+The template still uses `html/template`, so values are HTML-escaped even with a plain-text content type. Comment and subscription notification emails always use `text/html`; there is no `NOTIFY_EMAIL_CONTENT_TYPE` setting. Keep their custom templates in HTML.

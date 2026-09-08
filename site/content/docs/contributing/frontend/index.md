@@ -37,16 +37,16 @@ Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS
 
 You can run frontend against demo instance of Remark42. This method of running Remark42 frontend code is preferred when you make a translation or visual adjustments that are easy to see without extensive testing. For this method we use our demo instance of Remark42 served on https://demo.remark42.com
 
-For local development mode with Hot Reloading, use `pnpm dev`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
+For local development mode with Hot Reloading, use `pnpm dev:demo`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
 
-You can attach the frontend to the locally running backend from `frontend/apps/remark42` folder and providing the `REMARK_URL` environment variable.
+You can attach the frontend to the locally running backend from `frontend/apps/remark42` folder and providing the `REMARK_API_BASE_URL` environment variable.
 
 ```shell
-npx cross-env REMARK_URL=http://127.0.0.1:8080 pnpm dev:custom
+pnpm exec cross-env REMARK_API_BASE_URL=http://127.0.0.1:8080 pnpm dev:custom
 ```
 
 {{< note "ℹ️" >}}
-If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend` folder and rewrite variables as you wish. For such functional, we use `dotenv`.
+If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. For such functional, we use `dotenv`.
 {{< /note >}}
 
 ### Run frontend with backend locally
@@ -103,11 +103,9 @@ so prettier, stylelint and `pnpm lint` do not see them.
 
 ## CSS Styles
 
-- Now we are migrating to CSS Modules, which is a recommended way of stylization. A file with styles should be named like `component.module.css`
-- Old component styles use BEM notation (at least it should): `block__element_modifier`. Also, there are `mix` classes: `block_modifier`
-- The new way to name CSS selectors is camel-case like `blockElemenModifier` and use `clsx` to combine it
-- Component base style resides in the component's root directory with a name of component converted to kebab-case. For example, `ListComments` style is located in `./app/components/list-comments/list-component.tsx`
-- Any other files should also be named in kebab-case. For example, `./app/utils/get-param.ts`
+- Component styles use CSS Modules in `component.module.css` files.
+- Use `root` for the component block and camelCase for element and modifier classes; combine classes with `clsx`.
+- Keep the stylesheet next to its component, for example `app/components/list-comments/list-comments.module.css` and `app/components/list-comments/list-comments.tsx`.
 
 ## Imports
 
@@ -119,7 +117,7 @@ so prettier, stylelint and `pnpm lint` do not see them.
   costs nothing outside those files. It applies to value imports only; a type-only import erases
   before either runtime sees it, and keeps the ordinary style
 - If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
-- Otherwise, it should be imported by absolute path relative to `src` folder like `common/store` which mapped to `./app/common/store.ts` in webpack, tsconfig, and Jest
+- Otherwise, it should be imported by absolute path relative to the `app` folder like `common/types` which maps to `./app/common/types.ts` in webpack, tsconfig, and Jest
 
 ## Testing
 
@@ -131,7 +129,7 @@ Tests come in two layers, and which one a test belongs in is decided by what it 
 - [Testing Library](https://testing-library.com) is used for UI tests
 - Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`, and skips `*.unit.test.ts`
 - Tests are running on push attempt
-- Example tests can be found in `./app/components/auth/auth.spec.tsx`, `./app/store/user/reducers.test.ts`
+- Example tests can be found in `./app/components/auth/auth.spec.tsx`
 
 ### Dependency-free tests, `*.unit.test.ts`
 

@@ -7,7 +7,7 @@ aliases:
 ## Configuration
 
 - **`host`**`: string` (required) – hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com"
-- **`site_id`**`: string` (optional, `remark` by default) – the `SITE` that you passed to Remark42 instance on start of backend.
+- **`site_id`**`: string` (required) – the `SITE` that you passed to Remark42 instance on start of backend.
 - **`url`**`: string` (optional, `window.location.origin + window.location.pathname` by default) – url to the page with comments, it is used as unique identificator for comments thread
   Note that if you use query parameters as significant part of URL (the one that actually changes content on page) you will have to configure URL manually to keep query params, as `window.location.origin + window.location.pathname` doesn't contain query params and hash. For example, default URL for `https://example/com/example-post?id=1#hash` would be `https://example/com/example-post`
 - **`components`**`: ['embed' | 'last-comments' | 'counter']` (optional, `['embed']` by default) – an array of widgets that should be rendered on a page. You may use more than one widget on a page.
@@ -15,17 +15,18 @@ aliases:
   - `'embed'` – basic comments widget
   - `'last-comments'` – last comments widget, see [Last Comments](#last-comments-widget) section below
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
-- **`max_shown_comments`**`: number` (optional, `15` by default) – maximum number of comments that is rendered on mobile version
+- **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
+- **`show_telegram_subscription`**`: boolean` (optional, `true` by default) – shows Telegram subscription controls when Telegram user notifications are enabled on the backend
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
-- **`simple_view`**`: boolean` (optional, `false` by default) – overrides the parameter from the backend minimized UI with basic info only
+- **`simple_view`**`: boolean` (optional, `false` by default) – enables a minimal UI with basic information only; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 
-Example with all of the params:
+Configuration example:
 
 ```html
 <script>
@@ -86,7 +87,7 @@ window.REMARK42.changeTheme("light")
 
 #### Locales
 
-Right now Remark42 is translated to English (en), Belarusian (be), Brazilian Portuguese (bp), Bulgarian (bg), Chinese (zh), Finnish (fi), French (fr), German (de), Japanese (ja), Korean (ko), Polish (pl), Russian (ru), Spanish (es), Turkish (tr), Ukrainian (ua), Italian (it) and Vietnamese (vi) languages. You can pick one using a [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
+Right now Remark42 is translated to English (en), Russian (ru), German (de), Finnish (fi), Spanish (es), Chinese (zh), Turkish (tr), Bulgarian (bg), Ukrainian (ua), Polish (pl), Vietnamese (vi), Belarusian (be), French (fr), Japanese (ja), Korean (ko), Brazilian Portuguese (bp), Italian (it), Arabic (ar), Traditional Chinese (zh-tw), Thai (th), Czech (cs), Persian (fa), Macedonian (mk), Romanian (ro), Swedish (sv) and Hebrew (he). You can pick one using a [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
@@ -118,11 +119,11 @@ And then add this node in the place where you want to see last comments widget:
 <div class="remark42__last-comments" data-max="50"></div>
 ```
 
-`data-max` sets the max amount of comments (default: `15`).
+`data-max` sets the maximum number of comments for this widget, overriding `max_last_comments` in `remark_config`. If neither is set, the default is `15`.
 
 ### Counter widget
 
-It's a widget that renders several comments for the specified page.
+This widget displays the number of comments for the specified page.
 Add this snippet to the bottom of web page, or adjust already present `remark_config` to have `counter` in `components` list:
 
 ```html
@@ -148,6 +149,6 @@ And then add a node like this in the place where you want to see a number of com
 ></span>
 ```
 
-You can use as many nodes like this as you need to. The script will find all of them by the class `remark__counter`, and it will use the `data-url` attribute to define the page with comments.
+You can use as many nodes like this as you need to. The script will find all of them by the class `remark42__counter`, and it will use the `data-url` attribute to define the page with comments.
 
 Also, the script can use `url` property from `remark_config` object or `window.location.origin + window.location.pathname` if nothing else is defined.
