@@ -17,7 +17,7 @@ https://example.org/old-url-2/ https://example.org/new-url-2/
 
 ### Applying the remap
 
-After rules file is ready, run the following command (`ADMIN_PASSWD` must to be enabled on server for it to work):
+After rules file is ready, run the following command (`ADMIN_PASSWD` must be enabled on the server for it to work):
 
 ```shell
 remark42 remap --admin-passwd <password> -s <your site ID> -f var/rules

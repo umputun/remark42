@@ -22,7 +22,7 @@ It starts Remark42 on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To 
 Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. You could alter the address for dev auth with the `REMARK_URL` environment variable.
 {{< /note >}}
 
-Backend Docker Compose config (`compose-dev-backend.yml`) by default skips running frontend related tests. Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests and sets `NODE_ENV=development` for frontend build.
+Backend Docker Compose config (`compose-dev-backend.yml`) by default skips running frontend related tests. Frontend Docker Compose config (`compose-dev-frontend.yml`) skips backend tests and the frontend build. Run the frontend separately with `pnpm dev` as described in the [frontend development guide](https://remark42.com/docs/contributing/frontend/#run-frontend-with-backend-locally).
 
 ### Backend development
 
@@ -74,7 +74,7 @@ User's activity throttled globally (up to 1000 simultaneous requests) and limite
 
 Request timeout set to 60sec.
 
-Admin authentication (`--admin-password` set) allows to hit Remark42 API without social login and admin privileges. Adds basic-auth for username: `admin`, password: `${ADMIN_PASSWD}`. Enable it only for the initial comment import or for manual backups. Do not leave the server running with admin password set if you don't have an intention to keep creating backups manually!
+Admin authentication (`--admin-passwd` set) allows to hit Remark42 API without social login and admin privileges. Adds basic-auth for username: `admin`, password: `${ADMIN_PASSWD}`. Enable it only for the initial comment import or for manual backups. Do not leave the server running with admin password set if you don't have an intention to keep creating backups manually!
 
 User can vote for the comment multiple times but only to change the vote. Double voting is not allowed.
 

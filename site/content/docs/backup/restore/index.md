@@ -2,9 +2,9 @@
 title: Restore Backup
 ---
 
-Restore will clean all comments first and then process with complete import from a given file.
+Restore removes all existing comments before importing the contents of the supplied file.
 
-For safety and security reasons, restore functionality not exposed outside your server by default. The recommended way to restore from the backup is to use provided `scripts/restore.sh`. It can run inside the container (`ADMIN_PASSWD` must to be enabled on server for it to work):
+For safety and security reasons, restore functionality is not exposed outside your server by default. The recommended way to restore from the backup is to use the provided [`backend/scripts/restore.sh`](https://github.com/umputun/remark42/blob/master/backend/scripts/restore.sh). It can run inside the container (`ADMIN_PASSWD` must be enabled on the server for it to work):
 
 `docker exec -it remark42 restore -f {backup-filename.gz} -s {your site ID}`
 

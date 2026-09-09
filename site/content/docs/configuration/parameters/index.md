@@ -4,11 +4,12 @@ title: Command-Line Interface parameters
 
 ### Required parameters
 
-Most of the parameters have sane defaults and don't require customization. There are only a few parameters the user has to define:
+Only two parameters are required to start the server:
 
 1. `SECRET` - secret key, can be any long and hard-to-guess string
 2. `REMARK_URL` - URL pointing to your Remark42 server, i.e., `https://demo.remark42.com`
-3. At least one OAuth2 provider, either via `AUTH_<PROVIDER>_CID` + `AUTH_<PROVIDER>_CSEC` or via `AUTH_CUSTOM_*`
+
+To let users sign in and comment, enable at least one [authentication method](https://remark42.com/docs/configuration/authorization/), such as OAuth2, email (`AUTH_EMAIL_ENABLE=true`) or anonymous login (`AUTH_ANON=true`). OAuth2 is not required when using email or anonymous login.
 
 The minimal `docker-compose.yml` has to include all required parameters:
 
@@ -82,7 +83,7 @@ services:
 | auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; the server-set cookies are still sent. [See security considerations](#security-considerations-for-authsend-jwt-header). |
 | auth.same-site                 | AUTH_SAME_SITE                 | `default`               | SameSite attribute for the server-set auth cookies (`default`, `none`, `lax` or `strict`). `default` emits no attribute at all and leaves the choice to the browser, which is not the same as `lax` |
 | auth.apple.cid                 | AUTH_APPLE_CID                 |                         | Apple client ID (App ID or Services ID)                  |
-| auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple service ID                                         |
+| auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple Team ID                                            |
 | auth.apple.kid                 | AUTH_APPLE_KID                 |                         | Apple Private key ID                                     |
 | auth.apple.private-key-filepath | AUTH_APPLE_PRIVATE_KEY_FILEPATH | `/srv/var/apple.p8`       | Apple Private key file location                          |
 | auth.google.cid                | AUTH_GOOGLE_CID                |                         | Google OAuth client ID                                   |
@@ -176,7 +177,7 @@ services:
 | trusted-proxy                  | TRUSTED_PROXY                  | none (trust any)        | reverse-proxy networks (CIDR/IP, comma-separated) trusted to set the client IP; see [Trusted proxies and client IP](#trusted-proxies-and-client-ip) |
 | subscribers-only               | SUBSCRIBERS_ONLY               | `false`                 | enable commenting only for Patreon subscribers           |
 | disable-signature              | DISABLE_SIGNATURE              | `false`                 | disable server signature in headers                      |
-| disable-fancy-text-formatting  | DISABLE_FANCY_HTML_FORMATTING  | `false`                 | disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc) |
+| disable-fancy-text-formatting  | DISABLE_FANCY_TEXT_FORMATTING  | `false`                 | disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc) |
 | admin-passwd                   | ADMIN_PASSWD                   | none (disabled)         | password for `admin` basic auth                          |
 | dbg                            | DEBUG                          | `false`                 | debug mode                                               |
 

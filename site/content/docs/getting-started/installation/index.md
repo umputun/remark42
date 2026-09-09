@@ -30,7 +30,7 @@ _This is the recommended way to run Remark42_
 ### Installation with Binary
 
 - download [archive for the stable release](https://github.com/umputun/remark42/releases)
-- unpack with `gunzip` (Linux, macOS) or with `zip` (Windows)
+- extract the `.tar.gz` archive with `tar -xzf <archive>.tar.gz` (Linux, macOS), or extract the `.zip` archive (Windows)
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
 - alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`. Source binary builds require Go 1.27, Node 24+, PNPM 10, and Perl because the frontend assets are built and embedded locally.
 

@@ -53,14 +53,26 @@ below to have your translation available to all remark42 users and included in t
 1.  Run `pnpm translation:generate` in the `frontend/apps/remark42` folder
 1.  Translate all values in the newly created JSON file in
     [frontend/apps/remark42/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
-1.  Commit all changes above in your fork
+1.  Run `pnpm translation-check` in `frontend/apps/remark42` to validate the translation keys, tags and placeholders
+1.  Update the [documented locale list](https://github.com/umputun/remark42/blob/master/site/content/docs/configuration/frontend/_index.md#locales) with the language name and code
+1.  Commit all changes above in your fork, including the generated `app/utils/loadLocale.ts`
 1.  Test your changes in the interface:
 
     1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs) and replace `ru` with your translation language code
-    2.  [Run remark42 in Docker](https://github.com/umputun/remark42#development) by issuing the following commands from the root directory of your remark42 fork:
-        `shell docker compose -f compose-dev-frontend.yml build docker compose -f compose-dev-frontend.yml up `
+    2.  Start the backend from the root directory of your fork:
 
-    3.  open <http://127.0.0.1:8080/web/>, log in, make a comment, make a reply to a comment, and make sure your translation looks as you expect it to look
-    4.  make a screenshot from <http://127.0.0.1:8080> with your translation in place
+        ```shell
+        docker compose -f compose-dev-frontend.yml up --build
+        ```
+
+    3.  Start the frontend in another terminal:
+
+        ```shell
+        cd frontend/apps/remark42
+        pnpm dev
+        ```
+
+    4.  Open <http://127.0.0.1:9000/web/>, log in, make a comment, make a reply to a comment, and check your translation
+    5.  Take a screenshot of that page with your translation in place
 
 1.  after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it

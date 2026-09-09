@@ -31,7 +31,7 @@ Created `remark42Instance` when the `div` containing remark42 has appeared, usua
 
       this.remark42Instance = window.REMARK42.createInstance({
         node: this.$refs.remark42 as HTMLElement,
-        ...remark42_config  // See <https://github.com/patarapolw/remark42#setup-on-your-website>
+        ...remark42_config  // See <https://remark42.com/docs/configuration/frontend/>
       })
     }
   }
