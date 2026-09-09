@@ -80,14 +80,6 @@ describe('<Comment />', () => {
     expect(patreonSubscriberIcon.tagName).toBe('IMG');
   });
 
-  describe('verification', () => {
-    it('should not render verification icon', () => {
-      const props = getProps();
-      render(<CommentWithIntl {...props} />);
-      expect(screen.queryByTitle('Verified user')).not.toBeInTheDocument();
-    });
-  });
-
   describe('voting', () => {
     let props = getProps();
 

@@ -159,3 +159,45 @@ func TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget(t *testing.T)
 	// target, is not an outside click
 	waitVisible(t, panel)
 }
+
+// TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen is the flow in the widget that detaches its
+// clicked control inside the click's own task, which is what the capture-phase listener exists
+// for. Back on the token step changes the step synchronously, the rerender removes the Back button
+// before the click reaches the document, and a bubble-phase listener would find no target inside
+// the panel and close it over the email form the reader just asked for. The handler used to defer
+// its step change behind a zero timeout to dodge exactly that, which is why nothing pinned it.
+//
+// Not parallel, for the same reason as the case above: it needs an unsubscribed dev user.
+func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	status, body := pageFetch(t, page, "DELETE", baseURL+"/api/v1/email?site=remark", nil)
+	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
+		"could not clear a subscription left by an earlier run: %s", body)
+	frame = reload(t, page)
+
+	subscribe := frame.Locator(`[title="Subscribe by Email"]`)
+	waitVisible(t, subscribe)
+	require.NoError(t, subscribe.Click())
+
+	email := frame.Locator(`input[placeholder="Email"]`)
+	waitVisible(t, email)
+	require.NoError(t, email.Fill(fmt.Sprintf("back-%s-%d@example.com", runID, os.Getpid())))
+
+	// the request that moves the panel to the token step, so a submit going nowhere fails as itself
+	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
+		return frame.Locator(`button:text-is("Submit")`).Click()
+	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "the panel asked the server for nothing")
+	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
+
+	back := frame.Locator(`button:text-is("Back")`)
+	waitVisible(t, back)
+	require.NoError(t, back.Click())
+
+	// the assertion the case exists for: the panel is still open, showing the email step again
+	waitVisible(t, frame.Locator(`div[role="listbox"]`))
+	waitVisible(t, email)
+}

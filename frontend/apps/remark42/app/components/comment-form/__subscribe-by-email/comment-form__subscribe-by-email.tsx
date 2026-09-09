@@ -9,7 +9,6 @@ import { useIntl, defineMessages, FormattedMessage } from 'common/intl';
 import type { User } from 'common/types';
 import type { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
-import { sleep } from 'utils/sleep';
 import type { RequestError } from 'utils/errorUtils';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
@@ -217,8 +216,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
   const isValidEmailAddress = emailRegexp.test(emailAddress);
 
-  const setEmailStep = useCallback(async () => {
-    await sleep(0);
+  const setEmailStep = useCallback(() => {
     setError(null);
     setStep(Step.Email);
   }, [setStep]);

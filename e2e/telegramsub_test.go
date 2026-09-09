@@ -5,6 +5,7 @@ package e2e
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -61,6 +62,11 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 	clearTelegramSubscriptionSession(t, page)
 
 	frame = reload(t, page)
+	// this instance runs NOTIFY_USERS=telegram, so the email control has to be absent. The telegram
+	// control opened just below is the positive control for it
+	waitHidden(t, frame.Locator(`[title="Subscribe by Email"]`),
+		"the email control was offered on an instance with email notifications off")
+
 	firstToken := openTelegramSubscription(t, frame)
 	confirmTelegramSubscription(t, page, frame, firstToken, readerID)
 
@@ -153,4 +159,172 @@ func confirmTelegramSubscription(
 	require.NoError(t, err, "clicking Check asked the server nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused a subscription token the bot confirmed")
 	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+}
+
+// TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne covers the error the panel leaves
+// behind, which is a path that has already regressed once: the handlers set their message on
+// failure and nothing cleared it on the next success, so a reader who retried saw the success and
+// the stale failure side by side.
+//
+// The check and the unsubscribe clear it independently, so both are driven here rather than one
+// standing in for the other. The loading indicator is asserted in the same flow, since holding the
+// request open is what makes it observable at all.
+func TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne(t *testing.T) {
+	page := newPage(t)
+	frame := openURL(t, page, threadURLOn(t, telegramURL))
+	readerID := tgReaderID(t)
+
+	loginToken := tgStartSignIn(t, frame)
+	tgSendToBot(t, "/start "+loginToken, readerID, "Recovery Reader")
+	tgConfirmSignIn(t, page, frame)
+
+	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
+	clearTelegramSubscriptionSession(t, page)
+
+	frame = reload(t, page)
+	token := openTelegramSubscription(t, frame)
+	confirmTelegramSubscription(t, page, frame, token, readerID)
+
+	clearTelegramSubscriptionSession(t, page)
+	frame = reload(t, page)
+	require.NoError(t, frame.Locator(`[title="Subscribe by Telegram"]`).Click())
+
+	unsubscribe := frame.Locator(`button:text-is("Unsubscribe")`)
+	waitVisible(t, unsubscribe)
+
+	// first attempt refused, so the panel is holding a message
+	refuse := true
+	require.NoError(t, page.Route("**/api/v1/telegram**", func(route playwright.Route) {
+		if !refuse {
+			if err := route.Continue(); err != nil {
+				t.Errorf("continue telegram request: %v", err)
+			}
+			return
+		}
+		refuse = false
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
+			Status:      playwright.Int(http.StatusInternalServerError),
+			ContentType: playwright.String("application/json"),
+			Body:        playwright.String(`{"error":"failed"}`),
+		}); err != nil {
+			t.Errorf("fulfill telegram unsubscribe failure: %v", err)
+		}
+	}))
+
+	require.NoError(t, unsubscribe.Click())
+	errorMessage := frame.Locator(".auth-error")
+	waitVisible(t, errorMessage)
+
+	// the retry is allowed through, and the message from the first attempt has to go with it
+	require.NoError(t, unsubscribe.Click())
+	waitVisible(t, frame.Locator(`text=You have been unsubscribed by telegram to updates`))
+	waitHidden(t, errorMessage,
+		"the panel kept the failed unsubscribe message beside the confirmation of the one that worked")
+}
+
+// TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne is the other half of the same defect. The
+// check and the unsubscribe hold their own error and clear it in their own handler, so a fix to one
+// says nothing about the other.
+func TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne(t *testing.T) {
+	page := newPage(t)
+	frame := openURL(t, page, threadURLOn(t, telegramURL))
+	readerID := tgReaderID(t)
+
+	loginToken := tgStartSignIn(t, frame)
+	tgSendToBot(t, "/start "+loginToken, readerID, "Check Recovery Reader")
+	tgConfirmSignIn(t, page, frame)
+
+	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
+	clearTelegramSubscriptionSession(t, page)
+
+	frame = reload(t, page)
+	token := openTelegramSubscription(t, frame)
+
+	// the reader has messaged the bot and the bot has acknowledged it, so a check would now
+	// succeed. The first one is refused anyway, which is what leaves the message the second clears
+	before := len(tgSentMessages(t))
+	tgSendToBot(t, "/start "+token, readerID, "Check Recovery Reader")
+	tgWaitForMessage(t, before, "successfully subscribed")
+
+	refuse := true
+	require.NoError(t, page.Route("**/api/v1/telegram/subscribe**", func(route playwright.Route) {
+		if !refuse {
+			if err := route.Continue(); err != nil {
+				t.Errorf("continue telegram check: %v", err)
+			}
+			return
+		}
+		refuse = false
+		if err := route.Fulfill(playwright.RouteFulfillOptions{
+			Status:      playwright.Int(http.StatusInternalServerError),
+			ContentType: playwright.String("application/json"),
+			Body:        playwright.String(`{"error":"failed"}`),
+		}); err != nil {
+			t.Errorf("fulfill telegram check failure: %v", err)
+		}
+	}))
+
+	check := frame.Locator(`button:text-is("Check")`)
+	waitVisible(t, check)
+	require.NoError(t, check.Click())
+
+	errorMessage := frame.Locator(".auth-error")
+	waitVisible(t, errorMessage)
+
+	require.NoError(t, check.Click())
+	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+	waitHidden(t, errorMessage,
+		"the panel kept the failed check message beside the confirmation of the one that worked")
+}
+
+// TestTelegramSub_ThePanelSaysItIsWorking covers the loading indicator, which every other case
+// races past: the requests answer at once, so a panel that never shows one, or never takes it away,
+// satisfies all of them.
+func TestTelegramSub_ThePanelSaysItIsWorking(t *testing.T) {
+	page := newPage(t)
+	frame := openURL(t, page, threadURLOn(t, telegramURL))
+	readerID := tgReaderID(t)
+
+	loginToken := tgStartSignIn(t, frame)
+	tgSendToBot(t, "/start "+loginToken, readerID, "Loading Reader")
+	tgConfirmSignIn(t, page, frame)
+
+	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
+	clearTelegramSubscriptionSession(t, page)
+
+	frame = reload(t, page)
+	token := openTelegramSubscription(t, frame)
+
+	before := len(tgSentMessages(t))
+	tgSendToBot(t, "/start "+token, readerID, "Loading Reader")
+	tgWaitForMessage(t, before, "successfully subscribed")
+
+	// held open, or the answer lands before anything can be read
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unblock()
+
+	require.NoError(t, page.Route("**/api/v1/telegram/subscribe**", func(route playwright.Route) {
+		<-release
+		if err := route.Continue(); err != nil {
+			t.Errorf("continue held telegram check: %v", err)
+		}
+	}))
+
+	check := frame.Locator(`button:text-is("Check")`)
+	waitVisible(t, check)
+	require.NoError(t, check.Click())
+
+	preloader := frame.Locator(".preloader")
+	waitVisible(t, preloader)
+
+	unblock()
+	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+	// not asserted after the confirmation: the panel renders the preloader and the settled state
+	// from the same flag, so once either is on screen the other is necessarily gone and the
+	// assertion could not fail
 }

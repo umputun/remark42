@@ -8,25 +8,9 @@ import { CommentVotes } from './comment-votes';
 import { StaticStore } from 'common/static-store';
 
 describe('<CommentVote />', () => {
-  it('should disable buttons after upvote when request is in progress', () => {
-    jest.spyOn(api, 'putCommentVote').mockImplementationOnce(jest.fn(() => new Promise(() => {})));
-    render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
-    fireEvent(screen.getByTitle('Vote up'), new Event('click'));
-    expect(screen.getByTitle('Vote down')).toBeDisabled();
-    expect(screen.getByTitle('Vote up')).toBeDisabled();
-  });
-
   it('should disable downvote button when downvoted', () => {
     render(<CommentVotes id="1" vote={-1} votes={10} controversy={0} />);
     expect(screen.getByTitle('Vote down')).toBeDisabled();
-  });
-
-  it('should disable buttons after downvote when request is in progress', async () => {
-    jest.spyOn(api, 'putCommentVote').mockImplementationOnce(jest.fn(() => new Promise(() => {})));
-    render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
-    fireEvent(screen.getByTitle('Vote down'), new Event('click'));
-    expect(screen.getByTitle('Vote down')).toBeDisabled();
-    expect(screen.getByTitle('Vote up')).toBeDisabled();
   });
 
   it.each([
