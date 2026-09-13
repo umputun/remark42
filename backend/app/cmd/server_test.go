@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
 
+	cache "github.com/go-pkgz/lcw/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1318,4 +1320,26 @@ func TestMain(m *testing.M) {
 		// it ends on its own, but a binary that finishes inside that window is reported as leaking
 		goleak.IgnoreAnyFunction("github.com/dlclark/regexp2/v2.runClock"),
 	)
+}
+
+func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
+	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p := flags.NewParser(&opts, flags.Default)
+	_, err := p.ParseArgs([]string{})
+	require.NoError(t, err)
+
+	c, err := opts.makeCache()
+	require.NoError(t, err)
+
+	// a rendered tree for a busy page is far larger than 64 KiB
+	val := bytes.Repeat([]byte("x"), 300_000)
+	key := cache.NewKey("remark").ID("find").Scopes("remark", "https://example.com/post")
+	loads := 0
+	for range 3 {
+		data, err := c.Get(key, func() ([]byte, error) { loads++; return val, nil })
+		require.NoError(t, err)
+		assert.Len(t, data, len(val))
+	}
+	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
 }

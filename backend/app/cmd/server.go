@@ -227,7 +227,7 @@ type CacheGroup struct {
 	RedisAddr string `long:"redis_addr" env:"REDIS_ADDR" default:"127.0.0.1:6379" description:"address of Redis PubSub instance, turn redis_pub_sub cache on for distributed cache"`
 	Max       struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
-		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of the cached value"`
+		Value int   `long:"value" env:"VALUE" default:"0" description:"max size of the cached value, 0 - unlimited"`
 		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
