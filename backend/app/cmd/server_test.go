@@ -1323,6 +1323,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
+	// the test is about the defaults, so the caller's environment must not supply cache options
+	for _, name := range []string{"CACHE_TYPE", "CACHE_MAX_ITEMS", "CACHE_MAX_VALUE", "CACHE_MAX_SIZE"} {
+		if val, ok := os.LookupEnv(name); ok {
+			require.NoError(t, os.Unsetenv(name))
+			t.Cleanup(func() { _ = os.Setenv(name, val) })
+		}
+	}
+
 	opts := ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p := flags.NewParser(&opts, flags.Default)
