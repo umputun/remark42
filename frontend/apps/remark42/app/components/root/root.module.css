@@ -26,8 +26,7 @@
 
 .preloader {
   position: absolute;
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   margin: 0 auto;
 }
 
@@ -38,7 +37,7 @@
 .copyright {
   margin: 24px 0 0;
   font-size: 12px;
-  text-align: right;
+  text-align: end;
 }
 
 .sortPicker {

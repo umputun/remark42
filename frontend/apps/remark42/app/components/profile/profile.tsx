@@ -3,6 +3,7 @@ import { h, Fragment } from 'preact';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { useIntl, FormattedMessage } from 'common/intl';
+import { getDirection } from 'common/direction';
 import { getUserComments } from 'common/api';
 import { parseQuery } from 'utils/parse-query';
 import { requestDeletion } from 'utils/email';
@@ -178,7 +179,7 @@ export function Profile() {
   );
 
   return (
-    <div className={clsx('profile', styles.root)} ref={rootRef}>
+    <div dir={getDirection(intl.locale)} className={clsx('profile', styles.root)} ref={rootRef}>
       {/* disable jsx-a11y/no-static-element-interactions and jsx-a11y/click-events-have-key-events  */}
       {/* that's fine because inside the element we have button that will throw all events and provide all the interactions */}
       {/* eslint-disable-next-line */}

@@ -3,13 +3,13 @@
   height: 16px;
   border-radius: 50%;
   border: 2px solid rgb(var(--white-color), 0.2);
-  border-right-color: rgb(var(--white-color));
+  border-inline-end-color: rgb(var(--white-color));
   animation: spin 1s linear infinite;
 }
 
 .dark {
   border: 2px solid var(--color46);
-  border-right-color: var(--color37);
+  border-inline-end-color: var(--color37);
 }
 
 @keyframes spin {

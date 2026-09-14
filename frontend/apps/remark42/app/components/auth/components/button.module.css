@@ -39,16 +39,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-right: -12px;
-  margin-left: 12px;
+  margin-inline-end: -12px;
+  margin-inline-start: 12px;
   padding: 0 10px;
 
   &::before {
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     content: '';
     height: 36px;
-    border-left: 1px solid rgb(var(--white-color), 0.2);
+    border-inline-start: 1px solid rgb(var(--white-color), 0.2);
   }
 }
 
