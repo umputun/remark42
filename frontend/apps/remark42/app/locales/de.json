@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Das Hochladen von Bildern ist für anonyme Benutzer deaktiviert. Bitte melden Sie sich an, um Bilder hochladen zu können.",
   "commentForm.exceeded-size": "Die Datei {fileName} überschreitet das Größenlimit von {maxImageSize}",
   "commentForm.input-placeholder": "Geben Sie hier Ihren Kommentar ein",
+  "commentForm.input-placeholder-reply": "Geben Sie hier Ihren Kommentar ein",
   "commentForm.new-comment": "Neuer Kommentar",
   "commentForm.notice-about-styling": "Hier können Sie <a>Markdown</a> verwenden",
   "commentForm.preview": "Vorschau",

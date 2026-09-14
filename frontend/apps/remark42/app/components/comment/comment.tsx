@@ -537,6 +537,7 @@ export class Comment extends Component<CommentProps, State> {
             theme={props.theme}
             value={o.orig}
             mode="edit"
+            isReply={!!o.pid}
             mix={styles.input}
             onSubmit={(text: string) => this.updateComment(props.data.id, text)}
             onCancel={this.toggleEditing}

@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Anonyymit käyttäjät eivät voi ladata kuvia. Kirjaudu sisään rekisteröityneenä käyttäjänä, jotta voit liittää kuvia.",
   "commentForm.exceeded-size": "{fileName} ylittää {maxImageSize}",
   "commentForm.input-placeholder": "Kirjoita kommenttisi tähän",
+  "commentForm.input-placeholder-reply": "Kirjoita kommenttisi tähän",
   "commentForm.new-comment": "Uusi kommentti",
   "commentForm.notice-about-styling": "<a>Markdown</a>-syntaksia tuetaan",
   "commentForm.preview": "Esikatselu",

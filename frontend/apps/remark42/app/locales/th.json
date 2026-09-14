@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "การอัปโหลดรูปภาพถูกปิดใช้งานสำหรับผู้ใช้ที่ไม่ระบุชื่อ กรุณาเข้าสู่ระบบไม่ใช่ผู้ใช้ที่ไม่ระบุชื่อเพื่อให้สามารถแนบภาพ",
   "commentForm.exceeded-size": "{fileName} ไฟล์เกินขนาด {maxImageSize}",
   "commentForm.input-placeholder": "กรอกความคิดเห็นของคุณ",
+  "commentForm.input-placeholder-reply": "กรอกความคิดเห็นของคุณ",
   "commentForm.new-comment": "เพิ่มความคิดเห็น",
   "commentForm.notice-about-styling": "รับรอง <a>Markdown</a>",
   "commentForm.preview": "แสดงตัวอย่าง",

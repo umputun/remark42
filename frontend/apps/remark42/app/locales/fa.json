@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "بارگذاری تصویر برای کاربران ناشناس غیرفعال است. لطفاً به عنوان کاربر ناشناس وارد نشوید تا بتوانید تصاویر را پیوست کنید.",
   "commentForm.exceeded-size": "{fileName} از حد مجاز اندازه {maxImageSize} فراتر رفته است",
   "commentForm.input-placeholder": "نظر خود را وارد نمایید",
+  "commentForm.input-placeholder-reply": "نظر خود را وارد نمایید",
   "commentForm.new-comment": "نظر جدید",
   "commentForm.notice-about-styling": "استفاده از <a>Markdown</a> پشتیبانی می‌شود",
   "commentForm.preview": "پیش‌نمایش",

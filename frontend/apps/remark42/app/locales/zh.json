@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "已禁止匿名用户上传图片，请使用非匿名用户登录以使用该功能。",
   "commentForm.exceeded-size": "{fileName} 超出了 {maxImageSize} 大小的限制",
   "commentForm.input-placeholder": "在此留言，登录后可订阅更新通知。",
+  "commentForm.input-placeholder-reply": "在此留言，登录后可订阅更新通知。",
   "commentForm.new-comment": "新评论",
   "commentForm.notice-about-styling": "支持 <a>Markdown</a> 格式",
   "commentForm.preview": "预览",

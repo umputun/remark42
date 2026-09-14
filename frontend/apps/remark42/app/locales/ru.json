@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Анонимные пользователи не могут загружать изображения. Для загрузки изображений войдите под своим именем.",
   "commentForm.exceeded-size": "Размер файла {fileName} не должен превышать {maxImageSize}",
   "commentForm.input-placeholder": "Оставьте здесь свой комментарий",
+  "commentForm.input-placeholder-reply": "Оставьте здесь свой комментарий",
   "commentForm.new-comment": "Новый комментарий",
   "commentForm.notice-about-styling": "Поддерживается разметка <a>Markdown</a>",
   "commentForm.preview": "Предпросмотр",

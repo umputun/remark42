@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "La subida de imágenes está deshabilitada para usuarios anónimos. Inicia sesión como usuario no anónimo para poder adjuntar imágenes.",
   "commentForm.exceeded-size": "{fileName} excede el tamaño máximo de {maxImageSize}",
   "commentForm.input-placeholder": "Escribe tu comentario",
+  "commentForm.input-placeholder-reply": "Escribe tu comentario",
   "commentForm.new-comment": "Nuevo comentario",
   "commentForm.notice-about-styling": "Puedes aplicar estilos usando <a>Markdown</a>",
   "commentForm.preview": "Pre-visualizar",
