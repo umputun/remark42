@@ -45,6 +45,11 @@
   }
 }
 
+.themeDark .tokenInput {
+  background-color: var(--color22);
+  color: rgb(var(--white-color), 0.8);
+}
+
 .error {
   margin-top: 8px;
   padding: 6px 8px;
