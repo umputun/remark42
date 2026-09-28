@@ -87,7 +87,7 @@ window.REMARK42.changeTheme("light")
 
 #### Locales
 
-Right now Remark42 is translated to English (en), Russian (ru), German (de), Finnish (fi), Spanish (es), Chinese (zh), Turkish (tr), Bulgarian (bg), Ukrainian (ua), Polish (pl), Vietnamese (vi), Belarusian (be), French (fr), Japanese (ja), Korean (ko), Brazilian Portuguese (bp), Italian (it), Arabic (ar), Traditional Chinese (zh-tw), Thai (th), Czech (cs), Persian (fa), Macedonian (mk), Romanian (ro), Swedish (sv) and Hebrew (he). You can pick one using a [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
+Right now Remark42 is translated to English (en), Russian (ru), German (de), Finnish (fi), Spanish (es), Chinese (zh), Turkish (tr), Bulgarian (bg), Ukrainian (ua), Polish (pl), Vietnamese (vi), Belarusian (be), French (fr), Japanese (ja), Korean (ko), Brazilian Portuguese (bp), Italian (it), Arabic (ar), Traditional Chinese (zh-tw), Thai (th), Czech (cs), Persian (fa), Macedonian (mk), Romanian (ro), Swedish (sv), Hebrew (he) and Icelandic (is). You can pick one using a [configuration object](https://remark42.com/docs/getting-started/installation/#setup-on-your-website).
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
