@@ -229,6 +229,11 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
+
+	if s.notifyService != nil && !edit.Delete {
+		s.notifyService.Submit(notify.Request{Comment: res})
+	}
+
 	R.RenderJSON(w, res)
 }
 
