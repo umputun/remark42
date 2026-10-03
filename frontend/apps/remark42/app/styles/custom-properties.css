@@ -30,14 +30,14 @@
   --color31: #cbd5e1;
   --color21: #f1f5f9;
   --color29: #0e7e9d;
-  --color9: #0aa;
+  --color9: #f2bebb;
   --color15: #099;
-  --color33: #06c5c5;
+  --color33: #975e5b;
   --color40: #9cdddb;
   --color43: #b7dddd;
   --color42: #c6efef;
   --color48: rgb(37, 156, 154, 0.6);
-  --color47: rgb(37, 156, 154, 0.4);
+  --color47: rgb(243, 156, 156, 0.4);
   --color28: #672323;
   --color25: #9a0000;
   --color38: #ef0000;
@@ -59,8 +59,8 @@
   --chroma-07: #00aee2;
 
   /* Named variables */
-  --primary-color: 0, 170, 170;
-  --primary-brighter-color: 0, 153, 153;
+  --primary-color: 243, 170, 170;
+  --primary-brighter-color: 243, 158, 158;
   --primary-darker-color: 0, 102, 102;
   --primary-text-color: 38, 38, 38;
   --secondary-text-color: 100, 116, 139;
@@ -78,12 +78,14 @@
 
 :root .dark {
   --line-color: var(--color36);
-  --primary-color: 0, 153, 153;
-  --primary-brighter-color: 0, 170, 170;
+  --primary-color: 230, 119, 119;
+  --primary-brighter-color: 250, 150, 150;
   --primary-text-color: 241, 245, 249;
   --primary-background-color: 38, 38, 38;
   --secondary-text-color: 209, 213, 219;
   --error-color: #ffa0a0;
+  --color9: #f2bebb;
+  --color33: #975e5b;
   --line-brighter-color: var(--color11);
   --text-color: var(--white-color);
 }
