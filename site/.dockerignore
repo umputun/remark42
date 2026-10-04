@@ -1,9 +1,0 @@
-.git
-.gitignore
-.dockerignore
-Dockerfile
-Dockerfile.dev
-docker-compose.yml
-build
-public
-resources
