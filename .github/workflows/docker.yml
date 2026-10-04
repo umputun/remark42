@@ -9,6 +9,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+
 jobs:
   build:
     name: Build Docker image (${{ matrix.platform }})
@@ -19,7 +23,7 @@ jobs:
        startsWith(github.event.workflow_run.head_branch, 'v'))
     permissions:
       contents: read
-      packages: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -42,18 +46,15 @@ jobs:
       - name: set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: login to ghcr.io
-        uses: docker/login-action@v4
+      - name: sign in to Azure with federated credentials
+        uses: azure/login@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.PKG_TOKEN }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: login to DockerHub
-        uses: docker/login-action@v4
-        with:
-          username: umputun
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - name: login to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
 
       - name: free disk space
         run: |
@@ -62,25 +63,8 @@ jobs:
           sudo rm -rf /usr/local/share/boost
           docker system prune -af
 
-      - name: build and push to ghcr.io by digest
-        id: build-ghcr
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,scope=${{ matrix.platform }},mode=max
-          build-args: |
-            SKIP_BACKEND_TEST=true
-            SKIP_FRONTEND_TEST=true
-            CI=github
-            GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
-            GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
-            GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
-
-      - name: build and push to DockerHub by digest
-        id: build-dockerhub
+      - name: build and push to Azure Container Registry by digest
+        id: build-acr
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -93,28 +77,19 @@ jobs:
             GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
             GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
             GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.ACR_LOGIN_SERVER }}/remark42,push-by-digest=true,name-canonical=true,push=true
 
       - name: export digests
         run: |
-          mkdir -p /tmp/digests/ghcr /tmp/digests/dockerhub
-          digest_ghcr="${{ steps.build-ghcr.outputs.digest }}"
-          digest_dockerhub="${{ steps.build-dockerhub.outputs.digest }}"
-          touch "/tmp/digests/ghcr/${digest_ghcr#sha256:}"
-          touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
+          mkdir -p /tmp/digests/acr
+          digest="${{ steps.build-acr.outputs.digest }}"
+          touch "/tmp/digests/acr/${digest#sha256:}"
 
-      - name: upload ghcr digest
+      - name: upload ACR digest
         uses: actions/upload-artifact@v7
         with:
-          name: digests-ghcr-${{ matrix.artifact }}
-          path: /tmp/digests/ghcr/*
-          retention-days: 1
-
-      - name: upload dockerhub digest
-        uses: actions/upload-artifact@v7
-        with:
-          name: digests-dockerhub-${{ matrix.artifact }}
-          path: /tmp/digests/dockerhub/*
+          name: digests-acr-${{ matrix.artifact }}
+          path: /tmp/digests/acr/*
           retention-days: 1
 
   merge:
@@ -123,93 +98,53 @@ jobs:
     needs: build
     permissions:
       contents: read
-      packages: write
+      id-token: write
 
     steps:
-      - name: download ghcr digests
+      - name: download ACR digests
         uses: actions/download-artifact@v8
         with:
-          path: /tmp/digests/ghcr
-          pattern: digests-ghcr-*
-          merge-multiple: true
-
-      - name: download dockerhub digests
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/digests/dockerhub
-          pattern: digests-dockerhub-*
+          path: /tmp/digests/acr
+          pattern: digests-acr-*
           merge-multiple: true
 
       - name: verify all digests present
         run: |
           expected=2
-          for registry in ghcr dockerhub; do
-            actual=$(find /tmp/digests/$registry -maxdepth 1 -type f | wc -l)
-            if [ "$actual" -ne "$expected" ]; then
-              echo "Expected $expected digests for $registry, found $actual"
-              ls -la /tmp/digests/$registry
-              exit 1
-            fi
-          done
-          echo "All digests present for both registries"
+          actual=$(find /tmp/digests/acr -maxdepth 1 -type f | wc -l)
+          if [ "$actual" -ne "$expected" ]; then
+            echo "Expected $expected ACR digests, found $actual"
+            ls -la /tmp/digests/acr
+            exit 1
+          fi
+          echo "All ACR digests present"
 
       - name: set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: login to ghcr.io
-        uses: docker/login-action@v4
+      - name: sign in to Azure with federated credentials
+        uses: azure/login@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.PKG_TOKEN }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: login to DockerHub
-        uses: docker/login-action@v4
-        with:
-          username: umputun
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - name: login to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
 
-      - name: create ghcr.io manifest and push
-        working-directory: /tmp/digests/ghcr
+      - name: create ACR manifest and push
+        working-directory: /tmp/digests/acr
         env:
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           if [[ "$HEAD_BRANCH" == v* ]]; then
             docker buildx imagetools create \
-              -t ghcr.io/umputun/remark42:${HEAD_BRANCH} \
-              -t ghcr.io/umputun/remark42:latest \
-              $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
+              -t ${ACR_LOGIN_SERVER}/remark42:${HEAD_BRANCH} \
+              -t ${ACR_LOGIN_SERVER}/remark42:latest \
+              $(printf "${ACR_LOGIN_SERVER}/remark42@sha256:%s " *)
           else
             docker buildx imagetools create \
-              -t ghcr.io/umputun/remark42:${HEAD_BRANCH} \
-              $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
+              -t ${ACR_LOGIN_SERVER}/remark42:${HEAD_BRANCH} \
+              $(printf "${ACR_LOGIN_SERVER}/remark42@sha256:%s " *)
           fi
 
-      - name: create DockerHub manifest and push
-        working-directory: /tmp/digests/dockerhub
-        env:
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: |
-          if [[ "$HEAD_BRANCH" == v* ]]; then
-            docker buildx imagetools create \
-              -t umputun/remark42:${HEAD_BRANCH} \
-              -t umputun/remark42:latest \
-              $(printf 'umputun/remark42@sha256:%s ' *)
-          else
-            docker buildx imagetools create \
-              -t umputun/remark42:${HEAD_BRANCH} \
-              $(printf 'umputun/remark42@sha256:%s ' *)
-          fi
-
-  deploy:
-    name: Deploy to remark42.com
-    runs-on: ubuntu-latest
-    needs: merge
-    if: github.event.workflow_run.head_branch == 'master'
-    permissions: {} # only calls an external URL via curl, no GitHub API access needed
-
-    steps:
-      - name: trigger deployment
-        env:
-          UPDATER_KEY: ${{ secrets.UPDATER_KEY }}
-        run: curl -sf https://jess.umputun.com/update/remark42-core/${UPDATER_KEY}
