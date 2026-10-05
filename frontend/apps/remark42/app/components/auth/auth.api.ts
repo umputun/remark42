@@ -2,13 +2,25 @@ import type { User } from 'common/types';
 
 import { authFetcher } from 'common/fetcher';
 import { siteId } from 'common/settings';
-import { getUser } from 'common/api';
+import { getSignedInUser, getUser } from 'common/api';
 
 const EMAIL_SIGNIN_ENDPOINT = '/email/login';
 const TELEGRAM_SIGNIN_ENDPOINT = '/telegram/login';
 
+/**
+ * The user a sign-in endpoint answers with is the auth library's own shape, which carries the
+ * admin flag under `attrs` rather than as `admin`, so storing it made an admin a regular user
+ * until the next page load (#2205). Each sign-in loads the user from the API instead. It goes to
+ * `/user` directly rather than through `getUser`, whose `/auth/status` probe has nothing to tell
+ * straight after a sign-in has succeeded
+ */
+async function signin(endpoint: string, query: Record<string, string>): Promise<User> {
+  await authFetcher.get(endpoint, query);
+  return getSignedInUser();
+}
+
 export function anonymousSignin(user: string): Promise<User> {
-  return authFetcher.get<User>('/anonymous/login', { user, aud: siteId });
+  return signin('/anonymous/login', { user, aud: siteId });
 }
 
 /**
@@ -22,7 +34,7 @@ export function emailSignin(email: string, username: string): Promise<unknown> {
  * Second step of two of `email` authorization
  */
 export function verifyEmailSignin(token: string): Promise<User> {
-  return authFetcher.get(EMAIL_SIGNIN_ENDPOINT, { token });
+  return signin(EMAIL_SIGNIN_ENDPOINT, { token });
 }
 
 /**
@@ -118,7 +130,7 @@ export function getTelegramSigninParams(): Promise<{
  * Second step of two of `telegram` authorization
  */
 export function verifyTelegramSignin(token: string): Promise<User> {
-  return authFetcher.get(TELEGRAM_SIGNIN_ENDPOINT, { token });
+  return signin(TELEGRAM_SIGNIN_ENDPOINT, { token });
 }
 
 export function logout(): Promise<void> {
