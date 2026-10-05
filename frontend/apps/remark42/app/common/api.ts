@@ -74,8 +74,14 @@ export async function getUser(): Promise<User | null> {
     clearAuthCookie(XSRF_COOKIE);
     return null;
   }
-  return apiFetcher.get<User | null>('/user').catch(() => null);
+  return getSignedInUser().catch(() => null);
 }
+
+/**
+ * The current user as the API knows it, without the `/auth/status` probe `getUser` makes first.
+ * Rejects when nobody is signed in
+ */
+export const getSignedInUser = (): Promise<User> => apiFetcher.get<User>('/user');
 
 export const uploadImage = (image: File): Promise<Image> => {
   const data = new FormData();

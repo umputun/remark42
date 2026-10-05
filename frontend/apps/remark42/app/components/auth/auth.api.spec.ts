@@ -1,4 +1,8 @@
-import { oauthSignin } from './auth.api';
+import type { User } from 'common/types';
+import { user } from '__stubs__/user';
+import { RequestError } from 'utils/errorUtils';
+
+import { anonymousSignin, oauthSignin, verifyEmailSignin, verifyTelegramSignin } from './auth.api';
 
 /**
  * The OAuth flow has no message from the popup to listen for: the popup closes itself and the
@@ -114,5 +118,41 @@ describe('oauthSignin', () => {
 
     await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
     await assertion;
+  });
+});
+
+/**
+ * A sign-in endpoint answers with the auth library's user, which keeps the admin flag under
+ * `attrs`. What reaches the store has to be the API's user instead, or an admin is shown as a
+ * regular user until the page is reloaded (#2205)
+ */
+describe.each`
+  name                      | signin
+  ${'anonymousSignin'}      | ${() => anonymousSignin('username')}
+  ${'verifyEmailSignin'}    | ${() => verifyEmailSignin('token')}
+  ${'verifyTelegramSignin'} | ${() => verifyTelegramSignin('token')}
+`('$name', ({ signin }: { signin: () => Promise<User> }) => {
+  const json = { headers: { 'Content-Type': 'application/json' } };
+
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
+  it('resolves the user the API knows rather than the one sign-in answered with', async () => {
+    const admin = { ...user, admin: true };
+    fetchMock.mockResponses(
+      [JSON.stringify({ id: user.id, name: user.name, attrs: { admin: true } }), json],
+      [JSON.stringify(admin), json]
+    );
+
+    await expect(signin()).resolves.toEqual(admin);
+    expect(fetchMock.mock.calls).toHaveLength(2);
+    expect(fetchMock.mock.calls[1][0]).toContain('/api/v1/user');
+  });
+
+  it('rejects when the signed-in user cannot be loaded', async () => {
+    fetchMock.mockResponses(['{}', json], ['', { status: 401 }]);
+
+    await expect(signin()).rejects.toBeInstanceOf(RequestError);
   });
 });
