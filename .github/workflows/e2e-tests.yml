@@ -42,6 +42,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Test image stamp
+        run: sh e2e/stamp_test.sh
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:

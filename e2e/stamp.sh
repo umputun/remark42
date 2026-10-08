@@ -27,16 +27,24 @@ digest() {
 }
 
 {
-	# the content of those paths, not the commit: an e2e-only commit cannot change the image, and
-	# keying on HEAD would rebuild the stack for every one of them
-	# shellcheck disable=SC2086 # the path list is deliberately split into arguments
-	for path in $sources; do
-		git rev-parse "HEAD:$path"
-	done
+	# Hash the files on disk, not HEAD plus a diff: staging or committing the same
+	# content must not invalidate a running stack. Skip deleted files, including
+	# staged deletions, so committing their removal leaves the stamp unchanged too.
+	# shellcheck disable=SC2086,SC2016 # split paths; expand $file in the child shell
+	git ls-files -z -- $sources | xargs -0 sh -c '
+		for file do
+			if [ -f "$file" ]; then
+				if command -v sha256sum >/dev/null 2>&1; then
+					sha256sum "$file"
+				else
+					shasum -a 256 "$file"
+				fi
+			fi
+		done
+	' sh
+	# Only untracked names belong here; porcelain also records index state.
 	# shellcheck disable=SC2086
-	git diff HEAD -- $sources
-	# shellcheck disable=SC2086
-	git status --porcelain -- $sources
+	git ls-files --others --exclude-standard -z -- $sources
 	# an instrumented build is a different binary from the same sources, so it has to be a
 	# different stamp: without this a coverage stack is accepted for a plain run, and a plain
 	# stack for a coverage run, which reports no coverage at all and looks like untested code
