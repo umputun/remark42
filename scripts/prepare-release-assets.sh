@@ -56,6 +56,16 @@ if ! grep -Rq "{% REMARK_URL %}" "$EMBED_DIR"; then
   exit 1
 fi
 
+# the demo pages name their site as this exact literal, which the server and docker-init.sh both
+# replace with the first configured site. A minifier writing it any other way would leave every
+# instance not serving "remark" with demo pages that fail, and nothing else would notice
+for page in index.html counter.html last-comments.html; do
+  if ! grep -Fq 'site_id:"remark"' "$EMBED_DIR/$page"; then
+    echo "error: $EMBED_DIR/$page lost its site_id:\"remark\" literal, the demo site would not be filled in" >&2
+    exit 1
+  fi
+done
+
 # `//go:embed web` in app/cmd/server.go takes the default pattern rules, which skip every name
 # beginning with a dot or an underscore. A bundle emitted under such a name would be absent from
 # the binary while still present in frontend/apps/remark42/public, so it would serve correctly from

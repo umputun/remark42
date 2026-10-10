@@ -266,6 +266,52 @@ func TestTemplatedFS_SubstitutesTheInstanceURL(t *testing.T) {
 	}
 }
 
+// TestTemplatedFS_FillsTheDemoSite covers the demo, counter and last-comments pages, which the build
+// emits for site "remark". The docker image rewrites that literal in html files at container start,
+// and the binary has to do the same, or an instance serving another site answers those pages with
+// "site not found" and their widget asks the API about a site the reader is not signed in to.
+func TestTemplatedFS_FillsTheDemoSite(t *testing.T) {
+	const built = `var remark_config={site_id:"remark",host:"` + remarkURLPlaceholder + `"}`
+	source := fstest.MapFS{
+		"index.html":  {Data: []byte(built)},
+		"counter.mjs": {Data: []byte(built)},
+		"custom.html": {Data: []byte(`var remark_config={site_id:"mine"}`)},
+	}
+
+	tbl := []struct {
+		name, file, siteID, want string
+	}{
+		{"html gets the site", "index.html", "myblog",
+			`var remark_config={site_id:"myblog",host:"https://remark.example.com"}`},
+		{"no site leaves the build's", "index.html", "",
+			`var remark_config={site_id:"remark",host:"https://remark.example.com"}`},
+		{"the site cannot end the string or the script", "index.html", `x"</script><script>alert(1)//`,
+			`var remark_config={site_id:"x\"\u003c/script\u003e\u003cscript\u003ealert(1)//",host:"https://remark.example.com"}`},
+		// the docker image rewrites the site in html only, so a script keeps the literal here too
+		{"scripts are left alone", "counter.mjs", "myblog",
+			`var remark_config={site_id:"remark",host:"https://remark.example.com"}`},
+		// only the build's own default is replaced, never a site an operator wrote into a page
+		{"another site is left alone", "custom.html", "myblog", `var remark_config={site_id:"mine"}`},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			tfs := templatedFS{fs: source, remarkURL: "https://remark.example.com", siteID: tt.siteID}
+			f, err := tfs.Open(tt.file)
+			require.NoError(t, err)
+			defer func() { assert.NoError(t, f.Close()) }()
+
+			body, err := io.ReadAll(f)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(body))
+
+			info, err := f.Stat()
+			require.NoError(t, err)
+			assert.Equal(t, int64(len(tt.want)), info.Size())
+		})
+	}
+}
+
 func TestTemplatedFS_PassesErrorsThrough(t *testing.T) {
 	tfs := templatedFS{fs: fstest.MapFS{}, remarkURL: "https://remark.example.com"}
 
@@ -282,7 +328,7 @@ func TestRest_FileServerFillsInTheInstanceURL(t *testing.T) {
 		"plain.html": {Data: []byte("nothing to fill in")},
 	}
 	router := routegroup.New(http.NewServeMux())
-	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com")
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com", "")
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -322,7 +368,7 @@ func TestRest_FileServerEtagVariesWithTheInstanceURL(t *testing.T) {
 
 	etagFor := func(remarkURL string) string {
 		router := routegroup.New(http.NewServeMux())
-		addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", remarkURL)
+		addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", remarkURL, "")
 		ts := httptest.NewServer(router)
 		defer ts.Close()
 
@@ -340,4 +386,27 @@ func TestRest_FileServerEtagVariesWithTheInstanceURL(t *testing.T) {
 	assert.NotEqual(t, first, second,
 		"same version and same path, different instance url: the validator has to change or the "+
 			"client keeps a bundle addressed to the old host")
+}
+
+// TestRest_FileServerEtagVariesWithTheDemoSite is the same case for SITE: the demo pages carry the
+// first configured site, so an operator who changes it must not keep getting the old page on 304
+func TestRest_FileServerEtagVariesWithTheDemoSite(t *testing.T) {
+	frontend := fstest.MapFS{"index.html": {Data: []byte(`site_id:"remark"`)}}
+
+	etagFor := func(siteID string) string {
+		router := routegroup.New(http.NewServeMux())
+		addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com", siteID)
+		ts := httptest.NewServer(router)
+		defer ts.Close()
+
+		resp, err := http.Get(ts.URL + "/web/index.html")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		return resp.Header.Get("Etag")
+	}
+
+	first := etagFor("old")
+	require.NotEmpty(t, first)
+	assert.NotEqual(t, first, etagFor("new"), "a different demo site has to change the validator")
 }

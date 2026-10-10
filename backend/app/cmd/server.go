@@ -741,6 +741,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		WebRoot:                    s.WebRoot,
 		WebFS:                      webFS,
 		RemarkURL:                  s.RemarkURL,
+		DemoSiteID:                 s.demoSiteID(),
 		ImageProxy:                 imgProxy,
 		CommentFormatter:           commentFormatter,
 		Migrator:                   migr,
@@ -1556,6 +1557,18 @@ func (s *ServerCommand) servesAudience(auds []string) bool {
 		}
 	}
 	return true
+}
+
+// demoSiteID is the site the demo pages under /web show: the first configured one, as the docker
+// image picks it from SITE. It is returned exactly as configured, since the stores register it
+// that way and look it up by exact match
+func (s *ServerCommand) demoSiteID() string {
+	for _, site := range s.Sites {
+		if strings.TrimSpace(site) != "" {
+			return site
+		}
+	}
+	return ""
 }
 
 func (s *ServerCommand) parseSameSite(ss string) http.SameSite {

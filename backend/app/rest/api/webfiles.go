@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -77,12 +78,19 @@ func (emptyFS) Open(name string) (fs.File, error) {
 // serves the build embedded in itself and has nothing to rewrite, does it here.
 const remarkURLPlaceholder = "{% REMARK_URL %}"
 
+// demoSiteLiteral is how the built demo, counter and last-comments pages name their site. The
+// docker image replaces it with the first configured site at container start; the binary does it
+// here, since a site the instance does not serve makes those pages fail and, signed in or not, ask
+// the API about a site the reader's session does not belong to.
+const demoSiteLiteral = `site_id:"remark"`
+
 // templatedFS fills the instance URL into the files carrying the placeholder. Without it the
 // binary serves whatever the build baked in, which is a host no visitor can reach, and the widget
 // falls back to it whenever a page omits remark_config.host.
 type templatedFS struct {
 	fs        fs.FS
 	remarkURL string
+	siteID    string // first configured site, filled into the demo pages; empty leaves them as built
 }
 
 // Open substitutes in the file types the frontend templates, and hands everything else through
@@ -107,7 +115,20 @@ func (t templatedFS) Open(name string) (fs.File, error) {
 	}
 
 	body = bytes.ReplaceAll(body, []byte(remarkURLPlaceholder), []byte(t.remarkURL))
+	if t.siteID != "" && filepath.Ext(name) == ".html" {
+		body = bytes.ReplaceAll(body, []byte(demoSiteLiteral), demoSiteValue(t.siteID))
+	}
 	return &memFile{Reader: bytes.NewReader(body), info: sizedInfo{FileInfo: info, size: int64(len(body))}}, nil
+}
+
+// demoSiteValue renders the site as the demo pages' literal does. json.Marshal quotes it as a
+// script string and escapes <, > and &, so no site id can end the string or the script block
+func demoSiteValue(siteID string) []byte {
+	quoted, err := json.Marshal(siteID)
+	if err != nil { // a string always marshals; keep the build's own literal if that ever changes
+		return []byte(demoSiteLiteral)
+	}
+	return append([]byte("site_id:"), quoted...)
 }
 
 // templatedName reports whether the frontend templates this file type. It mirrors the set the

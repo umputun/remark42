@@ -1491,3 +1491,21 @@ func TestServerCommand_servesAudience(t *testing.T) {
 	cmd.Store.Type = "rpc"
 	assert.True(t, cmd.servesAudience([]string{"Remark"}), "a remote store decides which sites exist")
 }
+
+func TestServerCommand_demoSiteID(t *testing.T) {
+	tbl := []struct {
+		sites []string
+		want  string
+	}{
+		{[]string{"remark"}, "remark"},
+		{[]string{"myblog", "other"}, "myblog"},
+		// the stores register a site exactly as given, so the demo pages must name it the same way
+		{[]string{" myblog "}, " myblog "},
+		{[]string{"  ", "second"}, "second"},
+		{[]string{"", "second"}, "second"},
+		{nil, ""},
+	}
+	for _, tt := range tbl {
+		assert.Equal(t, tt.want, (&ServerCommand{Sites: tt.sites}).demoSiteID(), "sites %q", tt.sites)
+	}
+}
