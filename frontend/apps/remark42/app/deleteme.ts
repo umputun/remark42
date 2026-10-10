@@ -23,24 +23,30 @@ async function init(): Promise<void> {
       return;
     }
 
+    // everything below reaches the page as text. the token is supplied by whoever sent the link,
+    // and both the response and the error echo values it carries, its site id among them
     approveDeleteMe(token).then(
       (data) => {
-        node.innerHTML = `
-            <h3>User deleted successfully</h3>
-            <pre>${JSON.stringify(data, null, 4)}</pre>
-          `;
+        render(node, 'User deleted successfully', JSON.stringify(data, null, 4));
       },
       (err: Error | ApiError | string) => {
         const message =
           err instanceof Error ? err.message : typeof err === 'object' && err !== null && err.error ? err.error : err;
         console.error(err);
-        node.innerHTML = `
-          <h3>Something went wrong</h3>
-          <pre>${message}</pre>
-        `;
+        render(node, 'Something went wrong', String(message));
       }
     );
   });
+}
+
+function render(node: HTMLElement, heading: string, details: string): void {
+  const title = document.createElement('h3');
+  title.textContent = heading;
+
+  const body = document.createElement('pre');
+  body.textContent = details;
+
+  node.replaceChildren(title, body);
 }
 
 function handleNotAuthorizedError(node: HTMLElement): void {
