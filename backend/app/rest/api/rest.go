@@ -91,6 +91,10 @@ const hardBodyLimit = 1024 * 64 // limit size of body
 const openRouteLimiter = 10     // limit for open routes
 const lastCommentsScope = "last"
 
+// lastVotesScope is carried only by the JSON last comments, the one response under that scope with
+// per-user vote data, so a vote does not also drop the feeds
+const lastVotesScope = "last-votes"
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info"`
