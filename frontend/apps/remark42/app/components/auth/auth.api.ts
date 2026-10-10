@@ -1,6 +1,6 @@
 import type { User } from 'common/types';
 
-import { authFetcher } from 'common/fetcher';
+import { authFetcher, dropSession } from 'common/fetcher';
 import { siteId } from 'common/settings';
 import { getUser } from 'common/api';
 
@@ -121,6 +121,11 @@ export function verifyTelegramSignin(token: string): Promise<User> {
   return authFetcher.get(TELEGRAM_SIGNIN_ENDPOINT, { token });
 }
 
+/**
+ * Signs out, and forgets the session locally whatever the server answers. With the JWT sent as a
+ * header, an expired token is refused with 403, and a fetcher that kept it would sign the reader
+ * back in on the next page load
+ */
 export function logout(): Promise<void> {
-  return authFetcher.get('/logout');
+  return authFetcher.get<void>('/logout').finally(dropSession);
 }

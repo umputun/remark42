@@ -89,10 +89,11 @@ const createFetcher = (baseUrl: string = ''): Methods => {
         }
       }
 
-      if ([401, 403].includes(res.status)) {
-        activeJwtToken = undefined;
-        clearAuthCookie(JWT_COOKIE_NAME);
-        clearAuthCookie(XSRF_COOKIE);
+      // only 401 says the session itself is gone. A 403 comes with a valid session that may not do
+      // this, such as one belonging to another site served from the same remark42 host, and
+      // clearing on it signs the reader out of every site sharing these cookies
+      if (res.status === 401) {
+        dropSession();
       }
 
       if (res.status >= 400) {
@@ -134,6 +135,13 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     delete: (uri: string, query: QueryParams, body: Payload) => request('delete', uri, query, body),
   } as Methods;
 };
+
+/** Forgets the session this document holds: the in-memory JWT and the auth cookies it can reach */
+export function dropSession(): void {
+  activeJwtToken = undefined;
+  clearAuthCookie(JWT_COOKIE_NAME);
+  clearAuthCookie(XSRF_COOKIE);
+}
 
 export const apiFetcher = createFetcher(`${BASE_URL}${API_BASE}`);
 export const authFetcher = createFetcher(`${BASE_URL}/auth`);

@@ -1,4 +1,6 @@
-import { oauthSignin } from './auth.api';
+import { apiFetcher, JWT_HEADER } from 'common/fetcher';
+
+import { logout, oauthSignin } from './auth.api';
 
 /**
  * The OAuth flow has no message from the popup to listen for: the popup closes itself and the
@@ -114,5 +116,33 @@ describe('oauthSignin', () => {
 
     await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
     await assertion;
+  });
+});
+
+describe('logout', () => {
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('forgets a header-held session even when the server refuses the logout', async () => {
+    // a token delivered as a header is what the fetcher keeps in memory and sends back
+    jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'jti' }));
+    fetchMock.mockResponseOnce('{}', {
+      headers: { [JWT_HEADER]: 'held.jwt.token', 'Content-Type': 'application/json' },
+    });
+    await apiFetcher.get('/anything');
+
+    // an expired header token is refused with 403 by the logout handler
+    fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status: 403 });
+    await expect(logout()).rejects.toBeDefined();
+
+    fetchMock.mockResponseOnce('{}', { headers: { 'Content-Type': 'application/json' } });
+    await apiFetcher.get('/anything');
+    const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect((init?.headers as Record<string, string>)[JWT_HEADER]).toBeUndefined();
   });
 });
