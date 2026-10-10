@@ -955,6 +955,37 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without user information rejected, \n"+tkNoUser+"\n"+string(body))
 
+	// a delete-me token, as the endpoint issues it, is a deletion request for the admin and not a session
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/api/v1/deleteme?site=remark", port), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tk)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	deleteMe := struct {
+		Token string `json:"token"`
+	}{}
+	require.NoError(t, json.Unmarshal(body, &deleteMe))
+	require.NotEmpty(t, deleteMe.Token)
+	for _, probe := range []struct{ method, path, body string }{
+		{http.MethodGet, "/api/v1/user?site=remark", ""},
+		{http.MethodPost, "/api/v1/comment?site=remark",
+			`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-632/", "site": "remark"}}`},
+	} {
+		req, err = http.NewRequest(probe.method, fmt.Sprintf("http://localhost:%d%s", port, probe.path), strings.NewReader(probe.body))
+		require.NoError(t, err)
+		req.Header.Set("X-JWT", deleteMe.Token)
+		resp, err = client.Do(req)
+		require.NoError(t, err)
+		body, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "delete-me token rejected on %s %s, %s", probe.method, probe.path, body)
+	}
+
 	// block user github_dev as admin
 	req, err = http.NewRequest(http.MethodPut,
 		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", port), http.NoBody)

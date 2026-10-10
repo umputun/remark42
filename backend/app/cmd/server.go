@@ -1509,6 +1509,11 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if claims.User.Audience == "" { // reject empty aud, made with old (pre 0.8.x) version of auth package
 				return false
 			}
+			// a delete-me token names the user and is signed like a session, but it is handed to the
+			// admin, so it must only ever work as the deletion request it is
+			if claims.User.BoolAttr("delete_me") {
+				return false
+			}
 			return !claims.User.BoolAttr("blocked")
 		}),
 		JWTQuery:          "jwt", // change default from "token" as it used for deleteme
