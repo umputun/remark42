@@ -1469,6 +1469,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
+		AudienceReader: s.tokenAudiences(),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
 				return c
@@ -1525,6 +1526,18 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		UseGravatar:       true,
 		AudSecrets:        s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// tokenAudiences limits the audience of issued and accepted tokens to the configured sites when
+// remark42 keeps the data itself. The audience is the site a user names at login, and it is echoed
+// back in responses and error messages, so a value nothing serves must not be accepted at all. A
+// remote store decides which sites exist on its side, so with one any audience is let through.
+func (s *ServerCommand) tokenAudiences() token.Audience {
+	if s.Store.Type != "bolt" {
+		return nil
+	}
+	sites := slices.Clone(s.Sites)
+	return token.AudienceFunc(func() ([]string, error) { return sites, nil })
 }
 
 func (s *ServerCommand) parseSameSite(ss string) http.SameSite {

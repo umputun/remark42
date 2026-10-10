@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -901,10 +902,12 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
 	// try to add comment with no-aud claim
+	// the token service refuses to issue it, so sign it the way a holder of the secret could
 	badClaimsNoAud := claims
 	badClaimsNoAud.Audience = jwt.ClaimStrings{""}
-	tkNoAud, err := tkService.Token(badClaimsNoAud)
-	require.NoError(t, err)
+	_, err = tkService.Token(badClaimsNoAud)
+	require.Error(t, err, "token service must not issue a token with an empty audience")
+	tkNoAud := signRawToken(t, badClaimsNoAud)
 	t.Logf("no-aud claims: %s", tkNoAud)
 	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
@@ -917,6 +920,22 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
+
+	// a token for a site this instance does not serve is neither issued nor accepted
+	badClaimsOtherSite := claims
+	badClaimsOtherSite.Audience = jwt.ClaimStrings{"<b>other</b>"}
+	_, err = tkService.Token(badClaimsOtherSite)
+	require.Error(t, err, "token service must not issue a token for a site it does not serve")
+	tkOtherSite := signRawToken(t, badClaimsOtherSite)
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=%s", port, url.QueryEscape("<b>other</b>")), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkOtherSite)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a site not served rejected, %s", body)
 
 	// try to add comment with multiple auds
 	badClaimsMultipleAud := claims
@@ -1235,15 +1254,15 @@ func waitForServerStart(t *testing.T, ports ...int) {
 // getRetryThrottled issues a GET and retries while the auth routes answer 429, since the /auth/
 // group is limited to 2 req/s and this test logs in more often than that. a transport error is
 // retried a couple of times and then reported as itself, so a dead server is not read as throttling
-func getRetryThrottled(t *testing.T, client *http.Client, url string) *http.Response {
+func getRetryThrottled(t *testing.T, client *http.Client, reqURL string) *http.Response {
 	t.Helper()
 	const transportRetries = 2
 	errCount := 0
 	for deadline := time.Now().Add(serverStartTimeout); time.Now().Before(deadline); time.Sleep(authRetryPoll) {
-		r, err := client.Get(url)
+		r, err := client.Get(reqURL)
 		if err != nil {
 			errCount++
-			require.LessOrEqual(t, errCount, transportRetries, "request to %s failed: %v", url, err)
+			require.LessOrEqual(t, errCount, transportRetries, "request to %s failed: %v", reqURL, err)
 			continue
 		}
 		if r.StatusCode == http.StatusTooManyRequests {
@@ -1252,7 +1271,7 @@ func getRetryThrottled(t *testing.T, client *http.Client, url string) *http.Resp
 		}
 		return r
 	}
-	t.Fatalf("request to %s kept being rate limited", url)
+	t.Fatalf("request to %s kept being rate limited", reqURL)
 	return nil
 }
 
@@ -1269,6 +1288,52 @@ func waitForServerPort(port int, timeout time.Duration) bool {
 		time.Sleep(serverStartPoll)
 	}
 	return false
+}
+
+// signRawToken signs claims with the shared secret prepServerApp configures, bypassing the token
+// service and the checks it makes before issuing
+func signRawToken(t *testing.T, claims token.Claims) string {
+	t.Helper()
+	tkn, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("secret"))
+	require.NoError(t, err)
+	return tkn
+}
+
+// TestServerApp_LoginRejectsUnknownSite covers the audience a user names at login: it ends up in
+// the session token and is echoed back in responses, so a site the instance does not serve gets
+// no session at all.
+func TestServerApp_LoginRejectsUnknownSite(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Anonymous = true
+		return o
+	})
+	defer cancel()
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	resp := getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=%s",
+		port, url.QueryEscape("<b>other</b>")))
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.NotEqual(t, http.StatusOK, resp.StatusCode, "login to a site not served must fail, %s", body)
+	for _, c := range resp.Cookies() {
+		assert.NotEqual(t, "JWT", c.Name, "no session cookie for a site not served")
+	}
+
+	// the configured site still signs in
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	cancel()
+	app.Wait()
 }
 
 func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
@@ -1381,4 +1446,22 @@ func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 		assert.Len(t, data, len(val))
 	}
 	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
+}
+
+func TestServerCommand_tokenAudiences(t *testing.T) {
+	cmd := ServerCommand{Sites: []string{"remark", "other"}}
+	cmd.Store.Type = "bolt"
+	auds := cmd.tokenAudiences()
+	require.NotNil(t, auds, "the bolt store knows its sites, so the audience is limited to them")
+	got, err := auds.Get()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"remark", "other"}, got)
+
+	cmd.Sites[0] = "changed"
+	got, err = auds.Get()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"remark", "other"}, got, "the list is fixed when the authenticator is built")
+
+	cmd.Store.Type = "rpc"
+	assert.Nil(t, cmd.tokenAudiences(), "a remote store decides which sites exist, so any audience passes")
 }

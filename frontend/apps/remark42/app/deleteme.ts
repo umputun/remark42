@@ -1,6 +1,6 @@
 import { NODE_ID } from 'common/constants';
 import { approveDeleteMe, getUser } from 'common/api';
-import { token } from 'common/settings';
+import { siteId, token } from 'common/settings';
 import type { ApiError } from 'common/types';
 
 if (document.readyState === 'loading') {
@@ -50,8 +50,11 @@ function render(node: HTMLElement, heading: string, details: string): void {
 }
 
 function handleNotAuthorizedError(node: HTMLElement): void {
-  node.innerHTML = `
-    <h3>You are not logged in</h3>
-    <p><a href='/web' target='_blank'>Sign in</a> as admin to delete user information</p>
-  `;
+  // the session has to belong to the site the request came from, so the admin signs in through the
+  // comments on that site rather than the demo page, which is fixed to a site of its own
+  render(
+    node,
+    'You are not logged in',
+    `Sign in as admin to the comments on site "${siteId}", then open this link again to delete user information.`
+  );
 }

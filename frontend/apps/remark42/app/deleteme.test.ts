@@ -47,6 +47,18 @@ describe('deleteme page', () => {
     expect(root.querySelector('pre')?.textContent).toBe(`site "${payload}" not found`);
   });
 
+  it('asks a signed-out admin to sign in to the site the request came from', async () => {
+    mockedApi().getUser.mockResolvedValue(null);
+    window.history.replaceState(null, '', `/web/deleteme.html?site_id=${encodeURIComponent(payload)}&token=t`);
+
+    const root = await runPage();
+
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('h3')?.textContent).toBe('You are not logged in');
+    expect(root.querySelector('pre')?.textContent).toContain(`site "${payload}"`);
+    expect(mockedApi().approveDeleteMe).not.toHaveBeenCalled();
+  });
+
   it('shows the deletion result as text', async () => {
     mockedApi().approveDeleteMe.mockResolvedValue({ user_id: 'dev_user', site_id: [payload] } as never);
 
