@@ -246,7 +246,7 @@ describe('fetcher', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should reset activeJwtToken and clear cookies on 401/403 responses', async () => {
+    it('should reset activeJwtToken and clear cookies on 401 responses', async () => {
       // Mock clearAuthCookie
       jest.spyOn(cookies, 'clearAuthCookie').mockImplementationOnce(jest.fn());
 
@@ -276,6 +276,31 @@ describe('fetcher', () => {
       await apiFetcher.get(apiUri);
 
       expect(window.fetch).toHaveBeenCalled();
+    });
+
+    it('should keep the session on 403 responses', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id' }));
+
+      mockFetch({ headers: { [JWT_HEADER]: 'kept.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+
+      // a session for another site asking about this one, or an anonymous user, is refused, not signed out
+      mockFetch({ status: 403 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Forbidden.', 403));
+
+      expect(clear).not.toHaveBeenCalled();
+
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      const { calls } = (window.fetch as jest.Mock).mock;
+      const [, init] = calls[calls.length - 1];
+      expect(init.headers[JWT_HEADER]).toBe('kept.jwt.token');
+
+      // the token lives at module level, so drop it the way the fetcher does before the next test
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      clear.mockRestore();
     });
   });
 

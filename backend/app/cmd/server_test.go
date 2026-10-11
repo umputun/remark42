@@ -1494,6 +1494,24 @@ func TestServerCommand_servesAudience(t *testing.T) {
 	assert.True(t, cmd.servesAudience([]string{"Remark"}), "a remote store decides which sites exist")
 }
 
+func TestServerCommand_demoSiteID(t *testing.T) {
+	tbl := []struct {
+		sites []string
+		want  string
+	}{
+		{[]string{"remark"}, "remark"},
+		{[]string{"myblog", "other"}, "myblog"},
+		// the stores register a site exactly as given, so the demo pages must name it the same way
+		{[]string{" myblog "}, " myblog "},
+		{[]string{"  ", "second"}, "second"},
+		{[]string{"", "second"}, "second"},
+		{nil, ""},
+	}
+	for _, tt := range tbl {
+		assert.Equal(t, tt.want, (&ServerCommand{Sites: tt.sites}).demoSiteID(), "sites %q", tt.sites)
+	}
+}
+
 // TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.
