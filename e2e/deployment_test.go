@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,15 +42,18 @@ func TestComment_AdminEditHasNoDeadline(t *testing.T) {
 	postComment(t, frame, text)
 
 	// the countdown is what #2001 left running. an admin has no deadline, so it should never
-	// have been rendered at all
-	// asserted on a loaded thread, not on the comment the widget has just added to the
-	// page. The optimistic render puts a countdown on an admin's own new comment and drops it on
-	// the next load, so asserting here would fail on that instead of on the deadline logic this
-	// case is about
+	// have been rendered at all. Asserted on the comment just posted and again on a loaded
+	// thread, because #2205 showed only on the first: right after sign-in the widget did not
+	// know the user was an admin
+	assertNoCountdown := func(frame playwright.FrameLocator, msg string) {
+		count, err := actions(frame, text).Locator(`[role="timer"]`).Count()
+		require.NoError(t, err)
+		assert.Zero(t, count, msg)
+	}
+	assertNoCountdown(frame, "an admin's new comment is counting down an edit window that does not apply to it")
+
 	frame = reload(t, page)
-	count, err := actions(frame, text).Locator(`[role="timer"]`).Count()
-	require.NoError(t, err)
-	assert.Zero(t, count, "an admin's comment is counting down an edit window that does not apply to it")
+	assertNoCountdown(frame, "an admin's comment is counting down an edit window that does not apply to it")
 
 	// past the window every other user on this instance is held to. editWindow is EDIT_TIME on
 	// both short-window instances in compose-e2e-test.yml
