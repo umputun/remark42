@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Anonieme gebruikers kunnen geen afbeeldingen uploaden. Log in met een account om afbeeldingen toe te voegen.",
   "commentForm.exceeded-size": "{fileName} overschrijdt de maximale grootte van {maxImageSize}",
   "commentForm.input-placeholder": "Schrijf hier je reactie",
+  "commentForm.input-placeholder-reply": "Schrijf hier je reactie",
   "commentForm.new-comment": "Nieuwe reactie",
   "commentForm.notice-about-styling": "<a>Markdown</a>-opmaak wordt ondersteund",
   "commentForm.preview": "Voorbeeld",
