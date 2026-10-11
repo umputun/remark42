@@ -29,6 +29,8 @@ import (
 	cache "github.com/go-pkgz/lcw/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark42/backend/app/notify"
 )
 
 const (
@@ -1508,4 +1510,45 @@ func TestServerCommand_demoSiteID(t *testing.T) {
 	for _, tt := range tbl {
 		assert.Equal(t, tt.want, (&ServerCommand{Sites: tt.sites}).demoSiteID(), "sites %q", tt.sites)
 	}
+}
+
+// TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
+// and their email, is signed with the shared secret and is valid for a century, so the email login
+// must not accept it in place of a confirmation token it issued itself.
+func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.emailMsgTemplatePath, o.emailVerificationTemplatePath = "", "" // the embedded templates, as in production
+		return o
+	})
+	defer cancel()
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+
+	destinations, err := app.makeNotifyDestinations(app.authenticator)
+	require.NoError(t, err)
+	var tkn string
+	for _, d := range destinations {
+		if e, ok := d.(*notify.Email); ok {
+			tkn, err = e.TokenGenFn("email_user1", "user1@example.org", "remark")
+			require.NoError(t, err)
+		}
+	}
+	require.NotEmpty(t, tkn, "email notifications are configured, so unsubscribe links carry a token")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	resp := getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/email/login?token=%s", port, tkn))
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "an unsubscribe token is not a login, %s", body)
+	for _, c := range resp.Cookies() {
+		assert.NotEqual(t, "JWT", c.Name, "no session from an unsubscribe token")
+	}
+
+	cancel()
+	app.Wait()
 }
