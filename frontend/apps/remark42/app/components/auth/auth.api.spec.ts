@@ -138,7 +138,8 @@ describe('logout', () => {
 
     // an expired header token is refused with 403 by the logout handler
     fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status: 403 });
-    await expect(logout()).rejects.toBeDefined();
+    // resolving lets the caller clear the signed-in state as well
+    await expect(logout()).resolves.toBeUndefined();
 
     fetchMock.mockResponseOnce('{}', { headers: { 'Content-Type': 'application/json' } });
     await apiFetcher.get('/anything');

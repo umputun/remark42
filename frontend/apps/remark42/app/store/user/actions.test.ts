@@ -4,8 +4,16 @@ import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { COMMENTS_PATCH } from 'store/comments/types';
 
 import INITIAL_STORE from './__stubs__/comments-store.json';
-import { setVerifiedStatus, hideUser, unhideUser, unblockUser, fetchBlockedUsers, fetchHiddenUsers } from './actions';
-import { USER_UNHIDE, USER_HIDE, USER_UNBAN, USER_BANLIST_SET, USER_HIDELIST_SET } from './types';
+import {
+  setVerifiedStatus,
+  hideUser,
+  unhideUser,
+  unblockUser,
+  fetchBlockedUsers,
+  fetchHiddenUsers,
+  signout,
+} from './actions';
+import { USER_UNHIDE, USER_HIDE, USER_UNBAN, USER_BANLIST_SET, USER_HIDELIST_SET, USER_SET } from './types';
 
 describe('store user actions', () => {
   test('fetchBlockedUsers', async () => {
@@ -95,5 +103,16 @@ describe('store user actions', () => {
       expect(localStorage.getItem).toHaveBeenCalledWith(LS_HIDDEN_USERS_KEY);
       expect(localStorage.setItem).toHaveBeenCalledWith(LS_HIDDEN_USERS_KEY, JSON.stringify({}));
     });
+  });
+
+  test('signout clears the user when the server refuses the logout', async () => {
+    // signout reloads the comments, which reads the hidden users
+    const store = mockStore({ ...INITIAL_STORE, hiddenUsers: {} });
+    // an expired header token is refused with 403, and the reader still has to end up signed out
+    fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status: 403 });
+
+    await store.dispatch(signout());
+
+    expect(store.getActions()).toContainEqual({ type: USER_SET, user: null });
   });
 });
