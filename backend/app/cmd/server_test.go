@@ -937,6 +937,20 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a site not served rejected, %s", body)
 
+	// the auth package matches audiences ignoring case, so it issues this token, but the bolt store
+	// keys sites by the exact name and the session must not be accepted
+	tkOtherCase, err := tkService.Token(func() token.Claims { c := claims; c.Audience = jwt.ClaimStrings{"REMARK"}; return c }())
+	require.NoError(t, err)
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=REMARK", port), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkOtherCase)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a differently cased site rejected, %s", body)
+
 	// try to add comment with multiple auds
 	badClaimsMultipleAud := claims
 	badClaimsMultipleAud.Audience = jwt.ClaimStrings{"remark", "second_aud"}
@@ -1464,4 +1478,16 @@ func TestServerCommand_tokenAudiences(t *testing.T) {
 
 	cmd.Store.Type = "rpc"
 	assert.Nil(t, cmd.tokenAudiences(), "a remote store decides which sites exist, so any audience passes")
+}
+
+func TestServerCommand_servesAudience(t *testing.T) {
+	cmd := ServerCommand{Sites: []string{"remark", "other"}}
+	cmd.Store.Type = "bolt"
+	assert.True(t, cmd.servesAudience([]string{"remark"}))
+	assert.True(t, cmd.servesAudience([]string{"remark", "other"}))
+	assert.False(t, cmd.servesAudience([]string{"Remark"}), "sites are compared exactly")
+	assert.False(t, cmd.servesAudience([]string{"remark", "third"}), "every audience must be served")
+
+	cmd.Store.Type = "rpc"
+	assert.True(t, cmd.servesAudience([]string{"Remark"}), "a remote store decides which sites exist")
 }
