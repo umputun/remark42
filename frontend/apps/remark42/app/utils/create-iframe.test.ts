@@ -79,4 +79,35 @@ describe('createIframe', () => {
     const iframe = createIframe({ site_id: 'remark', onReveal: () => undefined });
     expect(iframe.getAttribute('src')).not.toContain('onReveal');
   });
+
+  it('passes custom_properties to the iframe document via its name', () => {
+    const iframe = createIframe({ site_id: 'remark', custom_properties: { '--font-family': 'Georgia' } });
+    expect(JSON.parse(iframe.name)).toEqual({ __colors__: { '--font-family': 'Georgia' } });
+  });
+
+  it('still accepts the deprecated __colors__ name', () => {
+    const iframe = createIframe({ site_id: 'remark', __colors__: { '--font-family': 'Georgia' } });
+    expect(JSON.parse(iframe.name)).toEqual({ __colors__: { '--font-family': 'Georgia' } });
+  });
+
+  it('merges both when set, with custom_properties winning on a shared key', () => {
+    const iframe = createIframe({
+      site_id: 'remark',
+      __colors__: { '--font-family': 'system-ui', '--primary-color': '0, 170, 170' },
+      custom_properties: { '--font-family': 'Georgia' },
+    });
+    expect(JSON.parse(iframe.name)).toEqual({
+      __colors__: { '--font-family': 'Georgia', '--primary-color': '0, 170, 170' },
+    });
+  });
+
+  it('does not put custom_properties or __colors__ into the iframe query', () => {
+    const iframe = createIframe({
+      site_id: 'remark',
+      __colors__: { '--font-family': 'Georgia' },
+      custom_properties: { '--primary-color': '0, 170, 170' },
+    });
+    expect(iframe.getAttribute('src')).not.toContain('color');
+    expect(iframe.getAttribute('src')).not.toContain('font');
+  });
 });
