@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Nafnlausir notendur geta ekki hlaðið upp myndum. Skráðu þig inn undir nafni til að geta bætt við myndum.",
   "commentForm.exceeded-size": "{fileName} fer yfir stærðarmörkin {maxImageSize}",
   "commentForm.input-placeholder": "Skrifaðu athugasemd hér",
+  "commentForm.input-placeholder-reply": "Skrifaðu athugasemd hér",
   "commentForm.new-comment": "Ný athugasemd",
   "commentForm.notice-about-styling": "<a>Markdown</a>-snið er stutt",
   "commentForm.preview": "Forskoðun",
