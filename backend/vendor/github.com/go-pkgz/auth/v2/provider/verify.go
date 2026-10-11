@@ -222,12 +222,23 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// GET /login?token=confirmation-jwt&sess=1
 	confClaims, err := e.TokenService.Parse(tkn)
 	if err != nil {
-		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, err, "failed to verify confirmation token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, err, "failed to verify confirmation token")
 		return
 	}
 
 	if e.TokenService.IsExpired(confClaims) {
-		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token")
+		return
+	}
+
+	// only a handshake token carrying this provider's name may sign someone in. Other tokens are
+	// signed with the same secret, including handshake tokens of the same user::address shape that
+	// an application mails for its own purposes, and none of them prove the holder received this
+	// provider's confirmation. The token is still a live credential elsewhere, so it is kept out of
+	// the logged URL.
+	if confClaims.Handshake == nil || confClaims.AuthProvider == nil || confClaims.AuthProvider.Name != e.ProviderName {
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, fmt.Errorf("not a %s confirmation token", e.ProviderName),
+			"failed to verify confirmation token")
 		return
 	}
 

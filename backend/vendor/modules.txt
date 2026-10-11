@@ -44,7 +44,7 @@ github.com/dlclark/regexp2/v2/syntax
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.3.0
+# github.com/go-pkgz/auth/v2 v2.3.1-0.20261011064528-6c9fe1f3f7ce
 ## explicit; go 1.25.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
