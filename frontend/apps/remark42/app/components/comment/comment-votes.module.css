@@ -50,6 +50,11 @@
   min-width: 16px;
   text-align: center;
   color: rgb(var(--secondary-darker-text-color));
+
+  /* the score is a number, not prose: pin it to ltr regardless of locale so a negative value's
+     minus sign stays next to the digit instead of drifting to the other side under rtl */
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .votesNegative {
