@@ -113,6 +113,14 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	audience := claims.Audience[0]
 
+	// admin rights hold for the site the session belongs to, which matchSiteID has already matched
+	// against this query value. Only the basic-auth admin, who administers every site, may omit it
+	if site := r.URL.Query().Get("site"); site != "" && site != audience {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token site %q, request site %q", audience, site),
+			"can't use provided token for this site", rest.ErrNoAccess)
+		return
+	}
+
 	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)

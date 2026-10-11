@@ -627,6 +627,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			AdminPasswd:  "password",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
+			JWTQuery:     "jwt", // as in the server, "token" carries the delete-me token
 		}),
 		Cache:     memCache,
 		WebRoot:   tmp,
