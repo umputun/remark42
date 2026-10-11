@@ -287,7 +287,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
-	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
+	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID, lastVotesScope))
 	R.RenderJSON(w, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
