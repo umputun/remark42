@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Bilduppladdning är inaktiverad för anonyma användare. Logga in som en icke-anonym användare för att kunna bifoga bilder.",
   "commentForm.exceeded-size": "{fileName} överskrider storleksgränsen på {maxImageSize}",
   "commentForm.input-placeholder": "Skriv din kommentar här",
+  "commentForm.input-placeholder-reply": "Skriv din kommentar här",
   "commentForm.new-comment": "Ny kommentar",
   "commentForm.notice-about-styling": "Formatering med <a>Markdown</a> stöds",
   "commentForm.preview": "Förhandsgranska",

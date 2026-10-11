@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Анонимните корисници не можат да поставуваат слики. Ве молиме најавете се.",
   "commentForm.exceeded-size": "{fileName} е поголем од дозволената големина {maxImageSize}",
   "commentForm.input-placeholder": "Вашиот коментар тука",
+  "commentForm.input-placeholder-reply": "Вашиот коментар тука",
   "commentForm.new-comment": "Нов коментар",
   "commentForm.notice-about-styling": "Може да користите Markdown стил",
   "commentForm.preview": "Преглед",

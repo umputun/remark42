@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "העלאת תמונות מושבתת עבור משתמשים אנונימיים. יש להתחבר שלא כמשתמש אנונימי כדי לצרף תמונות.",
   "commentForm.exceeded-size": "{fileName} חורג ממגבלת הגודל של {maxImageSize}",
   "commentForm.input-placeholder": "התגובה שלך כאן",
+  "commentForm.input-placeholder-reply": "המענה שלך כאן",
   "commentForm.new-comment": "תגובה חדשה",
   "commentForm.notice-about-styling": "עיצוב עם <a>Markdown</a> נתמך",
   "commentForm.preview": "תצוגה מקדימה",

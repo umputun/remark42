@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,8 +20,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/store"
+	adminstore "github.com/umputun/remark42/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -782,6 +786,63 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoFileExists(t, os.TempDir()+"/ava-remark42/42/pic.image", "user's avatar should be removed on deleteme")
 }
 
+// an admin is an admin of the site the session belongs to, so a deletion token for another site
+// served by the same instance must not be processed under that session
+func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+		srv.DataService.AdminStore = adminstore.NewStaticStore("123456", []string{"remark42", "other"}, []string{"a1", "a2"}, "admin@remark-42.com")
+	})
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "other", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1 name", ID: "user1"}}
+	_, err := srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		SessionOnly: true,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"other"},
+			ID:        "3456789",
+			Issuer:    "remark42",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		},
+		User: &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
+	})
+	require.NoError(t, err)
+
+	// adminUmputunToken is a session for remark42
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?site=remark42&token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	comments, err := srv.DataService.User("other", "user1", 0, 0, store.User{})
+	require.NoError(t, err)
+	assert.Len(t, comments, 1, "the other site's data is untouched")
+
+	// the basic-auth admin administers every site and processes it when naming that site
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?site=other&token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, err = srv.DataService.User("other", "user1", 0, 0, store.User{})
+	assert.EqualError(t, err, "no comments for user user1 in store")
+}
+
 // a delete_me request whose token carries a picture must still succeed when the avatar is
 // already gone from the store: the user data is deleted and a missing avatar is tolerated
 func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
@@ -949,7 +1010,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "the delete-me token in the query is not a session")
 
 	// unknown user: deletion is idempotent, so a valid (signed) delete_me token for a user with
 	// no stored data is a no-op success rather than an error

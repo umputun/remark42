@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -367,6 +368,86 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(comments.Comments), "1 comment left")
 	assert.Equal(t, id2, comments.Comments[0].ID)
+}
+
+// TestRest_LastVoteIsPerUser covers the per-user vote field in the last comments response, which
+// is cached, so a response built for one user must not be served to another, and a vote has to
+// replace what the voter already has cached
+func TestRest_LastVoteIsPerUser(t *testing.T) {
+	// startupT's cache stores nothing, which would hide the defect this covers
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah-last-vote"
+	id := addComment(t, store.Comment{Text: "vote target", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+
+	voteSeenBy := func(tkn string) (vote, score int) {
+		r, e := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
+		require.NoError(t, e)
+		rr, e := sendReq(r, tkn)
+		require.NoError(t, e)
+		body, e := io.ReadAll(rr.Body)
+		require.NoError(t, e)
+		require.NoError(t, rr.Body.Close())
+		require.Equal(t, http.StatusOK, rr.StatusCode, string(body))
+		comments := []store.Comment{}
+		require.NoError(t, json.Unmarshal(body, &comments))
+		require.Len(t, comments, 1)
+		require.Equal(t, id, comments[0].ID)
+		return comments[0].Vote, comments[0].Score
+	}
+
+	// the voter has a cached response from before the vote, which the vote has to invalidate
+	vote, score := voteSeenBy(dev2Token)
+	require.Equal(t, 0, vote)
+	require.Equal(t, 0, score)
+
+	// the site feed shows no votes, so a vote must leave it cached
+	feed := func() {
+		body, code := get(t, ts.URL+"/api/v1/rss/site?site=remark42")
+		require.Equal(t, http.StatusOK, code, body)
+	}
+	feed()
+	feedMisses := atomic.LoadInt64(&lru.Misses)
+
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=%s&vote=1", ts.URL, id, postURL), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, dev2Token)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	vote, score = voteSeenBy(dev2Token)
+	assert.Equal(t, 1, vote, "the voter sees their vote right after casting it")
+	assert.Equal(t, 1, score, "the score includes the vote right after it is cast")
+	vote, score = voteSeenBy("")
+	assert.Equal(t, 0, vote, "an anonymous reader sees no vote")
+	assert.Equal(t, 1, score)
+	vote, _ = voteSeenBy(devToken)
+	assert.Equal(t, 0, vote, "another user sees no vote")
+	vote, _ = voteSeenBy(dev2Token)
+	assert.Equal(t, 1, vote, "the voter still sees their vote")
+
+	misses := atomic.LoadInt64(&lru.Misses)
+	feed()
+	assert.Equal(t, misses, atomic.LoadInt64(&lru.Misses), "the site feed is served from the cache after a vote")
+	assert.Greater(t, misses, feedMisses, "misses are counted, so the check above is not vacuous")
+
+	// a new comment still refreshes the cached last comments of every user
+	addComment(t, store.Comment{Text: "another one", Locator: store.Locator{SiteID: "remark42", URL: postURL + "-2"}}, ts)
+	r, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	rr, err := sendReq(r, dev2Token)
+	require.NoError(t, err)
+	body, err := io.ReadAll(rr.Body)
+	require.NoError(t, err)
+	require.NoError(t, rr.Body.Close())
+	comments := []store.Comment{}
+	require.NoError(t, json.Unmarshal(body, &comments))
+	assert.Len(t, comments, 2, "a new comment reaches the voter's cached last comments")
 }
 
 func TestRest_Last(t *testing.T) {
