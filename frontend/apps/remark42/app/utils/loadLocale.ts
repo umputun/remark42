@@ -80,6 +80,9 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
   if (locale === 'he') {
     return import(/* webpackChunkName: "he" */ '../locales/he.json').then((res) => res.default).catch(() => enMessages);
   }
+  if (locale === 'nl') {
+    return import(/* webpackChunkName: "nl" */ '../locales/nl.json').then((res) => res.default).catch(() => enMessages);
+  }
 
   return enMessages;
 }

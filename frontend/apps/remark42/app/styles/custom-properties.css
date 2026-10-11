@@ -74,6 +74,13 @@
   --line-brighter-color: var(--color31);
   --text-color: var(--black-color);
   --transparent: transparent;
+
+  /* overridable via remark_config.custom_properties, same as any variable above, so an
+     embedding site can match its own font without forking/rebuilding this widget. Only
+     font-family, not font-size: nearly every component sets its own explicit font-size
+     (a real 10/12/14/16/20px type scale), so a single --font-size variable here would
+     only affect the handful of elements that don't, not the widget's rendered text. */
+  --font-family: system-ui;
 }
 
 :root .dark {

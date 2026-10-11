@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -287,7 +288,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
-	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
+	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID, lastVotesScope))
 	R.RenderJSON(w, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
@@ -720,7 +721,8 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.remarkURL, tokenStr)
+	// the page signs the admin's requests for the site it is given, so the link names the user's site
+	link := fmt.Sprintf("%s/web/deleteme.html?site_id=%s&token=%s", s.remarkURL, url.QueryEscape(siteID), tokenStr)
 	R.RenderJSON(w, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 

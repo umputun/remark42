@@ -1469,6 +1469,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
+		AudienceReader: s.tokenAudiences(),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
 				return c
@@ -1509,6 +1510,14 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if claims.User.Audience == "" { // reject empty aud, made with old (pre 0.8.x) version of auth package
 				return false
 			}
+			// a delete-me token names the user and is signed like a session, but it is handed to the
+			// admin, so it must only ever work as the deletion request it is
+			if claims.User.BoolAttr("delete_me") {
+				return false
+			}
+			if !s.servesAudience(claims.Audience) {
+				return false
+			}
 			return !claims.User.BoolAttr("blocked")
 		}),
 		JWTQuery:          "jwt", // change default from "token" as it used for deleteme
@@ -1520,6 +1529,33 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		UseGravatar:       true,
 		AudSecrets:        s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// tokenAudiences limits the audience of issued and accepted tokens to the configured sites when
+// remark42 keeps the data itself. The audience is the site a user names at login, and it is echoed
+// back in responses and error messages, so a value nothing serves must not be accepted at all. A
+// remote store decides which sites exist on its side, so with one any audience is let through.
+func (s *ServerCommand) tokenAudiences() token.Audience {
+	if s.Store.Type != "bolt" {
+		return nil
+	}
+	sites := slices.Clone(s.Sites)
+	return token.AudienceFunc(func() ([]string, error) { return sites, nil })
+}
+
+// servesAudience reports whether every audience in a token is a configured site, compared exactly.
+// tokenAudiences restricts the auth package's own check, which ignores case, while the bolt store
+// keys sites by the exact name
+func (s *ServerCommand) servesAudience(auds []string) bool {
+	if s.Store.Type != "bolt" {
+		return true
+	}
+	for _, aud := range auds {
+		if !slices.Contains(s.Sites, aud) {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
