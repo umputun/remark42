@@ -222,12 +222,23 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// GET /login?token=confirmation-jwt&sess=1
 	confClaims, err := e.TokenService.Parse(tkn)
 	if err != nil {
-		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, err, "failed to verify confirmation token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, err, "failed to verify confirmation token")
 		return
 	}
 
 	if e.TokenService.IsExpired(confClaims) {
-		rest.SendErrorJSON(w, r, e.L, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token")
+		return
+	}
+
+	// only a handshake token carrying this provider's name may sign someone in. Other tokens are
+	// signed with the same secret, including handshake tokens of the same user::address shape that
+	// an application mails for its own purposes, and none of them prove the holder received this
+	// provider's confirmation. The token is still a live credential elsewhere, so it is kept out of
+	// the logged URL.
+	if confClaims.Handshake == nil || confClaims.AuthProvider == nil || confClaims.AuthProvider.Name != e.ProviderName {
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusForbidden, fmt.Errorf("not a %s confirmation token", e.ProviderName),
+			"failed to verify confirmation token")
 		return
 	}
 
@@ -263,7 +274,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	elems := strings.Split(confClaims.Handshake.ID, "::")
 	if len(elems) != 2 {
-		rest.SendErrorJSON(w, r, e.L, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token")
 		return
 	}
 	user, address := elems[0], elems[1]
@@ -281,13 +292,13 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if u, err = setAvatar(e.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second}); err != nil {
-		rest.SendErrorJSON(w, r, e.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
 		return
 	}
 
 	cid, err := randToken()
 	if err != nil {
-		rest.SendErrorJSON(w, r, e.L, http.StatusInternalServerError, err, "can't make token id")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusInternalServerError, err, "can't make token id")
 		return
 	}
 
@@ -305,7 +316,7 @@ func (e VerifyHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err = e.TokenService.Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, e.L, http.StatusInternalServerError, err, "failed to set token")
+		rest.SendErrorJSON(w, scrubTokenFromRequest(r), e.L, http.StatusInternalServerError, err, "failed to set token")
 		return
 	}
 	if confClaims.Handshake != nil && confClaims.Handshake.From != "" {

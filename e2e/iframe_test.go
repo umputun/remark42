@@ -327,3 +327,4 @@ func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
 			"the reveal came too early to have been the fallback timer")
 	})
 }
+

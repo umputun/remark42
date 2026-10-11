@@ -198,7 +198,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(lastCommentsScope)
+	key := cache.NewKey(siteID).ID(URLKeyWithUser(r)).Scopes(lastCommentsScope, lastVotesScope)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
 		comments, e := s.dataService.Last(siteID, limit, sinceTime, rest.GetUserOrEmpty(r))
 		if e != nil {

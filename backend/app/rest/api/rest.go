@@ -47,6 +47,7 @@ type Rest struct {
 	WebRoot         string
 	WebFS           fs.FS
 	RemarkURL       string
+	DemoSiteID      string // site the demo pages under /web show, the first configured one
 	ReadOnlyAge     int
 	SharedSecret    string
 	TrustedProxies  []*net.IPNet // reverse-proxy networks whose forwarding headers (X-Real-IP, X-Forwarded-For, ...) are trusted
@@ -90,6 +91,10 @@ type LoadingCache interface {
 const hardBodyLimit = 1024 * 64 // limit size of body
 const openRouteLimiter = 10     // limit for open routes
 const lastCommentsScope = "last"
+
+// lastVotesScope is carried only by the JSON last comments, the one response under that scope with
+// per-user vote data, so a vote does not also drop the feeds
+const lastVotesScope = "last-votes"
 
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
@@ -394,7 +399,7 @@ func (s *Rest) routes() http.Handler {
 		log.Printf("[WARN] no embedded frontend, serving built-in assets only: %v", err)
 		embeddedFrontend = emptyFS{}
 	}
-	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version, s.RemarkURL)
+	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version, s.RemarkURL, s.DemoSiteID)
 	return router
 }
 
@@ -510,7 +515,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 // serves /web from the frontend build, falling back to the assets embedded in the binary for
 // names the build does not produce. the frontend build is read from webRoot on disk, or from the
 // copy embedded at app/cmd/web when that directory is absent.
-func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version, remarkURL string) {
+func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version, remarkURL, siteID string) {
 	frontendFS := embeddedFrontend
 
 	if _, err := os.Stat(webRoot); err == nil {
@@ -525,17 +530,18 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 	sources := templatedFS{
 		fs:        webFiles{frontend: frontendFS, embedded: webassets.FS},
 		remarkURL: remarkURL,
+		siteID:    siteID,
 	}
 	webFS := http.StripPrefix("/web", http.FileServer(http.FS(sources)))
 	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
 		R.Timeout(10*time.Second),
-		// the served body now depends on remarkURL, so it has to be part of the validator. Without
-		// it an operator who corrects a wrong REMARK_URL and restarts the same binary keeps getting
-		// 304 on revalidation, and the client keeps a bundle addressed to the old host for good,
+		// the served body now depends on remarkURL and the demo site, so both have to be part of the
+		// validator. Without them an operator who corrects REMARK_URL or SITE and restarts the same
+		// binary keeps getting 304 on revalidation, and the client keeps the old page for good,
 		// since no-cache means it revalidates rather than aging out
-		cacheControl(time.Hour, version+":"+remarkURL),
+		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID),
 	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {

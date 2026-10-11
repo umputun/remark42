@@ -1,8 +1,9 @@
 import type { User } from 'common/types';
+import { apiFetcher, JWT_HEADER } from 'common/fetcher';
 import { user } from '__stubs__/user';
 import { RequestError } from 'utils/errorUtils';
 
-import { anonymousSignin, oauthSignin, verifyEmailSignin, verifyTelegramSignin } from './auth.api';
+import { anonymousSignin, logout, oauthSignin, verifyEmailSignin, verifyTelegramSignin } from './auth.api';
 
 /**
  * The OAuth flow has no message from the popup to listen for: the popup closes itself and the
@@ -154,5 +155,34 @@ describe.each`
     fetchMock.mockResponses(['{}', json], ['', { status: 401 }]);
 
     await expect(signin()).rejects.toBeInstanceOf(RequestError);
+  });
+});
+
+describe('logout', () => {
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('forgets a header-held session even when the server refuses the logout', async () => {
+    // a token delivered as a header is what the fetcher keeps in memory and sends back
+    jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'jti' }));
+    fetchMock.mockResponseOnce('{}', {
+      headers: { [JWT_HEADER]: 'held.jwt.token', 'Content-Type': 'application/json' },
+    });
+    await apiFetcher.get('/anything');
+
+    // an expired header token is refused with 403 by the logout handler
+    fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status: 403 });
+    // resolving lets the caller clear the signed-in state as well
+    await expect(logout()).resolves.toBeUndefined();
+
+    fetchMock.mockResponseOnce('{}', { headers: { 'Content-Type': 'application/json' } });
+    await apiFetcher.get('/anything');
+    const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect((init?.headers as Record<string, string>)[JWT_HEADER]).toBeUndefined();
   });
 });

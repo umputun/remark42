@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Le chargement d'image est désactivé pour les utilisateurs anonymes. Pour joindre des images, veuillez vous connecter.",
   "commentForm.exceeded-size": "Le fichier {fileName} dépasse la taille limite de {maxImageSize}",
   "commentForm.input-placeholder": "Votre commentaire ici",
+  "commentForm.input-placeholder-reply": "Votre commentaire ici",
   "commentForm.new-comment": "Nouveau commentaire",
   "commentForm.notice-about-styling": "La syntaxe <a>Markdown</a> est prise en charge",
   "commentForm.preview": "Prévisualiser",

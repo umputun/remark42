@@ -189,7 +189,7 @@ func TestRest_FileServerBackendAssets(t *testing.T) {
 func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 	frontend := fstest.MapFS{"index.html": {Data: []byte("embedded frontend index")}}
 	router := routegroup.New(http.NewServeMux())
-	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com")
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com", "")
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -627,6 +627,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			AdminPasswd:  "password",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
 			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
+			JWTQuery:     "jwt", // as in the server, "token" carries the delete-me token
 		}),
 		Cache:     memCache,
 		WebRoot:   tmp,

@@ -65,6 +65,7 @@
   "commentForm.anonymous-uploading-disabled": "Dodawanie zdjęć jest wyłączone dla anonimowych użytkowników. Zaloguj się by mieć możliwość dodawania zdjęć.",
   "commentForm.exceeded-size": "{fileName} przekracza maksymalny limit {maxImageSize}",
   "commentForm.input-placeholder": "Twój komentarz tutaj",
+  "commentForm.input-placeholder-reply": "Twój komentarz tutaj",
   "commentForm.new-comment": "Nowy komentarz",
   "commentForm.notice-about-styling": "Stylowanie z <a>Markdown</a> jest wspierane",
   "commentForm.preview": "Podgląd",

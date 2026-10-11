@@ -231,6 +231,6 @@ http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 - `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete the user's comments and stored details; succeeds even if the user has no comments or is already absent
 - `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 - `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set verified status
-- `GET /api/v1/admin/deleteme?token=token` - process a user's deleteme request; already-deleted or dataless users return success (idempotent)
+- `GET /api/v1/admin/deleteme?site=site-id&token=token` - process a user's deleteme request; already-deleted or dataless users return success (idempotent)
 
 _all admin calls require auth and admin privilege_
