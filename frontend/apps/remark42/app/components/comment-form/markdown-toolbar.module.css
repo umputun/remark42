@@ -1,6 +1,6 @@
 .toolbar {
-  display: block;
-  float: inline-end;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .fileInput {
@@ -16,7 +16,6 @@
   border: 0;
   color: var(--color37);
   display: flex;
-  float: inline-start;
   height: 24px;
   width: 24px;
   justify-content: center;
@@ -34,7 +33,8 @@
 }
 
 .group {
-  display: inline-block;
+  display: flex;
+  align-items: flex-start;
   margin-inline-start: 20px;
 
   &:first-child {

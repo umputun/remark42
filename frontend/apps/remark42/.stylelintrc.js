@@ -5,8 +5,11 @@ module.exports = {
   plugins: ['stylelint-value-no-unknown-custom-properties', 'stylelint-declaration-strict-value'],
   // lets property-layout-mappings/value-keyword-layout-mappings autofix a physical property to
   // the correct logical one (stylelint --fix, already run on commit by lint-staged): every logical
-  // property in this codebase is authored as if ltr were the base direction, with postcss-preset-env
-  // generating the [dir=rtl] variant at build time, so that is the direction stylelint normalizes from
+  // property in this codebase is authored as if ltr were the base direction, and ships to the
+  // browser as written — postcss-preset-env's logical-properties-and-values transform is disabled
+  // (see webpack.config.js) so the browser's own bidi/dir handling resolves it per element, rather
+  // than a build-time [dir=rtl] selector pair keyed off the page's direction — so ltr is still the
+  // direction stylelint normalizes from
   languageOptions: {
     directionality: { inline: 'left-to-right', block: 'top-to-bottom' },
   },

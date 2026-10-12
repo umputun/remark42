@@ -21,6 +21,9 @@
 .controlPanel {
   height: 30px;
   background-color: var(--color5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
 }
 
 .fieldWrapper {

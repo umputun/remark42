@@ -120,6 +120,14 @@ module.exports = (_, { mode, analyze }) => {
                   stage: 0,
                   features: {
                     'custom-properties': false,
+                    // ships logical properties (margin-inline-start, etc.) as authored instead of
+                    // generating [dir=ltr]/[dir=rtl] selector pairs: those pairs key off the page's
+                    // html[dir] ancestor rather than an element's own resolved direction, which
+                    // mis-mirrors content whose direction differs from the page (e.g. an LTR reply
+                    // inside an RTL thread). Native logical properties follow each element's own
+                    // direction correctly; the cost is Opera Mini, KaiOS 2.5 and QQ 14.9 (~0.1%
+                    // global usage) not resolving them
+                    'logical-properties-and-values': false,
                   },
                 },
               ],
@@ -154,7 +162,13 @@ module.exports = (_, { mode, analyze }) => {
         options: {
           sourceMap: isDev,
           postcssOptions: {
-            plugins: [['postcss-preset-env', { stage: 0, features: { 'custom-properties': false } }]],
+            plugins: [
+              [
+                'postcss-preset-env',
+                // see the matching features comment in cssRule above
+                { stage: 0, features: { 'custom-properties': false, 'logical-properties-and-values': false } },
+              ],
+            ],
           },
         },
       },
