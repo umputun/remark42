@@ -9,7 +9,7 @@
   outline-width: 0;
   display: none;
   top: 100%;
-  left: 0;
+  inset-inline-start: 0;
   transform: translate(-0.5em, 5px);
   min-width: 120px;
   max-width: 260px;
@@ -29,7 +29,7 @@
 .title {
   &::after {
     content: '\25BE';
-    margin-left: 2px;
+    margin-inline-start: 2px;
   }
 }
 
@@ -43,4 +43,10 @@
 
 .themeLight > .content {
   background-color: var(--color6);
+}
+
+/* the dropdown nudges itself half an em toward the inline-start edge it's anchored to; in rtl
+   that edge is the physical right, so the nudge has to point the other way */
+:global([dir='rtl']) .content {
+  transform: translate(0.5em, 5px);
 }

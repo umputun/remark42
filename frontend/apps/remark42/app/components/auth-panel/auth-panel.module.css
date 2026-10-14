@@ -7,18 +7,18 @@
 }
 
 .column:last-child {
-  margin-left: 8px;
-  text-align: right;
+  margin-inline-start: 8px;
+  text-align: end;
 }
 
 .columnSeparated > * + * {
   position: relative;
   display: inline-block;
-  margin-left: 20px;
+  margin-inline-start: 20px;
 
   &::before {
     position: absolute;
-    left: -15px;
+    inset-inline-start: -15px;
     display: inline-block;
     width: 10px;
     text-align: center;
@@ -50,11 +50,18 @@
 
 .userLogoutButton {
   composes: userButton;
-  margin-left: 12px;
+  margin-inline-start: 12px;
+}
+
+/* same reasoning as profile.module.css's .signout: the icon's arrow points away from its door
+   frame, i.e. "outward", but the glyph itself doesn't know which physical side is "outward" in
+   rtl, so it needs mirroring alongside the layout */
+:global([dir='rtl']) .userLogoutButton svg {
+  transform: scaleX(-1);
 }
 
 .userAvatar {
   width: 20px;
   height: 20px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }

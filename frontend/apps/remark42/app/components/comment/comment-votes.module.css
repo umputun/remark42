@@ -3,10 +3,10 @@
   align-items: center;
   position: absolute;
   top: 5px;
-  right: 0;
+  inset-inline-end: 0;
   min-width: 72px;
   font-weight: 700;
-  text-align: right;
+  text-align: end;
   line-height: 16px;
   user-select: none;
 }
@@ -50,6 +50,11 @@
   min-width: 16px;
   text-align: center;
   color: rgb(var(--secondary-darker-text-color));
+
+  /* the score is a number, not prose: pin it to ltr regardless of locale so a negative value's
+     minus sign stays next to the digit instead of drifting to the other side under rtl */
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .votesNegative {

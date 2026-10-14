@@ -48,6 +48,14 @@ below to have your translation available to all remark42 users and included in t
     ```
 
 1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
+
+    {{< note "↔️" >}}
+    If the language is written right-to-left (e.g. Arabic, Hebrew, Persian), also add its code to
+    `RTL_LOCALES` in [frontend/apps/remark42/app/common/direction.ts](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/common/direction.ts).
+    That is the only place direction is configured — once the code is listed there, the widget
+    mirrors its layout for that locale automatically; no other change is needed.
+    {{< /note >}}
+
 1.  Run `pnpm i` in the `frontend/apps/remark42` folder
 1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder
 1.  Run `pnpm translation:generate` in the `frontend/apps/remark42` folder
@@ -58,7 +66,11 @@ below to have your translation available to all remark42 users and included in t
 1.  Commit all changes above in your fork, including the generated `app/utils/loadLocale.ts`
 1.  Test your changes in the interface:
 
-    1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs) and replace `ru` with your translation language code
+    1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs)
+        and replace `ru` with your translation language code. That single change is enough for
+        both the translated text and, if you added the code to `RTL_LOCALES` above, the mirrored
+        layout — the widget determines left-to-right or right-to-left automatically from the
+        locale, so nothing else needs configuring to preview either.
     2.  Start the backend from the root directory of your fork:
 
         ```shell
