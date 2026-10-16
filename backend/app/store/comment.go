@@ -171,7 +171,7 @@ var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 // SanitizeAsURL drops dangerous code from a url.
 // It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
 func (c *Comment) SanitizeAsURL(inp string) string {
-	h := fmt.Sprintf(`<a href="%s">`, html.EscapeString(inp))
+	h := fmt.Sprintf(`<a href=%q>`, html.EscapeString(inp))
 	clean := bluemonday.UGCPolicy().Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
 		return html.UnescapeString(match[1])

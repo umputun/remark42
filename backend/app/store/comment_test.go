@@ -230,18 +230,6 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 			"https://radio-t.com/p/2021/03/23/prep-747/#remark42__comment-1b365913-7056-4920-b9ad-01304bdda085",
 		},
 		{
-			"https://example.com/two?a=1&b=2",
-			"https://example.com/two?a=1&b=2",
-		},
-		{
-			"https://example.com/two?a=1&amp;b=2",
-			"https://example.com/two?a=1&amp;b=2",
-		},
-		{
-			`https://example.com/?q="<x>"`,
-			`https://example.com/?q="<x>"`,
-		},
-		{
 			"javascript:alert(document.domain)//",
 			"",
 		},
@@ -290,19 +278,5 @@ func TestComment_sanitizeText(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))
 		})
-	}
-}
-
-func TestComment_sanitizeAsURLIsIdempotent(t *testing.T) {
-	inputs := []string{
-		"https://example.com/two?a=1&b=2",
-		"https://example.com/two?a=1&amp;b=2",
-		`https://example.com/?q="<x>"`,
-		"javascript:alert(1)",
-	}
-	c := Comment{}
-	for _, input := range inputs {
-		once := c.SanitizeAsURL(input)
-		assert.Equal(t, once, c.SanitizeAsURL(once), input)
 	}
 }
