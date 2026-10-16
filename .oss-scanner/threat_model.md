@@ -26,7 +26,7 @@ Lower priority: admin import, export and remap parsers (`rest/api/migrator.go`, 
 
 ## How to exercise it
 
-The image contains `/src/backend` and `/src/frontend/apps/remark42` only, with no `.git`, docs, site or e2e directories. Go dependencies are vendored and work offline; widget dependencies are installed in `node_modules`.
+The image contains `/src/backend`, `/src/frontend/apps/remark42` and the git history in `/src/.git`; the docs, site and e2e directories are not in it. Go dependencies are vendored and work offline; widget dependencies are installed in `node_modules`.
 
 - Backend tests: `cd /src/backend/app && go test ./...`. Tests in `rest/api` start the full server and are the easiest base for an end-to-end reproducer.
 - Widget tests: `cd /src/frontend/apps/remark42 && pnpm test` (jest) or `pnpm test:unit`.

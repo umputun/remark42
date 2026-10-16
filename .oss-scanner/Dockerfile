@@ -1,7 +1,8 @@
 # image for anthropic's oss scanner. build from the repo root:
 #   docker build -f .oss-scanner/Dockerfile .
-# the root .dockerignore is a whitelist, so /src holds only backend/ and frontend/apps/remark42/.
-# network is available during the build only; everything a test needs must be fetched here.
+# the root .dockerignore is a whitelist, so /src holds only backend/ and frontend/apps/remark42/;
+# the scanner adds .git after the build. network is available during the build only; everything
+# a test needs must be fetched here.
 FROM golang:1.27.2-bookworm AS go-toolchain
 
 FROM node:24-bookworm
