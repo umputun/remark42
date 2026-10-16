@@ -136,7 +136,7 @@ func TestImage_Routes(t *testing.T) {
 	})
 
 	t.Run("non-image reference", func(t *testing.T) {
-		encodedImgURL := base64.URLEncoding.EncodeToString([]byte("https://google.com"))
+		encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/page.html"))
 		resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
 		require.NoError(t, err)
 		assert.NoError(t, resp.Body.Close())
@@ -809,6 +809,12 @@ func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 			w.Header().Add("Content-Length", "1462")
 			w.Header().Add("Content-Type", "image/png")
 			_, err := w.Write(gopherPNGBytes())
+			assert.NoError(t, err)
+			return
+		}
+		if r.URL.Path == "/page.html" {
+			w.Header().Add("Content-Type", "text/html; charset=utf-8")
+			_, err := w.Write([]byte("<html><body>not an image</body></html>"))
 			assert.NoError(t, err)
 			return
 		}
