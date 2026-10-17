@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -83,10 +84,10 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 func (t *Telegram) buildMessage(req Request) string {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := fmt.Sprintf(`<a href=%q>%s</a>`, commentURLPrefix+req.Comment.ID, ntf.EscapeTelegramText(req.Comment.User.Name))
+	msg := fmt.Sprintf(`<a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.Comment.ID), ntf.EscapeTelegramText(req.Comment.User.Name))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(" -> <a href=%q>%s</a>", commentURLPrefix+req.parent.ID, ntf.EscapeTelegramText(req.parent.User.Name))
+		msg += fmt.Sprintf(` -> <a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.parent.ID), ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
 	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
@@ -96,7 +97,7 @@ func (t *Telegram) buildMessage(req Request) string {
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", req.Comment.Locator.URL, ntf.EscapeTelegramText(req.Comment.PostTitle))
+		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", html.EscapeString(req.Comment.Locator.URL), ntf.EscapeTelegramText(req.Comment.PostTitle))
 	}
 
 	return msg
