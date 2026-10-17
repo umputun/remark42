@@ -33,7 +33,7 @@
   "blockingDuration.week": "На тиждень",
   "comment.block": "Блокувати",
   "comment.block-user": "Заблокувати користувача {userName} {duration}?",
-  "comment.blocked-user": "Заблокованний",
+  "comment.blocked-user": "Заблокований",
   "comment.blocking-period": "Період блокування",
   "comment.cancel": "Відмінити",
   "comment.copied": "Скопійовано!",

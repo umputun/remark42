@@ -41,7 +41,7 @@
   "comment.delete": "刪除",
   "comment.delete-message": "確定要刪除這則留言嗎?",
   "comment.deleted-comment": "此留言已刪除",
-  "comment.deleted-user": "刪除",
+  "comment.deleted-user": "已刪除",
   "comment.edit": "編輯",
   "comment.edit-countdown": "編輯將被禁用",
   "comment.expired-time": "已超過可編輯時間。",

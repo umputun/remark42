@@ -32,7 +32,7 @@
   "blockingDuration.permanently": "永久",
   "blockingDuration.week": "一周",
   "comment.block": "封禁",
-  "comment.block-user": "是否封禁 {userName} {duration}?",
+  "comment.block-user": "是否对 {userName} 实施{duration}的封禁？",
   "comment.blocked-user": "已封禁用户",
   "comment.blocking-period": "封禁期限",
   "comment.cancel": "取消",

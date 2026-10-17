@@ -32,7 +32,7 @@
   "blockingDuration.permanently": "دائماً",
   "blockingDuration.week": "لأسبوعٍ",
   "comment.block": "حظر",
-  "comment.block-user": "هل تودُّ حظر {userName} لمدة {duration}؟",
+  "comment.block-user": "هل تودُّ حظر {userName} {duration}؟",
   "comment.blocked-user": "محظور",
   "comment.blocking-period": "فترة الحظر",
   "comment.cancel": "إلغاء",

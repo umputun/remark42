@@ -32,7 +32,7 @@
   "blockingDuration.permanently": "Постоянно",
   "blockingDuration.week": "За една седмица",
   "comment.block": "Блокирай",
-  "comment.block-user": "Искате ли да блокирате {userName} за {duration}?",
+  "comment.block-user": "Искате ли да блокирате {userName} {duration}?",
   "comment.blocked-user": "Блокиран",
   "comment.blocking-period": "Период за блокиране",
   "comment.cancel": "Отказ",

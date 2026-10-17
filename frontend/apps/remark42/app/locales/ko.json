@@ -32,7 +32,7 @@
   "blockingDuration.permanently": "영구적으로",
   "blockingDuration.week": "일주일 동안",
   "comment.block": "차단",
-  "comment.block-user": "{userName}을(를) {duration} 동안 차단하시겠습니까?",
+  "comment.block-user": "{userName}을(를) {duration} 차단하시겠습니까?",
   "comment.blocked-user": "차단됨",
   "comment.blocking-period": "차단 기간",
   "comment.cancel": "취소",
