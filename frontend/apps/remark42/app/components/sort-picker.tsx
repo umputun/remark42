@@ -55,11 +55,11 @@ export function SortPicker() {
 const messages = defineMessages({
   best: {
     id: 'commentsSort.best',
-    defaultMessage: 'Most upvoted',
+    defaultMessage: 'Best',
   },
   worst: {
     id: 'commentsSort.worst',
-    defaultMessage: 'Most downvoted',
+    defaultMessage: 'Worst',
   },
   newest: {
     id: 'commentsSort.newest',
