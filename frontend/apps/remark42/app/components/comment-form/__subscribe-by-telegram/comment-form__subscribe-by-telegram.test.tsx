@@ -45,7 +45,7 @@ describe('<SubscribeByTelegram />', () => {
   it('should be rendered with disabled email button when user is anonymous', () => {
     createWrapper({ ...initialStore, user: anonymousUser });
 
-    expect(screen.getByTitle('Available only for registered users')).toBeDisabled();
+    expect(screen.getByTitle('Only available to registered users')).toBeDisabled();
   });
 
   it('should show correct telegram link', async () => {
@@ -57,7 +57,7 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(await screen.findByText(/by the link/)).toHaveAttribute('href', 'https://t.me/foo_bot/?start=foo_token');
+    expect(await screen.findByText(/using this link/)).toHaveAttribute('href', 'https://t.me/foo_bot/?start=foo_token');
   });
 
   it('should not do same API call to /subscribe twice during same session', async () => {
@@ -88,7 +88,7 @@ describe('<SubscribeByTelegram />', () => {
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
     expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/You have been subscribed/)).toBeInTheDocument();
+    expect(screen.getByText(/You have subscribed/)).toBeInTheDocument();
   });
 
   it('should subscribe and then unsubscribe', async () => {
@@ -107,7 +107,7 @@ describe('<SubscribeByTelegram />', () => {
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
     expect(api.telegramUnsubcribe).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/You have been unsubscribed/)).toBeInTheDocument();
+    expect(screen.getByText(/You have unsubscribed/)).toBeInTheDocument();
   });
 
   it('should subscribe, close window and then unsubscribe', async () => {
@@ -129,7 +129,7 @@ describe('<SubscribeByTelegram />', () => {
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
     expect(api.telegramUnsubcribe).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/You have been unsubscribed/)).toBeInTheDocument();
+    expect(screen.getByText(/You have unsubscribed/)).toBeInTheDocument();
   });
 
   it('should subscribe, unsubscribe and resubscribe', async () => {
@@ -151,7 +151,7 @@ describe('<SubscribeByTelegram />', () => {
     expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
     fireEvent.click(await screen.findByText('Check'));
     expect(api.telegramCurrentSubscribtion).toHaveBeenCalledTimes(2);
-    expect(await screen.findByText(/You have been subscribed/)).toBeInTheDocument();
+    expect(await screen.findByText(/You have subscribed/)).toBeInTheDocument();
   });
 
   it('should resubscribe after loading an existing subscription', async () => {
@@ -163,11 +163,14 @@ describe('<SubscribeByTelegram />', () => {
     createWrapper();
     fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
     fireEvent.click(await screen.findByText('Unsubscribe'));
-    await screen.findByText(/You have been unsubscribed/);
+    await screen.findByText(/You have unsubscribed/);
 
     fireEvent.click(screen.getByText('Resubscribe'));
 
-    expect(await screen.findByText(/by the link/)).toHaveAttribute('href', 'https://t.me/foo_bot/?start=fresh_token');
+    expect(await screen.findByText(/using this link/)).toHaveAttribute(
+      'href',
+      'https://t.me/foo_bot/?start=fresh_token'
+    );
     expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
   });
 
@@ -195,7 +198,7 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(screen.getByText(/You have been subscribed/)).toBeInTheDocument();
+    expect(screen.getByText(/You have subscribed/)).toBeInTheDocument();
   });
 
   it('should show subscribed interface if user is already subscribed with 409 status code', async () => {
@@ -213,6 +216,6 @@ describe('<SubscribeByTelegram />', () => {
     await screen.findByLabelText('Loading...');
     await waitForElementToBeRemoved(() => screen.queryByLabelText('Loading...'));
 
-    expect(screen.getByText(/You have been subscribed/)).toBeInTheDocument();
+    expect(screen.getByText(/You have subscribed/)).toBeInTheDocument();
   });
 });

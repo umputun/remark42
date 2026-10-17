@@ -185,13 +185,15 @@ export class Comment extends Component<CommentProps, State> {
     const blockingDurations = getBlockingDurations(this.props.intl);
     const blockDuration = blockingDurations.find((el) => el.value === ttl);
     // blocking duration may be undefined if user hasn't selected anything
-    // and ttl equals "Blocking period"
+    // and ttl is the select's placeholder option
     if (!blockDuration) return;
 
+    // only the first letter is lowered, so the label reads mid-sentence while languages that
+    // capitalise nouns, such as German, keep them capitalised
     const duration = blockDuration.label;
     const blockUser = this.props.intl.formatMessage(messages.blockUser, {
       userName: user.name,
-      duration: duration.toLowerCase(),
+      duration: duration.charAt(0).toLowerCase() + duration.slice(1),
     });
     if (window.confirm(blockUser)) {
       this.props.blockUser!(user.id, user.name, ttl);
@@ -200,7 +202,7 @@ export class Comment extends Component<CommentProps, State> {
 
   unblockUser = () => {
     const { user } = this.props.data;
-    const unblockUser = this.props.intl.formatMessage(messages.unblockUser);
+    const unblockUser = this.props.intl.formatMessage(messages.unblockUser, { userName: user.name });
 
     if (window.confirm(unblockUser)) {
       this.props.unblockUser!(user.id);
@@ -462,7 +464,7 @@ export class Comment extends Component<CommentProps, State> {
 
           {isAdmin && !props.isUserBanned && props.data.delete && (
             <span className={styles.status}>
-              <FormattedMessage id="comment.deleted-user" defaultMessage="Deleted" />
+              <FormattedMessage id="comment.deleted-badge" defaultMessage="Deleted" />
             </span>
           )}
           {this.props.view !== 'pinned' && (
@@ -574,11 +576,11 @@ function getLocalDatetime(intl: IntlShape, date: Date) {
 const messages = defineMessages({
   deleteMessage: {
     id: 'comment.delete-message',
-    defaultMessage: 'Do you want to delete this comment?',
+    defaultMessage: 'Do you really want to delete this comment?',
   },
   hideUserComments: {
     id: 'comment.hide-user-comment',
-    defaultMessage: 'Do you want to hide comments of {userName}?',
+    defaultMessage: 'Do you want to hide all comments by {userName}?',
   },
   pinComment: {
     id: 'comment.pin-comment',
@@ -602,7 +604,7 @@ const messages = defineMessages({
   },
   unblockUser: {
     id: 'comment.unblock-user',
-    defaultMessage: 'Do you want to unblock this user?',
+    defaultMessage: 'Do you want to unblock {userName}?',
   },
   deletedComment: {
     id: 'comment.deleted-comment',

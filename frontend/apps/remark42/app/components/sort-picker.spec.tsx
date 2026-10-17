@@ -14,7 +14,7 @@ describe('<SortPicker />', () => {
     const { container, queryAllByText, queryByText } = render(<SortPicker />, defaultState);
 
     expect(container.querySelectorAll('option')).toHaveLength(8);
-    expect(queryAllByText('Best')).toHaveLength(2);
+    expect(queryAllByText('Most upvoted')).toHaveLength(2);
     expect(queryByText('Sort by')).toBeInTheDocument();
   });
 

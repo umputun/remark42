@@ -3,7 +3,7 @@ import { defineMessages } from 'common/intl';
 export const messages = defineMessages<string>({
   signin: {
     id: 'auth.signin',
-    defaultMessage: 'Sign In',
+    defaultMessage: 'Sign in',
   },
   or: {
     id: 'auth.or',
@@ -11,19 +11,19 @@ export const messages = defineMessages<string>({
   },
   username: {
     id: 'auth.username',
-    defaultMessage: 'Username',
+    defaultMessage: 'Name',
   },
   usernameRestriction: {
     id: 'auth.symbols-restriction',
-    defaultMessage: 'Username must contain only letters, numbers, underscores or spaces',
+    defaultMessage: 'Name may only contain letters, numbers, underscores and spaces',
   },
   emailAddress: {
     id: 'auth.email-address',
-    defaultMessage: 'Email Address',
+    defaultMessage: 'Email address',
   },
   token: {
     id: 'token',
-    defaultMessage: 'Copy and paste the token from the email',
+    defaultMessage: 'Paste the token from the email',
   },
   expiredToken: {
     id: 'token.expired',
@@ -35,11 +35,11 @@ export const messages = defineMessages<string>({
   },
   oauthSource: {
     id: 'auth.oauth-source',
-    defaultMessage: 'Use Social Network',
+    defaultMessage: 'Sign in with a social network',
   },
   oauthTitle: {
     id: 'auth.oauth-button',
-    defaultMessage: 'Sign In with {provider}',
+    defaultMessage: 'Sign in with {provider}',
   },
   back: {
     id: 'auth.back',
@@ -51,18 +51,18 @@ export const messages = defineMessages<string>({
   },
   submit: {
     id: 'auth.submit',
-    defaultMessage: 'Submit',
+    defaultMessage: 'Confirm',
   },
   openProfile: {
     id: 'auth.open-profile',
-    defaultMessage: 'Open My Profile',
+    defaultMessage: 'Open your profile',
   },
   signout: {
     id: 'auth.signout',
-    defaultMessage: 'Sign Out',
+    defaultMessage: 'Sign out',
   },
   noProviders: {
     id: 'auth.no-providers',
-    defaultMessage: 'No providers available. Maybe you forgot to enable them?',
+    defaultMessage: 'No sign-in method available. Perhaps the site owner forgot to enable it?',
   },
 });

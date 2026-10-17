@@ -104,7 +104,7 @@ describe('every shipped catalogue', () => {
 
   const richText = [
     { id: 'root.powered-by', defaultMessage: 'Powered by <a>Remark42</a>' },
-    { id: 'commentForm.notice-about-styling', defaultMessage: 'Styling with <a>Markdown</a> is supported' },
+    { id: 'commentForm.notice-about-styling', defaultMessage: '<a>Markdown</a> can be used for formatting' },
   ];
 
   // only the handled tag is stripped; a self-closing tag stays, as the binding keeps it

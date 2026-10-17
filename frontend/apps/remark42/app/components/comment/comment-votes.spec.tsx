@@ -24,7 +24,7 @@ describe('<CommentVote />', () => {
         .mockImplementationOnce(({ vote }) => Promise.resolve({ id: '1', score: 10 + vote }));
       render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
       fireEvent(screen.getByTitle(activeButtonText), new Event('click'));
-      expect(screen.getByTitle('Votes score')).toHaveTextContent(`${10 + increment}`);
+      expect(screen.getByTitle('Score')).toHaveTextContent(`${10 + increment}`);
       expect(screen.getByTitle(activeButtonText)).toBeDisabled();
       expect(screen.getByTitle(secondButtonText)).toBeDisabled();
       await waitFor(() => expect(putCommentVoteSpy).toHaveBeenCalledWith({ id: '1', vote: increment }));
@@ -41,12 +41,12 @@ describe('<CommentVote />', () => {
       )
     );
     render(<CommentVotes id="1" vote={0} votes={10} controversy={0} />);
-    expect(screen.getByTitle('Votes score')).toHaveTextContent('10');
+    expect(screen.getByTitle('Score')).toHaveTextContent('10');
     fireEvent(screen.getByTitle('Vote down'), new Event('click'));
-    await waitFor(() => expect(screen.getByTitle('Votes score')).toHaveTextContent('9'));
+    await waitFor(() => expect(screen.getByTitle('Score')).toHaveTextContent('9'));
     reject({ code: 0 });
     await waitFor(() => {
-      expect(screen.getByTitle('Votes score')).toHaveTextContent('10');
+      expect(screen.getByTitle('Score')).toHaveTextContent('10');
       expect(screen.getByText('Something went wrong. Please try again a bit later.')).toBeVisible();
     });
     putCommnetVoteSpy.mockClear();
@@ -70,7 +70,7 @@ describe('<CommentVote />', () => {
   it('shows the vote count as the tooltip when there is no controversy', () => {
     render(<CommentVotes id="1" vote={0} votes={3} controversy={0} />);
 
-    expect(screen.getByTitle('Votes score')).toHaveTextContent('3');
+    expect(screen.getByTitle('Score')).toHaveTextContent('3');
     expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
   });
 
@@ -79,7 +79,7 @@ describe('<CommentVote />', () => {
   it('shows the vote count as the tooltip when controversy is absent', () => {
     render(<CommentVotes id="1" vote={0} votes={3} controversy={undefined} />);
 
-    expect(screen.getByTitle('Votes score')).toHaveTextContent('3');
+    expect(screen.getByTitle('Score')).toHaveTextContent('3');
     expect(screen.queryByTitle(/Controversy/)).not.toBeInTheDocument();
   });
 
@@ -87,6 +87,6 @@ describe('<CommentVote />', () => {
     render(<CommentVotes id="1" vote={0} votes={3} controversy={1.234} />);
 
     expect(screen.getByTitle('Controversy: 1.23')).toHaveTextContent('3');
-    expect(screen.queryByTitle('Votes score')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Score')).not.toBeInTheDocument();
   });
 });

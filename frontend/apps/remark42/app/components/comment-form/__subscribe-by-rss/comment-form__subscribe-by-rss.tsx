@@ -16,11 +16,11 @@ export const createSubscribeUrl = (type: 'post' | 'site' | 'reply', urlParams = 
 const messages = defineMessages({
   thread: {
     id: 'subscribeByRSS.thread',
-    defaultMessage: 'Thread',
+    defaultMessage: 'This page',
   },
   site: {
     id: 'subscribeByRSS.site',
-    defaultMessage: 'Site',
+    defaultMessage: 'All pages',
   },
   replies: {
     id: 'subscribeByRSS.replies',

@@ -50,7 +50,7 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 
 	frame = reload(t, page)
 
-	subscribe := frame.Locator(`[title="Subscribe by Email"]`)
+	subscribe := frame.Locator(`[title="Subscribe by email"]`)
 	waitVisible(t, subscribe)
 	require.NoError(t, subscribe.Click())
 
@@ -73,7 +73,7 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 
 	// the subscription is the server's now, so the panel offers to end it on the next load
 	frame = reload(t, page)
-	require.NoError(t, frame.Locator(`[title="Subscribe by Email"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Subscribe by email"]`).Click())
 	unsubscribe := frame.Locator(`button:text-is("Unsubscribe")`)
 	waitVisible(t, unsubscribe)
 
@@ -90,7 +90,7 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	// awaited and the step changes a whole task after the click has finished propagating, so the
 	// button is still in the tree when a bubble-phase listener asks. The phase only decides a
 	// detach that lands inside the click, which is what dropdown.test.tsx drives directly.
-	waitVisible(t, frame.Locator(`text=You have been unsubscribed by email to updates`))
+	waitVisible(t, frame.Locator(`text=You have unsubscribed from email updates`))
 
 	// the panel closes when asked to, which is the half a null render used to fake: the old trick
 	// emptied the content and left the listbox itself open on the page
@@ -124,7 +124,7 @@ func TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget(t *testing.T)
 		"could not clear a subscription left by an earlier run: %s", body)
 	frame = reload(t, page)
 
-	subscribe := frame.Locator(`[title="Subscribe by Email"]`)
+	subscribe := frame.Locator(`[title="Subscribe by email"]`)
 	waitVisible(t, subscribe)
 	require.NoError(t, subscribe.Click())
 
@@ -178,7 +178,7 @@ func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
 		"could not clear a subscription left by an earlier run: %s", body)
 	frame = reload(t, page)
 
-	subscribe := frame.Locator(`[title="Subscribe by Email"]`)
+	subscribe := frame.Locator(`[title="Subscribe by email"]`)
 	waitVisible(t, subscribe)
 	require.NoError(t, subscribe.Click())
 
