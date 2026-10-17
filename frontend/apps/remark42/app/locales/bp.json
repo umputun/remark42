@@ -20,7 +20,7 @@
   "auth.telegram-qr": "Código QR do Telegram",
   "auth.username": "Nome do usuário",
   "authPanel.disable-comments": "Desabilitar comentários",
-  "authPanel.disabled-cookies": "Desabilite o bloqueio de cookies de terceiros para fazer login ou abrir comentários em uma",
+  "authPanel.disabled-cookies": "Desabilite o bloqueio de cookies de terceiros para fazer login ou abra os comentários em uma",
   "authPanel.enable-comments": "Habilitar comentários",
   "authPanel.enable-cookies": "Permita cookies para fazer login e comentar",
   "authPanel.hide-settings": "Ocultar configurações",

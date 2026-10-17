@@ -20,7 +20,7 @@
   "auth.telegram-qr": "קוד QR של טלגרם",
   "auth.username": "שם משתמש",
   "authPanel.disable-comments": "השבתת תגובות",
-  "authPanel.disabled-cookies": "יש לבטל את חסימת עוגיות צד שלישי כדי להתחבר, או לפתוח את התגובות",
+  "authPanel.disabled-cookies": "יש לבטל את חסימת עוגיות צד שלישי כדי להתחבר, או לחלופין לפתוח את התגובות",
   "authPanel.enable-comments": "הפעלת תגובות",
   "authPanel.enable-cookies": "אפשור עוגיות כדי להתחבר ולהגיב",
   "authPanel.hide-settings": "הסתרת הגדרות",
