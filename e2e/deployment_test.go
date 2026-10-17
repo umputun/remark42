@@ -104,7 +104,7 @@ func TestAuth_NoProvidersSaysSo(t *testing.T) {
 	frame := openURL(t, page, threadURLOn(t, noAuthURL))
 
 	require.NoError(t, frame.Locator(".auth-button").Click())
-	waitVisible(t, frame.Locator("text=No providers available"))
+	waitVisible(t, frame.Locator("text=No sign-in method available"))
 
 	// and no empty form is offered alongside it
 	inputs, err := frame.Locator(".auth-input-username").Count()

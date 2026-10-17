@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
 import type { IntlShape } from 'common/intl';
-import { useIntl } from 'common/intl';
+import { createIntl, useIntl } from 'common/intl';
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 
@@ -11,6 +11,7 @@ import type { CommentProps } from './comment';
 import { Comment } from './comment';
 import { CommentForm } from 'components/comment-form';
 import { CommentMode } from 'common/types';
+import de from 'locales/de.json';
 
 function CommentWithIntl(props: CommentProps) {
   const intl = useIntl();
@@ -284,6 +285,24 @@ describe('<Comment />', () => {
 
       const textarea = screen.getByTestId('textarea_1') as HTMLTextAreaElement;
       expect(textarea.value).toBe(expectedTextareaValue(payload));
+    });
+  });
+  describe('block confirmation', () => {
+    // the duration is a select label reused inside the sentence: only its first letter may be
+    // lowered, or a language that capitalises nouns, such as German, loses those capitals
+    it.each([
+      ['en', {}, 'Do you want to block username for a month?'],
+      ['de', de, 'Möchten Sie username wirklich für einen Monat sperren?'],
+    ])('inserts the duration label with only its first letter lowered (%s)', async (locale, messages, expected) => {
+      const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+      const props = getProps();
+      props.user!.admin = true;
+      const { container } = render(<Comment {...props} intl={createIntl(locale, messages)} />);
+
+      fireEvent.change(container.querySelector('select')!, { target: { value: '43200m' } });
+
+      await waitFor(() => expect(confirm).toHaveBeenCalledWith(expected));
+      confirm.mockRestore();
     });
   });
 });
