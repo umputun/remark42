@@ -43,17 +43,17 @@ describe('<Auth/>', () => {
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
     });
 
     it('should not close dropdown by clickOutside message from a foreign source', async () => {
       const { container } = render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       window.dispatchEvent(new MessageEvent('message', { data: { clickOutside: true }, source: null }));
@@ -67,7 +67,7 @@ describe('<Auth/>', () => {
 
       expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       postFromParent({ clickOutside: true });
@@ -82,7 +82,7 @@ describe('<Auth/>', () => {
     ])('should not close dropdown by %s message from parent', async (_, message) => {
       const { container } = render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       postFromParent(message);
@@ -99,7 +99,7 @@ describe('<Auth/>', () => {
       const updateIframeHeight = jest.spyOn(postMessage, 'updateIframeHeight');
       const { container } = render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
+      fireEvent.click(screen.getByText('Sign in'));
       expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
 
       updateIframeHeight.mockClear();
@@ -127,15 +127,15 @@ describe('<Auth/>', () => {
 
     expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
 
-    expect(screen.getByText('Sign In')).toHaveClass('auth-button');
-    fireEvent.click(screen.getByText('Sign In'));
+    expect(screen.getByText('Sign in')).toHaveClass('auth-button');
+    fireEvent.click(screen.getByText('Sign in'));
     expect(container.querySelector('.auth-dropdown')).toBeInTheDocument();
     providers.forEach((p) => {
       const { name } = getProviderData(p, 'light');
-      expect(screen.getByTitle(`Sign In with ${name}`)).toBeInTheDocument();
+      expect(screen.getByTitle(`Sign in with ${name}`)).toBeInTheDocument();
     });
-    expect(screen.queryByPlaceholderText('Username')).not.toBeInTheDocument();
-    expect(screen.queryByText('Submit')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Confirm')).not.toBeInTheDocument();
   });
 
   it('should render email provider', () => {
@@ -143,11 +143,11 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
     expect(screen.getByText('email')).toHaveClass('auth-form-title');
-    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
-    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
+    expect(screen.getByPlaceholderText('Name')).toHaveClass('auth-input-username');
+    expect(screen.getByPlaceholderText('Email address')).toHaveClass('auth-input-email');
+    expect(screen.getByText('Confirm')).toHaveClass('auth-submit');
   });
 
   it('should render anonymous provider', () => {
@@ -155,10 +155,10 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
     expect(screen.getByText('anonymous')).toHaveClass('auth-form-title');
-    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
+    expect(screen.getByPlaceholderText('Name')).toHaveClass('auth-input-username');
+    expect(screen.getByText('Confirm')).toHaveClass('auth-submit');
   });
 
   it('should render tabs with two form providers', () => {
@@ -166,20 +166,20 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
     expect(screen.getByDisplayValue('email')).toHaveAttribute('id', 'form-provider-email');
     expect(screen.getByText('email')).toHaveAttribute('for', 'form-provider-email');
     expect(screen.getByText('email')).toHaveClass('auth-tabs-item');
     expect(screen.getByDisplayValue('anonymous')).toHaveAttribute('id', 'form-provider-anonymous');
     expect(screen.getByText('anonym')).toHaveAttribute('for', 'form-provider-anonymous');
     expect(screen.getByText('anonym')).toHaveClass('auth-tabs-item');
-    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
+    expect(screen.getByPlaceholderText('Name')).toHaveClass('auth-input-username');
+    expect(screen.getByText('Confirm')).toHaveClass('auth-submit');
 
     fireEvent.click(screen.getByLabelText('email'));
-    expect(screen.getByPlaceholderText('Username')).toHaveClass('auth-input-username');
-    expect(screen.getByPlaceholderText('Email Address')).toHaveClass('auth-input-email');
-    expect(screen.getByText('Submit')).toHaveClass('auth-submit');
+    expect(screen.getByPlaceholderText('Name')).toHaveClass('auth-input-username');
+    expect(screen.getByPlaceholderText('Email address')).toHaveClass('auth-input-email');
+    expect(screen.getByText('Confirm')).toHaveClass('auth-submit');
   });
 
   it('should send email and then verify forms', async () => {
@@ -191,12 +191,12 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
-    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
-    fireEvent.change(screen.getByPlaceholderText('Email Address'), {
+    fireEvent.click(screen.getByText('Sign in'));
+    fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'username' } });
+    fireEvent.change(screen.getByPlaceholderText('Email address'), {
       target: { value: 'email@email.com' },
     });
-    fireEvent.click(screen.getByText('Submit'));
+    fireEvent.click(screen.getByText('Confirm'));
 
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
     await waitFor(() => expect(api.emailSignin).toHaveBeenCalled());
@@ -204,13 +204,13 @@ describe('<Auth/>', () => {
 
     expect(screen.getByText('Back')).toHaveClass('auth-back-button');
     expect(screen.getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(screen.getByPlaceholderText('Copy and paste the token from the email')).toHaveClass('auth-token-textarea');
+    expect(screen.getByPlaceholderText('Paste the token from the email')).toHaveClass('auth-token-textarea');
 
-    fireEvent.change(screen.getByPlaceholderText('Copy and paste the token from the email'), {
+    fireEvent.change(screen.getByPlaceholderText('Paste the token from the email'), {
       target: { value: 'token' },
     });
 
-    fireEvent.click(screen.getByText('Submit'));
+    fireEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => expect(api.verifyEmailSignin).toHaveBeenCalled());
     expect(api.verifyEmailSignin).toHaveBeenCalledWith('token');
@@ -223,20 +223,20 @@ describe('<Auth/>', () => {
 
     const { getByText, getByTitle, getByPlaceholderText } = render(<Auth />);
 
-    fireEvent.click(getByText('Sign In'));
-    fireEvent.change(getByPlaceholderText('Username'), { target: { value: 'username' } });
-    fireEvent.change(getByPlaceholderText('Email Address'), {
+    fireEvent.click(getByText('Sign in'));
+    fireEvent.change(getByPlaceholderText('Name'), { target: { value: 'username' } });
+    fireEvent.change(getByPlaceholderText('Email address'), {
       target: { value: 'email@email.com' },
     });
-    fireEvent.click(getByText('Submit'));
+    fireEvent.click(getByText('Confirm'));
     await waitFor(() => expect(emailSignin).toHaveBeenCalled());
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(getByPlaceholderText('Copy and paste the token from the email')).toHaveClass('auth-token-textarea');
+    expect(getByPlaceholderText('Paste the token from the email')).toHaveClass('auth-token-textarea');
 
-    fireEvent.change(getByPlaceholderText('Copy and paste the token from the email'), { target: { value: 'token' } });
-    fireEvent.click(getByText('Submit'));
+    fireEvent.change(getByPlaceholderText('Paste the token from the email'), { target: { value: 'token' } });
+    fireEvent.click(getByText('Confirm'));
     await waitFor(() => expect(utils.getTokenInvalidReason).toHaveBeenCalled());
 
     expect(utils.getTokenInvalidReason).toHaveBeenCalledWith('token');
@@ -251,9 +251,9 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
-    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'username' } });
-    fireEvent.click(screen.getByText('Submit'));
+    fireEvent.click(screen.getByText('Sign in'));
+    fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'username' } });
+    fireEvent.click(screen.getByText('Confirm'));
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
     expect(screen.getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
     await waitFor(() => expect(api.anonymousSignin).toHaveBeenCalled());
@@ -268,9 +268,9 @@ describe('<Auth/>', () => {
     StaticStore.config.auth_providers = ['email'];
 
     render(<Auth />);
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
 
-    const input = screen.getByPlaceholderText('Username');
+    const input = screen.getByPlaceholderText('Name');
 
     fireEvent.change(input, { target: { value } });
     input.focus();
@@ -289,9 +289,9 @@ describe('<Auth/>', () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
 
-    const input = screen.getByPlaceholderText('Username');
+    const input = screen.getByPlaceholderText('Name');
 
     fireEvent.change(input, { target: { value } });
     input.focus();
@@ -305,7 +305,7 @@ describe('<Auth/>', () => {
 
     const { container } = render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
     expect(container.querySelector('.auth-error')).toBeInTheDocument();
   });
 
@@ -314,7 +314,7 @@ describe('<Auth/>', () => {
 
     const { container } = render(<Auth />);
 
-    fireEvent.click(screen.getByText('Sign In'));
+    fireEvent.click(screen.getByText('Sign in'));
     expect(container.querySelector('.auth-error')).not.toBeInTheDocument();
   });
 
@@ -326,15 +326,15 @@ describe('<Auth/>', () => {
       const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
 
       render(<Auth />);
-      fireEvent.click(screen.getByText('Sign In'));
-      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
+      fireEvent.click(screen.getByText('Sign in'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign in with Google')));
       await waitFor(() =>
         expect(oauthSignin).toHaveBeenCalledWith(
           `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
       expect(setUser).toHaveBeenCalledTimes(0);
-      expect(screen.getByText('Sign In')).toBeInTheDocument();
+      expect(screen.getByText('Sign in')).toBeInTheDocument();
     });
 
     it('should set user if authorized', async () => {
@@ -346,8 +346,8 @@ describe('<Auth/>', () => {
 
       render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
-      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Google')));
+      fireEvent.click(screen.getByText('Sign in'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign in with Google')));
 
       await waitFor(() =>
         expect(oauthSignin).toHaveBeenCalledWith(
@@ -364,8 +364,8 @@ describe('<Auth/>', () => {
 
       render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
-      await waitFor(() => fireEvent.click(screen.getByTitle('Sign In with Customoidc')));
+      fireEvent.click(screen.getByText('Sign in'));
+      await waitFor(() => fireEvent.click(screen.getByTitle('Sign in with Customoidc')));
 
       await waitFor(() =>
         expect(oauthSignin).toHaveBeenCalledWith(
@@ -387,10 +387,10 @@ describe('<Auth/>', () => {
       const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
       render(<Auth />);
 
-      fireEvent.click(screen.getByText('Sign In'));
-      fireEvent.click(screen.getByTitle('Sign In with Telegram'));
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.click(screen.getByTitle('Sign in with Telegram'));
       await waitFor(() => expect(getTelegramSigninParams).toHaveBeenCalledTimes(1));
-      const telegramLink = screen.getByText('by the link').getAttribute('href');
+      const telegramLink = screen.getByText('using this link').getAttribute('href');
       expect(typeof telegramLink === 'string').toBe(true);
       const telegramUrl = new URL(telegramLink as string);
       expect(telegramUrl.origin).toBe('https://t.me');

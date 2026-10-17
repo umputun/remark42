@@ -23,11 +23,11 @@ import styles from './comment-form__subscribe-by-telegram.module.css';
 const messages = defineMessages({
   haveSubscribed: {
     id: 'subscribeByTelegram.have-been-subscribed',
-    defaultMessage: 'You have been subscribed on updates by telegram',
+    defaultMessage: 'You have subscribed to Telegram updates',
   },
   haveUnsubscribed: {
     id: 'subscribeByTelegram.have-been-unsubscribed',
-    defaultMessage: 'You have been unsubscribed by telegram to updates',
+    defaultMessage: 'You have unsubscribed from Telegram updates',
   },
   unsubscribe: {
     id: 'subscribeByTelegram.unsubscribe',
@@ -43,7 +43,7 @@ const messages = defineMessages({
   },
   onlyRegisteredUsers: {
     id: 'subscribeByTelegram.only-registered-users',
-    defaultMessage: 'Available only for registered users',
+    defaultMessage: 'Only available to registered users',
   },
   telegram: {
     id: 'subscribeByTelegram.telegram',

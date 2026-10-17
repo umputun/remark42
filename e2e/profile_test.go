@@ -28,7 +28,7 @@ import (
 func profileFrame(t *testing.T, page playwright.Page, frame playwright.FrameLocator) playwright.FrameLocator {
 	t.Helper()
 
-	require.NoError(t, frame.Locator(`[title="Open My Profile"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Open your profile"]`).Click())
 	waitVisible(t, page.Locator(`iframe[src*="page=profile"]`).First())
 	return page.FrameLocator(`iframe[src*="page=profile"]`)
 }
@@ -120,7 +120,7 @@ func TestProfile_ListsTheReadersOwnCommentsAndPaginates(t *testing.T) {
 func TestProfile_AnonymousReaderIsNotOfferedRemoval(t *testing.T) {
 	t.Parallel()
 
-	removal := `button:has-text("Request my data removal")`
+	removal := `button:has-text("Request deletion of my data")`
 
 	t.Run("anonymous", func(t *testing.T) {
 		page := newPage(t)

@@ -85,12 +85,12 @@ func TestAuth_HeaderJWTSurvivesReload(t *testing.T) {
 	assertSignedIn(t, page, frame)
 
 	pauseForAuthLimit()
-	require.NoError(t, frame.Locator(`[title="Sign Out"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Sign out"]`).Click())
 	waitVisible(t, frame.Locator(".auth-button"))
 
 	frame = reload(t, page)
 	waitVisible(t, frame.Locator(".auth-button"))
-	waitHidden(t, frame.Locator(`[title="Sign Out"]`),
+	waitHidden(t, frame.Locator(`[title="Sign out"]`),
 		"the header-borne session came back after signing out")
 }
 

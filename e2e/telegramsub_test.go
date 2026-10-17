@@ -64,7 +64,7 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 	frame = reload(t, page)
 	// this instance runs NOTIFY_USERS=telegram, so the email control has to be absent. The telegram
 	// control opened just below is the positive control for it
-	waitHidden(t, frame.Locator(`[title="Subscribe by Email"]`),
+	waitHidden(t, frame.Locator(`[title="Subscribe by email"]`),
 		"the email control was offered on an instance with email notifications off")
 
 	firstToken := openTelegramSubscription(t, frame)
@@ -85,7 +85,7 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, http.MethodDelete, resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the telegram unsubscribe")
-	waitVisible(t, frame.Locator(`text=You have been unsubscribed by telegram to updates`))
+	waitVisible(t, frame.Locator(`text=You have unsubscribed from Telegram updates`))
 
 	require.NoError(t, frame.Locator(`button:text-is("Resubscribe")`).Click())
 	secondToken := telegramSubscriptionToken(t, frame)
@@ -158,7 +158,7 @@ func confirmTelegramSubscription(
 	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Check asked the server nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused a subscription token the bot confirmed")
-	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+	waitVisible(t, frame.Locator(`text=You have subscribed to Telegram updates`))
 }
 
 // TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne covers the error the panel leaves
@@ -218,7 +218,7 @@ func TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne(t *testing.T) {
 
 	// the retry is allowed through, and the message from the first attempt has to go with it
 	require.NoError(t, unsubscribe.Click())
-	waitVisible(t, frame.Locator(`text=You have been unsubscribed by telegram to updates`))
+	waitVisible(t, frame.Locator(`text=You have unsubscribed from Telegram updates`))
 	waitHidden(t, errorMessage,
 		"the panel kept the failed unsubscribe message beside the confirmation of the one that worked")
 }
@@ -274,7 +274,7 @@ func TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne(t *testing.T) {
 	waitVisible(t, errorMessage)
 
 	require.NoError(t, check.Click())
-	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+	waitVisible(t, frame.Locator(`text=You have subscribed to Telegram updates`))
 	waitHidden(t, errorMessage,
 		"the panel kept the failed check message beside the confirmation of the one that worked")
 }
@@ -323,7 +323,7 @@ func TestTelegramSub_ThePanelSaysItIsWorking(t *testing.T) {
 	waitVisible(t, preloader)
 
 	unblock()
-	waitVisible(t, frame.Locator(`text=You have been subscribed on updates by telegram`))
+	waitVisible(t, frame.Locator(`text=You have subscribed to Telegram updates`))
 	// not asserted after the confirmation: the panel renders the preloader and the settled state
 	// from the same flag, so once either is on screen the other is necessarily gone and the
 	// assertion could not fail

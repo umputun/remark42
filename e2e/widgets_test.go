@@ -204,7 +204,7 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, before, "no profile iframe should exist before it is asked for")
 
-	require.NoError(t, frame.Locator(`[title="Open My Profile"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Open your profile"]`).Click())
 
 	waitVisible(t, profile.First())
 	src, err := profile.First().GetAttribute("src")

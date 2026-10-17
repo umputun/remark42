@@ -140,7 +140,8 @@ describe('<Comment />', () => {
     ])('should not render vote component %s', (_, action) => {
       action();
       render(<CommentWithIntl {...props} />);
-      expect(screen.queryByText('Votes score')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Vote up')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Vote down')).not.toBeInTheDocument();
     });
   });
 

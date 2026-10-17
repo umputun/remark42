@@ -127,7 +127,7 @@ func TestConfig_SubscriptionControlsCanBeHidden(t *testing.T) {
 			signInDev(t, page, frame)
 
 			rss := frame.Locator(`[title="Subscribe by RSS"]`)
-			byMail := frame.Locator(`[title="Subscribe by Email"]`)
+			byMail := frame.Locator(`[title="Subscribe by email"]`)
 
 			// this instance runs NOTIFY_USERS=email, so the telegram control has to be absent
 			// whatever the display settings say. The email control beside it is the positive
