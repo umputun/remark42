@@ -81,7 +81,7 @@
   "commentForm.uploading-file": "{fileName} yükleniyor...",
   "commentsSort.best": "En iyiler",
   "commentsSort.least-controversial": "En az tartışılan",
-  "commentsSort.least-recently-updated": "En eski güncellenen",
+  "commentsSort.least-recently-updated": "En uzun süredir güncellenmeyen",
   "commentsSort.most-controversial": "En çok tartışılan",
   "commentsSort.newest": "En yeniler",
   "commentsSort.oldest": "En eskiler",

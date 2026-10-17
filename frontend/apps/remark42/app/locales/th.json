@@ -81,7 +81,7 @@
   "commentForm.uploading-file": "กำลังอัปโหลดไฟล์ {fileName}...",
   "commentsSort.best": "ผลตอบรับดีที่สุด",
   "commentsSort.least-controversial": "ถกเถียงกันน้อยที่สุด",
-  "commentsSort.least-recently-updated": "อัปเดตล่าสุดเรียงจากน้อยสุด",
+  "commentsSort.least-recently-updated": "ไม่ได้อัปเดตนานที่สุด",
   "commentsSort.most-controversial": "ถกกันมากที่สุด",
   "commentsSort.newest": "ล่าสุด",
   "commentsSort.oldest": "เก่าสุด",
