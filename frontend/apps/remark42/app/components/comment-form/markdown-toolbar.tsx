@@ -36,39 +36,39 @@ interface FileInputEvent extends Event {
 const messages = defineMessages({
   bold: {
     id: 'toolbar.bold',
-    defaultMessage: 'Add bold text {shortcut}',
+    defaultMessage: 'Bold',
   },
   header: {
     id: 'toolbar.header',
-    defaultMessage: 'Add header text',
+    defaultMessage: 'Heading',
   },
   italic: {
     id: 'toolbar.italic',
-    defaultMessage: 'Add italic text {shortcut}',
+    defaultMessage: 'Italic',
   },
   quote: {
     id: 'toolbar.quote',
-    defaultMessage: 'Insert a quote',
+    defaultMessage: 'Quote',
   },
   code: {
     id: 'toolbar.code',
-    defaultMessage: 'Insert a code',
+    defaultMessage: 'Code',
   },
   link: {
     id: 'toolbar.link',
-    defaultMessage: 'Add a link {shortcut}',
+    defaultMessage: 'Link',
   },
   unorderedList: {
     id: 'toolbar.unordered-list',
-    defaultMessage: 'Add a bulleted list',
+    defaultMessage: 'Bulleted list',
   },
   orderedList: {
     id: 'toolbar.ordered-list',
-    defaultMessage: 'Add a numbered list',
+    defaultMessage: 'Numbered list',
   },
   attachImage: {
     id: 'toolbar.attach-image',
-    defaultMessage: 'Attach the image, drag & drop or paste from clipboard',
+    defaultMessage: 'Attach an image, drag and drop one, or paste one from the clipboard',
   },
 });
 
@@ -87,12 +87,12 @@ export class MarkdownToolbar extends Component<Props> {
   render(props: Props) {
     const intl = props.intl;
 
-    const boldLabel = intl.formatMessage(messages.bold, { shortcut: '<cmd-b>' });
+    const boldLabel = intl.formatMessage(messages.bold);
     const headerLabel = intl.formatMessage(messages.header);
-    const italicLabel = intl.formatMessage(messages.italic, { shortcut: '<cmd-i>' });
+    const italicLabel = intl.formatMessage(messages.italic);
     const quoteLabel = intl.formatMessage(messages.quote);
     const codeLabel = intl.formatMessage(messages.code);
-    const linkLabel = intl.formatMessage(messages.link, { shortcut: '<cmd-k>' });
+    const linkLabel = intl.formatMessage(messages.link);
     const unorderedListLabel = intl.formatMessage(messages.unorderedList);
     const orderedListLabel = intl.formatMessage(messages.orderedList);
     const attachImageLabel = intl.formatMessage(messages.attachImage);

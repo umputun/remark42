@@ -86,14 +86,14 @@ class AuthPanelComponent extends Component<Props, State> {
       <div className={styles.column}>
         <FormattedMessage
           id="authPanel.disabled-cookies"
-          defaultMessage="Disable third-party cookies blocking to login or open comments in"
+          defaultMessage="Enable third-party cookies to log in, or open comments in"
         />{' '}
         <a
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
           rel="noreferrer"
         >
-          <FormattedMessage id="authPanel.new-page" defaultMessage="new page" />
+          <FormattedMessage id="authPanel.new-page" defaultMessage="a new page" />
         </a>
       </div>
     );
@@ -105,7 +105,7 @@ class AuthPanelComponent extends Component<Props, State> {
     }
     return (
       <div className={styles.column}>
-        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />
+        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to log in and comment" />
       </div>
     );
   };
@@ -160,7 +160,7 @@ class AuthPanelComponent extends Component<Props, State> {
           {isAdmin && <span>{this.renderReadOnlySwitch()}</span>}
           {!isAdmin && read_only && (
             <span>
-              <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
+              <FormattedMessage id="authPanel.read-only" defaultMessage="Comments disabled" />
             </span>
           )}
         </div>

@@ -49,7 +49,7 @@ describe('<Profile />', () => {
     const { findByText, queryByLabelText, queryByRole, queryByTestId } = render(<Profile />);
 
     expect(getUserComments).toHaveBeenCalledWith('1', { limit: 10, skip: 0 });
-    expect(await findByText("Don't have comments yet")).toBeInTheDocument();
+    expect(await findByText('No comments yet.')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).not.toBeInTheDocument();
     expect(queryByLabelText('Loading...')).not.toBeInTheDocument();
     expect(queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
@@ -90,9 +90,9 @@ describe('<Profile />', () => {
 
     const { getByText, getByTitle, findByText, queryByTestId, queryByRole } = render(<Profile />);
 
-    expect(getByTitle('Sign Out')).toBeInTheDocument();
-    expect(getByText('Request my data removal')).toBeInTheDocument();
-    expect(await findByText("Don't have comments yet")).toBeInTheDocument();
+    expect(getByTitle('Sign out')).toBeInTheDocument();
+    expect(getByText('Request deletion of my data')).toBeInTheDocument();
+    expect(await findByText('No comments yet.')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).not.toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
   });
@@ -105,10 +105,10 @@ describe('<Profile />', () => {
 
     const { findByText, queryByTitle, queryByText, queryByTestId, queryByRole } = render(<Profile />);
 
-    expect(await findByText('My comments')).toBeInTheDocument();
+    expect(await findByText('Your comments')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).toHaveTextContent(commentsStub.length.toString());
-    expect(queryByTitle('Sign Out')).toBeInTheDocument();
-    expect(queryByText('Request my data removal')).toBeInTheDocument();
+    expect(queryByTitle('Sign out')).toBeInTheDocument();
+    expect(queryByText('Request deletion of my data')).toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
   });
 
@@ -119,10 +119,10 @@ describe('<Profile />', () => {
 
     const { findByText, queryByTitle, queryByText, queryByTestId, queryByRole } = render(<Profile />);
 
-    expect(await findByText('My comments')).toBeInTheDocument();
+    expect(await findByText('Your comments')).toBeInTheDocument();
     expect(queryByTestId('comments-counter')).toHaveTextContent(comments.length.toString());
-    expect(queryByTitle('Sign Out')).toBeInTheDocument();
-    expect(queryByText('Request my data removal')).toBeInTheDocument();
+    expect(queryByTitle('Sign out')).toBeInTheDocument();
+    expect(queryByText('Request deletion of my data')).toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).toBeInTheDocument();
   });
 
@@ -168,11 +168,16 @@ describe('<Profile />', () => {
     jest
       .spyOn(api, 'getUserComments')
       .mockImplementation(async () => ({ comments: new Array(10).fill(commentStub), count: 15 }));
-    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, name: 'anonymous_1' }));
+    // an anonymous user is recognised by the id prefix, and the button is only ever offered on
+    // the reader's own profile, so both have to hold for the assertion to mean anything
+    jest
+      .spyOn(pq, 'parseQuery')
+      .mockImplementation(() => ({ ...userParamsStub, id: 'anonymous_1', name: 'anonymous_1', current: '1' }));
 
     render(<Profile />);
 
-    expect(screen.queryByText(/request my data removal/i)).not.toBeInTheDocument();
+    expect(await screen.findByText('Your comments')).toBeInTheDocument();
+    expect(screen.queryByText(/request deletion of my data/i)).not.toBeInTheDocument();
   });
 
   it('sets dir on the root element from the active locale (direction mapping itself is covered by common/direction.test.ts)', () => {

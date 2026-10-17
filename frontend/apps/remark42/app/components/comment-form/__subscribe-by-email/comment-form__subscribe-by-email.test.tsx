@@ -57,7 +57,7 @@ describe('<SubscribeByEmail/>', () => {
 
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(button).toBeDisabled();
-    expect(button.getAttribute('title')).toEqual('Available only for registered users');
+    expect(button.getAttribute('title')).toEqual('Only available to registered users');
   });
 
   it('should be rendered with enabled email button when user is registrated', () => {
@@ -66,7 +66,7 @@ describe('<SubscribeByEmail/>', () => {
 
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(button).not.toBeDisabled();
-    expect(button.getAttribute('title')).toEqual('Subscribe by Email');
+    expect(button.getAttribute('title')).toEqual('Subscribe by email');
   });
 });
 
@@ -75,7 +75,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
   it('should render email form by default', () => {
     const { container } = createWrapper(initialStore);
-    expect(container.querySelector(`.${styles.title}`)?.textContent).toEqual('Subscribe to replies');
+    expect(container.querySelector(`.${styles.title}`)?.textContent).toEqual('Email subscription to replies');
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
   });
@@ -85,7 +85,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     expect(container.querySelectorAll(`.${styles.subscribed}`)).toHaveLength(1);
     expect(container.querySelectorAll('button')).toHaveLength(1);
-    expect(container.textContent?.startsWith('You are subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You are subscribed to email updates')).toBe(true);
   });
 
   it('should pass through subscribe process', async () => {
@@ -116,7 +116,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     await act(() => sleep(0));
 
-    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You have subscribed to email updates')).toBe(true);
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
@@ -133,7 +133,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     await act(() => sleep(0));
 
-    expect(container.textContent?.startsWith('You are subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You are subscribed to email updates')).toBe(true);
   });
 
   it('should pass through subscribe process without confirmation', async () => {
@@ -152,7 +152,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     await act(() => sleep(0));
 
-    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You have subscribed to email updates')).toBe(true);
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
@@ -182,7 +182,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     await act(() => sleep(0));
 
-    expect(container.textContent?.startsWith('You have been subscribed on updates by email')).toBe(true);
+    expect(container.textContent?.startsWith('You have subscribed to email updates')).toBe(true);
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
   });
@@ -196,7 +196,7 @@ describe('<SubscribeByEmailForm/>', () => {
 
     await act(() => sleep(0));
 
-    expect(container.textContent?.startsWith('You have been unsubscribed by email to updates')).toBe(true);
+    expect(container.textContent?.startsWith('You have unsubscribed from email updates')).toBe(true);
     expect(container.querySelectorAll('button')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   });
@@ -210,7 +210,7 @@ describe('<SubscribeByEmail/> dropdown', () => {
     render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
 
     // open the dropdown
-    fireEvent.click(screen.getByTitle('Subscribe by Email'));
+    fireEvent.click(screen.getByTitle('Subscribe by email'));
 
     expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
 
@@ -220,14 +220,14 @@ describe('<SubscribeByEmail/> dropdown', () => {
 
     // the dropdown must survive the step change: the confirmation and the
     // Close button are only rendered while it is open
-    expect(screen.getByText('You have been unsubscribed by email to updates')).toBeTruthy();
+    expect(screen.getByText('You have unsubscribed from email updates')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Close' })).toBeTruthy();
   });
 
   it('closes the dropdown when Close is pressed', async () => {
     render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
 
-    fireEvent.click(screen.getByTitle('Subscribe by Email'));
+    fireEvent.click(screen.getByTitle('Subscribe by email'));
     fireEvent.click(screen.getByRole('button', { name: 'Unsubscribe' }));
     await act(() => sleep(0));
 

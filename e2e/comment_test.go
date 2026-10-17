@@ -474,7 +474,7 @@ func TestComment_ReadOnlyThreadTakesTheFormAway(t *testing.T) {
 	readerFrame := reader.FrameLocator("#remark42 iframe")
 	// an exact match on the status: `text=` is a case-insensitive substring, so any comment whose
 	// own text contains the phrase would satisfy it too, and two matches is a strict-mode failure
-	waitVisible(t, readerFrame.Locator(`text="Read-only"`))
+	waitVisible(t, readerFrame.Locator(`text="Comments disabled"`))
 	waitHidden(t, readerFrame.Locator(commentFormSel).First(),
 		"the thread is read-only but a reader is still shown a comment form")
 	// the form and the per-comment Reply action are separate controls, and a thread that takes one
@@ -515,7 +515,7 @@ func TestComment_AdminActionsKeepTheirOrder(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, labels, 5, "the moderation menu no longer holds five actions: %v", labels)
 
-	want := []string{"Hide", "Copy", "Pin", "Block", "Delete"}
+	want := []string{"Hide user", "Copy", "Pin", "Block", "Delete"}
 	for i, expected := range want {
 		assert.Contains(t, labels[i], expected,
 			"the moderation actions are out of order, wanted %v, got %v", want, labels)

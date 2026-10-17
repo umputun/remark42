@@ -137,7 +137,7 @@ export function Profile() {
       <div className={styles.titleWrapper}>
         <h3 className={clsx('profile-title', styles.title)}>
           {isCurrent ? (
-            <FormattedMessage key="user.my-comments" id="user.my-comments" defaultMessage="My comments" />
+            <FormattedMessage key="user.my-comments" id="user.my-comments" defaultMessage="Your comments" />
           ) : (
             <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
           )}
@@ -174,7 +174,7 @@ export function Profile() {
     </>
   ) : (
     <p className={clsx('profile-emptyState', styles.emptyState)}>
-      <FormattedMessage id="empty-state" defaultMessage="Don't have comments yet" />
+      <FormattedMessage id="empty-state" defaultMessage="No comments yet." />
     </p>
   );
 
@@ -225,7 +225,7 @@ export function Profile() {
         {isCurrent && !isUserAnonymous(user as unknown as User) ? (
           <footer className={clsx('profile-footer', styles.footer)}>
             <Button kind="hollow" size="sm" onClick={handleClickRequestRemoveData}>
-              <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request my data removal" />
+              <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request deletion of my data" />
             </Button>
           </footer>
         ) : // TODO: implement hiding user comments

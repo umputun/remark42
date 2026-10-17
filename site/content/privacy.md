@@ -13,7 +13,7 @@ For a better experience while using our Service, we may require you to provide u
 
 ### How users may request deletion of that data
 
-The user can request deletion of the data by clicking "Request my data removal" on the profile page and follow the link sent in the confirmation email.
+The user can request deletion of the data by clicking "Request deletion of my data" on the profile page and follow the link sent in the confirmation email.
 
 ### Log Data
 

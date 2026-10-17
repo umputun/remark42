@@ -51,7 +51,7 @@ describe('<CommentActions/>', () => {
   ] as Partial<Props>[][])('should not render "Edit" when editing is not available', (override) => {
     Object.assign(props, override);
     render(<CommentActions {...props} />);
-    expect(screen.getByText('Hide')).toBeInTheDocument();
+    expect(screen.getByText('Hide user')).toBeInTheDocument();
   });
 
   it('should not render "Delete" for current user comments when editDeadline is undefined', () => {

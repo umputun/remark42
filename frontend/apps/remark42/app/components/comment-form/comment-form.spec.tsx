@@ -122,7 +122,7 @@ describe('<CommentForm />', () => {
       it('renders email subscription button', () => {
         setup({ user }, { simple_view: true, email_notifications: true });
         expect(screen.getByText(/Subscribe by/)).toBeVisible();
-        expect(screen.getByTitle('Subscribe by Email')).toBeVisible();
+        expect(screen.getByTitle('Subscribe by email')).toBeVisible();
       });
       it('renders rss subscription button', () => {
         setup({ user }, { simple_view: true });

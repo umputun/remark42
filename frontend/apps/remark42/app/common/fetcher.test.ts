@@ -151,7 +151,7 @@ describe('fetcher', () => {
         apiFetcher.get(apiUri).then(() => {
           throw Error('apiFetcher should throw error on 401 response');
         })
-      ).rejects.toEqual(new Error('Not authorized.'));
+      ).rejects.toEqual(new Error('Please sign in to do this.'));
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'get',
@@ -265,7 +265,7 @@ describe('fetcher', () => {
       mockFetch({ status: 401 });
 
       // Use await expect().rejects for async errors instead of try/catch
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
 
       // Verify cookies were cleared
       expect(cookies.clearAuthCookie).toHaveBeenCalledWith(JWT_COOKIE_NAME);
@@ -287,7 +287,9 @@ describe('fetcher', () => {
 
       // a session for another site asking about this one, or an anonymous user, is refused, not signed out
       mockFetch({ status: 403 });
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Forbidden.', 403));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError("You don't have permission to do this.", 403)
+      );
 
       expect(clear).not.toHaveBeenCalled();
 
@@ -299,7 +301,7 @@ describe('fetcher', () => {
 
       // the token lives at module level, so drop it the way the fetcher does before the next test
       mockFetch({ status: 401 });
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
       clear.mockRestore();
     });
   });
@@ -378,7 +380,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
       expect.assertions(1);

@@ -18,7 +18,10 @@ describe('extractErrorMessageFromResponse', () => {
   });
 
   it('renders a request error from its own code', () => {
-    assert.equal(extractErrorMessageFromResponse(new RequestError('x', 403), intl), 'Forbidden.');
+    assert.equal(
+      extractErrorMessageFromResponse(new RequestError('x', 403), intl),
+      "You don't have permission to do this."
+    );
   });
 
   it('renders the connection failure the fetcher raises when the request never left', () => {
