@@ -108,6 +108,9 @@ function createInstance(config: typeof window.remark_config) {
 
       postHashToIframe();
       postTitleToIframe(document.title);
+      // a changeTheme made before the document loaded was posted to a frame with no one listening,
+      // and the iframe URL only carries the theme it was built with
+      postThemeToIframe();
     }
   }
 
@@ -129,6 +132,12 @@ function createInstance(config: typeof window.remark_config) {
     postMessageToIframe(iframe, { title });
   }
 
+  function postThemeToIframe() {
+    if (config.theme) {
+      postMessageToIframe(iframe, { theme: config.theme });
+    }
+  }
+
   function postClickOutsideToIframe(evt: MouseEvent) {
     if (iframe.contains(evt.target as Node)) {
       return;
@@ -137,6 +146,7 @@ function createInstance(config: typeof window.remark_config) {
   }
 
   function changeTheme(theme: Theme) {
+    config.theme = theme;
     window.remark_config.theme = theme;
     iframe.style.colorScheme = theme;
     postMessageToIframe(iframe, { theme });

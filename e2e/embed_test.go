@@ -3,6 +3,8 @@
 package e2e
 
 import (
+	"regexp"
+	"sync"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -112,6 +114,75 @@ func TestEmbed_ThemeChangesReachTheWidgetAfterLoad(t *testing.T) {
 	onElement, err := page.Evaluate(`() => document.querySelector('#remark42 iframe').style.colorScheme`)
 	require.NoError(t, err)
 	assert.Equal(t, "dark", onElement, "the parent left the old scheme on the iframe element")
+}
+
+// TestEmbed_ThemeChangedWhileLoadingReachesTheWidget covers a changeTheme made before the widget
+// can hear it: while its document is still loading, and after the document has reported inited
+// but before the bundle has run. Neither has a listener for the theme, so the change used to be
+// lost and the widget stayed in the theme its URL carried. The request is held until the change
+// is made, so the case does not depend on how fast the stack answers
+func TestEmbed_ThemeChangedWhileLoadingReachesTheWidget(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		hold *regexp.Regexp
+		// whether to wait for the iframe to be revealed, which happens on inited, before the change
+		afterInited bool
+	}{
+		{"before the document loads", regexp.MustCompile(`/web/iframe\.html`), false},
+		{"before the bundle runs", regexp.MustCompile(`remark\.m?js$`), true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			page := newPage(t)
+			stubSignedOut(t, page)
+
+			release := make(chan struct{})
+			var releaseOnce sync.Once
+			releaseAll := func() { releaseOnce.Do(func() { close(release) }) }
+			t.Cleanup(releaseAll)
+			require.NoError(t, page.Route(tc.hold, func(route playwright.Route) {
+				// off the handler, so a held request does not hold up the others
+				go func() {
+					<-release
+					// fails only once the page is gone, which the assertions report on their own
+					_ = route.Continue()
+				}()
+			}))
+
+			embedConfig(t, page, map[string]any{"theme": "light"})
+
+			if tc.afterInited {
+				eventually(t, waitTimeout, "the iframe was never revealed, so inited never arrived", func() bool {
+					v, err := page.Evaluate(`() => document.querySelector('#remark42 iframe')?.style.visibility`)
+					return err == nil && v == "visible"
+				})
+			}
+
+			_, err := page.Evaluate(`() => window.REMARK42.changeTheme('dark')`)
+			require.NoError(t, err)
+			releaseAll()
+
+			widget(t, page)
+
+			eventually(t, waitTimeout, "the widget document never took the theme changed while it loaded", func() bool {
+				return widgetColorScheme(t, page) == "dark"
+			})
+
+			// the body class drives the stylesheets and the bare class on Root comes from the store,
+			// which take the theme by different paths
+			frame := page.FrameLocator("#remark42 iframe")
+			isDark, err := frame.Locator("body").Evaluate(`(el) => el.classList.contains('dark')`, nil)
+			require.NoError(t, err)
+			assert.Equal(t, true, isDark, "the widget body was left without the dark class")
+
+			count, err := frame.Locator("#remark42 .dark").Count()
+			require.NoError(t, err)
+			assert.Positive(t, count, "Root rendered from the theme in the URL")
+		})
+	}
 }
 
 // widgetColorScheme is the color-scheme in force inside the widget document
