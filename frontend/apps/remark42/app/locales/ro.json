@@ -101,7 +101,7 @@
   "errors.18": "Fișierul solicitat nu poate fi găsit.",
   "errors.19": "Comentariul conține cuvinte restricționate.",
   "errors.2": "Eșec la parsarea cererii primite.",
-  "errors.20": "Imaginea publicată nu a fost găsită. Te rugăm să încerci să o încarci din nou.",
+  "errors.20": "Imaginea încărcată nu a fost găsită. Te rugăm să încerci să o încarci din nou.",
   "errors.3": "Nu ai permisiunea pentru această operațiune.",
   "errors.4": "Date de comentariu nevalide.",
   "errors.5": "Comentariul nu poate fi găsit. Reîmprospătează pagina și încearcă din nou.",

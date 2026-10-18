@@ -101,7 +101,7 @@
   "errors.18": "Den begärda filen kan inte hittas.",
   "errors.19": "Kommentaren innehåller otillåtna ord.",
   "errors.2": "Det gick inte att tolka den inkommande begäran.",
-  "errors.20": "Den publicerade bilden hittades inte. Försök att ladda upp den igen.",
+  "errors.20": "Den uppladdade bilden hittades inte. Försök att ladda upp den igen.",
   "errors.3": "Du har inte behörighet för den här åtgärden.",
   "errors.4": "Ogiltig kommentardata.",
   "errors.5": "Kommentaren kan inte hittas. Uppdatera sidan och försök igen.",

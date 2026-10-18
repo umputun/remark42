@@ -161,7 +161,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Telegram ile abone ol",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Aboneliği kaldır",
-  "token": "E-postadaki belirteci kopyalayıp yapıştırın",
+  "token": "E-postadaki belirteci (TOKEN) kopyalayıp yapıştırın",
   "token.expired": "Belirtecin süresi doldu",
   "token.invalid": "Belirteç geçersiz",
   "toolbar.attach-image": "Resim ekleyin, sürükleyip-bıraın veya kopyaladığınız resmi yapıştırın",

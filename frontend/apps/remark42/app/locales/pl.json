@@ -101,7 +101,7 @@
   "errors.18": "Żądany plik nie został znaleziony.",
   "errors.19": "Komentarz zawiera słowa zastrzeżone.",
   "errors.2": "Nie udało sie sparsować przychodzącego zapytania do struktury danych.",
-  "errors.20": "Nie znaleziono opublikowanego obrazu. Spróbuj przesłać go ponownie.",
+  "errors.20": "Nie znaleziono przesłanego obrazu. Spróbuj przesłać go ponownie.",
   "errors.3": "Nie masz wystarczających uprawnień by wykonać te operację.",
   "errors.4": "Niepoprawne dane komentarza.",
   "errors.5": "Komentarz nie może zostać odnaleziony. Odśwież stronę i spróbuj ponownie.",

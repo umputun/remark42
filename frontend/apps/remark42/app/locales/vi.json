@@ -101,7 +101,7 @@
   "errors.18": "Không tìm thấy tệp tin được yêu cầu.",
   "errors.19": "Bình luận chứa từ bị cấm.",
   "errors.2": "Yêu cầu đến không quản lý được.",
-  "errors.20": "Ảnh đã đăng không tồn tại. Vui lòng thử tải lên 1 lần nữa.",
+  "errors.20": "Ảnh đã tải lên không tồn tại. Vui lòng thử tải lên 1 lần nữa.",
   "errors.3": "Bạn không có quyền thực hiện thao tác này.",
   "errors.4": "Dữ liệu bình luận không hợp lệ.",
   "errors.5": "Không tìm thấy bình luận, xin hãy làm mới trang và thử lại.",

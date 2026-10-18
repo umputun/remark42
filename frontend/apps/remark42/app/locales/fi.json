@@ -161,7 +161,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Tilaa Telegramin kautta",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Lopeta tilaus",
-  "token": "Kopioi ja liitä tunniste sähköpostista",
+  "token": "Kopioi ja liitä tunniste (TOKEN) sähköpostista",
   "token.expired": "Tunnus on vanhentunut",
   "token.invalid": "Tunnus on virheellinen",
   "toolbar.attach-image": "Liitä kuva, vedä ja pudota tai liitä leikepöydältä",

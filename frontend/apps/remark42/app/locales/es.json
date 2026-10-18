@@ -101,7 +101,7 @@
   "errors.18": "No se ha encontrado el archivo solicitado.",
   "errors.19": "El comentario contiene palabras restringidas.",
   "errors.2": "No se ha podido deserializar la petición entrante.",
-  "errors.20": "No se ha encontrado la imagen publicada. Por favor, intente subirla de nuevo.",
+  "errors.20": "No se ha encontrado la imagen subida. Por favor, intente subirla de nuevo.",
   "errors.3": "No tienes permisos para esta operación.",
   "errors.4": "Datos de comentario inválidos.",
   "errors.5": "El comentario no se ha encontrado. Por favor refresca la página y vuelve a intentar.",
