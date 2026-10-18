@@ -128,4 +128,33 @@ describe('embed', () => {
 
     scrollTo.mockRestore();
   });
+
+  describe('theme', () => {
+    afterEach(() => {
+      delete window.remark_config.theme;
+    });
+
+    it('posts the current theme once the frame reports inited', async () => {
+      const root = await mount();
+      const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+      // made while the document is still loading, so the message it posts reaches no listener
+      window.REMARK42.changeTheme!('dark');
+      const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+
+      window.dispatchEvent(new MessageEvent('message', { data: { inited: true }, source: iframe.contentWindow }));
+
+      expect(postMessage).toHaveBeenCalledWith({ theme: 'dark' }, '*');
+    });
+
+    it('posts no theme on inited when none was set', async () => {
+      const root = await mount();
+      const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+      const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+
+      window.dispatchEvent(new MessageEvent('message', { data: { inited: true }, source: iframe.contentWindow }));
+
+      expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ theme: expect.anything() }), '*');
+    });
+  });
 });

@@ -7,7 +7,7 @@ import { useIntl, FormattedMessage, defineMessages } from 'common/intl';
 import { getDirection } from 'common/direction';
 import 'styles/global.css';
 import type { StoreState } from 'store';
-import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
+import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, IS_MOBILE } from 'common/constants';
 import { maxShownComments, noFooter, url } from 'common/settings';
 
 import {
@@ -21,7 +21,6 @@ import {
 } from 'store/user/actions';
 import { fetchComments, addComment, updateComment } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
-import { setTheme } from 'store/theme/actions';
 
 // TODO: make this button as default for all cases and replace current `components/Button`
 import { Button } from 'components/auth/components/button';
@@ -67,7 +66,6 @@ const boundActions = bindActions({
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
-  setTheme,
   setCommentsReadOnlyState,
   blockUser,
   unblockUser,
@@ -192,15 +190,11 @@ export class Root extends Component<Props, State> {
 
     const data = parseMessage(event);
 
+    // the theme is applied, store included, by the listener in remark.tsx, which is in place
+    // before this component mounts
     if (data.signout === true) {
       this.props.signout(false);
     }
-
-    if (!data.theme || !THEMES.includes(data.theme)) {
-      return;
-    }
-
-    this.props.setTheme(data.theme);
   };
 
   onBlockedUsersShow = async () => {

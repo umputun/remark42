@@ -91,6 +91,14 @@
           if (data.title) {
             document.title = data.title;
           }
+
+          // the bundle has not registered its own listener yet: it is only inserted below, after
+          // `inited`, which is when the parent posts the current theme. Keep the latest one where
+          // remark.tsx reads it on start, and match color-scheme to the iframe element meanwhile
+          if (data.theme === 'light' || data.theme === 'dark') {
+            remark_config.theme = data.theme;
+            document.documentElement.style.colorScheme = data.theme;
+          }
         } catch (e) {}
       });
 

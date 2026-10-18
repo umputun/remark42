@@ -85,6 +85,8 @@ Remark42 has two themes: light and dark. You can pick one using a configuration 
 window.REMARK42.changeTheme("light")
 ```
 
+`changeTheme` can be called as soon as `window.REMARK42` exists, even before the comments have finished loading: the widget opens in the last theme it was given. Set `theme` in the configuration object to the theme your page is in when it loads, so the widget does not have to switch after it appears.
+
 #### Matching your site's font
 
 To match the widget's font to your site's, set `remark_config.custom_properties['--font-family']`
