@@ -101,7 +101,7 @@
   "errors.18": "Requested file cannot be found.",
   "errors.19": "Comment contains restricted words.",
   "errors.2": "The request could not be read. Please refresh the page and try again.",
-  "errors.20": "Posted image not found. Please try to upload it again.",
+  "errors.20": "Uploaded image not found. Please try to upload it again.",
   "errors.3": "You don't have permission for this operation.",
   "errors.4": "Invalid comment data.",
   "errors.5": "Comments for this page could not be loaded. Please refresh the page and try again.",

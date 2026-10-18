@@ -161,7 +161,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "اشترك عبر تيليجرام",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "إلغاء الاشتراك",
-  "token": "الصق الرمز المميز من البريد الإلكتروني",
+  "token": "الصق الرمز المميز (TOKEN) من البريد الإلكتروني",
   "token.expired": "الرمز انتهت صلاحيته",
   "token.invalid": "الرمز غير صالح",
   "toolbar.attach-image": "أرفق صورةً، أو اسحبها وأسقطها، أو الصقها من الحافظة",

@@ -101,7 +101,7 @@
   "errors.18": "Požadovaný soubor nelze nalézt.",
   "errors.19": "Komentář obsahuje zakázaná slova.",
   "errors.2": "Požadavek se nepodařilo přečíst. Obnovte prosím stránku a zkuste to znovu.",
-  "errors.20": "Odeslaný obrázek nebyl nalezen. Zkuste jej nahrát znovu.",
+  "errors.20": "Nahraný obrázek nebyl nalezen. Zkuste jej nahrát znovu.",
   "errors.3": "K této operaci nemáte oprávnění.",
   "errors.4": "Komentář obsahuje neplatná data",
   "errors.5": "Komentáře pro tuto stránku se nepodařilo načíst. Obnovte prosím stránku a zkuste to znovu.",

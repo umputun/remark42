@@ -161,7 +161,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "הרשמה באמצעות טלגרם",
   "subscribeByTelegram.telegram": "טלגרם",
   "subscribeByTelegram.unsubscribe": "ביטול מנוי",
-  "token": "יש להדביק את האסימון מהאימייל",
+  "token": "יש להדביק את האסימון (TOKEN) מהאימייל",
   "token.expired": "האסימון פג תוקף",
   "token.invalid": "האסימון לא תקין",
   "toolbar.attach-image": "ניתן לצרף תמונה, לגרור ולשחרר או להדביק מהלוח",

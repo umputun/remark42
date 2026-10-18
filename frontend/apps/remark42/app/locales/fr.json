@@ -161,7 +161,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "S'abonner via Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Se désabonner",
-  "token": "Collez le jeton depuis l'e-mail",
+  "token": "Collez le jeton (TOKEN) depuis l'e-mail",
   "token.expired": "Le jeton a expiré",
   "token.invalid": "Le jeton n'est pas valide",
   "toolbar.attach-image": "Joindre une image, la glisser-déposer ou la coller à partir du presse-papier",

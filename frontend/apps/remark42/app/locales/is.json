@@ -101,7 +101,7 @@
   "errors.18": "Umbeðin skrá fannst ekki.",
   "errors.19": "Athugasemdin inniheldur bönnuð orð.",
   "errors.2": "Ekki tókst að lesa fyrirspurnina. Endurhladdu síðuna og reyndu aftur.",
-  "errors.20": "Myndin fannst ekki. Reyndu að hlaða henni upp aftur.",
+  "errors.20": "Myndin sem var hlaðið upp fannst ekki. Reyndu að hlaða henni upp aftur.",
   "errors.3": "Þú hefur ekki heimild fyrir þessa aðgerð.",
   "errors.4": "Ógild gögn í athugasemd.",
   "errors.5": "Ekki tókst að hlaða athugasemdum fyrir þessa síðu. Endurhladdu síðuna og reyndu aftur.",
