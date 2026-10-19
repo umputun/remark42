@@ -18,7 +18,7 @@ import (
 
 // score reads the vote counter of the comment carrying the text
 func score(frame playwright.FrameLocator, text string) playwright.Locator {
-	return comment(frame, text).Locator(`[title="Votes score"]`).First()
+	return comment(frame, text).Locator(`[title="Score"]`).First()
 }
 
 // voteScenario posts a comment as one user and returns a second, signed-in user's page and
@@ -119,7 +119,7 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 	unblock()
 
 	// the widget shows its own copy for the status, not the raw body
-	waitVisible(t, target.Locator("text=Conflict."))
+	waitVisible(t, target.Locator("text=This action cannot be completed right now."))
 
 	eventually(t, waitTimeout, "the optimistic score was not rolled back", func() bool {
 		v, err := pollText(score(voterFrame, text))

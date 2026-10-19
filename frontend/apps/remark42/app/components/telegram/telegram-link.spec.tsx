@@ -55,7 +55,7 @@ describe('<TelegramLink/>', () => {
   it('should render text', () => {
     render(<TelegramLink {...defaultProps} />);
     expect(screen.getByText(/Open Telegram/)).toBeInTheDocument();
-    expect(screen.getByText(/by the link/)).toBeInTheDocument();
+    expect(screen.getByText(/using this link/)).toBeInTheDocument();
     expect(screen.getByText(/and click “Start” there./)).toBeInTheDocument();
     expect(screen.getByText(/Afterwards, click “Check” below./)).toBeInTheDocument();
   });

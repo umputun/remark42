@@ -52,7 +52,7 @@ func tgSendToBot(t *testing.T, text, id, firstName string) {
 func tgConfirmSignIn(t *testing.T, page playwright.Page, frame playwright.FrameLocator) {
 	t.Helper()
 
-	signOut := frame.Locator(`[title="Sign Out"]`)
+	signOut := frame.Locator(`[title="Sign out"]`)
 	submit := frame.Locator(`.auth-submit`)
 
 	// two ways in, and which one happens is a race the test has no business deciding: the panel

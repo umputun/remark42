@@ -85,7 +85,7 @@ func TestAuth_AnonymousSignsIn(t *testing.T) {
 	signInAnon(t, page, frame, "anontester")
 	assertSignedIn(t, page, frame)
 
-	name, err := frame.Locator(`[title="Open My Profile"]`).InnerText()
+	name, err := frame.Locator(`[title="Open your profile"]`).InnerText()
 	require.NoError(t, err)
 	assert.Contains(t, name, "anontester")
 }
@@ -132,8 +132,8 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 	assertSignedIn(t, page, frame)
 }
 
-// assertSignedIn checks the panel has swapped Sign In for the signed-in user's own controls.
-// Sign Out is an icon button, so its title is the only text it carries.
+// assertSignedIn checks the panel has swapped Sign in for the signed-in user's own controls.
+// Sign out is an icon button, so its title is the only text it carries.
 //
 // The first wait is deliberately short. Everything under /auth/ is capped at two requests a
 // second per reader, a bare literal at backend/app/rest/api/rest.go:242. The initial status and
@@ -145,7 +145,7 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLocator) {
 	t.Helper()
 
-	signOut := frame.Locator(`[title="Sign Out"]`)
+	signOut := frame.Locator(`[title="Sign out"]`)
 	if err := signOut.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateVisible,
 		Timeout: playwright.Float(float64(authRepaintWait.Milliseconds())),
@@ -155,7 +155,7 @@ func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLo
 	}
 
 	waitVisible(t, signOut)
-	waitVisible(t, frame.Locator(`[title="Open My Profile"]`))
+	waitVisible(t, frame.Locator(`[title="Open your profile"]`))
 	waitHidden(t, frame.Locator(".auth-button"), "the panel still offers sign-in after a sign-in")
 }
 
@@ -180,13 +180,13 @@ func TestAuth_SignOutEndsTheSession(t *testing.T) {
 	signInDev(t, page, frame)
 
 	pauseForAuthLimit()
-	require.NoError(t, frame.Locator(`[title="Sign Out"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Sign out"]`).Click())
 	waitVisible(t, frame.Locator(".auth-button"))
-	waitHidden(t, frame.Locator(`[title="Sign Out"]`))
+	waitHidden(t, frame.Locator(`[title="Sign out"]`))
 
 	frame = reload(t, page)
 	waitVisible(t, frame.Locator(".auth-button"))
-	waitHidden(t, frame.Locator(`[title="Sign Out"]`),
+	waitHidden(t, frame.Locator(`[title="Sign out"]`),
 		"the panel signed out but the session survived the reload, so the cookie was never cleared")
 }
 

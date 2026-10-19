@@ -372,7 +372,7 @@ export class CommentForm extends Component<Props, State> {
     <div className={styles.markdown}>
       <FormattedMessage
         id="commentForm.notice-about-styling"
-        defaultMessage="Styling with <a>Markdown</a> is supported"
+        defaultMessage="<a>Markdown</a> can be used for formatting"
         values={{
           a: (title: string) => (
             <a class={styles.markdownLink} target="_blank" href="markdown-help.html">
@@ -562,7 +562,7 @@ export const messages = defineMessages({
   },
   uploadingFile: {
     id: 'commentForm.uploading-file',
-    defaultMessage: 'uploading {fileName}...',
+    defaultMessage: 'Uploading {fileName}...',
   },
   exceededSize: {
     id: 'commentForm.exceeded-size',
@@ -578,11 +578,10 @@ export const messages = defineMessages({
   },
   unauthorizedUploadingDisabled: {
     id: 'commentForm.unauthorized-uploading-disabled',
-    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+    defaultMessage: 'Sign in to upload images.',
   },
   anonymousUploadingDisabled: {
     id: 'commentForm.anonymous-uploading-disabled',
-    defaultMessage:
-      'Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.',
+    defaultMessage: 'Anonymous users cannot upload images. Sign in with an account to attach images.',
   },
 });

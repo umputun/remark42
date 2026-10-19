@@ -103,7 +103,7 @@ export function CommentVotes({ id, votes, vote, controversy, disabled }: Props) 
 export const messages = defineMessages({
   score: {
     id: 'vote.score',
-    defaultMessage: 'Votes score',
+    defaultMessage: 'Score',
   },
   upvote: {
     id: 'vote.upvote',

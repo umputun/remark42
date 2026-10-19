@@ -37,7 +37,7 @@ enum Step {
 const messages = defineMessages({
   token: {
     id: 'token',
-    defaultMessage: 'Copy and paste the token from the email',
+    defaultMessage: 'Paste the token from the email',
   },
   expiredToken: {
     id: 'token.expired',
@@ -45,11 +45,11 @@ const messages = defineMessages({
   },
   haveSubscribed: {
     id: 'subscribeByEmail.have-been-subscribed',
-    defaultMessage: 'You have been subscribed on updates by email',
+    defaultMessage: 'You have subscribed to email updates',
   },
   subscribed: {
     id: 'subscribeByEmail.subscribed',
-    defaultMessage: 'You are subscribed on updates by email',
+    defaultMessage: 'You are subscribed to email updates',
   },
   submit: {
     id: 'subscribeByEmail.submit',
@@ -61,11 +61,11 @@ const messages = defineMessages({
   },
   subscribeByEmail: {
     id: 'subscribeByEmail.subscribe-by-email',
-    defaultMessage: 'Subscribe by Email',
+    defaultMessage: 'Subscribe by email',
   },
   onlyRegisteredUsers: {
     id: 'subscribeByEmail.only-registered-users',
-    defaultMessage: 'Available only for registered users',
+    defaultMessage: 'Only available to registered users',
   },
   email: {
     id: 'subscribeByEmail.email',
@@ -81,7 +81,7 @@ const renderEmailPart = (
 ) => (
   <>
     <div className={styles.title}>
-      <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Subscribe to replies" />
+      <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Email subscription to replies" />
     </div>
     <Input
       autofocus
@@ -254,7 +254,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
       <div className={styles.unsubscribed}>
         <FormattedMessage
           id="subscribeByEmail.have-been-unsubscribed"
-          defaultMessage="You have been unsubscribed by email to updates"
+          defaultMessage="You have unsubscribed from email updates"
         />
         <Button kind="primary" size="middle" className={styles.button} theme={theme} onClick={close}>
           <FormattedMessage id="subscribeByEmail.close" defaultMessage="Close" />

@@ -85,7 +85,7 @@ func TestHostFrame_ForeignFrameCannotDriveTheHostPage(t *testing.T) {
 
 	// the control for that last one: an overlay that could not open on this page for some unrelated
 	// reason would report the guard working. The widget's own request has to open it
-	require.NoError(t, frame.Locator(`[title="Open My Profile"]`).Click())
+	require.NoError(t, frame.Locator(`[title="Open your profile"]`).Click())
 	waitVisible(t, overlay.First())
 }
 

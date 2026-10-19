@@ -17,7 +17,7 @@ export const errorMessages = defineMessages<string | number>({
   },
   2: {
     id: 'errors.2',
-    defaultMessage: 'Failed to unmarshal incoming request.',
+    defaultMessage: 'The request could not be read. Please refresh the page and try again.',
   },
   3: {
     id: 'errors.3',
@@ -29,7 +29,7 @@ export const errorMessages = defineMessages<string | number>({
   },
   5: {
     id: 'errors.5',
-    defaultMessage: 'Comment cannot be found. Please refresh the page and try again.',
+    defaultMessage: 'Comments for this page could not be loaded. Please refresh the page and try again.',
   },
   6: {
     id: 'errors.6',
@@ -41,7 +41,7 @@ export const errorMessages = defineMessages<string | number>({
   },
   8: {
     id: 'errors.8',
-    defaultMessage: `Can't post comments on this page. Comments are read only.`,
+    defaultMessage: 'Comments on this page are read-only.',
   },
   9: {
     id: 'errors.9',
@@ -53,11 +53,11 @@ export const errorMessages = defineMessages<string | number>({
   },
   11: {
     id: 'errors.11',
-    defaultMessage: 'Comment already has reply, editing is not possible.',
+    defaultMessage: 'The comment already has a reply, so it can no longer be edited.',
   },
   12: {
     id: 'errors.12',
-    defaultMessage: 'Cannot save voting result. Please try again a bit later.',
+    defaultMessage: 'Voting failed. Please try again in a little while.',
   },
   13: {
     id: 'errors.13',
@@ -69,11 +69,11 @@ export const errorMessages = defineMessages<string | number>({
   },
   15: {
     id: 'errors.15',
-    defaultMessage: 'Too many votes for the comment.',
+    defaultMessage: 'This comment has reached the maximum number of votes.',
   },
   16: {
     id: 'errors.16',
-    defaultMessage: 'Min score reached for the comment.',
+    defaultMessage: 'This comment has reached the minimum score.',
   },
   17: {
     id: 'errors.17',
@@ -89,23 +89,23 @@ export const errorMessages = defineMessages<string | number>({
   },
   20: {
     id: 'errors.20',
-    defaultMessage: 'Posted image not found. Please try to upload it again.',
+    defaultMessage: 'Uploaded image not found. Please try to upload it again.',
   },
   401: {
     id: 'errors.not-authorized',
-    defaultMessage: 'Not authorized.',
+    defaultMessage: 'Please sign in to do this.',
   },
   403: {
     id: 'errors.forbidden',
-    defaultMessage: 'Forbidden.',
+    defaultMessage: "You don't have permission to do this.",
   },
   409: {
     id: 'errors.conflict',
-    defaultMessage: 'Conflict.',
+    defaultMessage: 'This action cannot be completed right now. Please refresh the page and try again.',
   },
   429: {
     id: 'errors.to-many-request',
-    defaultMessage: 'You have reached maximum request limit.',
+    defaultMessage: 'Too many requests. Please wait a moment and try again.',
   },
   500: {
     id: 'errors.unexpected-error',
