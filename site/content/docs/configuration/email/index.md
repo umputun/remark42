@@ -198,7 +198,7 @@ Configuration example for [Groundmail](https://groundmail.dev/):
 - NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ```
 
-`SMTP_USERNAME` is always `groundmail`, and `SMTP_PASSWORD` is an SMTP credential (starts with `gmsmtp_`) created in the Groundmail dashboard under **SMTP**. Verify the domain used in `AUTH_EMAIL_FROM` and `NOTIFY_EMAIL_FROM` first; until then mail only reaches the account owner. If your host blocks outbound port 587, use `SMTP_PORT=2525` with the same STARTTLS setting. See the [Groundmail SMTP docs](https://docs.groundmail.dev/api/smtp).
+`SMTP_USERNAME` is always `groundmail`, and `SMTP_PASSWORD` is an SMTP credential (starts with `gmsmtp_`) created in the Groundmail dashboard under **SMTP**. Before remark42 can email commenters, verify the domain used in `AUTH_EMAIL_FROM` and `NOTIFY_EMAIL_FROM` and add a payment method in Groundmail (the Free plan isn't charged); until then Groundmail only delivers to your own account email, sent from `noreply@mail.groundmail.dev`. If your host blocks outbound port 587, use `SMTP_PORT=2525` with the same STARTTLS setting. See the [Groundmail SMTP docs](https://docs.groundmail.dev/smtp).
 
 ## Setup email authentication
 
