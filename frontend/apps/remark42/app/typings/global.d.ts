@@ -22,6 +22,9 @@ type RemarkConfig = {
   theme?: Theme;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
+  // Not for the host page to set. The host page's title as the embed script last posted it,
+  // kept by iframe.ejs inside the widget document.
+  host_page_title?: string;
   // Optional, 'en' by default. Interface localization.
   locale?: string;
   // Optional, 'true' by default. Enables email subscription feature in interface when enable it from backend side,

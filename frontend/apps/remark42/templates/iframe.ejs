@@ -88,8 +88,12 @@
             location.replace(data.hash);
           }
 
+          // the title of the page the comments are on, which a new comment carries. kept apart
+          // from document.title, whose placeholder above names no page: a document opened on its
+          // own never receives a title, and then the backend reads it from the page instead
           if (data.title) {
             document.title = data.title;
+            remark_config.host_page_title = data.title;
           }
 
           // the bundle has not registered its own listener yet: it is only inserted below, after

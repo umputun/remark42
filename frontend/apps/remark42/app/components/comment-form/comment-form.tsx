@@ -166,7 +166,7 @@ export class CommentForm extends Component<Props, State> {
 
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
-      await this.props.onSubmit(text, settings.pageTitle || document.title);
+      await this.props.onSubmit(text, settings.pageTitle || window.remark_config?.host_page_title || '');
     } catch (err) {
       this.setState({
         isDisabled: false,
