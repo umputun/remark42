@@ -79,6 +79,35 @@ describe('<CommentForm />', () => {
     });
   });
 
+  describe('page title sent with a new comment', () => {
+    afterEach(() => {
+      delete window.remark_config.host_page_title;
+      document.title = '';
+    });
+
+    async function submit() {
+      const onSubmit = jest.fn(() => Promise.resolve());
+      setup({ onSubmit });
+      fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: 'hello' } });
+      fireEvent.submit(screen.getByTestId('textarea_1'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      return onSubmit;
+    }
+
+    it('sends the title the host page posted', async () => {
+      document.title = 'Comments';
+      window.remark_config.host_page_title = 'A post on the host page';
+      expect(await submit()).toHaveBeenCalledWith('hello', 'A post on the host page');
+    });
+
+    // a widget opened on its own has only the placeholder from iframe.ejs, which names no page.
+    // an empty title is what makes the backend read the real one from the page
+    it("sends no title when no host page posted one, not the widget's own", async () => {
+      document.title = 'Comments';
+      expect(await submit()).toHaveBeenCalledWith('hello', '');
+    });
+  });
+
   it(`doesn't render preview button and markdown toolbar in simple mode`, () => {
     setup({ user }, { simple_view: true });
     expect(screen.queryByTestId('markdown-toolbar')).not.toBeInTheDocument();

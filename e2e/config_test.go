@@ -263,3 +263,48 @@ func TestConfig_PageTitleReachesTheStoredComment(t *testing.T) {
 	assert.Equal(t, title, thread.Comments[0].Comment.Title,
 		"the host page's title never reached the stored comment")
 }
+
+// TestConfig_StandaloneWidgetSendsNoPlaceholderTitle covers the widget document opened on its own,
+// with no host page to post a title into it. Its own title is the placeholder in iframe.ejs, and
+// sent with a comment it was stored as the thread's title "Comments", because the backend reads
+// the page's title only when the widget sends none. Spam gets posted this way, from the widget's
+// own address
+func TestConfig_StandaloneWidgetSendsNoPlaceholderTitle(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	_, err := page.Goto(fmt.Sprintf("%s/web/iframe.html?site_id=remark&url=%s",
+		baseURL, neturl.QueryEscape(threadURL(t))))
+	require.NoError(t, err)
+	waitVisible(t, page.Locator(commentFormSel).First())
+
+	// signInAnon drives a widget inside a host page; this one is the page itself
+	pauseForAuthLimit()
+	require.NoError(t, page.Locator(".auth-button").Click())
+	waitVisible(t, page.Locator(".auth-dropdown"))
+	tab := page.Locator(`label[for="form-provider-anonymous"]`)
+	if n, cerr := tab.Count(); cerr == nil && n > 0 {
+		require.NoError(t, tab.Click())
+	}
+	require.NoError(t, page.Locator(".auth-input-username").Fill(anonName("standalone")))
+	_, err = page.ExpectResponse("**/auth/anonymous/login**", func() error {
+		return page.Locator(".auth-submit").Click()
+	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err)
+	waitVisible(t, page.Locator(`[title="Sign out"]`))
+
+	req, err := page.ExpectRequest("**/api/v1/comment?**", func() error {
+		submitForm(t, page.Locator(commentFormSel).First(), "standalone "+runID)
+		return nil
+	}, playwright.PageExpectRequestOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err)
+	raw, err := req.PostData()
+	require.NoError(t, err)
+
+	var sent struct {
+		Title *string `json:"title"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(raw), &sent), "unexpected request body: %s", raw)
+	require.NotNil(t, sent.Title, "the request carried no title field: %s", raw)
+	assert.Empty(t, *sent.Title, "the widget sent its own placeholder title instead of leaving it to the backend")
+}
