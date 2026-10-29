@@ -671,7 +671,7 @@ func (m *Manager) authorizedCert(ctx context.Context, key crypto.Signer, ck cert
 	if err != nil {
 		return nil, nil, err
 	}
-	chain, _, err := client.CreateOrderCert(ctx, o.FinalizeURL, csr, true)
+	chain, _, err := client.CreateCertFromOrder(ctx, o, csr, true)
 	if err != nil {
 		return nil, nil, err
 	}
