@@ -139,6 +139,43 @@ func TestService_ExtractPictures(t *testing.T) {
 	html = fmt.Sprintf(`<img src="https://remark42.radio-t.com/api/v1/img?src=%s">`, badURL)
 	ids = svc.ExtractPictures(html)
 	require.Empty(t, ids)
+
+	// traversal segments in a comment img src reached the fs store as an image id
+	html = `<img src="https://remark42.radio-t.com/api/v1/picture/../remark.db">
+<img src="https://remark42.radio-t.com/api/v1/picture/../..">
+<img src="https://remark42.radio-t.com/api/v1/picture/user1/..">
+<img src="https://remark42.radio-t.com/api/v1/picture/./pic.png">
+<img src="https://remark42.radio-t.com/api/v1/picture/user1/">
+<img src="https://remark42.radio-t.com/api/v1/picture/user1/pic` + "\x01" + `.png">
+<img src="https://remark42.radio-t.com/api/v1/picture/user1/pic1.png">`
+	assert.Equal(t, []string{"user1/pic1.png"}, svc.ExtractPictures(html))
+	assert.Equal(t, []string{"user1/pic1.png"}, svc.ExtractNonProxiedPictures(html))
+}
+
+func TestSafeIDSegment(t *testing.T) {
+	tbl := []struct {
+		seg  string
+		safe bool
+	}{
+		{"user1", true},
+		{"bjttt8ahajfmrhsula10.png", true},
+		{"github_ef0f706a79cc24b17bbbb374cd234a691d034128", true},
+		{"pic%00.png", true},
+		{"", false},
+		{".", false},
+		{"..", false},
+		{"..remark.db", false},
+		{"a/b", false},
+		{`a\b`, false},
+		{"pic\x00.png", false},
+		{"pic\n.png", false},
+		{"pic\t.png", false},
+	}
+	for _, tt := range tbl {
+		t.Run(strconv.Quote(tt.seg), func(t *testing.T) {
+			assert.Equal(t, tt.safe, SafeIDSegment(tt.seg))
+		})
+	}
 }
 
 func TestService_Cleanup(t *testing.T) {

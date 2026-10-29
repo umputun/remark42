@@ -1160,7 +1160,7 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 		// (the cleaned path can only ever reach defined routes or the webRoot-bounded file server),
 		// so nothing is served either way.
 		{name: "dotdot in user segment", path: "/api/v1/picture/../remark.db", wantStatus: http.StatusNotFound},
-		// Encoded traversal is not cleaned by the router, so the handler's safePictureSegment
+		// Encoded traversal is not cleaned by the router, so the handler's image.SafeIDSegment
 		// validation is what rejects it, with 400.
 		{name: "dotdot in id segment", path: "/api/v1/picture/dev_user/..%2Fremark.db", wantStatus: http.StatusBadRequest},
 		{name: "encoded dotdot in user segment", path: "/api/v1/picture/%2E%2E/remark.db", wantStatus: http.StatusBadRequest},
@@ -1186,7 +1186,7 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 }
 
 // TestRest_LoadPictureRejectsControlCharsInSegment makes sure a CRLF / tab / NUL
-// in the URL segment is rejected by safePictureSegment. Without the rejection
+// in the URL segment is rejected by image.SafeIDSegment. Without the rejection
 // the [WARN] log line constructed from %q-formatted segments would still be
 // safe (Go's %q escapes control chars), but a future log change to %s would
 // turn this into log forgery — and no legitimate picture id ever needs control

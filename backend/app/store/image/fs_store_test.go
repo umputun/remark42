@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -154,6 +155,37 @@ func TestFsStore_LoadAfterDelete(t *testing.T) {
 
 	_, err = svc.Load(id)
 	assert.Error(t, err)
+}
+
+func TestFsStore_RejectsUnsafeID(t *testing.T) {
+	ids := []string{"../remark.db", "../..", "user/..", "./remark.db", "/remark.db", "user/", "", "a/b/c",
+		"../a/remark.db", `..\remark.db`, "user/pic\x00.png"}
+	for _, partitions := range []int{0, 100} {
+		t.Run(strconv.Itoa(partitions), func(t *testing.T) {
+			root := t.TempDir()
+			svc := &FileSystem{Location: filepath.Join(root, "pictures"), Staging: filepath.Join(root, "pictures.staging"),
+				Partitions: partitions}
+			db := filepath.Join(root, "remark.db")
+			require.NoError(t, os.WriteFile(db, []byte("db"), 0o600))
+
+			for _, id := range ids {
+				assert.Error(t, svc.Save(id, gopherPNGBytes()), "save %q", id)
+				_, err := svc.Load(id)
+				assert.Error(t, err, "load %q", id)
+				assert.Error(t, svc.ResetCleanupTimer(id), "reset cleanup timer %q", id)
+				assert.Error(t, svc.Commit(id), "commit %q", id)
+				assert.Error(t, svc.Delete(id), "delete %q", id)
+			}
+
+			data, err := os.ReadFile(db)
+			require.NoError(t, err)
+			assert.Equal(t, "db", string(data))
+			entries, err := os.ReadDir(root)
+			require.NoError(t, err)
+			require.Len(t, entries, 1, "nothing created next to the image directories")
+			assert.Equal(t, "remark.db", entries[0].Name())
+		})
+	}
 }
 
 func TestFsStore_location(t *testing.T) {

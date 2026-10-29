@@ -35,6 +35,9 @@ type FileSystem struct {
 // Save saves image with given id to local FS, staging directory.
 // Files partitioned across multiple subdirectories, and the final path includes part, i.e. /location/user1/03/123-4567
 func (f *FileSystem) Save(id string, img []byte) error {
+	if err := f.checkID(id); err != nil {
+		return err
+	}
 	dst := f.location(f.Staging, id)
 
 	if err := os.MkdirAll(path.Dir(dst), 0o700); err != nil { //nolint:gosec // id is server-generated hash via image.Service (Save / SaveWithID); dst computed via f.location
@@ -51,6 +54,9 @@ func (f *FileSystem) Save(id string, img []byte) error {
 
 // Commit file stored in staging location by moving it to permanent location
 func (f *FileSystem) Commit(id string) error {
+	if err := f.checkID(id); err != nil {
+		return err
+	}
 	f.moveLock.Lock()
 	defer f.moveLock.Unlock()
 	log.Printf("[DEBUG] Commit image %s", id)
@@ -68,6 +74,9 @@ func (f *FileSystem) Commit(id string) error {
 
 // ResetCleanupTimer resets cleanup timer for the image
 func (f *FileSystem) ResetCleanupTimer(id string) error {
+	if err := f.checkID(id); err != nil {
+		return err
+	}
 	file := f.location(f.Staging, id)
 	_, err := os.Stat(file)
 	if err != nil {
@@ -84,6 +93,9 @@ func (f *FileSystem) ResetCleanupTimer(id string) error {
 
 // Load image from FS. Uses id to get partition subdirectory.
 func (f *FileSystem) Load(id string) ([]byte, error) {
+	if err := f.checkID(id); err != nil {
+		return nil, err
+	}
 	// get image file by id. first try permanent location and if not found - staging
 	img := func(id string) (file string, err error) {
 		file = f.location(f.Location, id)
@@ -112,6 +124,9 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 
 // Delete image from storage
 func (f *FileSystem) Delete(id string) error {
+	if err := f.checkID(id); err != nil {
+		return err
+	}
 	f.moveLock.Lock()
 	defer f.moveLock.Unlock()
 	staging := f.location(f.Staging, id)
@@ -184,6 +199,16 @@ func (f *FileSystem) Info() (StoreInfo, error) {
 		return StoreInfo{}, fmt.Errorf("problem retrieving first timestamp from staging images on fs: %w", err)
 	}
 	return StoreInfo{FirstStagingImageTS: ts}, nil
+}
+
+// checkID rejects an id that location could resolve outside base: it must be one or two
+// segments, each passing SafeIDSegment.
+func (f *FileSystem) checkID(id string) error {
+	elems := strings.Split(id, "/")
+	if len(elems) > 2 || !SafeIDSegment(elems[0]) || !SafeIDSegment(elems[len(elems)-1]) {
+		return fmt.Errorf("invalid image id %q", id)
+	}
+	return nil
 }
 
 // location gets full path for id by adding partition to the final path in order to keep files in different subdirectories
