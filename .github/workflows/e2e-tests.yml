@@ -82,16 +82,22 @@ jobs:
           go-version-file: e2e/go.mod
           cache-dependency-path: e2e/go.sum
 
+      # the expression env context can't see runner process variables, so ImageOS is copied in
+      - name: Runner image for the playwright cache key
+        run: echo "IMAGE_OS=$ImageOS" >> "$GITHUB_ENV"
+
       # two directories: the driver (node plus the npm package) and the browser builds,
-      # which include firefox and webkit for the rendering tests
+      # which include firefox and webkit for the rendering tests. the key carries the runner
+      # image because webkit is built per ubuntu release under one revision directory, and
+      # playwright skips the download when that directory exists
       - name: Cache playwright driver and browsers
         uses: actions/cache@v6
         with:
           path: |
             ~/.cache/ms-playwright
             ~/.cache/ms-playwright-go
-          key: playwright-${{ hashFiles('e2e/go.sum') }}
-          restore-keys: playwright-
+          key: playwright-${{ env.IMAGE_OS }}-${{ hashFiles('e2e/go.sum') }}
+          restore-keys: playwright-${{ env.IMAGE_OS }}-
 
       # E2E_STAMP is what the suite compares the running stack against, so a stack started here
       # has to carry the same value `make e2e-up` and the suite itself would give it

@@ -25,6 +25,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
@@ -237,6 +238,16 @@ func (s *Service) SaveWithID(id string, r io.Reader) error {
 	return s.store.Save(id, img)
 }
 
+// SafeIDSegment reports whether seg can be one segment of an image id. It rejects empty and dot
+// segments, any "..", path separators and control characters, so an id built from untrusted
+// input can't resolve outside the image directories.
+func SafeIDSegment(seg string) bool {
+	if seg == "" || seg == "." || strings.Contains(seg, "..") || strings.ContainsAny(seg, `/\`) {
+		return false
+	}
+	return !strings.ContainsFunc(seg, unicode.IsControl)
+}
+
 // returns list of image IDs from the comment html, including proxied images if includeProxied is true
 func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids []string) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
@@ -249,8 +260,10 @@ func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids 
 			if strings.Contains(im, s.ImageAPI) {
 				elems := strings.Split(im, "/")
 				if len(elems) >= 2 {
-					id := elems[len(elems)-2] + "/" + elems[len(elems)-1]
-					ids = append(ids, id)
+					user, file := elems[len(elems)-2], elems[len(elems)-1]
+					if SafeIDSegment(user) && SafeIDSegment(file) {
+						ids = append(ids, user+"/"+file)
+					}
 				}
 			}
 			if includeProxied && strings.Contains(im, s.ProxyAPI) {
