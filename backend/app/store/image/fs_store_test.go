@@ -159,6 +159,9 @@ func TestFsStore_LoadAfterDelete(t *testing.T) {
 }
 
 func TestFsStore_LoadClosesFile(t *testing.T) {
+	if _, err := os.Stat("/dev/fd"); err != nil {
+		t.Skip("no /dev/fd to count open files")
+	}
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
 	require.NoError(t, svc.Save("user1/test_img", gopherPNGBytes()))
