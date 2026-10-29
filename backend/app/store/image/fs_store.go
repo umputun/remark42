@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"hash/crc64"
-	"io"
 	"math"
 	"os"
 	"path"
@@ -115,11 +114,11 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 		return nil, fmt.Errorf("can't get image file for %s: %w", id, err)
 	}
 
-	fh, err := os.Open(imgFile) //nolint:gosec // we open file from known location
+	data, err := os.ReadFile(imgFile) //nolint:gosec // we open file from known location
 	if err != nil {
 		return nil, fmt.Errorf("can't load image %s: %w", id, err)
 	}
-	return io.ReadAll(fh)
+	return data, nil
 }
 
 // Delete image from storage

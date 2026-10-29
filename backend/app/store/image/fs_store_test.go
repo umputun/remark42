@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
@@ -155,6 +156,26 @@ func TestFsStore_LoadAfterDelete(t *testing.T) {
 
 	_, err = svc.Load(id)
 	assert.Error(t, err)
+}
+
+func TestFsStore_LoadClosesFile(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+	require.NoError(t, svc.Save("user1/test_img", gopherPNGBytes()))
+
+	// gc stays off so the os.File finalizer can't close a handle Load leaked
+	defer debug.SetGCPercent(debug.SetGCPercent(-1))
+	openFiles := func() int {
+		entries, err := os.ReadDir("/dev/fd")
+		require.NoError(t, err)
+		return len(entries)
+	}
+	before := openFiles()
+	for range 50 {
+		_, err := svc.Load("user1/test_img")
+		require.NoError(t, err)
+	}
+	assert.Less(t, openFiles()-before, 5)
 }
 
 func TestFsStore_RejectsUnsafeID(t *testing.T) {
