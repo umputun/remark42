@@ -26,6 +26,8 @@ compose-private.yml
 /backend/_example/*/vendor
 http-client.env.json
 /backend/app/cmd/var
+/.turbo/
+/site/node_modules/
 
 # ralphex progress logs
 .ralphex/progress/
