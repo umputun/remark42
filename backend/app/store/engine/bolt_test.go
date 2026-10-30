@@ -761,6 +761,38 @@ func TestBolt_DeleteAll(t *testing.T) {
 	assert.EqualError(t, err, `site "bad" not found`)
 }
 
+func TestBoltDB_UserWebsite(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+	loc := store.Locator{SiteID: "radio-t"}
+
+	_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserEmail, Update: "u1@example.com"})
+	require.NoError(t, err)
+	res, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserWebsite, Update: "https://u1.example.com"})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "u1@example.com", Website: "https://u1.example.com"}}, res)
+
+	res, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserWebsite})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Website: "https://u1.example.com"}}, res)
+
+	require.NoError(t, b.Delete(DeleteRequest{Locator: loc, UserID: "u1", UserDetail: UserWebsite}))
+	res, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserWebsite})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1"}}, res, "website removed")
+	res, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserEmail})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, res, "other details kept")
+
+	// removing all details removes the website too
+	_, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserWebsite, Update: "https://u1.example.com"})
+	require.NoError(t, err)
+	require.NoError(t, b.Delete(DeleteRequest{Locator: loc, UserID: "u1", UserDetail: AllUserDetails}))
+	res, err = b.UserDetail(UserDetailRequest{Locator: loc, Detail: AllUserDetails})
+	require.NoError(t, err)
+	assert.Empty(t, res)
+}
+
 func TestBolt_DeleteUserDetail(t *testing.T) {
 	var (
 		createUser = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail, Update: "value1"}

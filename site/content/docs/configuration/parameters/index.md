@@ -163,6 +163,7 @@ services:
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
 | edit-time                      | EDIT_TIME                      | `5m`                    | edit window; set to `0` to disable comment editing and staged image cleanup |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
+| user-website                   | USER_WEBSITE                   | `false`                 | let users set a website, shown in their profile          |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images                      |
 | image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
@@ -281,6 +282,15 @@ The following list of command-line options is deprecated and might be removed in
 | auth.twitter.csec   | none        | AUTH_TWITTER_CSEC     | none         |     | Twitter Consumer API Secret key | 1.14.0 |                           |
 
 </details>
+
+### User website
+
+With `USER_WEBSITE=true` a signed-in user can add a website from their own profile panel (click on your name, then «Add your website»). It is shown under the user id in the profile panel that opens when someone clicks the user's name, as a `rel="nofollow ugc"` link, so it carries no search ranking value for spammers.
+
+- Only absolute `http` and `https` URLs of a public host are accepted (no credentials, IP addresses or `localhost`); `example.com` is stored as `https://example.com`.
+- The website is a user detail, like the subscription email: it is not part of the token or the stored comments, it is removed with the rest of the user data on a deletion request, and blocked users don't show it.
+- Admins can set or remove any user's website with `PUT /api/v1/admin/website/{userid}?site=…` (`{"website": "…"}`) and `DELETE /api/v1/admin/website/{userid}?site=…`.
+- The WordPress importer stores each comment's `comment_author_url` as the website of its author.
 
 ### Admin users
 

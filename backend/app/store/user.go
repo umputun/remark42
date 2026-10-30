@@ -25,6 +25,9 @@ type User struct {
 	EmailSubscription bool   `json:"email_subscription,omitempty"`
 	SiteID            string `json:"site_id,omitempty"`
 	PaidSub           bool   `json:"paid_sub,omitempty"`
+	// Website is the user's own site, set by the user when the feature is enabled (--user-website).
+	// It lives in the user details store and is added to comments on read; never part of the token.
+	Website string `json:"website,omitempty"`
 }
 
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")

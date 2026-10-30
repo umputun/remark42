@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"strings"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -29,6 +30,7 @@ type wpComment struct {
 	ID          string `xml:"comment_id"`
 	Author      string `xml:"comment_author"`
 	AuthorEmail string `xml:"comment_author_email"`
+	AuthorURL   string `xml:"comment_author_url"`
 	AuthorIP    string `xml:"comment_author_IP"`
 	Date        wpTime `xml:"comment_date_gmt"`
 	Content     string `xml:"comment_content"`
@@ -59,20 +61,34 @@ func (w *WordPress) Convert(text string) string {
 	return html.UnescapeString(text) // sanitize remains on comment create
 }
 
+// websiteSetter is implemented by stores that keep user websites (service.DataStore)
+type websiteSetter interface {
+	SetUserWebsite(siteID, userID, value string) (string, error)
+}
+
 // Import comments from WP and save to store
 func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
 	if e := w.DataStore.DeleteAll(siteID); e != nil {
 		return 0, e
 	}
 
+	websites, _ := w.DataStore.(websiteSetter)
 	commentsCh := w.convert(r, siteID)
 	failed, passed := 0, 0
 	for c := range commentsCh {
+		// the author's website becomes a user detail, not part of the stored comment
+		website := c.User.Website
+		c.User.Website = ""
 		if _, err = w.DataStore.Create(c); err != nil {
 			failed++
 			continue
 		}
 		passed++
+		if website != "" && websites != nil {
+			if _, e := websites.SetUserWebsite(siteID, c.User.ID, website); e != nil {
+				log.Printf("[DEBUG] skip website %q of %s: %v", website, c.User.ID, e)
+			}
+		}
 	}
 
 	if failed > 0 {
@@ -130,9 +146,10 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 								ID:      comment.ID,
 								Locator: store.Locator{URL: item.Link, SiteID: siteID},
 								User: store.User{
-									ID:   "wordpress_" + store.EncodeID(comment.Author),
-									Name: comment.Author,
-									IP:   comment.AuthorIP,
+									ID:      "wordpress_" + store.EncodeID(comment.Author),
+									Name:    comment.Author,
+									IP:      comment.AuthorIP,
+									Website: strings.TrimSpace(comment.AuthorURL),
 								},
 								Text:      comment.Content,
 								Timestamp: comment.Date.time,

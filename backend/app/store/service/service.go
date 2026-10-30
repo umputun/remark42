@@ -40,6 +40,7 @@ type DataStore struct {
 	RestrictedWordsMatcher *RestrictedWordsMatcher
 	ImageService           *image.Service
 	AdminEdits             bool // allow admin unlimited edits
+	UserWebsite            bool // users may set a website, shown in their profile
 
 	// granular locks
 	scopedLocks struct {
@@ -226,6 +227,43 @@ func (s *DataStore) SetUserTelegram(siteID, userID, value string) (string, error
 	}
 	if len(res) == 1 {
 		return res[0].Telegram, nil
+	}
+	return "", nil
+}
+
+// GetUserWebsite gets user website
+func (s *DataStore) GetUserWebsite(siteID, userID string) (string, error) {
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserWebsite,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Website, nil
+	}
+	return "", nil
+}
+
+// SetUserWebsite validates and sets user website, returning the normalized value
+func (s *DataStore) SetUserWebsite(siteID, userID, value string) (string, error) {
+	website, err := NormalizeWebsite(value)
+	if err != nil {
+		return "", err
+	}
+	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
+		Detail:  engine.UserWebsite,
+		Locator: store.Locator{SiteID: siteID},
+		UserID:  userID,
+		Update:  website,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 1 {
+		return res[0].Website, nil
 	}
 	return "", nil
 }
@@ -1041,6 +1079,12 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 		c.User.IP = ""
 	}
 
+	// user website comes from user details, never from the stored comment; blocked users lose it
+	c.User.Website = ""
+	if s.UserWebsite && !c.User.Blocked {
+		c.User.Website = flags.website(c.Locator.SiteID, c.User.ID)
+	}
+
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
@@ -1053,6 +1097,7 @@ type userFlagCache struct {
 	s         *DataStore
 	blockedM  map[flagKey]bool
 	verifiedM map[flagKey]bool
+	websiteM  map[flagKey]string
 }
 
 type flagKey struct {
@@ -1061,7 +1106,7 @@ type flagKey struct {
 }
 
 func (s *DataStore) newUserFlagCache() *userFlagCache {
-	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}}
+	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}, websiteM: map[flagKey]string{}}
 }
 
 func (f *userFlagCache) blocked(siteID, userID string) bool {
@@ -1089,6 +1134,19 @@ func (f *userFlagCache) verified(siteID, userID string) bool {
 		return false // don't cache on error, retry on the next comment for this user
 	}
 	f.verifiedM[key] = v
+	return v
+}
+
+func (f *userFlagCache) website(siteID, userID string) string {
+	key := flagKey{siteID: siteID, userID: userID}
+	if v, ok := f.websiteM[key]; ok {
+		return v
+	}
+	v, err := f.s.GetUserWebsite(siteID, userID)
+	if err != nil {
+		return "" // don't cache on error, retry on the next comment for this user
+	}
+	f.websiteM[key] = v
 	return v
 }
 

@@ -201,6 +201,17 @@ _returned ID should be appended to load image URL on the caller side_
 
 - `DELETE /api/v1/email?site=siteID` - removes user's email, _auth required_
 
+## User Website
+
+Available when the server runs with `USER_WEBSITE=true`; otherwise these return `403`. `/api/v1/config` reports the setting as `user_website`.
+
+- `GET /api/v1/website?site=site-id` - get the current user's website, _auth required_
+- `PUT /api/v1/website?site=site-id` - set the current user's website, _auth required_
+
+  Body `{"website": "https://example.com"}`. Only `http`/`https` URLs of a public host are accepted (`400` otherwise), and the normalized value is returned. An empty value removes the website.
+
+  The website is added as `user.website` to the comments of that user in every response, and shown in the user's profile panel.
+
 ## Admin
 
 - `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`
@@ -231,6 +242,8 @@ http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 - `DELETE /api/v1/admin/user/{userid}?site=site-id` - delete the user's comments and stored details; succeeds even if the user has no comments or is already absent
 - `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set read-only status
 - `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set verified status
+- `PUT /api/v1/admin/website/{userid}?site=site-id` - set a user's website, body `{"website": "https://example.com"}`; an empty value removes it
+- `DELETE /api/v1/admin/website/{userid}?site=site-id` - remove a user's website
 - `GET /api/v1/admin/deleteme?site=site-id&token=token` - process a user's deleteme request; already-deleted or dataless users return success (idempotent)
 
 _all admin calls require auth and admin privilege_
