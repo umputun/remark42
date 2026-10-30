@@ -31,6 +31,8 @@ describe('<ProfileWebsite />', () => {
     expect(container).toBeEmptyDOMElement();
     rerender(<ProfileWebsite website={SCRIPT_URL} isCurrent={false} />);
     expect(container).toBeEmptyDOMElement();
+    rerender(<ProfileWebsite website="http://0x7f.0.0.1" isCurrent={false} />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('offers no editing when the server disables the feature', async () => {
@@ -77,6 +79,21 @@ describe('website helpers', () => {
     expect(safeWebsite('data:text/html,hi')).toBeNull();
     expect(safeWebsite('not a url')).toBeNull();
     expect(safeWebsite(undefined)).toBeNull();
+  });
+
+  it('rejects IP addresses in any form, localhost and credentials', () => {
+    [
+      'http://127.1',
+      'http://0x7f.0.0.1',
+      'http://0177.0.0.1',
+      'http://2130706433',
+      'http://10.1',
+      'http://[::1]/',
+    ].forEach((value) => expect(safeWebsite(value)).toBeNull());
+    expect(safeWebsite('http://localhost:8080')).toBeNull();
+    expect(safeWebsite('https://app.localhost')).toBeNull();
+    expect(safeWebsite('https://user:pass@example.com')).toBeNull();
+    expect(safeWebsite('https://1.example.com')).toBe('https://1.example.com/');
   });
 
   it('shortens the display text', () => {

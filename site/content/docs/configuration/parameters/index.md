@@ -287,7 +287,8 @@ The following list of command-line options is deprecated and might be removed in
 
 With `USER_WEBSITE=true` a signed-in user can add a website from their own profile panel (click on your name, then «Add your website»). It is shown under the user id in the profile panel that opens when someone clicks the user's name, as a `rel="nofollow ugc"` link, so it carries no search ranking value for spammers.
 
-- Only absolute `http` and `https` URLs of a public host are accepted (no credentials, IP addresses or `localhost`); `example.com` is stored as `https://example.com`.
+- Only absolute `http` and `https` URLs with a domain name are accepted: no credentials, `localhost` or IP addresses, including the forms browsers read as IPv4 such as `127.1` or `0x7f.0.0.1`. `example.com` is stored as `https://example.com` and an internationalized domain in punycode. The check is on the URL only: the domain is not resolved.
+- The website is part of the native backup and is restored with it, whether `USER_WEBSITE` is on or off.
 - The website is a user detail, like the subscription email: it is not part of the token or the stored comments, it is removed with the rest of the user data on a deletion request, and blocked users don't show it.
 - Admins can set or remove any user's website with `PUT /api/v1/admin/website/{userid}?site=…` (`{"website": "…"}`) and `DELETE /api/v1/admin/website/{userid}?site=…`.
 - The WordPress importer stores each comment's `comment_author_url` as the website of its author.

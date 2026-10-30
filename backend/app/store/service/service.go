@@ -977,6 +977,12 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 			_, err := s.Engine.UserDetail(req)
 			errs = append(errs, err)
 		}
+		// website is restored even with USER_WEBSITE off, the option controls only showing and editing it
+		if um.Details.Website != "" {
+			if _, err := s.SetUserWebsite(siteID, um.ID, um.Details.Website); err != nil {
+				errs = append(errs, fmt.Errorf("can't restore website of %s: %w", um.ID, err))
+			}
+		}
 	}
 
 	return errors.Join(errs...)

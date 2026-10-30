@@ -20,14 +20,24 @@ const messages = defineMessages<string>({
   invalid: { id: 'profile.website-invalid', defaultMessage: 'Enter a valid web address starting with http or https' },
 });
 
-/** Only absolute http(s) links are rendered, whatever arrives in the profile query. */
+/**
+ * Only absolute http(s) links to a domain are rendered, whatever arrives in the profile query.
+ * The URL parser already turns every IPv4 form (127.1, 0x7f.0.0.1) into a dotted address.
+ */
 export function safeWebsite(value?: string): string | null {
   if (!value) {
     return null;
   }
   try {
     const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+    const host = url.hostname;
+    const isDomain =
+      !host.startsWith('[') &&
+      !/^\d+\.\d+\.\d+\.\d+$/.test(host) &&
+      host !== 'localhost' &&
+      !host.endsWith('.localhost');
+    const isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+    return isHttp && isDomain && !url.username && !url.password ? url.toString() : null;
   } catch {
     return null;
   }

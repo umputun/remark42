@@ -208,7 +208,7 @@ Available when the server runs with `USER_WEBSITE=true`; otherwise these return 
 - `GET /api/v1/website?site=site-id` - get the current user's website, _auth required_
 - `PUT /api/v1/website?site=site-id` - set the current user's website, _auth required_
 
-  Body `{"website": "https://example.com"}`. Only `http`/`https` URLs of a public host are accepted (`400` otherwise), and the normalized value is returned. An empty value removes the website.
+  Body `{"website": "https://example.com"}`. Only `http`/`https` URLs with a domain name are accepted, not IP addresses or `localhost` (`400` otherwise), and the normalized value is returned. An empty value removes the website.
 
   The website is added as `user.website` to the comments of that user in every response, and shown in the user's profile panel.
 

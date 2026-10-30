@@ -37,6 +37,26 @@ func TestNormalizeWebsite(t *testing.T) {
 		{in: "https://exa mple.com", ok: false},
 		{in: "https://example.com/" + string(make([]byte, 200)), ok: false},
 		{in: "https://.example.com", ok: false},
+		{in: "https://ExAmple.com.:443/", ok: false},
+		// IPv4 as browsers parse it, loopback and others
+		{in: "http://127.1", ok: false},
+		{in: "http://0x7f.0.0.1", ok: false},
+		{in: "http://0177.0.0.1", ok: false},
+		{in: "http://0x7f000001", ok: false},
+		{in: "http://2130706433", ok: false},
+		{in: "http://192.168.0x1.1", ok: false},
+		{in: "http://10.1", ok: false},
+		{in: "http://1.2.3.0x", ok: false},
+		{in: "http://example.0x1", ok: false},
+		{in: "http://\uff11\uff12\uff17.\uff10.\uff10.\uff11", ok: false}, // fullwidth 127.0.0.1
+		{in: "http://127\u30020\u30020\u30021", ok: false},                    // ideographic full stops
+		{in: "http://ex%61mple.com", ok: false},
+		// domains that only look numeric stay valid
+		{in: "https://1.example.com", out: "https://1.example.com", ok: true},
+		{in: "https://example.com1", out: "https://example.com1", ok: true},
+		{in: "https://0xff.example.com/p?q=1", out: "https://0xff.example.com/p?q=1", ok: true},
+		{in: "https://Espa\u00f1a.es/blog", out: "https://xn--espaa-rta.es/blog", ok: true},
+		{in: "https://\uff45xample.com", out: "https://example.com", ok: true}, // fullwidth e
 	}
 	for _, tt := range tbl {
 		t.Run(tt.in, func(t *testing.T) {

@@ -79,6 +79,13 @@ func TestRest_UserWebsite(t *testing.T) {
 	assert.JSONEq(t, `{"website":"https://dev.example.com/blog"}`, body)
 	assert.Equal(t, "https://dev.example.com/blog", websiteOf(), "cache flushed after the change")
 
+	// IPv4 in a form browsers parse is rejected and keeps the stored website (all forms in TestNormalizeWebsite)
+	for _, ip := range []string{"http://127.1", "http://0x7f.0.0.1"} {
+		code, _ = send(http.MethodPut, "/api/v1/website?site=remark42", `{"website":"`+ip+`"}`, devToken, false)
+		assert.Equal(t, http.StatusBadRequest, code, ip)
+	}
+	assert.Equal(t, "https://dev.example.com/blog", websiteOf())
+
 	// an empty value removes it
 	code, _ = send(http.MethodPut, "/api/v1/website?site=remark42", `{"website":""}`, devToken, false)
 	require.Equal(t, http.StatusOK, code)
