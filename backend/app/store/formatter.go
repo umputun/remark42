@@ -120,6 +120,43 @@ func (f *CommentFormatter) lazyImage(commentHTML string) (resHTML string) {
 	return resHTML
 }
 
+// StripImages removes all images from the comment HTML, together with the links and paragraphs
+// left holding nothing but the removed image. Used as a CommentConverter when images are disabled.
+// Unlike lazyImage it fails closed: if the result can't be produced, nothing is returned rather than
+// the input, so an image can't slip through.
+func StripImages(commentHTML string) string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		return ""
+	}
+	images := doc.Find("img")
+	if images.Length() == 0 {
+		return commentHTML
+	}
+	images.Each(func(_ int, img *goquery.Selection) {
+		parent := img.Parent()
+		img.Remove()
+		for isEmptyWrapper(parent) {
+			next := parent.Parent()
+			parent.Remove()
+			parent = next
+		}
+	})
+	resHTML, err := doc.Find("body").Html()
+	if err != nil {
+		return ""
+	}
+	return resHTML
+}
+
+// isEmptyWrapper reports whether the selection is a link or paragraph with no text and no child elements
+func isEmptyWrapper(s *goquery.Selection) bool {
+	if s.Length() == 0 || !s.Is("a, p") {
+		return false
+	}
+	return strings.TrimSpace(s.Text()) == "" && s.Children().Length() == 0
+}
+
 // GetMdExtensionsAndRenderer returns blackfriday extensions and renderer used for rendering markdown
 // within store module.
 //

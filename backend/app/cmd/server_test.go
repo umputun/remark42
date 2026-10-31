@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 const (
@@ -1416,6 +1417,65 @@ func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Cont
 	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
 	return app, ctx, cancel
+}
+
+func TestServerApp_ImageDisable(t *testing.T) {
+	tbl := []struct {
+		name     string
+		disable  bool
+		wantImgs bool
+	}{
+		{"images enabled by default", false, true},
+		{"images disabled", true, false},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			port := chooseUnusedPort(t)
+			app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+				o.Port = port
+				o.Image.Disable = tt.disable
+				return o
+			})
+			go func() { _ = app.run(ctx) }()
+			waitForHTTPServerStart(t, port)
+			defer func() {
+				cancel()
+				app.Wait()
+			}()
+
+			client := &http.Client{Timeout: 5 * time.Second}
+			defer client.CloseIdleConnections()
+			baseURL := fmt.Sprintf("http://localhost:%d/api/v1", port)
+
+			resp, err := client.Get(baseURL + "/config?site=remark")
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+			cnf := map[string]any{}
+			require.NoError(t, json.Unmarshal(body, &cnf), string(body))
+			assert.Equal(t, tt.disable, cnf["image_disabled"])
+
+			req, err := http.NewRequest(http.MethodPost, baseURL+"/comment", strings.NewReader(
+				`{"text": "hello ![](https://example.com/a.png) world",`+
+					`"locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
+			require.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			resp, err = client.Do(req)
+			require.NoError(t, err)
+			body, err = io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusCreated, resp.StatusCode, string(body))
+			// decode the comment, as json encoding escapes "<" in the raw body
+			created := store.Comment{}
+			require.NoError(t, json.Unmarshal(body, &created), string(body))
+			assert.Equal(t, tt.wantImgs, strings.Contains(created.Text, "<img"), created.Text)
+			assert.Contains(t, created.Text, "hello")
+		})
+	}
 }
 
 func TestMain(m *testing.M) {

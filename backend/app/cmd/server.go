@@ -202,6 +202,7 @@ type ImageGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/pictures.db" description:"images bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
+	Disable      bool     `long:"disable" env:"DISABLE" description:"disable image uploads and strip images from new and edited comments"`
 	MaxSize      int      `long:"max-size" env:"MAX_SIZE" default:"5000000" description:"max size of image file"`
 	ResizeWidth  int      `long:"resize-width" env:"RESIZE_WIDTH" default:"2400" description:"width of a resized image"`
 	ResizeHeight int      `long:"resize-height" env:"RESIZE_HEIGHT" default:"900" description:"height of a resized image"`
@@ -726,7 +727,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	if s.EnableEmoji {
 		emojiFmt = func(text string) string { return emoji.Sprint(text) }
 	}
-	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
+	converters := []store.CommentConverter{imgProxy, emojiFmt}
+	if s.Image.Disable {
+		// first in the chain, so an image dropped from the comment is never proxied or cached
+		converters = append([]store.CommentConverter{store.CommentConverterFunc(store.StripImages)}, converters...)
+	}
+	commentFormatter := store.NewCommentFormatter(converters...)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
@@ -765,6 +771,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		SubscribersOnly:            s.SubscribersOnly,
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
+		DisableImages:              s.Image.Disable,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
 	}
 

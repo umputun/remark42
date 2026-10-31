@@ -75,6 +75,7 @@ services:
 | image.rpc.timeout              | IMAGE_RPC_TIMEOUT              |                         | http timeout (default: 5s)                               |
 | image.rpc.auth_user            | IMAGE_RPC_AUTH_USER            |                         | basic auth user name                                     |
 | image.rpc.auth_passwd          | IMAGE_RPC_AUTH_PASSWD          |                         | basic auth user password                                 |
+| image.disable                  | IMAGE_DISABLE                  | `false`                 | disable image uploads and strip images from new and edited comments; see [Disabling images](#disabling-images) for what it leaves alone |
 | image.max-size                 | IMAGE_MAX_SIZE                 | `5000000`               | max size of image file                                   |
 | image.resize-width             | IMAGE_RESIZE_WIDTH             | `2400`                  | width of a resized image                                 |
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                   | height of a resized image                                |
@@ -255,6 +256,24 @@ Caveats:
 - **IPv6.** CIDRs are matched by family — `172.16.0.0/12` (or `0.0.0.0/0`) never matches an IPv6 peer. If your proxy reaches Remark42 over IPv6 (dual-stack / IPv6-enabled Docker), add the IPv6 network too, or every visitor collapses onto the proxy's IP and gets over-throttled.
 - **Don't publish Remark42's own port** when trusting a Docker range. If Remark42's port is exposed to the host, external traffic is SNAT'd to the Docker gateway (inside `172.16.0.0/12`) and appears trusted — re-opening the bypass. Publish only the proxy.
 - `0.0.0.0/0` trusts everyone and re-opens the bypass; too narrow a range over-throttles real visitors. If unsure which network your proxy uses, check a Remark42 request log for the peer address it reports.
+
+### Disabling images
+
+`--image.disable` (`IMAGE_DISABLE`) keeps images posted from now on off the instance. It is a single setting for the whole instance: there is no per-site or per-user control, and uploads stay enabled unless you turn it on.
+
+With it on:
+
+- Uploading an image is refused by the server (`403`), so a direct API call fails the same way the widget would.
+- Images are removed from new, previewed and edited comments, whether they were uploaded or linked from another site. The rest of the comment is posted. A comment holding nothing but an image has nothing left to post and is rejected as invalid.
+- The comment form drops its image button and ignores images pasted or dropped into it.
+
+What it does not do:
+
+- **Existing comments keep their images.** Comments posted before the setting was turned on are left as they are, and so are comments loaded by an import.
+- **Images already uploaded stay in the image storage.** Turning the setting on does not delete them.
+- **The image proxy and cache are unchanged.** `--image-proxy.http2https` and `--image-proxy.cache-external` still apply to images in comments that were posted earlier.
+- **The markdown you typed is stored as typed.** The rendered comment has no image, but the edit form still shows the markdown you wrote, image line included, and saving it again removes the image again.
+- **The help page is generic.** The markdown help page the form links to still describes image syntax, since it is a static page that does not know the setting.
 
 ### Deprecated parameters
 
