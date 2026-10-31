@@ -153,16 +153,22 @@ func TestImages_ImageOnlyCommentIsRejected(t *testing.T) {
 				waitVisible(t, form.Locator(`p[role="alert"]`))
 			}
 
+			// no wait on the anchor's text after the reload: on the default instance the image-only
+			// comment sits above it and pushes it below the fold, where it is an empty placeholder
+			// that no text filter matches. Counting articles sees placeholders too
 			frame = reload(t, page)
-			waitVisible(t, comment(frame, anchor))
 			eventually(t, waitTimeout, fmt.Sprintf("the thread did not settle at %d comments", wantArticles), func() bool {
 				n, err := frame.Locator("article").Count()
 				return err == nil && n == wantArticles
 			})
 
-			images, err := frame.Locator("article .raw-content img").Count()
-			require.NoError(t, err)
-			assert.Equal(t, in.wantImages(), images, "images in the thread")
+			// the newest comment is first and in view, so on the default instance its image is drawn
+			// by now. Polled all the same, and for the disabled instance that is a poll for zero,
+			// which holds from the start: the thread is one comment and it is the anchor
+			eventually(t, waitTimeout, fmt.Sprintf("the thread did not settle at %d images", in.wantImages()), func() bool {
+				n, err := frame.Locator("article .raw-content img").Count()
+				return err == nil && n == in.wantImages()
+			})
 		})
 	}
 }
@@ -215,9 +221,11 @@ func TestImages_EditCannotAddAnImage(t *testing.T) {
 // message. The default instance is the control: the same request there fails as an unparseable
 // upload, which is not that.
 //
-// The reader is signed in with an account for a second reason. The route turns an anonymous user
-// away with the same bare 403 before the handler runs, so an anonymous session would pass the
-// status check on both instances and prove nothing about the option
+// Two things have to be right for the request to reach the handler at all, and each otherwise
+// ends in the same bare "Access denied" 403 on both instances: the reader is signed in with an
+// account, since the route turns an anonymous user away first (rest.go, rejectAnonUser), and the
+// url carries site=remark, which the middleware matches against the token's audience. The
+// first run of this case missed the second and got that answer from both
 func TestImages_UploadIsRefused(t *testing.T) {
 	t.Parallel()
 
@@ -229,7 +237,7 @@ func TestImages_UploadIsRefused(t *testing.T) {
 			frame := openURL(t, page, threadURLOn(t, in.base))
 			signInImageReader(t, page, frame, in, "upload")
 
-			status, body := pageFetch(t, page, "POST", in.base+"/api/v1/picture", nil)
+			status, body := pageFetch(t, page, "POST", in.base+"/api/v1/picture?site=remark", nil)
 			if in.disabled {
 				assert.Equal(t, http.StatusForbidden, status, "body: %s", body)
 				assert.Contains(t, body, `"code":17`, "ErrActionRejected")
