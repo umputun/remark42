@@ -178,4 +178,89 @@ describe('<CommentForm />', () => {
       expect(screen.getByText(messages.anonymousUploadingDisabled.defaultMessage)).toBeInTheDocument();
     });
   });
+
+  describe('image uploads', () => {
+    const attachImageTitle = /Attach an image/;
+    const anonymousUser = { ...user, id: 'anonymous_1' };
+    const image = () => new File(['x'], 'cat.png', { type: 'image/png' });
+    const uploaded = { name: 'cat.png', size: 1, type: 'image/png', url: 'https://example.com/cat.png' };
+    let uploadImage: jest.Mock;
+
+    beforeEach(() => {
+      uploadImage = jest.fn(() => Promise.resolve(uploaded));
+    });
+
+    describe('when the server allows them', () => {
+      it('renders the attach image control', () => {
+        setup({ user, uploadImage });
+        expect(screen.getByTitle(attachImageTitle)).toBeInTheDocument();
+      });
+
+      it('uploads an image dropped on the form', async () => {
+        setup({ user, uploadImage });
+        fireEvent.drop(screen.getByTestId('commentform_1'), { dataTransfer: { files: [image()] } });
+        await waitFor(() => expect(uploadImage).toHaveBeenCalledTimes(1));
+      });
+
+      it('uploads an image pasted into the textarea', async () => {
+        setup({ user, uploadImage });
+        fireEvent.paste(screen.getByTestId('textarea_1'), { clipboardData: { files: [image()] } });
+        await waitFor(() => expect(uploadImage).toHaveBeenCalledTimes(1));
+      });
+    });
+
+    describe('when the server disabled them', () => {
+      const disabled = { image_disabled: true };
+
+      it('does not render the attach image control but keeps the rest of the toolbar', () => {
+        setup({ user, uploadImage }, disabled);
+        expect(screen.queryByTitle(attachImageTitle)).not.toBeInTheDocument();
+        expect(screen.getByTitle('Bold')).toBeInTheDocument();
+        expect(screen.getByTitle('Link')).toBeInTheDocument();
+      });
+
+      it('ignores an image dropped on the form', () => {
+        setup({ user, uploadImage }, disabled);
+        const dropped = fireEvent.drop(screen.getByTestId('commentform_1'), { dataTransfer: { files: [image()] } });
+        expect(uploadImage).not.toHaveBeenCalled();
+        // swallowed, so the browser does not navigate the frame to the dropped file
+        expect(dropped).toBe(false);
+      });
+
+      it('refuses an image dragged over the form instead of leaving it to the browser', () => {
+        setup({ user, uploadImage }, disabled);
+        const dataTransfer = { items: [{ kind: 'file', type: 'image/png' }], dropEffect: 'copy' };
+        const over = fireEvent.dragOver(screen.getByTestId('commentform_1'), { dataTransfer });
+        // cancelled with no drop effect: the cursor shows "not allowed" and no drop event follows,
+        // so the browser has nothing to navigate to
+        expect(over).toBe(false);
+        expect(dataTransfer.dropEffect).toBe('none');
+      });
+
+      it('ignores an image pasted into the textarea', () => {
+        setup({ user, uploadImage }, disabled);
+        fireEvent.paste(screen.getByTestId('textarea_1'), { clipboardData: { files: [image()] } });
+        expect(uploadImage).not.toHaveBeenCalled();
+      });
+
+      it('leaves pasted text alone', () => {
+        setup({ user, uploadImage }, disabled);
+        const pasted = fireEvent.paste(screen.getByTestId('textarea_1'), { clipboardData: { files: [] } });
+        expect(pasted).toBe(true);
+      });
+
+      it('does not tell an anonymous user to sign in for uploads', () => {
+        setup({ user: anonymousUser, uploadImage }, disabled);
+        fireEvent.drop(screen.getByTestId('commentform_1'), { dataTransfer: { files: [image()] } });
+        expect(screen.queryByText(messages.anonymousUploadingDisabled.defaultMessage)).not.toBeInTheDocument();
+        expect(uploadImage).not.toHaveBeenCalled();
+      });
+
+      it('does not tell a signed-out user to sign in for uploads', () => {
+        setup({ user: null }, disabled);
+        fireEvent.drop(screen.getByTestId('commentform_1'), { dataTransfer: { files: [image()] } });
+        expect(screen.queryByText(messages.unauthorizedUploadingDisabled.defaultMessage)).not.toBeInTheDocument();
+      });
+    });
+  });
 });

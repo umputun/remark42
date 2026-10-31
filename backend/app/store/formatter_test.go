@@ -133,6 +133,51 @@ func TestFormatter_ShortenAutoLinks(t *testing.T) {
 	}
 }
 
+func TestStripImages(t *testing.T) {
+	tbl := []struct {
+		name, in, out string
+	}{
+		{"empty", "", ""},
+		{"no image", "<p>text</p>\n", "<p>text</p>\n"},
+		{"external image", `<p>before <img src="https://example.com/a.png" alt="a"> after</p>` + "\n", "<p>before  after</p>\n"},
+		{"lazy image", `<p>x <img src="https://example.com/a.png" loading="lazy"></p>` + "\n", "<p>x </p>\n"},
+		{"uploaded image only", `<p><img src="/api/v1/picture/user/id.png" alt=""></p>` + "\n", "\n"},
+		{"proxied image only", `<p><img src="/api/v1/img?src=aHR0cDovL2E" alt=""></p>` + "\n", "\n"},
+		{"linked image only", `<p><a href="https://example.com"><img src="a.png"></a></p>` + "\n", "\n"},
+		{"linked image with text", `<p><a href="https://example.com">text <img src="a.png"></a></p>` + "\n", `<p><a href="https://example.com">text </a></p>` + "\n"},
+		{"several images", `<p><img src="a.png"></p><p>keep</p><p><img src="b.png"></p>`, "<p>keep</p>"},
+		{"image markup shown as code", "<pre><code>&lt;img src=x&gt;</code></pre>\n", "<pre><code>&lt;img src=x&gt;</code></pre>\n"},
+		{"empty link kept without image", `<p><a href="https://example.com"></a>text</p>` + "\n", `<p><a href="https://example.com"></a>text</p>` + "\n"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.out, StripImages(tt.in))
+		})
+	}
+}
+
+func TestFormatter_StripImagesConverter(t *testing.T) {
+	f := NewCommentFormatter(CommentConverterFunc(StripImages))
+
+	t.Run("markdown image", func(t *testing.T) {
+		res := f.FormatText("hello ![pic](https://example.com/a.png) world", false)
+		assert.NotContains(t, res, "<img")
+		assert.Contains(t, res, "hello")
+		assert.Contains(t, res, "world")
+	})
+
+	t.Run("raw html image", func(t *testing.T) {
+		res := f.FormatText(`hello <img src="https://example.com/a.png" onerror="x()"> world`, false)
+		assert.NotContains(t, res, "<img")
+	})
+
+	t.Run("image only leaves no content", func(t *testing.T) {
+		res := f.FormatText("![pic](https://example.com/a.png)", false)
+		assert.Empty(t, strings.TrimSpace(res))
+	})
+}
+
 func TestCommentFormatter_lazyImage(t *testing.T) {
 	tbl := []struct {
 		inp, out string

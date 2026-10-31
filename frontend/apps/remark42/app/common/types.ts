@@ -119,6 +119,8 @@ export interface Config {
   positive_score: boolean;
   readonly_age: number;
   max_image_size: number;
+  /** the server refuses image uploads and strips images from new and edited comments */
+  image_disabled: boolean;
   simple_view: boolean;
   anon_vote: boolean;
   email_notifications: boolean;

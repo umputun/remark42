@@ -11,6 +11,7 @@ beforeEach(() => {
     admin_edit: false,
     max_comment_size: 3000,
     max_image_size: 5000,
+    image_disabled: false,
     positive_score: false,
     readonly_age: 100,
     version: 'jest-test',
