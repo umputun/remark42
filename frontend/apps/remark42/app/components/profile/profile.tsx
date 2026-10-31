@@ -23,6 +23,7 @@ import { messages } from 'components/auth/auth.messages';
 import type { Comment as CommentType, Theme, User } from 'common/types';
 
 import { Counter } from './components/counter';
+import { ProfileWebsite } from './components/website';
 
 import styles from './profile.module.css';
 
@@ -196,6 +197,7 @@ export function Profile() {
           <div className={clsx('profile-content', styles.info)}>
             <div className={clsx('profile-title', styles.name)}>{user.name}</div>
             <div className={clsx('profile-id', styles.id)}>{user.id}</div>
+            <ProfileWebsite website={user.website} isCurrent={isCurrent} />
           </div>
           {isCurrent && (
             <button

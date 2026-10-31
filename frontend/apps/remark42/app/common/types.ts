@@ -8,10 +8,12 @@ export type User = {
   verified: boolean;
   email_subscription?: boolean;
   paid_sub?: boolean;
+  /** user's own website, present only when the server enables USER_WEBSITE and the user set one */
+  website?: string;
 };
 
 /** data which is used on user-info page */
-export type Profile = Pick<User, 'id' | 'name' | 'picture'> & { current?: '1' };
+export type Profile = Pick<User, 'id' | 'name' | 'picture' | 'website'> & { current?: '1' };
 
 export interface BlockedUser {
   id: string;
@@ -124,6 +126,7 @@ export interface Config {
   email_notifications: boolean;
   telegram_notifications: boolean;
   emoji_enabled: boolean;
+  user_website?: boolean;
 }
 
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';
