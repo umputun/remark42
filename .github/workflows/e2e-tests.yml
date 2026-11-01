@@ -45,10 +45,18 @@ jobs:
       - name: Test image stamp
         run: sh e2e/stamp_test.sh
 
+      - name: read go version from e2e/go.mod
+        id: gomod
+        run: |
+          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' e2e/go.mod)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: e2e/go.mod
+          go-version: ${{ steps.gomod.outputs.version }}
+          check-latest: true
           cache-dependency-path: e2e/go.sum
 
       - name: Vet
@@ -76,10 +84,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: read go version from e2e/go.mod
+        id: gomod
+        run: |
+          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' e2e/go.mod)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: e2e/go.mod
+          go-version: ${{ steps.gomod.outputs.version }}
+          check-latest: true
           cache-dependency-path: e2e/go.sum
 
       # the expression env context can't see runner process variables, so ImageOS is copied in
