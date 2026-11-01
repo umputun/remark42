@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/go-pkgz/jrpc v0.4.2
-	github.com/go-pkgz/lgr v0.12.4
+	github.com/go-pkgz/lgr v0.13.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/stretchr/testify v1.12.1
 	github.com/umputun/remark42/backend v1.1000.0
@@ -26,7 +26,7 @@ require (
 	go.etcd.io/bbolt v1.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/image v0.46.0 // indirect
+	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
