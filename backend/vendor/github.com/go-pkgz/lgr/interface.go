@@ -4,7 +4,10 @@ import (
 	stdlog "log"
 )
 
-var def = New() // default logger doesn't allow DEBUG and doesn't add caller info
+var def = newShared() // default logger doesn't allow DEBUG and doesn't add caller info
+
+// sharedSecrets are hidden by the default logger and by the logger made by SetupStdLogger
+var sharedSecrets secretSet
 
 // L defines minimal interface used to log things
 type L interface {
@@ -41,7 +44,27 @@ func Fatalf(format string, args ...interface{}) {
 
 // Setup default logger with options
 func Setup(opts ...Option) {
-	def = New(opts...)
+	def = newShared(opts...)
+}
+
+// AddSecrets adds values to hide in the output of the default logger and the std logger made by
+// SetupStdLogger. They stay in effect after Setup calls. Loggers made by New are not affected.
+func AddSecrets(vals ...string) {
+	sharedSecrets.add(vals...)
+}
+
+// RemoveSecrets stops hiding values added by AddSecrets. A value a logger got with Secret option
+// stays hidden by that logger.
+func RemoveSecrets(vals ...string) {
+	sharedSecrets.remove(vals...)
+}
+
+// newShared makes a logger hiding the package-level secrets in addition to its own.
+// The link is set here, before the logger is in use, so logging reads it without a lock.
+func newShared(opts ...Option) *Logger {
+	l := New(opts...)
+	l.shared = &sharedSecrets
+	return l
 }
 
 // Default returns pre-constructed def logger (debug off, callers disabled)

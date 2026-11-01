@@ -12,7 +12,7 @@ type options struct {
 // GroupOption functional option type
 type GroupOption func(o *options)
 
-// Context passes ctx to group, goroutines will be canceled if ctx is canceled
+// Context sets the group's context. Canceling it does not interrupt calls already running.
 func Context(ctx context.Context) GroupOption {
 	return func(o *options) {
 		o.ctx = ctx

@@ -43,7 +43,7 @@ _Without `lgr.Caller*` it will drop `{caller}` part_
 - `lgr.LevelBraces` - wraps levels with "[" and "]"
 - `lgr.Msec` - adds milliseconds to timestamp
 - `lgr.Format` - sets a custom template, overwrite all other formatting modifiers.
-- `lgr.Secret(secret ...)` - sets list of the secrets to hide from the logging outputs.
+- `lgr.Secret(secret ...)` - sets list of the secrets to hide from the logging outputs, see "secrets".
 - `lgr.Map(mapper)` - sets mapper functions to change elements of the logging output based on levels.
 - `lgr.StackTraceOnError` - turns on stack trace for ERROR level.
 - `lgr.SlogHandler(h slog.Handler)` - delegates logging to the provided slog handler.
@@ -71,6 +71,28 @@ User can make a custom template and pass it directly to `lgr.Format`. For exampl
 
 _Note: formatter (predefined or custom) adds measurable overhead - the cost will depend on the version of Go, but is between 30
  and 50% in recent tests with 1.12. You can validate this in your environment via benchmarks: `go test -bench=. -run=Bench`_
+
+### secrets
+
+`lgr.Secret(secret ...)` sets the values to replace with `******` when the logger is created. The list can be changed later, while the logger is in use and other goroutines log:
+
+- `l.AddSecrets(secret ...)` and `l.RemoveSecrets(secret ...)` change the list of a logger made by `lgr.New`.
+- `lgr.AddSecrets(secret ...)` and `lgr.RemoveSecrets(secret ...)` change the package-level list. It is hidden by the global logger and by the std logger set with `lgr.SetupStdLogger`, in addition to the secrets each of them got with `lgr.Secret`, and it stays in effect after `lgr.Setup`, `lgr.SetupStdLogger` and `lgr.SetupWithSlog` calls. Loggers made by `lgr.New` don't use the package-level list.
+
+```go
+lgr.Setup(lgr.Secret(dbPassword))
+lgr.SetupStdLogger(lgr.Secret(dbPassword))
+// later, for example on config reload
+lgr.AddSecrets(newToken, newPassword) // hidden in both lgr.Printf and std log.Printf output
+```
+
+Things to know:
+
+- Empty and whitespace-only values are ignored. Adding a value twice is the same as adding it once, and a single remove drops it.
+- The list of a logger and the package-level list are independent. A value present in both stays hidden until removed from both.
+- A line being logged at the moment of the change may still be written with the previous list.
+- Longer values are replaced first, so a secret containing another secret is hidden as a whole. Secrets that only partially overlap are replaced one after another, and a part of one of them may stay visible.
+- Secrets are hidden in the message passed to the logger. `lgr.FromSlogHandler` adds no masking of its own, the output is masked only if the wrapped handler passes it to a masking logger. Attributes added by a slog handler set with `lgr.SlogHandler` are not processed.
 
 ### levels
 

@@ -66,7 +66,7 @@ github.com/go-pkgz/jrpc
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
-# github.com/go-pkgz/lgr v0.12.4
+# github.com/go-pkgz/lgr v0.13.0
 ## explicit; go 1.21
 github.com/go-pkgz/lgr
 # github.com/go-pkgz/notify v1.5.0
@@ -83,7 +83,7 @@ github.com/go-pkgz/rest/realip
 # github.com/go-pkgz/routegroup v1.6.1
 ## explicit; go 1.23
 github.com/go-pkgz/routegroup
-# github.com/go-pkgz/syncs v1.3.3
+# github.com/go-pkgz/syncs v1.3.4
 ## explicit; go 1.22
 github.com/go-pkgz/syncs
 # github.com/golang-jwt/jwt/v5 v5.3.1
@@ -267,7 +267,7 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/image v0.46.0
+# golang.org/x/image v0.47.0
 ## explicit; go 1.26.0
 golang.org/x/image/draw
 golang.org/x/image/math/f64
