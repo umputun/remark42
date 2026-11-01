@@ -57,7 +57,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.13.1
+          version: v2.15.0
           working-directory: e2e
           args: --build-tags=e2e --config ../backend/.golangci.yml
 
