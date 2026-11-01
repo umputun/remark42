@@ -66,7 +66,7 @@ Another option is `Discard`, which will skip (won't start) goroutines if the sem
 It can work as a regular errgrp.Group or with early termination. It is thread-safe.
 
 
-`ErrSizedGroup` supports both in-goroutine-wait as well as outside of goroutine wait with `Preemptive` and `Discard` options (see above). Other options include `TermOnErr`, which skips (won't start) all other goroutines if any error is returned, and `Context` for early termination/timeouts.
+`ErrSizedGroup` supports both in-goroutine-wait as well as outside of goroutine wait with `Preemptive` and `Discard` options (see above). Other options include `TermOnErr`, which skips (won't start) all other goroutines if any error is returned, and `Context` for early termination/timeouts. Once the context is canceled, functions that have not started yet are skipped, with or without `TermOnErr`, and the context error is recorded once. Functions already running are not interrupted and keep their own errors.
 
 
 ```go

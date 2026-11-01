@@ -10,12 +10,12 @@ require (
 	github.com/go-pkgz/auth/v2 v2.3.1
 	github.com/go-pkgz/jrpc v0.4.2
 	github.com/go-pkgz/lcw/v2 v2.1.0
-	github.com/go-pkgz/lgr v0.12.4
+	github.com/go-pkgz/lgr v0.13.0
 	github.com/go-pkgz/notify v1.5.0
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.1
-	github.com/go-pkgz/syncs v1.3.3
+	github.com/go-pkgz/syncs v1.3.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
@@ -29,7 +29,7 @@ require (
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/image v0.46.0
+	golang.org/x/image v0.47.0
 	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.37.0
 )

@@ -39,6 +39,8 @@ func NewErrSizedGroup(size int, options ...GroupOption) *ErrSizedGroup {
 // Go calls the given function in a new goroutine.
 // The first call to return a non-nil error cancels the group if termOnError; its error will be
 // returned by Wait. If no termOnError all errors will be collected in multierror.
+// With Context, a call not started by the time ctx is canceled is skipped, with or without termOnError,
+// and ctx.Err() is recorded once. Calls already running are not interrupted and keep their own errors.
 func (g *ErrSizedGroup) Go(f func() error) {
 
 	canceled := func() bool {
@@ -97,13 +99,21 @@ func (g *ErrSizedGroup) Go(f func() error) {
 			}
 		}()
 
-		if terminated() {
-			return // terminated due prev error, don't run anything in this group anymore
-		}
-
 		if !g.preLock {
 			g.sema.Lock()
 			isLocked = true
+		}
+
+		// checked before terminated, a recorded callback error would hide the cancellation otherwise
+		if canceled() {
+			g.errOnce.Do(func() {
+				g.err.append(g.ctx.Err())
+			})
+			return
+		}
+
+		if terminated() {
+			return // terminated due prev error, don't run anything in this group anymore
 		}
 
 		if err := f(); err != nil {

@@ -46,7 +46,8 @@ const (
 var secretReplacement = []byte("******")
 
 var (
-	reTraceDefault = regexp.MustCompile(`.*/lgr/logger\.go.*\n`)
+	// match function names because source directories vary between builds
+	reTraceDefault = regexp.MustCompile(`(?m)^.*github\.com/go-pkgz/lgr\.\(\*Logger\)\.(?:logf|Logf)\([^\n]*\n[^\n]*\n`)
 	reTraceStd     = regexp.MustCompile(`.*/log/log\.go.*\n`)
 )
 
@@ -63,7 +64,8 @@ type Logger struct {
 	levelBraces    bool         // encloses level with [], i.e. [INFO]
 	callerDepth    int          // how many stack frames to skip, relative to the real (reported) frame
 	format         string       // layout template
-	secrets        [][]byte     // sub-strings to secrets by matching
+	secrets        secretSet    // sub-strings to hide in this logger's output
+	shared         *secretSet   // package-level secrets hidden in addition to own ones, nil for loggers made by New
 	mapper         Mapper       // map (alter) output based on levels
 	slogHandler    slog.Handler // optional slog handler to delegate logging
 
@@ -165,9 +167,11 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	}
 
 	// hide secrets in the message itself, covers slog handler and panic dump paths
-	// as well as the formatted line redacted later in this function
-	if len(l.secrets) > 0 {
-		msg = string(l.hideSecrets([]byte(msg)))
+	// as well as the formatted line redacted later in this function.
+	// reuse both snapshots so the message and the final line use the same secrets
+	own, shared := l.secrets.list(), l.shared.list()
+	if len(own)+len(shared) > 0 {
+		msg = string(own.hide([]byte(msg), shared))
 	}
 
 	// if slog handler is set, use it
@@ -222,7 +226,7 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		data = bytes.Replace(data, []byte("[WARN ]"), []byte("[WARN] "), 1)
 		data = bytes.Replace(data, []byte("[INFO ]"), []byte("[INFO] "), 1)
 	}
-	data = l.hideSecrets(data)
+	data = own.hide(data, shared)
 
 	l.lock.Lock()
 	_, _ = l.stdout.Write(data)
@@ -258,11 +262,16 @@ func (l *Logger) logf(format string, args ...interface{}) {
 	l.lock.Unlock()
 }
 
-func (l *Logger) hideSecrets(data []byte) []byte {
-	for _, h := range l.secrets {
-		data = bytes.ReplaceAll(data, h, secretReplacement)
-	}
-	return data
+// AddSecrets adds values to hide in this logger's output. Safe to call while other goroutines log.
+// Empty and whitespace-only values are ignored.
+func (l *Logger) AddSecrets(vals ...string) {
+	l.secrets.add(vals...)
+}
+
+// RemoveSecrets stops hiding values in this logger's output, the ones set by Secret option too.
+// Package-level secrets are not affected.
+func (l *Logger) RemoveSecrets(vals ...string) {
+	l.secrets.remove(vals...)
 }
 
 type callerInfo struct {
@@ -333,12 +342,17 @@ func (l *Logger) formatWithOptions(elems layout) (res string) {
 
 	parts := make([]string, 0, 4)
 
+	dt := orElse(l.msec,
+		func() string { return elems.DT.Format("2006/01/02 15:04:05.000") },
+		func() string { return elems.DT.Format("2006/01/02 15:04:05") },
+	)
+	if l.mapper.TimeFunc != nil {
+		dt = l.mapper.TimeFunc(dt)
+	}
+
 	parts = append(
 		parts,
-		l.mapper.TimeFunc(orElse(l.msec,
-			func() string { return elems.DT.Format("2006/01/02 15:04:05.000") },
-			func() string { return elems.DT.Format("2006/01/02 15:04:05") },
-		)),
+		dt,
 		l.levelMapper(elems.Level)(orElse(l.levelBraces,
 			func() string { return `[` + elems.Level + `]` },
 			func() string { return elems.Level },
