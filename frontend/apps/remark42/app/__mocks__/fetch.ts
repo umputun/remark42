@@ -1,8 +1,6 @@
 import fetchMock from 'jest-fetch-mock';
 
-beforeAll(() => {
-  fetchMock.enableMocks();
-});
+fetchMock.enableMocks();
 
 beforeEach(() => {
   fetchMock.mockClear();

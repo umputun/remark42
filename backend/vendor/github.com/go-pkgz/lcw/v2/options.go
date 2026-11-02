@@ -7,6 +7,7 @@ import (
 	"github.com/go-pkgz/lcw/v2/eventbus"
 )
 
+// Workers holds cache configuration options
 type Workers[V any] struct {
 	maxKeys      int
 	maxValueSize int
@@ -16,6 +17,8 @@ type Workers[V any] struct {
 	onEvicted    func(key string, value V)
 	eventBus     eventbus.PubSub
 	strToV       func(string) V
+
+	redisKeyPrefix string
 }
 
 // Option func type
@@ -29,50 +32,53 @@ func NewOpts[T any]() *WorkerOptions[T] {
 	return &WorkerOptions[T]{}
 }
 
-// MaxValSize functional option defines the largest value's size allowed to be cached
+// MaxValSize functional option defines the largest value's size allowed to be cached.
+// Applies to values implementing Sizer as well as []byte and string, other types are not limited.
 // By default it is 0, which means unlimited.
-func (o *WorkerOptions[V]) MaxValSize(max int) Option[V] {
+func (o *WorkerOptions[V]) MaxValSize(maximum int) Option[V] {
 	return func(o *Workers[V]) error {
-		if max < 0 {
+		if maximum < 0 {
 			return fmt.Errorf("negative max value size")
 		}
-		o.maxValueSize = max
+		o.maxValueSize = maximum
 		return nil
 	}
 }
 
 // MaxKeySize functional option defines the largest key's size allowed to be used in cache
 // By default it is 0, which means unlimited.
-func (o *WorkerOptions[V]) MaxKeySize(max int) Option[V] {
+func (o *WorkerOptions[V]) MaxKeySize(maximum int) Option[V] {
 	return func(o *Workers[V]) error {
-		if max < 0 {
+		if maximum < 0 {
 			return fmt.Errorf("negative max key size")
 		}
-		o.maxKeySize = max
+		o.maxKeySize = maximum
 		return nil
 	}
 }
 
 // MaxKeys functional option defines how many keys to keep.
 // By default, it is 0, which means unlimited.
-func (o *WorkerOptions[V]) MaxKeys(max int) Option[V] {
+func (o *WorkerOptions[V]) MaxKeys(maximum int) Option[V] {
 	return func(o *Workers[V]) error {
-		if max < 0 {
+		if maximum < 0 {
 			return fmt.Errorf("negative max keys")
 		}
-		o.maxKeys = max
+		o.maxKeys = maximum
 		return nil
 	}
 }
 
 // MaxCacheSize functional option defines the total size of cached data.
+// Applies to values implementing Sizer as well as []byte and string, other types are not counted.
+// Not supported by RedisCache, which accepts the option but ignores it.
 // By default, it is 0, which means unlimited.
-func (o *WorkerOptions[V]) MaxCacheSize(max int64) Option[V] {
+func (o *WorkerOptions[V]) MaxCacheSize(maximum int64) Option[V] {
 	return func(o *Workers[V]) error {
-		if max < 0 {
+		if maximum < 0 {
 			return fmt.Errorf("negative max cache size")
 		}
-		o.maxCacheSize = max
+		o.maxCacheSize = maximum
 		return nil
 	}
 }
@@ -89,7 +95,9 @@ func (o *WorkerOptions[V]) TTL(ttl time.Duration) Option[V] {
 	}
 }
 
-// OnEvicted sets callback on invalidation event
+// OnEvicted sets callback on invalidation event.
+// The callback runs outside the cache lock for LruCache, but ExpirableCache calls it while its
+// backend lock is held, so with ExpirableCache the handler must not call back into the same cache.
 func (o *WorkerOptions[V]) OnEvicted(fn func(key string, value V)) Option[V] {
 	return func(o *Workers[V]) error {
 		o.onEvicted = fn
@@ -101,6 +109,18 @@ func (o *WorkerOptions[V]) OnEvicted(fn func(key string, value V)) Option[V] {
 func (o *WorkerOptions[V]) EventBus(pubSub eventbus.PubSub) Option[V] {
 	return func(o *Workers[V]) error {
 		o.eventBus = pubSub
+		return nil
+	}
+}
+
+// RedisKeyPrefix sets the prefix for all keys stored in redis, making the cache
+// use only its own namespace instead of the whole redis database.
+// Applies to RedisCache only, ignored by other backends. Empty by default, which means
+// the cache assumes exclusive ownership of the selected redis database.
+// Note that with a prefix set and MaxKeys defined, key counting scans the keyspace on every miss.
+func (o *WorkerOptions[V]) RedisKeyPrefix(prefix string) Option[V] {
+	return func(o *Workers[V]) error {
+		o.redisKeyPrefix = prefix
 		return nil
 	}
 }

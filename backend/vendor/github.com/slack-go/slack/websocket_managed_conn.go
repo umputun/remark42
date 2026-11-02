@@ -321,7 +321,7 @@ func (rtm *RTM) handleIncomingEvents(events chan json.RawMessage) {
 	}
 }
 
-func (rtm *RTM) sendWithDeadline(msg interface{}) error {
+func (rtm *RTM) sendWithDeadline(msg any) error {
 	// set a write deadline on the connection
 	if err := rtm.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		return err
@@ -412,7 +412,7 @@ func (rtm *RTM) receiveIncomingEvent(events chan json.RawMessage) error {
 		select {
 		case events <- event:
 		case <-rtm.disconnected:
-			rtm.Debugln("disonnected while attempting to send raw event")
+			rtm.Debugln("disconnected while attempting to send raw event")
 		}
 	}
 
@@ -455,9 +455,10 @@ func (rtm *RTM) handleAck(event json.RawMessage) {
 		return
 	}
 
-	if ack.Ok {
+	switch {
+	case ack.Ok:
 		rtm.IncomingEvents <- RTMEvent{"ack", ack}
-	} else if ack.RTMResponse.Error != nil {
+	case ack.RTMResponse.Error != nil:
 		// As there is no documentation for RTM error-codes, this
 		// identification of a rate-limit warning is very brittle.
 		if ack.RTMResponse.Error.Code == -1 && ack.RTMResponse.Error.Msg == "slow down, too many messages..." {
@@ -465,7 +466,7 @@ func (rtm *RTM) handleAck(event json.RawMessage) {
 		} else {
 			rtm.IncomingEvents <- RTMEvent{"ack_error", &AckErrorEvent{ack.Error, ack.ReplyTo}}
 		}
-	} else {
+	default:
 		rtm.IncomingEvents <- RTMEvent{"ack_error", &AckErrorEvent{ErrorObj: fmt.Errorf("ack decode failure")}}
 	}
 }
@@ -518,7 +519,7 @@ func (rtm *RTM) handleEvent(typeStr string, event json.RawMessage) {
 // EventMapping holds a mapping of event names to their corresponding struct
 // implementations. The structs should be instances of the unmarshalling
 // target for the matching event type.
-var EventMapping = map[string]interface{}{
+var EventMapping = map[string]any{
 	"message":         MessageEvent{},
 	"presence_change": PresenceChangeEvent{},
 	"user_typing":     UserTypingEvent{},
@@ -582,7 +583,10 @@ var EventMapping = map[string]interface{}{
 
 	"manual_presence_change": ManualPresenceChangeEvent{},
 
-	"user_change": UserChangeEvent{},
+	"user_change":          UserChangeEvent{},
+	"user_status_changed":  UserStatusChangedEvent{},
+	"user_huddle_changed":  UserHuddleChangedEvent{},
+	"user_profile_changed": UserProfileChangedEvent{},
 
 	"emoji_changed": EmojiChangedEvent{},
 
@@ -594,6 +598,10 @@ var EventMapping = map[string]interface{}{
 	"bot_changed": BotChangedEvent{},
 
 	"accounts_changed": AccountsChangedEvent{},
+
+	"apps_uninstalled":     AppsUninstalledEvent{},
+	"activity":             ActivityEvent{},
+	"badge_counts_updated": BadgeCountsUpdatedEvent{},
 
 	"reconnect_url": ReconnectUrlEvent{},
 
@@ -608,4 +616,10 @@ var EventMapping = map[string]interface{}{
 
 	"desktop_notification":       DesktopNotificationEvent{},
 	"mobile_in_app_notification": MobileInAppNotificationEvent{},
+
+	"channel_updated": ChannelUpdatedEvent{},
+
+	"sh_room_join":   SHRoomJoinEvent{},
+	"sh_room_leave":  SHRoomLeaveEvent{},
+	"sh_room_update": SHRoomUpdateEvent{},
 }

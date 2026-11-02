@@ -2,8 +2,10 @@ package store
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,8 +53,8 @@ type PostInfo struct {
 	CountLeft   int       `json:"count_left"`                                     // used only with returning search results limited by number, otherwise zero
 	LastComment string    `json:"last_comment,omitempty"`                         // used only with returning search results limited by number
 	ReadOnly    bool      `json:"read_only,omitempty" bson:"read_only,omitempty"` // can be attached to site-wide comments but won't be set then
-	FirstTS     time.Time `json:"first_time,omitempty" bson:"first_time,omitempty"`
-	LastTS      time.Time `json:"last_time,omitempty" bson:"last_time,omitempty"`
+	FirstTS     time.Time `json:"first_time" bson:"first_time,omitempty"`
+	LastTS      time.Time `json:"last_time" bson:"last_time,omitempty"`
 }
 
 // BlockedUser holds id and ts for blocked user
@@ -154,8 +156,8 @@ func (c *Comment) Snippet(limit int) string {
 	}
 	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
-	for i := len(snippet) - 1; i >= 0; i-- {
-		if snippet[i] == ' ' {
+	for i, s := range slices.Backward(snippet) {
+		if s == ' ' {
 			snippet = snippet[:i]
 			break
 		}
@@ -172,10 +174,10 @@ var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 // SanitizeAsURL drops dangerous code from a url.
 // It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
 func (c *Comment) SanitizeAsURL(inp string) string {
-	h := fmt.Sprintf(`<a href=%q>`, inp)
+	h := fmt.Sprintf(`<a href=%q>`, html.EscapeString(inp))
 	clean := bluemonday.UGCPolicy().Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
-		return match[1]
+		return html.UnescapeString(match[1])
 	}
 	return "" // this shouldn't happen as we build the href
 }

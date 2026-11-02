@@ -1,20 +1,20 @@
 import { h, Component } from 'preact';
-import { FormattedMessage, IntlShape, useIntl } from 'react-intl';
-import b from 'bem-react-helper';
 import clsx from 'clsx';
 
-import { User, Theme, PostInfo } from 'common/types';
+import type { IntlShape } from 'common/intl';
+import { FormattedMessage, useIntl } from 'common/intl';
+import type { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
 import { getHandleClickProps } from 'common/accessibility';
-import { StoreState } from 'store';
+import type { StoreState } from 'store';
 import { useTheme } from 'hooks/useTheme';
 import { Button } from 'components/button';
 import { Auth } from 'components/auth';
 import { Avatar } from 'components/avatar';
 import { SignOutIcon } from 'components/icons/signout';
 import { IconButton } from 'components/icon-button/icon-button';
-import { messages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 
 import styles from './auth-panel.module.css';
 
@@ -60,18 +60,18 @@ class AuthPanelComponent extends Component<Props, State> {
 
   renderAuthorized = (user: User) => {
     return (
-      <div className={clsx('user', styles.user)}>
+      <div className={styles.user}>
         <button
-          className={clsx('user-profile-button', styles.userButton)}
+          className={styles.userButton}
           onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
-          <div className={clsx('user-avatar', styles.userAvatar)}>
+          <div className={styles.userAvatar}>
             <Avatar url={user.picture} />
           </div>
           {user.name}
         </button>{' '}
-        <div className={clsx('user-logout-button', styles.userLogoutButton)}>
+        <div className={styles.userLogoutButton}>
           <IconButton title={this.props.intl.formatMessage(messages.signout)} onClick={this.props.signout}>
             <SignOutIcon size="14" />
           </IconButton>
@@ -83,18 +83,17 @@ class AuthPanelComponent extends Component<Props, State> {
   renderThirdPartyWarning = () => {
     if (IS_STORAGE_AVAILABLE || !IS_THIRD_PARTY) return null;
     return (
-      <div className="auth-panel__column">
+      <div className={styles.column}>
         <FormattedMessage
           id="authPanel.disabled-cookies"
-          defaultMessage="Disable third-party cookies blocking to login or open comments in"
+          defaultMessage="Enable third-party cookies to log in, or open comments in"
         />{' '}
         <a
-          className="auth-panel__pseudo-link"
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
           rel="noreferrer"
         >
-          <FormattedMessage id="authPanel.new-page" defaultMessage="new page" />
+          <FormattedMessage id="authPanel.new-page" defaultMessage="a new page" />
         </a>
       </div>
     );
@@ -105,8 +104,8 @@ class AuthPanelComponent extends Component<Props, State> {
       return null;
     }
     return (
-      <div className="auth-panel__column">
-        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to login and comment" />
+      <div className={styles.column}>
+        <FormattedMessage id="authPanel.enable-cookies" defaultMessage="Allow cookies to log in and comment" />
       </div>
     );
   };
@@ -115,7 +114,7 @@ class AuthPanelComponent extends Component<Props, State> {
     return (
       <Button
         kind="link"
-        mix="auth-panel__admin-action"
+        className={styles.adminAction}
         {...getHandleClickProps(this.toggleBlockedVisibility)}
         role="link"
       >
@@ -133,7 +132,7 @@ class AuthPanelComponent extends Component<Props, State> {
     return (
       <Button
         kind="link"
-        mix="auth-panel__admin-action"
+        className={styles.adminAction}
         {...getHandleClickProps(this.toggleCommentsAvailability)}
         role="link"
       >
@@ -146,22 +145,22 @@ class AuthPanelComponent extends Component<Props, State> {
     );
   };
 
-  render({ user, postInfo, theme }: Props, { isBlockedVisible }: State) {
+  render({ user, postInfo }: Props, { isBlockedVisible }: State) {
     const { read_only } = postInfo;
     const isAdmin = user && user.admin;
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
-      <div className={b('auth-panel', {}, { theme, loggedIn: !!user })}>
-        <div className="auth-panel__column">{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
+      <div className={styles.root}>
+        <div className={styles.column}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}
-        <div className="auth-panel__column auth-panel__column_separated">
+        <div className={clsx(styles.column, styles.columnSeparated)}>
           {isSettingsLabelVisible && <span>{this.renderSettingsLabel()}</span>}
           {isAdmin && <span>{this.renderReadOnlySwitch()}</span>}
           {!isAdmin && read_only && (
             <span>
-              <FormattedMessage id="authPanel.read-only" defaultMessage="Read-only" />
+              <FormattedMessage id="authPanel.read-only" defaultMessage="Comments disabled" />
             </span>
           )}
         </div>

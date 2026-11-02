@@ -4,12 +4,17 @@ package engine
 // Includes default implementation with boltdb
 
 import (
+	"errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
+
+// ErrSiteNotFound is returned by engines when the requested site does not exist.
+// Its message is "not found" so wrapping it as `site %q %w` reads "site \"x\" not found".
+var ErrSiteNotFound = errors.New("not found")
 
 // NOTE: matryer/moq should be installed globally and works with `go generate ./...`
 //go:generate moq --out engine_mock.go . Interface
@@ -24,7 +29,7 @@ type Interface interface {
 	Count(req FindRequest) (int, error)                         // get count for post or user
 	Delete(req DeleteRequest) error                             // Delete post(s), user, comment, user details, or everything
 	Flag(req FlagRequest) (bool, error)                         // set and get flags
-	ListFlags(req FlagRequest) ([]interface{}, error)           // get list of flagged keys, like blocked & verified user
+	ListFlags(req FlagRequest) ([]any, error)                   // get list of flagged keys, like blocked & verified user
 
 	// UserDetail sets or gets single detail value, or gets all details for requested site
 	// Returns list even for single entry request is a compromise in order to have both single detail getting and setting
@@ -45,7 +50,7 @@ type FindRequest struct {
 	Locator store.Locator `json:"locator"`           // lack of URL means site operation
 	UserID  string        `json:"user_id,omitempty"` // presence of UserID treated as user-related find
 	Sort    string        `json:"sort,omitempty"`    // sort order with +/-field syntax
-	Since   time.Time     `json:"since,omitempty"`   // time limit for found results
+	Since   time.Time     `json:"since"`             // time limit for found results
 	Limit   int           `json:"limit,omitempty"`
 	Skip    int           `json:"skip,omitempty"`
 }

@@ -12,17 +12,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -233,7 +232,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	user := rest.MustGetUserInfo(r)
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 
 	log.Printf("[DEBUG] update comment %s", id)
 
@@ -300,7 +299,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	log.Printf("[DEBUG] vote for comment %s", id)
 
 	vote := r.URL.Query().Get("vote") == "1"
@@ -329,7 +328,7 @@ func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't vote for comment", code)
 		return
 	}
-	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID))
+	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, comment.User.ID, lastVotesScope))
 	R.RenderJSON(w, R.JSON{"id": comment.ID, "score": comment.Score})
 }
 
@@ -619,7 +618,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data interface{}) {
+	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
 		if err := tmpl.Execute(wr, data); err != nil {
 			panic(err)
 		}
@@ -704,13 +703,11 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		return e
 	}
 
-	var merr error
-	merr = multierror.Append(merr, write([]byte(`{"info": `)))     // send user prefix
-	merr = multierror.Append(merr, write(userB))                   // send user info
-	merr = multierror.Append(merr, write([]byte(`, "comments":`))) // send comments prefix
+	// send user prefix, user info and comments prefix
+	errs := []error{write([]byte(`{"info": `)), write(userB), write([]byte(`, "comments":`))}
 
 	// get comments in 100 in each paginated request
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		comments, errUser := s.dataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
 		if errUser != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
@@ -722,15 +719,15 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		merr = multierror.Append(merr, write(b))
+		errs = append(errs, write(b))
 		if len(comments) != 100 {
 			break
 		}
 	}
 
-	merr = multierror.Append(merr, write([]byte(`}`)))
-	if merr.(*multierror.Error).ErrorOrNil() != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, merr, "can't write user info", rest.ErrInternal)
+	errs = append(errs, write([]byte(`}`)))
+	if err := errors.Join(errs...); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user info", rest.ErrInternal)
 		return
 	}
 }
@@ -749,9 +746,10 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
-			ID:   user.ID,
-			Name: user.Name,
-			Attributes: map[string]interface{}{
+			ID:      user.ID,
+			Name:    user.Name,
+			Picture: user.Picture, // carried so the avatar can be removed when the request is processed
+			Attributes: map[string]any{
 				"delete_me": true, // prevents this token from being used for login
 			},
 		},
@@ -763,7 +761,8 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := fmt.Sprintf("%s/web/deleteme.html?token=%s", s.remarkURL, tokenStr)
+	// the page signs the admin's requests for the site it is given, so the link names the user's site
+	link := fmt.Sprintf("%s/web/deleteme.html?site_id=%s&token=%s", s.remarkURL, url.QueryEscape(siteID), tokenStr)
 	R.RenderJSON(w, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
@@ -771,7 +770,11 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
-	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { // 5M max memory, if bigger will make a file
+	r.Body = http.MaxBytesReader(w, r.Body, 32*1024*1024) // hard cap on upload to prevent memory exhaustion
+	// gosec G120: r.Body is already bounded by MaxBytesReader on the line above (32 MB),
+	// so ParseMultipartForm cannot read more than that regardless of the in-memory threshold.
+	// The 5 MB argument is the soft threshold above which the form is spilled to disk.
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { //nolint:gosec // bounded by MaxBytesReader above
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
 		return
 	}

@@ -11,6 +11,25 @@
         window.close();
       }
       (function () {
+        // the parent sets color-scheme on the iframe element from the theme param. this document
+        // must match it before the first paint, otherwise the canvas is painted opaque in its own
+        // scheme instead of staying transparent, which flashes white on dark host pages.
+        try {
+          var pairs = window.location.search.substring(1).split('&');
+          var theme = '';
+
+          for (var i = 0; i < pairs.length; i++) {
+            var pair = pairs[i].split('=');
+            if (pair[0] === 'theme') {
+              theme = decodeURIComponent(pair[1] || '');
+              break;
+            }
+          }
+
+          document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+      (function () {
         function isCSSVariablesSupported() {
           if (typeof window === `undefined`) {
             return true;
@@ -56,6 +75,10 @@
     <script>
       window.addEventListener('message', function receiveMessages(event) {
         try {
+          // only the page embedding this document. any window holding a reference can post here,
+          // and this handler navigates through location.replace and sets the document title
+          if (event.source !== window.parent) return;
+
           const data = event.data;
           const isObj = typeof data === 'object' && data !== null && !Array.isArray(data);
           if (!isObj) return;
@@ -65,8 +88,20 @@
             location.replace(data.hash);
           }
 
+          // the title of the page the comments are on, which a new comment carries. kept apart
+          // from document.title, whose placeholder above names no page: a document opened on its
+          // own never receives a title, and then the backend reads it from the page instead
           if (data.title) {
             document.title = data.title;
+            remark_config.host_page_title = data.title;
+          }
+
+          // the bundle has not registered its own listener yet: it is only inserted below, after
+          // `inited`, which is when the parent posts the current theme. Keep the latest one where
+          // remark.tsx reads it on start, and match color-scheme to the iframe element meanwhile
+          if (data.theme === 'light' || data.theme === 'dark') {
+            remark_config.theme = data.theme;
+            document.documentElement.style.colorScheme = data.theme;
           }
         } catch (e) {}
       });
@@ -92,9 +127,8 @@
       (function (d) {
         var r = d.head || d.body;
         var s = d.createElement('script');
-        var m = 'noModule' in s;
-        s.src = 'remark' + (m ? '.mjs' : '.js');
-        m && (s.type = 'module');
+        s.src = 'remark.mjs';
+        s.type = 'module';
         s.async = true;
         s.defer = true;
         r.appendChild(s);

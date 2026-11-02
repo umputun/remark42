@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -54,7 +55,7 @@ func (h Oauth1Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			State: requestSecret,
 			From:  r.URL.Query().Get("from"),
 		},
-		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
+		SessionOnly: sessionOnlyFromRequest(r),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        cid,
 			Audience:  []string{r.URL.Query().Get("site")},
@@ -116,19 +117,25 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	// an error body carries no identity fields, mapping it would hash empty values into a shared id
+	if uinfo.StatusCode < http.StatusOK || uinfo.StatusCode >= http.StatusMultipleChoices {
+		rest.SendErrorJSON(w, r, h.L, http.StatusServiceUnavailable,
+			fmt.Errorf("status %s", uinfo.Status), "failed to get user info")
+		return
+	}
+
 	data, err := io.ReadAll(uinfo.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to read user info")
 		return
 	}
 
-	jData := map[string]interface{}{}
+	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
-	h.Logf("[DEBUG] got raw user info %+v", jData)
-
+	h.Logf("[DEBUG] got raw user info %s", userDataLogSummary(jData))
 	u := h.mapUser(jData, data)
 	u, err = setAvatar(h.AvatarSaver, u, &http.Client{Timeout: 5 * time.Second})
 	if err != nil {
@@ -159,11 +166,17 @@ func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Logf("[DEBUG] user info %+v", u)
+	h.Logf("[DEBUG] user info %s", userLogSummary(u))
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
-		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
+		if !isAllowedRedirect(oauthClaims.Handshake.From, h.URL, h.AllowedRedirectHosts) {
+			h.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
+		// see-other keeps the redirect a GET whatever method the callback arrived with
+		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusSeeOther)
 		return
 	}
 	rest.RenderJSON(w, &u)
@@ -185,7 +198,7 @@ func (h Oauth1Handler) makeRedirURL(path string) string {
 	return strings.TrimSuffix(h.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }
 
-// initOauth2Handler makes oauth1 handler for given provider
+// initOauth1Handler makes oauth1 handler for given provider
 func initOauth1Handler(p Params, service Oauth1Handler) Oauth1Handler {
 	if p.L == nil {
 		p.L = logger.NoOp
@@ -195,7 +208,7 @@ func initOauth1Handler(p Params, service Oauth1Handler) Oauth1Handler {
 	service.conf.ConsumerKey = p.Cid
 	service.conf.ConsumerSecret = p.Csecret
 
-	p.Logf("[DEBUG] created %s oauth2, id=%s, redir=%s, endpoint=%s",
+	p.Logf("[DEBUG] created %s oauth1, id=%s, redir=%s, endpoint=%s",
 		service.name, service.Cid, service.makeRedirURL("/{route}/"+service.name+"/"), service.conf.Endpoint)
 	return service
 }

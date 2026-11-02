@@ -1,4 +1,7 @@
 # .husky/pre-commit
 
-cd frontend
-pnpm lint-staged || true
+# lint-staged resolves its cwd from the config it finds, and there is only one, so it stays
+# where it was launched. eslint and prettier are dependencies of the app, not of the workspace
+# root, so the hook has to run from the app directory or they are not on PATH
+cd frontend/apps/remark42
+pnpm exec lint-staged || true

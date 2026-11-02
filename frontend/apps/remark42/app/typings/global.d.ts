@@ -22,6 +22,9 @@ type RemarkConfig = {
   theme?: Theme;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
+  // Not for the host page to set. The host page's title as the embed script last posted it,
+  // kept by iframe.ejs inside the widget document.
+  host_page_title?: string;
   // Optional, 'en' by default. Interface localization.
   locale?: string;
   // Optional, 'true' by default. Enables email subscription feature in interface when enable it from backend side,
@@ -38,6 +41,15 @@ type RemarkConfig = {
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
   no_footer?: boolean;
+  // Optional. Overrides CSS custom properties on the widget's own document, e.g.
+  // { '--primary-color': '0, 100, 200', '--font-family': 'Georgia' }. Only properties the widget's
+  // own stylesheets already declare have any effect. Read once at load time (via the iframe's
+  // `window.name`), so it is not a runtime API - changing it after the widget has mounted has no
+  // effect without a reload. See the frontend configuration docs.
+  custom_properties?: Record<string, string>;
+  // @deprecated use `custom_properties` instead. The historical name from when this was
+  // presumed colors-only; it never actually was, and is merged with `custom_properties` if both
+  // are set (which wins on a key they share).
   __colors__?: Record<string, string>;
 };
 

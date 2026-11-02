@@ -12,14 +12,15 @@ func ProbGeom(a int, b int, p float64) (prob float64, err error) {
 		return math.NaN(), ErrBounds
 	}
 
-	prob = 0
 	q := 1 - p // probability of failure
 
-	for k := a + 1; k <= b; k++ {
-		prob = prob + p*math.Pow(q, float64(k-1))
+	if a == b {
+		return p * math.Pow(q, float64(a-1)), nil
 	}
 
-	return prob, nil
+	// closed form of the sum p*q^(k-1) over k = a..b; expm1/log1p keep
+	// 1-q^n accurate where direct subtraction would cancel
+	return math.Pow(q, float64(a-1)) * -math.Expm1(float64(b-a+1)*math.Log1p(-p)), nil
 }
 
 // ProbGeom generates the expectation or average number of trials

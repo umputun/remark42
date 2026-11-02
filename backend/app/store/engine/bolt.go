@@ -3,13 +3,14 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/hashicorp/go-multierror"
 	bolt "go.etcd.io/bbolt"
+	berrors "go.etcd.io/bbolt/errors"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
@@ -346,13 +347,13 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
-func (b *BoltDB) ListFlags(req FlagRequest) (res []interface{}, err error) {
+func (b *BoltDB) ListFlags(req FlagRequest) (res []any, err error) {
 	bdb, e := b.db(req.Locator.SiteID)
 	if e != nil {
 		return nil, e
 	}
 
-	res = []interface{}{}
+	res = []any{}
 	switch req.Flag {
 	case Verified:
 		err = bdb.View(func(tx *bolt.Tx) error {
@@ -413,14 +414,14 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 
 // Close boltdb store
 func (b *BoltDB) Close() error {
-	errs := new(multierror.Error)
+	var errs []error
 	for site, db := range b.dbs {
 		err := db.Close()
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("can't close site %s: %w", site, err))
+			errs = append(errs, fmt.Errorf("can't close site %s: %w", site, err))
 		}
 	}
-	return errs.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // Last returns up to max last comments for given siteID
@@ -893,29 +894,24 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 	// delete collected comments
 	for _, ci := range comments {
 		if e := b.deleteComment(bdb, ci.locator, ci.commentID, mode); e != nil {
-			return fmt.Errorf("failed to delete comment %+v: %w", ci, err)
+			return fmt.Errorf("failed to delete comment %+v: %w", ci, e)
 		}
 	}
 
-	// delete user bucket in hard mode
+	// delete the user's bucket in hard mode. A user who only logged in but never commented has
+	// no per-user bucket, so tolerate ErrBucketNotFound; the top-level users bucket is created
+	// by NewBoltDB and is always present.
 	if mode == store.HardDelete {
 		err = bdb.Update(func(tx *bolt.Tx) error {
 			usersBkt := tx.Bucket([]byte(userBucketName))
-			if usersBkt != nil {
-				if e := usersBkt.DeleteBucket([]byte(userID)); e != nil {
-					return fmt.Errorf("failed to delete user bucket for %s: %w", userID, err)
-				}
+			if e := usersBkt.DeleteBucket([]byte(userID)); e != nil && !errors.Is(e, berrors.ErrBucketNotFound) {
+				return fmt.Errorf("failed to delete user bucket for %s: %w", userID, e)
 			}
 			return nil
 		})
-
 		if err != nil {
 			return fmt.Errorf("can't delete user meta: %w", err)
 		}
-	}
-
-	if len(comments) == 0 {
-		return fmt.Errorf("unknown user %s", userID)
 	}
 
 	return b.deleteUserDetail(bdb, userID, AllUserDetails)
@@ -957,7 +953,7 @@ func (b *BoltDB) getUserBucket(tx *bolt.Tx, userID string) (*bolt.Bucket, error)
 }
 
 // save marshaled value to key for bucket. Should run in update tx
-func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err error) {
+func (b *BoltDB) save(bkt *bolt.Bucket, key string, value any) (err error) {
 	if value == nil {
 		return fmt.Errorf("can't save nil value for %s", key)
 	}
@@ -972,7 +968,7 @@ func (b *BoltDB) save(bkt *bolt.Bucket, key string, value interface{}) (err erro
 }
 
 // load and unmarshal json value by key from bucket. Should run in view tx
-func (b *BoltDB) load(bkt *bolt.Bucket, key string, res interface{}) error {
+func (b *BoltDB) load(bkt *bolt.Bucket, key string, res any) error {
 	value := bkt.Get([]byte(key))
 	if value == nil {
 		return fmt.Errorf("no value for %s", key)
@@ -1022,12 +1018,12 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 	if res, ok := b.dbs[siteID]; ok {
 		return res, nil
 	}
-	return nil, fmt.Errorf("site %q not found", siteID)
+	return nil, fmt.Errorf("site %q %w", siteID, ErrSiteNotFound)
 }
 
 // makeRef creates reference combining url and comment id
 func (b *BoltDB) makeRef(comment store.Comment) []byte {
-	return []byte(fmt.Sprintf("%s!!%s", comment.Locator.URL, comment.ID))
+	return fmt.Appendf(nil, "%s!!%s", comment.Locator.URL, comment.ID)
 }
 
 // parseRef gets parts of reference

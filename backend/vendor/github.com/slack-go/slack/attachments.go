@@ -47,7 +47,8 @@ type AttachmentActionOptionGroup struct {
 }
 
 // AttachmentActionCallback is sent from Slack when a user clicks a button in an interactive message (aka AttachmentAction)
-// DEPRECATED: use InteractionCallback
+//
+// Deprecated: use InteractionCallback
 type AttachmentActionCallback InteractionCallback
 
 // ConfirmationField are used to ask users to confirm actions
@@ -77,8 +78,11 @@ type Attachment struct {
 	Pretext   string `json:"pretext,omitempty"`
 	Text      string `json:"text,omitempty"`
 
-	ImageURL string `json:"image_url,omitempty"`
-	ThumbURL string `json:"thumb_url,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
+	ImageBytes  int    `json:"image_bytes,omitempty"`
+	ImageHeight int    `json:"image_height,omitempty"`
+	ImageWidth  int    `json:"image_width,omitempty"`
+	ThumbURL    string `json:"thumb_url,omitempty"`
 
 	ServiceName string `json:"service_name,omitempty"`
 	ServiceIcon string `json:"service_icon,omitempty"`

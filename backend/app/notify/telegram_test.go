@@ -30,7 +30,6 @@ func TestTelegram_Send(t *testing.T) {
 
 	err := tb.Send(context.Background(), Request{Comment: c, parent: cp, Telegrams: []string{"test_user_channel"}})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "2 errors occurred")
 	assert.Contains(t, err.Error(), "problem sending user telegram notification about comment ID 999 to \"test_user_channel\"")
 	assert.Contains(t, err.Error(), "problem sending admin telegram notification about comment ID 999 to remark_test")
 

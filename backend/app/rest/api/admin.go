@@ -1,13 +1,15 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
@@ -45,7 +47,7 @@ type adminStore interface {
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
 func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] delete comment %s", id)
 
@@ -60,7 +62,7 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
 func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
@@ -74,7 +76,7 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 
 // GET /user/{userid}?site=side-id - get user info for requested userid
 func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
@@ -113,6 +115,14 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 
 	audience := claims.Audience[0]
 
+	// admin rights hold for the site the session belongs to, which matchSiteID has already matched
+	// against this query value. Only the basic-auth admin, who administers every site, may omit it
+	if site := r.URL.Query().Get("site"); site != "" && site != audience {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token site %q, request site %q", audience, site),
+			"can't use provided token for this site", rest.ErrNoAccess)
+		return
+	}
+
 	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
 		code := parseError(err, rest.ErrInternal)
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)
@@ -125,10 +135,15 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
-		avatarStore := a.authenticator.AvatarProxy().Store
-		if err = avatarStore.Remove(path.Base(claims.User.Picture)); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user's avatar", rest.ErrInternal)
-			return
+		if avatarID := avatarIDFromPicture(claims.User.Picture); avatarID != "" {
+			// an already-removed avatar is fine (a repeated request stays idempotent), but a genuine
+			// store failure is surfaced now that avatar.ErrNotFound lets us tell the two apart
+			if err = a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
+				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+				return
+			}
+		} else {
+			log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", claims.User.Picture, claims.User.ID, audience)
 		}
 	}
 
@@ -136,9 +151,20 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 
+// avatarIDFromPicture returns the avatar-store object id for a user picture, or "" if the picture
+// does not resolve to a well-formed id (the store names its objects "<hash>.image"). Guarding on the
+// id shape keeps a malformed picture, e.g. a path sentinel, from making a filesystem-backed store
+// target an unexpected path.
+func avatarIDFromPicture(picture string) string {
+	if id := path.Base(picture); strings.HasSuffix(id, ".image") {
+		return id
+	}
+	return ""
+}
+
 // PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
 func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
@@ -204,7 +230,7 @@ func (a *admin) setReadOnlyCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /title/{id}?site=siteID&url=post-url - set comment PostTitle to page's title
 func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 
 	c, err := a.dataService.SetTitle(locator, id)
@@ -218,9 +244,9 @@ func (a *admin) setTitleCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
-// PUT /verify?site=siteID&url=post-url&ro=1 - set or reset read-only status for the post
+// PUT /verify/{userid}?site=siteID&verified=1 - set or reset verified status for the user
 func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userid")
+	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	verifyStatus := r.URL.Query().Get("verified") == "1"
 
@@ -235,7 +261,7 @@ func (a *admin) setVerifyCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /pin/{id}?site=siteID&url=post-url&pin=1
 // mark/unmark comment as a special
 func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
-	commentID := chi.URLParam(r, "id")
+	commentID := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	pinStatus := r.URL.Query().Get("pin") == "1"
 

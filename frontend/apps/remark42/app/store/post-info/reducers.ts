@@ -1,7 +1,8 @@
 import type { PostInfo } from 'common/types';
 import { cmpRef } from 'utils/cmpRef';
 
-import { POST_INFO_SET, POST_INFO_SET_ACTION } from './types';
+import type { POST_INFO_SET_ACTION } from './types';
+import { POST_INFO_SET } from './types';
 
 const DefaultPostInfo: PostInfo = {
   url: '',

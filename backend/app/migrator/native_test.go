@@ -162,7 +162,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	buf.WriteString(`{"version":1, "users":[], "posts":[]}` + "\n")
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		fmt.Fprintf(buf, goodRec, i)
 	}
 	buf.WriteString("{}\n")

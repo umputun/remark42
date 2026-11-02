@@ -1,0 +1,29 @@
+<aside class="docs-aside">
+  <input id="menu-toggle" type="checkbox" class="docs-aside__state">
+  <label for="menu-toggle" class="docs-aside__toggle">
+    <span class="burger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+    Open Menu
+  </label>
+  <nav class="docs-aside__nav" aria-label="Documentation">
+    {{- $current := .RelPermalink -}}
+    {{- range hugo.Data.nav }}
+      {{- with .section }}<h5 class="docs-aside__section">{{ . }}</h5>{{ end }}
+      <ul class="docs-aside__list">
+        {{- range .children }}
+          {{- $href := printf "/docs%s" .href }}
+          <li>
+            <a class="docs-aside__link{{ if eq $current $href }} is-current{{ end }}" href="{{ $href }}">{{ .title }}</a>
+            {{- with .children }}
+              <ul class="docs-aside__list docs-aside__list--nested">
+                {{- range . }}
+                  {{- $childHref := printf "/docs%s" .href }}
+                  <li><a class="docs-aside__link{{ if eq $current $childHref }} is-current{{ end }}" href="{{ $childHref }}">{{ .title }}</a></li>
+                {{- end }}
+              </ul>
+            {{- end }}
+          </li>
+        {{- end }}
+      </ul>
+    {{- end }}
+  </nav>
+</aside>

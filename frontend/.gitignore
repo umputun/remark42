@@ -4,7 +4,6 @@ extracted-messages
 .env
 tsconfig.tsbuildinfo
 coverage
-.turbo
 public
 dist
 !remark42

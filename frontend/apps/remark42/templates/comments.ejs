@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Remark42 demo</title>
     <style>
-      /* stylelint-disable mavrin/stylelint-declaration-use-css-custom-properties */
       body {
         margin: 0;
         padding: 20px;
@@ -64,7 +63,17 @@
       })();
       if (query.site_id && query.url) {
         var titleElement = document.getElementById('title');
-        titleElement.innerHTML = 'Comments for <a href="' + query.url + '">' + query.url + '</a>';
+        // built through the DOM rather than innerHTML: query.url is attacker-controlled and this
+        // page is a top-level document on the instance origin, so an injected script would run
+        // there rather than inside the sandboxed widget frame
+        var link = document.createElement('a');
+        link.textContent = query.url;
+        // and only http(s) reaches href, or a javascript: url survives the escaping
+        if (/^https?:\/\//i.test(query.url)) {
+          link.href = query.url;
+        }
+        titleElement.textContent = 'Comments for ';
+        titleElement.appendChild(link);
         var remark_config = {
           site_id: query.site_id,
           host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
@@ -74,12 +83,10 @@
           var r = d.head || d.body;
           for (var i = 0; i < c.length; i++) {
             var s = d.createElement('script');
-            var m = 'noModule' in s;
-            var e = m ? '.mjs' : '.js';
-            m && (s.type = 'module');
+            s.type = 'module';
             s.async = true;
             s.defer = true;
-            s.src = remark_config.host + '/web/' + c[i] + e;
+            s.src = remark_config.host + '/web/' + c[i] + '.mjs';
             r.appendChild(s);
           }
         })(remark_config.components || ['embed'], document);

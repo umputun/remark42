@@ -1,13 +1,13 @@
 import { h, Component, Fragment } from 'preact';
-import { useEffect } from 'preact/hooks';
-import { useSelector } from 'react-redux';
-import b from 'bem-react-helper';
-import { IntlShape, useIntl, FormattedMessage, defineMessages } from 'react-intl';
+import { useSelector } from 'store/context';
 import clsx from 'clsx';
 
+import type { IntlShape } from 'common/intl';
+import { useIntl, FormattedMessage, defineMessages } from 'common/intl';
+import { getDirection } from 'common/direction';
 import 'styles/global.css';
 import type { StoreState } from 'store';
-import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, THEMES, IS_MOBILE } from 'common/constants';
+import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, IS_MOBILE } from 'common/constants';
 import { maxShownComments, noFooter, url } from 'common/settings';
 
 import {
@@ -21,7 +21,6 @@ import {
 } from 'store/user/actions';
 import { fetchComments, addComment, updateComment } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
-import { setTheme } from 'store/theme/actions';
 
 // TODO: make this button as default for all cases and replace current `components/Button`
 import { Button } from 'components/auth/components/button';
@@ -35,7 +34,7 @@ import { ConnectedComment as Comment } from 'components/comment/connected-commen
 import { uploadImage, getPreview } from 'common/api';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
-import { postMessageToParent, parseMessage, updateIframeHeight } from 'utils/post-message';
+import { postMessageToParent, parseMessage, isFromParent, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
 import { setCollapse } from 'store/thread/actions';
 
@@ -67,7 +66,6 @@ const boundActions = bindActions({
   fetchComments,
   fetchUser,
   fetchBlockedUsers,
-  setTheme,
   setCommentsReadOnlyState,
   blockUser,
   unblockUser,
@@ -113,8 +111,29 @@ export class Root extends Component<Props, State> {
     isSettingsVisible: false,
   };
 
+  heightObserver: ResizeObserver | null = null;
+  heightFallbackTimeout: number | null = null;
+
+  startHeightReporting = () => {
+    if (this.heightObserver) {
+      return;
+    }
+
+    updateIframeHeight();
+    this.heightObserver = new ResizeObserver(() => updateIframeHeight());
+    this.heightObserver.observe(document.body);
+  };
+
   componentDidMount() {
-    const userloading = this.props.fetchUser().finally(() => this.setState({ isUserLoading: false }));
+    // if the user fetch hangs, report the preloader height anyway so the parent page
+    // is not left with an unbounded iframe
+    this.heightFallbackTimeout = window.setTimeout(this.startHeightReporting, 5000);
+
+    const userloading = this.props.fetchUser().finally(() =>
+      // start reporting iframe height only after the global preloader is replaced with
+      // real content, so the parent page never shrinks the iframe to the preloader size
+      this.setState({ isUserLoading: false }, this.startHeightReporting)
+    );
 
     Promise.all([userloading, this.props.fetchComments()]).finally(() => {
       setTimeout(this.checkUrlHash);
@@ -122,6 +141,13 @@ export class Root extends Component<Props, State> {
     });
 
     window.addEventListener('message', this.onMessage);
+  }
+
+  componentWillUnmount() {
+    if (this.heightFallbackTimeout !== null) {
+      window.clearTimeout(this.heightFallbackTimeout);
+    }
+    this.heightObserver?.disconnect();
   }
 
   checkUrlHash = (e: Event & { newURL: string }) => {
@@ -158,17 +184,17 @@ export class Root extends Component<Props, State> {
   };
 
   onMessage = (event: MessageEvent) => {
-    const data = parseMessage(event);
-
-    if (data.signout === true) {
-      this.props.signout(false);
-    }
-
-    if (!data.theme || !THEMES.includes(data.theme)) {
+    if (!isFromParent(event)) {
       return;
     }
 
-    this.props.setTheme(data.theme);
+    const data = parseMessage(event);
+
+    // the theme is applied, store included, by the listener in remark.tsx, which is in place
+    // before this component mounts
+    if (data.signout === true) {
+      this.props.signout(false);
+    }
   };
 
   onBlockedUsersShow = async () => {
@@ -201,7 +227,7 @@ export class Root extends Component<Props, State> {
 
   render(props: Props, { isUserLoading, commentsShown, isSettingsVisible }: State) {
     if (isUserLoading) {
-      return <Preloader className="root__preloader" />;
+      return <Preloader className={styles.preloader} />;
     }
 
     const isCommentsDisabled = props.info.read_only!;
@@ -219,7 +245,7 @@ export class Root extends Component<Props, State> {
           onBlockedUsersHide={this.onBlockedUsersHide}
           onCommentsChangeReadOnlyMode={this.props.setCommentsReadOnlyState}
         />
-        <div className="root__main">
+        <div>
           {isSettingsVisible ? (
             <Settings
               intl={this.props.intl}
@@ -239,7 +265,7 @@ export class Root extends Component<Props, State> {
                   id={encodeURI(url || '')}
                   intl={this.props.intl}
                   theme={props.theme}
-                  mix="root__input"
+                  mix={styles.input}
                   mode="main"
                   user={props.user}
                   onSubmit={(text: string, title: string) => this.props.addComment(text, title)}
@@ -249,7 +275,7 @@ export class Root extends Component<Props, State> {
               )}
               {this.props.pinnedComments.length > 0 && (
                 <div
-                  className="root__pinned-comments"
+                  className={styles.pinnedComments}
                   role="region"
                   aria-label={this.props.intl.formatMessage(messages.pinnedComments)}
                 >
@@ -262,12 +288,12 @@ export class Root extends Component<Props, State> {
                       data={comment}
                       level={0}
                       disabled={true}
-                      mix="root__pinned-comment"
+                      mix={styles.pinnedComment}
                     />
                   ))}
                 </div>
               )}
-              <div className={clsx('sort-picker', styles.sortPicker)}>
+              <div className={styles.sortPicker}>
                 <SortPicker />
               </div>
               <Comments
@@ -296,17 +322,15 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
   const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
 
   return (
-    <div className="root__threads" role="list">
+    <div className={styles.threads} role="list">
       {isLoading ? (
-        <Preloader className="root__preloader" />
+        <Preloader className={styles.preloader} />
       ) : (
         <>
           {topComments.length > 0 &&
-            renderComments.map((id) => (
-              <Thread key={`thread-${id}`} id={id} mix="root__thread" level={0} getPreview={getPreview} />
-            ))}
+            renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
           {isShowMoreButtonVisible && (
-            <Button className={clsx('more-comments', styles.moreComments)} onClick={showMore}>
+            <Button className={styles.moreComments} onClick={showMore}>
               <FormattedMessage id="root.show-more" defaultMessage="Show more" />
             </Button>
           )}
@@ -317,7 +341,7 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
 }
 
 const CopyrightLink = (title: string) => (
-  <a class="root__copyright-link" href="https://remark42.com/">
+  <a class={styles.copyrightLink} href="https://remark42.com/">
     {title}
   </a>
 );
@@ -328,19 +352,14 @@ export function ConnectedRoot() {
   const props = useSelector(mapStateToProps);
   const actions = useActions(boundActions);
 
-  useEffect(() => {
-    const observer = new ResizeObserver(() => updateIframeHeight());
-
-    updateIframeHeight();
-    observer.observe(document.body);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div className={clsx(b('root', {}, { theme: props.theme }), props.theme)}>
+    <div
+      dir={getDirection(intl.locale)}
+      className={clsx(styles.root, props.theme === 'dark' ? styles.themeDark : styles.themeLight, props.theme)}
+    >
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
-        <p className="root__copyright" role="contentinfo">
+        <p className={styles.copyright} role="contentinfo">
           <FormattedMessage
             id="root.powered-by"
             defaultMessage="Powered by <a>Remark42</a>"

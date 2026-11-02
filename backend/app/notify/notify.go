@@ -19,7 +19,7 @@ type Service struct {
 	queue             chan Request
 	verificationQueue chan VerificationRequest
 
-	closed uint32 // non-zero means closed. uses uint instead of bool for atomic
+	closed atomic.Uint32 // non-zero means closed. uses uint instead of bool for atomic
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -83,7 +83,7 @@ func NewService(dataService Store, size int, destinations ...Destination) *Servi
 
 // Submit Request to internal channel if not busy, drop if can't send
 func (s *Service) Submit(req Request) {
-	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
+	if len(s.destinations) == 0 || s.closed.Load() != 0 {
 		return
 	}
 	if s.dataService != nil && req.Comment.ParentID != "" {
@@ -130,7 +130,7 @@ func (s *Service) getNotificationTargets(
 
 // SubmitVerification to internal channel if not busy, drop if can't send
 func (s *Service) SubmitVerification(req VerificationRequest) {
-	if len(s.destinations) == 0 || atomic.LoadUint32(&s.closed) != 0 {
+	if len(s.destinations) == 0 || s.closed.Load() != 0 {
 		return
 	}
 	select {
@@ -155,7 +155,7 @@ func (s *Service) Close() {
 		s.cancel()
 		<-s.ctx.Done()
 	}
-	atomic.StoreUint32(&s.closed, 1)
+	s.closed.Store(1)
 }
 
 func (s *Service) do() {

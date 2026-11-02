@@ -11,7 +11,7 @@ import (
 
 // BoltDB implements avatar store with bolt
 // using separate db (file) with "avatars" bucket to keep image bin and "metas" bucket
-// to keep sha1 of picture. avatarID (base file name) used as a key for both.
+// to keep a sha1 fingerprint of the stored bytes. avatarID (base file name) used as a key for both.
 type BoltDB struct {
 	fileName string // full path to boltdb
 	db       *bolt.DB
@@ -41,7 +41,9 @@ func NewBoltDB(fileName string, options bolt.Options) (*BoltDB, error) {
 	return &BoltDB{db: db, fileName: fileName}, nil
 }
 
-// Put avatar to bolt, key by avatarID. Trying to resize image and lso calculates sha1 of the file for ID func
+// Put stores avatar bytes read from reader in the "avatars" bucket and a sha1 of the
+// same bytes in the "metas" bucket, both keyed by the encoded userID with .image suffix.
+// Resizing happens upstream in Proxy.resize; this layer only writes what it is given.
 func (b *BoltDB) Put(userID string, reader io.Reader) (avatar string, err error) {
 	id := encodeID(userID)
 
@@ -101,7 +103,7 @@ func (b *BoltDB) Remove(avatarID string) (err error) {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket([]byte(avatarsBktName))
 		if bkt.Get([]byte(avatarID)) == nil {
-			return fmt.Errorf("avatar key not found, %s", avatarID)
+			return fmt.Errorf("avatar %s not found: %w", avatarID, ErrNotFound)
 		}
 		if err = tx.Bucket([]byte(avatarsBktName)).Delete([]byte(avatarID)); err != nil {
 			return fmt.Errorf("can't delete avatar object %s: %w", avatarID, err)

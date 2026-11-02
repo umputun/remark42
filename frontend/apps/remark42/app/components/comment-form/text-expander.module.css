@@ -1,7 +1,7 @@
 .suggester {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 30;
   min-width: 180px;
   padding: 0;
@@ -40,18 +40,18 @@
 }
 
 .suggesterItem:first-child {
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
+  border-start-start-radius: 3px;
+  border-start-end-radius: 3px;
 }
 
 .suggesterItem:last-child {
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border-end-start-radius: 3px;
+  border-end-end-radius: 3px;
   border-bottom: none;
 }
 
 .emojiResult {
-  margin-right: 0;
+  margin-inline-end: 0;
   display: inline-block;
   line-height: 20px;
   font-size: 20px;

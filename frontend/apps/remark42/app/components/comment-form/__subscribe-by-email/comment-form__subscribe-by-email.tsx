@@ -1,32 +1,35 @@
-import { h, FunctionComponent, Fragment } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useCallback, useRef } from 'preact/hooks';
-import { useSelector, useDispatch } from 'react-redux';
-import b from 'bem-react-helper';
-import { useIntl, defineMessages, IntlShape, FormattedMessage } from 'react-intl';
+import { useSelector, useDispatch } from 'store/context';
+import clsx from 'clsx';
 
-import { User } from 'common/types';
-import { StoreState } from 'store';
+import type { IntlShape } from 'common/intl';
+import { useIntl, defineMessages, FormattedMessage } from 'common/intl';
+import type { User } from 'common/types';
+import type { StoreState } from 'store';
 import { setUserSubscribed } from 'store/user/actions';
-import { sleep } from 'utils/sleep';
-import { extractErrorMessageFromResponse, RequestError } from 'utils/errorUtils';
+import type { RequestError } from 'utils/errorUtils';
+import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
 import { getHandleClickProps } from 'common/accessibility';
 import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
-import { Dropdown } from 'components/dropdown';
+import { Dropdown, useDropdown } from 'components/dropdown';
 import { Preloader } from 'components/preloader';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { getPersistedEmail } from 'components/auth/auth.utils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { isJwtExpired } from 'utils/jwt';
 
+import styles from './subscribe-by-email.module.css';
+
 const emailRegexp = /[^@]+@[^.]+\..+/;
 
 enum Step {
   Email,
   Token,
-  Close,
   Subscribed,
   Unsubscribed,
 }
@@ -34,7 +37,7 @@ enum Step {
 const messages = defineMessages({
   token: {
     id: 'token',
-    defaultMessage: 'Copy and paste the token from the email',
+    defaultMessage: 'Paste the token from the email',
   },
   expiredToken: {
     id: 'token.expired',
@@ -42,11 +45,11 @@ const messages = defineMessages({
   },
   haveSubscribed: {
     id: 'subscribeByEmail.have-been-subscribed',
-    defaultMessage: 'You have been subscribed on updates by email',
+    defaultMessage: 'You have subscribed to email updates',
   },
   subscribed: {
     id: 'subscribeByEmail.subscribed',
-    defaultMessage: 'You are subscribed on updates by email',
+    defaultMessage: 'You are subscribed to email updates',
   },
   submit: {
     id: 'subscribeByEmail.submit',
@@ -58,11 +61,11 @@ const messages = defineMessages({
   },
   subscribeByEmail: {
     id: 'subscribeByEmail.subscribe-by-email',
-    defaultMessage: 'Subscribe by Email',
+    defaultMessage: 'Subscribe by email',
   },
   onlyRegisteredUsers: {
     id: 'subscribeByEmail.only-registered-users',
-    defaultMessage: 'Available only for registered users',
+    defaultMessage: 'Only available to registered users',
   },
   email: {
     id: 'subscribeByEmail.email',
@@ -77,12 +80,11 @@ const renderEmailPart = (
   handleChangeEmail: (e: Event) => void
 ) => (
   <>
-    <div className="comment-form__subscribe-by-email__title">
-      <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Subscribe to replies" />
+    <div className={styles.title}>
+      <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Email subscription to replies" />
     </div>
     <Input
       autofocus
-      className="comment-form__subscribe-by-email__input"
       placeholder={intl.formatMessage(messages.email)}
       value={emailAddress}
       onInput={handleChangeEmail}
@@ -99,11 +101,11 @@ const renderTokenPart = (
   setEmailStep: () => void
 ) => (
   <>
-    <Button kind="link" mix="auth-email-login-form__back-button" {...getHandleClickProps(setEmailStep)}>
+    <Button kind="link" {...getHandleClickProps(setEmailStep)}>
       <FormattedMessage id="subscribeByEmail.back" defaultMessage="Back" />
     </Button>
     <TextareaAutosize
-      className="comment-form__subscribe-by-email__token-input"
+      className={styles.tokenInput}
       placeholder={intl.formatMessage(messages.token)}
       autofocus
       onInput={handleChangeToken}
@@ -117,6 +119,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const intl = useIntl();
+  const { close } = useDropdown();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
@@ -213,8 +216,7 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
   const isValidEmailAddress = emailRegexp.test(emailAddress);
 
-  const setEmailStep = useCallback(async () => {
-    await sleep(0);
+  const setEmailStep = useCallback(() => {
     setError(null);
     setStep(Step.Email);
   }, [setStep]);
@@ -232,29 +234,15 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
     }
   }, [setLoading, setStep, setError, dispatch, intl]);
 
-  /**
-   * It needs for dropdown closing by click on button
-   * More info below
-   */
-  if (step === Step.Close) {
-    return null;
-  }
-
   if (step === Step.Subscribed) {
     const text = justSubscribed.current
       ? intl.formatMessage(messages.haveSubscribed)
       : intl.formatMessage(messages.subscribed);
 
     return (
-      <div className={b('comment-form__subscribe-by-email', { mods: { subscribed: true } })}>
+      <div className={styles.subscribed}>
         {text}
-        <Button
-          kind="primary"
-          size="middle"
-          mix="comment-form__subscribe-by-email__button"
-          theme={theme}
-          onClick={handleUnsubscribe}
-        >
+        <Button kind="primary" size="middle" className={styles.button} theme={theme} onClick={handleUnsubscribe}>
           <FormattedMessage id="subscribeByEmail.unsubscribe" defaultMessage="Unsubscribe" />
         </Button>
       </div>
@@ -262,25 +250,13 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   }
 
   if (step === Step.Unsubscribed) {
-    /**
-     * It works because click on button changes step
-     * And dropdown doesn't find event target in rerendered view
-     * NOTE: If you can suggest more elegant solve you can open issue or PR
-     */
-
     return (
-      <div className={b('comment-form__subscribe-by-email', { mods: { unsubscribed: true } })}>
+      <div className={styles.unsubscribed}>
         <FormattedMessage
           id="subscribeByEmail.have-been-unsubscribed"
-          defaultMessage="You have been unsubscribed by email to updates"
+          defaultMessage="You have unsubscribed from email updates"
         />
-        <Button
-          kind="primary"
-          size="middle"
-          mix="comment-form__subscribe-by-email__button"
-          theme={theme}
-          onClick={() => setStep(Step.Close)}
-        >
+        <Button kind="primary" size="middle" className={styles.button} theme={theme} onClick={close}>
           <FormattedMessage id="subscribeByEmail.close" defaultMessage="Close" />
         </Button>
       </div>
@@ -291,22 +267,25 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
     step === Step.Email ? intl.formatMessage(messages.submit) : intl.formatMessage(messages.subscribe);
 
   return (
-    <form className={b('comment-form__subscribe-by-email', {}, { theme })} onSubmit={handleSubmit}>
+    <form
+      className={clsx(styles.root, theme === 'dark' ? styles.themeDark : styles.themeLight)}
+      onSubmit={handleSubmit}
+    >
       {step === Step.Email && renderEmailPart(loading, intl, emailAddress, handleChangeEmail)}
       {step === Step.Token && renderTokenPart(loading, intl, token, handleChangeToken, setEmailStep)}
       {error !== null && (
-        <div className="comment-form__subscribe-by-email__error" role="alert">
+        <div className={styles.error} role="alert">
           {error}
         </div>
       )}
       <Button
-        mix="comment-form__subscribe-by-email__button"
+        className={styles.button}
         kind="primary"
         size="large"
         type="submit"
         disabled={!isValidEmailAddress || loading}
       >
-        {loading ? <Preloader className="comment-form__subscribe-by-email__preloader" /> : buttonLabel}
+        {loading ? <Preloader className={styles.preloader} /> : buttonLabel}
       </Button>
     </form>
   );
@@ -320,13 +299,7 @@ export const SubscribeByEmail: FunctionComponent = () => {
   const buttonTitle = intl.formatMessage(isAnonymous ? messages.onlyRegisteredUsers : messages.subscribeByEmail);
 
   return (
-    <Dropdown
-      mix="comment-form__email-dropdown"
-      title={intl.formatMessage(messages.email)}
-      theme={theme}
-      disabled={isAnonymous}
-      buttonTitle={buttonTitle}
-    >
+    <Dropdown title={intl.formatMessage(messages.email)} theme={theme} disabled={isAnonymous} buttonTitle={buttonTitle}>
       <SubscribeByEmailForm />
     </Dropdown>
   );

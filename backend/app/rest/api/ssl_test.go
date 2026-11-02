@@ -40,6 +40,16 @@ func TestSSL_Redirect(t *testing.T) {
 	assert.Equal(t, "https://localhost:443/blah?param=1", resp.Header.Get("Location"))
 }
 
+func TestSSL_RedirectURLKeepsConfiguredHost(t *testing.T) {
+	rest := Rest{RemarkURL: "https://localhost:443/base"}
+	req, err := http.NewRequest("GET", "http://example.com//evil.test/path?next=//evil.test", http.NoBody)
+	require.NoError(t, err)
+
+	redirectURL, err := rest.redirectURL(req)
+	require.NoError(t, err)
+	assert.Equal(t, "https://localhost:443/base/evil.test/path?next=//evil.test", redirectURL)
+}
+
 func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	rest := Rest{
 		RemarkURL: "https://localhost:443",

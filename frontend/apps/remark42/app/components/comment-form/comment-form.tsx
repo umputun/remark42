@@ -1,8 +1,9 @@
 import { h, Component, createRef, Fragment } from 'preact';
-import { FormattedMessage, IntlShape, defineMessages } from 'react-intl';
-import b, { Mix } from 'bem-react-helper';
+import clsx from 'clsx';
 
-import { User, Theme, Image } from 'common/types';
+import type { IntlShape } from 'common/intl';
+import { FormattedMessage, defineMessages } from 'common/intl';
+import type { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
@@ -20,14 +21,20 @@ import { SubscribeByRSS } from './__subscribe-by-rss';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { TextExpander } from './text-expander';
 import { updatePersistedComments, getPersistedComment, removePersistedComment } from './comment-form.persist';
+import styles from './comment-form.module.css';
 
 export type Props = {
   id: string;
   user: User | null;
   errorMessage?: string;
   value?: string;
-  mix?: Mix;
+  mix?: string | string[];
   mode?: 'main' | 'edit' | 'reply';
+  /**
+   * Only meaningful when `mode` is `'edit'`: whether the comment being edited is itself a reply
+   * (has its own parent), so its placeholder should match the reply form rather than the main one.
+   */
+  isReply?: boolean;
   theme: Theme;
   autofocus?: boolean;
 
@@ -159,7 +166,7 @@ export class CommentForm extends Component<Props, State> {
 
     this.setState({ isDisabled: true, isErrorShown: false, text });
     try {
-      await this.props.onSubmit(text, settings.pageTitle || document.title);
+      await this.props.onSubmit(text, settings.pageTitle || window.remark_config?.host_page_title || '');
     } catch (err) {
       this.setState({
         isDisabled: false,
@@ -362,13 +369,13 @@ export class CommentForm extends Component<Props, State> {
   };
 
   renderMarkdownTip = () => (
-    <div className="comment-form__markdown">
+    <div className={styles.markdown}>
       <FormattedMessage
         id="commentForm.notice-about-styling"
-        defaultMessage="Styling with <a>Markdown</a> is supported"
+        defaultMessage="<a>Markdown</a> can be used for formatting"
         values={{
           a: (title: string) => (
-            <a class="comment-form__markdown-link" target="_blank" href="markdown-help.html">
+            <a class={styles.markdownLink} target="_blank" href="markdown-help.html">
               {title}
             </a>
           ),
@@ -411,7 +418,7 @@ export class CommentForm extends Component<Props, State> {
   };
 
   render() {
-    const { theme, mode, mix, uploadImage, autofocus, user, intl } = this.props;
+    const { theme, mode, mix, uploadImage, autofocus, user, intl, isReply } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
     const charactersLeft = StaticStore.config.max_comment_size - text.length;
     const errorMessage = this.props.errorMessage || this.state.errorMessage;
@@ -421,19 +428,23 @@ export class CommentForm extends Component<Props, State> {
       reply: <FormattedMessage id="commentForm.reply" defaultMessage="Reply" />,
     };
     const label = buttonText || Labels[mode || 'main'];
-    const placeholderMessage = intl.formatMessage(messages.placeholder);
+    // in edit mode there is no separate placeholder: the comment being edited is itself either a
+    // top-level comment or a reply, so its placeholder matches whichever one it already is
+    const isReplyPlaceholder = mode === 'reply' || (mode === 'edit' && isReply);
+    const placeholderMessage = isReplyPlaceholder
+      ? intl.formatMessage(messages.replyPlaceholder)
+      : intl.formatMessage(messages.placeholder);
     const isSimpleView = StaticStore.config.simple_view;
 
     return (
       <form
-        className={b('comment-form', {
-          mods: {
-            theme,
-            type: mode || 'reply',
-            simple: isSimpleView,
-          },
-          mix,
-        })}
+        className={clsx(
+          styles.root,
+          theme === 'dark' ? styles.themeDark : styles.themeLight,
+          (!mode || mode === 'reply') && styles.typeReply,
+          isSimpleView && styles.simple,
+          mix
+        )}
         onSubmit={this.send}
         aria-label={intl.formatMessage(messages.newComment)}
         onDragOver={this.onDragOver}
@@ -441,7 +452,7 @@ export class CommentForm extends Component<Props, State> {
         data-testid={`commentform_${this.props.id}`}
       >
         {!isSimpleView && (
-          <div className="comment-form__control-panel" data-testid="markdown-toolbar">
+          <div className={styles.controlPanel} data-testid="markdown-toolbar">
             <MarkdownToolbar
               intl={intl}
               allowUpload={Boolean(uploadImage)}
@@ -450,13 +461,13 @@ export class CommentForm extends Component<Props, State> {
             />
           </div>
         )}
-        <div className="comment-form__field-wrapper">
+        <div className={styles.fieldWrapper}>
           <TextExpander>
             <TextareaAutosize
               id={this.textareaId}
-              ref={this.textareaRef}
+              textareaRef={this.textareaRef}
               onPaste={this.onPaste}
-              className="comment-form__field"
+              className={styles.field}
               placeholder={placeholderMessage}
               value={text}
               onInput={this.onInput}
@@ -467,17 +478,17 @@ export class CommentForm extends Component<Props, State> {
               dir="auto"
             />
           </TextExpander>
-          {charactersLeft < 100 && <span className="comment-form__counter">{charactersLeft}</span>}
+          {charactersLeft < 100 && <span className={styles.counter}>{charactersLeft}</span>}
         </div>
 
         {(isErrorShown || !!errorMessage) &&
           (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
-            <p className="comment-form__error" role="alert" key={e}>
+            <p className={styles.error} role="alert" key={e}>
               {e}
             </p>
           ))}
 
-        <div className="comment-form__actions">
+        <div className={styles.actions}>
           {user ? (
             <>
               <div>
@@ -486,20 +497,20 @@ export class CommentForm extends Component<Props, State> {
                     kind="secondary"
                     theme={theme}
                     size="large"
-                    mix="comment-form__button"
+                    className={styles.button}
                     disabled={isDisabled}
                     onClick={this.getPreview}
                   >
                     <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
                   </Button>
                 )}
-                <Button kind="primary" size="large" mix="comment-form__button" type="submit" disabled={isDisabled}>
+                <Button kind="primary" size="large" className={styles.button} type="submit" disabled={isDisabled}>
                   {label}
                 </Button>
               </div>
 
               {mode === 'main' && (
-                <div className="comment-form__rss">
+                <div className={styles.rss}>
                   {this.renderMarkdownTip()}
                   {this.renderSubscribeButtons()}
                 </div>
@@ -517,9 +528,9 @@ export class CommentForm extends Component<Props, State> {
           // TODO: it can be more elegant;
           // for example it can render full comment component here (or above textarea on mobile)
           !!preview && (
-            <div className="comment-form__preview-wrapper">
+            <div className={styles.previewWrapper}>
               <div
-                className="comment-form__preview raw-content"
+                className={clsx(styles.preview, 'raw-content')}
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: preview }}
                 dir="auto"
@@ -537,6 +548,10 @@ export const messages = defineMessages({
     id: 'commentForm.input-placeholder',
     defaultMessage: 'Your comment here',
   },
+  replyPlaceholder: {
+    id: 'commentForm.input-placeholder-reply',
+    defaultMessage: 'Your reply here',
+  },
   uploadFileFail: {
     id: 'commentForm.upload-file-fail',
     defaultMessage: '{fileName} upload failed with "{errorMessage}"',
@@ -547,7 +562,7 @@ export const messages = defineMessages({
   },
   uploadingFile: {
     id: 'commentForm.uploading-file',
-    defaultMessage: 'uploading {fileName}...',
+    defaultMessage: 'Uploading {fileName}...',
   },
   exceededSize: {
     id: 'commentForm.exceeded-size',
@@ -563,11 +578,10 @@ export const messages = defineMessages({
   },
   unauthorizedUploadingDisabled: {
     id: 'commentForm.unauthorized-uploading-disabled',
-    defaultMessage: 'Image uploading is disabled for unauthorized users. You should login before uploading.',
+    defaultMessage: 'Sign in to upload images.',
   },
   anonymousUploadingDisabled: {
     id: 'commentForm.anonymous-uploading-disabled',
-    defaultMessage:
-      'Image uploading is disabled for anonymous users. Please log in not as anonymous user to be able to attach images.',
+    defaultMessage: 'Anonymous users cannot upload images. Sign in with an account to attach images.',
   },
 });

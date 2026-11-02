@@ -12,7 +12,7 @@ type UserUpdater interface {
 }
 
 // UserUpdFunc type is an adapter to allow the use of ordinary functions as UserUpdater. If f is a function
-// with the appropriate signature, UserUpdFunc(f) is a Handler that calls f.
+// with the appropriate signature, UserUpdFunc(f) is a UserUpdater that calls f.
 type UserUpdFunc func(user token.User) token.User
 
 // Update calls f(user)

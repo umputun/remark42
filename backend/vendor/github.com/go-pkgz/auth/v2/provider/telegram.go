@@ -3,13 +3,16 @@ package provider
 //go:generate moq --out telegram_moq_test.go . TelegramAPI
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	neturl "net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,9 +22,13 @@ import (
 	"github.com/go-pkgz/rest"
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/logger"
 	authtoken "github.com/go-pkgz/auth/v2/token"
 )
+
+// TelegramAPIBaseURL is the public Telegram bot API, used unless a caller supplies its own
+const TelegramAPIBaseURL = "https://api.telegram.org"
 
 // TelegramHandler implements login via telegram
 type TelegramHandler struct {
@@ -152,8 +159,8 @@ func (th *TelegramHandler) ProcessUpdate(ctx context.Context, textUpdate string)
 	return nil
 }
 
-// processUpdates processes a batch of updates from telegram servers
-// Returns offset for subsequent calls
+// processUpdates processes a batch of updates from telegram servers. Offset
+// tracking for subsequent polls is handled inside TelegramAPI.GetUpdates.
 func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegramUpdate) {
 	for _, update := range updates.Result {
 		if update.Message.Chat.Type != "private" {
@@ -186,11 +193,18 @@ func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegram
 
 		id := th.ProviderName + "_" + authtoken.HashID(sha1.New(), fmt.Sprint(update.Message.Chat.ID))
 
+		// avatarURL embeds the bot token in its path
+		// (https://api.telegram.org/file/bot{TOKEN}/...). Never store it in
+		// User.Picture: it would leak through avatar.Proxy.Put logs and, when
+		// no avatar saver is configured, into the JWT and on to the client.
+		// Fetch the bytes here and hand them to the avatar store directly.
+		picture := th.saveTelegramAvatar(ctx, id, avatarURL)
+
 		authRequest.confirmed = true
 		authRequest.user = &authtoken.User{
 			ID:      id,
 			Name:    update.Message.Chat.Name,
-			Picture: avatarURL,
+			Picture: picture,
 		}
 
 		th.requests.Lock()
@@ -218,7 +232,8 @@ func (th *TelegramHandler) addToken(token string, expires time.Time) error {
 	return nil
 }
 
-// checkToken verifies incoming token, returns the user address if it's confirmed and empty string otherwise
+// checkToken returns the confirmed user for a known token, or an error if the
+// request is missing, expired, or has not been verified yet.
 func (th *TelegramHandler) checkToken(token string) (*authtoken.User, error) {
 	th.requests.RLock()
 	authRequest, ok := th.requests.data[token]
@@ -294,10 +309,19 @@ func (th *TelegramHandler) LoginHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	u, err := setAvatar(th.AvatarSaver, *authUser, &http.Client{Timeout: 5 * time.Second})
-	if err != nil {
-		rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
-		return
+	// when saveTelegramAvatar already populated Picture with a local proxy
+	// URL, skip the URL-fetching avatar pipeline. Letting setAvatar run
+	// here would have it call Proxy.Put which re-fetches Picture; in
+	// split-DNS / unreachable-internal-Opts.URL deployments that fetch
+	// fails and the identicon fallback would silently overwrite the
+	// stored Telegram bytes with an identicon at the same store path.
+	u := *authUser
+	if u.Picture == "" {
+		u, err = setAvatar(th.AvatarSaver, *authUser, &http.Client{Timeout: 5 * time.Second})
+		if err != nil {
+			rest.SendErrorJSON(w, r, th.L, http.StatusInternalServerError, err, "failed to save avatar to proxy")
+			return
+		}
 	}
 
 	claims := authtoken.Claims{
@@ -339,8 +363,14 @@ func (th *TelegramHandler) LogoutHandler(w http.ResponseWriter, _ *http.Request)
 // tgAPI implements TelegramAPI
 type tgAPI struct {
 	logger.L
-	token  string
-	client *http.Client
+	token   string
+	client  *http.Client
+	baseURL string
+	// avatarClient is set only by NewTelegramAPIWithBaseURL. A caller who supplies a base URL is
+	// pointing the whole API elsewhere, and its TLS material, redirect policy and proxy settings
+	// live on the client it passed, so the avatar download has to use it too. Left nil by
+	// NewTelegramAPI so existing callers keep the transport they have always had there.
+	avatarClient *http.Client
 
 	// identifier of the first update to be requested.
 	// should be equal to LastSeenUpdateID + 1
@@ -350,10 +380,87 @@ type tgAPI struct {
 
 // NewTelegramAPI returns initialized TelegramAPI implementation
 func NewTelegramAPI(token string, client *http.Client) TelegramAPI {
-	return &tgAPI{
-		client: client,
-		token:  token,
+	// the default base is a constant and cannot fail validation; a nil client is what the
+	// caller already had before, so this keeps its behavior rather than changing it
+	return &tgAPI{client: client, token: token, baseURL: TelegramAPIBaseURL}
+}
+
+// NewTelegramAPIWithBaseURL makes a Telegram API client talking to baseURL instead of the public
+// API. Intended for a proxy in front of Telegram and for tests that need to answer as Telegram;
+// every request the client makes goes through it, avatar downloads included, so the production
+// path stays the code under test. Both forms are derived from it, as baseURL/bot<token>/<method>
+// and baseURL/file/bot<token>/<path>.
+//
+// An empty baseURL falls back to the public API. Anything else has to be an absolute http or
+// https URL with a host and no userinfo, query, fragment or opaque part, since every request
+// carries the bot token in its path and a malformed base sends it somewhere else. A path prefix
+// is allowed, for a proxy mounted under one.
+//
+// Redirects are refused by default, because Go copies the previous URL into Referer on any hop
+// that is not https-to-http and every URL here carries the token. A client arriving with its own
+// CheckRedirect keeps it: that hook is this caller's policy about a base they chose, and following
+// a redirect under it hands the token to the destination unless the hook strips the header or
+// refuses the hop itself.
+func NewTelegramAPIWithBaseURL(token string, client *http.Client, baseURL string) (TelegramAPI, error) {
+	if client == nil {
+		return nil, fmt.Errorf("nil http client")
 	}
+
+	baseURL = strings.TrimRight(baseURL, "/")
+	if baseURL == "" {
+		baseURL = TelegramAPIBaseURL
+	}
+
+	u, err := validateTelegramBaseURL(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// rebuild from what was validated, so the string checked is the string used. Parsing accepts
+	// shapes the checks below see as empty while fmt.Sprintf does not: a trailing "?" sets
+	// ForceQuery with RawQuery empty, and would push the whole "/bot<token>/method" into the query
+	// string, which is the part logs and referrers capture most eagerly. A trailing "#" is the
+	// mirror image and would bury every request in a fragment that is never sent
+	u.ForceQuery = false
+	u.Path = strings.TrimRight(u.Path, "/")
+
+	return &tgAPI{client: client, token: token, baseURL: u.String(), avatarClient: client}, nil
+}
+
+// validateTelegramBaseURL rejects anything that would send the bot token somewhere other than the
+// host the caller meant. "https://api.telegram.org@evil.tld" parses to host evil.tld, which is the
+// shape this exists for.
+func validateTelegramBaseURL(baseURL string) (*neturl.URL, error) {
+	u, err := neturl.Parse(baseURL)
+	if err != nil {
+		// the parse error is dropped rather than wrapped. *url.Error prints its URL field
+		// verbatim, so a base that is both credentialed and malformed, which never reaches the
+		// userinfo case below, would carry the credentials into the log; and the inner error is
+		// no safer, since "invalid port \":s3cr3t\" after host" and the IPv6 zone path both
+		// quote the input back
+		return nil, errors.New("telegram api base url is not a valid url")
+	}
+	// no rejection echoes the value, here or in the parse branch above: it is configuration that
+	// can carry credentials in its userinfo or a secret in its query or its port, and the error
+	// travels to whatever logs the constructor failure. Naming the property that was wrong tells
+	// the operator what to fix without that
+	switch {
+	case u.Opaque != "":
+		return nil, errors.New("telegram api base url must not be opaque")
+	case u.Scheme != "http" && u.Scheme != "https":
+		// the scheme is not a secret, and knowing which one was read is what makes this fixable
+		return nil, fmt.Errorf("telegram api base url must be http or https, got %q", u.Scheme)
+	case u.Hostname() == "":
+		// u.Host is non-empty for "http://:9000", which resolves to the local machine
+		return nil, errors.New("telegram api base url must have a host")
+	case u.User != nil:
+		return nil, errors.New("telegram api base url must not carry userinfo")
+	case u.RawQuery != "" || u.ForceQuery:
+		return nil, errors.New("telegram api base url must not carry a query")
+	case u.Fragment != "" || strings.HasSuffix(baseURL, "#"):
+		return nil, errors.New("telegram api base url must not carry a fragment")
+	}
+	return u, nil
 }
 
 // GetUpdates fetches incoming updates
@@ -422,7 +529,7 @@ func (tg *tgAPI) Avatar(ctx context.Context, id int) (string, error) {
 		return "", err
 	}
 
-	avatarURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", tg.token, fileMetadata.Result.Path)
+	avatarURL := fmt.Sprintf("%s/file/bot%s/%s", tg.baseURL, tg.token, fileMetadata.Result.Path)
 
 	return avatarURL, nil
 }
@@ -445,27 +552,36 @@ func (tg *tgAPI) BotInfo(ctx context.Context) (*botInfo, error) {
 	if resp.Result == nil {
 		return nil, fmt.Errorf("received empty result")
 	}
+	// LoginHandler returns this straight to an unauthenticated caller in its "bot" field, and with
+	// a caller-supplied base the answer comes from whatever host that points at. An upstream free
+	// to choose the string could put the request URI, and so the bot token, into it
+	if !telegramUsername.MatchString(resp.Result.Username) {
+		return nil, fmt.Errorf("telegram api returned an implausible bot username")
+	}
 
 	return resp.Result, nil
 }
 
-func (tg *tgAPI) request(ctx context.Context, method string, data interface{}) error {
+func (tg *tgAPI) request(ctx context.Context, method string, data any) error {
 	return repeater.NewFixed(3, time.Millisecond*50).Do(ctx, func() error {
-		url := fmt.Sprintf("https://api.telegram.org/bot%s/%s", tg.token, method)
+		url := fmt.Sprintf("%s/bot%s/%s", tg.baseURL, tg.token, method)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
+			return fmt.Errorf("failed to create request: %w", tg.redactToken(redactBotURLInErr(err)))
 		}
 
-		resp, err := tg.client.Do(req)
+		resp, err := noRedirect(tg.client).Do(req)
 		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
+			return fmt.Errorf("failed to send request: %w", tg.redactToken(redactBotURLInErr(err)))
 		}
 		defer resp.Body.Close() //nolint gosec // we don't care about response body
 
 		if resp.StatusCode != http.StatusOK {
-			return tg.parseError(resp.Body, resp.StatusCode)
+			// the upstream controls this text, and a proxy standing in for the API can echo the
+			// request URI straight back into it. Redaction by URL shape would not catch that, so
+			// the token itself is scrubbed from whatever comes out
+			return tg.redactToken(tg.parseError(resp.Body, resp.StatusCode))
 		}
 
 		if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
@@ -476,6 +592,65 @@ func (tg *tgAPI) request(ctx context.Context, method string, data interface{}) e
 	})
 }
 
+// redactToken removes the bot token from an error before it reaches a log. The upstream decides
+// the text of an API error, and a proxy answering for the API can echo the request URI into it,
+// so scrubbing the token is what holds rather than matching a URL shape.
+func (tg *tgAPI) redactToken(err error) error {
+	if err == nil || tg.token == "" {
+		return err
+	}
+	msg := err.Error()
+	for _, form := range []string{tg.token, neturl.QueryEscape(tg.token), neturl.PathEscape(tg.token)} {
+		msg = strings.ReplaceAll(msg, form, "<redacted>")
+	}
+
+	// substitution only catches encodings we thought of, and the upstream picks the encoding. So
+	// the result is checked once more against a decoded, case-folded copy: if the token is still
+	// recoverable from the text by any of those routes, the text goes rather than the token stays.
+	// A proxy echoing "%2Fbot1234%3ASECRET%2FgetMe" defeats every ReplaceAll above and lands here
+	if tokenRecoverable(msg, tg.token) {
+		return fmt.Errorf("unexpected telegram API error, text withheld because it carried the bot token")
+	}
+
+	if msg == err.Error() {
+		return err
+	}
+	return errors.New(msg)
+}
+
+// tokenRecoverable reports whether token can still be read out of msg after undoing the encodings
+// an upstream might have applied to it
+func tokenRecoverable(msg, token string) bool {
+	lowered := strings.ToLower(token)
+	// decode repeatedly, because one pass turns a double-encoded "%253A" into "%3A" and leaves the
+	// token just as recoverable as it was. The cap stops a pathological input looping
+	seen := msg
+	for i := 0; i < 5; i++ {
+		if strings.Contains(strings.ToLower(seen), lowered) {
+			return true
+		}
+		next, err := neturl.QueryUnescape(seen)
+		if err != nil {
+			if next, err = neturl.PathUnescape(seen); err != nil {
+				// malformed escaping, so the text cannot be decoded and the token cannot be shown
+				// absent from it. One stray "%" in whatever the upstream echoed reaches here, and
+				// answering "not recoverable" would release a message that may still carry the
+				// token in an encoding this never got to undo
+				return true
+			}
+		}
+		if next == seen {
+			// decoding has converged and the loop has already examined this form, so the token is
+			// absent from every encoding of the text rather than merely undecided
+			return false
+		}
+		seen = next
+	}
+	// the cap ran out while the text was still changing, so the fully decoded form was never
+	// examined. Same reasoning as the decode failure above: undecided means withhold
+	return true
+}
+
 func (tg *tgAPI) parseError(r io.Reader, statusCode int) error {
 	tgErr := struct {
 		Description string `json:"description"`
@@ -484,4 +659,154 @@ func (tg *tgAPI) parseError(r io.Reader, statusCode int) error {
 		return fmt.Errorf("unexpected telegram API status code %d", statusCode)
 	}
 	return fmt.Errorf("unexpected telegram API status code %d, error: %q", statusCode, tgErr.Description)
+}
+
+// telegramAvatarClientProvider is the optional capability that lets the avatar download reuse the
+// client the API was built with, rather than a default one that would drop custom CA, client
+// certificates, redirect policy and proxy settings.
+type telegramAvatarClientProvider interface {
+	avatarHTTPClient() *http.Client
+}
+
+func (tg *tgAPI) avatarHTTPClient() *http.Client { return tg.avatarClient }
+
+// avatarContentSaver matches the optional method on AvatarSaver implementations
+// that can store already-fetched bytes (avatar.Proxy provides one). Used by the
+// Telegram provider to avoid passing a bot-token-bearing URL through the
+// URL-fetching avatar pipeline.
+type avatarContentSaver interface {
+	PutContent(userID string, content io.Reader) (string, error)
+}
+
+// saveTelegramAvatar fetches the avatar bytes from a bot-token-bearing Telegram
+// URL and stores them via th.AvatarSaver, returning a clean local proxy URL.
+// The bot URL is consumed entirely inside this function so it never reaches
+// User.Picture, JWT claims, or any debug log of the user object. Returns ""
+// when the avatar cannot be saved (no URL, no compatible saver, or fetch
+// failure) — the caller treats that as "no picture" and the avatar pipeline
+// falls back to identicon as usual.
+func (th *TelegramHandler) saveTelegramAvatar(ctx context.Context, userID, avatarURL string) string {
+	if avatarURL == "" {
+		return ""
+	}
+	// guard against typed-nil *avatar.Proxy. auth.go skips initializing
+	// res.avatarProxy when Opts.AvatarStore is unset, so AvatarSaver can be
+	// a non-nil interface wrapping a nil *avatar.Proxy. The type assertion
+	// below would still succeed (interface satisfaction is structural), but
+	// PutContent on a nil receiver panics on the first p.Store deref.
+	if th.AvatarSaver == nil || th.AvatarSaver == (*avatar.Proxy)(nil) {
+		th.Logf("[WARN] telegram avatar dropped: AvatarSaver is not configured")
+		return ""
+	}
+	saver, ok := th.AvatarSaver.(avatarContentSaver)
+	if !ok {
+		// fallback intentionally drops the picture rather than expose the bot
+		// token; warn so operators can wire a content-aware saver if they want
+		// telegram avatars saved
+		th.Logf("[WARN] telegram avatar dropped: configured AvatarSaver does not support direct content save")
+		return ""
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, avatarURL, http.NoBody)
+	if err != nil {
+		th.Logf("[WARN] telegram avatar fetch request build failed: %v", redactBotURLInErr(err))
+		return ""
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	// only an API pointed at a caller-supplied base carries a client for this. NewTelegramAPI
+	// leaves it nil and keeps the default above, which is the transport those callers have always
+	// had here; *tgAPI satisfies the interface either way, so the nil is the signal, not the
+	// assertion
+	if provider, ok := th.Telegram.(telegramAvatarClientProvider); ok {
+		if supplied := provider.avatarHTTPClient(); supplied != nil {
+			client = supplied
+		}
+	}
+	// the cap is applied through the context so the client's Transport, CheckRedirect and Jar
+	// survive, which building a fresh http.Client with a Timeout would discard
+	avatarCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	resp, err := noRedirect(client).Do(req.WithContext(avatarCtx))
+	if err != nil {
+		th.Logf("[WARN] telegram avatar fetch failed: %v", redactBotURLInErr(err))
+		return ""
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		th.Logf("[WARN] telegram avatar fetch returned status %d", resp.StatusCode)
+		return ""
+	}
+	// cap body size to protect PutContent from an unbounded upstream response.
+	// Telegram caps photos at 5 MiB; 10 MiB is generous headroom while still
+	// bounding worst-case memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxTelegramAvatarSize+1))
+	if err != nil {
+		th.Logf("[WARN] telegram avatar read failed: %v", err)
+		return ""
+	}
+	if int64(len(body)) > maxTelegramAvatarSize {
+		th.Logf("[WARN] telegram avatar dropped: body exceeds %d bytes", maxTelegramAvatarSize)
+		return ""
+	}
+	picture, err := saver.PutContent(userID, bytes.NewReader(body))
+	if err != nil {
+		th.Logf("[WARN] telegram avatar save failed: %v", err)
+		return ""
+	}
+	return picture
+}
+
+const maxTelegramAvatarSize = 10 << 20
+
+// botTokenInURLPath matches the bot-token segment of a Telegram URL anchored
+// between path slashes ("/botTOKEN/..."). The leading and trailing slashes
+// avoid matching unrelated identifiers that happen to start with "bot" (e.g.
+// the username "botFather" appearing elsewhere in a log line). Replacement
+// preserves the slashes via "/bot<redacted>/" to keep surrounding URL
+// structure intact for diagnostics.
+// noRedirect returns a client that refuses redirects, as the default for a caller who expressed no
+// policy of their own. Every URL here carries the bot token in its path, and Go copies the previous
+// URL into Referer on any hop that is not https-to-http, so following a redirect hands the
+// destination the token, usually into its access log. Telegram's own API does not redirect; a proxy
+// standing in for it can, so refusing is the right default.
+//
+// A client that already carries a CheckRedirect is returned untouched. That hook is the operator's
+// explicit policy about a base URL they chose themselves, and replacing it would override a
+// decision this package is in no position to second-guess. It is their responsibility from there:
+// see NewTelegramAPIWithBaseURL on what a permitted redirect exposes.
+//
+// The refusing copy is shallow, so the caller's client is untouched and its Transport is shared:
+// custom CA, client certificates and proxy settings all survive
+func noRedirect(c *http.Client) *http.Client {
+	if c == nil {
+		return nil
+	}
+	if c.CheckRedirect != nil {
+		return c
+	}
+	cp := *c
+	cp.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return errors.New("refusing to follow a telegram api redirect: the bot token travels in the URL")
+	}
+	return &cp
+}
+
+// telegramUsername is the shape Telegram allows: 5 to 32 of [A-Za-z0-9_]
+var telegramUsername = regexp.MustCompile(`^[A-Za-z0-9_]{5,32}$`)
+
+var botTokenInURLPath = regexp.MustCompile(`/bot[A-Za-z0-9:_-]+/`)
+
+// redactBotURLInErr returns the error with any embedded Telegram bot-token
+// segment in URL paths replaced by "bot<redacted>". net/http's *url.Error
+// stringifies as `Op "URL": Err`, so a transport failure on a URL like
+// https://api.telegram.org/file/bot<TOKEN>/... otherwise prints the token
+// verbatim.
+func redactBotURLInErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	redacted := botTokenInURLPath.ReplaceAllString(err.Error(), "/bot<redacted>/")
+	if redacted == err.Error() {
+		return err
+	}
+	return errors.New(redacted)
 }

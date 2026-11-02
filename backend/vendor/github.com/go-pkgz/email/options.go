@@ -5,7 +5,7 @@ import "time"
 // Option func type
 type Option func(s *Sender)
 
-// SMTP sets SMTP client
+// SMTP sets SMTP client. Such a client greets the server itself, so HELOHost doesn't apply to it.
 func SMTP(smtp SMTPClient) Option {
 	return func(s *Sender) {
 		s.smtpClient = smtp
@@ -58,6 +58,16 @@ func STARTTLS(enabled bool) Option {
 func InsecureSkipVerify(enabled bool) Option {
 	return func(s *Sender) {
 		s.insecureSkipVerify = enabled
+	}
+}
+
+// HELOHost sets the SMTP HELO/EHLO hostname for connections created by Sender.
+// Unset, the greeting stays net/smtp's "localhost". The value is passed to the server as-is,
+// so an address literal like "[192.0.2.10]" works, and it has no effect on a client
+// supplied with SMTP, which greets on its own.
+func HELOHost(host string) Option {
+	return func(s *Sender) {
+		s.heloHost = host
 	}
 }
 

@@ -18,11 +18,11 @@
   --color1: #aaa;
   --color35: #d1d5db;
   --color20: #ddd;
-  --color46: rgba(27, 31, 35, 0.15);
-  --color45: rgba(0, 0, 0, 0.1);
+  --color46: rgb(27, 31, 35, 0.15);
+  --color45: rgb(0, 0, 0, 0.1);
   --color41: #efefef;
   --color5: #eee;
-  --color44: rgba(255, 255, 255, 0.3);
+  --color44: rgb(255, 255, 255, 0.3);
   --color6: #fff;
   --color3: #e2efef;
   --color4: #edf6f7;
@@ -36,8 +36,8 @@
   --color40: #9cdddb;
   --color43: #b7dddd;
   --color42: #c6efef;
-  --color48: rgba(37, 156, 154, 0.6);
-  --color47: rgba(37, 156, 154, 0.4);
+  --color48: rgb(37, 156, 154, 0.6);
+  --color47: rgb(37, 156, 154, 0.4);
   --color28: #672323;
   --color25: #9a0000;
   --color38: #ef0000;
@@ -47,7 +47,7 @@
   --color12: 37, 158, 6;
 
   /* code-highlight */
-  --chroma-bg: rgba(0, 0, 0, 0.05);
+  --chroma-bg: rgb(0, 0, 0, 0.05);
   --chroma-base: #586e75;
   --chroma-c: #7d7d7d;
   --chroma-01: #589000;
@@ -74,6 +74,13 @@
   --line-brighter-color: var(--color31);
   --text-color: var(--black-color);
   --transparent: transparent;
+
+  /* overridable via remark_config.custom_properties, same as any variable above, so an
+     embedding site can match its own font without forking/rebuilding this widget. Only
+     font-family, not font-size: nearly every component sets its own explicit font-size
+     (a real 10/12/14/16/20px type scale), so a single --font-size variable here would
+     only affect the handful of elements that don't, not the widget's rendered text. */
+  --font-family: system-ui;
 }
 
 :root .dark {

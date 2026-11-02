@@ -21,6 +21,86 @@ import (
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
+type gatedReadError struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (r *gatedReadError) Read([]byte) (int, error) {
+	close(r.started)
+	<-r.release
+	return 0, io.ErrUnexpectedEOF
+}
+
+type immediateReadError struct{}
+
+func (immediateReadError) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+
+func TestMigrator_ImportClaimsSiteWhileReadingBody(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("TMPDIR", tempDir)
+	m := Migrator{}
+	firstBody := &gatedReadError{started: make(chan struct{}), release: make(chan struct{})}
+	firstDone := make(chan struct{})
+
+	go func() {
+		defer close(firstDone)
+		m.importCtrl(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/?site=remark42", firstBody))
+	}()
+
+	select {
+	case <-firstBody.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first import did not start reading its body")
+	}
+
+	competing := httptest.NewRecorder()
+	m.importCtrl(competing, httptest.NewRequest(http.MethodPost, "/?site=remark42", immediateReadError{}))
+
+	close(firstBody.release)
+	select {
+	case <-firstDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first import did not return after its body failed")
+	}
+	require.Equal(t, http.StatusConflict, competing.Code, "a concurrent import acquired the same site")
+	require.False(t, m.isBusy("remark42"), "a failed upload kept the migration slot")
+	entries, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	require.Empty(t, entries, "a failed upload left its temporary file behind")
+}
+
+func TestMigrator_ImportFormClaimsSiteWhileReadingBody(t *testing.T) {
+	m := Migrator{}
+	firstBody := &gatedReadError{started: make(chan struct{}), release: make(chan struct{})}
+	firstDone := make(chan struct{})
+	firstRequest := httptest.NewRequest(http.MethodPost, "/?site=remark42", firstBody)
+	firstRequest.Header.Set("Content-Type", "multipart/form-data; boundary=test-boundary")
+
+	go func() {
+		defer close(firstDone)
+		m.importFormCtrl(httptest.NewRecorder(), firstRequest)
+	}()
+
+	select {
+	case <-firstBody.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first form import did not start reading its body")
+	}
+
+	competing := httptest.NewRecorder()
+	m.importCtrl(competing, httptest.NewRequest(http.MethodPost, "/?site=remark42", immediateReadError{}))
+
+	close(firstBody.release)
+	select {
+	case <-firstDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first form import did not return after its body failed")
+	}
+	require.Equal(t, http.StatusConflict, competing.Code, "a concurrent import acquired the same site")
+	require.False(t, m.isBusy("remark42"), "a rejected form upload kept the migration slot")
+}
+
 func TestMigrator_Import(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -34,7 +114,7 @@ func TestMigrator_Import(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah2"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
@@ -125,7 +205,7 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 
 	r := strings.NewReader(strings.ReplaceAll(xmlTestWP, "'", "`"))
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=wordpress", r)
 	assert.NoError(t, err)
@@ -170,7 +250,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 "email":"somegreatmail@gmail.com","name":"User5276","link":"https://example.com/profile/257","photo":"https://secure.gravatar.com/avatar/8f279626d26175134b0d5c88648172f7",
 "provider":"sso:example.com","joinDate":"2021-03-19T19:27:25.954285Z","isModerator":false}]}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
 	assert.NoError(t, err)
@@ -211,7 +291,7 @@ func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
 	r, err := os.Open("testdata/commento.json")
 	require.NoError(t, err)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=commento", r)
 	assert.NoError(t, err)
@@ -258,7 +338,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah2"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native&secret=XYZ", r)
 	assert.NoError(t, err)
@@ -276,14 +356,18 @@ func TestMigrator_ImportDouble(t *testing.T) {
 "picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
-	recs := []string{}
-	for i := 0; i < 50; i++ {
+	recs := make([]string, 0, 50)
+	for i := range 50 {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
-	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with 10k records
-	client := &http.Client{Timeout: 1 * time.Second}
+	// each request needs its own reader. client.Do returns once the response headers are in, which
+	// for an accepted import is before the transport's writeLoop has finished copying the body, so
+	// handing the same strings.Reader to the second NewRequest races that copy: NewRequest reads
+	// Len() to set ContentLength while WriteTo is still advancing it
+	body := `{"version":1}` + strings.Join(recs, "\n")
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", strings.NewReader(body))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
@@ -294,7 +378,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 
 	client = &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
+	req, err = http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", strings.NewReader(body))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	assert.NoError(t, err)
@@ -329,7 +413,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.849053725-05:00"}`
 	nRecs := 50
 	recs := make([]string, 0, nRecs)
-	for i := 0; i < nRecs; i++ {
+	for i := range nRecs {
 		recs = append(recs, fmt.Sprintf(tmpl, i))
 	}
 	r := strings.NewReader(`{"version":1}` + strings.Join(recs, "\n")) // reader with `nRecs` records
@@ -380,7 +464,7 @@ func TestMigrator_Export(t *testing.T) {
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
 	// import comments first
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", r)
 	require.NoError(t, err)
@@ -391,15 +475,31 @@ func TestMigrator_Export(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts)
 
-	// export wrong site, should result in error
+	// export unknown site is a client error, not internal
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=test", http.NoBody)
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
 	resp, err = client.Do(req)
 	require.NoError(t, err)
+	errBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	resp.Body.Close()
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Contains(t, string(errBody), `"code":6`)  // rest.ErrSiteNotFound, not ErrInternal
+	assert.Contains(t, string(errBody), `not found`) // error detail names the missing site
+
+	// unknown site in stream mode is also a client error
+	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=stream&site=test", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	errBody, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Contains(t, string(errBody), `"code":6`)
 
 	// check file mode
 	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/export?mode=file&site=remark42", http.NoBody)
@@ -553,11 +653,11 @@ func TestMigrator_Remap(t *testing.T) {
 }
 
 func TestMigrator_RemapReject(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// without admin credentials
-	client := &http.Client{Timeout: 1 * time.Second}
+	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	rules := strings.NewReader(`https://remark42.com/* https://www.remark42.com/*`)
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/remap?site=remark42", rules)
@@ -566,6 +666,13 @@ func TestMigrator_RemapReject(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	require.True(t, srv.Migrator.setBusyIfFree("remark42"))
+	t.Cleanup(func() { srv.Migrator.clearBusy("remark42") })
+	resp, err = post(t, ts.URL+"/api/v1/admin/remap?site=remark42", "https://remark42.com/* https://www.remark42.com/*")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusConflict, resp.StatusCode)
 }
 
 func waitForMigrationCompletion(t *testing.T, ts *httptest.Server) {

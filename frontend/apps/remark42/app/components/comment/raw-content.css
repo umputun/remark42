@@ -1,5 +1,5 @@
 .raw-content {
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 
   & > *:first-child {
     margin-top: 0;
@@ -24,9 +24,10 @@
   }
 
   & blockquote {
-    padding: 12px 8px 12px 16px;
-    border-left: 2px solid;
-    border-left-color: var(--color45);
+    padding-block: 12px;
+    padding-inline: 16px 8px;
+    border-inline-start: 2px solid;
+    border-inline-start-color: var(--color45);
   }
 
   & p,
@@ -41,7 +42,7 @@
     border-collapse: collapse;
 
     & th {
-      text-align: left;
+      text-align: start;
       font-weight: 600;
     }
 
@@ -209,7 +210,7 @@
 
 .dark .raw-content {
   /* Syntax Highlight Colors */
-  --chroma-bg: rgba(255, 255, 255, 0.05);
+  --chroma-bg: rgb(255, 255, 255, 0.05);
   --chroma-base: #a0b2b2;
   --chroma-c: #586e75;
   --chroma-01: #9ef203;
@@ -219,7 +220,7 @@
   --chroma-07: #a1e6fb;
 
   & blockquote {
-    border-left-color: var(--color44);
+    border-inline-start-color: var(--color44);
   }
 
   & table {

@@ -116,7 +116,9 @@ type customFS struct {
 	listing bool
 }
 
-// Open file on FS, for directory enforce index.html and fail on a missing index
+// Open file on FS, for directory enforce index.html and fail on a missing index.
+// Every handle opened here is either returned to the caller or closed, as http.FileServer
+// closes only the file it gets back.
 func (cfs customFS) Open(name string) (http.File, error) {
 
 	f, err := cfs.fs.Open(name)
@@ -129,19 +131,21 @@ func (cfs customFS) Open(name string) (http.File, error) {
 
 	finfo, err := f.Stat()
 	if err != nil {
+		_ = f.Close()
 		return nil, err
 	}
 
 	if finfo.IsDir() {
 		index := strings.TrimSuffix(name, "/") + "/index.html"
-		if _, err := cfs.fs.Open(index); err == nil { // index.html will be served if found
+		indexFile, ierr := cfs.fs.Open(index)
+		if ierr == nil { // index.html will be served if found
+			_ = indexFile.Close() // opened to probe for existence only, http.FileServer opens it again on its own
 			return f, nil
 		}
 		// no index.html in directory
 		if !cfs.listing { // listing disabled
-			if _, err := cfs.fs.Open(index); err != nil {
-				return nil, err
-			}
+			_ = f.Close()
+			return nil, ierr
 		}
 	}
 

@@ -57,7 +57,7 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 	}
 
 	d.httpServer = &http.Server{
-		Addr:              fmt.Sprintf(":%d", d.Provider.Port),
+		Addr:              localBindAddr(d.Provider.Host, fmt.Sprintf("%d", d.Provider.Port)),
 		ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			d.Logf("[DEBUG] dev oauth request %s %s %+v", r.Method, r.URL, r.Header)
@@ -130,7 +130,8 @@ func (d *DevAuthServer) Run(ctx context.Context) { // nolint (gocyclo)
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				if _, err = w.Write(b); err != nil {
+				w.Header().Set("Content-Type", "image/png")
+				if _, err = w.Write(b); err != nil { //nolint:gosec // generated identicon png, not reflected markup
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -167,7 +168,7 @@ func (d *DevAuthServer) Shutdown() {
 	d.lock.Unlock()
 }
 
-// NewDev makes dev oauth2 provider for admin user
+// NewDev makes a dev oauth2 provider intended for local development only.
 func NewDev(p Params) Oauth2Handler {
 	if p.Port == 0 {
 		p.Port = defDevAuthPort

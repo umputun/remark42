@@ -1,9 +1,10 @@
 import clsx from 'clsx';
-import { h, Fragment, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useIntl } from 'react-intl';
-import { useDispatch } from 'react-redux';
+import { useDispatch } from 'store/context';
 
+import { useIntl } from 'common/intl';
 import { setUser } from 'store/user/actions';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
@@ -14,7 +15,7 @@ import { ArrowIcon } from 'components/icons/arrow';
 
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
-import { messages } from './auth.messsages';
+import { messages } from './auth.messages';
 import { useDropdown, useErrorMessage } from './auth.hooks';
 import { getProviders, getTokenInvalidReason, persistEmail } from './auth.utils';
 import {
@@ -37,7 +38,7 @@ export function Auth() {
 
   // UI State
   const [isLoading, setLoading] = useState(false);
-  const [view, setView] = useState<typeof formProviders[number] | 'token' | 'telegram'>(formProviders[0]);
+  const [view, setView] = useState<(typeof formProviders)[number] | 'token' | 'telegram'>(formProviders[0]);
   const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
@@ -98,7 +99,7 @@ export function Auth() {
   function handleProviderChange(evt: Event) {
     const { value } = evt.currentTarget as HTMLInputElement;
 
-    setView(value as typeof formProviders[number]);
+    setView(value as (typeof formProviders)[number]);
     setError(null);
   }
 
@@ -201,6 +202,9 @@ export function Auth() {
       </Button>
       {isDropdownShown && (
         <div className={clsx('auth-dropdown', styles.dropdown)} ref={ref}>
+          {!hasOAuthProviders && !hasFormProviders && (
+            <div className={clsx('auth-error', styles.error)}>{intl.formatMessage(messages.noProviders)}</div>
+          )}
           <form className={clsx('auth-form', styles.form)} onSubmit={handleSubmit}>
             {view === 'telegram' && telegramParamsRef.current !== null ? (
               <>

@@ -5,14 +5,11 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const RefreshPlugin = require('@prefresh/webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
-const babelConfig = require('./.babelrc.js');
 
 const NODE_ID = 'remark42';
 const PUBLIC_PATH = '/web/';
@@ -20,6 +17,7 @@ const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
 const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || `http://127.0.0.1:${PORT}`;
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
+const WEB_ASSETS_PATH = path.resolve(__dirname, '../../../backend/app/webassets/assets');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
 const genId = incstr.idGenerator();
@@ -44,21 +42,6 @@ function getLocalIdent(loaderContext, _, localName, options) {
 
   return `${m.id}_${m.classNames[localName]}`;
 }
-
-/**
- * Generates excludes for babel-loader
- *
- * Exclude is a module that has >=es6 code and resides in node_modules.
- * By default, babel-loader ignores everything from node_modules,
- * so we have to exclude from ignore these modules
- */
-const exclude = [
-  '@github/markdown-toolbar-element',
-  '@github/text-expander-element',
-  'react-intl',
-  'intl-messageformat',
-  'intl-messageformat-parser',
-].map((m) => path.resolve(__dirname, 'node_modules', m));
 
 const htmlMinifyOptions = {
   minifyCSS: true,
@@ -97,10 +80,13 @@ module.exports = (_, { mode, analyze }) => {
 
   const output = {
     path: PUBLIC_FOLDER_PATH,
-    publicPath: PUBLIC_PATH,
+    // derived from the url the bundle was loaded from rather than fixed to the domain root: an
+    // instance mounted under a path, which manuals/separate-domain documents, would otherwise ask
+    // for /web/<asset> and miss its own prefix
+    publicPath: 'auto',
   };
 
-  const getTsRule = (babelConfig = {}) => {
+  const getTsRule = () => {
     return {
       test: /\.tsx?$/,
       exclude: /node_modules/,
@@ -108,15 +94,7 @@ module.exports = (_, { mode, analyze }) => {
         {
           loader: 'babel-loader',
           options: {
-            exclude,
             cacheDirectory: true,
-            ...babelConfig,
-          },
-        },
-        {
-          loader: 'ts-loader',
-          options: {
-            transpileOnly: true,
           },
         },
       ],
@@ -141,11 +119,18 @@ module.exports = (_, { mode, analyze }) => {
                   browsers: 'defaults, not IE 11, not samsung 12',
                   stage: 0,
                   features: {
-                    'custom-properties': CUSTOM_PROPERTIES_PATH,
+                    'custom-properties': false,
+                    // ships logical properties (margin-inline-start, etc.) as authored instead of
+                    // generating [dir=ltr]/[dir=rtl] selector pairs: those pairs key off the page's
+                    // html[dir] ancestor rather than an element's own resolved direction, which
+                    // mis-mirrors content whose direction differs from the page (e.g. an LTR reply
+                    // inside an RTL thread). Native logical properties follow each element's own
+                    // direction correctly; the cost is Opera Mini, KaiOS 2.5 and QQ 14.9 (~0.1%
+                    // global usage) not resolving them
+                    'logical-properties-and-values': false,
                   },
                 },
               ],
-              'cssnano',
             ],
           },
         },
@@ -165,6 +150,10 @@ module.exports = (_, { mode, analyze }) => {
           modules: {
             localIdentName: '[name]__[local]_[hash:5]',
             getLocalIdent: isDev ? undefined : getLocalIdent,
+            // css-loader 7 defaults CSS modules to named exports; the components import the
+            // whole map as a default, and several class names are not valid identifiers
+            namedExport: false,
+            exportLocalsConvention: 'as-is',
           },
         },
       },
@@ -174,9 +163,11 @@ module.exports = (_, { mode, analyze }) => {
           sourceMap: isDev,
           postcssOptions: {
             plugins: [
-              ['postcss-preset-env', { stage: 0 }],
-              ['postcss-custom-properties', { importFrom: CUSTOM_PROPERTIES_PATH }],
-              'cssnano',
+              [
+                'postcss-preset-env',
+                // see the matching features comment in cssRule above
+                { stage: 0, features: { 'custom-properties': false, 'logical-properties-and-values': false } },
+              ],
             ],
           },
         },
@@ -188,11 +179,10 @@ module.exports = (_, { mode, analyze }) => {
     test: /\.(png|jpg|jpeg|gif|svg)$/,
     exclude: /node_modules/,
     use: {
-      loader: 'url-loader',
+      loader: 'file-loader',
       options: {
+        // no publicPath here, so the emitted url goes through the runtime one above
         name: '[name].[ext]',
-        publicPath: PUBLIC_PATH,
-        limit: false,
       },
     },
   };
@@ -203,21 +193,26 @@ module.exports = (_, { mode, analyze }) => {
     port: PORT,
     devMiddleware: {
       stats: 'minimal',
+      // serve the in-memory build output under the same PUBLIC_PATH the devServer.static entries
+      // and every template's script tags use. output.publicPath stays 'auto' for the runtime
+      // bundle; this only affects where the dev server itself serves its own output from.
+      publicPath: PUBLIC_PATH,
     },
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
     },
-    static: {
-      staticOptions: {
-        contentBase: PUBLIC_FOLDER_PATH,
-        watchOptions: {
-          ignored: [PUBLIC_FOLDER_PATH, path.resolve(__dirname, 'node_modules')],
-        },
-      },
-      watch: true,
-    },
+    static: [
+      // entries are consulted in order, so the build output comes first here for the same reason
+      // it does in the backend's file server
+      // the bundler serves its own output from memory and wipes this directory on every dev build,
+      // so watching it would only ever fire on the build's own writes
+      { directory: PUBLIC_FOLDER_PATH, publicPath: PUBLIC_PATH, watch: false },
+      // the assets the bundler does not build are served by the backend in production, so the dev
+      // server reads them straight from where they live, or links to them 404 on this port
+      { directory: WEB_ASSETS_PATH, publicPath: PUBLIC_PATH, watch: false },
+    ],
     allowedHosts: 'all',
     hot: true,
     proxy: [
@@ -230,7 +225,7 @@ module.exports = (_, { mode, analyze }) => {
   };
 
   const plugins = [
-    ...(isDev ? [new CleanWebpackPlugin(), new RefreshPlugin()] : []),
+    new CleanWebpackPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
@@ -253,30 +248,6 @@ module.exports = (_, { mode, analyze }) => {
     optimization,
   };
 
-  const legacyConfig = {
-    ...config,
-    output: {
-      ...output,
-      filename: '[name].js',
-      chunkFilename: '[name].js',
-    },
-    module: {
-      rules: [getTsRule(), ...rules],
-    },
-    plugins: [
-      ...plugins,
-      ...(analyze
-        ? [
-            new BundleAnalyzerPlugin({
-              analyzerMode: 'static',
-              reportFilename: 'report-legacy.html',
-              reportTitle: 'Legacy build',
-            }),
-          ]
-        : []),
-    ],
-  };
-
   const modernConfig = {
     ...config,
     output: {
@@ -285,24 +256,10 @@ module.exports = (_, { mode, analyze }) => {
       chunkFilename: '[name].mjs',
     },
     module: {
-      rules: [
-        getTsRule({
-          ...babelConfig.env.modern,
-          plugins: [...babelConfig.env.modern.plugins, ...(isDev ? ['@prefresh/babel-plugin'] : [])],
-        }),
-        ...rules,
-      ],
+      rules: [getTsRule(), ...rules],
     },
     plugins: [
       ...plugins,
-      new CopyPlugin({
-        patterns: [
-          {
-            from: path.resolve(__dirname, 'templates/400x400.jpeg'),
-            to: PUBLIC_FOLDER_PATH,
-          },
-        ],
-      }),
       new ForkTsCheckerWebpackPlugin(),
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/iframe.ejs'),
@@ -340,24 +297,21 @@ module.exports = (_, { mode, analyze }) => {
         REMARK_URL,
         minify: htmlMinifyOptions,
       }),
+      // the page the widget links to when third-party cookies are blocked, which is the only way
+      // a reader in that state can reach the comments at all
       new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/markdown-help.html'),
-        filename: 'markdown-help.html',
+        template: path.resolve(__dirname, 'templates/comments.ejs'),
+        filename: 'comments.html',
         inject: false,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/privacy.html'),
-        filename: 'privacy.html',
-        inject: false,
+        REMARK_URL,
         minify: htmlMinifyOptions,
       }),
       ...(analyze
         ? [
             new BundleAnalyzerPlugin({
               analyzerMode: 'static',
-              reportFilename: 'report-modern.html',
-              reportTitle: 'Modern build',
+              reportFilename: 'report.html',
+              reportTitle: 'Bundle',
             }),
           ]
         : []),
@@ -365,12 +319,7 @@ module.exports = (_, { mode, analyze }) => {
     devServer,
   };
 
-  if (isDev) {
-    return modernConfig;
-  }
-
-  return [legacyConfig, modernConfig];
+  return modernConfig;
 };
 
 module.exports.CUSTOM_PROPERTIES_PATH = CUSTOM_PROPERTIES_PATH;
-module.exports.exclude = exclude;

@@ -1,7 +1,7 @@
 import type { Comment } from 'common/types';
 import { StaticStore } from 'common/static-store';
 
-import { StoreState } from '../index';
+import type { StoreState } from '../index';
 
 export const getThreadIsCollapsed =
   (comment: Comment) =>

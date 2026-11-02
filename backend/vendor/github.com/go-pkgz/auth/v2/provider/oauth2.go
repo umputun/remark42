@@ -42,14 +42,29 @@ type Params struct {
 	AvatarSaver    AvatarSaver
 	UserAttributes UserAttributes
 
+	// AllowedRedirectHosts lists hostnames accepted in the "from" query
+	// parameter. Setting this field enables host validation: the host of
+	// URL is always implicit, and any other host must appear here. Nil
+	// disables validation and preserves legacy permissive behavior — any
+	// non-empty "from" value is honored. See isAllowedRedirect for the
+	// full policy.
+	AllowedRedirectHosts token.AllowedHosts
+
 	Port int    // relevant for providers supporting port customization, for example dev oauth2
 	Host string // relevant for providers supporting host customization, for example dev oauth2
 
 	MicrosoftTenant string // tenant for microsoft provider, default "common"
+
+	// GithubNumericID makes github provider derive the user id from the immutable numeric account id
+	// instead of the login. Logins are released on rename or account removal and can be claimed by
+	// someone else, so an id derived from login may be inherited by the next holder of the name.
+	// Enabling this changes the id of every existing github user, see README for the migration note.
+	// Best-effort: if the response carries no usable numeric id the login-derived id is kept.
+	GithubNumericID bool
 }
 
 // UserData is type for user information returned from oauth2 providers /info API method
-type UserData map[string]interface{}
+type UserData map[string]any
 
 // Value returns value for key or empty string if not found
 func (u UserData) Value(key string) string {
@@ -112,7 +127,7 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			State: state,
 			From:  r.URL.Query().Get("from"),
 		},
-		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
+		SessionOnly: sessionOnlyFromRequest(r),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        cid,
 			Audience:  []string{aud},
@@ -183,19 +198,25 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	// an error body carries no identity fields, mapping it would hash empty values into a shared id
+	if uinfo.StatusCode < http.StatusOK || uinfo.StatusCode >= http.StatusMultipleChoices {
+		rest.SendErrorJSON(w, r, p.L, http.StatusServiceUnavailable,
+			fmt.Errorf("status %s", uinfo.Status), "failed to get user info")
+		return
+	}
+
 	data, err := io.ReadAll(uinfo.Body)
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to read user info")
 		return
 	}
 
-	jData := map[string]interface{}{}
+	jData := map[string]any{}
 	if e := json.Unmarshal(data, &jData); e != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to unmarshal user info")
 		return
 	}
-	p.Logf("[DEBUG] got raw user info %+v", jData)
-
+	p.Logf("[DEBUG] got raw user info %s", userDataLogSummary(jData))
 	u := p.mapUser(jData, data)
 	if oauthClaims.NoAva {
 		u.Picture = "" // reset picture on no avatar request
@@ -235,11 +256,17 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		p.bearerTokenHook(p.Name(), u, *tok)
 	}
 
-	p.Logf("[DEBUG] user info %+v", u)
+	p.Logf("[DEBUG] user info %s", userLogSummary(u))
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
-		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
+		if !isAllowedRedirect(oauthClaims.Handshake.From, p.URL, p.AllowedRedirectHosts) {
+			p.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
+		// see-other keeps the redirect a GET whatever method the callback arrived with
+		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusSeeOther)
 		return
 	}
 	rest.RenderJSON(w, &u)

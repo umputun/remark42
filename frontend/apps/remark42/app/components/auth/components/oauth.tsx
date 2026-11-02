@@ -1,12 +1,13 @@
-import { h, JSX } from 'preact';
+import type { JSX } from 'preact';
+import { h } from 'preact';
 import clsx from 'clsx';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import type { OAuthProvider } from 'common/types';
 import { siteId } from 'common/settings';
 import { useTheme } from 'hooks/useTheme';
 
-import { messages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 
 import { BASE_URL } from 'common/constants.config';
 import { getButtonVariant, getProviderData } from './oauth.utils';
@@ -40,7 +41,7 @@ export function OAuth({ providers, onOauthClick }: Props) {
               data-provider-name={name}
               title={intl.formatMessage(messages.oauthTitle, { provider: name })}
             >
-              <img className="oauth-icon" src={`${BASE_URL}${icon}`} width="20" height="20" alt="" aria-hidden={true} />
+              <img className="oauth-icon" src={icon} width="20" height="20" alt="" aria-hidden={true} />
             </a>
           </li>
         );

@@ -2,6 +2,7 @@ package syncs
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -15,7 +16,6 @@ type ErrSizedGroup struct {
 	sema Locker
 
 	err     *MultiError
-	errLock sync.RWMutex
 	errOnce sync.Once
 }
 
@@ -88,8 +88,6 @@ func (g *ErrSizedGroup) Go(f func() error) {
 			if !g.termOnError {
 				return false
 			}
-			g.errLock.RLock()
-			defer g.errLock.RUnlock()
 			return g.err.ErrorOrNil() != nil
 		}
 
@@ -109,9 +107,7 @@ func (g *ErrSizedGroup) Go(f func() error) {
 		}
 
 		if err := f(); err != nil {
-			g.errLock.Lock()
-			g.err = g.err.append(err)
-			g.errLock.Unlock()
+			g.err.append(err)
 		}
 	}()
 }
@@ -129,11 +125,10 @@ type MultiError struct {
 	lock   sync.Mutex
 }
 
-func (m *MultiError) append(err error) *MultiError {
+func (m *MultiError) append(err error) {
 	m.lock.Lock()
 	m.errors = append(m.errors, err)
 	m.lock.Unlock()
-	return m
 }
 
 // ErrorOrNil returns nil if no errors or multierror if errors occurred
@@ -162,8 +157,16 @@ func (m *MultiError) Error() string {
 	return fmt.Sprintf("%d error(s) occurred: %s", len(m.errors), strings.Join(errs, ", "))
 }
 
+// Errors returns all errors collected
 func (m *MultiError) Errors() []error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	return m.errors
+	return slices.Clone(m.errors)
+}
+
+// Unwrap returns all errors collected, allows errors.Is and errors.As to match any of them
+func (m *MultiError) Unwrap() []error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return slices.Clone(m.errors)
 }

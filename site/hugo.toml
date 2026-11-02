@@ -1,0 +1,39 @@
+baseURL = "https://remark42.com/"
+locale = "en-us"
+title = "Remark42"
+disableKinds = ["taxonomy", "term", "rss", "sitemap"]
+
+# off by default: the image build context is site/ alone, so there is no .git for
+# hugo to read and it fails rather than degrading. HUGO_ENABLEGITINFO=true turns it
+# on for a local build, where it gives real per-page commit dates instead of mtimes
+enableGitInfo = false
+
+[frontmatter]
+  # without this lastmod resolves to .Date, which is zero when a page carries no
+  # date, and every docs page renders "Jan 01, 0001"
+  lastmod = [":git", "lastmod", ":fileModTime", ":default"]
+
+[params]
+  description = "Remark42 is a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments."
+  githubUrl = "https://github.com/umputun/remark42"
+  githubApiUrl = "https://api.github.com/repos/umputun/remark42"
+  githubBranch = "master"
+  remark42Host = "https://demo.remark42.com"
+
+[markup.goldmark.renderer]
+  # the docs embed raw html, and a single newline is a line break as it was before
+  unsafe = true
+  hardWraps = true
+
+[markup.goldmark.extensions]
+  # quotes and dashes stay as written: the docs quote shell snippets inline,
+  # where a curly quote would be wrong
+  typographer = false
+
+[markup.highlight]
+  # emit classes rather than inline styles, so the stylesheet can theme them
+  noClasses = false
+  # an unlabelled fence renders plain. guessing gets it wrong: a systemd unit is
+  # detected as gdscript and an env-var block as mysql, and colouring a snippet
+  # as the wrong language is worse than not colouring it
+  guessSyntax = false

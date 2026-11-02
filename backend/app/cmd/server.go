@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +25,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kyokomi/emoji/v2"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/oauth2"
 
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/avatar"
@@ -35,6 +39,7 @@ import (
 	"github.com/umputun/remark42/backend/app/providers"
 	"github.com/umputun/remark42/backend/app/rest/api"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
+	"github.com/umputun/remark42/backend/app/safehttp"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -80,12 +85,13 @@ type ServerCommand struct {
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
 	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
+	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) trusted to set the client IP; if unset, trusted from any client (see docs)" env-delim:","`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
 	ProxyCORS                  bool          `long:"proxy-cors" env:"PROXY_CORS" description:"disable internal CORS and delegate it to proxy"`
-	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors''" env-delim:","`
+	AllowedHosts               []string      `long:"allowed-hosts" env:"ALLOWED_HOSTS" description:"limit hosts/sources allowed to embed comments via CSP 'frame-ancestors'" env-delim:","`
 	SubscribersOnly            bool          `long:"subscribers-only" env:"SUBSCRIBERS_ONLY" description:"enable commenting only for Patreon subscribers"`
 	DisableSignature           bool          `long:"disable-signature" env:"DISABLE_SIGNATURE" description:"disable server signature in headers"`
 	DisableFancyTextFormatting bool          `long:"disable-fancy-text-formatting" env:"DISABLE_FANCY_TEXT_FORMATTING" description:"disable fancy comments text formatting (replacement of quotes, dashes, fractions, etc)"`
@@ -96,7 +102,7 @@ type ServerCommand struct {
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 
-		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"send JWT as a header instead of server-set cookie; with this enabled, frontend stores the JWT in a client-side cookie (note: increases vulnerability to XSS attacks)"`
+		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; server-set cookies are still sent (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
 		Apple     AppleGroup         `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
@@ -108,6 +114,7 @@ type ServerCommand struct {
 		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
 		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
+		Custom    CustomAuthGroup    `group:"custom" namespace:"custom" env-namespace:"CUSTOM" description:"Custom OAuth2 provider"`
 		Telegram  bool               `long:"telegram" env:"TELEGRAM" description:"Enable Telegram auth (using token from telegram.token)"`
 		Dev       bool               `long:"dev" env:"DEV" description:"enable dev (local) oauth2"`
 		Anonymous bool               `long:"anon" env:"ANON" description:"enable anonymous login"`
@@ -117,10 +124,10 @@ type ServerCommand struct {
 			Subject      string        `long:"subj" env:"SUBJ" default:"remark42 confirmation" description:"email's subject"`
 			ContentType  string        `long:"content-type" env:"CONTENT_TYPE" default:"text/html" description:"content type"`
 			Host         string        `long:"host" env:"HOST" description:"[deprecated, use --smtp.host] SMTP host"`
-			Port         int           `long:"port" env:"PORT" description:"[deprecated, use --smtp.port] SMTP password"`
-			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP port"`
-			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] enable TLS"`
-			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] SMTP TCP connection timeout"`
+			Port         int           `long:"port" env:"PORT" description:"[deprecated, use --smtp.port] SMTP port"`
+			SMTPPassword string        `long:"passwd" env:"PASSWD" description:"[deprecated, use --smtp.password] SMTP password"`
+			SMTPUserName string        `long:"user" env:"USER" description:"[deprecated, use --smtp.username] SMTP user name"`
+			TLS          bool          `long:"tls" env:"TLS" description:"[deprecated, use --smtp.tls] enable TLS"`
 			TimeOut      time.Duration `long:"timeout" env:"TIMEOUT" default:"10s" description:"[deprecated, use --smtp.timeout] SMTP TCP connection timeout"`
 			MsgTemplate  string        `long:"template" env:"TEMPLATE" description:"[deprecated] message template file" default:"email_confirmation_login.html.tmpl"`
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
@@ -157,6 +164,21 @@ type MicrosoftAuthGroup struct {
 	CID    string `long:"cid" env:"CID" description:"OAuth client ID"`
 	CSEC   string `long:"csec" env:"CSEC" description:"OAuth client secret"`
 	Tenant string `long:"tenant" env:"TENANT" description:"Azure AD tenant ID, domain, or 'common' (default)" default:"common"`
+}
+
+// CustomAuthGroup defines options group for custom OAuth2 provider params
+type CustomAuthGroup struct {
+	Name         string   `long:"name" env:"NAME" description:"custom provider name used in auth route"`
+	CID          string   `long:"cid" env:"CID" description:"OAuth client ID"`
+	CSEC         string   `long:"csec" env:"CSEC" description:"OAuth client secret"`
+	AuthURL      string   `long:"auth-url" env:"AUTH_URL" description:"OAuth authorization endpoint"`
+	TokenURL     string   `long:"token-url" env:"TOKEN_URL" description:"OAuth token endpoint"`
+	InfoURL      string   `long:"info-url" env:"INFO_URL" description:"OAuth user info endpoint"`
+	Scopes       []string `long:"scopes" env:"SCOPES" env-delim:"," description:"OAuth scopes"`
+	IDField      string   `long:"id-field" env:"ID_FIELD" default:"sub" description:"user info field used as unique id"`
+	NameField    string   `long:"name-field" env:"NAME_FIELD" default:"name" description:"user info field used as display name"`
+	PictureField string   `long:"picture-field" env:"PICTURE_FIELD" default:"picture" description:"user info field used as avatar url"`
+	EmailField   string   `long:"email-field" env:"EMAIL_FIELD" default:"email" description:"user info field used as email"`
 }
 
 // StoreGroup defines options group for store params
@@ -205,7 +227,7 @@ type CacheGroup struct {
 	RedisAddr string `long:"redis_addr" env:"REDIS_ADDR" default:"127.0.0.1:6379" description:"address of Redis PubSub instance, turn redis_pub_sub cache on for distributed cache"`
 	Max       struct {
 		Items int   `long:"items" env:"ITEMS" default:"1000" description:"max cached items"`
-		Value int   `long:"value" env:"VALUE" default:"65536" description:"max size of the cached value"`
+		Value int   `long:"value" env:"VALUE" default:"0" description:"max size of the cached value, 0 - unlimited"`
 		Size  int64 `long:"size" env:"SIZE" default:"50000000" description:"max size of total cache"`
 	} `group:"max" namespace:"max" env-namespace:"MAX"`
 }
@@ -224,12 +246,14 @@ type AdminGroup struct {
 type TelegramGroup struct {
 	Token   string        `long:"token" env:"TOKEN" description:"telegram token (used for auth and telegram notifications)"`
 	Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"telegram timeout"`
+	APIURL  string        `long:"api-url" env:"API_URL" description:"telegram bot api base url, for a proxy or a test double; the public api when unset"`
 }
 
 // SMTPGroup defines options for SMTP server connection, used in auth and notify modules
 type SMTPGroup struct {
 	Host               string        `long:"host" env:"HOST" description:"SMTP host"`
 	Port               int           `long:"port" env:"PORT" description:"SMTP port"`
+	HELOHost           string        `long:"helo_host" env:"HELO_HOST" description:"SMTP HELO/EHLO hostname"`
 	Username           string        `long:"username" env:"USERNAME" description:"SMTP user name"`
 	Password           string        `long:"password" env:"PASSWORD" description:"SMTP password"`
 	TLS                bool          `long:"tls" env:"TLS" description:"enable TLS"`
@@ -262,8 +286,8 @@ type NotifyGroup struct {
 	} `group:"slack" namespace:"slack" env-namespace:"SLACK"`
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
-		Template string        `long:"template" env:"TEMPLATE" description:"webhook authentication template" default:"{\"text\": \"{{.Text}}\"}"`
-		Headers  []string      `long:"headers" description:"webhook authentication headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code bellow to allow , inside ""
+		Template string        `long:"template" env:"TEMPLATE" description:"webhook payload template (Go text/template); falls back to {\"text\": {{.Text | escapeJSONString}}} when empty"`
+		Headers  []string      `long:"headers" description:"webhook headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
@@ -330,6 +354,7 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_YANDEX_CSEC",
 		"AUTH_PATREON_CSEC",
 		"AUTH_DISCORD_CSEC",
+		"AUTH_CUSTOM_CSEC",
 		"TELEGRAM_TOKEN",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
@@ -413,8 +438,13 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		s.Telegram.Timeout = s.Notify.Telegram.Timeout
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
 	}
-	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+	if s.Notify.Telegram.API != "https://api.telegram.org/bot" && s.Telegram.APIURL == "" {
+		if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok {
+			s.Telegram.APIURL = base
+			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"})
+		} else {
+			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+		}
 	}
 	if s.Auth.Twitter.CID != "" {
 		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
@@ -457,7 +487,19 @@ func (s *ServerCommand) findDeprecatedFlagsCollisions() (result []DeprecatedFlag
 	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout != telegramDefaultTimeout && s.Notify.Telegram.Timeout != s.Telegram.Timeout {
 		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true})
 	}
+	if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok &&
+		s.Notify.Telegram.API != "https://api.telegram.org/bot" && stringsSetAndDifferent(base, s.Telegram.APIURL) {
+		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Collision: true})
+	}
 	return result
+}
+
+func telegramAPIBaseFromDeprecated(prefix string) (string, bool) {
+	trimmed := strings.TrimSuffix(prefix, "/")
+	if !strings.HasSuffix(trimmed, "/bot") {
+		return "", false
+	}
+	return strings.TrimSuffix(trimmed, "/bot"), true
 }
 
 func (s *ServerCommand) handleDeprecatedNotifications() {
@@ -479,12 +521,87 @@ func stringsSetAndDifferent(s1, s2 string) bool {
 }
 
 func contains(s string, a []string) bool {
-	for _, t := range a {
-		if t == s {
-			return true
+	return slices.Contains(a, s)
+}
+
+var reservedCustomProviderNames = map[string]struct{}{
+	"email":     {},
+	"anonymous": {},
+	"google":    {},
+	"github":    {},
+	"facebook":  {},
+	"yandex":    {},
+	"twitter":   {},
+	"microsoft": {},
+	"patreon":   {},
+	"discord":   {},
+	"telegram":  {},
+	"dev":       {},
+	"apple":     {},
+}
+
+var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+
+func isReservedCustomProviderName(name string) bool {
+	_, ok := reservedCustomProviderNames[name]
+	return ok
+}
+
+func isValidCustomProviderName(name string) bool {
+	return validCustomProviderName.MatchString(name)
+}
+
+func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
+	sourceID := data.Value(cfg.IDField)
+	if sourceID == "" {
+		sourceID = data.Value(cfg.EmailField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.NameField)
+	}
+	if sourceID == "" {
+		sourceID = data.Value(cfg.PictureField)
+	}
+	if sourceID == "" {
+		payload, err := json.Marshal(data)
+		if err != nil {
+			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
+		} else {
+			sourceID = string(payload)
 		}
 	}
-	return false
+	if sourceID == "" || sourceID == "{}" {
+		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
+	}
+	return sourceID
+}
+
+func (c CustomAuthGroup) isConfigured() bool {
+	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
+		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
+}
+
+func (c CustomAuthGroup) missingRequired() []string {
+	missing := []string{}
+	if c.Name == "" {
+		missing = append(missing, "AUTH_CUSTOM_NAME")
+	}
+	if c.CID == "" {
+		missing = append(missing, "AUTH_CUSTOM_CID")
+	}
+	if c.CSEC == "" {
+		missing = append(missing, "AUTH_CUSTOM_CSEC")
+	}
+	if c.AuthURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_AUTH_URL")
+	}
+	if c.TokenURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_TOKEN_URL")
+	}
+	if c.InfoURL == "" {
+		missing = append(missing, "AUTH_CUSTOM_INFO_URL")
+	}
+	return missing
 }
 
 // newServerApp prepares application and return it with all active parts
@@ -498,6 +615,18 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		return nil, fmt.Errorf("invalid remark42 url %s", s.RemarkURL)
 	}
 	log.Printf("[INFO] root url=%s", s.RemarkURL)
+
+	// parse trusted proxies up front so a bad CIDR fails before any resource is allocated
+	trustedProxies, err := api.ParseTrustedProxies(s.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --trusted-proxy: %w", err)
+	}
+	switch {
+	case len(trustedProxies) == 0:
+		log.Printf("[WARN] --trusted-proxy not set: forwarding headers are trusted from any client and can be spoofed to bypass rate limiting / vote dedup; set it behind a reverse proxy (see docs)")
+	case api.TrustsAnyPeer(trustedProxies):
+		log.Printf("[WARN] --trusted-proxy has a catch-all (0.0.0.0/0 or ::/0): forwarding headers are trusted from any client, re-opening the spoofing bypass; scope it to your proxy network")
+	}
 
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
@@ -525,7 +654,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		MaxVotes:               s.MaxVotes,
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
-		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5}, s.getAllowedDomains()),
+		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5, Transport: safehttp.Transport()}, s.getAllowedDomains()),
 		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
@@ -545,8 +674,19 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	authRefreshCache := newAuthRefreshCache()
 	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
 
-	telegramAuth := s.makeTelegramAuth(authenticator) // telegram auth requires TelegramAPI listener which is constructed below
-	telegramService := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	// telegram auth requires the TelegramAPI listener started below
+	telegramAuth, err := s.makeTelegramAuth(authenticator)
+	if err != nil {
+		_ = dataService.Close()
+		_ = authRefreshCache.Close()
+		return nil, err
+	}
+	telegramService, err := s.startTelegramAuthAndNotify(ctx, telegramAuth)
+	if err != nil {
+		_ = dataService.Close()
+		_ = authRefreshCache.Close()
+		return nil, err
+	}
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
@@ -601,15 +741,16 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		WebRoot:                    s.WebRoot,
 		WebFS:                      webFS,
 		RemarkURL:                  s.RemarkURL,
+		DemoSiteID:                 s.demoSiteID(),
 		ImageProxy:                 imgProxy,
 		CommentFormatter:           commentFormatter,
 		Migrator:                   migr,
 		ReadOnlyAge:                s.ReadOnlyAge,
 		SharedSecret:               s.SharedSecret,
+		TrustedProxies:             trustedProxies,
 		Authenticator:              authenticator,
 		Cache:                      loadingCache,
 		NotifyService:              notifyService,
-		TelegramService:            telegramService,
 		SSLConfig:                  sslConfig,
 		UpdateLimiter:              s.UpdateLimit,
 		ImageService:               imageService,
@@ -626,6 +767,14 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
 		Premoderation:              api.NewPremoderationStrategy(s.Premoderation),
+	}
+
+	// assigned only when there is one: telegramService is an interface field, so a nil
+	// *notify.Telegram put in it is a non-nil interface, and the handler's own `== nil` guard then
+	// lets a dereference through as a 500. Telegram auth without telegram notifications is an
+	// ordinary reachable configuration
+	if telegramService != nil && contains("telegram", s.Notify.Users) {
+		srv.TelegramService = telegramService
 	}
 
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = s.LowScore, s.CriticalScore
@@ -696,6 +845,42 @@ func (s *ServerCommand) getAllowedDomains() []string {
 		allowedDomains = append(allowedDomains, domain)
 	}
 	return allowedDomains
+}
+
+// getAllowedRedirectHosts normalises s.AllowedHosts into the form that
+// go-pkgz/auth's redirect validator expects. Strips http(s) schemes and
+// paths; preserves explicit ports (the validator matches both host-only
+// and host:port, so an entry without a port accepts any port while an
+// entry with a port restricts to that port). Skips CSP sentinels
+// ('self' / "self") and wildcard entries (*, *.example.com) that are
+// valid CSP source expressions but not valid hostnames.
+func (s *ServerCommand) getAllowedRedirectHosts() []string {
+	out := make([]string, 0, len(s.AllowedHosts))
+	for _, raw := range s.AllowedHosts {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || raw == "self" || raw == "'self'" || raw == `"self"` {
+			continue
+		}
+		if strings.ContainsRune(raw, '*') { // CSP wildcard, not a host
+			continue
+		}
+		// add scheme so url.Parse populates Hostname()/Host consistently for bare hosts
+		toParse := raw
+		if !strings.HasPrefix(toParse, "http://") && !strings.HasPrefix(toParse, "https://") {
+			toParse = "https://" + toParse
+		}
+		u, err := url.Parse(toParse)
+		if err != nil || u.Hostname() == "" {
+			log.Printf("[WARN] skipping invalid AllowedHosts entry %q for redirect allowlist: %v", raw, err)
+			continue
+		}
+		if u.Port() != "" {
+			out = append(out, u.Host) // preserve explicit host:port so allowlist is port-specific
+			continue
+		}
+		out = append(out, u.Hostname())
+	}
+	return out
 }
 
 // Run all application objects
@@ -967,6 +1152,45 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		providersCount++
 	}
 
+	if s.Auth.Custom.isConfigured() {
+		missing := s.Auth.Custom.missingRequired()
+		if len(missing) > 0 {
+			return fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
+		}
+
+		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
+		if !isValidCustomProviderName(customName) {
+			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
+		}
+		if isReservedCustomProviderName(customName) {
+			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
+		}
+
+		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  s.Auth.Custom.AuthURL,
+				TokenURL: s.Auth.Custom.TokenURL,
+			},
+			InfoURL: s.Auth.Custom.InfoURL,
+			Scopes:  s.Auth.Custom.Scopes,
+			MapUserFn: func(data provider.UserData, _ []byte) token.User {
+				sourceID := customProviderSourceID(data, s.Auth.Custom)
+				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
+				user := token.User{
+					ID:      customName + "_" + hashID,
+					Name:    data.Value(s.Auth.Custom.NameField),
+					Picture: data.Value(s.Auth.Custom.PictureField),
+					Email:   data.Value(s.Auth.Custom.EmailField),
+				}
+				if user.Name == "" {
+					user.Name = "noname_" + hashID[:4]
+				}
+				return user
+			},
+		})
+		providersCount++
+	}
+
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		u, errURL := url.Parse(s.RemarkURL)
@@ -981,6 +1205,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		params := sender.EmailParams{
 			Host:               s.SMTP.Host,
 			Port:               s.SMTP.Port,
+			HELOHost:           s.SMTP.HELOHost,
 			SMTPUserName:       s.SMTP.Username,
 			SMTPPassword:       s.SMTP.Password,
 			TimeOut:            s.SMTP.TimeOut,
@@ -1043,20 +1268,36 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
-func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) providers.TGUpdatesReceiver {
-	if s.Auth.Telegram {
-		telegram := &provider.TelegramHandler{
-			ProviderName: "telegram",
-			SuccessMsg:   "✅ You have successfully authenticated, check the web!",
-			Telegram:     provider.NewTelegramAPI(s.Telegram.Token, &http.Client{Timeout: s.Telegram.Timeout}),
-			L:            log.Default(),
-			TokenService: authenticator.TokenService(),
-			AvatarSaver:  authenticator.AvatarProxy(),
-		}
-		authenticator.AddCustomHandler(telegram)
-		return telegram
+func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) (*provider.TelegramHandler, error) {
+	if !s.Auth.Telegram {
+		return nil, nil
 	}
-	return nil
+
+	client := &http.Client{Timeout: s.Telegram.Timeout}
+
+	// the public api unless an operator points it elsewhere. A bad base url stops the server because
+	// every request carries the bot token in its path; a base that resolves somewhere unintended
+	// ships the token there, and an operator who set the option meant it to be used
+	tgAPI := provider.NewTelegramAPI(s.Telegram.Token, client)
+	if s.Telegram.APIURL != "" {
+		withBase, err := provider.NewTelegramAPIWithBaseURL(s.Telegram.Token, client, s.Telegram.APIURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make telegram auth: %w", err)
+		}
+		tgAPI = withBase
+	}
+
+	telegram := &provider.TelegramHandler{
+		ProviderName: "telegram",
+		ErrorMsg:     "Authentication request was not found or expired.",
+		SuccessMsg:   "✅ You have successfully authenticated, check the web!",
+		Telegram:     tgAPI,
+		L:            log.Default(),
+		TokenService: authenticator.TokenService(),
+		AvatarSaver:  authenticator.AvatarProxy(),
+	}
+	authenticator.AddCustomHandler(telegram)
+	return telegram, nil
 }
 
 func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinations []notify.Destination, telegram *notify.Telegram) *notify.Service {
@@ -1137,6 +1378,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 		smtpParams := ntf.SMTPParams{
 			Host:               s.SMTP.Host,
 			Port:               s.SMTP.Port,
+			HELOHost:           s.SMTP.HELOHost,
 			TLS:                s.SMTP.TLS,
 			StartTLS:           s.SMTP.StartTLS,
 			InsecureSkipVerify: s.SMTP.InsecureSkipVerify,
@@ -1167,7 +1409,11 @@ func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 		UserNotifications: contains("telegram", s.Notify.Users),
 		Token:             s.Telegram.Token,
 		Timeout:           s.Telegram.Timeout,
-		SuccessMsg:        "✅ You have successfully subscribed for notifications, check the web!",
+		// the same base as auth: the update poll runs through this service, so leaving it on the
+		// public API would send the bot token there while everything else went where the operator
+		// pointed it
+		APIURL:     s.Telegram.APIURL,
+		SuccessMsg: "✅ You have successfully subscribed for notifications, check the web!",
 	}
 	tg, err := notify.NewTelegram(telegramParams)
 	if err != nil {
@@ -1216,9 +1462,16 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		SendJWTHeader:  s.Auth.SendJWTHeader,
 		SameSiteCookie: s.parseSameSite(s.Auth.SameSite),
 		SecureCookies:  strings.HasPrefix(s.RemarkURL, "https://"),
+		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
+		// post-auth redirects to RemarkURL's own host plus any configured
+		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
+		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
+			return s.getAllowedRedirectHosts(), nil
+		}),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
+		AudienceReader: s.tokenAudiences(),
 		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
 			if c.User == nil {
 				return c
@@ -1259,6 +1512,14 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if claims.User.Audience == "" { // reject empty aud, made with old (pre 0.8.x) version of auth package
 				return false
 			}
+			// a delete-me token names the user and is signed like a session, but it is handed to the
+			// admin, so it must only ever work as the deletion request it is
+			if claims.User.BoolAttr("delete_me") {
+				return false
+			}
+			if !s.servesAudience(claims.Audience) {
+				return false
+			}
 			return !claims.User.BoolAttr("blocked")
 		}),
 		JWTQuery:          "jwt", // change default from "token" as it used for deleteme
@@ -1270,6 +1531,45 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		UseGravatar:       true,
 		AudSecrets:        s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// tokenAudiences limits the audience of issued and accepted tokens to the configured sites when
+// remark42 keeps the data itself. The audience is the site a user names at login, and it is echoed
+// back in responses and error messages, so a value nothing serves must not be accepted at all. A
+// remote store decides which sites exist on its side, so with one any audience is let through.
+func (s *ServerCommand) tokenAudiences() token.Audience {
+	if s.Store.Type != "bolt" {
+		return nil
+	}
+	sites := slices.Clone(s.Sites)
+	return token.AudienceFunc(func() ([]string, error) { return sites, nil })
+}
+
+// servesAudience reports whether every audience in a token is a configured site, compared exactly.
+// tokenAudiences restricts the auth package's own check, which ignores case, while the bolt store
+// keys sites by the exact name
+func (s *ServerCommand) servesAudience(auds []string) bool {
+	if s.Store.Type != "bolt" {
+		return true
+	}
+	for _, aud := range auds {
+		if !slices.Contains(s.Sites, aud) {
+			return false
+		}
+	}
+	return true
+}
+
+// demoSiteID is the site the demo pages under /web show: the first configured one, as the docker
+// image picks it from SITE. It is returned exactly as configured, since the stores register it
+// that way and look it up by exact match
+func (s *ServerCommand) demoSiteID() string {
+	for _, site := range s.Sites {
+		if strings.TrimSpace(site) != "" {
+			return site
+		}
+	}
+	return ""
 }
 
 func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
@@ -1287,27 +1587,44 @@ func (s *ServerCommand) parseSameSite(ss string) http.SameSite {
 	}
 }
 
-// startTelegramAuthAndNotify initializes telegram notify and auth Telegram Bot listen loop.
+// startTelegramAuthAndNotify initializes telegram notify and the shared Telegram Bot update loop.
 // Does nothing if telegram auth and notifications are disabled.
-func (s *ServerCommand) startTelegramAuthAndNotify(ctx context.Context, telegramAuth providers.TGUpdatesReceiver) (tg *notify.Telegram) {
-	if !contains("telegram", s.Notify.Users) && !contains("telegram", s.Notify.Admins) && !s.Auth.Telegram {
-		return nil
+func (s *ServerCommand) startTelegramAuthAndNotify(
+	ctx context.Context, telegramAuth *provider.TelegramHandler,
+) (tg *notify.Telegram, err error) {
+	notifyWanted := contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins)
+	if !notifyWanted && telegramAuth == nil {
+		return nil, nil
 	}
 
-	var err error
 	if tg, err = s.makeTelegramNotify(); err != nil {
+		// Auth cannot serve a request without an update source. A caller-supplied base is also
+		// security-sensitive because the bot token travels in its path, so either configuration
+		// fails startup instead of leaving the requested feature silently disabled.
+		if telegramAuth != nil || s.Telegram.APIURL != "" {
+			return nil, fmt.Errorf("failed to make telegram update source: %w", err)
+		}
 		log.Printf("[WARN] failed to make telegram notify service, %s", err)
-		return nil
+		return nil, nil
 	}
 
-	telegramReceivers := []providers.TGUpdatesReceiver{tg}
+	telegramReceivers := make([]providers.TGUpdatesReceiver, 0, 2)
+	if notifyWanted {
+		telegramReceivers = append(telegramReceivers, tg)
+	}
 	if telegramAuth != nil {
+		// ProcessUpdate owns the auth handler's request state when the shared dispatcher is used.
+		// Set it up before the HTTP server can accept a login: the dispatcher's first poll is
+		// five seconds away, and a login before that otherwise fails as if no listener existed.
+		if err := telegramAuth.ProcessUpdate(ctx, `{"ok":true,"result":[]}`); err != nil {
+			return nil, fmt.Errorf("failed to set up telegram auth update receiver: %w", err)
+		}
 		telegramReceivers = append(telegramReceivers, telegramAuth)
 	}
 	// start bot messages receiver for both notify and auth services
 	go providers.DispatchTelegramUpdates(ctx, tg, telegramReceivers, time.Second*5)
 
-	return tg
+	return tg, nil
 }
 
 // splitAtCommas split s at commas, ignoring commas in strings.

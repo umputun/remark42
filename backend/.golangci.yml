@@ -20,15 +20,9 @@ linters:
     - unparam
     - unused
   settings:
-    goconst:
-      min-len: 2
-      min-occurrences: 2
     gosec:
       excludes:
         - G117 # false positive: struct field name matches "secret" pattern
-        - G703 # false positive: path traversal via taint analysis
-        - G704 # false positive: SSRF via taint analysis
-        - G705 # false positive: XSS via taint analysis
     gocritic:
       disabled-checks:
         - wrapperFunc
@@ -41,8 +35,6 @@ linters:
     govet:
       enable:
         - shadow
-    lll:
-      line-length: 140
     misspell:
       locale: US
   exclusions:

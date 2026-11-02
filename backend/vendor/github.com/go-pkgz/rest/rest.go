@@ -105,12 +105,19 @@ func DecodeJSON[T any](r *http.Request, res *T) error {
 	return nil
 }
 
-// EncodeJSON encodes given type to http.ResponseWriter and sets status code and content type header
+// EncodeJSON encodes given type to http.ResponseWriter and sets status code and content type header.
+// The value is encoded before anything is written, so an encoding failure leaves the response
+// uncommitted and the caller is free to replace it with an error status. Write failures are reported
+// as well, by which point the response has already been committed.
 func EncodeJSON[T any](w http.ResponseWriter, status int, v T) error {
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(v); err != nil {
+		return fmt.Errorf("encode json: %w", err)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		return fmt.Errorf("encode json: %w", err)
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return fmt.Errorf("write json: %w", err)
 	}
 	return nil
 }

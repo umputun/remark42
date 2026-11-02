@@ -164,11 +164,18 @@ func (l *Logger) logf(format string, args ...interface{}) {
 		return
 	}
 
+	// hide secrets in the message itself, covers slog handler and panic dump paths
+	// as well as the formatted line redacted later in this function
+	if len(l.secrets) > 0 {
+		msg = string(l.hideSecrets([]byte(msg)))
+	}
+
 	// if slog handler is set, use it
 	if l.slogHandler != nil {
-		// use NewRecord for consistency with adapter setup
-		// skip=0 because we don't need caller information from this context
-		record := slog.NewRecord(l.now(), stringToLevel(lv), msg, 0)
+		// get the caller's PC so slog handlers can resolve source info when AddSource is enabled
+		var pcs [1]uintptr
+		runtime.Callers(3+l.callerDepth, pcs[:]) // skip runtime.Callers, logf, Logf (+ any extra depth)
+		record := slog.NewRecord(l.now(), stringToLevel(lv), msg, pcs[0])
 		_ = l.slogHandler.Handle(context.Background(), record)
 
 		// handle FATAL and PANIC levels as they have special behavior

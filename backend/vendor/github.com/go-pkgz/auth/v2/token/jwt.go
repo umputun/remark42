@@ -82,7 +82,7 @@ type Opts struct {
 	AudienceReader    Audience      // allowed aud values
 	Issuer            string        // optional value for iss claim, usually application name
 	AudSecrets        bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
-	SendJWTHeader     bool          // if enabled send JWT as a header instead of cookie
+	SendJWTHeader     bool          // if enabled, also send JWT as a response header (in addition to the cookie)
 	SameSite          http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
 }
 
@@ -178,7 +178,7 @@ func (j *Service) Parse(tokenString string) (Claims, error) {
 		return Claims{}, fmt.Errorf("can't get secret: %w", err)
 	}
 
-	token, err := parser.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := parser.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -241,9 +241,11 @@ func (j *Service) validate(claims *Claims) error {
 	return err
 }
 
-// Set creates token cookie with xsrf cookie and put it to ResponseWriter
-// accepts claims and sets expiration if none defined. permanent flag means long-living cookie,
-// false makes it session only.
+// Set writes the JWT cookie and the XSRF cookie to w, also emitting the JWT as a
+// response header when SendJWTHeader is enabled. Expiration is filled in from
+// j.TokenDuration if claims.ExpiresAt is zero. The cookie is session-only (MaxAge 0)
+// when claims.SessionOnly is true or claims contain a Handshake; otherwise it lasts
+// j.CookieDuration.
 func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 	nowUnix := time.Now().Unix()
 
@@ -275,19 +277,21 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 		cookieExpiration = int(j.CookieDuration.Seconds())
 	}
 
-	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain,
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // Secure and SameSite come from service config
 		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.ID, HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.ID, HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // HttpOnly false by design, JS reads it for the X-XSRF-Token header
 		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 
 	return claims, nil
 }
 
-// Get token from url, header or cookie
-// if cookie used, verify xsrf token to match
+// Get token from url, header or cookie. When a user token is read from a cookie,
+// XSRF protection requires the request header to match the token claim ID (the
+// value Set also writes to the XSRF cookie), unless DisableXSRF is set, the request
+// method is in XSRFIgnoreMethods, or the claims carry no user.
 func (j *Service) Get(r *http.Request) (Claims, string, error) {
 
 	fromCookie := false
@@ -353,11 +357,11 @@ func (j *Service) IsExpired(claims Claims) bool {
 
 // Reset token's cookies
 func (j *Service) Reset(w http.ResponseWriter) {
-	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // expired removal cookie, carries no value
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &jwtCookie)
 
-	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain,
+	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // expired removal cookie, carries no value
 		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
 	http.SetCookie(w, &xsrfCookie)
 
@@ -419,7 +423,7 @@ type ClaimsUpdater interface {
 // with the appropriate signature, ClaimsUpdFunc(f) is a Handler that calls f.
 type ClaimsUpdFunc func(claims Claims) Claims
 
-// Update calls f(id)
+// Update calls f(claims).
 func (f ClaimsUpdFunc) Update(claims Claims) Claims {
 	return f(claims)
 }
@@ -434,7 +438,7 @@ type Validator interface {
 // with the appropriate signature, ValidatorFunc(f) is a Validator that calls f.
 type ValidatorFunc func(token string, claims Claims) bool
 
-// Validate calls f(id)
+// Validate calls f(token, claims).
 func (f ValidatorFunc) Validate(token string, claims Claims) bool {
 	return f(token, claims)
 }
@@ -449,5 +453,25 @@ type AudienceFunc func() ([]string, error)
 
 // Get calls f()
 func (f AudienceFunc) Get() ([]string, error) {
+	return f()
+}
+
+// AllowedHosts defines interface returning list of hostnames allowed in the
+// "from" redirect parameter of OAuth and verify flows. The service's own host
+// (derived from Opts.URL) is always allowed implicitly; this list is for
+// additional hosts.
+type AllowedHosts interface {
+	Get() ([]string, error)
+}
+
+// AllowedHostsFunc adapter to allow ordinary functions to be used as AllowedHosts.
+// Assigning a nil AllowedHostsFunc to an interface field (e.g.
+// Opts.AllowedRedirectHosts) produces a typed-nil interface that would panic
+// when Get is called; the provider-side validator recognizes this form and
+// treats it as "no allowlist configured".
+type AllowedHostsFunc func() ([]string, error)
+
+// Get calls f()
+func (f AllowedHostsFunc) Get() ([]string, error) {
 	return f()
 }

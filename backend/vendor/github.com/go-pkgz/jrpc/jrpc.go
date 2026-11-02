@@ -10,9 +10,9 @@ import (
 
 // Request encloses method name and all params
 type Request struct {
-	Method string      `json:"method"`           // method (function) name
-	Params interface{} `json:"params,omitempty"` // function arguments
-	ID     uint64      `json:"id"`               // unique call id
+	Method string `json:"method"`           // method (function) name
+	Params any    `json:"params,omitempty"` // function arguments
+	ID     uint64 `json:"id"`               // unique call id
 }
 
 // Response encloses result and error received from remote server
@@ -23,7 +23,7 @@ type Response struct {
 }
 
 // EncodeResponse convert anything (type interface{}) and incoming error (if any) to Response
-func EncodeResponse(id uint64, resp interface{}, e error) Response {
+func EncodeResponse(id uint64, resp any, e error) Response {
 	v, err := json.Marshal(&resp)
 	if err != nil {
 		return Response{Error: err.Error()}

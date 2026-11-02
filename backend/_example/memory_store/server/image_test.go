@@ -115,14 +115,17 @@ func TestRPC_imgCleanupHndl(t *testing.T) {
 	assert.Equal(t, 1462, len(img))
 	assert.Equal(t, gopherPNGBytes(), img)
 
-	// wait for image to expire
-	time.Sleep(time.Millisecond * 50)
-	// reset the time to cleanup
+	// age the image past the ttl used below, so the reset that follows is what keeps it on
+	// staging rather than the image simply being young
+	const stagingTTL = 500 * time.Millisecond
+	time.Sleep(stagingTTL + 100*time.Millisecond)
+
+	// reset the time to cleanup, which leaves a full ttl before it could be collected again
 	err = ri.ResetCleanupTimer(id)
 	assert.NoError(t, err)
 
 	// cleanup, should not affect the new image
-	err = ri.Cleanup(context.TODO(), time.Millisecond*45)
+	err = ri.Cleanup(context.TODO(), stagingTTL)
 	assert.NoError(t, err)
 
 	// load after cleanup should succeed

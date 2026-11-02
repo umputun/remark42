@@ -6,12 +6,12 @@ on:
       - master
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/apps/remark42/**"
+      - "frontend/**"
       - "!**.md"
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
-      - "frontend/apps/remark42/**"
+      - "frontend/**"
       - "!**.md"
 
 jobs:
@@ -22,41 +22,30 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [16]
+        node: [24]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
-        uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
-        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
 
       - name: Translations check
         run: pnpm translation-check
@@ -69,41 +58,30 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [16]
+        node: [24]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
-        uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
-        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
 
       - name: Run type check
         run: pnpm type-check
@@ -116,41 +94,30 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [16]
+        node: [24]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
-        uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
-        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
 
       - name: Run linters
         run: pnpm lint
@@ -167,15 +134,14 @@ jobs:
       CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
       - name: Check bundle size
@@ -185,6 +151,60 @@ jobs:
           directory: ./frontend/apps/remark42
           package_manager: pnpm
 
+  unit:
+    name: Dependency-free unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        node: [24]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      # deliberately no pnpm install: these tests import nothing but the module under test and
+      # node:test, and the runtime strips the types itself. a run that needs node_modules to pass
+      # has picked up a dependency, and the missing install step is what says so.
+      #
+      # the file count is checked first because node --test exits 0 on a glob that matches
+      # nothing, so on its own it cannot tell a renamed suffix from a passing run
+      - name: Run unit tests
+        run: |
+          count=$(find app -name '*.unit.test.ts' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "no *.unit.test.ts files matched; the suffix or the layout has moved"
+            exit 1
+          fi
+          mkdir -p coverage
+          node --test --experimental-test-coverage \
+            --test-reporter=lcov --test-reporter-destination=./coverage/lcov.info \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            "app/**/*.unit.test.ts"
+        working-directory: ./frontend/apps/remark42
+
+      # the modules this layer covers are reached by jest only indirectly, and some not at all,
+      # so without this upload moving code into them reads as a coverage regression
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          working-directory: ./frontend/apps/remark42
+          # both paths are resolved from working-directory above, so they must be relative to it:
+          # repeating the prefix doubles it, the file is never found, and the upload survives only
+          # on codecov's own search
+          codecov_yml_path: ./codecov.yml
+          files: ./coverage/lcov.info
+          flags: unit
+
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest
@@ -192,49 +212,38 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node: [16]
+        node: [24]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Install node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Install pnpm
-        uses: pnpm/action-setup@v4.2.0
-        id: pnpm-install
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 8
+          version: 10.10.0
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          path: ${{ env.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i
-        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
 
       - name: Test & Coverage
         run: pnpm coverage
         working-directory: ./frontend/apps/remark42
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          codecov_yml_path: ./frontend/apps/remark42/codecov.yml
+          codecov_yml_path: ./codecov.yml

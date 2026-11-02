@@ -2,12 +2,13 @@ package notify
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"html"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
 	ntf "github.com/go-pkgz/notify"
-	"github.com/hashicorp/go-multierror"
 )
 
 const commentTextLengthLimit = 100
@@ -19,6 +20,7 @@ type TelegramParams struct {
 	Timeout              time.Duration // http client timeout
 	UserNotifications    bool          // flag which enables user notifications
 	ErrorMsg, SuccessMsg string        // messages for successful and unsuccessful subscription requests to bot
+	APIURL               string        // bot API base url, for a proxy or a test double; the public API when empty
 }
 
 // Telegram implements notify.Destination for telegram
@@ -36,6 +38,7 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 		Timeout:    params.Timeout,
 		ErrorMsg:   params.ErrorMsg,
 		SuccessMsg: params.SuccessMsg,
+		APIURL:     params.APIURL,
 	})
 	if err != nil {
 		return nil, err
@@ -47,14 +50,14 @@ func NewTelegram(params TelegramParams) (*Telegram, error) {
 // Send to telegram recipients
 func (t *Telegram) Send(ctx context.Context, req Request) error {
 	log.Printf("[DEBUG] send telegram notification for comment ID %s", req.Comment.ID)
-	result := new(multierror.Error)
+	var errs []error
 
 	msg := t.buildMessage(req)
 
 	if t.AdminChannelID != "" {
 		err := t.Telegram.Send(ctx, fmt.Sprintf("telegram:%s?parseMode=HTML", t.AdminChannelID), msg)
 		if err != nil {
-			result = multierror.Append(result,
+			errs = append(errs,
 				fmt.Errorf("problem sending admin telegram notification about comment ID %s to %s: %w",
 					req.Comment.ID, t.AdminChannelID, err,
 				),
@@ -66,7 +69,7 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 		for _, user := range req.Telegrams {
 			err := t.Telegram.Send(ctx, fmt.Sprintf("telegram:%s?parseMode=HTML", user), msg)
 			if err != nil {
-				result = multierror.Append(result,
+				errs = append(errs,
 					fmt.Errorf("problem sending user telegram notification about comment ID %s to %q: %w",
 						req.Comment.ID, user, err,
 					),
@@ -74,17 +77,17 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 			}
 		}
 	}
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 // buildMessage generates message for generic notification about new comment
 func (t *Telegram) buildMessage(req Request) string {
 	commentURLPrefix := req.Comment.Locator.URL + uiNav
 
-	msg := fmt.Sprintf(`<a href=%q>%s</a>`, commentURLPrefix+req.Comment.ID, ntf.EscapeTelegramText(req.Comment.User.Name))
+	msg := fmt.Sprintf(`<a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.Comment.ID), ntf.EscapeTelegramText(req.Comment.User.Name))
 
 	if req.Comment.ParentID != "" {
-		msg += fmt.Sprintf(" -> <a href=%q>%s</a>", commentURLPrefix+req.parent.ID, ntf.EscapeTelegramText(req.parent.User.Name))
+		msg += fmt.Sprintf(` -> <a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.parent.ID), ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
 	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
@@ -94,7 +97,7 @@ func (t *Telegram) buildMessage(req Request) string {
 	}
 
 	if req.Comment.PostTitle != "" {
-		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", req.Comment.Locator.URL, ntf.EscapeTelegramText(req.Comment.PostTitle))
+		msg += fmt.Sprintf("\n\n↦  <a href=%q>%s</a>", html.EscapeString(req.Comment.Locator.URL), ntf.EscapeTelegramText(req.Comment.PostTitle))
 	}
 
 	return msg

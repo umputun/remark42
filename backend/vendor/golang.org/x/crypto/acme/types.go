@@ -60,6 +60,15 @@ var (
 	// errPreAuthorizationNotSupported indicates that the server does not
 	// support pre-authorization of identifiers.
 	errPreAuthorizationNotSupported = errors.New("acme: pre-authorization is not supported")
+
+	// errCADoesNotSupportProfiles indicates that [WithOrderIssuanceProfile] was
+	// included with a CA that does not advertise support for profiles in
+	// their directory.
+	errCADoesNotSupportProfiles = errors.New("acme: certificate authority does not support profiles")
+
+	// errProfileNotInSetOfSupportedProfiles indicates that the profile
+	// specified with [WithOrderIssuanceProfile] is not one supported by the CA
+	errProfileNotInSetOfSupportedProfiles = errors.New("acme: certificate authority does not advertise a profile with name")
 )
 
 // A Subproblem describes an ACME subproblem as reported in an Error.
@@ -114,14 +123,15 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	str := fmt.Sprintf("%d %s: %s", e.StatusCode, e.ProblemType, e.Detail)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %s: %s", e.StatusCode, e.ProblemType, e.Detail)
 	if len(e.Subproblems) > 0 {
-		str += fmt.Sprintf("; subproblems:")
+		sb.WriteString("; subproblems:")
 		for _, sp := range e.Subproblems {
-			str += fmt.Sprintf("\n\t%s", sp)
+			fmt.Fprintf(&sb, "\n\t%s", sp)
 		}
 	}
-	return str
+	return sb.String()
 }
 
 // AuthorizationError indicates that an authorization for an identifier
@@ -167,7 +177,11 @@ type OrderError struct {
 }
 
 func (oe *OrderError) Error() string {
-	return fmt.Sprintf("acme: order %s status: %s", oe.OrderURL, oe.Status)
+	str := fmt.Sprintf("acme: order %s status: %s", oe.OrderURL, oe.Status)
+	if oe.Problem != nil {
+		str += fmt.Sprintf("; problem: %s", oe.Problem)
+	}
+	return str
 }
 
 // RateLimit reports whether err represents a rate limit error and
@@ -311,6 +325,14 @@ type Directory struct {
 	// ExternalAccountRequired indicates that the CA requires for all account-related
 	// requests to include external account binding information.
 	ExternalAccountRequired bool
+
+	// Profiles is a map of profile identifiers to URLs containing the description of the
+	// profile. The identifiers can be used with [WithOrderIssuanceProfile] to
+	// request issuance with a specific profile. If the map is empty, the
+	// CA does not support issuance profiles. Per the draft, "CAs MAY use data
+	// URIs to provide an in-line text description if they do not wish to host
+	// external documentation pages" (e.g., `data://` URLs).
+	Profiles map[ProfileName]string
 }
 
 // Order represents a client's request for a certificate.
@@ -325,7 +347,7 @@ type Order struct {
 	// Possible values are StatusPending, StatusReady, StatusProcessing, StatusValid and StatusInvalid.
 	// Pending means the CA does not believe that the client has fulfilled the requirements.
 	// Ready indicates that the client has fulfilled all the requirements and can submit a CSR
-	// to obtain a certificate. This is done with Client's CreateOrderCert.
+	// to obtain a certificate. This is done with Client's CreateCertFromOrder.
 	// Processing means the certificate is being issued.
 	// Valid indicates the CA has issued the certificate. It can be downloaded
 	// from the Order's CertURL. This is done with Client's FetchCert.
@@ -369,6 +391,9 @@ type Order struct {
 
 	// The error that occurred while processing the order as received from a CA, if any.
 	Error *Error
+
+	// Profile is the optional issuance profile used for this order.
+	Profile ProfileName
 }
 
 // OrderOption allows customizing Client.AuthorizeOrder call.
@@ -386,6 +411,18 @@ func WithOrderNotAfter(t time.Time) OrderOption {
 	return orderNotAfterOpt(t)
 }
 
+// WithOrderIssuanceProfile sets the order's profile field. It should be used
+// with a profile present in the CA's [Directory.Profiles]. Specifying
+// the profile name here will add it to the order request. If specified when a
+// CA doesn't advertise support for profiles, an error will be returned prior
+// to sending the request. If a name is not in the directory, an error will be
+// returned prior to sending the request.
+// See also:
+// * https://datatracker.ietf.org/doc/draft-ietf-acme-profiles/
+func WithOrderIssuanceProfile(name ProfileName) OrderOption {
+	return orderProfileOpt(name)
+}
+
 type orderNotBeforeOpt time.Time
 
 func (orderNotBeforeOpt) privateOrderOpt() {}
@@ -393,6 +430,12 @@ func (orderNotBeforeOpt) privateOrderOpt() {}
 type orderNotAfterOpt time.Time
 
 func (orderNotAfterOpt) privateOrderOpt() {}
+
+type orderProfileOpt string
+
+func (orderProfileOpt) privateOrderOpt() {}
+
+func (o orderProfileOpt) profileName() ProfileName { return ProfileName(o) }
 
 // Authorization encodes an authorization response.
 type Authorization struct {
@@ -630,3 +673,5 @@ func WithTemplate(t *x509.Certificate) CertOption {
 type certOptTemplate x509.Certificate
 
 func (*certOptTemplate) privateCertOpt() {}
+
+type ProfileName string

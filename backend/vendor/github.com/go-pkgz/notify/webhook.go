@@ -13,6 +13,13 @@ import (
 
 const webhookTimeOut = 5000 * time.Millisecond
 
+// limits for the response body of the webhook request: how much of it is quoted in the error
+// for non-OK responses, and how much is drained to make the connection reusable
+const (
+	webhookErrBodyLimit   = 16 * 1024
+	webhookDrainBodyLimit = 64 * 1024
+)
+
 // WebhookParams contain settings for webhook notifications
 type WebhookParams struct {
 	Timeout time.Duration
@@ -56,7 +63,7 @@ func (wh *Webhook) Send(ctx context.Context, destination, text string) error {
 	}
 
 	for _, h := range wh.Headers {
-		elems := strings.Split(h, ":")
+		elems := strings.SplitN(h, ":", 2)
 		if len(elems) != 2 {
 			continue
 		}
@@ -67,13 +74,20 @@ func (wh *Webhook) Send(ctx context.Context, destination, text string) error {
 	if err != nil {
 		return fmt.Errorf("webhook request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		// drain the remaining body to let the underlying connection be reused
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, webhookDrainBodyLimit))
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		errMsg := fmt.Sprintf("webhook request failed with non-OK status code: %d", resp.StatusCode)
-		respBody, e := io.ReadAll(resp.Body)
+		respBody, e := io.ReadAll(io.LimitReader(resp.Body, webhookErrBodyLimit+1))
 		if e != nil {
 			return errors.New(errMsg)
+		}
+		if len(respBody) > webhookErrBodyLimit {
+			return fmt.Errorf("%s, body: %s... (truncated)", errMsg, respBody[:webhookErrBodyLimit])
 		}
 		return fmt.Errorf("%s, body: %s", errMsg, respBody)
 	}
@@ -89,8 +103,9 @@ func (wh *Webhook) Schema() string {
 // String describes the webhook instance
 func (wh *Webhook) String() string {
 	str := fmt.Sprintf("webhook notification with timeout %s", wh.Timeout)
-	if wh.Headers != nil {
-		str += fmt.Sprintf(" and headers %v", wh.Headers)
+	if len(wh.Headers) != 0 {
+		// header values are not printed as they might contain secrets, like authorization tokens
+		str += fmt.Sprintf(" and %d headers", len(wh.Headers))
 	}
 	return str
 }

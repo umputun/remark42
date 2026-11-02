@@ -79,7 +79,7 @@ func TestFormatter_FormatComment(t *testing.T) {
 		Score:     10,
 		Pin:       true,
 		Deleted:   true,
-		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.Local),
+		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:     map[string]bool{"uu": true},
 	}
 

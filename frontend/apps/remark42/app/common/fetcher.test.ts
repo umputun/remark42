@@ -11,6 +11,7 @@ import {
   JWT_HEADER,
   JWT_COOKIE_NAME,
   XSRF_COOKIE,
+  XSRF_HEADER,
   AUTH_COOKIE_TTL_SECONDS,
 } from './fetcher';
 import * as cookies from './cookies';
@@ -121,6 +122,19 @@ describe('fetcher', () => {
       document.cookie = `${XSRF_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     });
 
+    it('sends no xsrf header when the cookie is present but empty', async () => {
+      expect.assertions(1);
+
+      // an `XSRF-TOKEN=;` cookie reads back as an empty string, not as undefined, and an empty
+      // header is what a strict proxy answers 400 to. Nothing is lost by omitting it: the backend
+      // reads the header with `Header.Get`, which returns that same empty string either way.
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => '');
+      mockFetch();
+      await apiFetcher.get(apiUri);
+
+      expect((window.fetch as jest.Mock).mock.calls[0][1].headers).not.toHaveProperty(XSRF_HEADER);
+    });
+
     it('should set active token and than clean it on unauthorized response', async () => {
       expect.assertions(4);
 
@@ -137,7 +151,7 @@ describe('fetcher', () => {
         apiFetcher.get(apiUri).then(() => {
           throw Error('apiFetcher should throw error on 401 response');
         })
-      ).rejects.toEqual(new Error('Not authorized.'));
+      ).rejects.toEqual(new Error('Please sign in to do this.'));
 
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'get',
@@ -232,7 +246,7 @@ describe('fetcher', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should reset activeJwtToken and clear cookies on 401/403 responses', async () => {
+    it('should reset activeJwtToken and clear cookies on 401 responses', async () => {
       // Mock clearAuthCookie
       jest.spyOn(cookies, 'clearAuthCookie').mockImplementationOnce(jest.fn());
 
@@ -251,7 +265,7 @@ describe('fetcher', () => {
       mockFetch({ status: 401 });
 
       // Use await expect().rejects for async errors instead of try/catch
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
 
       // Verify cookies were cleared
       expect(cookies.clearAuthCookie).toHaveBeenCalledWith(JWT_COOKIE_NAME);
@@ -262,6 +276,33 @@ describe('fetcher', () => {
       await apiFetcher.get(apiUri);
 
       expect(window.fetch).toHaveBeenCalled();
+    });
+
+    it('should keep the session on 403 responses', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id' }));
+
+      mockFetch({ headers: { [JWT_HEADER]: 'kept.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+
+      // a session for another site asking about this one, or an anonymous user, is refused, not signed out
+      mockFetch({ status: 403 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError("You don't have permission to do this.", 403)
+      );
+
+      expect(clear).not.toHaveBeenCalled();
+
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      const { calls } = (window.fetch as jest.Mock).mock;
+      const [, init] = calls[calls.length - 1];
+      expect(init.headers[JWT_HEADER]).toBe('kept.jwt.token');
+
+      // the token lives at module level, so drop it the way the fetcher does before the next test
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
     });
   });
 
@@ -276,7 +317,7 @@ describe('fetcher', () => {
       mockFetch();
       await apiFetcher.post(apiUri, {}, data);
 
-      expect(window.fetch).toBeCalledWith(apiUrl, {
+      expect(window.fetch).toHaveBeenCalledWith(apiUrl, {
         method: 'post',
         headers: headersWithContentType,
         body: JSON.stringify(dataShouldBe),
@@ -339,7 +380,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Not authorized.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
       expect.assertions(1);

@@ -3,28 +3,22 @@ package api
 import (
 	"bytes"
 	"context"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
-	"net/mail"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/didip/tollbooth/v8"
-	"github.com/didip/tollbooth/v8/limiter"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/rest/logger"
+	"github.com/go-pkgz/routegroup"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -32,6 +26,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
+	"github.com/umputun/remark42/backend/app/webassets"
 )
 
 type Premoderation string
@@ -69,10 +64,12 @@ type Rest struct {
 
 	AnonVote        bool
 	WebRoot         string
-	WebFS           embed.FS
+	WebFS           fs.FS
 	RemarkURL       string
+	DemoSiteID      string // site the demo pages under /web show, the first configured one
 	ReadOnlyAge     int
 	SharedSecret    string
+	TrustedProxies  []*net.IPNet // reverse-proxy networks whose forwarding headers (X-Real-IP, X-Forwarded-For, ...) are trusted
 	ScoreThresholds struct {
 		Low      int
 		Critical int
@@ -91,10 +88,11 @@ type Rest struct {
 	ExternalImageProxy         bool
 	Premoderation              Premoderation
 
-	SSLConfig   SSLConfig
-	httpsServer *http.Server
-	httpServer  *http.Server
-	lock        sync.Mutex
+	SSLConfig         SSLConfig
+	httpsServer       *http.Server
+	httpServer        *http.Server
+	shutdownRequested bool
+	lock              sync.Mutex
 
 	pubRest          public
 	privRest         private
@@ -114,14 +112,18 @@ const hardBodyLimit = 1024 * 64 // limit size of body
 const openRouteLimiter = 10     // limit for open routes
 const lastCommentsScope = "last"
 
+// lastVotesScope is carried only by the JSON last comments, the one response under that scope with
+// per-user vote data, so a vote does not also drop the feeds
+const lastVotesScope = "last-votes"
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
-	Info     store.PostInfo  `json:"info,omitempty"`
+	Info     store.PostInfo  `json:"info"`
 }
 
 type treeWithInfo struct {
 	*service.Tree
-	Info store.PostInfo `json:"info,omitempty"`
+	Info store.PostInfo `json:"info"`
 }
 
 // Run the lister and request's router, activate rest server
@@ -137,6 +139,11 @@ func (s *Rest) Run(address string, port int) {
 		s.lock.Lock()
 		s.httpServer = s.makeHTTPServer(address, port, s.routes())
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 		s.lock.Unlock()
 
 		err := s.httpServer.ListenAndServe()
@@ -150,6 +157,11 @@ func (s *Rest) Run(address string, port int) {
 
 		s.httpServer = s.makeHTTPServer(address, port, s.httpToHTTPSRouter())
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 		s.lock.Unlock()
 
 		go func() {
@@ -170,6 +182,11 @@ func (s *Rest) Run(address string, port int) {
 
 		s.httpServer = s.makeHTTPServer(address, port, s.httpChallengeRouter(m))
 		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+		if s.shutdownRequested {
+			s.lock.Unlock()
+			log.Print("[WARN] rest server start canceled")
+			return
+		}
 
 		s.lock.Unlock()
 
@@ -191,6 +208,7 @@ func (s *Rest) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	s.lock.Lock()
+	s.shutdownRequested = true
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.Printf("[DEBUG] http shutdown error, %s", err)
@@ -218,13 +236,13 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 	}
 }
 
-func (s *Rest) routes() chi.Router {
+func (s *Rest) routes() http.Handler {
 	if s.openRouteLimiter == 0 {
 		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
 		s.openRouteLimiter = openRouteLimiter
 	}
-	router := chi.NewRouter()
-	router.Use(middleware.Throttle(1000), middleware.RealIP, R.Recoverer(log.Default()))
+	router := routegroup.New(http.NewServeMux())
+	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), R.Recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
@@ -236,15 +254,7 @@ func (s *Rest) routes() chi.Router {
 	if s.ProxyCORS {
 		log.Printf("[WARN] internal CORS disabled")
 	} else {
-		corsMiddleware := cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-XSRF-Token", "X-JWT"},
-			ExposedHeaders:   []string{"Authorization"},
-			AllowCredentials: true,
-			MaxAge:           300,
-		})
-		router.Use(corsMiddleware.Handler)
+		router.Use(corsMiddleware())
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
@@ -252,138 +262,165 @@ func (s *Rest) routes() chi.Router {
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
-	router.Group(func(r chi.Router) {
-		r.Use(middleware.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, rateLimiter(2), middleware.NoCache)
+	router.Route(func(r *routegroup.Bundle) {
+		r.Use(R.Timeout(5 * time.Second))
+		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
-		r.Mount("/auth", authHandler)
+		r.Handle("/auth/", authHandler)
 	})
 
-	router.Group(func(r chi.Router) {
-		r.Use(middleware.Timeout(5 * time.Second))
+	router.Route(func(r *routegroup.Bundle) {
+		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
-		r.Mount("/avatar", avatarHandler)
+		r.Handle("/avatar/", avatarHandler)
 	})
 
 	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
-	router.Route("/api/v1", func(rapi chi.Router) {
-		rapi.Group(func(rava chi.Router) {
-			rava.Use(middleware.Timeout(5 * time.Second))
-			rava.Use(rateLimiter(100))
-			rava.Mount("/avatar", avatarHandler)
+	rapi := router.Mount("/api/v1")
+	rapi.Use(apiCSPMiddleware)
+
+	rapi.Group().Route(func(rava *routegroup.Bundle) {
+		rava.Use(R.Timeout(5 * time.Second))
+		rava.Use(rateLimiter(100))
+		rava.Handle("/avatar/", avatarHandler)
+	})
+
+	// open routes
+	rapi.Group().Route(func(ropen *routegroup.Bundle) {
+		ropen.Use(R.Timeout(30 * time.Second))
+		ropen.Use(rateLimiter(s.openRouteLimiter))
+		ropen.Use(authMiddleware.Trace, R.NoCache, logInfoWithBody)
+		ropen.HandleFunc("GET /config", s.configCtrl)
+		ropen.HandleFunc("GET /find", s.pubRest.findCommentsCtrl)
+		ropen.HandleFunc("GET /id/{id}", s.pubRest.commentByIDCtrl)
+		ropen.HandleFunc("GET /comments", s.pubRest.findUserCommentsCtrl)
+		ropen.HandleFunc("GET /last/{limit}", s.pubRest.lastCommentsCtrl)
+		ropen.HandleFunc("GET /count", s.pubRest.countCtrl)
+		ropen.HandleFunc("POST /counts", s.pubRest.countMultiCtrl)
+		ropen.HandleFunc("GET /list", s.pubRest.listCtrl)
+		ropen.HandleFunc("GET /info", s.pubRest.infoCtrl)
+
+		ropen.Mount("/rss").Route(func(rrss *routegroup.Bundle) {
+			rrss.HandleFunc("GET /post", s.rssRest.postCommentsCtrl)
+			rrss.HandleFunc("GET /site", s.rssRest.siteCommentsCtrl)
+			rrss.HandleFunc("GET /reply", s.rssRest.repliesCtrl)
+		})
+	})
+
+	// open routes, cached. /img lives here (not in the NoCache group above) because
+	// R.NoCache strips If-None-Match from incoming requests, which would
+	// defeat the proxy handler's 304 short-circuit. The handler sets a 30-day
+	// max-age on validated success responses (with a versioned etag for cache
+	// invalidation on revalidation); error responses get Cache-Control: no-store
+	// so transient failures aren't pinned in the cache.
+	rapi.Group().Route(func(ropen *routegroup.Bundle) {
+		ropen.Use(R.Timeout(30 * time.Second))
+		ropen.Use(rateLimiter(10))
+		ropen.Use(authMiddleware.Trace, logInfoWithBody)
+		ropen.HandleFunc("GET /img", s.ImageProxy.Handler)
+		ropen.HandleFunc("GET /picture/{user}/{id}", s.pubRest.loadPictureCtrl)
+		ropen.HandleFunc("GET /qr/telegram", s.pubRest.telegramQrCtrl)
+	})
+
+	// protected routes, require auth
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(rateLimiter(10))
+		rauth.Use(authMiddleware.Auth, matchSiteID, R.NoCache, logInfoWithBody)
+
+		// GET /userdata streams a gzipped export of the user's data straight to the client, so it
+		// deliberately runs without R.Timeout: that middleware buffers the whole response in memory
+		// before sending and aborts at the deadline, which would hold a full export in RAM and truncate it.
+		rauth.HandleFunc("GET /userdata", s.privRest.userAllDataCtrl)
+
+		rauth.Group().Route(func(r *routegroup.Bundle) {
+			r.Use(R.Timeout(30 * time.Second))
+			r.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+		})
+	})
+
+	// admin routes, require auth and admin users only
+	rapi.Mount("/admin").Route(func(radmin *routegroup.Bundle) {
+		radmin.Use(rateLimiter(10))
+		radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
+		radmin.Use(R.NoCache, logInfoWithBody)
+
+		// bounded admin operations return small responses and get the enforcing request timeout
+		radmin.Group().Route(func(r *routegroup.Bundle) {
+			r.Use(R.Timeout(30 * time.Second))
+			r.HandleFunc("DELETE /comment/{id}", s.adminRest.deleteCommentCtrl)
+			r.HandleFunc("PUT /user/{userid}", s.adminRest.setBlockCtrl)
+			r.HandleFunc("DELETE /user/{userid}", s.adminRest.deleteUserCtrl)
+			r.HandleFunc("GET /user/{userid}", s.adminRest.getUserInfoCtrl)
+			r.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
+			r.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
+			r.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
+			r.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
+			r.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
+			r.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
 		})
 
-		// open routes
-		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(rateLimiter(s.openRouteLimiter))
-			ropen.Use(authMiddleware.Trace, middleware.NoCache, logInfoWithBody)
-			ropen.Get("/config", s.configCtrl)
-			ropen.Get("/find", s.pubRest.findCommentsCtrl)
-			ropen.Get("/id/{id}", s.pubRest.commentByIDCtrl)
-			ropen.Get("/comments", s.pubRest.findUserCommentsCtrl)
-			ropen.Get("/last/{limit}", s.pubRest.lastCommentsCtrl)
-			ropen.Get("/count", s.pubRest.countCtrl)
-			ropen.Post("/counts", s.pubRest.countMultiCtrl)
-			ropen.Get("/list", s.pubRest.listCtrl)
-			ropen.Get("/info", s.pubRest.infoCtrl)
-			ropen.Get("/img", s.ImageProxy.Handler)
+		// migrator routes deliberately run without R.Timeout: GET /export streams a full-site
+		// backup, GET /wait long-polls for up to 15m, and import/remap ingest large uploads. The
+		// enforcing timeout buffers the whole response and aborts at the deadline, which would
+		// truncate backups, break waiting, and reject large imports.
+		radmin.HandleFunc("GET /export", s.adminRest.migrator.exportCtrl)
+		radmin.HandleFunc("PUT /comment/{id}/approve", s.adminRest.approveCommentCtrl)
+		radmin.HandleFunc("POST /import", s.adminRest.migrator.importCtrl)
+		radmin.HandleFunc("POST /import/form", s.adminRest.migrator.importFormCtrl)
+		radmin.HandleFunc("POST /remap", s.adminRest.migrator.remapCtrl)
+		radmin.HandleFunc("GET /wait", s.adminRest.migrator.waitCtrl)
+	})
 
-			ropen.Route("/rss", func(rrss chi.Router) {
-				rrss.Get("/post", s.rssRest.postCommentsCtrl)
-				rrss.Get("/site", s.rssRest.siteCommentsCtrl)
-				rrss.Get("/reply", s.rssRest.repliesCtrl)
-			})
-		})
+	// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(R.Timeout(10 * time.Second))
+		rauth.Use(rateLimiter(s.updateLimiter()))
+		rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
+		rauth.Use(R.NoCache, logInfoWithBody)
 
-		// open routes, cached
-		rapi.Group(func(ropen chi.Router) {
-			ropen.Use(middleware.Timeout(30 * time.Second))
-			ropen.Use(rateLimiter(10))
-			ropen.Use(authMiddleware.Trace, logInfoWithBody)
-			ropen.Get("/picture/{user}/{id}", s.pubRest.loadPictureCtrl)
-			ropen.Get("/qr/telegram", s.pubRest.telegramQrCtrl)
-		})
+		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
+		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
+		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
+		rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("POST /email/confirm", s.privRest.setConfirmedEmailCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("DELETE /email", s.privRest.deleteEmailCtrl)
+		rauth.With(rejectAnonUser, rejectHead("GET")).HandleFunc("GET /telegram/subscribe", s.privRest.telegramSubscribeCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("DELETE /telegram", s.privRest.deleteTelegramCtrl)
+	})
 
-		// protected routes, require auth
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(middleware.Timeout(30 * time.Second))
-			rauth.Use(rateLimiter(10))
-			rauth.Use(authMiddleware.Auth, matchSiteID, middleware.NoCache, logInfoWithBody)
-			rauth.Get("/user", s.privRest.userInfoCtrl)
-			rauth.Get("/userdata", s.privRest.userAllDataCtrl)
-		})
-
-		// admin routes, require auth and admin users only
-		rapi.Route("/admin", func(radmin chi.Router) {
-			radmin.Use(middleware.Timeout(30 * time.Second))
-			radmin.Use(rateLimiter(10))
-			radmin.Use(authMiddleware.Auth, authMiddleware.AdminOnly, matchSiteID)
-			radmin.Use(middleware.NoCache, logInfoWithBody)
-
-			radmin.Delete("/comment/{id}", s.adminRest.deleteCommentCtrl)
-			radmin.Put("/comment/{id}/approve", s.adminRest.approveCommentCtrl)
-			radmin.Put("/user/{userid}", s.adminRest.setBlockCtrl)
-			radmin.Delete("/user/{userid}", s.adminRest.deleteUserCtrl)
-			radmin.Get("/user/{userid}", s.adminRest.getUserInfoCtrl)
-			radmin.Get("/deleteme", s.adminRest.deleteMeRequestCtrl)
-			radmin.Put("/verify/{userid}", s.adminRest.setVerifyCtrl)
-			radmin.Put("/pin/{id}", s.adminRest.setPinCtrl)
-			radmin.Get("/blocked", s.adminRest.blockedUsersCtrl)
-			radmin.Put("/readonly", s.adminRest.setReadOnlyCtrl)
-			radmin.Put("/title/{id}", s.adminRest.setTitleCtrl)
-
-			// migrator
-			radmin.Get("/export", s.adminRest.migrator.exportCtrl)
-			radmin.Post("/import", s.adminRest.migrator.importCtrl)
-			radmin.Post("/import/form", s.adminRest.migrator.importFormCtrl)
-			radmin.Post("/remap", s.adminRest.migrator.remapCtrl)
-			radmin.Get("/wait", s.adminRest.migrator.waitCtrl)
-		})
-
-		// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(rateLimiter(s.updateLimiter()))
-			rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
-			rauth.Use(middleware.NoCache, logInfoWithBody)
-
-			rauth.Put("/comment/{id}", s.privRest.updateCommentCtrl)
-			rauth.Post("/preview", s.privRest.previewCommentCtrl)
-			rauth.Post("/comment", s.privRest.createCommentCtrl)
-			rauth.Put("/vote/{id}", s.privRest.voteCtrl)
-			rauth.With(rejectAnonUser).Post("/deleteme", s.privRest.deleteMeCtrl)
-			rauth.With(rejectAnonUser).Get("/email", s.privRest.getEmailCtrl)
-			rauth.With(rejectAnonUser).Post("/email/subscribe", s.privRest.sendEmailConfirmationCtrl)
-			rauth.With(rejectAnonUser).Post("/email/confirm", s.privRest.setConfirmedEmailCtrl)
-			rauth.With(rejectAnonUser).Delete("/email", s.privRest.deleteEmailCtrl)
-			rauth.With(rejectAnonUser).Get("/telegram/subscribe", s.privRest.telegramSubscribeCtrl)
-			rauth.With(rejectAnonUser).Delete("/telegram", s.privRest.deleteTelegramCtrl)
-		})
-
-		// protected routes, anonymous rejected
-		rapi.Group(func(rauth chi.Router) {
-			rauth.Use(middleware.Timeout(10 * time.Second))
-			rauth.Use(rateLimiter(s.updateLimiter()))
-			rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
-			rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
-			rauth.Post("/picture", s.privRest.savePictureCtrl)
-		})
+	// protected routes, anonymous rejected
+	rapi.Group().Route(func(rauth *routegroup.Bundle) {
+		rauth.Use(R.Timeout(10 * time.Second))
+		rauth.Use(rateLimiter(s.updateLimiter()))
+		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
+		rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
 	})
 
 	// open routes on root level
-	router.Group(func(rroot chi.Router) {
-		rroot.Use(middleware.Timeout(10 * time.Second))
+	router.Route(func(rroot *routegroup.Bundle) {
+		rroot.Use(R.Timeout(10 * time.Second))
 		rroot.Use(rateLimiter(50))
-		rroot.Get("/robots.txt", s.pubRest.robotsCtrl)
-		rroot.Get("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
-		rroot.Post("/email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("GET /robots.txt", s.pubRest.robotsCtrl)
+		rroot.With(rejectHead("GET, POST")).HandleFunc("GET /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 	})
 
-	// file server for static content from s.WebRoot on path /web
-	addFileServer(router, s.WebFS, s.WebRoot, s.Version)
+	// file server for /web: the frontend build first, then the assets embedded in the binary.
+	// the build is embedded under web/ by app/cmd, so that prefix is stripped here. fs.Sub only
+	// fails for an fs.SubFS that refuses, and a nil result would panic on the first request, so
+	// serve nothing from the frontend rather than serving it at the wrong paths
+	embeddedFrontend, err := fs.Sub(s.WebFS, "web")
+	if err != nil {
+		log.Printf("[WARN] no embedded frontend, serving built-in assets only: %v", err)
+		embeddedFrontend = emptyFS{}
+	}
+	addFileServer(router, embeddedFrontend, s.WebRoot, s.Version, s.RemarkURL, s.DemoSiteID)
 	return router
 }
 
@@ -499,26 +536,37 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, cnf)
 }
 
-// serves static files from the webRoot directory or files embedded into the compiled binary if that directory is absent
-func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
-	var webFS http.Handler
+// serves /web from the frontend build, falling back to the assets embedded in the binary for
+// names the build does not produce. the frontend build is read from webRoot on disk, or from the
+// copy embedded at app/cmd/web when that directory is absent.
+func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, version, remarkURL, siteID string) {
+	frontendFS := embeddedFrontend
 
 	if _, err := os.Stat(webRoot); err == nil {
 		log.Printf("[INFO] run file server from %s from the disk", webRoot)
-		webFS = http.FileServer(http.Dir(webRoot))
+		frontendFS = os.DirFS(webRoot)
 	} else {
 		log.Printf("[INFO] run file server, embedded")
-		var contentFS, _ = fs.Sub(embedFS, "web")
-		webFS = http.FileServer(http.FS(contentFS))
 	}
 
-	webFS = http.StripPrefix("/web", webFS)
-	r.Get("/web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
+	// wrapped rather than substituted once at startup: the disk root can change under a running
+	// server, and the docker image has already substituted its copy, where this is a no-op
+	sources := templatedFS{
+		fs:        webFiles{frontend: frontendFS, embedded: webassets.FS},
+		remarkURL: remarkURL,
+		siteID:    siteID,
+	}
+	webFS := http.StripPrefix("/web", http.FileServer(http.FS(sources)))
+	r.HandleFunc("GET /web", http.RedirectHandler("/web/", http.StatusMovedPermanently).ServeHTTP)
 
 	r.With(rateLimiter(20),
-		middleware.Timeout(10*time.Second),
-		cacheControl(time.Hour, version),
-	).Get("/web/*", func(w http.ResponseWriter, r *http.Request) {
+		R.Timeout(10*time.Second),
+		// the served body now depends on remarkURL and the demo site, so both have to be part of the
+		// validator. Without them an operator who corrects REMARK_URL or SITE and restarts the same
+		// binary keeps getting 304 on revalidation, and the client keeps the old page for good,
+		// since no-cache means it revalidates rather than aging out
+		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID),
+	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {
 			http.NotFound(w, r)
@@ -528,7 +576,7 @@ func addFileServer(r chi.Router, embedFS embed.FS, webRoot, version string) {
 	})
 }
 
-func encodeJSONWithHTML(v interface{}) ([]byte, error) {
+func encodeJSONWithHTML(v any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
@@ -583,169 +631,6 @@ func URLKeyWithUser(r *http.Request) string {
 	return key
 }
 
-// rejectAnonUser is a middleware rejecting anonymous users
-func rejectAnonUser(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		if strings.HasPrefix(user.ID, "anonymous_") {
-			http.Error(w, "Access denied", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-// matchSiteID is a middleware rejecting users with mismatch between site param and and User.SiteID
-func matchSiteID(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		user, err := rest.GetUserInfo(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// skip for basic auth user
-		if user.Name == "admin" && user.ID == "admin" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		siteID := r.URL.Query().Get("site")
-		if siteID != "" && user.SiteID != siteID {
-			http.Error(w, "Access denied", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-// cacheControl is a middleware setting cache expiration. Using url+version as etag
-func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
-	etag := func(r *http.Request, version string) string {
-		s := version + ":" + r.URL.String()
-		return store.EncodeID(s)
-	}
-
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			e := `"` + etag(r, version) + `"`
-			w.Header().Set("Etag", e)
-			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d, no-cache", int(expiration.Seconds())))
-
-			if match := r.Header.Get("If-None-Match"); match != "" {
-				if strings.Contains(match, e) {
-					w.WriteHeader(http.StatusNotModified)
-					return
-				}
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
-// securityHeadersMiddleware sets security-related headers:
-//   - Content-Security-Policy: controls which resources the browser is allowed to load
-//   - Permissions-Policy: disables browser features (camera, mic, etc.) not needed by a comment widget
-//   - X-Content-Type-Options: prevents browsers from MIME-sniffing responses away from the declared type,
-//     stopping e.g. a user-uploaded image from being reinterpreted as executable HTML/JS
-//   - Referrer-Policy: controls how much URL information leaks in the Referer header on cross-origin
-//     requests; "strict-origin-when-cross-origin" sends only the origin (no path) to other domains
-//     and nothing at all on HTTPS→HTTP downgrades
-func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			imgSrc := "*"
-			if imageProxyEnabled {
-				imgSrc = "'self'"
-			}
-			frameAncestors := "*"
-			if len(allowedAncestors) > 0 {
-				frameAncestors = strings.Join(allowedAncestors, " ")
-			}
-			w.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; frame-src 'self' mailto:; img-src %s; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src data:; object-src 'none'; frame-ancestors %s;", imgSrc, frameAncestors))
-			w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=(), window-management=()")
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// subscribersOnly is a middleware rejecting non-paid_sub users
-func subscribersOnly(enable bool) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			if enable {
-				user, err := rest.GetUserInfo(r)
-				if err != nil {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-				if !user.PaidSub {
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
-// validEmailAuth is a middleware for auth endpoints for email method.
-// it rejects login request if user, site or email are suspicious
-func validEmailAuth() func(http.Handler) http.Handler {
-
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
-	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_.-]{1,64}$`)
-
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-
-			if r.URL.Path != "/auth/email/login" {
-				// not email login, skip the check
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			if u := r.URL.Query().Get("user"); u != "" {
-				if !reUser.MatchString(u) {
-					log.Printf("[WARN] suspicious user rejected: %s", u)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			if a := r.URL.Query().Get("address"); a != "" {
-				if _, err := mail.ParseAddress(a); err != nil {
-					log.Printf("[WARN] suspicious address rejected: %s", a)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			if s := r.URL.Query().Get("site"); s != "" {
-				if !reSite.MatchString(s) {
-					log.Printf("[WARN] suspicious site rejected: %s", s)
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-			}
-
-			h.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
 func parseError(err error, defaultCode int) (code int) {
 	code = defaultCode
 
@@ -768,17 +653,4 @@ func parseError(err error, defaultCode int) (code int) {
 	}
 
 	return code
-}
-
-// rateLimiter creates a rate limiting middleware with proper IP lookup configuration.
-// tollbooth v8 requires explicit IP lookup method to be set.
-// uses RemoteAddr which is set by chi's middleware.RealIP to the real client IP
-// from X-Forwarded-For, X-Real-IP, or True-Client-IP headers.
-func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
-	lmt := tollbooth.NewLimiter(maxReq, nil)
-	lmt.SetIPLookup(limiter.IPLookup{
-		Name:           "RemoteAddr",
-		IndexFromRight: 0,
-	})
-	return tollbooth.HTTPMiddleware(lmt)
 }

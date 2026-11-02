@@ -1,0 +1,5 @@
+{{- $icon := .Get 0 | default "💡" -}}
+<aside class="note">
+  <span class="note__icon" aria-hidden="true">{{ $icon }}</span>
+  <div class="note__body">{{ .Inner | .Page.RenderString (dict "display" "block") }}</div>
+</aside>

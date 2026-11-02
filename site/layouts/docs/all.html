@@ -1,0 +1,13 @@
+{{ define "main" }}
+{{ partial "docs-aside.html" . }}
+<section class="docs">
+  <article class="docs__article">
+    <h1 class="docs__title" id="{{ .Title | anchorize }}">{{ .Title }}</h1>
+    <div class="prose">{{ .Content }}</div>
+    <footer class="docs__meta">
+      <span>Updated <time datetime="{{ .Lastmod.Format "2006-01-02" }}">{{ .Lastmod.Format "Jan 02, 2006" }}</time></span>
+      <a target="_blank" rel="noopener noreferrer" href="{{ site.Params.githubUrl }}/edit/{{ site.Params.githubBranch }}/site/content/{{ with .File }}{{ .Path }}{{ end }}">Edit</a>
+    </footer>
+  </article>
+</section>
+{{ end }}

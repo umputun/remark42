@@ -1,4 +1,4 @@
-import { defineMessages } from 'react-intl';
+import { defineMessages } from 'common/intl';
 
 export const messages = defineMessages<string>({
   telegramMessage1: {
@@ -7,7 +7,7 @@ export const messages = defineMessages<string>({
   },
   telegramLink: {
     id: 'auth.telegram-link',
-    defaultMessage: 'by the link',
+    defaultMessage: 'using this link',
   },
   telegramMessage2: {
     id: 'auth.telegram-message-2',

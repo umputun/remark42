@@ -1,23 +1,26 @@
-import { h, FunctionComponent } from 'preact';
-import { shallowEqual } from 'react-redux';
+import type { FunctionComponent } from 'preact';
+import { h, type AriaRole } from 'preact';
+import { shallowEqual } from 'store/context';
 import { useCallback } from 'preact/hooks';
-import b from 'bem-react-helper';
-import { useIntl } from 'react-intl';
+import clsx from 'clsx';
 
-import { Comment as CommentInterface } from 'common/types';
+import { useIntl } from 'common/intl';
+import type { Comment as CommentInterface } from 'common/types';
 import { getHandleClickProps } from 'common/accessibility';
-import { StoreState, useAppDispatch, useAppSelector } from 'store';
+import type { StoreState } from 'store';
+import { useAppDispatch, useAppSelector } from 'store';
 import { setCollapse } from 'store/thread/actions';
 import { getThreadIsCollapsed } from 'store/thread/getters';
 import { InView } from 'components/root/in-view/in-view';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
 import { CommentForm } from 'components/comment-form';
 
+import styles from './thread.module.css';
+
 interface Props {
   id: CommentInterface['id'];
   childs?: CommentInterface['id'][];
   level: number;
-  mix?: string;
 
   getPreview(text: string): Promise<string>;
 }
@@ -32,7 +35,7 @@ const commentSelector = (id: string) => (state: StoreState) => {
   return { comment, childs, collapsed, theme };
 };
 
-export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview }) => {
+export const Thread: FunctionComponent<Props> = ({ id, level, getPreview }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
   const { collapsed, comment, childs, theme } = useAppSelector(commentSelector(id), shallowEqual);
@@ -47,8 +50,13 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
 
   return (
     <div
-      className={b('thread', { mix }, { level, theme, indented })}
-      role={['listitem'].concat(!collapsed && !!repliesCount ? 'list' : []).join(' ')}
+      className={clsx(
+        styles.root,
+        indented && styles.indented,
+        level === 6 && styles.level6,
+        theme === 'dark' && styles.themeDark
+      )}
+      role={(!collapsed && !!repliesCount ? 'listitem list' : 'listitem') as AriaRole}
       aria-expanded={!collapsed}
     >
       <InView>
@@ -74,7 +82,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, mix, getPreview })
           <Thread key={`thread-${currentId}`} id={currentId} level={Math.min(level + 1, 6)} getPreview={getPreview} />
         ))}
       {level < 6 && (
-        <div className={b('thread__collapse', { mods: { collapsed } })} {...getHandleClickProps(collapse)}>
+        <div className={collapsed ? styles.collapsed : styles.collapse} {...getHandleClickProps(collapse)}>
           <div />
         </div>
       )}

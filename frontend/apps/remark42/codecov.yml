@@ -2,6 +2,10 @@ codecov:
   require_ci_to_pass: false
 
 ignore:
+  # jest leaves these out of collectCoverageFrom; the node dependency-free run reports them, so the
+  # exclusion has to be here to apply to both uploads
+  - app/__stubs__
+  - app/__mocks__
   - .editorconfig
   - .eslitnrc.js
   - .lintstagedrc.cjs

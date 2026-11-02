@@ -1,14 +1,26 @@
 import type { User } from 'common/types';
 
-import { authFetcher } from 'common/fetcher';
+import { authFetcher, dropSession } from 'common/fetcher';
 import { siteId } from 'common/settings';
-import { getUser } from 'common/api';
+import { getSignedInUser, getUser } from 'common/api';
 
 const EMAIL_SIGNIN_ENDPOINT = '/email/login';
 const TELEGRAM_SIGNIN_ENDPOINT = '/telegram/login';
 
+/**
+ * The user a sign-in endpoint answers with is the auth library's own shape, which carries the
+ * admin flag under `attrs` rather than as `admin`, so storing it made an admin a regular user
+ * until the next page load (#2205). Each sign-in loads the user from the API instead. It goes to
+ * `/user` directly rather than through `getUser`, whose `/auth/status` probe has nothing to tell
+ * straight after a sign-in has succeeded
+ */
+async function signin(endpoint: string, query: Record<string, string>): Promise<User> {
+  await authFetcher.get(endpoint, query);
+  return getSignedInUser();
+}
+
 export function anonymousSignin(user: string): Promise<User> {
-  return authFetcher.get<User>('/anonymous/login', { user, aud: siteId });
+  return signin('/anonymous/login', { user, aud: siteId });
 }
 
 /**
@@ -22,7 +34,7 @@ export function emailSignin(email: string, username: string): Promise<unknown> {
  * Second step of two of `email` authorization
  */
 export function verifyEmailSignin(token: string): Promise<User> {
-  return authFetcher.get(EMAIL_SIGNIN_ENDPOINT, { token });
+  return signin(EMAIL_SIGNIN_ENDPOINT, { token });
 }
 
 /**
@@ -42,12 +54,20 @@ export function oauthSignin(url: string): Promise<User | null> {
     return Promise.resolve(null);
   }
 
+  subscribed = true;
+
   return new Promise((resolve, reject) => {
+    // closure-local rather than the module-level `subscribed`, because a second oauthSignin can
+    // start while this one's getUser is still resolving and would clear a flag it does not own
+    let stopped = false;
+
     function unsubscribe() {
+      stopped = true;
       document.removeEventListener('visibilitychange', handleWindowVisibilityChange);
       window.removeEventListener('focus', handleWindowVisibilityChange);
       subscribed = false;
       clearTimeout(timeout);
+      clearTimeout(giveUp);
     }
 
     async function handleWindowVisibilityChange() {
@@ -56,6 +76,12 @@ export function oauthSignin(url: string): Promise<User | null> {
       }
 
       const user = await getUser();
+
+      // the request was in flight when the deadline passed, so there is nothing left to clear the
+      // retry this would otherwise schedule
+      if (stopped) {
+        return;
+      }
 
       clearTimeout(timeout);
 
@@ -72,9 +98,18 @@ export function oauthSignin(url: string): Promise<User | null> {
       unsubscribe();
     }
 
-    setTimeout(() => {
-      reject();
-    }, 5 * 60 * 1000);
+    // giving up has to tear the subscription down as well. the retry above reschedules itself
+    // for as long as getUser keeps returning null, which is the permanent state whenever the
+    // widget is embedded cross-domain and the cookie never becomes readable, so leaving the
+    // listeners attached leaves a poll of /auth/user running for the life of the page against
+    // a route limited to 2 req/s
+    const giveUp = setTimeout(
+      () => {
+        unsubscribe();
+        reject(new Error('Timed out waiting for the authorization window'));
+      },
+      5 * 60 * 1000
+    );
 
     document.addEventListener('visibilitychange', handleWindowVisibilityChange);
     window.addEventListener('focus', handleWindowVisibilityChange);
@@ -95,9 +130,18 @@ export function getTelegramSigninParams(): Promise<{
  * Second step of two of `telegram` authorization
  */
 export function verifyTelegramSignin(token: string): Promise<User> {
-  return authFetcher.get(TELEGRAM_SIGNIN_ENDPOINT, { token });
+  return signin(TELEGRAM_SIGNIN_ENDPOINT, { token });
 }
 
+/**
+ * Signs out, and forgets the session locally whatever the server answers. With the JWT sent as a
+ * header, an expired token is refused with 403, and a fetcher that kept it would sign the reader
+ * back in on the next page load. The refusal is not passed on either: callers clear the signed-in
+ * state only once this resolves, and the credentials are gone by then
+ */
 export function logout(): Promise<void> {
-  return authFetcher.get('/logout');
+  return authFetcher
+    .get<void>('/logout')
+    .catch(() => undefined)
+    .finally(dropSession);
 }

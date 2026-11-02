@@ -15,7 +15,7 @@ import (
 )
 
 type tgRequester interface {
-	Request(ctx context.Context, method string, b []byte, data interface{}) error
+	Request(ctx context.Context, method string, b []byte, data any) error
 }
 
 // TGUpdatesReceiver used to dispatch telegram updates to multiple receivers

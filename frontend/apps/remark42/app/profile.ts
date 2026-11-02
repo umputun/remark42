@@ -1,4 +1,5 @@
-import { setAttributes, setStyles, StylesDeclaration } from 'utils/set-dom-props';
+import type { StylesDeclaration } from 'utils/set-dom-props';
+import { setAttributes, setStyles } from 'utils/set-dom-props';
 import { createIframe } from 'utils/create-iframe';
 import type { Profile } from 'common/types';
 
@@ -22,7 +23,15 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
 
 function createFragment(params: Profile & Record<string, string | unknown>) {
   removeIframe();
-  iframe = createIframe({ ...params, page: 'profile', styles: styles.iframe });
+  // the iframe is hidden until it reveals itself, and a hidden element cannot take
+  // focus, so focus from the reveal rather than on a timer
+  const created: HTMLIFrameElement = createIframe({
+    ...params,
+    page: 'profile',
+    styles: styles.iframe,
+    onReveal: () => created.isConnected && created.focus(),
+  });
+  iframe = created;
 
   if (!root) {
     root = createElement('div', styles.root);
@@ -31,7 +40,6 @@ function createFragment(params: Profile & Record<string, string | unknown>) {
 
   root.appendChild(iframe);
   setStyles(root, styles.rootShown);
-  setTimeout(() => iframe?.focus());
 }
 
 function animateAppear(): void {
@@ -77,6 +85,13 @@ export function openProfile(params: Profile & Record<string, string | unknown>) 
   createFragment(params);
   animateAppear();
   window.addEventListener('keydown', handleKeydown);
+}
+
+// ownsWindow reports whether the message came from the profile frame this module created. The
+// host page's listener has no other way to tell it apart: any frame on the page can post to the
+// parent, and nothing about the message itself says where it came from
+export function ownsWindow(source: MessageEventSource | null): boolean {
+  return source !== null && iframe !== null && source === iframe.contentWindow;
 }
 
 export function closeProfile() {

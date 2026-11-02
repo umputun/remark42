@@ -5,7 +5,8 @@
 
 import './styles';
 
-import { h, FunctionComponent } from 'preact';
+import type { FunctionComponent } from 'preact';
+import { h } from 'preact';
 
 import { useAppSelector } from 'store';
 import {
@@ -18,13 +19,14 @@ import {
 } from 'store/comments/actions';
 import { blockUser, unblockUser, hideUser, setVerifiedStatus } from 'store/user/actions';
 
-import { Comment, CommentProps } from './comment';
+import type { CommentProps } from './comment';
+import { Comment } from './comment';
 import { getCommentMode } from 'store/comments/getters';
 import { uploadImage, getPreview } from 'common/api';
 import { getThreadIsCollapsed } from 'store/thread/getters';
 import { bindActions } from 'utils/actionBinder';
 import { useActions } from 'hooks/useAction';
-import { useIntl } from 'react-intl';
+import { useIntl } from 'common/intl';
 
 type ProvidedProps = Pick<
   CommentProps,

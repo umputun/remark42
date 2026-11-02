@@ -1,10 +1,11 @@
 import '@github/text-expander-element';
-import { h, Fragment, render, FunctionalComponent } from 'preact';
+import type { FunctionalComponent } from 'preact';
+import { h, Fragment, render } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import clsx from 'clsx';
 
 import { StaticStore } from 'common/static-store';
-import { Theme } from 'common/types';
+import type { Theme } from 'common/types';
 import { useTheme } from 'hooks/useTheme';
 
 import styles from './text-expander.module.css';

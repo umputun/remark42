@@ -1,4 +1,4 @@
-import { Sorting, Theme } from './types';
+import type { Sorting, Theme } from './types';
 
 export { BASE_URL, API_BASE, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from './constants.config';
 export const MAX_SHOWN_ROOT_COMMENTS = 10;
@@ -48,3 +48,6 @@ export const IS_THIRD_PARTY: boolean = (() => {
     return true;
   }
 })();
+
+/** clock difference against the server beyond which the reading is treated as unusable */
+export const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;

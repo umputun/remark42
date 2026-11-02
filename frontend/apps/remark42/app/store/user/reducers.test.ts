@@ -1,9 +1,10 @@
 import { getUser } from 'common/api';
-import { User } from 'common/types';
+import type { User } from 'common/types';
 
 import { fetchUser, signin } from './actions';
 import { user } from './reducers';
-import { USER_ACTIONS, USER_SET } from './types';
+import type { USER_ACTIONS } from './types';
+import { USER_SET } from './types';
 
 jest.mock('common/api');
 
@@ -28,12 +29,12 @@ describe('user', () => {
           id: 'john',
           name: 'John',
           admin: true,
-        } as User)
+        }) as User
     );
     const dispatch = jest.fn();
     const getState = jest.fn();
     await fetchUser()(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: USER_SET,
       user: {
         id: 'john',
@@ -55,7 +56,7 @@ describe('user', () => {
       block: false,
       verified: true,
     })(dispatch, getState, undefined);
-    expect(dispatch).toBeCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       type: USER_SET,
       user: {
         name: 'Umputun',

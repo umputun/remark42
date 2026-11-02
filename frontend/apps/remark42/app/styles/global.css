@@ -2,11 +2,19 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  padding: 6px;
-  font-family: system-ui;
+  padding: 0;
+  font-family: var(--font-family);
   font-size: 14px;
   color: rgb(var(--primary-text-color));
+  background: transparent;
   box-sizing: border-box;
+
+  /* parent resizes the iframe element to fit content via postMessage, so the
+     iframe document never needs its own scrollbar. spec-correct replacement
+     for the deprecated `scrolling="no"` attribute removed in c26f45e5 — the
+     `overflow:hidden` on the iframe ELEMENT doesn't control the iframe
+     DOCUMENT's scrollbars, that has to be set inside the document. */
+  overflow: hidden;
 }
 
 input,
@@ -51,7 +59,7 @@ a {
   border-radius: 50%;
   width: 10px;
   height: 10px;
-  text-align: left;
+  text-align: start;
   animation-name: bouncing;
   animation-timing-function: ease-in-out;
   animation-fill-mode: both;
@@ -60,8 +68,6 @@ a {
 }
 
 .preloader {
-  /* stylelint-disable-next-line */
-  color: #fff;
   color: var(--color6, #fff);
   position: relative;
   transform: translate3d(0, -10px, 0);
@@ -86,8 +92,6 @@ a {
 
 .preloader_view_iframe {
   margin: 0 auto;
-  /* stylelint-disable-next-line */
-  color: #888;
   color: var(--color13, #888);
 }
 

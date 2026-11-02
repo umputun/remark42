@@ -2,6 +2,7 @@ package notify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/mail"
 	"net/url"
@@ -16,14 +17,15 @@ type SMTPParams struct {
 	Host               string        // SMTP host
 	Port               int           // SMTP port
 	TLS                bool          // TLS auth
-	StartTLS           bool          // StartTLS auth
+	HELOHost           string        // SMTP HELO/EHLO hostname
+	StartTLS           bool          // startTLS auth
 	InsecureSkipVerify bool          // skip certificate verification
-	ContentType        string        // Content type
-	Charset            string        // Character set
+	ContentType        string        // content type
+	Charset            string        // character set
 	LoginAuth          bool          // LOGIN auth method instead of default PLAIN, needed for Office 365 and outlook.com
 	Username           string        // username
 	Password           string        // password
-	TimeOut            time.Duration // TCP connection timeout
+	TimeOut            time.Duration // TCP connection timeout, the rest of the transaction is bound by the context of Send
 }
 
 // Email notifications client
@@ -56,6 +58,10 @@ func NewEmail(smtpParams SMTPParams) *Email {
 		opts = append(opts, email.Port(smtpParams.Port))
 	}
 
+	if smtpParams.HELOHost != "" {
+		opts = append(opts, email.HELOHost(smtpParams.HELOHost))
+	}
+
 	if smtpParams.TimeOut != 0 {
 		opts = append(opts, email.TimeOut(smtpParams.TimeOut))
 	}
@@ -81,6 +87,10 @@ func NewEmail(smtpParams SMTPParams) *Email {
 // with "mailto:" schema.
 // "unsubscribeLink" passed as a header, https://support.google.com/mail/answer/81126 -> "Use one-click unsubscribe"
 //
+// Note: query parameter values in the mailto URL must be properly URL-encoded. In particular, email addresses
+// containing "+" (e.g. "noreply+tag@example.com") must use "%2B" instead, otherwise "+" is interpreted as a space
+// per standard URL query string parsing. Use url.QueryEscape for all parameter values.
+//
 // Example:
 //
 // - mailto:"John Wayne"<john@example.org>?subject=test-subj&from="Notifier"<notify@example.org>
@@ -91,12 +101,13 @@ func (e *Email) Send(ctx context.Context, destination, text string) error {
 		return fmt.Errorf("problem parsing destination: %w", err)
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		return e.sender.Send(text, emailParams)
+	// SendContext terminates the transaction when ctx is done, including the parts after the connection is made
+	err = e.sender.SendContext(ctx, text, emailParams)
+	if err != nil && ctx.Err() != nil && !errors.Is(err, ctx.Err()) {
+		// transaction was interrupted, report why on top of the error it failed with
+		return fmt.Errorf("%w: %w", ctx.Err(), err)
 	}
+	return err
 }
 
 // Schema returns schema prefix supported by this client

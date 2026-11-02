@@ -1,8 +1,9 @@
 import { h } from 'preact';
-import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import { useMemo } from 'preact/hooks';
 
-import { StoreState, useAppDispatch, useAppSelector } from 'store';
+import { FormattedMessage, defineMessages, useIntl } from 'common/intl';
+import type { StoreState } from 'store';
+import { useAppDispatch, useAppSelector } from 'store';
 import { Select } from 'components/select';
 import { updateSorting } from 'store/comments/actions';
 import type { Sorting } from 'common/types';

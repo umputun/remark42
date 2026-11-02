@@ -5,38 +5,129 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
-      - "frontend/apps/remark42/**"
-      - "frontend/e2e/**"
-      - "frontend/Dockerfile.e2e"
+      - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
+      - "compose-e2e-test.yml"
+      - "Dockerfile"
+      - "!**.md"
 
   pull_request:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
-      - "frontend/apps/remark42/**"
-      - "frontend/e2e/**"
-      - "frontend/Dockerfile.e2e"
+      - "backend/**"
+      - "frontend/**"
+      - "e2e/**"
+      - "compose-e2e-test.yml"
+      - "Dockerfile"
+      - "!**.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
-    name: Tests
-    timeout-minutes: 60
+  # cheap gate: catches a compile break or a lint regression in the build-tagged suite
+  # without paying for the docker build and the browser download
+  vet:
+    name: Vet
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Build & run containers
-        id: tests
-        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
+      - name: Test image stamp
+        run: sh e2e/stamp_test.sh
 
-      - uses: actions/upload-artifact@v6
-        if: always()
+      - name: Set up Go
+        uses: actions/setup-go@v7
         with:
-          name: playwright-report
-          path: ./playwright-report/
+          go-version-file: e2e/go.mod
+          cache-dependency-path: e2e/go.sum
+
+      - name: Vet
+        run: cd e2e && go vet -tags=e2e ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          working-directory: e2e
+          args: --build-tags=e2e --config ../backend/.golangci.yml
+
+  tests:
+    name: Tests
+    needs: vet
+    # generous against the docker build plus the full browser suite: a job cancelled on timeout skips
+    # its own failure steps, so the run would end with neither logs nor traces
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: e2e/go.mod
+          cache-dependency-path: e2e/go.sum
+
+      # the expression env context can't see runner process variables, so ImageOS is copied in
+      - name: Runner image for the playwright cache key
+        run: echo "IMAGE_OS=$ImageOS" >> "$GITHUB_ENV"
+
+      # two directories: the driver (node plus the npm package) and the browser builds,
+      # which include firefox and webkit for the rendering tests. the key carries the runner
+      # image because webkit is built per ubuntu release under one revision directory, and
+      # playwright skips the download when that directory exists
+      - name: Cache playwright driver and browsers
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/ms-playwright-go
+          key: playwright-${{ env.IMAGE_OS }}-${{ hashFiles('e2e/go.sum') }}
+          restore-keys: playwright-${{ env.IMAGE_OS }}-
+
+      # E2E_STAMP is what the suite compares the running stack against, so a stack started here
+      # has to carry the same value `make e2e-up` and the suite itself would give it
+      - name: Build & start the stack
+        run: |
+          ./e2e/tls/generate.sh
+          COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 E2E_STAMP=$(./e2e/stamp.sh) \
+            docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
+
+      # no retry: a failure here is evidence about a suite too young to have a flake rate,
+      # and a rerun is how an intermittent regression becomes invisible. revisit when there
+      # are failures on record to look at
+      - name: Run e2e
+        # stamps this run's comment threads with the CI run, so a thread url in a trace or a
+        # log names the run it came from
+        env:
+          E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        # 20m and four parallel tests, matching the Makefile. the timeout leaves a loaded runner
+        # room to produce a readable test failure; the job's own timeout bounds a wedged run
+        run: cd e2e && go test -tags=e2e -count 1 -parallel 4 -timeout 20m -v ./...
+
+      - name: Server logs on failure
+        if: failure()
+        run: docker compose -f compose-e2e-test.yml logs --tail=200
+
+      - name: Upload browser traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: e2e/traces/
           retention-days: 30
+          if-no-files-found: ignore

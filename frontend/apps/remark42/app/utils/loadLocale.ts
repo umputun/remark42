@@ -1,4 +1,4 @@
-/** this is generated file by "npm run translation:generate" **/
+/** this is generated file by "pnpm translation:generate" **/
 // it is ok that is empty. Default messages from code will be used.
 const enMessages = {};
 
@@ -55,7 +55,9 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
     return import(/* webpackChunkName: "ar" */ '../locales/ar.json').then((res) => res.default).catch(() => enMessages);
   }
   if (locale === 'zh-tw') {
-    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json').then((res) => res.default).catch(() => enMessages);
+    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json')
+      .then((res) => res.default)
+      .catch(() => enMessages);
   }
   if (locale === 'th') {
     return import(/* webpackChunkName: "th" */ '../locales/th.json').then((res) => res.default).catch(() => enMessages);
@@ -71,6 +73,21 @@ export async function loadLocale(locale: string): Promise<Record<string, string>
   }
   if (locale === 'ro') {
     return import(/* webpackChunkName: "ro" */ '../locales/ro.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'sv') {
+    return import(/* webpackChunkName: "sv" */ '../locales/sv.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'he') {
+    return import(/* webpackChunkName: "he" */ '../locales/he.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'nl') {
+    return import(/* webpackChunkName: "nl" */ '../locales/nl.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'is') {
+    return import(/* webpackChunkName: "is" */ '../locales/is.json').then((res) => res.default).catch(() => enMessages);
+  }
+  if (locale === 'hu') {
+    return import(/* webpackChunkName: "hu" */ '../locales/hu.json').then((res) => res.default).catch(() => enMessages);
   }
 
   return enMessages;

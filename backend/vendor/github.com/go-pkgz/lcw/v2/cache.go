@@ -11,9 +11,24 @@ import (
 )
 
 // Sizer allows to perform size-based restrictions, optional.
-// If not defined both maxValueSize and maxCacheSize checks will be ignored
+// Values implementing it define their own size, []byte and string are sized by length.
+// For any other type both maxValueSize and maxCacheSize checks are ignored.
 type Sizer interface {
 	Size() int
+}
+
+// sizeOf returns the size of the value for size-based restrictions and reports
+// whether the value can be sized at all. Sizer takes priority over the built-in types.
+func sizeOf(value any) (int, bool) {
+	switch v := value.(type) {
+	case Sizer:
+		return v.Size(), true
+	case []byte:
+		return len(v), true
+	case string:
+		return len(v), true
+	}
+	return 0, false
 }
 
 // LoadingCache defines guava-like cache with Get method returning cached value ao retrieving it if not in cache

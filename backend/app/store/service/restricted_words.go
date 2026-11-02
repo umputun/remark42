@@ -1,6 +1,7 @@
 package service
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -47,12 +48,7 @@ func (m *RestrictedWordsMatcher) Match(siteID, text string) bool {
 	tokens := m.tokenize(text)
 	trie := newWildcardTrie(restrictedWords...)
 
-	for _, token := range tokens {
-		if trie.check(token) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(tokens, trie.check)
 }
 
 func (m *RestrictedWordsMatcher) tokenize(text string) []string {

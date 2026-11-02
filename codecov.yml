@@ -1,0 +1,9 @@
+# The project gate fails on any drop by default. The frontend suite is shedding jest cases whose
+# behaviour the browser suite asserts instead, and codecov measures only the jest half, so every
+# such removal reads as a drop. Half a percent is enough to pass a deliberate removal and still
+# fail a change that stops covering something.
+coverage:
+  status:
+    project:
+      default:
+        threshold: 0.5%

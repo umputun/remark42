@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import { h, Fragment } from 'preact';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { useIntl, FormattedMessage } from 'react-intl';
 
+import { useIntl, FormattedMessage } from 'common/intl';
+import { getDirection } from 'common/direction';
 import { getUserComments } from 'common/api';
 import { parseQuery } from 'utils/parse-query';
 import { requestDeletion } from 'utils/email';
@@ -18,11 +19,12 @@ import { Spinner } from 'components/spinner/spinner';
 import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
 import { Button } from 'components/auth/components/button';
-import { messages as authMessages } from 'components/auth/auth.messsages';
+import { messages } from 'components/auth/auth.messages';
 import type { Comment as CommentType, Theme, User } from 'common/types';
 
-import styles from './profile.module.css';
 import { Counter } from './components/counter';
+
+import styles from './profile.module.css';
 
 const COMMENTS_LIMIT = 10;
 
@@ -135,7 +137,7 @@ export function Profile() {
       <div className={styles.titleWrapper}>
         <h3 className={clsx('profile-title', styles.title)}>
           {isCurrent ? (
-            <FormattedMessage key="user.my-comments" id="user.my-comments" defaultMessage="My comments" />
+            <FormattedMessage key="user.my-comments" id="user.my-comments" defaultMessage="Your comments" />
           ) : (
             <FormattedMessage key="user.comments" id="user.comments" defaultMessage="Comments" />
           )}
@@ -174,12 +176,12 @@ export function Profile() {
     </>
   ) : (
     <p className={clsx('profile-emptyState', styles.emptyState)}>
-      <FormattedMessage id="empty-state" defaultMessage="Don't have comments yet" />
+      <FormattedMessage id="empty-state" defaultMessage="No comments yet." />
     </p>
   );
 
   return (
-    <div className={clsx('profile', styles.root)} ref={rootRef}>
+    <div dir={getDirection(intl.locale)} className={clsx('profile', styles.root)} ref={rootRef}>
       {/* disable jsx-a11y/no-static-element-interactions and jsx-a11y/click-events-have-key-events  */}
       {/* that's fine because inside the element we have button that will throw all events and provide all the interactions */}
       {/* eslint-disable-next-line */}
@@ -200,7 +202,7 @@ export function Profile() {
           {isCurrent && (
             <button
               className={clsx('profile-signout', styles.signout)}
-              title={intl.formatMessage(authMessages.signout)}
+              title={intl.formatMessage(messages.signout)}
               onClick={handleClickLogout}
               disabled={isSigningOut}
             >
@@ -225,7 +227,7 @@ export function Profile() {
         {isCurrent && !isUserAnonymous(user as unknown as User) ? (
           <footer className={clsx('profile-footer', styles.footer)}>
             <Button kind="hollow" size="sm" onClick={handleClickRequestRemoveData}>
-              <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request my data removal" />
+              <FormattedMessage id="profile.request-to-delete-data" defaultMessage="Request deletion of my data" />
             </Button>
           </footer>
         ) : // TODO: implement hiding user comments

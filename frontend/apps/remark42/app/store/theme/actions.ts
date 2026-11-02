@@ -1,6 +1,6 @@
-import { Theme } from 'common/types';
+import type { Theme } from 'common/types';
 
-import { StoreAction } from '../';
+import type { StoreAction } from '../';
 import { THEME_SET } from './types';
 
 export const setTheme =

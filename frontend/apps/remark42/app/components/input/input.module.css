@@ -31,6 +31,15 @@
     color: var(--color11);
     -webkit-text-fill-color: var(--color11);
   }
+
+  /* dir="auto" only sniffs the field's own value, never the placeholder, so an
+     empty field stays direction: ltr even when its placeholder is Hebrew or Arabic.
+     Falling back to the ancestor's direction while the placeholder is showing fixes that,
+     since the placeholder text always matches the active locale's direction; it stops applying
+     the moment real input exists, so mid-typing auto-detection is unaffected. */
+  &:placeholder-shown {
+    direction: inherit;
+  }
 }
 
 .input:-webkit-autofill {
@@ -38,7 +47,9 @@
   -webkit-text-fill-color: var(--color7);
 
   &:focus {
-    box-shadow: 0 0 0 1000px rgb(var(--white-color)) inset, 0 0 0 2px var(--color47);
+    box-shadow:
+      0 0 0 1000px rgb(var(--white-color)) inset,
+      0 0 0 2px var(--color47);
   }
 
   &::placeholder {
@@ -49,7 +60,7 @@
 :global(.dark) {
   & .input {
     background-color: var(--color22);
-    color: rgba(var(--white-color), 0.8);
+    color: rgb(var(--white-color), 0.8);
 
     &:focus {
       border-color: var(--color15);
@@ -57,21 +68,23 @@
     }
 
     &::placeholder {
-      color: rgba(var(--white-color), 0.2);
+      color: rgb(var(--white-color), 0.2);
     }
   }
 
   & .input:-webkit-autofill {
     box-shadow: 0 0 0 1000px var(--color22) inset;
-    -webkit-text-fill-color: rgba(var(--white-color), 0.8);
+    -webkit-text-fill-color: rgb(var(--white-color), 0.8);
 
     &:focus {
-      box-shadow: 0 0 0 1000px var(--color22) inset, 0 0 0 2px var(--color47);
-      -webkit-text-fill-color: rgba(var(--white-color), 0.8);
+      box-shadow:
+        0 0 0 1000px var(--color22) inset,
+        0 0 0 2px var(--color47);
+      -webkit-text-fill-color: rgb(var(--white-color), 0.8);
     }
 
     &::placeholder {
-      -webkit-text-fill-color: rgba(var(--white-color), 0.4);
+      -webkit-text-fill-color: rgb(var(--white-color), 0.4);
     }
   }
 }

@@ -30,8 +30,8 @@ type DialogInput struct {
 
 // DialogTrigger ...
 type DialogTrigger struct {
-	TriggerID string `json:"trigger_id"` //Required. Must respond within 3 seconds.
-	Dialog    Dialog `json:"dialog"`     //Required.
+	TriggerID string `json:"trigger_id"` // Required. Must respond within 3 seconds.
+	Dialog    Dialog `json:"dialog"`     // Required.
 }
 
 // Dialog as in Slack dialogs
@@ -47,9 +47,11 @@ type Dialog struct {
 }
 
 // DialogElement abstract type for dialogs.
-type DialogElement interface{}
+type DialogElement any
 
-// DialogCallback DEPRECATED use InteractionCallback
+// DialogCallback
+//
+// Deprecated: use InteractionCallback
 type DialogCallback InteractionCallback
 
 // DialogSubmissionCallback is sent from Slack when a user submits a form from within a dialog
@@ -106,8 +108,7 @@ func (api *Client) OpenDialogContext(ctx context.Context, triggerID string, dial
 	}
 
 	response := &DialogOpenResponse{}
-	endpoint := api.endpoint + "dialog.open"
-	if err := postJSON(ctx, api.httpclient, endpoint, api.token, encoded, response, api); err != nil {
+	if err := api.postJSONMethod(ctx, "dialog.open", api.token, encoded, response); err != nil {
 		return err
 	}
 

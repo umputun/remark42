@@ -1,4 +1,4 @@
-import { User, BlockedUser } from 'common/types';
+import type { User, BlockedUser } from 'common/types';
 
 export const USER_SET = 'USER/SET';
 

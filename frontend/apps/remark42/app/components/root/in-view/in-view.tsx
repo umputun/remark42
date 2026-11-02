@@ -1,5 +1,6 @@
-import { Component, VNode } from 'preact';
-import { useState, useEffect, useRef, PropRef } from 'preact/hooks';
+import type { Component, VNode } from 'preact';
+import type { PropRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 
 let instanceMap: WeakMap<Element, (inView: boolean) => void>;
 let observer: IntersectionObserver;

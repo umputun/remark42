@@ -15,6 +15,7 @@ debug.test
 .mongo
 remark42
 /bin/
+/dist/
 /backend/var/
 /backend/app/var/
 /backend/app/cmd/web/
@@ -24,8 +25,22 @@ compose-private-frontend.yml
 compose-private.yml
 /backend/_example/*/vendor
 http-client.env.json
-/playwright-report/
 /backend/app/cmd/var
+/.turbo/
+/site/node_modules/
 
 # ralphex progress logs
 .ralphex/progress/
+
+# traces from failed e2e runs
+/e2e/traces/
+
+# self-signed certificate for the e2e https services, made by e2e/tls/generate.sh
+/e2e/tls/*.pem
+
+# profiles from `make e2e-cover`
+e2e/coverage/
+
+# git worktrees, kept inside the repo so they are easy to find and easy to forget
+.worktrees/
+.claude/worktrees/

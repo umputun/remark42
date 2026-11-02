@@ -1,12 +1,13 @@
 import '@testing-library/jest-dom';
 import { fireEvent, screen, waitFor } from '@testing-library/preact';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import { render } from 'tests/utils';
 import { StaticStore } from 'common/static-store';
 import * as localStorageModule from 'common/local-storage';
 
-import { CommentForm, Props, messages } from './comment-form';
+import type { Props } from './comment-form';
+import { CommentForm, messages } from './comment-form';
 import { updatePersistedComments, getPersistedComments } from './comment-form.persist';
 
 const user: Props['user'] = {
@@ -19,7 +20,7 @@ const user: Props['user'] = {
   verified: false,
 };
 
-function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<typeof StaticStore['config']> = {}) {
+function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<(typeof StaticStore)['config']> = {}) {
   Object.assign(StaticStore.config, overrideConfig);
 
   const props = {
@@ -45,22 +46,6 @@ describe('<CommentForm />', () => {
   });
 
   describe('with initial comment value', () => {
-    it('should has empty value', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
-    it('should get initial value from localStorage', () => {
-      const value = 'text';
-
-      updatePersistedComments('1', value);
-      setup();
-      expect(screen.getByTestId('textarea_1')).toHaveValue(value);
-    });
-
     it('should get initial value from props instead localStorage', () => {
       const value = 'text from props';
 
@@ -94,10 +79,61 @@ describe('<CommentForm />', () => {
     });
   });
 
+  describe('page title sent with a new comment', () => {
+    afterEach(() => {
+      delete window.remark_config.host_page_title;
+      document.title = '';
+    });
+
+    async function submit() {
+      const onSubmit = jest.fn(() => Promise.resolve());
+      setup({ onSubmit });
+      fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: 'hello' } });
+      fireEvent.submit(screen.getByTestId('textarea_1'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      return onSubmit;
+    }
+
+    it('sends the title the host page posted', async () => {
+      document.title = 'Comments';
+      window.remark_config.host_page_title = 'A post on the host page';
+      expect(await submit()).toHaveBeenCalledWith('hello', 'A post on the host page');
+    });
+
+    // a widget opened on its own has only the placeholder from iframe.ejs, which names no page.
+    // an empty title is what makes the backend read the real one from the page
+    it("sends no title when no host page posted one, not the widget's own", async () => {
+      document.title = 'Comments';
+      expect(await submit()).toHaveBeenCalledWith('hello', '');
+    });
+  });
+
   it(`doesn't render preview button and markdown toolbar in simple mode`, () => {
     setup({ user }, { simple_view: true });
     expect(screen.queryByTestId('markdown-toolbar')).not.toBeInTheDocument();
     expect(screen.queryByText('Preview')).not.toBeInTheDocument();
+  });
+
+  describe('placeholder', () => {
+    it('shows the comment placeholder in main mode', () => {
+      setup({ mode: 'main' });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your comment here');
+    });
+
+    it('shows the reply placeholder in reply mode', () => {
+      setup({ mode: 'reply' });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your reply here');
+    });
+
+    it('shows the comment placeholder when editing a top-level comment', () => {
+      setup({ mode: 'edit', isReply: false });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your comment here');
+    });
+
+    it('shows the reply placeholder when editing a reply', () => {
+      setup({ mode: 'edit', isReply: true });
+      expect(screen.getByTestId('textarea_1')).toHaveAttribute('placeholder', 'Your reply here');
+    });
   });
 
   it.each`
@@ -115,7 +151,7 @@ describe('<CommentForm />', () => {
       it('renders email subscription button', () => {
         setup({ user }, { simple_view: true, email_notifications: true });
         expect(screen.getByText(/Subscribe by/)).toBeVisible();
-        expect(screen.getByTitle('Subscribe by Email')).toBeVisible();
+        expect(screen.getByTitle('Subscribe by email')).toBeVisible();
       });
       it('renders rss subscription button', () => {
         setup({ user }, { simple_view: true });
@@ -145,19 +181,10 @@ describe('<CommentForm />', () => {
         expect(matchCount).toBe(2);
       });
     });
-    it('renders without email subscription button when email_notifications disabled', () => {
-      setup({ user }, { email_notifications: false });
-      expect(screen.queryByTitle('Subscribe by Email')).not.toBeInTheDocument();
-    });
     it('renders Telegram subscription button', () => {
       setup({ user }, { telegram_notifications: true });
       expect(screen.getByText(/Subscribe by/)).toBeVisible();
       expect(screen.getByTitle('Subscribe by Telegram')).toBeVisible();
-    });
-
-    it('renders without Telegram subscription button if telegram_notifications is false', () => {
-      setup({ user }, { telegram_notifications: false });
-      expect(screen.queryByTitle('Subscribe by Telegram')).not.toBeInTheDocument();
     });
   });
 

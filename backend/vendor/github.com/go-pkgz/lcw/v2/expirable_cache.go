@@ -18,9 +18,14 @@ type ExpirableCache[V any] struct {
 	currentSize int64
 	id          string
 	backend     *expirable.LRU[string, V]
+	loads       loadGroup[V]
 }
 
-// NewExpirableCache makes expirable LoadingCache implementation, 1000 max keys by default and 5m TTL
+// NewExpirableCache makes expirable LoadingCache implementation, 1000 max keys by default and 5m TTL.
+// Note that the underlying hashicorp/golang-lru expirable backend calls eviction callbacks while
+// holding its own lock, so an OnEvicted handler must not call back into the same cache, it would deadlock.
+// The same handler is safe to use with LruCache and with the v1 ExpirableCache.
+// Reported upstream as https://github.com/hashicorp/golang-lru/issues/230
 func NewExpirableCache[V any](opts ...Option[V]) (*ExpirableCache[V], error) {
 	res := ExpirableCache[V]{
 		Workers: Workers[V]{
@@ -46,8 +51,7 @@ func NewExpirableCache[V any](opts ...Option[V]) (*ExpirableCache[V], error) {
 		if res.onEvicted != nil {
 			res.onEvicted(key, value)
 		}
-		if s, ok := any(value).(Sizer); ok {
-			size := s.Size()
+		if size, ok := sizeOf(value); ok {
 			atomic.AddInt64(&res.currentSize, -1*int64(size))
 		}
 		// ignore the error on Publish as we don't have log inside the module and
@@ -66,26 +70,36 @@ func (c *ExpirableCache[V]) Get(key string, fn func() (V, error)) (data V, err e
 		return v, nil
 	}
 
-	if data, err = fn(); err != nil {
-		atomic.AddInt64(&c.Errors, 1)
-		return data, err
-	}
-	atomic.AddInt64(&c.Misses, 1)
+	// concurrent callers for the same key wait for the first load instead of loading on their own,
+	// otherwise each of them would add the value and count its size again
+	return c.loads.do(key, func() (V, error) {
+		if v, ok := c.backend.Get(key); ok { // filled by the load we were waiting for
+			atomic.AddInt64(&c.Hits, 1)
+			return v, nil
+		}
 
-	if !c.allowed(key, data) {
-		return data, nil
-	}
+		data, err := fn()
+		if err != nil {
+			atomic.AddInt64(&c.Errors, 1)
+			return data, err
+		}
+		atomic.AddInt64(&c.Misses, 1)
 
-	if s, ok := any(data).(Sizer); ok {
-		if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(s.Size()) >= c.maxCacheSize {
+		if !c.allowed(key, data) {
 			return data, nil
 		}
-		atomic.AddInt64(&c.currentSize, int64(s.Size()))
-	}
 
-	c.backend.Add(key, data)
+		if size, ok := sizeOf(data); ok {
+			if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(size) >= c.maxCacheSize {
+				return data, nil
+			}
+			atomic.AddInt64(&c.currentSize, int64(size))
+		}
 
-	return data, nil
+		c.backend.Add(key, data)
+
+		return data, nil
+	})
 }
 
 // Invalidate removes keys with passed predicate fn, i.e. fn(key) should be true to get evicted
@@ -154,14 +168,14 @@ func (c *ExpirableCache[V]) keys() int {
 }
 
 func (c *ExpirableCache[V]) allowed(key string, data V) bool {
-	if c.backend.Len() >= c.maxKeys {
+	if c.maxKeys > 0 && c.backend.Len() >= c.maxKeys {
 		return false
 	}
 	if c.maxKeySize > 0 && len(key) > c.maxKeySize {
 		return false
 	}
-	if s, ok := any(data).(Sizer); ok {
-		if c.maxValueSize > 0 && s.Size() >= c.maxValueSize {
+	if size, ok := sizeOf(data); ok {
+		if c.maxValueSize > 0 && size >= c.maxValueSize {
 			return false
 		}
 	}

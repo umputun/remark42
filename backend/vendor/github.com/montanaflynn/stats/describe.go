@@ -9,6 +9,7 @@ type Description struct {
 	Std                    float64
 	Max                    float64
 	Min                    float64
+	Range                  float64
 	DescriptionPercentiles []descriptionPercentile
 	AllowedNaN             bool
 }
@@ -39,6 +40,7 @@ func DescribePercentileFunc(input Float64Data, allowNaN bool, percentiles *[]flo
 	description.Std, _ = StandardDeviation(input)
 	description.Max, _ = Max(input)
 	description.Min, _ = Min(input)
+	description.Range, _ = Range(input)
 	description.Mean, _ = Mean(input)
 
 	if percentiles != nil {
@@ -60,6 +62,7 @@ Represents the Description instance in a string format with specified number of 
 	std     0.82
 	max     3.00
 	min     1.00
+	range   2.00
 	25.00%  NaN
 	50.00%  1.50
 	75.00%  2.50
@@ -73,6 +76,7 @@ func (d *Description) String(decimals int) string {
 	str += fmt.Sprintf("std\t%.*f\n", decimals, d.Std)
 	str += fmt.Sprintf("max\t%.*f\n", decimals, d.Max)
 	str += fmt.Sprintf("min\t%.*f\n", decimals, d.Min)
+	str += fmt.Sprintf("range\t%.*f\n", decimals, d.Range)
 	for _, percentile := range d.DescriptionPercentiles {
 		str += fmt.Sprintf("%.2f%%\t%.*f\n", percentile.Percentile, decimals, percentile.Value)
 	}

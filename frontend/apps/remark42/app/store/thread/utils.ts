@@ -1,32 +1,31 @@
 import { siteId, url } from 'common/settings';
 import { LS_COLLAPSE_KEY } from 'common/constants';
-import { setItem as localStorageSetItem, getItem as localStorageGetItem } from 'common/local-storage';
-import { Comment } from 'common/types';
+import { setItem as localStorageSetItem, getJsonItem } from 'common/local-storage';
+import type { Comment } from 'common/types';
 
-function getFromLocalStorage(): string[] {
-  return JSON.parse(localStorageGetItem(LS_COLLAPSE_KEY) || '[]');
+import { normalizeCollapsed, readCollapsed, writeCollapsed } from './collapse-store';
+
+/**
+ * Where the collapsed-threads record meets localStorage. The record's own shape and rules live in
+ * collapse-store.ts, which carries the cases worth testing.
+ */
+function getFromLocalStorage() {
+  // getJsonItem rather than a bare parse: the value is whatever is in the browser's storage,
+  // and a throw here would take down the restore this runs from, leaving the widget with no
+  // thread at all over a view preference
+  return normalizeCollapsed(getJsonItem<unknown>(LS_COLLAPSE_KEY));
 }
 
 /**
- * returns list of serialized comments of type "site-id_url_comment-id"
+ * returns the ids of the collapsed comments on the current page
  */
-export const getCollapsedComments = (): string[] =>
-  getFromLocalStorage().reduce((acc: string[], v: string) => {
-    const components = v.split('_');
-    if (components[0] === siteId && components[1] === url) {
-      acc.push(components[2]);
-    }
-    return acc;
-  }, []);
+export const getCollapsedComments = (): Comment['id'][] => readCollapsed(getFromLocalStorage(), siteId, url);
 
 /**
  * @param siteId site id
  * @param url url of the page with comments
- * @param info list of string of type "site-id_url_comment-id
+ * @param info ids of the comments collapsed on that page
  */
 export const saveCollapsedComments = (siteId: string, url: string, info: Comment['id'][]): void => {
-  const data = info.map((i) => `${siteId}_${url}_${i}`);
-  const notForThisPost = getFromLocalStorage().filter((entry) => entry.indexOf(`${siteId}_${url}`) === -1);
-  const all = new Set([...notForThisPost, ...data]);
-  localStorageSetItem(LS_COLLAPSE_KEY, JSON.stringify([...all]));
+  localStorageSetItem(LS_COLLAPSE_KEY, JSON.stringify(writeCollapsed(getFromLocalStorage(), siteId, url, info)));
 };

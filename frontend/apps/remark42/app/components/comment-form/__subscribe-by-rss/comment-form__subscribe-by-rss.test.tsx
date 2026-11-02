@@ -1,34 +1,33 @@
-import { shallow } from 'enzyme';
+import { fireEvent, screen } from '@testing-library/preact';
+
+import { render } from 'tests/utils';
 
 import { SubscribeByRSS, createSubscribeUrl } from '.';
 
-jest.mock('react-redux', () => ({
-  useSelector: jest.fn((fn) => fn({ theme: 'light' })),
-}));
+import styles from './subscribe-by-rss.module.css';
 
-jest.mock('react-intl', () => {
-  const messages = require('locales/en.json');
-  const reactIntl = jest.requireActual('react-intl');
-  const intlProvider = new reactIntl.IntlProvider({ locale: 'en', messages }, {});
+/** Renders the widget and opens the dropdown, since the links only exist while it is open. */
+function renderOpened() {
+  const result = render(<SubscribeByRSS userId="user-1" />, { theme: 'light' });
 
-  return {
-    ...reactIntl,
-    useIntl: () => intlProvider.state.intl,
-  };
-});
+  // the toggle is the only button until the dropdown opens, so this does not depend
+  // on the button's title copy
+  fireEvent.click(screen.getByRole('button'));
+
+  return result;
+}
 
 describe('<SubscribeByRSS/>', () => {
   it('should be render links in dropdown', () => {
-    const wrapper = shallow(<SubscribeByRSS userId="user-1" />);
+    const { container } = renderOpened();
 
-    expect(wrapper.find('.comment-form__rss-dropdown__link')).toHaveLength(3);
+    expect(container.querySelectorAll(`.${styles.link}`)).toHaveLength(3);
   });
 
   it('should have userId in replies link', () => {
-    const wrapper = shallow(<SubscribeByRSS userId="user-1" />);
+    const { container } = renderOpened();
+    const links = container.querySelectorAll(`.${styles.link}`);
 
-    expect(wrapper.find('.comment-form__rss-dropdown__link').at(2).prop('href')).toBe(
-      createSubscribeUrl('reply', '&user=user-1')
-    );
+    expect(links[2].getAttribute('href')).toBe(createSubscribeUrl('reply', '&user=user-1'));
   });
 });

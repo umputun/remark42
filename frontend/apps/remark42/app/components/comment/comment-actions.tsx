@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { h, Fragment } from 'preact';
-import { defineMessages, useIntl } from 'react-intl';
 
-import { BlockTTL } from 'common/types';
+import { defineMessages, useIntl } from 'common/intl';
+import type { BlockTTL } from 'common/types';
 import { Select } from 'components/select';
 import { Countdown } from 'components/countdown';
 import { Button } from 'components/auth/components/button';
@@ -132,15 +132,15 @@ const messages = defineMessages({
   unblock: { id: 'comment.unblock', defaultMessage: 'Unblock' },
   pin: { id: 'comment.pin', defaultMessage: 'Pin' },
   unpin: { id: 'comment.unpin', defaultMessage: 'Unpin' },
-  hide: { id: 'comment.hide', defaultMessage: 'Hide' },
+  hide: { id: 'comment.hide', defaultMessage: 'Hide user' },
   cancel: { id: 'comment.cancel', defaultMessage: 'Cancel' },
   edit: { id: 'comment.edit', defaultMessage: 'Edit' },
   reply: { id: 'comment.reply', defaultMessage: 'Reply' },
   delete: { id: 'comment.delete', defaultMessage: 'Delete' },
-  editCountdown: { id: 'comment.edit-countdown', defaultMessage: 'Edit will be disabled' },
+  editCountdown: { id: 'comment.edit-countdown', defaultMessage: 'Time left to edit' },
   copied: { id: 'comment.copied', defaultMessage: 'Copied!' },
   copy: { id: 'comment.copy', defaultMessage: 'Copy' },
   approve: { id: 'comment.approve', defaultMessage: 'Approve' },
   disapprove: { id: 'comment.disapprove', defaultMessage: 'Disapprove' },
-  blockingPeriod: { id: 'comment.blocking-period', defaultMessage: 'Blocking period' },
+  blockingPeriod: { id: 'comment.blocking-period', defaultMessage: 'Blocked for' },
 });

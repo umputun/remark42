@@ -1,14 +1,14 @@
-import { StoreAction } from 'store';
-import { Action } from 'redux';
+import type { StoreAction } from 'store';
+import type { Action } from 'redux';
 
 /** Helper type which is used to convert actionCreator to redux `connect` bound prop */
 export type BoundActionCreator<A> = A extends (...args: infer U) => StoreAction<infer R>
   ? (...args: U) => R
   : A extends (...args: infer U) => Action<infer R>
-  ? (...args: U) => Action<R>
-  : A extends (...args: infer U) => Promise<infer R>
-  ? (...args: U) => Promise<R>
-  : never;
+    ? (...args: U) => Action<R>
+    : A extends (...args: infer U) => Promise<infer R>
+      ? (...args: U) => Promise<R>
+      : never;
 
 /** Helper type which is used to convert actionCreators map to redux `connect` bound props */
 export type BoundActionCreators<T extends object> = { [K in keyof T]: BoundActionCreator<T[K]> };

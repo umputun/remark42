@@ -1,13 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -15,24 +18,48 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
+	log "github.com/go-pkgz/lgr"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jessevdk/go-flags"
 	"go.uber.org/goleak"
 
+	cache "github.com/go-pkgz/lcw/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark42/backend/app/notify"
+)
+
+const (
+	// budget for a server to bind and answer, generous enough for a loaded CI runner
+	serverStartTimeout = 30 * time.Second
+	serverStartPoll    = 10 * time.Millisecond
+
+	// budget for a server to stop once asked. tight enough to catch a shutdown that hangs,
+	// loose enough not to depend on how loaded the runner is
+	serverStopTimeout = 10 * time.Second
+
+	// connect budget for a single probe. kept off the poll interval so a slow loopback connect
+	// on a loaded runner does not look like a server that is not listening
+	probeDialTimeout = time.Second
+
+	// the /auth/ group is limited to 2 req/s, so retries sit at its refill interval rather than
+	// above it, which would only manufacture more 429s
+	authRetryPoll = 500 * time.Millisecond
 )
 
 func TestServerApp(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -47,7 +74,7 @@ func TestServerApp(t *testing.T) {
 	// add comment
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.SetBasicAuth("admin", "password")
@@ -67,7 +94,7 @@ func TestServerApp(t *testing.T) {
 }
 
 func TestServerApp_DevMode(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.AdminPasswd = "password"
@@ -76,10 +103,10 @@ func TestServerApp_DevMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 11+1, len(providers), "extra auth provider")
+	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "dev", providers[len(providers)-2].Name(), "dev auth provider")
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -95,8 +122,32 @@ func TestServerApp_DevMode(t *testing.T) {
 	app.Wait()
 }
 
+func TestServerApp_CustomOAuthProvider(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Custom.Name = "oidc"
+		o.Auth.Custom.CID = "cid"
+		o.Auth.Custom.CSEC = "csec"
+		o.Auth.Custom.AuthURL = "https://example.com/oauth2/authorize"
+		o.Auth.Custom.TokenURL = "https://example.com/oauth2/token"
+		o.Auth.Custom.InfoURL = "https://example.com/oauth2/userinfo"
+		return o
+	})
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+
+	providers := app.restSrv.Authenticator.Providers()
+	require.Equal(t, 10+1, len(providers), "extra auth provider")
+	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
+
+	cancel()
+	app.Wait()
+}
+
 func TestServerApp_AnonMode(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		o.Auth.Anonymous = true
@@ -104,10 +155,10 @@ func TestServerApp_AnonMode(t *testing.T) {
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	providers := app.restSrv.Authenticator.Providers()
-	require.Equal(t, 11+1, len(providers), "extra auth provider for anon")
+	require.Equal(t, 10+1, len(providers), "extra auth provider for anon")
 	assert.Equal(t, "anonymous", providers[len(providers)-1].Name(), "anon auth provider")
 
 	client := http.Client{Timeout: 10 * time.Second}
@@ -123,13 +174,12 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, "pong", string(body))
 
 	// try to login with good name
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as good anonymous
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -143,58 +193,44 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// try to login with non-latin name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port))
-	require.NoError(t, err)
+	nonLatin := fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=Раз_Два%20%20Три_34567&aud=remark", port)
+	resp = getRetryThrottled(t, &client, nonLatin)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to login with bad name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=**blah123&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with short name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=bl%%20%%20&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in prefix
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%%20somebody&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with name what have space in suffix
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=somebody%%20&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with long name
-	time.Sleep(time.Second)
 	ln := strings.Repeat("x", 65)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=%s&aud=remark", port, ln))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 	// try to login with admin name
-	time.Sleep(time.Second)
-	resp, err = client.Get(fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
-	require.NoError(t, err)
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=umpUtun&aud=remark", port))
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// try to add a comment as anonymous with admin name
-	time.Sleep(time.Second)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 
@@ -225,12 +261,12 @@ func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn s
 
 func TestServerApp_WithSSL(t *testing.T) {
 	opts := ServerCommand{}
-	sslPort := chooseRandomUnusedPort()
+	sslPort := chooseUnusedPort(t)
 	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
 		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
@@ -245,8 +281,9 @@ func TestServerApp_WithSSL(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // this context is not the one createAppFromCmd registers for cleanup
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPSServerStart(sslPort)
+	waitForServerStart(t, sslPort, port) // the redirect check below uses the plain http port
 
 	client := http.Client{
 		// prevent http redirect
@@ -287,7 +324,7 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
 		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
@@ -301,8 +338,9 @@ func TestServerApp_WithRemote(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // this context is not the one createAppFromCmd registers for cleanup
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -352,6 +390,16 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
 	t.Log(err)
 
+	// invalid trusted proxy CIDR fails fast, before any resource is created
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--backup=/tmp", "--trusted-proxy=nonsense"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err, `invalid --trusted-proxy: invalid trusted proxy "nonsense"`)
+	t.Log(err)
+
 	// wrong store type
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
@@ -389,37 +437,209 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: an AppleProvider creating failed: "+
 			"provided private key is not ECDSA")
 	t.Log(err)
+
+	// incomplete custom oauth config
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.name=oidc", "--auth.custom.cid=123"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
+			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
+	t.Log(err)
+}
+
+func TestIsReservedCustomProviderName(t *testing.T) {
+	reserved := []string{
+		"email", "anonymous", "google", "github", "facebook", "yandex", "twitter",
+		"microsoft", "patreon", "discord", "telegram", "dev", "apple",
+	}
+
+	for _, name := range reserved {
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, isReservedCustomProviderName(name))
+		})
+	}
+
+	assert.False(t, isReservedCustomProviderName("oidc"))
+}
+
+func TestIsValidCustomProviderName(t *testing.T) {
+	valid := []string{"oidc", "codeberg", "provider_1", "provider-1", "a1"}
+	for _, name := range valid {
+		t.Run("valid_"+name, func(t *testing.T) {
+			assert.True(t, isValidCustomProviderName(name))
+		})
+	}
+
+	invalid := []string{"", " has-space", "has space", "Uppercase", "provider!", "-provider", "_provider"}
+	for _, name := range invalid {
+		t.Run("invalid_"+strings.ReplaceAll(name, " ", "_"), func(t *testing.T) {
+			assert.False(t, isValidCustomProviderName(name))
+		})
+	}
+}
+
+func TestCustomProviderSourceID(t *testing.T) {
+	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
+
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
+	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
+	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
+	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
+	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+}
+
+func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
+	baseArgs := []string{
+		"--store.bolt.path=/tmp",
+		"--backup=/tmp",
+		"--image.fs.path=/tmp",
+		"--auth.custom.cid=123",
+		"--auth.custom.csec=456",
+		"--auth.custom.auth-url=https://example.com/oauth2/authorize",
+		"--auth.custom.token-url=https://example.com/oauth2/token",
+		"--auth.custom.info-url=https://example.com/oauth2/userinfo",
+	}
+
+	t.Run("reserved", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=twitter"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "twitter" is reserved`)
+	})
+
+	t.Run("not_url_safe", func(t *testing.T) {
+		opts := ServerCommand{}
+		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+		p := flags.NewParser(&opts, flags.Default)
+		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=bad name"))
+		require.NoError(t, err)
+
+		_, err = opts.newServerApp(context.Background())
+		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "bad name" is invalid, expected pattern "^[a-z0-9][a-z0-9_-]*$"`)
+	})
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = chooseRandomUnusedPort()
+		o.Port = port
 		return o
 	})
-	time.AfterFunc(100*time.Millisecond, func() {
-		cancel()
-	})
-	st := time.Now()
-	err := app.run(ctx)
-	assert.NoError(t, err)
-	assert.True(t, time.Since(st).Seconds() < 1, "should take about 100msec")
+
+	// cancel once the server actually answers, so the test measures shutdown and not startup.
+	// the deferred cancel also covers a failed wait, keeping app.run from racing the next test
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+	defer cancel()
+	waitForHTTPServerStart(t, port)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		assert.NoError(t, err)
+	case <-time.After(serverStopTimeout):
+		t.Fatal("server app did not stop after context cancel")
+	}
 	app.Wait()
 }
 
-func TestServerApp_MainSignal(t *testing.T) {
-	done := make(chan struct{})
-	go func() {
-		<-done
-		time.Sleep(250 * time.Millisecond)
-		err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+// TestServerApp_ClaimsUpd covers the hook the authenticator runs on every token mint, refresh
+// included: it stamps admin, blocked and email onto the claims and blocks impersonation of a
+// restricted name. Calling the updater directly keeps it independent of when a token expires.
+func TestServerApp_ClaimsUpd(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		return o
+	})
+
+	// the app owns stores and services that only run closes, so it goes through the usual
+	// lifecycle here rather than being built and abandoned
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+	defer app.Wait()
+	defer cancel()
+
+	upd := app.restSrv.Authenticator.TokenService().ClaimsUpd
+	require.NotNil(t, upd, "claims updater wired into the token service")
+
+	claimsFor := func(id, name string) token.Claims {
+		return token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}},
+			User:             &token.User{ID: id, Name: name},
+		}
+	}
+
+	t.Run("plain user gets no attributes", func(t *testing.T) {
+		res := upd.Update(claimsFor("provider1_dev", "developer"))
+		assert.False(t, res.User.IsAdmin(), "not an admin")
+		assert.False(t, res.User.BoolAttr("blocked"), "not blocked")
+		assert.Empty(t, res.User.Email, "no email on file")
+	})
+
+	t.Run("admin from the admin store", func(t *testing.T) {
+		res := upd.Update(claimsFor("id1", "admin one"))
+		assert.True(t, res.User.IsAdmin(), "id1 is listed as admin")
+	})
+
+	t.Run("blocked user carries the blocked attribute", func(t *testing.T) {
+		require.NoError(t, app.restSrv.DataService.SetBlock("remark", "blocked_user", true, time.Hour))
+		res := upd.Update(claimsFor("blocked_user", "blocked"))
+		assert.True(t, res.User.BoolAttr("blocked"), "block is reflected on refresh")
+	})
+
+	t.Run("email is read from the store", func(t *testing.T) {
+		_, err := app.restSrv.DataService.SetUserEmail("remark", "with_email", "user@example.com")
 		require.NoError(t, err)
-	}()
+		res := upd.Update(claimsFor("with_email", "someone"))
+		assert.Equal(t, "user@example.com", res.User.Email)
+	})
+
+	t.Run("anonymous impersonating a restricted name is blocked", func(t *testing.T) {
+		res := upd.Update(claimsFor("anonymous_x", " UmpUtun "))
+		assert.True(t, res.User.BoolAttr("blocked"), "restricted name matched case and space insensitively")
+	})
+
+	t.Run("email user impersonating a restricted name is blocked", func(t *testing.T) {
+		res := upd.Update(claimsFor("email_x", "bobuk"))
+		assert.True(t, res.User.BoolAttr("blocked"))
+	})
+
+	t.Run("regular user may carry a restricted name", func(t *testing.T) {
+		res := upd.Update(claimsFor("provider1_someone", "umputun"))
+		assert.False(t, res.User.BoolAttr("blocked"), "only anonymous and email logins are checked")
+	})
+
+	t.Run("claims without a user pass through", func(t *testing.T) {
+		res := upd.Update(token.Claims{RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}}})
+		assert.Nil(t, res.User)
+	})
+
+	t.Run("claims without exactly one audience pass through", func(t *testing.T) {
+		c := claimsFor("id1", "admin one")
+		c.Audience = jwt.ClaimStrings{"remark", "second"}
+		res := upd.Update(c)
+		assert.False(t, res.User.IsAdmin(), "attributes need a single audience to resolve the site")
+	})
+}
+
+func TestServerApp_MainSignal(t *testing.T) {
+	sigErr := make(chan error, 1)
 
 	s := ServerCommand{}
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&s, flags.Default)
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
 		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
 	defer os.Remove("/tmp/xyz")
@@ -427,11 +647,52 @@ func TestServerApp_MainSignal(t *testing.T) {
 	defer os.Remove("/tmp/ava-test.db")
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
-	st := time.Now()
-	close(done)
+	// the signal goes out only once the server answers: SIGTERM landing before the handler is
+	// installed kills the test process, so a wait that timed out reports instead of sending it
+	go func() {
+		started := waitForServerPort(port, serverStartTimeout)
+		// signal either way: Execute blocks until it gets one, so bailing out here would hang
+		// the test until the package timeout instead of failing with the reason
+		killErr := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+		if !started {
+			killErr = fmt.Errorf("server on port %d didn't start", port)
+		}
+		sigErr <- killErr
+	}()
+
 	err = s.Execute(args)
 	assert.NoError(t, err, "execute should be without errors")
-	assert.True(t, time.Since(st).Seconds() < 5, "should take under five sec", time.Since(st).Seconds())
+	require.NoError(t, <-sigErr, "SIGTERM not delivered")
+}
+
+func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		return o
+	})
+	cancel()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+
+	// the budget is generous on purpose: the assertion is that run exits rather than hangs, and
+	// store construction can take a while on a loaded runner
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+		app.Wait()
+	case <-time.After(serverStartTimeout):
+		waitForHTTPServerStart(t, port)
+		app.restSrv.Shutdown()
+		select {
+		case <-errCh:
+			app.Wait()
+		case <-time.After(serverStartTimeout):
+			t.Fatal("server app did not stop after forced REST shutdown")
+		}
+		t.Fatal("server app should exit when context is canceled before REST server starts")
+	}
 }
 
 func TestServerApp_DeprecatedArgs(t *testing.T) {
@@ -456,7 +717,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 		"--auth.email.template=file.tmpl",
 		"--notify.telegram.token=abcd",
 		"--notify.telegram.timeout=3m",
-		"--notify.telegram.api=http://example.org",
+		"--notify.telegram.api=http://example.org/bot",
 		"--auth.twitter.cid=123",
 		"--auth.twitter.csec=456",
 	}
@@ -483,7 +744,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"},
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
-			{Old: "notify.telegram.api", Version: "1.9"},
+			{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"},
 			{Old: "auth.twitter.cid", Version: "1.14"},
 			{Old: "auth.twitter.csec", Version: "1.14"},
 		},
@@ -494,6 +755,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Equal(t, "test_user", s.SMTP.Username)
 	assert.Equal(t, "test_password", s.SMTP.Password)
 	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
+	assert.Equal(t, "http://example.org", s.Telegram.APIURL)
 }
 
 func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
@@ -520,6 +782,8 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 		"--telegram.token=dcba",
 		"--notify.telegram.timeout=3m",
 		"--telegram.timeout=5m",
+		"--notify.telegram.api=http://old.example.org/bot",
+		"--telegram.api-url=http://new.example.org",
 	}
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
@@ -534,6 +798,7 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 			{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true},
 			{Old: "notify.telegram.token", New: "telegram.token", Collision: true},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true},
+			{Old: "notify.telegram.api", New: "telegram.api-url", Collision: true},
 		},
 		deprecatedFlagsCollisions)
 
@@ -595,24 +860,25 @@ func Test_ACMEEmail(t *testing.T) {
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	port := chooseRandomUnusedPort()
+	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
 		return o
 	})
 
 	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(port)
+	waitForHTTPServerStart(t, port)
 
-	// make a token for user dev
+	// make a token for user dev. nothing here checks expiry, so the lifetime only has to
+	// outlast the whole test
 	tkService := app.restSrv.Authenticator.TokenService()
-	tkService.TokenDuration = time.Second
+	tkService.TokenDuration = time.Hour
 
 	claims := token.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Audience:  jwt.ClaimStrings{"remark"},
 			Issuer:    "remark",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 		User: &token.User{
@@ -628,7 +894,7 @@ func TestServerAuthHooks(t *testing.T) {
 	defer client.CloseIdleConnections()
 
 	// add comment
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
@@ -638,12 +904,14 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
 
 	// try to add comment with no-aud claim
+	// the token service refuses to issue it, so sign it the way a holder of the secret could
 	badClaimsNoAud := claims
 	badClaimsNoAud.Audience = jwt.ClaimStrings{""}
-	tkNoAud, err := tkService.Token(badClaimsNoAud)
-	require.NoError(t, err)
+	_, err = tkService.Token(badClaimsNoAud)
+	require.Error(t, err, "token service must not issue a token with an empty audience")
+	tkNoAud := signRawToken(t, badClaimsNoAud)
 	t.Logf("no-aud claims: %s", tkNoAud)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -655,13 +923,43 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
 
+	// a token for a site this instance does not serve is neither issued nor accepted
+	badClaimsOtherSite := claims
+	badClaimsOtherSite.Audience = jwt.ClaimStrings{"<b>other</b>"}
+	_, err = tkService.Token(badClaimsOtherSite)
+	require.Error(t, err, "token service must not issue a token for a site it does not serve")
+	tkOtherSite := signRawToken(t, badClaimsOtherSite)
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=%s", port, url.QueryEscape("<b>other</b>")), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkOtherSite)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a site not served rejected, %s", body)
+
+	// the auth package matches audiences ignoring case, so it issues this token, but the bolt store
+	// keys sites by the exact name and the session must not be accepted
+	tkOtherCase, err := tkService.Token(func() token.Claims { c := claims; c.Audience = jwt.ClaimStrings{"REMARK"}; return c }())
+	require.NoError(t, err)
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=REMARK", port), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tkOtherCase)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a differently cased site rejected, %s", body)
+
 	// try to add comment with multiple auds
 	badClaimsMultipleAud := claims
 	badClaimsMultipleAud.Audience = jwt.ClaimStrings{"remark", "second_aud"}
 	tkMultipleAuds, err := tkService.Token(badClaimsMultipleAud)
 	require.NoError(t, err)
 	t.Logf("multiple aud claims: %s", tkMultipleAuds)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -680,7 +978,7 @@ func TestServerAuthHooks(t *testing.T) {
 	tkNoUser, err := tkService.Token(badClaimsNoUser)
 	require.NoError(t, err)
 	t.Logf("no user claims: %s", tkNoUser)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
 	"site": "remark"}}`))
 	require.NoError(t, err)
@@ -691,6 +989,37 @@ func TestServerAuthHooks(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without user information rejected, \n"+tkNoUser+"\n"+string(body))
+
+	// a delete-me token, as the endpoint issues it, is a deletion request for the admin and not a session
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/api/v1/deleteme?site=remark", port), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Set("X-JWT", tk)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	deleteMe := struct {
+		Token string `json:"token"`
+	}{}
+	require.NoError(t, json.Unmarshal(body, &deleteMe))
+	require.NotEmpty(t, deleteMe.Token)
+	for _, probe := range []struct{ method, path, body string }{
+		{http.MethodGet, "/api/v1/user?site=remark", ""},
+		{http.MethodPost, "/api/v1/comment?site=remark",
+			`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-632/", "site": "remark"}}`},
+	} {
+		req, err = http.NewRequest(probe.method, fmt.Sprintf("http://localhost:%d%s", port, probe.path), strings.NewReader(probe.body))
+		require.NoError(t, err)
+		req.Header.Set("X-JWT", deleteMe.Token)
+		resp, err = client.Do(req)
+		require.NoError(t, err)
+		body, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "delete-me token rejected on %s %s, %s", probe.method, probe.path, body)
+	}
 
 	// block user github_dev as admin
 	req, err = http.NewRequest(http.MethodPut,
@@ -706,7 +1035,7 @@ func TestServerAuthHooks(t *testing.T) {
 	t.Log(string(b))
 
 	// try add a comment with blocked user
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment", port),
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
 		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
 	require.NoError(t, err)
 	req.Header.Set("X-JWT", tk)
@@ -715,8 +1044,7 @@ func TestServerAuthHooks(t *testing.T) {
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized,
-		"blocked user can't post, \n"+tk+"\n"+string(body))
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post, \n"+tk+"\n"+string(body))
 
 	cancel()
 	app.Wait()
@@ -742,6 +1070,93 @@ func TestServerCommand_parseSameSite(t *testing.T) {
 			assert.Equal(t, tt.res, cmd.parseSameSite(tt.inp))
 		})
 	}
+}
+
+func TestServerCommand_TelegramAuthAcceptsLoginBeforeFirstSharedPoll(t *testing.T) {
+	telegramAPI := newTelegramAPITestServer(t)
+
+	client := &http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
+	authAPI, err := provider.NewTelegramAPIWithBaseURL("stub-token", client, telegramAPI.URL)
+	require.NoError(t, err)
+	authHandler := &provider.TelegramHandler{ProviderName: "telegram", Telegram: authAPI, L: log.Default()}
+
+	cmd := ServerCommand{}
+	cmd.Telegram.Token = "stub-token"
+	cmd.Telegram.Timeout = time.Second
+	cmd.Telegram.APIURL = telegramAPI.URL
+
+	ctx := t.Context()
+	tg, err := cmd.startTelegramAuthAndNotify(ctx, authHandler)
+	require.NoError(t, err)
+	require.NotNil(t, tg, "telegram auth needs the shared update source even when notifications are off")
+
+	recorder := httptest.NewRecorder()
+	authHandler.LoginHandler(recorder, httptest.NewRequest(http.MethodGet, "/auth/telegram/login?site=remark", http.NoBody))
+	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
+
+	var response struct {
+		Token string `json:"token"`
+		Bot   string `json:"bot"`
+	}
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
+	assert.NotEmpty(t, response.Token)
+	assert.Equal(t, "remark42_test_bot", response.Bot)
+}
+
+func TestServerApp_TelegramAuthAloneDoesNotOfferNotifications(t *testing.T) {
+	telegramAPI := newTelegramAPITestServer(t)
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(cmd ServerCommand) ServerCommand {
+		cmd.Port = port
+		cmd.Auth.Telegram = true
+		cmd.Telegram.Token = "stub-token"
+		cmd.Telegram.Timeout = time.Second
+		cmd.Telegram.APIURL = telegramAPI.URL
+		return cmd
+	})
+
+	require.Nil(t, app.restSrv.TelegramService,
+		"telegram auth alone must not put a typed nil or an update-only client behind the subscription endpoint")
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+	cancel()
+	app.Wait()
+}
+
+func TestServerCommand_TelegramCustomAPIErrorStopsRequestedFeature(t *testing.T) {
+	t.Run("auth", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Auth.Telegram = true
+		cmd.Telegram.APIURL = "://bad"
+
+		_, err := cmd.makeTelegramAuth(&auth.Service{})
+		require.ErrorContains(t, err, "failed to make telegram auth")
+	})
+
+	t.Run("notifications", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Notify.Users = []string{"telegram"}
+		cmd.Telegram.APIURL = "://bad"
+
+		_, err := cmd.startTelegramAuthAndNotify(context.Background(), nil)
+		require.ErrorContains(t, err, "failed to make telegram update source")
+	})
+}
+
+func newTelegramAPITestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	telegramAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/getUpdates") {
+			_, _ = io.WriteString(w, `{"ok":true,"result":[]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ok":true,"result":{"id":1,"is_bot":true,"username":"remark42_test_bot"}}`)
+	}))
+	t.Cleanup(telegramAPI.Close)
+	return telegramAPI
 }
 
 func Test_splitAtCommas(t *testing.T) {
@@ -788,40 +1203,153 @@ func Test_getAllowedDomains(t *testing.T) {
 	}
 }
 
-func chooseRandomUnusedPort() (port int) {
-	for i := 0; i < 10; i++ {
-		port = 40000 + int(rand.Int31n(10000))
-		if ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err == nil {
-			_ = ln.Close()
-			break
-		}
+func Test_getAllowedRedirectHosts(t *testing.T) {
+	tbl := []struct {
+		name  string
+		hosts []string
+		want  []string
+	}{
+		{name: "empty", hosts: nil, want: []string{}},
+		{name: "bare hostnames pass through", hosts: []string{"example.com", "admin.example.com"}, want: []string{"example.com", "admin.example.com"}},
+		{name: "https scheme stripped", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
+		{name: "http scheme stripped", hosts: []string{"http://example.com"}, want: []string{"example.com"}},
+		{name: "scheme with path strips path", hosts: []string{"https://example.com/embed"}, want: []string{"example.com"}},
+		{name: "explicit port preserved as host:port", hosts: []string{"example.com:8080"}, want: []string{"example.com:8080"}},
+		{name: "scheme with explicit port preserved", hosts: []string{"https://example.com:8443"}, want: []string{"example.com:8443"}},
+		{name: "scheme without port stays bare host", hosts: []string{"https://example.com"}, want: []string{"example.com"}},
+		{name: "self sentinel filtered", hosts: []string{"'self'", "self", `"self"`, "example.com"}, want: []string{"example.com"}},
+		{name: "wildcards filtered", hosts: []string{"*", "*.example.com", "https://*.example.com", "example.com"}, want: []string{"example.com"}},
+		{name: "empty entries filtered", hosts: []string{"", "  ", "example.com"}, want: []string{"example.com"}},
+		{name: "mixed real-world", hosts: []string{"'self'", "https://blog.example.com", "admin.example.com:8443", "*.cdn.example.com"},
+			want: []string{"blog.example.com", "admin.example.com:8443"}},
 	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			s := ServerCommand{AllowedHosts: tt.hosts}
+			assert.Equal(t, tt.want, s.getAllowedRedirectHosts())
+		})
+	}
+}
+
+// chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a
+// collision between concurrently running package test binaries very unlikely
+func chooseUnusedPort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", ":0")
+	require.NoError(t, err, "no free port available")
+	port := ln.Addr().(*net.TCPAddr).Port
+	require.NoError(t, ln.Close())
 	return port
 }
 
-func waitForHTTPServerStart(port int) {
-	// wait for up to 3 seconds for server to start before returning it
+// waitForHTTPServerStart blocks until the server on port answers, failing the test naming the
+// port if it never does
+func waitForHTTPServerStart(t *testing.T, port int) {
+	t.Helper()
 	client := http.Client{Timeout: time.Second}
 	defer client.CloseIdleConnections()
-	for i := 0; i < 300; i++ {
-		time.Sleep(time.Millisecond * 10)
-		if resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port)); err == nil {
-			_ = resp.Body.Close()
-			return
+	require.Eventually(t, func() bool {
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return false
 		}
+		_ = resp.Body.Close()
+		return true
+	}, serverStartTimeout, serverStartPoll, "http server on port %d didn't start", port)
+}
+
+// waitForServerStart blocks until something accepts on every listed port, failing the test
+// naming the port that never came up
+func waitForServerStart(t *testing.T, ports ...int) {
+	t.Helper()
+	for _, port := range ports {
+		require.True(t, waitForServerPort(port, serverStartTimeout), "server on port %d didn't start", port)
 	}
 }
 
-func waitForHTTPSServerStart(port int) {
-	// wait for up to 3 seconds for HTTPS server to start
-	for i := 0; i < 300; i++ {
-		time.Sleep(time.Millisecond * 10)
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), time.Millisecond*10)
-		if conn != nil {
-			_ = conn.Close()
-			break
+// getRetryThrottled issues a GET and retries while the auth routes answer 429, since the /auth/
+// group is limited to 2 req/s and this test logs in more often than that. a transport error is
+// retried a couple of times and then reported as itself, so a dead server is not read as throttling
+func getRetryThrottled(t *testing.T, client *http.Client, reqURL string) *http.Response {
+	t.Helper()
+	const transportRetries = 2
+	errCount := 0
+	for deadline := time.Now().Add(serverStartTimeout); time.Now().Before(deadline); time.Sleep(authRetryPoll) {
+		r, err := client.Get(reqURL)
+		if err != nil {
+			errCount++
+			require.LessOrEqual(t, errCount, transportRetries, "request to %s failed: %v", reqURL, err)
+			continue
 		}
+		if r.StatusCode == http.StatusTooManyRequests {
+			_ = r.Body.Close()
+			continue
+		}
+		return r
 	}
+	t.Fatalf("request to %s kept being rate limited", reqURL)
+	return nil
+}
+
+// waitForServerPort blocks until something accepts on port, reporting whether it came up.
+// unlike the require-based helpers it is safe to call off the test goroutine.
+func waitForServerPort(port int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), probeDialTimeout)
+		if err == nil {
+			_ = conn.Close()
+			return true
+		}
+		time.Sleep(serverStartPoll)
+	}
+	return false
+}
+
+// signRawToken signs claims with the shared secret prepServerApp configures, bypassing the token
+// service and the checks it makes before issuing
+func signRawToken(t *testing.T, claims token.Claims) string {
+	t.Helper()
+	tkn, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("secret"))
+	require.NoError(t, err)
+	return tkn
+}
+
+// TestServerApp_LoginRejectsUnknownSite covers the audience a user names at login: it ends up in
+// the session token and is echoed back in responses, so a site the instance does not serve gets
+// no session at all.
+func TestServerApp_LoginRejectsUnknownSite(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.Auth.Anonymous = true
+		return o
+	})
+	defer cancel()
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	resp := getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=%s",
+		port, url.QueryEscape("<b>other</b>")))
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.NotEqual(t, http.StatusOK, resp.StatusCode, "login to a site not served must fail, %s", body)
+	for _, c := range resp.Cookies() {
+		assert.NotEqual(t, "JWT", c.Name, "no session cookie for a site not served")
+	}
+
+	// the configured site still signs in
+	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	cancel()
+	app.Wait()
 }
 
 func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
@@ -844,8 +1372,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Twitter.CSEC, cmd.Auth.Twitter.CID = "csec", "cid"
 	cmd.Auth.Patreon.CSEC, cmd.Auth.Patreon.CID = "csec", "cid"
 	cmd.Auth.Discord.CSEC, cmd.Auth.Discord.CID = "csec", "cid"
-	cmd.Auth.Telegram = true
-	cmd.Telegram.Token = "token"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
 	cmd.BackupLocation = "/tmp"
@@ -884,6 +1410,9 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 
 func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
+	// a require in a readiness wait exits the test goroutine, so without this an app started in
+	// a goroutine would never be stopped and goleak would report it instead of the failure
+	t.Cleanup(cancel)
 	app, err := cmd.newServerApp(ctx)
 	require.NoError(t, err)
 	return app, ctx, cancel
@@ -893,8 +1422,133 @@ func TestMain(m *testing.M) {
 	// ignore is added only for GitHub Actions, can't reproduce locally
 	goleak.VerifyTestMain(
 		m,
+		// the shutdown goroutine in serverApp.run is not joined by Wait, and Rest.Shutdown gives
+		// httpServer.Shutdown a second, which can outlast goleak's retry budget on a loaded runner
 		goleak.IgnoreTopFunction("net/http.(*Server).Shutdown"),
 		// this will be fixed in https://github.com/hashicorp/golang-lru/issues/159
 		goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"),
+		// regexp2, pulled in by chroma for syntax highlighting, keeps one shared clock goroutine
+		// alive for up to a second after the last match with a timeout, sleeping in 100ms ticks.
+		// it ends on its own, but a binary that finishes inside that window is reported as leaking
+		goleak.IgnoreAnyFunction("github.com/dlclark/regexp2/v2.runClock"),
 	)
+}
+
+func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
+	// the test is about the defaults, so the caller's environment must not supply cache options
+	for _, name := range []string{"CACHE_TYPE", "CACHE_MAX_ITEMS", "CACHE_MAX_VALUE", "CACHE_MAX_SIZE"} {
+		if val, ok := os.LookupEnv(name); ok {
+			require.NoError(t, os.Unsetenv(name))
+			t.Cleanup(func() { _ = os.Setenv(name, val) })
+		}
+	}
+
+	opts := ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p := flags.NewParser(&opts, flags.Default)
+	_, err := p.ParseArgs([]string{})
+	require.NoError(t, err)
+
+	c, err := opts.makeCache()
+	require.NoError(t, err)
+
+	// a rendered tree for a busy page is far larger than 64 KiB
+	val := bytes.Repeat([]byte("x"), 300_000)
+	key := cache.NewKey("remark").ID("find").Scopes("remark", "https://example.com/post")
+	loads := 0
+	for range 3 {
+		data, err := c.Get(key, func() ([]byte, error) { loads++; return val, nil })
+		require.NoError(t, err)
+		assert.Len(t, data, len(val))
+	}
+	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
+}
+
+func TestServerCommand_tokenAudiences(t *testing.T) {
+	cmd := ServerCommand{Sites: []string{"remark", "other"}}
+	cmd.Store.Type = "bolt"
+	auds := cmd.tokenAudiences()
+	require.NotNil(t, auds, "the bolt store knows its sites, so the audience is limited to them")
+	got, err := auds.Get()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"remark", "other"}, got)
+
+	cmd.Sites[0] = "changed"
+	got, err = auds.Get()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"remark", "other"}, got, "the list is fixed when the authenticator is built")
+
+	cmd.Store.Type = "rpc"
+	assert.Nil(t, cmd.tokenAudiences(), "a remote store decides which sites exist, so any audience passes")
+}
+
+func TestServerCommand_servesAudience(t *testing.T) {
+	cmd := ServerCommand{Sites: []string{"remark", "other"}}
+	cmd.Store.Type = "bolt"
+	assert.True(t, cmd.servesAudience([]string{"remark"}))
+	assert.True(t, cmd.servesAudience([]string{"remark", "other"}))
+	assert.False(t, cmd.servesAudience([]string{"Remark"}), "sites are compared exactly")
+	assert.False(t, cmd.servesAudience([]string{"remark", "third"}), "every audience must be served")
+
+	cmd.Store.Type = "rpc"
+	assert.True(t, cmd.servesAudience([]string{"Remark"}), "a remote store decides which sites exist")
+}
+
+func TestServerCommand_demoSiteID(t *testing.T) {
+	tbl := []struct {
+		sites []string
+		want  string
+	}{
+		{[]string{"remark"}, "remark"},
+		{[]string{"myblog", "other"}, "myblog"},
+		// the stores register a site exactly as given, so the demo pages must name it the same way
+		{[]string{" myblog "}, " myblog "},
+		{[]string{"  ", "second"}, "second"},
+		{[]string{"", "second"}, "second"},
+		{nil, ""},
+	}
+	for _, tt := range tbl {
+		assert.Equal(t, tt.want, (&ServerCommand{Sites: tt.sites}).demoSiteID(), "sites %q", tt.sites)
+	}
+}
+
+// TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
+// and their email, is signed with the shared secret and is valid for a century, so the email login
+// must not accept it in place of a confirmation token it issued itself.
+func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
+	port := chooseUnusedPort(t)
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Port = port
+		o.emailMsgTemplatePath, o.emailVerificationTemplatePath = "", "" // the embedded templates, as in production
+		return o
+	})
+	defer cancel()
+
+	go func() { _ = app.run(ctx) }()
+	waitForHTTPServerStart(t, port)
+
+	destinations, err := app.makeNotifyDestinations(app.authenticator)
+	require.NoError(t, err)
+	var tkn string
+	for _, d := range destinations {
+		if e, ok := d.(*notify.Email); ok {
+			tkn, err = e.TokenGenFn("email_user1", "user1@example.org", "remark")
+			require.NoError(t, err)
+		}
+	}
+	require.NotEmpty(t, tkn, "email notifications are configured, so unsubscribe links carry a token")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	resp := getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/email/login?token=%s", port, tkn))
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "an unsubscribe token is not a login, %s", body)
+	for _, c := range resp.Cookies() {
+		assert.NotEqual(t, "JWT", c.Name, "no session from an unsubscribe token")
+	}
+
+	cancel()
+	app.Wait()
 }

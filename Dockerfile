@@ -1,17 +1,19 @@
-FROM --platform=$BUILDPLATFORM node:16.20-alpine AS frontend-deps
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
+# the manifest's prepare script installs husky hooks, which needs a git repository the build
+# context does not have. husky itself skips on CI, and this is the same flag the build stage sets
+ENV CI=true
 
-WORKDIR /srv/frontend/
+WORKDIR /srv/frontend/apps/remark42/
 
-COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./frontend/pnpm-workspace.yaml /srv/frontend/
-COPY ./frontend/apps/remark42/package.json /srv/frontend/apps/remark42/
+COPY ./frontend/apps/remark42/package.json ./frontend/apps/remark42/pnpm-lock.yaml /srv/frontend/apps/remark42/
 
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
     apk add --no-cache --update git && \
-    npm i -g pnpm@8; \
+    npm i -g pnpm@10.10.0; \
   fi
 
 RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
@@ -24,6 +26,8 @@ FROM --platform=$BUILDPLATFORM frontend-deps AS build-frontend
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
+# the same argument the backend stage reads, so one flag instruments both halves of the stack
+ARG COVERAGE
 ENV CI=true
 
 WORKDIR /srv/frontend/apps/remark42/
@@ -39,13 +43,13 @@ RUN \
 
 RUN \
   if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
-    pnpm build; \
+    E2E_COVERAGE=$COVERAGE pnpm build; \
   else \
     mkdir /srv/frontend/apps/remark42/public; \
     echo 'Skip frontend build'; \
   fi
 
-FROM umputun/baseimage:buildgo-v1.17.0 AS build-backend
+FROM umputun/baseimage:buildgo-v1.21.1 AS build-backend
 
 ARG CI
 ARG GITHUB_REF
@@ -60,7 +64,6 @@ RUN apk --no-cache add gcc libc-dev
 ADD backend /build/backend
 # to embed the frontend files statically into Remark42 binary
 COPY --from=build-frontend /srv/frontend/apps/remark42/public/ /build/backend/app/cmd/web/
-RUN find /build/backend/app/cmd/web/ -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "s|{% REMARK_URL %}|http://127.0.0.1:8080|g" {} \;
 WORKDIR /build/backend
 
 RUN echo go version: `go version`
@@ -76,12 +79,22 @@ RUN \
       echo "skip backend tests and linter" \
     ; fi
 
+# COVERAGE builds an instrumented binary that writes a profile to GOCOVERDIR as it exits, which
+# is what lets the e2e suite report what it reached. It is an argument and not an environment
+# variable because the instrumented binary is a different build, and it must not be what a
+# published image ships.
+ARG COVERAGE
+
 RUN \
     version="$(/script/version.sh)" && \
     echo "version=$version" && \
-    go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app
+    if [ "$COVERAGE" = "1" ] ; then \
+        go build -cover -covermode=atomic -coverpkg=./... -o remark42 -ldflags "-X main.revision=${version}" ./app ; \
+    else \
+        go build -o remark42 -ldflags "-X main.revision=${version} -s -w" ./app ; \
+    fi
 
-FROM umputun/baseimage:app-v1.17.0
+FROM umputun/baseimage:app-v1.21.1
 
 ARG GITHUB_SHA
 

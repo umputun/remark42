@@ -4,6 +4,11 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+
+# npm updates are switched off entirely. open-pull-requests-limit bounds version
+# updates only, so the ignore entries below are what also stops security updates;
+# removing the npm entries would not work, as security updates come from alerts
+# rather than from this file.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -20,29 +25,18 @@ updates:
     groups:
       "Go modules updates":
         dependency-type: "production"
+  - package-ecosystem: "gomod"
+    directory: "/e2e"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Go modules updates":
+        dependency-type: "production"
   - package-ecosystem: "npm"
     directory: "/frontend"
     open-pull-requests-limit: 0
-    schedule:
-      interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
-    directory: "/frontend/packages/api"
-    open-pull-requests-limit: 0
-    schedule:
-      interval: "monthly"
-    groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
-  - package-ecosystem: "npm"
-    directory: "/frontend/e2e"
-    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -53,6 +47,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend/apps/remark42"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
     schedule:
       interval: "monthly"
     groups:
@@ -60,13 +56,11 @@ updates:
         dependency-type: "production"
       "NPM modules updates for tests":
         dependency-type: "development"
-  - package-ecosystem: "npm"
+  - package-ecosystem: "docker"
     directory: "/site"
-    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     groups:
-      "NPM modules updates":
-        dependency-type: "production"
-      "NPM modules updates for tests":
-        dependency-type: "development"
+      "Site image updates":
+        patterns:
+          - "*"

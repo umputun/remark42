@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useMemo } from 'preact/hooks';
-import { useIntl } from 'react-intl';
 
+import { useIntl } from 'common/intl';
 import { errorMessages, RequestError } from 'utils/errorUtils';
 import { isObject } from 'utils/is-object';
 import { parseMessage, updateIframeHeight } from 'utils/post-message';
-import { messages } from './auth.messsages';
+import { messages } from './auth.messages';
 
 export function useDropdown(disableClosing?: boolean) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -23,9 +23,16 @@ export function useDropdown(disableClosing?: boolean) {
     }
 
     function handleMessageFromParent(evt: MessageEvent) {
+      // only the embedding page may close the dropdown, and only by reporting a click
+      // outside the widget. the parent also posts hash, title and theme messages, and
+      // extensions post their own, none of which should interrupt an active login
+      if (evt.source !== window.parent) {
+        return;
+      }
+
       const data = parseMessage(evt);
 
-      if (disableClosing && data.clickOutside) {
+      if (!data.clickOutside || disableClosing) {
         return;
       }
 
@@ -78,6 +85,11 @@ export function useDropdown(disableClosing?: boolean) {
     return () => {
       document.body.style.removeProperty('min-height');
       observer.disconnect();
+      // the panel is positioned absolutely, so closing it resizes no box any observer here
+      // watches: the one above is gone with the element and the document one in root never sees
+      // a change. without a report of its own the parent keeps the open panel's height, leaving
+      // a hole under the widget for as long as the reader stays on the page
+      updateIframeHeight();
     };
   }, [showDropdown]);
 
@@ -119,8 +131,8 @@ export function useErrorMessage(): [string | null, (e: unknown) => void] {
         err instanceof RequestError || isObject(err)
           ? (err as Record<'error', string>).error
           : err instanceof Error
-          ? err.message
-          : 0;
+            ? err.message
+            : 0;
 
       setInvalidReason(errorReason);
     }

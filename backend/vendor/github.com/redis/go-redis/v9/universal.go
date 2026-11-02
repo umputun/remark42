@@ -8,6 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9/auth"
 	"github.com/redis/go-redis/v9/maintnotifications"
+	"github.com/redis/go-redis/v9/push"
 )
 
 // UniversalOptions information is required by UniversalClient to establish
@@ -57,7 +58,18 @@ type UniversalOptions struct {
 	MinRetryBackoff time.Duration
 	MaxRetryBackoff time.Duration
 
-	DialTimeout           time.Duration
+	DialTimeout time.Duration
+
+	// DialerRetries is the maximum number of retry attempts when dialing fails.
+	//
+	// default: 5
+	DialerRetries int
+
+	// DialerRetryTimeout is the backoff duration between retry attempts.
+	//
+	// default: 100 milliseconds
+	DialerRetryTimeout time.Duration
+
 	ReadTimeout           time.Duration
 	WriteTimeout          time.Duration
 	ContextTimeoutEnabled bool
@@ -79,13 +91,19 @@ type UniversalOptions struct {
 	// PoolFIFO uses FIFO mode for each node connection pool GET/PUT (default LIFO).
 	PoolFIFO bool
 
-	PoolSize        int
-	PoolTimeout     time.Duration
-	MinIdleConns    int
-	MaxIdleConns    int
-	MaxActiveConns  int
-	ConnMaxIdleTime time.Duration
-	ConnMaxLifetime time.Duration
+	PoolSize int
+
+	// MaxConcurrentDials is the maximum number of concurrent connection creation goroutines.
+	// If <= 0, defaults to PoolSize. If > PoolSize, it will be capped at PoolSize.
+	MaxConcurrentDials int
+
+	PoolTimeout           time.Duration
+	MinIdleConns          int
+	MaxIdleConns          int
+	MaxActiveConns        int
+	ConnMaxIdleTime       time.Duration
+	ConnMaxLifetime       time.Duration
+	ConnMaxLifetimeJitter time.Duration
 
 	TLSConfig *tls.Config
 
@@ -119,13 +137,43 @@ type UniversalOptions struct {
 	// Only applies to cluster clients. Default is 15 seconds.
 	FailingTimeoutSeconds int
 
+	// Deprecated: All RediSearch commands now have stable RESP3 parsing and this
+	// flag is a no-op. It is kept for backwards compatibility and will be removed
+	// in a future release.
 	UnstableResp3 bool
+
+	// PushNotificationProcessor is the processor for handling push notifications.
+	// If nil, a default processor will be created for RESP3 connections.
+	PushNotificationProcessor push.NotificationProcessor
 
 	// IsClusterMode can be used when only one Addrs is provided (e.g. Elasticache supports setting up cluster mode with configuration endpoint).
 	IsClusterMode bool
 
+	// AutoPipelineOptions is the default config for the client's
+	// autopipeliner faces (AutoPipeline / AsyncAutoPipeline), applied when
+	// they are called without explicit options. See Options.AutoPipelineOptions.
+	AutoPipelineOptions *AutoPipelineOptions
+
 	// MaintNotificationsConfig provides configuration for maintnotifications upgrades.
 	MaintNotificationsConfig *maintnotifications.Config
+
+	// ClientSideCacheConfig enables client-side caching when NewUniversalClient
+	// selects a standalone Client. See Options.ClientSideCacheConfig.
+	//
+	// Experimental: this API may change in a minor release.
+	ClientSideCacheConfig *ClientSideCacheConfig
+
+	// ClientSideCache supplies an explicit cache when NewUniversalClient selects
+	// a standalone Client. See Options.ClientSideCache.
+	//
+	// Experimental: this API may change in a minor release.
+	ClientSideCache Cache
+
+	// ClientSideCacheStrategy selects the standalone client's invalidation
+	// strategy. See Options.ClientSideCacheStrategy.
+	//
+	// Experimental: this API may change in a minor release.
+	ClientSideCacheStrategy CSCStrategy
 }
 
 // Cluster returns cluster options created from the universal options.
@@ -156,32 +204,38 @@ func (o *UniversalOptions) Cluster() *ClusterOptions {
 		MinRetryBackoff: o.MinRetryBackoff,
 		MaxRetryBackoff: o.MaxRetryBackoff,
 
-		DialTimeout:           o.DialTimeout,
-		ReadTimeout:           o.ReadTimeout,
-		WriteTimeout:          o.WriteTimeout,
+		DialTimeout:        o.DialTimeout,
+		DialerRetries:      o.DialerRetries,
+		DialerRetryTimeout: o.DialerRetryTimeout,
+		ReadTimeout:        o.ReadTimeout,
+		WriteTimeout:       o.WriteTimeout,
+
 		ContextTimeoutEnabled: o.ContextTimeoutEnabled,
 
 		ReadBufferSize:  o.ReadBufferSize,
 		WriteBufferSize: o.WriteBufferSize,
 
-		PoolFIFO: o.PoolFIFO,
-
-		PoolSize:        o.PoolSize,
-		PoolTimeout:     o.PoolTimeout,
-		MinIdleConns:    o.MinIdleConns,
-		MaxIdleConns:    o.MaxIdleConns,
-		MaxActiveConns:  o.MaxActiveConns,
-		ConnMaxIdleTime: o.ConnMaxIdleTime,
-		ConnMaxLifetime: o.ConnMaxLifetime,
+		PoolFIFO:              o.PoolFIFO,
+		PoolSize:              o.PoolSize,
+		MaxConcurrentDials:    o.MaxConcurrentDials,
+		PoolTimeout:           o.PoolTimeout,
+		MinIdleConns:          o.MinIdleConns,
+		MaxIdleConns:          o.MaxIdleConns,
+		MaxActiveConns:        o.MaxActiveConns,
+		ConnMaxIdleTime:       o.ConnMaxIdleTime,
+		ConnMaxLifetime:       o.ConnMaxLifetime,
+		ConnMaxLifetimeJitter: o.ConnMaxLifetimeJitter,
 
 		TLSConfig: o.TLSConfig,
 
-		DisableIdentity:          o.DisableIdentity,
-		DisableIndentity:         o.DisableIndentity,
-		IdentitySuffix:           o.IdentitySuffix,
-		FailingTimeoutSeconds:    o.FailingTimeoutSeconds,
-		UnstableResp3:            o.UnstableResp3,
-		MaintNotificationsConfig: o.MaintNotificationsConfig,
+		DisableIdentity:           o.DisableIdentity,
+		DisableIndentity:          o.DisableIndentity,
+		IdentitySuffix:            o.IdentitySuffix,
+		AutoPipelineOptions:       o.AutoPipelineOptions,
+		FailingTimeoutSeconds:     o.FailingTimeoutSeconds,
+		UnstableResp3:             o.UnstableResp3,
+		PushNotificationProcessor: o.PushNotificationProcessor,
+		MaintNotificationsConfig:  o.MaintNotificationsConfig,
 	}
 }
 
@@ -217,31 +271,38 @@ func (o *UniversalOptions) Failover() *FailoverOptions {
 		MinRetryBackoff: o.MinRetryBackoff,
 		MaxRetryBackoff: o.MaxRetryBackoff,
 
-		DialTimeout:           o.DialTimeout,
-		ReadTimeout:           o.ReadTimeout,
-		WriteTimeout:          o.WriteTimeout,
+		DialTimeout:        o.DialTimeout,
+		DialerRetries:      o.DialerRetries,
+		DialerRetryTimeout: o.DialerRetryTimeout,
+		ReadTimeout:        o.ReadTimeout,
+		WriteTimeout:       o.WriteTimeout,
+
 		ContextTimeoutEnabled: o.ContextTimeoutEnabled,
 
 		ReadBufferSize:  o.ReadBufferSize,
 		WriteBufferSize: o.WriteBufferSize,
 
-		PoolFIFO:        o.PoolFIFO,
-		PoolSize:        o.PoolSize,
-		PoolTimeout:     o.PoolTimeout,
-		MinIdleConns:    o.MinIdleConns,
-		MaxIdleConns:    o.MaxIdleConns,
-		MaxActiveConns:  o.MaxActiveConns,
-		ConnMaxIdleTime: o.ConnMaxIdleTime,
-		ConnMaxLifetime: o.ConnMaxLifetime,
+		PoolFIFO:              o.PoolFIFO,
+		PoolSize:              o.PoolSize,
+		MaxConcurrentDials:    o.MaxConcurrentDials,
+		PoolTimeout:           o.PoolTimeout,
+		MinIdleConns:          o.MinIdleConns,
+		MaxIdleConns:          o.MaxIdleConns,
+		MaxActiveConns:        o.MaxActiveConns,
+		ConnMaxIdleTime:       o.ConnMaxIdleTime,
+		ConnMaxLifetime:       o.ConnMaxLifetime,
+		ConnMaxLifetimeJitter: o.ConnMaxLifetimeJitter,
 
 		TLSConfig: o.TLSConfig,
 
 		ReplicaOnly: o.ReadOnly,
 
-		DisableIdentity:  o.DisableIdentity,
-		DisableIndentity: o.DisableIndentity,
-		IdentitySuffix:   o.IdentitySuffix,
-		UnstableResp3:    o.UnstableResp3,
+		DisableIdentity:           o.DisableIdentity,
+		DisableIndentity:          o.DisableIndentity,
+		IdentitySuffix:            o.IdentitySuffix,
+		AutoPipelineOptions:       o.AutoPipelineOptions,
+		UnstableResp3:             o.UnstableResp3,
+		PushNotificationProcessor: o.PushNotificationProcessor,
 		// Note: MaintNotificationsConfig not supported for FailoverOptions
 	}
 }
@@ -271,30 +332,40 @@ func (o *UniversalOptions) Simple() *Options {
 		MinRetryBackoff: o.MinRetryBackoff,
 		MaxRetryBackoff: o.MaxRetryBackoff,
 
-		DialTimeout:           o.DialTimeout,
-		ReadTimeout:           o.ReadTimeout,
-		WriteTimeout:          o.WriteTimeout,
+		DialTimeout:        o.DialTimeout,
+		DialerRetries:      o.DialerRetries,
+		DialerRetryTimeout: o.DialerRetryTimeout,
+		ReadTimeout:        o.ReadTimeout,
+		WriteTimeout:       o.WriteTimeout,
+
 		ContextTimeoutEnabled: o.ContextTimeoutEnabled,
 
 		ReadBufferSize:  o.ReadBufferSize,
 		WriteBufferSize: o.WriteBufferSize,
 
-		PoolFIFO:        o.PoolFIFO,
-		PoolSize:        o.PoolSize,
-		PoolTimeout:     o.PoolTimeout,
-		MinIdleConns:    o.MinIdleConns,
-		MaxIdleConns:    o.MaxIdleConns,
-		MaxActiveConns:  o.MaxActiveConns,
-		ConnMaxIdleTime: o.ConnMaxIdleTime,
-		ConnMaxLifetime: o.ConnMaxLifetime,
+		PoolFIFO:              o.PoolFIFO,
+		PoolSize:              o.PoolSize,
+		MaxConcurrentDials:    o.MaxConcurrentDials,
+		PoolTimeout:           o.PoolTimeout,
+		MinIdleConns:          o.MinIdleConns,
+		MaxIdleConns:          o.MaxIdleConns,
+		MaxActiveConns:        o.MaxActiveConns,
+		ConnMaxIdleTime:       o.ConnMaxIdleTime,
+		ConnMaxLifetime:       o.ConnMaxLifetime,
+		ConnMaxLifetimeJitter: o.ConnMaxLifetimeJitter,
 
 		TLSConfig: o.TLSConfig,
 
-		DisableIdentity:          o.DisableIdentity,
-		DisableIndentity:         o.DisableIndentity,
-		IdentitySuffix:           o.IdentitySuffix,
-		UnstableResp3:            o.UnstableResp3,
-		MaintNotificationsConfig: o.MaintNotificationsConfig,
+		DisableIdentity:           o.DisableIdentity,
+		DisableIndentity:          o.DisableIndentity,
+		IdentitySuffix:            o.IdentitySuffix,
+		AutoPipelineOptions:       o.AutoPipelineOptions,
+		UnstableResp3:             o.UnstableResp3,
+		PushNotificationProcessor: o.PushNotificationProcessor,
+		MaintNotificationsConfig:  o.MaintNotificationsConfig,
+		ClientSideCacheConfig:     o.ClientSideCacheConfig,
+		ClientSideCache:           o.ClientSideCache,
+		ClientSideCacheStrategy:   o.ClientSideCacheStrategy,
 	}
 }
 
@@ -310,6 +381,15 @@ type UniversalClient interface {
 	Watch(ctx context.Context, fn func(*Tx) error, keys ...string) error
 	Do(ctx context.Context, args ...interface{}) *Cmd
 	Process(ctx context.Context, cmd Cmder) error
+	// AutoPipeline / AsyncAutoPipeline return an AutoPipeliner for the concrete
+	// client. Supported on *Client (including sentinel-backed failover clients)
+	// and *ClusterClient; *Ring returns an error (not supported).
+	//
+	// EXPERIMENTAL: this API is subject to change, use with caution.
+	AutoPipeline() (*AutoPipeliner, error)
+	AutoPipelineWithOptions(config *AutoPipelineOptions) (*AutoPipeliner, error)
+	AsyncAutoPipeline() (*AutoPipeliner, error)
+	AsyncAutoPipelineWithOptions(config *AutoPipelineOptions) (*AutoPipeliner, error)
 	Subscribe(ctx context.Context, channels ...string) *PubSub
 	PSubscribe(ctx context.Context, channels ...string) *PubSub
 	SSubscribe(ctx context.Context, channels ...string) *PubSub
@@ -321,6 +401,9 @@ var (
 	_ UniversalClient = (*Client)(nil)
 	_ UniversalClient = (*ClusterClient)(nil)
 	_ UniversalClient = (*Ring)(nil)
+	// AutoPipeliner is a drop-in for the real clients; non-data operations
+	// delegate to the underlying client.
+	_ UniversalClient = (*AutoPipeliner)(nil)
 )
 
 // NewUniversalClient returns a new multi client. The type of the returned client depends
@@ -333,6 +416,8 @@ var (
 //  3. If the number of Addrs is two or more, or IsClusterMode option is specified,
 //     a ClusterClient is returned.
 //  4. Otherwise, a single-node Client is returned.
+//
+// Passing nil UniversalOptions will cause a panic.
 func NewUniversalClient(opts *UniversalOptions) UniversalClient {
 	if opts == nil {
 		panic("redis: NewUniversalClient nil options")

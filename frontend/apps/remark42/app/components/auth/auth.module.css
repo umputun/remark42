@@ -6,15 +6,15 @@
 
 .buttonArrow {
   position: relative;
-  padding-left: 8px;
-  margin-left: 12px;
+  padding-inline-start: 8px;
+  margin-inline-start: 12px;
   height: 100%;
 
   &::before {
     position: absolute;
     content: '';
     height: 100%;
-    border-left: 1px solid rgba(var(--white-color), 0.5);
+    border-inline-start: 1px solid rgb(var(--white-color), 0.5);
   }
 }
 
@@ -22,11 +22,13 @@
   position: absolute;
   z-index: 1;
   top: calc(100% + 8px);
-  left: 0;
+  inset-inline-start: 0;
   min-width: 240px;
   padding: 16px;
   background-color: rgb(var(--primary-background-color));
-  box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
+  box-shadow:
+    0 10px 15px rgb(var(--black-color), 0.1),
+    0 -1px 6px rgb(var(--black-color), 0.05);
   border-radius: 6px;
 }
 
@@ -35,7 +37,7 @@
   font-size: 12px;
   text-transform: uppercase;
   font-weight: bold;
-  color: rgb(rgb(var(--secondary-text-color)));
+  color: rgb(var(--secondary-text-color));
   text-align: center;
 }
 
@@ -96,7 +98,7 @@
 }
 
 .provider + .provider {
-  margin-left: 16px;
+  margin-inline-start: 16px;
 }
 
 .radio {
@@ -115,15 +117,14 @@
 }
 
 .radio:checked + .provider {
-  /* stylelint-disable-next-line mavrin/stylelint-declaration-use-css-custom-properties */
   color: rgb(var(--primary-color));
-  background-color: rgba(var(--primary-color), 0.1);
+  background-color: rgb(var(--primary-color), 0.1);
   border-radius: 2px;
 }
 
 :global(.dark) .radio:checked + .provider {
   color: rgb(var(--white-color));
-  background-color: rgba(var(--primary-color), 0.4);
+  background-color: rgb(var(--primary-color), 0.4);
 }
 
 .row {
@@ -138,8 +139,8 @@
 
 .backButtonArrow {
   display: inline-block;
-  margin-left: -4px;
-  margin-right: 2px;
+  margin-inline-start: -4px;
+  margin-inline-end: 2px;
 }
 
 .closeButton {
@@ -147,14 +148,14 @@
   display: inline-flex;
   width: 28px;
   height: 28px;
-  margin-left: auto;
+  margin-inline-start: auto;
   border-radius: 2px;
   color: inherit;
   justify-content: center;
   align-items: center;
 
   &:hover {
-    background-color: rgba(var(--primary-color), 0.1);
+    background-color: rgb(var(--primary-color), 0.1);
   }
 }
 

@@ -34,13 +34,13 @@ func (rc *RemapCommand) Execute(_ []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), rc.Timeout)
 	defer cancel()
 	remapURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)
-	req, err := http.NewRequest(http.MethodPost, remapURL, rulesReader)
+	req, err := http.NewRequest(http.MethodPost, remapURL, rulesReader) //nolint:gosec // RemarkURL is operator CLI flag, not user input
 	if err != nil {
 		return fmt.Errorf("can't make remap request for %s: %w", remapURL, err)
 	}
 	req.SetBasicAuth("admin", rc.AdminPasswd)
 
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req.WithContext(ctx)) //nolint:gosec // see above
 	if err != nil {
 		return fmt.Errorf("request failed for %s: %w", remapURL, err)
 	}

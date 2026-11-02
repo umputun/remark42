@@ -47,7 +47,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	req.SetBasicAuth("admin", ec.AdminPasswd)
 
 	// get with timeout
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req.WithContext(ctx)) //nolint:gosec // exportURL is built from operator-supplied CLI flags, not user input
 	if err != nil {
 		return fmt.Errorf("request failed for %s: %w", exportURL, err)
 	}

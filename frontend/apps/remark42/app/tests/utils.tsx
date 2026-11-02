@@ -1,15 +1,16 @@
-import { h, ComponentChild } from 'preact';
-import { IntlProvider } from 'react-intl';
+import type { ComponentChild } from 'preact';
+import { h } from 'preact';
 import { render as originalRender } from '@testing-library/preact';
-import { Provider } from 'react-redux';
+import { Provider } from 'store/context';
 
+import { IntlProvider } from 'common/intl';
 import en from 'locales/en.json';
 import { mockStore } from '__stubs__/store';
-import { StoreState } from 'store';
+import type { StoreState } from 'store';
 
-export function render(children: ComponentChild, s: Partial<StoreState> = {}) {
+export function render(children: ComponentChild, s: Partial<StoreState> = {}, locale = 'en') {
   const props = originalRender(
-    <IntlProvider locale="en" messages={en}>
+    <IntlProvider locale={locale} messages={en}>
       <Provider store={mockStore(s)}>{children}</Provider>
     </IntlProvider>
   );
@@ -18,7 +19,7 @@ export function render(children: ComponentChild, s: Partial<StoreState> = {}) {
     ...props,
     rerender(children: ComponentChild) {
       props.rerender(
-        <IntlProvider locale="en" messages={en}>
+        <IntlProvider locale={locale} messages={en}>
           <Provider store={mockStore(s)}>{children}</Provider>
         </IntlProvider>
       );

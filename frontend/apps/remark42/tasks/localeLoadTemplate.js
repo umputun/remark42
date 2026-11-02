@@ -1,5 +1,5 @@
 function renderLoadLocale(locales) {
-  return `/** this is generated file by "npm run translation:generate" **/
+  return `/** this is generated file by "pnpm translation:generate" **/
 // it is ok that is empty. Default messages from code will be used.
 const enMessages = {};
 

@@ -225,13 +225,15 @@ type ScanDumpCmd struct {
 func newScanDumpCmd(ctx context.Context, args ...interface{}) *ScanDumpCmd {
 	return &ScanDumpCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeScanDump,
 		},
 	}
 }
 
 func (cmd *ScanDumpCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
@@ -240,10 +242,12 @@ func (cmd *ScanDumpCmd) SetVal(val ScanDump) {
 }
 
 func (cmd *ScanDumpCmd) Result() (ScanDump, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
 func (cmd *ScanDumpCmd) Val() ScanDump {
+	cmd.await()
 	return cmd.val
 }
 
@@ -268,6 +272,13 @@ func (cmd *ScanDumpCmd) readReply(rd *proto.Reader) (err error) {
 	}
 
 	return nil
+}
+
+func (cmd *ScanDumpCmd) Clone() Cmder {
+	return &ScanDumpCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // ScanDump is a simple struct, can be copied directly
+	}
 }
 
 // Returns information about a Bloom filter.
@@ -296,8 +307,9 @@ type BFInfoCmd struct {
 func NewBFInfoCmd(ctx context.Context, args ...interface{}) *BFInfoCmd {
 	return &BFInfoCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeBFInfo,
 		},
 	}
 }
@@ -307,14 +319,17 @@ func (cmd *BFInfoCmd) SetVal(val BFInfo) {
 }
 
 func (cmd *BFInfoCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
 func (cmd *BFInfoCmd) Val() BFInfo {
+	cmd.await()
 	return cmd.val
 }
 
 func (cmd *BFInfoCmd) Result() (BFInfo, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
@@ -386,6 +401,13 @@ func (cmd *BFInfoCmd) readReply(rd *proto.Reader) (err error) {
 
 	cmd.val = result
 	return nil
+}
+
+func (cmd *BFInfoCmd) Clone() Cmder {
+	return &BFInfoCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // BFInfo is a simple struct, can be copied directly
+	}
 }
 
 // BFInfoCapacity returns information about the capacity of a Bloom filter.
@@ -625,8 +647,9 @@ type CFInfoCmd struct {
 func NewCFInfoCmd(ctx context.Context, args ...interface{}) *CFInfoCmd {
 	return &CFInfoCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeCFInfo,
 		},
 	}
 }
@@ -636,14 +659,17 @@ func (cmd *CFInfoCmd) SetVal(val CFInfo) {
 }
 
 func (cmd *CFInfoCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
 func (cmd *CFInfoCmd) Val() CFInfo {
+	cmd.await()
 	return cmd.val
 }
 
 func (cmd *CFInfoCmd) Result() (CFInfo, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
@@ -690,6 +716,13 @@ func (cmd *CFInfoCmd) readReply(rd *proto.Reader) (err error) {
 
 	cmd.val = result
 	return nil
+}
+
+func (cmd *CFInfoCmd) Clone() Cmder {
+	return &CFInfoCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // CFInfo is a simple struct, can be copied directly
+	}
 }
 
 // CFInfo returns information about a Cuckoo filter.
@@ -787,8 +820,9 @@ type CMSInfoCmd struct {
 func NewCMSInfoCmd(ctx context.Context, args ...interface{}) *CMSInfoCmd {
 	return &CMSInfoCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeCMSInfo,
 		},
 	}
 }
@@ -798,14 +832,17 @@ func (cmd *CMSInfoCmd) SetVal(val CMSInfo) {
 }
 
 func (cmd *CMSInfoCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
 func (cmd *CMSInfoCmd) Val() CMSInfo {
+	cmd.await()
 	return cmd.val
 }
 
 func (cmd *CMSInfoCmd) Result() (CMSInfo, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
@@ -841,6 +878,13 @@ func (cmd *CMSInfoCmd) readReply(rd *proto.Reader) (err error) {
 
 	cmd.val = result
 	return nil
+}
+
+func (cmd *CMSInfoCmd) Clone() Cmder {
+	return &CMSInfoCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // CMSInfo is a simple struct, can be copied directly
+	}
 }
 
 // CMSInfo returns information about a Count-Min Sketch filter.
@@ -980,8 +1024,9 @@ type TopKInfoCmd struct {
 func NewTopKInfoCmd(ctx context.Context, args ...interface{}) *TopKInfoCmd {
 	return &TopKInfoCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeTopKInfo,
 		},
 	}
 }
@@ -991,14 +1036,17 @@ func (cmd *TopKInfoCmd) SetVal(val TopKInfo) {
 }
 
 func (cmd *TopKInfoCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
 func (cmd *TopKInfoCmd) Val() TopKInfo {
+	cmd.await()
 	return cmd.val
 }
 
 func (cmd *TopKInfoCmd) Result() (TopKInfo, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
@@ -1036,6 +1084,13 @@ func (cmd *TopKInfoCmd) readReply(rd *proto.Reader) (err error) {
 
 	cmd.val = result
 	return nil
+}
+
+func (cmd *TopKInfoCmd) Clone() Cmder {
+	return &TopKInfoCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // TopKInfo is a simple struct, can be copied directly
+	}
 }
 
 // TopKInfo returns information about a Top-K filter.
@@ -1227,8 +1282,9 @@ type TDigestInfoCmd struct {
 func NewTDigestInfoCmd(ctx context.Context, args ...interface{}) *TDigestInfoCmd {
 	return &TDigestInfoCmd{
 		baseCmd: baseCmd{
-			ctx:  ctx,
-			args: args,
+			ctx:     ctx,
+			args:    args,
+			cmdType: CmdTypeTDigestInfo,
 		},
 	}
 }
@@ -1238,14 +1294,17 @@ func (cmd *TDigestInfoCmd) SetVal(val TDigestInfo) {
 }
 
 func (cmd *TDigestInfoCmd) String() string {
+	cmd.await()
 	return cmdString(cmd, cmd.val)
 }
 
 func (cmd *TDigestInfoCmd) Val() TDigestInfo {
+	cmd.await()
 	return cmd.val
 }
 
 func (cmd *TDigestInfoCmd) Result() (TDigestInfo, error) {
+	cmd.await()
 	return cmd.val, cmd.err
 }
 
@@ -1293,6 +1352,13 @@ func (cmd *TDigestInfoCmd) readReply(rd *proto.Reader) (err error) {
 
 	cmd.val = result
 	return nil
+}
+
+func (cmd *TDigestInfoCmd) Clone() Cmder {
+	return &TDigestInfoCmd{
+		baseCmd: cmd.cloneBaseCmd(),
+		val:     cmd.val, // TDigestInfo is a simple struct, can be copied directly
+	}
 }
 
 // TDigestInfo returns information about a t-Digest data structure.

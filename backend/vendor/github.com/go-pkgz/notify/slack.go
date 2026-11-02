@@ -35,7 +35,8 @@ func (s *Slack) Send(ctx context.Context, destination, text string) error {
 		return fmt.Errorf("problem parsing destination: %w", err)
 	}
 	options := []slack.MsgOption{slack.MsgOptionText(text, false)}
-	if attachment.Title != "" {
+	// titleLink alone carries nothing, slack renders it as a link on the title and drops it without one
+	if attachment.Title != "" || attachment.Text != "" {
 		options = append(options, slack.MsgOptionAttachments(attachment))
 	}
 

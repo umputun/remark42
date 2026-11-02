@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -76,7 +77,7 @@ type AppleConfig struct {
 	ResponseMode string // changes method of receiving data in callback. Default value "form_post" (https://developer.apple.com/documentation/sign_in_with_apple/request_an_authorization_to_the_sign_in_with_apple_server?changes=_1_2#4066168)
 
 	scopes       []string         // for this package allow only username scope and UID in token claims. Apple service API provide only "email" and "name" scope values (https://developer.apple.com/documentation/sign_in_with_apple/clientconfigi/3230955-scope)
-	privateKey   interface{}      // private key from Apple obtained in developer account (the keys section). Required for create the Client Secret (https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens#3262048)
+	privateKey   any              // private key from Apple obtained in developer account (the keys section). Required for create the Client Secret (https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens#3262048)
 	publicKey    crypto.PublicKey // need for validate sign of token
 	clientSecret string           // is the JWT client secret will create after first call and then used until expired
 	jwkURL       string           // URL for fetch JWK Apple keys, need redefine for tests
@@ -91,8 +92,9 @@ type AppleHandler struct {
 	// infoURL  string not implemented at Apple side
 	endpoint oauth2.Endpoint
 
-	mapUser func(jwt.MapClaims) token.User // map info from InfoURL to User
-	conf    AppleConfig                    // main config for Apple auth provider
+	mapUser  func(jwt.MapClaims) token.User // map info from InfoURL to User
+	conf     AppleConfig                    // main config for Apple auth provider
+	jwkCache *appleJWKCache                 // shared cache of Apple public keys
 
 	PrivateKeyLoader PrivateKeyLoaderInterface // custom function interface for load private key
 
@@ -180,6 +182,8 @@ func NewApple(p Params, appleCfg AppleConfig, privateKeyLoader PrivateKeyLoaderI
 			TokenURL: appleTokenURL,
 		},
 
+		jwkCache: &appleJWKCache{},
+
 		mapUser: func(claims jwt.MapClaims) token.User {
 			var usr token.User
 			if uid, ok := claims["sub"]; ok {
@@ -228,7 +232,7 @@ func (ah *AppleHandler) initPrivateKey() error {
 }
 
 // tokenKeyFunc use for verify JWT sign, it receives the parsed token and should return the key for validating.
-func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (interface{}, error) {
+func (ah *AppleHandler) tokenKeyFunc(jwtToken *jwt.Token) (any, error) {
 	if jwtToken == nil {
 		return nil, fmt.Errorf("failed to call token keyFunc, because token is nil")
 	}
@@ -260,7 +264,7 @@ func (ah *AppleHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			State: state,
 			From:  r.URL.Query().Get("from"),
 		},
-		SessionOnly: r.URL.Query().Get("session") != "" && r.URL.Query().Get("session") != "0",
+		SessionOnly: sessionOnlyFromRequest(r),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        cid,
 			Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
@@ -287,11 +291,11 @@ func (ah *AppleHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	ah.Logf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
 
-	http.Redirect(w, r, loginURL, http.StatusFound)
+	http.Redirect(w, r, loginURL, http.StatusFound) //nolint:gosec // redirect goes to the fixed apple auth endpoint, request path only affects redirect_uri query param
 }
 
-// AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
-// GET /callback
+// AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser.
+// POST /callback with the default form_post response mode, GET /callback when response mode is overridden
 func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// read response form data
@@ -331,24 +335,29 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, err, "exchange failed")
 		return
 	}
-	ah.Logf("[DEBUG] response data %+v", resp)
+	ah.Logf("[DEBUG] apple exchange response: %s", appleVerificationResponseLogSummary(resp))
 	if resp.Error != "" {
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("fetch IDtoken response error: %s", resp.Error))
 		return
 	}
 
-	// trying to fetch Apple public key (JWK) for verify token signature, it need for verify IDToken received from Apple
-	keySet, err := fetchAppleJWK(r.Context(), ah.conf.jwkURL)
-	if err != nil {
-		ah.Logf("[ERROR] failed to fetch JWK from Apple key service: " + err.Error())
-		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("failed to fetch JWK from Apple key service: %s", resp.Error))
-		return
-	}
-
-	// get token claims for extract uid (and email or name if they exist in scope)
+	// get token claims for extract uid (and email or name if they exist in scope).
+	// the signature is verified with Apple public keys (JWK), served from the handler cache,
+	// while jwt v5 parser options enforce iss == https://appleid.apple.com and
+	// aud == ClientID inline so we don't need a separate validate pass.
 	tokenClaims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(resp.IDToken, tokenClaims, keySet.keyFunc)
+	_, err = jwt.ParseWithClaims(resp.IDToken, tokenClaims, ah.jwkKeyFunc(r.Context()),
+		jwt.WithIssuer(appleIDTokenIssuer),
+		jwt.WithAudience(ah.conf.ClientID))
 	if err != nil {
+		// distinguish a confused-deputy reject (iss/aud) from a server-side
+		// parse/sig failure so the handler returns the same 403 + body as
+		// before for the security-relevant case.
+		if errors.Is(err, jwt.ErrTokenInvalidIssuer) || errors.Is(err, jwt.ErrTokenInvalidAudience) {
+			ah.Logf("[WARN] apple id_token rejected: %s", err.Error())
+			rest.SendErrorJSON(w, r, ah.L, http.StatusForbidden, nil, "invalid id_token")
+			return
+		}
 		ah.Logf("[ERROR] failed to get claims: " + err.Error())
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, nil, fmt.Sprintf("failed to token validation, key is invalid: %s", resp.Error))
 		return
@@ -378,7 +387,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 			ID:       cid,
 			Audience: oauthClaims.Audience,
 		},
-		SessionOnly: false,
+		SessionOnly: oauthClaims.SessionOnly,
 		AuthProvider: &token.AuthProvider{
 			Name: ah.name,
 		},
@@ -389,11 +398,18 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ah.Logf("[DEBUG] user info %+v", u)
+	ah.Logf("[DEBUG] user info %s", userLogSummary(u))
 
 	// redirect to back url if presented in login query params
 	if oauthClaims.Handshake != nil && oauthClaims.Handshake.From != "" {
-		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusTemporaryRedirect)
+		if !isAllowedRedirect(oauthClaims.Handshake.From, ah.URL, ah.AllowedRedirectHosts) {
+			ah.Logf("[WARN] rejected redirect to disallowed host: %s", redirectHostForLog(oauthClaims.Handshake.From))
+			rest.RenderJSON(w, &u)
+			return
+		}
+		// see-other makes the browser retrieve the target with GET, so apple's form_post
+		// callback is not replayed as a POST onto the "from" page
+		http.Redirect(w, r, oauthClaims.Handshake.From, http.StatusSeeOther)
 		return
 	}
 	rest.RenderJSON(w, &u)
@@ -443,17 +459,16 @@ func (ah *AppleHandler) exchange(ctx context.Context, code, redirectURI string, 
 		return err
 	}
 
-	// trying to decode (unmarshal json) data of response
-	err = json.NewDecoder(res.Body).Decode(result)
-	if err != nil {
-		return fmt.Errorf("unmarshalling data from apple service response failed: %w", err)
-	}
-
 	defer func() {
-		if err = res.Body.Close(); err != nil {
-			ah.Logf("[ERROR] close request body failed when get access token: %v", err)
+		if e := res.Body.Close(); e != nil {
+			ah.Logf("[ERROR] close request body failed when get access token: %v", e)
 		}
 	}()
+
+	// trying to decode (unmarshal json) data of response
+	if err = json.NewDecoder(res.Body).Decode(result); err != nil {
+		return fmt.Errorf("unmarshalling data from apple service response failed: %w", err)
+	}
 
 	// if above operation done successfully checking a response code and error descriptions, if one exist.
 	// apple service will response either 200 (OK) or 400 (any error).
@@ -504,7 +519,7 @@ func (ah *AppleHandler) parseUserData(user *token.User, jUser string) {
 
 	// catch error for log only. No need break flow if user name doesn't exist
 	if err := json.Unmarshal([]byte(jUser), &userData); err != nil {
-		ah.Logf("[DEBUG] failed to parse user data %s: %v", user, err)
+		ah.Logf("[DEBUG] failed to parse apple user data: %v", err)
 		user.Name = "noname_" + user.ID[6:12] // paste noname if user name failed to parse
 		return
 	}
@@ -544,3 +559,26 @@ func (ah AppleHandler) makeRedirURL(path string) string {
 
 	return strings.TrimRight(ah.URL, "/") + strings.TrimSuffix(newPath, "/") + urlCallbackSuffix
 }
+
+// appleVerificationResponseLogSummary formats appleVerificationResponse for safe
+// logging. The struct's AccessToken, RefreshToken and IDToken fields are
+// credentials and must never appear verbatim in logs that may be shipped to
+// centralized logging or third-party observability systems; this helper logs
+// only their presence (present|missing), the non-secret token type and
+// expiry, plus any provider-side error string.
+func appleVerificationResponseLogSummary(r appleVerificationResponse) string {
+	return fmt.Sprintf("type=%s expires_in=%d access_token=%s refresh_token=%s id_token=%s error=%q",
+		r.TokenType, r.ExpiresIn,
+		presence(r.AccessToken), presence(r.RefreshToken), presence(r.IDToken), r.Error)
+}
+
+func presence(s string) string {
+	if s == "" {
+		return "missing"
+	}
+	return "present"
+}
+
+// appleIDTokenIssuer is the issuer Apple sets on every id_token issued by Sign in with Apple.
+// see https://developer.apple.com/documentation/sign_in_with_apple/sign_in_with_apple_rest_api/verifying_a_user
+const appleIDTokenIssuer = "https://appleid.apple.com" // #nosec G101 -- public Apple issuer URL, not a credential

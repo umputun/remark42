@@ -40,14 +40,14 @@ type AuditEntry struct {
 		IPAddress string `json:"ip_address"`
 	} `json:"context"`
 	Details struct {
-		NewValue      interface{} `json:"new_value"`
-		PreviousValue interface{} `json:"previous_value"`
-		MobileOnly    bool        `json:"mobile_only"`
-		WebOnly       bool        `json:"web_only"`
-		NonSSOOnly    bool        `json:"non_sso_only"`
-		ExportType    string      `json:"export_type"`
-		ExportStart   string      `json:"export_start_ts"`
-		ExportEnd     string      `json:"export_end_ts"`
+		NewValue      any    `json:"new_value"`
+		PreviousValue any    `json:"previous_value"`
+		MobileOnly    bool   `json:"mobile_only"`
+		WebOnly       bool   `json:"web_only"`
+		NonSSOOnly    bool   `json:"non_sso_only"`
+		ExportType    string `json:"export_type"`
+		ExportStart   string `json:"export_start_ts"`
+		ExportEnd     string `json:"export_end_ts"`
 	} `json:"details"`
 }
 
@@ -107,14 +107,15 @@ type AuditLogParameters struct {
 
 func (api *Client) auditLogsRequest(ctx context.Context, path string, values url.Values) (*AuditLogResponse, error) {
 	response := &AuditLogResponse{}
-	err := api.getMethod(ctx, path, api.token, values, response)
+	// The Audit Logs API uses a different base URL (api.slack.com instead of slack.com/api)
+	_, err := getResource(ctx, api.httpclient, api.auditEndpoint+path, api.token, values, response, api)
 	if err != nil {
 		return nil, err
 	}
 	return response, response.Err()
 }
 
-// GetAuditLogs retrieves a page of audit entires according to the parameters given
+// GetAuditLogs retrieves a page of audit entries according to the parameters given
 func (api *Client) GetAuditLogs(params AuditLogParameters) (entries []AuditEntry, nextCursor string, err error) {
 	return api.GetAuditLogsContext(context.Background(), params)
 }

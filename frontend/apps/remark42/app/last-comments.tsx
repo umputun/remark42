@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
-import { IntlProvider } from 'react-intl';
 
+import { IntlProvider } from 'common/intl';
 import { getLastComments } from 'common/api.getLastComments';
 import { BASE_URL } from 'common/constants.config';
 import { loadLocale } from 'utils/loadLocale';

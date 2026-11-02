@@ -2,13 +2,13 @@ OS=linux
 ARCH=amd64
 GITHUB_REF=$(shell git rev-parse --symbolic-full-name HEAD)
 GITHUB_SHA=$(shell git rev-parse --short HEAD)
+CLEANUP_RELEASE_ASSETS=$(CURDIR)/scripts/cleanup-release-assets.sh
 
 bin:
-	docker build -f Dockerfile.artifacts -t remark42.bin .
-	- @docker rm -f remark42.bin 2>/dev/null || exit 0
-	docker run -d --name=remark42.bin remark42.bin
-	docker cp remark42.bin:/artifacts/remark42.$(OS)-$(ARCH) remark42
-	docker rm -f remark42.bin
+	@set -e; \
+		./scripts/prepare-release-assets.sh; \
+		trap '$(CLEANUP_RELEASE_ASSETS)' EXIT; \
+		cd backend && CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build -o ../remark42 -ldflags "-X main.revision=$(GITHUB_REF)-$(GITHUB_SHA) -s -w" ./app
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t umputun/remark42 -t ghcr.io/umputun/remark42 --build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) \
@@ -17,26 +17,16 @@ docker:
 dockerx:
 	docker buildx build --build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) --build-arg CI=true \
 		--build-arg SKIP_FRONTEND_TEST=true --build-arg SKIP_BACKEND_TEST=true \
-		--progress=plain --platform linux/amd64,linux/arm/v7,linux/arm64 \
+		--progress=plain --platform linux/amd64,linux/arm64 \
 		-t ghcr.io/umputun/remark42:master -t umputun/remark42:master .
 
 release:
-	docker build -f Dockerfile.artifacts --no-cache --pull --build-arg CI=true \
-		--build-arg GITHUB_REF=$(GITHUB_REF) --build-arg GITHUB_SHA=$(GITHUB_SHA) -t remark42.bin .
-	- @docker rm -f remark42.bin 2>/dev/null || exit 0
-	- @mkdir -p bin
-	docker run -d --name=remark42.bin remark42.bin
-	docker cp remark42.bin:/artifacts/remark42.linux-amd64.tar.gz bin/remark42.linux-amd64.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.linux-386.tar.gz bin/remark42.linux-386.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.linux-arm64.tar.gz bin/remark42.linux-arm64.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.darwin-amd64.tar.gz bin/remark42.darwin-amd64.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.darwin-arm64.tar.gz bin/remark42.darwin-arm64.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.freebsd-amd64.tar.gz bin/remark42.freebsd-amd64.tar.gz
-	docker cp remark42.bin:/artifacts/remark42.windows-amd64.zip bin/remark42.windows-amd64.zip
-	docker rm -f remark42.bin
+	@set -e; \
+		trap '$(CLEANUP_RELEASE_ASSETS)' EXIT; \
+		goreleaser release --snapshot --clean --skip=publish
 
 race_test:
-	cd backend/app && go test -race -timeout=60s -count 1 ./...
+	cd backend/app && go test -race -timeout=300s -count 1 ./...
 
 backend:
 	docker compose -f compose-dev-backend.yml build
@@ -49,7 +39,28 @@ rundev:
 		docker compose -f compose-private.yml build
 	docker compose -f compose-private.yml up
 
-e2e:
-	docker compose -f compose-e2e-test.yml up --build --quiet-pull --exit-code-from tests
+# stamped the same way the suite stamps a stack it starts itself, so one brought up here is
+# accepted instead of rejected as belonging to another checkout
+e2e-up:
+	./e2e/tls/generate.sh
+	E2E_STAMP=$$(./e2e/stamp.sh) docker compose -f compose-e2e-test.yml up -d --build --quiet-pull --wait
 
-.PHONY: bin backend
+e2e-down:
+	docker compose -f compose-e2e-test.yml down -v
+
+# the suite brings the stack up itself when it finds none, so e2e-up is only worth running
+# to keep the containers between invocations
+e2e:
+	cd e2e && go test -tags=e2e -count 1 -parallel 4 -timeout 20m ./...
+
+e2e-ui:
+	cd e2e && E2E_HEADLESS=false E2E_KEEP=1 go test -tags=e2e -count 1 -parallel 4 -v -timeout 20m ./...
+
+# what the browser suite reaches, in the backend and in the widget, neither of which the profiles
+# from `go test` and jest can show: the binary and the bundle are both instrumented at build time
+# instead. compose-e2e-coverage.yml is the overlay that does it, and it names the instrumented
+# instances. Needs frontend/apps/remark42/node_modules for the widget report.
+e2e-cover:
+	./e2e/coverage.sh
+
+.PHONY: bin docker dockerx release race_test backend frontend rundev e2e e2e-up e2e-down e2e-ui e2e-cover

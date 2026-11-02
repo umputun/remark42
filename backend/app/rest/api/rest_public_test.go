@@ -1,25 +1,31 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dlclark/regexp2"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/routegroup"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -367,6 +373,86 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, id2, comments.Comments[0].ID)
 }
 
+// TestRest_LastVoteIsPerUser covers the per-user vote field in the last comments response, which
+// is cached, so a response built for one user must not be served to another, and a vote has to
+// replace what the voter already has cached
+func TestRest_LastVoteIsPerUser(t *testing.T) {
+	// startupT's cache stores nothing, which would hide the defect this covers
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah-last-vote"
+	id := addComment(t, store.Comment{Text: "vote target", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+
+	voteSeenBy := func(tkn string) (vote, score int) {
+		r, e := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
+		require.NoError(t, e)
+		rr, e := sendReq(r, tkn)
+		require.NoError(t, e)
+		body, e := io.ReadAll(rr.Body)
+		require.NoError(t, e)
+		require.NoError(t, rr.Body.Close())
+		require.Equal(t, http.StatusOK, rr.StatusCode, string(body))
+		comments := []store.Comment{}
+		require.NoError(t, json.Unmarshal(body, &comments))
+		require.Len(t, comments, 1)
+		require.Equal(t, id, comments[0].ID)
+		return comments[0].Vote, comments[0].Score
+	}
+
+	// the voter has a cached response from before the vote, which the vote has to invalidate
+	vote, score := voteSeenBy(dev2Token)
+	require.Equal(t, 0, vote)
+	require.Equal(t, 0, score)
+
+	// the site feed shows no votes, so a vote must leave it cached
+	feed := func() {
+		body, code := get(t, ts.URL+"/api/v1/rss/site?site=remark42")
+		require.Equal(t, http.StatusOK, code, body)
+	}
+	feed()
+	feedMisses := atomic.LoadInt64(&lru.Misses)
+
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=%s&vote=1", ts.URL, id, postURL), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, dev2Token)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	vote, score = voteSeenBy(dev2Token)
+	assert.Equal(t, 1, vote, "the voter sees their vote right after casting it")
+	assert.Equal(t, 1, score, "the score includes the vote right after it is cast")
+	vote, score = voteSeenBy("")
+	assert.Equal(t, 0, vote, "an anonymous reader sees no vote")
+	assert.Equal(t, 1, score)
+	vote, _ = voteSeenBy(devToken)
+	assert.Equal(t, 0, vote, "another user sees no vote")
+	vote, _ = voteSeenBy(dev2Token)
+	assert.Equal(t, 1, vote, "the voter still sees their vote")
+
+	misses := atomic.LoadInt64(&lru.Misses)
+	feed()
+	assert.Equal(t, misses, atomic.LoadInt64(&lru.Misses), "the site feed is served from the cache after a vote")
+	assert.Greater(t, misses, feedMisses, "misses are counted, so the check above is not vacuous")
+
+	// a new comment still refreshes the cached last comments of every user
+	addComment(t, store.Comment{Text: "another one", Locator: store.Locator{SiteID: "remark42", URL: postURL + "-2"}}, ts)
+	r, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	rr, err := sendReq(r, dev2Token)
+	require.NoError(t, err)
+	body, err := io.ReadAll(rr.Body)
+	require.NoError(t, err)
+	require.NoError(t, rr.Body.Close())
+	comments := []store.Comment{}
+	require.NoError(t, json.Unmarshal(body, &comments))
+	assert.Len(t, comments, 2, "a new comment reaches the voter's cached last comments")
+}
+
 func TestRest_Last(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -380,11 +466,12 @@ func TestRest_Last(t *testing.T) {
 	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
-	// add 3 comments
+	// add 3 comments, with the clock pushed past a millisecond boundary in between so the two
+	// "since" values below are distinct
 	ts1 := time.Now().UnixNano() / 1000000
 	addComment(t, c1, ts)
 	id1 := addComment(t, c1, ts)
-	time.Sleep(10 * time.Millisecond)
+	waitPastMillisecond(time.Now())
 	ts2 := time.Now().UnixNano() / 1000000
 	id2 := addComment(t, c2, ts)
 
@@ -538,9 +625,17 @@ func TestRest_FindUserComments_CWE_918(t *testing.T) {
 	assert.Equal(t, arbitraryServer.URL, resp.Comments[0].Locator.URL, "arbitrary URL provided by the request")
 }
 
+// waitPastMillisecond blocks until the wall clock moves past ts's millisecond, so whatever is
+// created next gets a distinct value for the millisecond-precision "since" filter
+func waitPastMillisecond(ts time.Time) {
+	next := ts.Truncate(time.Millisecond).Add(time.Millisecond)
+	time.Sleep(time.Until(next) + time.Microsecond) // a non-positive duration returns at once
+}
+
 func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	// test that comment counting is consistent between tree and plain formats
-	ts, srv, teardown := startupT(t)
+	// the open-route limit is lifted so the subtests below can run back to back
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.openRouteLimiter = 100000 })
 	defer teardown()
 
 	commentLocator := store.Locator{URL: "test-url", SiteID: "remark42"}
@@ -566,55 +661,55 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	}
 
 	// adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
-	// with sleep so that at least few millisecond pass between each comment
-	// and later we would be able to use that in "since" filter with millisecond precision
+	// each comment waits for the clock to pass the previous one's millisecond so the "since"
+	// filter, which has millisecond precision, can tell them apart
 	ids := make([]string, 9)
 	timestamps := make([]time.Time, 9)
 	c1 := store.Comment{Text: "top-level comment 1", Locator: commentLocator}
 	ids[0], timestamps[0] = addCommentGetCreatedTime(t, c1, ts)
 	// #3 by score
 	setScore(commentLocator, ids[0], 1)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[0])
 
 	c2 := store.Comment{Text: "top-level comment 2", Locator: commentLocator}
 	ids[1], timestamps[1] = addCommentGetCreatedTime(t, c2, ts)
 	// #2 by score
 	setScore(commentLocator, ids[1], 2)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[1])
 
 	c3 := store.Comment{Text: "second-level comment 1", ParentID: ids[0], Locator: commentLocator}
 	ids[2], timestamps[2] = addCommentGetCreatedTime(t, c3, ts)
 	// #1 by score
 	setScore(commentLocator, ids[2], 10)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[2])
 
 	c4 := store.Comment{Text: "third-level comment 1", ParentID: ids[2], Locator: commentLocator}
 	ids[3], timestamps[3] = addCommentGetCreatedTime(t, c4, ts)
 	// #5 by score, #1 by controversy
 	setScore(commentLocator, ids[3], 4)
 	setScore(commentLocator, ids[3], -4)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[3])
 
 	c5 := store.Comment{Text: "second-level comment 2", ParentID: ids[1], Locator: commentLocator}
 	ids[4], timestamps[4] = addCommentGetCreatedTime(t, c5, ts)
 	// #5 by score, #2 by controversy
 	setScore(commentLocator, ids[4], 2)
 	setScore(commentLocator, ids[4], -3)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[4])
 
 	c6 := store.Comment{Text: "deleted third-level comment 2", ParentID: ids[4], Locator: commentLocator}
 	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
 	// deleted later so not visible in site-wide requests
 	setScore(commentLocator, ids[5], 10)
 	setScore(commentLocator, ids[5], -10)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[5])
 
 	c7 := store.Comment{Text: "top-level comment 3", Locator: commentLocator}
 	ids[6], timestamps[6] = addCommentGetCreatedTime(t, c7, ts)
 	// #6 by score, #4 by controversy
 	setScore(commentLocator, ids[6], -3)
 	setScore(commentLocator, ids[6], 1)
-	time.Sleep(time.Millisecond * 5)
+	waitPastMillisecond(timestamps[6])
 
 	c8 := store.Comment{Text: "deleted second-level comment 3", ParentID: ids[6], Locator: commentLocator}
 	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
@@ -732,16 +827,16 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
 		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
 		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
-		{"format=tree&limit=6", `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
-		{"format=tree&limit=7", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{"format=tree&limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
 		{"format=tree&url=test-url&limit=2", `"info":{"url":"test-url","count":6,"count_left":3,"last_comment":"` + ids[0]},
-		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
+		{"format=tree&url=test-url&limit=6", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		{"format=tree&url=test-url&limit=7", `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		// start after first top-level comment
 		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[0]), `"info":{"count":7,"count_left":2,"last_comment":"` + ids[1]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[0]), `"info":{"url":"test-url","count":6,"count_left":1,"last_comment":"` + ids[1]},
 		// start after second top-level comment
-		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
+		{fmt.Sprintf("format=tree&limit=2&offset_id=%s", ids[1]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
 		{fmt.Sprintf("format=tree&url=test-url&limit=2&offset_id=%s", ids[1]), `"info":{"url":"test-url","count":6,"count_left":0,"last_comment":"` + ids[6]},
 		// start after third top-level comment, so expect comment to post 2, or no comments on post 1 if "url" is set
 		{fmt.Sprintf("format=tree&limit=1&offset_id=%s", ids[6]), `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
@@ -770,12 +865,17 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 		t.Run(tc.params, func(t *testing.T) {
 			url := fmt.Sprintf(ts.URL+"/api/v1/find?site=remark42&%s", tc.params)
 			body, code := get(t, url)
+			// bad-request cases are identified by their error response body rather than
+			// a "=bad" substring of the params: comment IDs are random UUIDs and one
+			// starting with "bad" (e.g. offset_id=bad49e60-...) would otherwise be
+			// misread as a bad request, making this test flaky.
 			expectedStatus := http.StatusOK
-			if strings.Contains(tc.params, "=bad") {
+			if strings.Contains(tc.expectedBody, `"error":`) {
 				expectedStatus = http.StatusBadRequest
 			}
 			assert.Equal(t, expectedStatus, code)
 			assert.Contains(t, body, tc.expectedBody)
+			t.Log(body)
 			// prevent hit limiter from engaging
 			time.Sleep(80 * time.Millisecond)
 		})
@@ -932,7 +1032,7 @@ func TestRest_Config(t *testing.T) {
 	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 300.0, j["edit_duration"])
-	assert.EqualValues(t, []interface{}{"a1", "a2"}, j["admins"])
+	assert.EqualValues(t, []any{"a1", "a2"}, j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
 	assert.Equal(t, 4000.0, j["max_comment_size"])
 	assert.Equal(t, -5.0, j["low_score"])
@@ -973,13 +1073,26 @@ func TestRest_QR(t *testing.T) {
 	assert.Equal(t, "image/png", r.Header.Get("Content-Type"))
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 
-	// compare the image
+	// compare the decoded image rather than the encoded bytes: the pixels are what the endpoint
+	// promises, while the byte stream is whatever the toolchain's png encoder produces, and
+	// pinning that fails on a go release that changes it
 	fh, err := os.Open("testdata/qr_test.png")
 	defer func() { assert.NoError(t, fh.Close()) }()
-	assert.NoError(t, err)
-	img, err := io.ReadAll(fh)
-	assert.NoError(t, err)
-	assert.Equal(t, img, bdy)
+	require.NoError(t, err)
+
+	want, err := png.Decode(fh)
+	require.NoError(t, err)
+	got, err := png.Decode(bytes.NewReader(bdy))
+	require.NoError(t, err, "the endpoint did not return a decodable png")
+
+	require.Equal(t, want.Bounds(), got.Bounds(), "the qr code is not the size it used to be")
+	for y := want.Bounds().Min.Y; y < want.Bounds().Max.Y; y++ {
+		for x := want.Bounds().Min.X; x < want.Bounds().Max.X; x++ {
+			if want.At(x, y) != got.At(x, y) {
+				t.Fatalf("the qr code differs at %d,%d: want %v, got %v", x, y, want.At(x, y), got.At(x, y))
+			}
+		}
+	}
 }
 
 func TestRest_Info(t *testing.T) {
@@ -1029,6 +1142,200 @@ func TestRest_Robots(t *testing.T) {
 		"Allow: /api/v1/last\nAllow: /api/v1/id\nAllow: /api/v1/count\nAllow: /api/v1/counts\n"+
 		"Allow: /api/v1/list\nAllow: /api/v1/config\nAllow: /api/v1/user\nAllow: /api/v1/img\n"+
 		"Allow: /api/v1/avatar\nAllow: /api/v1/picture\n", body)
+}
+
+// TestRest_LoadPictureRejectsPathTraversal reproduces the unauthenticated path-traversal
+// vulnerability in GET /api/v1/picture/{user}/{id}. Before the fix, the handler concatenated
+// the URL params verbatim into a filesystem path via path.Join, so a request like
+// `/api/v1/picture/../remark.db` would resolve to `<base>/../remark.db`, escaping the image
+// directory. Even when the file did not exist (default Partitions=100 mitigates direct hits),
+// the FS error message leaked the constructed internal path back to the unauthenticated caller.
+func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	cases := []struct {
+		name       string
+		path       string
+		wantStatus int
+	}{
+		// A literal ".." is normalized away by net/http.ServeMux before routing: the request
+		// is redirected to the cleaned path, which matches no picture route, so it never reaches
+		// loadPictureCtrl and resolves to 404. The traversal is neutralized at the router level
+		// (the cleaned path can only ever reach defined routes or the webRoot-bounded file server),
+		// so nothing is served either way.
+		{name: "dotdot in user segment", path: "/api/v1/picture/../remark.db", wantStatus: http.StatusNotFound},
+		// Encoded traversal is not cleaned by the router, so the handler's image.SafeIDSegment
+		// validation is what rejects it, with 400.
+		{name: "dotdot in id segment", path: "/api/v1/picture/dev_user/..%2Fremark.db", wantStatus: http.StatusBadRequest},
+		{name: "encoded dotdot in user segment", path: "/api/v1/picture/%2E%2E/remark.db", wantStatus: http.StatusBadRequest},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, c.wantStatus, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			s := string(body)
+			assert.NotContains(t, s, "..", "error body must not echo traversal marker")
+			assert.NotContains(t, s, "remark.db", "error body must not echo attacker-supplied filename")
+			assert.NotContains(t, s, "no such file", "error body must not leak filesystem state")
+			assert.NotContains(t, s, "/var/", "error body must not leak internal filesystem path")
+		})
+	}
+}
+
+// TestRest_LoadPictureRejectsControlCharsInSegment makes sure a CRLF / tab / NUL
+// in the URL segment is rejected by image.SafeIDSegment. Without the rejection
+// the [WARN] log line constructed from %q-formatted segments would still be
+// safe (Go's %q escapes control chars), but a future log change to %s would
+// turn this into log forgery — and no legitimate picture id ever needs control
+// characters, so the right place to slam the door is in the validator.
+func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{name: "lf in user segment", path: "/api/v1/picture/dev%0Auser/abc.png"},
+		{name: "cr in user segment", path: "/api/v1/picture/dev%0Duser/abc.png"},
+		{name: "tab in user segment", path: "/api/v1/picture/dev%09user/abc.png"},
+		{name: "lf in id segment", path: "/api/v1/picture/dev_user/abc%0A.png"},
+		{name: "nul in id segment", path: "/api/v1/picture/dev_user/abc%00.png"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			s := string(body)
+			assert.Contains(t, s, "invalid picture id", "must reject as invalid input, not fall through to storage")
+			assert.NotContains(t, s, "no such file", "must not reach the filesystem")
+		})
+	}
+}
+
+// TestRest_LoadPictureDefenseHeaders saves a real PNG via the standard upload handler
+// and asserts that GET /api/v1/picture/{user}/{id} carries the layered defense headers
+// (strict CSP, nosniff, Content-Disposition with filename) and that the strict ETag
+// matcher does not 304 on a substring-of-the-real-etag (the pre-fix matcher would).
+func TestRest_LoadPictureDefenseHeaders(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// upload a real PNG via /api/v1/picture
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
+	require.NoError(t, err)
+	_, err = io.Copy(fileWriter, gopherPNG())
+	require.NoError(t, err)
+	contentType := bodyWriter.FormDataContentType()
+	require.NoError(t, bodyWriter.Close())
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
+	require.NoError(t, err)
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	m := map[string]string{}
+	require.NoError(t, json.Unmarshal(body, &m))
+	require.NotEmpty(t, m["id"])
+
+	// fetch the picture and assert defense headers
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "default-src 'none'; sandbox; frame-ancestors 'none'",
+		resp.Header.Get("Content-Security-Policy"))
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, `inline; filename="image"`, resp.Header.Get("Content-Disposition"))
+	assert.Equal(t, "image/png", resp.Header.Get("Content-Type"))
+	realEtag := resp.Header.Get("Etag")
+	require.NotEmpty(t, realEtag)
+
+	// strict matcher: an If-None-Match value that CONTAINS the real etag as a substring
+	// but is not equal to it must NOT trigger 304. The pre-fix matcher used
+	// strings.Contains(header, etag) and would have returned true here.
+	require.True(t, len(realEtag) > 4)
+	substringMatch := "prefix-" + realEtag + "-suffix"
+	req2, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]), http.NoBody)
+	require.NoError(t, err)
+	req2.Header.Set("If-None-Match", substringMatch)
+	resp2, err := client.Do(req2)
+	require.NoError(t, err)
+	defer resp2.Body.Close()
+	assert.Equal(t, http.StatusOK, resp2.StatusCode,
+		"strict etag matcher must NOT 304 when real etag appears only as a substring of If-None-Match; got %q vs real %q", substringMatch, realEtag)
+
+	// sanity: the exact real etag DOES validate
+	req3, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/picture/%s", ts.URL, m["id"]), http.NoBody)
+	require.NoError(t, err)
+	req3.Header.Set("If-None-Match", realEtag)
+	resp3, err := client.Do(req3)
+	require.NoError(t, err)
+	defer resp3.Body.Close()
+	assert.Equal(t, http.StatusNotModified, resp3.StatusCode, "exact etag must round-trip as 304")
+}
+
+// TestRest_LoadPictureRejectsNonImage proves the /picture/ handler rejects bytes that
+// don't sniff as a real image — even when retrieved successfully from the image store.
+// Uses a StoreMock so we can return arbitrary attacker bytes for a valid-looking id.
+func TestRest_LoadPictureRejectsNonImage(t *testing.T) {
+	htmlBody := []byte("<html><body><script>alert(document.domain)</script></body></html>")
+
+	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
+		return htmlBody, nil
+	}}
+	// minimal public struct on purpose: the reject path only exercises imageService.Load
+	// (other fields like dataService, cache, commentFormatter are not touched here).
+	p := &public{imageService: image.NewService(&imageStore, image.ServiceParams{})}
+
+	router := routegroup.New(http.NewServeMux())
+	router.HandleFunc("GET /api/v1/picture/{user}/{id}", p.loadPictureCtrl)
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/v1/picture/dev_user/abc.png")
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	assert.Equal(t, http.StatusUnsupportedMediaType, resp.StatusCode,
+		"non-image bytes must be rejected as 415")
+	assert.False(t, strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html"),
+		"reject response must not be text/html; got %q", resp.Header.Get("Content-Type"))
+	assert.NotContains(t, string(body), "<script>",
+		"attacker payload must not be echoed back")
+	assert.Equal(t, "no-store", resp.Header.Get("Cache-Control"),
+		"rejection path must not be cacheable")
+	// defense headers still present on the reject path
+	assert.Equal(t, "default-src 'none'; sandbox; frame-ancestors 'none'",
+		resp.Header.Get("Content-Security-Policy"))
+	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, `inline; filename="image"`, resp.Header.Get("Content-Disposition"))
 }
 
 func TestPremoderation(t *testing.T) {
