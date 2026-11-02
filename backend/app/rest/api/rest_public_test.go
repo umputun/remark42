@@ -1037,6 +1037,18 @@ func TestRest_Config(t *testing.T) {
 	assert.Equal(t, 10000.0, j["max_image_size"])
 	assert.Equal(t, true, j["emoji_enabled"].(bool))
 	assert.Equal(t, false, j["admin_edit"].(bool))
+	assert.Equal(t, false, j["image_disabled"], "images are enabled by default")
+}
+
+func TestRest_ConfigImagesDisabled(t *testing.T) {
+	ts, _, teardown := startupT(t, disableImagesHook)
+	defer teardown()
+
+	body, code := get(t, ts.URL+"/api/v1/config?site=remark42")
+	assert.Equal(t, http.StatusOK, code)
+	j := R.JSON{}
+	require.NoError(t, json.Unmarshal([]byte(body), &j))
+	assert.Equal(t, true, j["image_disabled"])
 }
 
 func TestRest_QR(t *testing.T) {

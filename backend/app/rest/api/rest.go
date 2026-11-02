@@ -66,6 +66,7 @@ type Rest struct {
 	SubscribersOnly            bool
 	DisableSignature           bool // prevent signature from being added to headers
 	DisableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	DisableImages              bool // refuses image uploads. the comment formatter is expected to strip images from the comment text
 	ExternalImageProxy         bool
 
 	SSLConfig         SSLConfig
@@ -424,6 +425,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		remarkURL:                  s.RemarkURL,
 		anonVote:                   s.AnonVote,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
+		disableImages:              s.DisableImages,
 	}
 
 	admGrp := admin{
@@ -473,6 +475,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		PositiveScore         bool     `json:"positive_score"`
 		ReadOnlyAge           int      `json:"readonly_age"`
 		MaxImageSize          int      `json:"max_image_size"`
+		ImageDisabled         bool     `json:"image_disabled"`
 		EmailNotifications    bool     `json:"email_notifications"`
 		TelegramNotifications bool     `json:"telegram_notifications"`
 		EmojiEnabled          bool     `json:"emoji_enabled"`
@@ -492,6 +495,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		PositiveScore:         s.DataService.PositiveScore,
 		ReadOnlyAge:           s.ReadOnlyAge,
 		MaxImageSize:          s.ImageService.MaxSize,
+		ImageDisabled:         s.DisableImages,
 		EmailNotifications:    s.EmailNotifications,
 		TelegramNotifications: s.TelegramNotifications,
 		EmojiEnabled:          s.EmojiEnabled,

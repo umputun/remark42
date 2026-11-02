@@ -1575,6 +1575,155 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+// disableImagesHook turns image disabling on the way cmd/server.go does: the flag on Rest, and the
+// stripping converter ahead of the image proxy in the comment formatter
+func disableImagesHook(srv *Rest) {
+	srv.DisableImages = true
+	srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(store.StripImages), &proxy.Image{})
+}
+
+func TestRest_SavePictureCtrlImagesDisabled(t *testing.T) {
+	ts, _, teardown := startupT(t, disableImagesHook)
+	defer teardown()
+
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
+	require.NoError(t, err)
+	_, err = io.Copy(fileWriter, gopherPNG())
+	require.NoError(t, err)
+	contentType := bodyWriter.FormDataContentType()
+	require.NoError(t, bodyWriter.Close())
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/picture?site=remark42", bodyBuf)
+	require.NoError(t, err)
+	req.Header.Add("Content-Type", contentType)
+	resp, err := sendReq(req, devToken)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode, string(body))
+	errResp := R.JSON{}
+	require.NoError(t, json.Unmarshal(body, &errResp), string(body))
+	assert.InDelta(t, 17.0, errResp["code"], 0, "rest.ErrActionRejected")
+}
+
+func TestRest_CommentsImagesDisabled(t *testing.T) {
+	ts, _, teardown := startupT(t, disableImagesHook)
+	defer teardown()
+
+	const locator = `"locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}`
+	errCode := func(t *testing.T, body []byte) float64 {
+		errResp := R.JSON{}
+		require.NoError(t, json.Unmarshal(body, &errResp), string(body))
+		return errResp["code"].(float64)
+	}
+
+	t.Run("create strips image and keeps the text", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
+			`{"text": "hello ![](https://example.com/a.png) world", `+locator+`}`)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+
+		c := store.Comment{}
+		require.NoError(t, json.Unmarshal(b, &c))
+		assert.NotContains(t, c.Text, "<img")
+		assert.NotContains(t, c.Text, "example.com/a.png")
+		assert.Contains(t, c.Text, "hello")
+		assert.Contains(t, c.Text, "world")
+	})
+
+	t.Run("create strips raw html image", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
+			`{"text": "hello <img src=\"https://example.com/a.png\"> world", `+locator+`}`)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
+		// decode the comment, as json encoding escapes "<" in the raw body
+		c := store.Comment{}
+		require.NoError(t, json.Unmarshal(b, &c))
+		assert.NotContains(t, c.Text, "<img")
+		assert.Contains(t, c.Text, "hello")
+	})
+
+	t.Run("create with only an image is rejected", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
+			`{"text": "![](https://example.com/a.png)", `+locator+`}`)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+		assert.InDelta(t, 4.0, errCode(t, b), 0, "rest.ErrCommentValidation")
+	})
+
+	t.Run("preview strips image", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/preview",
+			`{"text": "hello ![](https://example.com/a.png) world", `+locator+`}`)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, http.StatusOK, resp.StatusCode, string(b))
+		assert.NotContains(t, string(b), "<img")
+		assert.Contains(t, string(b), "hello")
+	})
+
+	t.Run("preview with only an image is rejected", func(t *testing.T) {
+		resp, err := post(t, ts.URL+"/api/v1/preview",
+			`{"text": "![](https://example.com/a.png)", `+locator+`}`)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+		assert.InDelta(t, 4.0, errCode(t, b), 0, "rest.ErrCommentValidation")
+	})
+
+	update := func(t *testing.T, id, body string) (int, []byte) {
+		req, err := http.NewRequest(http.MethodPut,
+			ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1", strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, b
+	}
+	newComment := func(t *testing.T) string {
+		return addComment(t, store.Comment{Text: "test test #1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}, ts)
+	}
+
+	t.Run("update strips image", func(t *testing.T) {
+		code, b := update(t, newComment(t), `{"text":"edited ![](https://example.com/a.png) text"}`)
+		require.Equal(t, http.StatusOK, code, string(b))
+		c := store.Comment{}
+		require.NoError(t, json.Unmarshal(b, &c))
+		assert.NotContains(t, c.Text, "<img")
+		assert.Contains(t, c.Text, "edited")
+	})
+
+	t.Run("update with only an image is rejected", func(t *testing.T) {
+		code, b := update(t, newComment(t), `{"text":"![](https://example.com/a.png)"}`)
+		assert.Equal(t, http.StatusBadRequest, code, string(b))
+		assert.InDelta(t, 4.0, errCode(t, b), 0, "rest.ErrCommentValidation")
+	})
+
+	t.Run("delete without text is still allowed", func(t *testing.T) {
+		code, b := update(t, newComment(t), `{"delete":true}`)
+		assert.Equal(t, http.StatusOK, code, string(b))
+	})
+}
+
 func TestRest_CreateWithPictures(t *testing.T) {
 	ts, svc, teardown := startupT(t)
 	defer func() {

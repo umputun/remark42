@@ -26,6 +26,7 @@ export const StaticStore: StaticStoreType = {
     positive_score: false,
     readonly_age: 0,
     max_image_size: 0,
+    image_disabled: false,
     simple_view: false,
     anon_vote: false,
     email_notifications: false,

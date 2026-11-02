@@ -44,6 +44,7 @@ type private struct {
 	remarkURL                  string
 	anonVote                   bool
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	disableImages              bool // refuses image uploads, the comment formatter strips images from the comment text
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -89,6 +90,11 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	comment = s.commentFormatter.Format(comment, s.disableFancyTextFormatting)
+	if s.noTextLeft(comment.Text) {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("no text left"), "invalid comment, images are disabled",
+			rest.ErrCommentValidation)
+		return
+	}
 	comment.Sanitize()
 
 	// check if images are valid, omit proxied images as they are lazy-loaded
@@ -128,6 +134,11 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comment = s.commentFormatter.Format(comment, s.disableFancyTextFormatting)
+	if s.noTextLeft(comment.Text) {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("no text left"), "invalid comment, images are disabled",
+			rest.ErrCommentValidation)
+		return
+	}
 
 	// check if images are valid, omit proxied images as they are lazy-loaded
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
@@ -209,8 +220,15 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	text := s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting)
+	if !edit.Delete && s.noTextLeft(text) {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("no text left"), "invalid comment, images are disabled",
+			rest.ErrCommentValidation)
+		return
+	}
+
 	editReq := service.EditRequest{
-		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
+		Text:    text,
 		Orig:    edit.Text,
 		Summary: edit.Summary,
 		Delete:  edit.Delete,
@@ -728,6 +746,11 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 
 // POST /image - save image with form request
 func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
+	if s.disableImages {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "image uploads are disabled", rest.ErrActionRejected)
+		return
+	}
+
 	user := rest.MustGetUserInfo(r)
 
 	r.Body = http.MaxBytesReader(w, r.Body, 32*1024*1024) // hard cap on upload to prevent memory exhaustion
@@ -753,6 +776,12 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	R.RenderJSON(w, R.JSON{"id": id})
+}
+
+// noTextLeft tells whether the formatted comment text is empty. With images disabled this means the
+// comment held nothing but images, so there is nothing left to post
+func (s *private) noTextLeft(formattedText string) bool {
+	return s.disableImages && strings.TrimSpace(formattedText) == ""
 }
 
 func (s *private) isReadOnly(locator store.Locator) bool {

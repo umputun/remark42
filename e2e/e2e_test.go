@@ -64,6 +64,7 @@ const (
 	jwtHeaderURL = "http://remark42-jwtheader:8083"
 	noAuthURL    = "http://remark42-noauth:8085"
 	anonVoteURL  = "http://remark42-anonvote:8086"
+	noImagesURL  = "http://remark42-noimages:8088"
 
 	// telegram auth against a stub standing in for the bot api, see compose-e2e-test.yml
 	telegramURL = "http://remark42-telegram:8087"
@@ -82,6 +83,7 @@ const (
 	jwtHeaderProbeURL = "http://127.0.0.1:8083"
 	noAuthProbeURL    = "http://127.0.0.1:8085"
 	anonVoteProbeURL  = "http://127.0.0.1:8086"
+	noImagesProbeURL  = "http://127.0.0.1:8088"
 	telegramProbeURL  = "http://127.0.0.1:8087"
 	// the stub is driven from this process because the step it stands in for happens inside
 	// Telegram, where no page can reach
@@ -192,7 +194,7 @@ func TestMain(m *testing.M) {
 			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
 				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
 				"MAP remark42-noauth 127.0.0.1, MAP remark42-anonvote 127.0.0.1, " +
-				"MAP remark42-telegram 127.0.0.1, " +
+				"MAP remark42-noimages 127.0.0.1, MAP remark42-telegram 127.0.0.1, " +
 				"MAP host-site 127.0.0.1, " +
 				"MAP remark42-https 127.0.0.1, MAP host-site-https 127.0.0.1",
 		},
@@ -279,6 +281,7 @@ func stackReady(timeout time.Duration) bool {
 		jwtHeaderProbeURL + "/ping",
 		noAuthProbeURL + "/ping",
 		anonVoteProbeURL + "/ping",
+		noImagesProbeURL + "/ping",
 		telegramProbeURL + "/ping",
 		telegramStubURL + "/botstub-token/getMe",
 		hostSiteProbeURL + "/post.html",
@@ -459,6 +462,7 @@ var readerIPAuthorities = []string{
 	"remark42-jwtheader:8083",
 	"remark42-noauth:8085",
 	"remark42-anonvote:8086",
+	"remark42-noimages:8088",
 	"remark42-telegram:8087",
 	"remark42-https:8443",
 	"127.0.0.1:8080",
@@ -467,6 +471,7 @@ var readerIPAuthorities = []string{
 	"127.0.0.1:8083",
 	"127.0.0.1:8085",
 	"127.0.0.1:8086",
+	"127.0.0.1:8088",
 	"127.0.0.1:8087",
 	"127.0.0.1:8443",
 }
