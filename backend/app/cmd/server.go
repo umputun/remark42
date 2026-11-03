@@ -766,6 +766,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		DisableSignature:           s.DisableSignature,
 		DisableFancyTextFormatting: s.DisableFancyTextFormatting,
 		ExternalImageProxy:         s.ImageProxy.CacheExternal,
+		Premoderation:              api.NewPremoderationStrategy(s.Premoderation),
 	}
 
 	// assigned only when there is one: telegramService is an interface field, so a nil
