@@ -30,6 +30,7 @@ import (
 )
 
 // Premoderation strategy defined in the system as part of the initialization.
+// Unapproved messages are only visible to mods who can decide to approve it.
 type Premoderation string
 
 const (
@@ -41,8 +42,7 @@ const (
 	PremoderationAll Premoderation = "all"
 )
 
-// NewPremoderationStrategy matches strings values with available premoderations.
-// Unapproved messages are only visible to mods who can decide to approve it.
+// NewPremoderationStrategy matches the provided string with available premoderations strategies.
 // Defaults to PremoderationNone
 func NewPremoderationStrategy(str string) Premoderation {
 	switch strings.ToLower(str) {
