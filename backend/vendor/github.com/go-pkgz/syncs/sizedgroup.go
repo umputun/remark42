@@ -55,16 +55,23 @@ func (g *SizedGroup) Go(fn func(ctx context.Context)) {
 	go func() {
 		defer g.wg.Done()
 
+		isLocked := g.preLock // with preLock the permit is already held by the time goroutine starts
+		defer func() {
+			if isLocked {
+				g.sema.Unlock()
+			}
+		}()
+
 		if canceled() {
 			return
 		}
 
 		if !g.preLock {
 			g.sema.Lock()
+			isLocked = true
 		}
 
 		fn(g.ctx)
-		g.sema.Unlock()
 	}()
 }
 

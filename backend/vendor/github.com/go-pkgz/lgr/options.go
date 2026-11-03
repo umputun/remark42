@@ -3,7 +3,6 @@ package lgr
 import (
 	"io"
 	"log/slog"
-	"strings"
 )
 
 // Option func type
@@ -77,15 +76,11 @@ func Msec(l *Logger) {
 }
 
 // Secret sets list of substring to be hidden, i.e. replaced by "******"
-// Useful to prevent passwords or other sensitive tokens to be logged.
+// Useful to prevent passwords or other sensitive tokens to be logged. Empty values are ignored.
+// Longer values are replaced first, so a secret containing another one is hidden as a whole.
 func Secret(vals ...string) Option {
 	return func(l *Logger) {
-		for _, v := range vals {
-			if strings.TrimSpace(v) == "" {
-				continue // skip empty secrets
-			}
-			l.secrets = append(l.secrets, []byte(v))
-		}
+		l.secrets.add(vals...)
 	}
 }
 

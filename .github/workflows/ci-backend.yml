@@ -39,10 +39,17 @@ jobs:
         env:
           DEBUG: ${{secrets.DEBUG}}
 
+      - name: read go version from backend/go.mod
+        id: gomod
+        run: |
+          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.27"
+          go-version: ${{ steps.gomod.outputs.version }}
           check-latest: true
           cache-dependency-path: backend
 
@@ -95,10 +102,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: read go version from backend/go.mod
+        id: gomod
+        run: |
+          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: install go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.27"
+          go-version: ${{ steps.gomod.outputs.version }}
           check-latest: true
           # both go.sum files so the cache key covers the main and example modules scanned below
           cache-dependency-path: |
