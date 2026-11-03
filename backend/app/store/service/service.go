@@ -620,6 +620,9 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 	return comment, err
 }
 
+// ApproveComments sets the approved status on comments. The boolean approvePrevious defines
+// whether or not previous message should be approved as well.
+// Returns the approved message.
 func (s *DataStore) ApproveComments(locator store.Locator, commentID string, approvePrevious bool) (comment store.Comment, err error) {
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {

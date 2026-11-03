@@ -2032,7 +2032,7 @@ func TestService_ApproveComments(t *testing.T) {
 			return []store.Comment{c1, c2, c3}, nil
 		},
 		// update those comments
-		UpdateFunc: func(c store.Comment) error {
+		UpdateFunc: func(_ store.Comment) error {
 			return nil
 		},
 		FlagFunc: func(engine.FlagRequest) (bool, error) {

@@ -29,14 +29,20 @@ import (
 	"github.com/umputun/remark42/backend/app/webassets"
 )
 
+// Premoderation strategy defined in the system as part of the initialization.
 type Premoderation string
 
 const (
-	PremoderationNone  Premoderation = "none"
+	// No premoderation, all messages approved by default
+	PremoderationNone Premoderation = "none"
+	// Once a message from a user is approved, all previous messages are also approved
 	PremoderationFirst Premoderation = "first"
-	PremoderationAll   Premoderation = "all"
+	// All messages need approval
+	PremoderationAll Premoderation = "all"
 )
 
+// NewPremoderationStrategy matches strings values with available premoderations.
+// Defaults to PremoderationNone
 func NewPremoderationStrategy(str string) Premoderation {
 	switch strings.ToLower(str) {
 	case string(PremoderationFirst):
