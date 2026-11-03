@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/v2"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"

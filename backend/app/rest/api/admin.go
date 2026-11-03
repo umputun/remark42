@@ -275,7 +275,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 
 // PUT /comment/{id}/approve?site=siteID&url=post-url - approves comment
 func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[INFO] approving comment %s", id)
 
@@ -290,12 +290,11 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't approve comment", rest.ErrInternal)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't approve comment", rest.ErrInternal)
 		return
 	}
 
-	log.Printf("[INFO] returning comment %v", comment)
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
-	render.Status(r, http.StatusOK)
-	render.JSON(w, r, comment)
+	log.Printf("[INFO] returning comment %+v", comment)
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": comment.Approved})
 }

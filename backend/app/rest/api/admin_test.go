@@ -1107,14 +1107,14 @@ func TestAdmin_ApproveComments(t *testing.T) {
 	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	if err != nil {
 		t.Logf("Error in the response: %s", err.Error())
 	}
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	var c store.Comment
 	decoder := json.NewDecoder(resp.Body)
@@ -1151,12 +1151,13 @@ func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
 	require.NoError(t, err)
 	requireAdminOnly(t, req)
-	resp, err := sendReq(t, req, adminUmputunToken)
+	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
+	// approve the first comment
 	var c store.Comment
 	decoder := json.NewDecoder(resp.Body)
 	err = decoder.Decode(&c)
@@ -1165,6 +1166,7 @@ func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	assert.Equal(t, true, c.Approved)
 	t.Logf("Approve comment response: %+v", c)
 
+	// given our moderation strategy ensure that also other comments have been approved
 	c2, err = srv.pubRest.dataService.Get(c2.Locator, id2, c2.User)
 	t.Logf("c2: %+v", c2)
 	assert.NoError(t, err)

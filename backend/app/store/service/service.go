@@ -636,18 +636,22 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 
 	// grab the user and all his messages
 	user := comment.User
-	comments, err := s.Find(locator, "-time", user)
+	comments, err := s.Find(locator, "-time", user) // fixme this is returning all comments rather than those created by that specific user
 	if err != nil {
 		return comment, err
 	}
 
 	// approve the unapproved ones including the one this method was called against
 	for _, c := range comments {
+		// ignore messages from other users. There must be a better way of solving this. But something changed in the last few months
+		if c.User.ID != user.ID {
+			continue
+		}
 		if !c.Approved {
 			c.Approved = true
 			err = s.Engine.Update(c)
 			if err != nil {
-				return store.Comment{}, err // FIXME: we might want to ignore/collect errors?
+				return store.Comment{}, err // perf: we might want to ignore/collect errors?
 			}
 			// send back the new modified comment
 			if c.ID == commentID {

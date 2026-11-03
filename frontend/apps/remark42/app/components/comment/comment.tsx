@@ -397,8 +397,14 @@ export class Comment extends Component<CommentProps, State> {
     const goToParentMessage = intl.formatMessage(messages.goToParent);
 
     return (
-      <article className={rootClassName} id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
-        style={{ border: this.props.data.approved ? '' : '1px solid red' }}>
+      <article
+        className={rootClassName}
+        id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
+        style={{
+          border: !this.props.data.approved && this.props.user?.admin ? '1px solid red' : '',
+          padding: !this.props.data.approved && this.props.user?.admin ? '5px' : '',
+        }}
+      >
         {props.view === 'user' && o.title && (
           <div className={styles.title}>
             <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
