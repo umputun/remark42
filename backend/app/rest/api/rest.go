@@ -33,15 +33,16 @@ import (
 type Premoderation string
 
 const (
-	// No premoderation, all messages approved by default
+	// PremoderationNone means that all messages approved by default
 	PremoderationNone Premoderation = "none"
-	// Once a message from a user is approved, all previous messages are also approved
+	// PremoderationFirst means that once a message from a user is approved, all previous messages are also approved
 	PremoderationFirst Premoderation = "first"
-	// All messages need approval
+	// PremoderationAll requires all messages to be approved
 	PremoderationAll Premoderation = "all"
 )
 
 // NewPremoderationStrategy matches strings values with available premoderations.
+// Unapproved messages are only visible to mods who can decide to approve it.
 // Defaults to PremoderationNone
 func NewPremoderationStrategy(str string) Premoderation {
 	switch strings.ToLower(str) {
