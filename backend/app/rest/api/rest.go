@@ -35,7 +35,7 @@ type Premoderation string
 const (
 	// PremoderationNone means that all messages approved by default
 	PremoderationNone Premoderation = "none"
-	// PremoderationFirst means that once a message from a user is approved, all previous messages are also approved
+	// PremoderationFirst means that once a message from a user is approved, all previous messages from the same user are also approved
 	PremoderationFirst Premoderation = "first"
 	// PremoderationAll requires all messages to be approved
 	PremoderationAll Premoderation = "all"
