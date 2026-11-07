@@ -1,12 +1,16 @@
 package stats
 
-import "sort"
+import (
+	"math"
+	"sort"
+)
 
 // Histogram calculates the histogram of a slice using the given
 // number of equal-width bins over [min, max], returning the count
 // of values in each bin along with the bins+1 bin edges. Each bin
 // is half-open [edges[i], edges[i+1]) except the last, which also
-// includes the maximum value.
+// includes the maximum value. A NaN cannot be placed in any
+// bin, so input containing a NaN returns ErrNaN.
 func Histogram(input Float64Data, bins int) ([]int, []float64, error) {
 
 	if input.Len() == 0 {
@@ -15,6 +19,10 @@ func Histogram(input Float64Data, bins int) ([]int, []float64, error) {
 
 	if bins < 1 {
 		return nil, nil, ErrBounds
+	}
+
+	if hasNaN(input) {
+		return nil, nil, ErrNaN
 	}
 
 	// Disregard errors, since input is not empty
@@ -33,6 +41,16 @@ func Histogram(input Float64Data, bins int) ([]int, []float64, error) {
 	edges := make([]float64, bins+1)
 	for i := range edges {
 		edges[i] = min + width*float64(i)
+	}
+
+	// When max - min overflows, build the edges from halved
+	// bounds, which is exact for values this large, and double
+	// them back so the edges stay finite
+	if math.IsInf(width, 1) {
+		width = (max/2 - min/2) / float64(bins)
+		for i := range edges {
+			edges[i] = 2 * (min/2 + width*float64(i))
+		}
 	}
 	edges[bins] = max
 

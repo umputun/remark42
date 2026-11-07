@@ -2,14 +2,15 @@ package stats
 
 // ZScore standardizes the input values by subtracting the mean
 // and dividing by the sample standard deviation, returning the
-// number of standard deviations each value is from the mean.
+// number of standard deviations each value is from the mean. A
+// single element returns ErrTooFew and constant input returns ErrZero.
 func ZScore(input Float64Data) ([]float64, error) {
-	if input.Len() == 0 {
-		return nil, ErrEmptyInput
+	sd, err := StandardDeviationSample(input)
+	if err != nil {
+		return nil, err
 	}
 
 	m, _ := Mean(input)
-	sd, _ := StandardDeviationSample(input)
 
 	if sd == 0 {
 		return nil, ErrZero

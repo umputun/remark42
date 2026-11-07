@@ -35,7 +35,7 @@ func (api *Client) ListEventAuthorizationsContext(ctx context.Context, eventCont
 		"event_context": eventContext,
 	})
 
-	err := api.postJSONMethod(ctx, "apps.event.authorizations.list", api.appLevelToken, request, &resp)
+	err := api.postJSONMethod(ctx, "apps.event.authorizations.list", api.appLevelToken, request, resp)
 
 	if err != nil {
 		return nil, err
@@ -57,13 +57,14 @@ func (api *Client) UninstallApp(clientID, clientSecret string) error {
 // Slack API docs: https://api.slack.com/methods/apps.uninstall
 func (api *Client) UninstallAppContext(ctx context.Context, clientID, clientSecret string) error {
 	values := url.Values{
+		"token":         {api.token},
 		"client_id":     {clientID},
 		"client_secret": {clientSecret},
 	}
 
 	response := SlackResponse{}
 
-	err := api.getMethod(ctx, "apps.uninstall", api.token, values, &response)
+	err := api.postMethod(ctx, "apps.uninstall", values, &response)
 	if err != nil {
 		return err
 	}

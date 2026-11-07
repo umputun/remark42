@@ -40,7 +40,9 @@ func (api *Client) FunctionCompleteSuccessContext(ctx context.Context, functionE
 		FunctionExecutionID: functionExecutionId,
 	}
 	for _, option := range options {
-		option(r)
+		if err := option(r); err != nil {
+			return err
+		}
 	}
 
 	jsonData, err := json.Marshal(r)

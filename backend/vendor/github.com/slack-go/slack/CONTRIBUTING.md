@@ -1,40 +1,91 @@
-# Contributing Guide
+# Contributing
 
 Welcome! We are glad that you want to contribute to our project! 💖
 
-There are a just a few small guidelines you ask everyone to follow to make things a bit smoother and more consistent.
+## Pull requests
 
-## Opening Pull Requests
+- Discuss new features in an issue first. For a bug, describe how to reproduce it.
+- Branch from `master` and keep each PR focused. Keep unrelated formatting and refactors separate.
+- Add tests and update documentation for changed behavior. Add a short `[Unreleased]` changelog
+  entry for library-visible changes; refine an existing entry when the feature is still unreleased.
+- Use conventional commit subjects and PR titles: `fix(block): preserve table cells`.
+  Subjects are imperative, lowercase, and have no period. Use `!` for breaking changes.
+  If conventional commit subjects makes it for a worse read, then don't. Above conventional commits is communicating intent well.
+- Do not force-push or rewrite reviewed history. Add follow-up commits; PRs are squash-merged.
+  Each commit should build and pass checks so regressions remain easy to bisect.
 
-1. It's generally best to start by opening a new issue describing the bug or feature you're intending to fix. Even if you think it's relatively minor, it's helpful to know what people are working on. Mention in the initial issue that you are planning to work on that bug or feature so that it can be assigned to you.
+## Checks
 
-2. Follow the normal process of [forking](https://help.github.com/articles/fork-a-repo) the project, and set up a new branch to work in. It's important that each group of changes be done in separate branches in order to ensure that a pull request only includes the commits related to that bug or feature.
+Before submitting a code or example change, run:
 
-3. Any significant changes should almost always be accompanied by tests. The project already has some test coverage, so look at some of the existing tests if you're unsure how to go about it.
-
-4. Run `make pr-prep` to format your code and check that it passes all tests and linters.
-
-5. Do your best to have [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html) for each change. This provides consistency throughout the project, and ensures that commit messages are able to be formatted properly by various git tools. _Pull Request Titles_ should generally follow the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format to ease the release note process when cutting releases.
-
-6. Finally, push the commits to your fork and submit a [pull request](https://help.github.com/articles/creating-a-pull-request). NOTE: Please do not use force-push on PRs in this repo, as it makes it more difficult for reviewers to see what has changed since the last code review. We always perform "squash and merge" actions on PRs in this repo, so it doesn't matter how many commits your PR has, as they will end up being a single commit after merging. This is done to make a much cleaner `git log` history and helps to find regressions in the code using existing tools such as `git bisect`.
-
-## Code Comments
-
-Every exported method needs to have code comments that follow [Go Doc Comments](https://go.dev/doc/comment). A typical method's comments will look like this:
-
-```go
-// PostMessage sends a message to a channel.
-//
-// Slack API docs: https://api.dev.slack.com/methods/chat.postMessage
-func (api *Client) PostMessage(ctx context.Context, input PostMesssageInput) (PostMesssageOutput, error) {
-...
-}
+```sh
+make pr-prep
 ```
 
-The first line is the name of the method followed by a short description. This could also be a longer description if needed, but there is no need to repeat any details that are documented in Slack's documentation because users are expected to follow the documentation links to learn more.
+This formats code and runs lint checks, the full race suite,
+and module and whitespace checks. Use `make lint` to run the lint checks alone.
+The tidy check reports required changes without modifying `go.mod` or `go.sum`.
 
-After the description comes a link to the Slack API documentation.
+Supported Go releases are listed in the CI matrix. Tool versions live in `mise.toml`,
+`go.mod`, `.github/workflows/test.yml`, and the `Makefile`; keep relevant pins aligned when
+updating them. Compare exact versions when a local check passes but CI fails.
 
-## Other notes on code organization
+## Code conventions
 
-Currently, everything is defined in the main `slack` package, with API methods group separate files by the [Slack API Method Groupings](https://api.dev.slack.com/methods).
+Keep Web API methods in the root `slack` package, grouped by method family. Copy the closest
+current sibling rather than introducing another API style.
+
+- Provide `Foo(...)` and `FooContext(ctx, ...)`; the former calls the latter with
+  `context.Background()`.
+- New methods take required positional arguments and method-scoped functional options for
+  optional parameters. Ignore nil options. Keep existing parameter structs on shipped methods;
+  extend other existing methods with scoped variadic options rather than `FooWithOptions` pairs.
+  Do not add new uses of the generic `ParamOption`.
+- Reuse the client's request helpers and `SlackResponse` handling. Match Slack's wire format,
+  use cursor pagination, and preserve explicit false or zero values when omission differs.
+- Block constructors follow `New<Name>Block(required..., options ...<Name>BlockOption)` with
+  nil-guarded options. Register new types in every applicable decoder: blocks, elements,
+  inputs, accessories, and rich-text containers. Add real-payload round-trip coverage.
+- Register Events API types in `EventsAPIInnerEventMapping` and test them through `ParseEvent`.
+  A decoding error can drop the whole event, so handle union-shaped fields deliberately.
+
+Exported declarations need [Go doc comments](https://go.dev/doc/comment). Link Web API methods
+to the current Slack reference; do not repeat the reference page in the comment:
+
+```go
+// GetUserInfo gets information about a user.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/users.info
+```
+
+Other comments should explain non-obvious reasons, not narrate the code.
+
+## Tests and Slack behavior
+
+- For a bug fix, first write a regression test and confirm it fails for the reported reason.
+  Keep tests beside the code and small captured payloads as inline JSON; do not add `testdata/`.
+- Round-trip tests must preserve the actual payload. Fix the model instead of removing fields
+  from the fixture. Synchronize concurrent tests without sleeps.
+- Check the current [Slack reference](https://docs.slack.dev/reference/), then official SDKs
+  (`@slack/types`, `@slack/web-api`, Python, and Java). Use observed live payloads to resolve
+  disagreements. Cite the source of new fields; note undocumented fields in the changelog.
+- When live behavior matters, provide a runnable example with exact commands, scopes, app setup,
+  and trigger actions. Distinguish API acceptance, returned data, Go decoding, and manual UI
+  review. An accepted request does not prove a preview works; an omitted field remains unverified.
+
+Follow [examples/README.md](examples/README.md): credentials come from environment variables;
+IDs and modes come from flags. Prefer Socket Mode for interaction examples unless HTTP behavior
+is the subject. Redact credentials from captured JSON and print Slack's
+`ResponseMetadata.Messages` when debugging errors. Decoder or preservation failures must fail
+the example. Keep throwaway verification programs out of the PR unless they are useful to users.
+
+## Compatibility
+
+Preserve shipped identifiers, signatures, field types, JSON tags, and wire output. Prefer
+additive changes and explain any break. Adding slices or maps can make a struct non-comparable;
+new concrete decoder types can break type assertions. Variadic options preserve direct calls
+but change method types, interfaces, and mocks. Do not replace `omitempty` with `omitzero` as cleanup.
+
+Breaking changes use a changelog warning and migration example where needed. New features and
+breaking changes bump MINOR; fix-only releases bump PATCH (`v0.MINOR.PATCH`). The maintainer
+chooses the release. Tests, examples, CI, and documentation-only changes need no library changelog entry.

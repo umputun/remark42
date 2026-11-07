@@ -111,6 +111,34 @@ func encodeName(s string) string {
 	return strings.Replace(strings.Replace(s, "=", "=3D", -1), ",", "=2C", -1)
 }
 
+// decodeName reverses encodeName. It returns false if any '=' does not start
+// "=2C" or "=3D", which RFC 5802 §5.1 says the server MUST reject. Decoding
+// is a single pass, so "=3D2C" decodes to "=2C".
+func decodeName(s string) (string, bool) {
+	i := strings.IndexByte(s, '=')
+	if i < 0 {
+		return s, true
+	}
+
+	var b strings.Builder
+	b.Grow(len(s))
+	for i >= 0 {
+		b.WriteString(s[:i])
+		switch {
+		case strings.HasPrefix(s[i:], "=2C"):
+			b.WriteByte(',')
+		case strings.HasPrefix(s[i:], "=3D"):
+			b.WriteByte('=')
+		default:
+			return "", false
+		}
+		s = s[i+3:]
+		i = strings.IndexByte(s, '=')
+	}
+	b.WriteString(s)
+	return b.String(), true
+}
+
 func computeHash(hg HashGeneratorFcn, b []byte) []byte {
 	h := hg()
 	h.Write(b)

@@ -2,6 +2,7 @@ package lcw
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,6 +20,7 @@ type ExpirableCache[V any] struct {
 	id          string
 	backend     *expirable.LRU[string, V]
 	loads       loadGroup[V]
+	storeMu     sync.Mutex
 }
 
 // NewExpirableCache makes expirable LoadingCache implementation, 1000 max keys by default and 5m TTL.
@@ -85,21 +87,30 @@ func (c *ExpirableCache[V]) Get(key string, fn func() (V, error)) (data V, err e
 		}
 		atomic.AddInt64(&c.Misses, 1)
 
-		if !c.allowed(key, data) {
-			return data, nil
-		}
-
-		if size, ok := sizeOf(data); ok {
-			if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(size) >= c.maxCacheSize {
-				return data, nil
-			}
-			atomic.AddInt64(&c.currentSize, int64(size))
-		}
-
-		c.backend.Add(key, data)
-
+		c.store(key, data)
 		return data, nil
 	})
+}
+
+// store adds data to the backend if the limits allow it.
+// the checks and the insert run under one lock, otherwise concurrent loads of different keys
+// all pass the checks and overshoot MaxCacheSize, or evict entries to stay within MaxKeys.
+func (c *ExpirableCache[V]) store(key string, data V) {
+	c.storeMu.Lock()
+	defer c.storeMu.Unlock()
+
+	if !c.allowed(key, data) {
+		return
+	}
+
+	if size, ok := sizeOf(data); ok {
+		if c.maxCacheSize > 0 && atomic.LoadInt64(&c.currentSize)+int64(size) > c.maxCacheSize {
+			return
+		}
+		atomic.AddInt64(&c.currentSize, int64(size))
+	}
+
+	c.backend.Add(key, data)
 }
 
 // Invalidate removes keys with passed predicate fn, i.e. fn(key) should be true to get evicted
@@ -175,7 +186,7 @@ func (c *ExpirableCache[V]) allowed(key string, data V) bool {
 		return false
 	}
 	if size, ok := sizeOf(data); ok {
-		if c.maxValueSize > 0 && size >= c.maxValueSize {
+		if c.maxValueSize > 0 && size > c.maxValueSize {
 			return false
 		}
 	}

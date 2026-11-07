@@ -34,7 +34,7 @@ func NewTitleExtractor(client http.Client, allowedDomains []string) *TitleExtrac
 	}
 	var err error
 	o := lcw.NewOpts[string]()
-	res.cache, err = lcw.NewExpirableCache(o.TTL(teCacheTTL), o.MaxKeySize(teCacheMaxRecs))
+	res.cache, err = lcw.NewExpirableCache(o.TTL(teCacheTTL), o.MaxKeys(teCacheMaxRecs))
 	if err != nil {
 		log.Printf("[WARN] failed to make cache, caching disabled for titles, %v", err)
 		res.cache = &lcw.Nop[string]{}

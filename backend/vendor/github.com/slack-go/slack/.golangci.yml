@@ -5,13 +5,67 @@ run:
 linters:
   default: none
   enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - canonicalheader
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exptostd
+    - fatcontext
+    - gocheckcompilerdirectives
     - gocritic
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
     - govet
+    - ineffassign
+    - iotamixing
+    - makezero
+    - mirror
     - misspell
     - modernize
+    - nakedret
+    - nilerr
+    - nilnesserr
+    - nolintlint
+    - nosprintfhostport
+    - predeclared
+    - reassign
+    - staticcheck
+    - testableexamples
+    - testifylint
+    - thelper
+    - tparallel
     - unconvert
+    - unparam
     - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
   settings:
+    govet:
+      enable:
+        - nilness
+        - reflectvaluecompare
+        - unusedwrite
+    staticcheck:
+      # Match the standalone command's default checks, without quick fixes.
+      checks:
+        - all
+        - -QF*
+        - -SA9003
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        - -ST1023
     modernize:
       # omitempty on nested struct fields has no effect, but switching to
       # omitzero would change JSON output for a public API. Keep the tags as-is.
@@ -19,22 +73,34 @@ linters:
         - omitzero
   exclusions:
     generated: lax
+    rules:
+      # Apply errcheck to production code; legacy fixtures omit error checks.
+      - path: _test\.go$
+        linters:
+          - errcheck
+      # Test fixtures contain placeholder credentials and local HTTP handlers.
+      - path: _test\.go$
+        linters:
+          - gosec
     presets:
       - comments
       - common-false-positives
-      - legacy
       - std-error-handling
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - ^examples/
 formatters:
   enable:
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/slack-go/slack
   exclusions:
     generated: lax
     warn-unused: true
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - ^examples/

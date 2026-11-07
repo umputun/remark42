@@ -2,7 +2,8 @@ package stats
 
 import "math"
 
-// Min finds the lowest number in a set of data
+// Min finds the lowest number in a set of data. If the data contains a
+// NaN the result is NaN.
 func Min(input Float64Data) (min float64, err error) {
 
 	// Get the count of numbers in the slice
@@ -16,8 +17,11 @@ func Min(input Float64Data) (min float64, err error) {
 	// Get the first value as the starting point
 	min = input.Get(0)
 
-	// Iterate until done checking for a lower value
-	for i := 1; i < l; i++ {
+	// Iterate until done checking for a lower value, stopping at a NaN
+	for i := 0; i < l; i++ {
+		if math.IsNaN(input.Get(i)) {
+			return math.NaN(), nil
+		}
 		if input.Get(i) < min {
 			min = input.Get(i)
 		}

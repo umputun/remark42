@@ -56,8 +56,8 @@ func PostWebhookCustomHTTPContext(ctx context.Context, url string, httpClient *h
 		return fmt.Errorf("failed to post webhook: %w", err)
 	}
 	defer func() {
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
 	}()
 
 	return checkStatusCode(resp, discard{})

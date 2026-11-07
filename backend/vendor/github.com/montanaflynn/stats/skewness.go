@@ -14,18 +14,23 @@ func PopulationSkewness(input Float64Data) (float64, error) {
 		return math.NaN(), ErrEmptyInput
 	}
 
+	// Skewness is scale-invariant, so scale the deviations by a power of two
+	// near the largest magnitude to keep their cubes from overflowing or
+	// underflowing. Scaling by a power of two is exact.
+	f := math.Ldexp(1, -unitExponent(input))
 	mean, _ := Mean(input)
+	mean *= f
 
 	// Compute sum of squared and cubed differences from the mean
 	var sumOfSquares, sumOfCubes float64
 	for _, v := range input {
-		d := v - mean
+		d := v*f - mean
 		sumOfSquares += d * d
 		sumOfCubes += d * d * d
 	}
 
 	if sumOfSquares == 0 {
-		return math.NaN(), ErrEmptyInput
+		return math.NaN(), ErrZero
 	}
 
 	if sumOfCubes == 0 {
@@ -34,7 +39,9 @@ func PopulationSkewness(input Float64Data) (float64, error) {
 
 	n := float64(input.Len())
 	variance := sumOfSquares / n
-	stdDevCubed := math.Pow(variance, 3.0/2.0)
+	// variance^1.5 with Sqrt is accurate to about an ulp and scales
+	// exactly, where math.Pow can be off by tens of ulps
+	stdDevCubed := variance * math.Sqrt(variance)
 
 	return (sumOfCubes / n) / stdDevCubed, nil
 }

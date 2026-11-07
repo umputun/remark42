@@ -17,6 +17,20 @@ type TeamInfo struct {
 	Domain      string         `json:"domain"`
 	EmailDomain string         `json:"email_domain"`
 	Icon        map[string]any `json:"icon"`
+
+	// SlackbotAvailability is advisory workspace availability, not individual eligibility.
+	SlackbotAvailability string `json:"slackbot_availability,omitempty"`
+}
+
+type getTeamInfoParams struct{ includeSlackbotAvailability *bool }
+
+// GetTeamInfoOption configures current or other team information requests.
+type GetTeamInfoOption func(*getTeamInfoParams)
+
+// GetTeamInfoOptionIncludeSlackbotAvailability requests advisory Slackbot availability.
+// Slack omits this field for external teams and when the option is false or absent.
+func GetTeamInfoOptionIncludeSlackbotAvailability(include bool) GetTeamInfoOption {
+	return func(params *getTeamInfoParams) { params.includeSlackbotAvailability = &include }
 }
 
 type TeamProfileResponse struct {
@@ -120,20 +134,28 @@ func (api *Client) teamProfileRequest(ctx context.Context, path string, values u
 
 // GetTeamInfo gets the Team Information of the user.
 // For more information see the GetTeamInfoContext documentation.
-func (api *Client) GetTeamInfo() (*TeamInfo, error) {
-	return api.GetTeamInfoContext(context.Background())
+func (api *Client) GetTeamInfo(options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetTeamInfoContext(context.Background(), options...)
 }
 
 // GetOtherTeamInfoContext gets Team information for any team with a custom context.
-// Slack API docs: https://api.slack.com/methods/team.info
-func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*TeamInfo, error) {
-	if team == "" {
-		return api.GetTeamInfoContext(ctx)
+// Slack API docs: https://docs.slack.dev/reference/methods/team.info
+func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	params := getTeamInfoParams{}
+	for _, option := range options {
+		if option != nil {
+			option(&params)
+		}
 	}
 	values := url.Values{
 		"token": {api.token},
 	}
-	values.Add("team", team)
+	if team != "" {
+		values.Set("team", team)
+	}
+	if params.includeSlackbotAvailability != nil {
+		values.Set("include_slackbot_availability", strconv.FormatBool(*params.includeSlackbotAvailability))
+	}
 	response, err := api.teamRequest(ctx, "team.info", values)
 	if err != nil {
 		return nil, err
@@ -143,22 +165,14 @@ func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*T
 
 // GetOtherTeamInfo gets Team information for any team.
 // For more information see the GetOtherTeamInfoContext documentation.
-func (api *Client) GetOtherTeamInfo(team string) (*TeamInfo, error) {
-	return api.GetOtherTeamInfoContext(context.Background(), team)
+func (api *Client) GetOtherTeamInfo(team string, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetOtherTeamInfoContext(context.Background(), team, options...)
 }
 
 // GetTeamInfoContext gets the Team Information of the user with a custom context.
-// Slack API docs: https://api.slack.com/methods/team.info
-func (api *Client) GetTeamInfoContext(ctx context.Context) (*TeamInfo, error) {
-	values := url.Values{
-		"token": {api.token},
-	}
-
-	response, err := api.teamRequest(ctx, "team.info", values)
-	if err != nil {
-		return nil, err
-	}
-	return &response.Team, nil
+// Slack API docs: https://docs.slack.dev/reference/methods/team.info
+func (api *Client) GetTeamInfoContext(ctx context.Context, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetOtherTeamInfoContext(ctx, "", options...)
 }
 
 // GetTeamProfile gets the Team Profile settings of the user.

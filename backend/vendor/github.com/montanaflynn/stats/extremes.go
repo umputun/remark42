@@ -1,7 +1,11 @@
 package stats
 
+import "math"
+
 // ArgMax finds the index of the highest number in a slice,
-// returning the first occurrence in the case of ties
+// returning the first occurrence in the case of ties. A NaN is
+// treated as the highest value, matching numpy.argmax, so the
+// index of the first NaN is returned.
 func ArgMax(input Float64Data) (int, error) {
 
 	// Return an error if there are no numbers
@@ -13,8 +17,12 @@ func ArgMax(input Float64Data) (int, error) {
 	index := 0
 
 	// Loop and replace with strictly higher values only,
-	// which keeps the first occurrence on ties
-	for i := 1; i < input.Len(); i++ {
+	// which keeps the first occurrence on ties, stopping
+	// at the first NaN
+	for i := 0; i < input.Len(); i++ {
+		if math.IsNaN(input.Get(i)) {
+			return i, nil
+		}
 		if input.Get(i) > input.Get(index) {
 			index = i
 		}
@@ -24,7 +32,9 @@ func ArgMax(input Float64Data) (int, error) {
 }
 
 // ArgMin finds the index of the lowest number in a slice,
-// returning the first occurrence in the case of ties
+// returning the first occurrence in the case of ties. A NaN is
+// treated as the lowest value, matching numpy.argmin, so the
+// index of the first NaN is returned.
 func ArgMin(input Float64Data) (int, error) {
 
 	// Return an error if there are no numbers
@@ -36,8 +46,12 @@ func ArgMin(input Float64Data) (int, error) {
 	index := 0
 
 	// Loop and replace with strictly lower values only,
-	// which keeps the first occurrence on ties
-	for i := 1; i < input.Len(); i++ {
+	// which keeps the first occurrence on ties, stopping
+	// at the first NaN
+	for i := 0; i < input.Len(); i++ {
+		if math.IsNaN(input.Get(i)) {
+			return i, nil
+		}
 		if input.Get(i) < input.Get(index) {
 			index = i
 		}
@@ -47,7 +61,8 @@ func ArgMin(input Float64Data) (int, error) {
 }
 
 // Range finds the difference between the highest and
-// lowest numbers in a slice
+// lowest numbers in a slice. If the slice contains a NaN
+// the result is NaN.
 func Range(input Float64Data) (float64, error) {
 
 	// Return an error if there are no numbers

@@ -1,7 +1,9 @@
 package slack
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/slack-go/slack/internal/backoff"
 	"github.com/slack-go/slack/internal/errorsx"
-	"github.com/slack-go/slack/internal/timex"
 )
 
 // UnmappedError represents error occurred when there is no mapping between given event name
@@ -85,19 +86,23 @@ func (rtm *RTM) ManageConnection() {
 
 		rtm.Debugf("RTM connection succeeded on try %d", connectionCount)
 
+		ctx, cancel := context.WithCancel(context.Background())
 		rawEvents := make(chan json.RawMessage)
-		// we're now connected so we can set up listeners
-		go rtm.handleIncomingEvents(rawEvents)
+		readErrors := make(chan error, 1)
+		readerDone := make(chan struct{})
+		go func(conn *websocket.Conn) {
+			defer close(readerDone)
+			readErrors <- rtm.handleIncomingEvents(ctx, conn, rawEvents)
+		}(conn)
 		// this should be a blocking call until the connection has ended
-		rtm.handleEvents(rawEvents)
+		rtm.handleEvents(rawEvents, readErrors)
+		// handleEvents closes the connection to unblock reads. Cancel any pending
+		// channel sends and wait for this reader before starting another connection.
+		cancel()
+		<-readerDone
 
 		select {
 		case <-rtm.disconnected:
-			// after handle events returns we need to check if we're disconnected
-			// when this happens we need to cleanup the newly created connection.
-			if err = conn.Close(); err != nil {
-				rtm.Debugln("failed to close conn on disconnected RTM", err)
-			}
 			return
 		default:
 			// otherwise continue and run the loop again to reconnect
@@ -150,19 +155,17 @@ func (rtm *RTM) connect(connectionCount int, useRTMStart bool) (*Info, *websocke
 		default:
 		}
 
-		switch actual := err.(type) {
-		case StatusCodeError:
+		if actual, ok := errors.AsType[StatusCodeError](err); ok {
 			if actual.Code == http.StatusNotFound {
 				rtm.Debugf("invalid auth when connecting with RTM: %s", err)
 				rtm.IncomingEvents <- RTMEvent{"invalid_auth", &InvalidAuthEvent{}}
 				return nil, nil, err
 			}
-		case *RateLimitedError:
+		} else if actual, ok := errors.AsType[*RateLimitedError](err); ok {
 			backoff = actual.RetryAfter
-		default:
 		}
 
-		backoff = timex.Max(backoff, boff.Duration())
+		backoff = max(0, backoff, boff.Duration())
 		// any other errors are treated as recoverable and we try again after
 		// sending the event along the IncomingEvents channel
 		rtm.IncomingEvents <- RTMEvent{"connection_error", &ConnectionErrorEvent{
@@ -181,7 +184,7 @@ func (rtm *RTM) connect(connectionCount int, useRTMStart bool) (*Info, *websocke
 		case <-time.After(backoff): // retry after the backoff.
 		case intentional := <-rtm.killChannel:
 			if intentional {
-				rtm.killConnection(intentional, ErrRTMDisconnected)
+				_ = rtm.killConnection(intentional, ErrRTMDisconnected)
 				return nil, nil, ErrRTMDisconnected
 			}
 		case <-rtm.disconnected:
@@ -220,8 +223,13 @@ func (rtm *RTM) startRTMAndDial(useRTMStart bool) (info *Info, _ *websocket.Conn
 
 	rtm.Debugf("Dialing to websocket on url %s", url)
 	// Only use HTTPS for connections to prevent MITM attacks on the connection.
-	upgradeHeader := http.Header{}
-	upgradeHeader.Add("Origin", "https://api.slack.com")
+	upgradeHeader := rtm.dialHeaders.Clone()
+	if upgradeHeader == nil {
+		upgradeHeader = http.Header{}
+	}
+	if upgradeHeader.Get("Origin") == "" {
+		upgradeHeader.Set("Origin", "https://api.slack.com")
+	}
 	dialer := websocket.DefaultDialer
 	if rtm.dialer != nil {
 		dialer = rtm.dialer
@@ -231,14 +239,13 @@ func (rtm *RTM) startRTMAndDial(useRTMStart bool) (info *Info, _ *websocket.Conn
 		rtm.Debugf("Failed to dial to the websocket: %s", err)
 		return nil, nil, err
 	}
+	conn.SetReadLimit(rtm.readLimit)
 	return info, conn, err
 }
 
-// killConnection stops the websocket connection and signals to all goroutines
-// that they should cease listening to the connection for events.
-//
-// This should not be called directly! Instead a boolean value (true for
-// intentional, false otherwise) should be sent to the killChannel on the RTM.
+// killConnection closes the active websocket and emits a disconnection event.
+// Only the connection manager calls it; reader errors arrive on a channel
+// belonging to that connection, while Disconnect uses killChannel.
 func (rtm *RTM) killConnection(intentional bool, cause error) (err error) {
 	rtm.Debugln("killing connection", cause)
 
@@ -260,11 +267,16 @@ func (rtm *RTM) killConnection(intentional bool, cause error) (err error) {
 // interval. This also sends outgoing messages that are received from the RTM's
 // outgoingMessages channel. This also handles incoming raw events from the RTM
 // rawEvents channel.
-func (rtm *RTM) handleEvents(events chan json.RawMessage) {
+func (rtm *RTM) handleEvents(events chan json.RawMessage, readErrors <-chan error) {
 	ticker := time.NewTicker(rtm.pingInterval)
 	defer ticker.Stop()
+	rtm.resetDeadman()
+	defer rtm.pingDeadman.Stop()
 	for {
 		select {
+		case err := <-readErrors:
+			_ = rtm.killConnection(false, err)
+			return
 		// catch "stop" signal on channel close
 		case intentional := <-rtm.killChannel:
 			_ = rtm.killConnection(intentional, errorsx.String("signaled"))
@@ -291,32 +303,23 @@ func (rtm *RTM) handleEvents(events chan json.RawMessage) {
 		case rawEvent := <-events:
 			switch rtm.handleRawEvent(rawEvent) {
 			case rtmEventTypeGoodbye:
-				// kill the connection, but DO NOT RETURN, a follow up kill signal will
-				// be sent that still needs to be processed. this duplication is because
-				// the event reader restarts once it emits the goodbye event.
-				// unlike the other cases in this function a final read will be triggered
-				// against the connection which will emit a kill signal. if we return early
-				// this kill signal will be processed by the next connection.
 				_ = rtm.killConnection(false, ErrRTMGoodbye)
+				return
 			default:
 			}
 		}
 	}
 }
 
-// handleIncomingEvents monitors the RTM's opened websocket for any incoming
-// events. It pushes the raw events into the channel.
-//
-// This will stop executing once the RTM's when a fatal error is detected, or
-// a disconnect occurs.
-func (rtm *RTM) handleIncomingEvents(events chan json.RawMessage) {
+// handleIncomingEvents reads from one connection until canceled or a fatal read
+// error occurs. The connection manager closes conn to unblock pending reads.
+func (rtm *RTM) handleIncomingEvents(ctx context.Context, conn *websocket.Conn, events chan json.RawMessage) error {
 	for {
-		if err := rtm.receiveIncomingEvent(events); err != nil {
-			select {
-			case rtm.killChannel <- false:
-			case <-rtm.disconnected:
-			}
-			return
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := rtm.receiveIncomingEvent(ctx, conn, events); err != nil {
+			return err
 		}
 	}
 }
@@ -377,9 +380,21 @@ func (rtm *RTM) ping() error {
 // receiveIncomingEvent attempts to receive an event from the RTM's websocket.
 // This will block until a frame is available from the websocket.
 // If the read from the websocket results in a fatal error, this function will return non-nil.
-func (rtm *RTM) receiveIncomingEvent(events chan json.RawMessage) error {
+func (rtm *RTM) receiveIncomingEvent(ctx context.Context, conn *websocket.Conn, events chan json.RawMessage) error {
 	event := json.RawMessage{}
-	err := rtm.conn.ReadJSON(&event)
+	// NextReader errors are permanent. Keep them separate from JSON errors,
+	// since an empty message also decodes as io.ErrUnexpectedEOF.
+	_, reader, readErr := conn.NextReader()
+	err := readErr
+	if readErr == nil {
+		err = json.NewDecoder(reader).Decode(&event)
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	// check if the connection was closed.
 	if websocket.IsUnexpectedCloseError(err) {
@@ -387,22 +402,26 @@ func (rtm *RTM) receiveIncomingEvent(events chan json.RawMessage) error {
 	}
 
 	switch {
-	case err == io.ErrUnexpectedEOF:
-		// EOF's don't seem to signify a failed connection so instead we ignore
-		// them here and detect a failed connection upon attempting to send a
-		// 'PING' message
+	case readErr == nil && errors.Is(err, io.ErrUnexpectedEOF):
+		// An empty or incomplete JSON frame need not signify a failed connection.
 
 		// trigger a 'PING' to detect potential websocket disconnect
 		select {
 		case rtm.forcePing <- true:
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-rtm.disconnected:
+			return ErrRTMDisconnected
 		}
 	case err != nil:
-		// All other errors from ReadJSON come from NextReader, and should
-		// kill the read loop and force a reconnect.
-		rtm.IncomingEvents <- RTMEvent{"incoming_error", &IncomingEventError{
-			ErrorObj: err,
-		}}
+		// Failed WebSocket reads and other JSON errors force a reconnect.
+		select {
+		case rtm.IncomingEvents <- RTMEvent{"incoming_error", &IncomingEventError{ErrorObj: err}}:
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-rtm.disconnected:
+			return ErrRTMDisconnected
+		}
 
 		return err
 	case len(event) == 0:
@@ -411,8 +430,11 @@ func (rtm *RTM) receiveIncomingEvent(events chan json.RawMessage) error {
 		rtm.Debugln("Incoming Event:", string(event))
 		select {
 		case events <- event:
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-rtm.disconnected:
 			rtm.Debugln("disconnected while attempting to send raw event")
+			return ErrRTMDisconnected
 		}
 	}
 
@@ -519,6 +541,14 @@ func (rtm *RTM) handleEvent(typeStr string, event json.RawMessage) {
 // EventMapping holds a mapping of event names to their corresponding struct
 // implementations. The structs should be instances of the unmarshalling
 // target for the matching event type.
+//
+// The map is shared by all RTM clients and is also used as a fallback by
+// slackevents.ParseEvent, including Socket Mode.
+//
+// Changes are not synchronized. Configure the map sequentially during
+// initialization, before any event processing starts. Do not modify or replace
+// it while RTM, Socket Mode, or direct Events API parsing is running, including
+// from event handlers.
 var EventMapping = map[string]any{
 	"message":         MessageEvent{},
 	"presence_change": PresenceChangeEvent{},

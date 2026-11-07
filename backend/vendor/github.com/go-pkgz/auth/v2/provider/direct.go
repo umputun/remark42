@@ -37,7 +37,9 @@ type CredChecker interface {
 	Check(user, password string) (ok bool, err error)
 }
 
-// UserIDFunc allows to provide custom func making userID instead of the default based on user's name hash
+// UserIDFunc allows to provide custom func making userID instead of the default based on user's name hash.
+// The result goes through token.HashID, so a 40-char hex value is used as-is; return an app-controlled
+// canonical id in that form, never the raw username.
 type UserIDFunc func(user string, r *http.Request) string
 
 // CredCheckerFunc type is an adapter to allow the use of ordinary functions as CredsChecker.
@@ -98,7 +100,9 @@ func (p DirectHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := p.ProviderName + "_" + token.HashID(sha1.New(), creds.User)
+	// plain sha1, not token.HashID: HashID passes 40-hex input through, so a username spelling
+	// another user's hash would take that user's id
+	userID := p.ProviderName + "_" + fmt.Sprintf("%x", sha1.Sum([]byte(creds.User)))
 	if p.UserIDFunc != nil {
 		userID = p.ProviderName + "_" + token.HashID(sha1.New(), p.UserIDFunc(creds.User, r))
 	}

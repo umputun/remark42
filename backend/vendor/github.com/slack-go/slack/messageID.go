@@ -10,13 +10,13 @@ type IDGenerator interface {
 // NewSafeID returns a new instance of an IDGenerator which is safe for
 // concurrent use by multiple goroutines.
 func NewSafeID(startID int) IDGenerator {
-	return &safeID{
-		nextID: int64(startID),
-	}
+	s := &safeID{}
+	s.nextID.Store(int64(startID))
+	return s
 }
 
 type safeID struct {
-	nextID int64
+	nextID atomic.Int64
 }
 
 // make sure safeID implements the IDGenerator interface.
@@ -24,7 +24,5 @@ var _ IDGenerator = (*safeID)(nil)
 
 // Next implements IDGenerator.Next.
 func (s *safeID) Next() int {
-	id := atomic.AddInt64(&s.nextID, 1)
-
-	return int(id)
+	return int(s.nextID.Add(1))
 }

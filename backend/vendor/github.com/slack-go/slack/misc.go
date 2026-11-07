@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -59,7 +60,7 @@ func (e SlackResponseErrors) MarshalJSON() ([]byte, error) {
 	if e.Message != nil {
 		return json.Marshal(*e.Message)
 	}
-	return json.Marshal(nil)
+	return []byte("null"), nil
 }
 
 // UnmarshalJSON implements custom unmarshaling for SlackResponseErrors
@@ -117,6 +118,8 @@ type SlackResponse struct {
 	Warning          string                `json:"warning"`
 	Errors           []SlackResponseErrors `json:"errors,omitempty"`
 	ResponseMetadata ResponseMetadata      `json:"response_metadata"`
+	Needed           string                `json:"needed,omitempty"`
+	Provided         string                `json:"provided,omitempty"`
 }
 
 // Warn returns warning information from the API response, or nil if there
@@ -169,6 +172,8 @@ type KickUserFromConversationSlackResponse struct {
 	Warning          string                `json:"warning"`
 	Errors           []SlackResponseErrors `json:"-"`
 	ResponseMetadata ResponseMetadata      `json:"response_metadata"`
+	Needed           string                `json:"needed,omitempty"`
+	Provided         string                `json:"provided,omitempty"`
 }
 
 // UnmarshalJSON implements custom unmarshaling for KickUserFromConversationSlackResponse to handle
@@ -183,7 +188,7 @@ func (s *KickUserFromConversationSlackResponse) UnmarshalJSON(data []byte) error
 		Alias: (*Alias)(s),
 	}
 
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(data, aux); err != nil {
 		return err
 	}
 
@@ -210,29 +215,12 @@ func (s *KickUserFromConversationSlackResponse) UnmarshalJSON(data []byte) error
 // Warn returns warning information from the API response, or nil if there
 // are no warnings.
 func (s KickUserFromConversationSlackResponse) Warn() *Warning {
-	if s.Warning == "" && len(s.ResponseMetadata.Warnings) == 0 {
-		return nil
-	}
-	return &Warning{
-		Codes:    strings.Split(s.Warning, ","),
-		Warnings: s.ResponseMetadata.Warnings,
-	}
+	return SlackResponse(s).Warn()
 }
 
 // Err returns any API error present in the response.
 func (s KickUserFromConversationSlackResponse) Err() error {
-	if s.Ok {
-		return nil
-	}
-
-	// handle pure text based responses like chat.post
-	// which while they have a slack response in their data structure
-	// it doesn't actually get set during parsing.
-	if strings.TrimSpace(s.Error) == "" {
-		return nil
-	}
-
-	return SlackErrorResponse{Err: s.Error, Errors: s.Errors, ResponseMetadata: s.ResponseMetadata}
+	return SlackResponse(s).Err()
 }
 
 func (t SlackResponse) Err() error {
@@ -247,7 +235,7 @@ func (t SlackResponse) Err() error {
 		return nil
 	}
 
-	return SlackErrorResponse{Err: t.Error, Errors: t.Errors, ResponseMetadata: t.ResponseMetadata}
+	return SlackErrorResponse{Err: t.Error, Errors: t.Errors, ResponseMetadata: t.ResponseMetadata, Needed: t.Needed, Provided: t.Provided}
 }
 
 // SlackErrorResponse brings along the metadata of errors returned by the Slack API.
@@ -255,6 +243,10 @@ type SlackErrorResponse struct {
 	Err              string
 	Errors           []SlackResponseErrors
 	ResponseMetadata ResponseMetadata
+	// Needed and Provided contain Slack's scope diagnostics, when supplied.
+	// Values are preserved verbatim without interpreting separators.
+	Needed   string
+	Provided string
 }
 
 func (r SlackErrorResponse) Error() string { return r.Err }
@@ -281,9 +273,51 @@ func fileUploadReq(ctx context.Context, path string, r io.Reader) (*http.Request
 	return req, nil
 }
 
-func downloadFile(ctx context.Context, client httpClient, token string, downloadURL string, writer io.Writer, d Debug) error {
+// slackDomains are the domains whose hosts serve the Slack files that need the token.
+var slackDomains = []string{"slack.com", "slack-gov.com"}
+
+// ensureURLMayReceiveToken returns an error unless rawURL is an https Slack URL or an
+// API endpoint URL. GetFile and UploadToURL attach the token to a URL the caller passes
+// in, and the url_private of a remote file is whatever external_url its creator chose.
+func ensureURLMayReceiveToken(apiEndpoint, rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return err
+	}
+	api, err := url.Parse(apiEndpoint)
+	if err != nil {
+		return err
+	}
+	if isHTTPSSlackURL(u) || isAPIEndpointURL(api, u) {
+		return nil
+	}
+	return fmt.Errorf("refusing to send the token to %q: not an https Slack URL or the API URL", rawURL)
+}
+
+// isHTTPSSlackURL reports whether u is an https URL on a host in slackDomains or one of
+// their subdomains.
+func isHTTPSSlackURL(u *url.URL) bool {
+	if u.Scheme != "https" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	return slices.ContainsFunc(slackDomains, func(domain string) bool {
+		return host == domain || strings.HasSuffix(host, "."+domain)
+	})
+}
+
+// isAPIEndpointURL reports whether u has the scheme and host of the API endpoint set
+// with OptionAPIURL. Every API call already sends the token there.
+func isAPIEndpointURL(api, u *url.URL) bool {
+	return api.Host != "" && u.Scheme == api.Scheme && strings.EqualFold(u.Host, api.Host)
+}
+
+func downloadFile(ctx context.Context, client httpClient, token, apiEndpoint, downloadURL string, writer io.Writer, d Debug) error {
 	if downloadURL == "" {
 		return fmt.Errorf("received empty download URL")
+	}
+	if err := ensureURLMayReceiveToken(apiEndpoint, downloadURL); err != nil {
+		return err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, &bytes.Buffer{})
@@ -304,6 +338,16 @@ func downloadFile(ctx context.Context, client httpClient, token string, download
 	err = checkStatusCode(resp, d)
 	if err != nil {
 		return err
+	}
+
+	// Without access to the file, files.slack.com redirects to the workspace sign-in
+	// page with redir set to the file path, and the client follows it to an HTML
+	// page. Report that instead of writing the page as the file. A file the token
+	// can read, HTML or not, is served without a redirect.
+	if final := resp.Request; final != nil {
+		if redir := final.URL.Query().Get("redir"); redir != "" && redir == req.URL.Path {
+			return fmt.Errorf("file download was redirected to the sign-in page at %s: the token cannot read this file", final.URL.Host)
+		}
 	}
 
 	_, err = io.Copy(writer, resp.Body)
@@ -350,9 +394,12 @@ func postLocalWithMultipartResponse(ctx context.Context, client httpClient, meth
 
 func postWithMultipartResponse(ctx context.Context, client httpClient, path, name, fieldname, token string, values url.Values, r io.Reader, intf any, d Debug) error {
 	pipeReader, pipeWriter := io.Pipe()
+	// Unblock multipart writes if the request returns before consuming the body.
+	defer pipeReader.Close()
 	wr := multipart.NewWriter(pipeWriter)
 
-	errc := make(chan error)
+	// The writer must be able to report an error after the request has returned.
+	errc := make(chan error, 1)
 	go func() {
 		defer pipeWriter.Close()
 		defer wr.Close()
@@ -497,7 +544,7 @@ func okJSONHandler(rw http.ResponseWriter, r *http.Request) {
 	response, _ := json.Marshal(SlackResponse{
 		Ok: true,
 	})
-	rw.Write(response)
+	_, _ = rw.Write(response)
 }
 
 func checkStatusCode(resp *http.Response, d Debug) error {
@@ -511,7 +558,7 @@ func checkStatusCode(resp *http.Response, d Debug) error {
 
 	// Slack seems to send an HTML body along with 5xx error codes. Don't parse it.
 	if resp.StatusCode != http.StatusOK {
-		logResponse(resp, d)
+		_ = logResponse(resp, d)
 		return StatusCodeError{Code: resp.StatusCode, Status: resp.Status}
 	}
 

@@ -29,13 +29,15 @@ const (
 	ClientCredentials   GrantType = "client_credentials"
 	Refreshing          GrantType = "refresh_token"
 	Implicit            GrantType = "__implicit"
+	JWTBearer           GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 )
 
 func (gt GrantType) String() string {
 	if gt == AuthorizationCode ||
 		gt == PasswordCredentials ||
 		gt == ClientCredentials ||
-		gt == Refreshing {
+		gt == Refreshing ||
+		gt == JWTBearer {
 		return string(gt)
 	}
 	return ""

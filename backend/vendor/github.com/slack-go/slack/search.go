@@ -89,7 +89,7 @@ func NewSearchParameters() SearchParameters {
 	}
 }
 
-func (api *Client) _search(ctx context.Context, path, query string, params SearchParameters) (response *searchResponseFull, error error) {
+func (api *Client) _search(ctx context.Context, path, query string, params SearchParameters) (response *searchResponseFull, err error) {
 	values := url.Values{
 		"token": {api.token},
 		"query": {query},
@@ -114,7 +114,7 @@ func (api *Client) _search(ctx context.Context, path, query string, params Searc
 	}
 
 	response = &searchResponseFull{}
-	err := api.postMethod(ctx, path, values, response)
+	err = api.postMethod(ctx, path, values, response)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +123,18 @@ func (api *Client) _search(ctx context.Context, path, query string, params Searc
 
 }
 
+// Search searches messages and files using the legacy search.all API.
+// See [Client.SearchContext] for migration guidance.
 func (api *Client) Search(query string, params SearchParameters) (*SearchMessages, *SearchFiles, error) {
 	return api.SearchContext(context.Background(), query, params)
 }
 
+// SearchContext searches messages and files using the legacy search.all API.
+// Slack recommends [Client.SearchAssistantContextContext] for Real-time Search.
+// The replacement requires different scopes and app setup and returns a different
+// response format, so this method continues to call search.all.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/search.all
 func (api *Client) SearchContext(ctx context.Context, query string, params SearchParameters) (*SearchMessages, *SearchFiles, error) {
 	response, err := api._search(ctx, "search.all", query, params)
 	if err != nil {
@@ -135,10 +143,18 @@ func (api *Client) SearchContext(ctx context.Context, query string, params Searc
 	return &response.SearchMessages, &response.SearchFiles, nil
 }
 
+// SearchFiles searches files using the legacy search.files API.
+// See [Client.SearchFilesContext] for migration guidance.
 func (api *Client) SearchFiles(query string, params SearchParameters) (*SearchFiles, error) {
 	return api.SearchFilesContext(context.Background(), query, params)
 }
 
+// SearchFilesContext searches files using the legacy search.files API.
+// Slack recommends [Client.SearchAssistantContextContext] for Real-time Search
+// with ContentTypes set to files. The replacement requires different scopes
+// and app setup and returns a different response format.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/search.files
 func (api *Client) SearchFilesContext(ctx context.Context, query string, params SearchParameters) (*SearchFiles, error) {
 	response, err := api._search(ctx, "search.files", query, params)
 	if err != nil {
@@ -147,10 +163,18 @@ func (api *Client) SearchFilesContext(ctx context.Context, query string, params 
 	return &response.SearchFiles, nil
 }
 
+// SearchMessages searches messages using the legacy search.messages API.
+// See [Client.SearchMessagesContext] for migration guidance.
 func (api *Client) SearchMessages(query string, params SearchParameters) (*SearchMessages, error) {
 	return api.SearchMessagesContext(context.Background(), query, params)
 }
 
+// SearchMessagesContext searches messages using the legacy search.messages API.
+// Slack recommends [Client.SearchAssistantContextContext] for Real-time Search
+// with ContentTypes set to messages. The replacement requires different scopes
+// and app setup and returns a different response format.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/search.messages
 func (api *Client) SearchMessagesContext(ctx context.Context, query string, params SearchParameters) (*SearchMessages, error) {
 	response, err := api._search(ctx, "search.messages", query, params)
 	if err != nil {

@@ -32,7 +32,7 @@ func (api *Client) DisableUserContext(ctx context.Context, teamName string, uid 
 	}
 
 	if err := api.adminRequest(ctx, "setInactive", teamName, values); err != nil {
-		return fmt.Errorf("failed to disable user with id '%s': %s", uid, err)
+		return fmt.Errorf("failed to disable user with id '%s': %w", uid, err)
 	}
 
 	return nil
@@ -59,7 +59,7 @@ func (api *Client) InviteGuestContext(ctx context.Context, teamName, channel, fi
 
 	err := api.adminRequest(ctx, "invite", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to invite single-channel guest: %s", err)
+		return fmt.Errorf("failed to invite single-channel guest: %w", err)
 	}
 
 	return nil
@@ -86,7 +86,7 @@ func (api *Client) InviteRestrictedContext(ctx context.Context, teamName, channe
 
 	err := api.adminRequest(ctx, "invite", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to restricted account: %s", err)
+		return fmt.Errorf("failed to invite restricted account: %w", err)
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func (api *Client) InviteToTeamContext(ctx context.Context, teamName, firstName,
 
 	err := api.adminRequest(ctx, "invite", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to invite to team: %s", err)
+		return fmt.Errorf("failed to invite to team: %w", err)
 	}
 
 	return nil
@@ -132,7 +132,7 @@ func (api *Client) SetRegularContext(ctx context.Context, teamName, user string)
 
 	err := api.adminRequest(ctx, "setRegular", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to change the user (%s) to a regular user: %s", user, err)
+		return fmt.Errorf("failed to change the user (%s) to a regular user: %w", user, err)
 	}
 
 	return nil
@@ -154,7 +154,7 @@ func (api *Client) SendSSOBindingEmailContext(ctx context.Context, teamName, use
 
 	err := api.adminRequest(ctx, "sendSSOBind", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to send SSO binding email for user (%s): %s", user, err)
+		return fmt.Errorf("failed to send SSO binding email for user (%s): %w", user, err)
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func (api *Client) SetUltraRestrictedContext(ctx context.Context, teamName, uid,
 
 	err := api.adminRequest(ctx, "setUltraRestricted", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to ultra-restrict account: %s", err)
+		return fmt.Errorf("failed to ultra-restrict account: %w", err)
 	}
 
 	return nil
@@ -200,7 +200,7 @@ func (api *Client) SetRestrictedContext(ctx context.Context, teamName, uid strin
 
 	err := api.adminRequest(ctx, "setRestricted", teamName, values)
 	if err != nil {
-		return fmt.Errorf("failed to restrict account: %s", err)
+		return fmt.Errorf("failed to restrict account: %w", err)
 	}
 
 	return nil

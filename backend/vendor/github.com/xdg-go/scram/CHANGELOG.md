@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v1.4.0 - 2026-11-04
+
+### Changed
+
+- PBKDF2 key derivation now always uses the stdlib `crypto/pbkdf2` package, a
+  FIPS 140-3 certified implementation.
+- Minimum Go version bumped from 1.18 to 1.24.
+- Removed dependency `github.com/xdg-go/pbkdf2`.
+
+## v1.3.0 - 2026-11-03
+
+### Security
+
+- `NewClient` no longer includes the plaintext password, or the rejected
+  character, in the error it returns when SASLprep rejects the password.
+
+### Fixed
+
+- Server now decodes the `=2C` and `=3D` escapes in the client-first
+  username and authzid (RFC 5802 §5.1). Previously, the `CredentialLookup`
+  callback, `Username()`, and `AuthzID()` received the escaped form, so
+  users with `,` or `=` in their names failed with `e=unknown-user`.
+- Server now rejects a username containing `=` not followed by `2C` or `3D`
+  with `e=invalid-username-encoding`, and a malformed authzid with
+  `e=invalid-encoding`.
+
+### Notes
+
+- Behavior change: a `CredentialLookup` that matched the escaped form (e.g.
+  `"a=2Cb"`) must now match the decoded name (`"a,b"`).
+
 ## v1.2.0 - 2025-11-24
 
 ### Added

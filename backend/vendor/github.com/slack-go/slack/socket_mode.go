@@ -3,6 +3,8 @@ package slack
 import (
 	"context"
 	"net/url"
+
+	"github.com/slack-go/slack/internal/redact"
 )
 
 // SocketModeConnection contains various details about the SocketMode connection.
@@ -28,7 +30,7 @@ func (api *Client) StartSocketModeContext(ctx context.Context) (info *SocketMode
 	}
 
 	if response.Err() == nil {
-		api.Debugln("Using URL:", response.SocketModeConnection.URL)
+		api.Debugln("Using WebSocket endpoint:", redact.URLOrigin(response.SocketModeConnection.URL))
 	}
 
 	// According to the API documentation at https://api.slack.com/apis/socket-mode, we

@@ -12,10 +12,11 @@ const (
 	DataTableCellRawText   DataTableCellType = "raw_text"
 	DataTableCellRawNumber DataTableCellType = "raw_number"
 	DataTableCellRichText  DataTableCellType = "rich_text"
+	DataTableCellAction    DataTableCellType = "action_cell"
 )
 
 // DataTableCell is implemented by every cell type valid inside a DataTableBlock row:
-// DataTableRawTextCell, DataTableRawNumberCell, and DataTableRichTextCell.
+// DataTableRawTextCell, DataTableRawNumberCell, DataTableRichTextCell, and DataTableActionCell.
 type DataTableCell interface {
 	DataTableCellType() DataTableCellType
 }
@@ -90,6 +91,71 @@ func (c *DataTableRichTextCell) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// DataTableActionCell holds a button in a DataTableBlock. Fallback is optional and
+// must be a DataTableRawTextCell or DataTableRawNumberCell. It is shown on clients
+// that do not support action cells.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/blocks/data-table-block/#schema-for-action_cell
+type DataTableActionCell struct {
+	Type     DataTableCellType   `json:"type"`
+	Element  *ButtonBlockElement `json:"element"`
+	Fallback DataTableCell       `json:"fallback,omitempty"`
+}
+
+// DataTableCellType returns the cell variant.
+func (c DataTableActionCell) DataTableCellType() DataTableCellType {
+	return c.Type
+}
+
+// NewDataTableActionCell returns an action_cell with the given button.
+func NewDataTableActionCell(element *ButtonBlockElement) *DataTableActionCell {
+	return &DataTableActionCell{Type: DataTableCellAction, Element: element}
+}
+
+// WithFallback sets the raw_text or raw_number cell shown in place of the button.
+func (c *DataTableActionCell) WithFallback(fallback DataTableCell) *DataTableActionCell {
+	c.Fallback = fallback
+	return c
+}
+
+// UnmarshalJSON decodes the optional fallback into its concrete cell type.
+func (c *DataTableActionCell) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Type     DataTableCellType   `json:"type"`
+		Element  *ButtonBlockElement `json:"element"`
+		Fallback json.RawMessage     `json:"fallback"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	var fallback DataTableCell
+	if len(raw.Fallback) > 0 && string(raw.Fallback) != "null" {
+		var probe struct {
+			Type DataTableCellType `json:"type"`
+		}
+		if err := json.Unmarshal(raw.Fallback, &probe); err != nil {
+			return err
+		}
+		switch probe.Type {
+		case DataTableCellRawText:
+			fallback = &DataTableRawTextCell{}
+		case DataTableCellRawNumber:
+			fallback = &DataTableRawNumberCell{}
+		default:
+			return fmt.Errorf("unsupported action_cell fallback type %q", probe.Type)
+		}
+		if err := json.Unmarshal(raw.Fallback, fallback); err != nil {
+			return err
+		}
+	}
+
+	c.Type = raw.Type
+	c.Element = raw.Element
+	c.Fallback = fallback
+	return nil
+}
+
 // DataTableBlock displays paginated tabular data with optional numeric sorting.
 //
 // Caption is required. Rows is an array of cell arrays; the first row is the header and
@@ -148,6 +214,8 @@ func (s *DataTableBlock) UnmarshalJSON(data []byte) error {
 				cell = &DataTableRawNumberCell{}
 			case DataTableCellRichText:
 				cell = &DataTableRichTextCell{}
+			case DataTableCellAction:
+				cell = &DataTableActionCell{}
 			default:
 				return fmt.Errorf("unsupported data_table cell type %q", probe.Type)
 			}

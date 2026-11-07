@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -20,35 +21,40 @@ const (
 // For more details:
 // https://api.slack.com/messaging/files/remote
 type RemoteFile struct {
-	ID              string   `json:"id"`
-	Created         JSONTime `json:"created"`
-	Timestamp       JSONTime `json:"timestamp"`
-	Name            string   `json:"name"`
-	Title           string   `json:"title"`
-	Mimetype        string   `json:"mimetype"`
-	Filetype        string   `json:"filetype"`
-	PrettyType      string   `json:"pretty_type"`
-	User            string   `json:"user"`
-	Editable        bool     `json:"editable"`
-	Size            int      `json:"size"`
-	Mode            string   `json:"mode"`
-	IsExternal      bool     `json:"is_external"`
-	ExternalType    string   `json:"external_type"`
-	IsPublic        bool     `json:"is_public"`
-	PublicURLShared bool     `json:"public_url_shared"`
-	DisplayAsBot    bool     `json:"display_as_bot"`
-	Username        string   `json:"username"`
-	URLPrivate      string   `json:"url_private"`
-	Permalink       string   `json:"permalink"`
-	CommentsCount   int      `json:"comments_count"`
-	IsStarred       bool     `json:"is_starred"`
-	Shares          Share    `json:"shares"`
-	Channels        []string `json:"channels"`
-	Groups          []string `json:"groups"`
-	IMs             []string `json:"ims"`
-	ExternalID      string   `json:"external_id"`
-	ExternalURL     string   `json:"external_url"`
-	HasRichPreview  bool     `json:"has_rich_preview"`
+	ID                         string   `json:"id"`
+	Created                    JSONTime `json:"created"`
+	Timestamp                  JSONTime `json:"timestamp"`
+	Name                       string   `json:"name"`
+	Title                      string   `json:"title"`
+	Mimetype                   string   `json:"mimetype"`
+	Filetype                   string   `json:"filetype"`
+	PrettyType                 string   `json:"pretty_type"`
+	User                       string   `json:"user"`
+	Editable                   bool     `json:"editable"`
+	Size                       int      `json:"size"`
+	Mode                       string   `json:"mode"`
+	IsExternal                 bool     `json:"is_external"`
+	ExternalType               string   `json:"external_type"`
+	IsPublic                   bool     `json:"is_public"`
+	PublicURLShared            bool     `json:"public_url_shared"`
+	DisplayAsBot               bool     `json:"display_as_bot"`
+	Username                   string   `json:"username"`
+	URLPrivate                 string   `json:"url_private"`
+	Permalink                  string   `json:"permalink"`
+	CommentsCount              int      `json:"comments_count"`
+	IsStarred                  bool     `json:"is_starred"`
+	Shares                     Share    `json:"shares"`
+	Channels                   []string `json:"channels"`
+	Groups                     []string `json:"groups"`
+	IMs                        []string `json:"ims"`
+	ExternalID                 string   `json:"external_id"`
+	ExternalURL                string   `json:"external_url"`
+	HasRichPreview             bool     `json:"has_rich_preview"`
+	UserTeam                   string   `json:"user_team,omitempty"`
+	FileAccess                 string   `json:"file_access,omitempty"`
+	HasMoreShares              *bool    `json:"has_more_shares,omitempty"`
+	AppID                      string   `json:"app_id,omitempty"`
+	AppProvidesFileWorkObjects *bool    `json:"app_provides_file_work_objects,omitempty"`
 }
 
 // RemoteFileParameters contains required and optional parameters for a remote file.
@@ -130,10 +136,7 @@ func (api *Client) AddRemoteFileContext(ctx context.Context, params RemoteFilePa
 	case params.PreviewImage != "":
 		err = postLocalWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.remote.add", params.PreviewImage, "preview_image", api.token, values, response, api)
 	case params.PreviewImageReader != nil:
-		name := params.PreviewImageName
-		if name == "" {
-			name = "preview.png"
-		}
+		name := cmp.Or(params.PreviewImageName, "preview.png")
 		err = postWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.remote.add", name, "preview_image", api.token, values, params.PreviewImageReader, response, api)
 	default:
 		response, err = api.remoteFileRequest(ctx, "files.remote.add", values)
@@ -164,10 +167,10 @@ func (api *Client) ListRemoteFilesContext(ctx context.Context, params ListRemote
 	if params.TimestampFrom != DEFAULT_REMOTE_FILES_TS_FROM {
 		values.Add("ts_from", strconv.FormatInt(int64(params.TimestampFrom), 10))
 	}
-	if params.TimestampTo != DEFAULT_REMOTE_FILES_TS_TO {
+	if params.TimestampTo != 0 && params.TimestampTo != DEFAULT_REMOTE_FILES_TS_TO {
 		values.Add("ts_to", strconv.FormatInt(int64(params.TimestampTo), 10))
 	}
-	if params.Limit != DEFAULT_REMOTE_FILES_COUNT {
+	if params.Limit != 0 && params.Limit != DEFAULT_REMOTE_FILES_COUNT {
 		values.Add("limit", strconv.Itoa(params.Limit))
 	}
 	if params.Cursor != "" {
@@ -280,10 +283,7 @@ func (api *Client) UpdateRemoteFileContext(ctx context.Context, fileID string, p
 	case params.PreviewImage != "":
 		err = postLocalWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.remote.update", params.PreviewImage, "preview_image", api.token, values, response, api)
 	case params.PreviewImageReader != nil:
-		name := params.PreviewImageName
-		if name == "" {
-			name = "preview.png"
-		}
+		name := cmp.Or(params.PreviewImageName, "preview.png")
 		err = postWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.remote.update", name, "preview_image", api.token, values, params.PreviewImageReader, response, api)
 	default:
 		values.Add("token", api.token)

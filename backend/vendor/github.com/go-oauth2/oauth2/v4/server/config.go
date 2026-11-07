@@ -15,6 +15,13 @@ type Config struct {
 	AllowedGrantTypes           []oauth2.GrantType    // allow the grant type
 	AllowedCodeChallengeMethods []oauth2.CodeChallengeMethod
 	ForcePKCE                   bool
+	TrustedIDJAGIssuers         []string                  // iss allowlist
+	IDJAGAudience               string                    // expected aud (RFC 8414 issuer identifier)
+	IDJAGClockSkew              time.Duration             // default 60s applied at runtime
+	IDJAGAllowPublicClients     bool                      // default false
+	IDJAGIssuerKeyResolver      IssuerKeyResolver         // required when JWTBearer enabled
+	IDJAGAuthorizationHandler   IDJAGAuthorizationHandler // policy hook
+	IDJAGReplayStore            oauth2.AssertionReplayStore
 }
 
 // NewConfig create to configuration instance
