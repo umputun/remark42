@@ -184,6 +184,22 @@ You must first [verify](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/ve
 
 Then you should obtain [SMTP Credentials](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/smtp-credentials.html) from [Amazon SES Console](https://console.aws.amazon.com/ses/home?region=us-east-1#/account).
 
+### Groundmail
+
+Configuration example for [Groundmail](https://groundmail.dev/):
+
+```yaml
+- SMTP_HOST=smtp.groundmail.dev
+- SMTP_PORT=587
+- SMTP_STARTTLS=true
+- SMTP_USERNAME=groundmail
+- SMTP_PASSWORD=gmsmtp_xxxxxxxxxxxx
+- AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
+- NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
+```
+
+`SMTP_USERNAME` is always `groundmail`, and `SMTP_PASSWORD` is an SMTP credential (starts with `gmsmtp_`) created in the Groundmail dashboard under **SMTP**. Before remark42 can email commenters, verify the domain used in `AUTH_EMAIL_FROM` and `NOTIFY_EMAIL_FROM` and add a payment method in Groundmail (the Free plan isn't charged); until then Groundmail only delivers to your own account email, sent from `noreply@mail.groundmail.dev`. If your host blocks outbound port 587, use `SMTP_PORT=2525` with the same STARTTLS setting. See the [Groundmail SMTP docs](https://docs.groundmail.dev/smtp).
+
 ## Setup email authentication
 
 Here is the list of variables that affect email authentication:
