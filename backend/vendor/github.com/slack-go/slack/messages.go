@@ -127,6 +127,9 @@ type Msg struct {
 	// file_share
 	Upload bool `json:"upload,omitempty"`
 
+	// DisplayAsBot preserves an explicit false separately from an absent field.
+	DisplayAsBot *bool `json:"display_as_bot,omitempty"`
+
 	// file_comment
 	Comment *Comment `json:"comment,omitempty"`
 

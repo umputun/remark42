@@ -9,15 +9,9 @@ type sumtype struct {
 	TypeVal string `json:"type"`
 }
 
-// MarshalJSON implements the Marshaller interface for Blocks so that any JSON
-// marshalling is delegated and proper type determination can be made before marshal
+// MarshalJSON encodes the underlying block slice.
 func (b Blocks) MarshalJSON() ([]byte, error) {
-	bytes, err := json.Marshal(b.BlockSet)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return json.Marshal(b.BlockSet)
 }
 
 // UnmarshalJSON implements the Unmarshaller interface for Blocks, so that any JSON
@@ -42,13 +36,8 @@ func (b *Blocks) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		var blockType string
-		if s.TypeVal != "" {
-			blockType = s.TypeVal
-		}
-
 		var block Block
-		switch blockType {
+		switch s.TypeVal {
 		case "actions":
 			block = &ActionBlock{}
 		case "context":
@@ -87,6 +76,8 @@ func (b *Blocks) UnmarshalJSON(data []byte) error {
 			block = &TaskCardBlock{}
 		case "alert":
 			block = &AlertBlock{}
+		case "auth_provider":
+			block = &AuthProviderBlock{}
 		case "plan":
 			block = &PlanBlock{}
 		case "card":
@@ -95,13 +86,10 @@ func (b *Blocks) UnmarshalJSON(data []byte) error {
 			block = &CarouselBlock{}
 		case "container":
 			block = &ContainerBlock{}
+		case "layout":
+			block = &LayoutBlock{}
 		default:
-			b := &UnknownBlock{raw: r}
-			if err = json.Unmarshal(r, b); err != nil {
-				return err
-			}
-			blocks.BlockSet = append(blocks.BlockSet, b)
-			continue
+			block = &UnknownBlock{raw: r}
 		}
 
 		err = json.Unmarshal(r, block)
@@ -131,9 +119,14 @@ func (b *InputBlock) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	// Preserve compatibility with partial blocks and null input.
+	if len(a.Element) == 0 {
+		return nil
+	}
+
 	s := sumtype{}
 	if err := json.Unmarshal(a.Element, &s); err != nil {
-		return nil
+		return err
 	}
 
 	var e BlockElement
@@ -184,15 +177,9 @@ func (b *InputBlock) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the Marshaller interface for BlockElements so that any JSON
-// marshalling is delegated and proper type determination can be made before marshal
+// MarshalJSON encodes the underlying block element slice.
 func (b *BlockElements) MarshalJSON() ([]byte, error) {
-	bytes, err := json.Marshal(b.ElementSet)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return json.Marshal(b.ElementSet)
 }
 
 // UnmarshalJSON implements the Unmarshaller interface for BlockElements, so that any JSON
@@ -217,13 +204,8 @@ func (b *BlockElements) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		var blockElementType string
-		if s.TypeVal != "" {
-			blockElementType = s.TypeVal
-		}
-
 		var blockElement BlockElement
-		switch blockElementType {
+		switch s.TypeVal {
 		case "image":
 			blockElement = &ImageBlockElement{}
 		case "button":
@@ -263,7 +245,7 @@ func (b *BlockElements) UnmarshalJSON(data []byte) error {
 		case "workflow_button":
 			blockElement = &WorkflowButtonBlockElement{}
 		default:
-			return fmt.Errorf("unsupported block element type %v", blockElementType)
+			return fmt.Errorf("unsupported block element type %v", s.TypeVal)
 		}
 
 		err = json.Unmarshal(r, blockElement)
@@ -278,15 +260,9 @@ func (b *BlockElements) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the Marshaller interface for Accessory so that any JSON
-// marshalling is delegated and proper type determination can be made before marshal
+// MarshalJSON encodes the selected accessory element.
 func (a *Accessory) MarshalJSON() ([]byte, error) {
-	bytes, err := json.Marshal(toBlockElement(a))
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return json.Marshal(toBlockElement(a))
 }
 
 // UnmarshalJSON implements the Unmarshaller interface for Accessory, so that any JSON
@@ -310,101 +286,88 @@ func (a *Accessory) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	var blockElementType string
-	if s.TypeVal != "" {
-		blockElementType = s.TypeVal
-	}
-
-	switch blockElementType {
+	switch s.TypeVal {
 	case "image":
-		element, err := unmarshalBlockElement(r, &ImageBlockElement{})
-		if err != nil {
+		element := &ImageBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.ImageElement = element.(*ImageBlockElement)
+		a.ImageElement = element
 	case "button":
-		element, err := unmarshalBlockElement(r, &ButtonBlockElement{})
-		if err != nil {
+		element := &ButtonBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.ButtonElement = element.(*ButtonBlockElement)
+		a.ButtonElement = element
 	case "overflow":
-		element, err := unmarshalBlockElement(r, &OverflowBlockElement{})
-		if err != nil {
+		element := &OverflowBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.OverflowElement = element.(*OverflowBlockElement)
+		a.OverflowElement = element
 	case "datepicker":
-		element, err := unmarshalBlockElement(r, &DatePickerBlockElement{})
-		if err != nil {
+		element := &DatePickerBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.DatePickerElement = element.(*DatePickerBlockElement)
+		a.DatePickerElement = element
 	case "timepicker":
-		element, err := unmarshalBlockElement(r, &TimePickerBlockElement{})
-		if err != nil {
+		element := &TimePickerBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.TimePickerElement = element.(*TimePickerBlockElement)
+		a.TimePickerElement = element
 	case "plain_text_input":
-		element, err := unmarshalBlockElement(r, &PlainTextInputBlockElement{})
-		if err != nil {
+		element := &PlainTextInputBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.PlainTextInputElement = element.(*PlainTextInputBlockElement)
+		a.PlainTextInputElement = element
 	case "rich_text_input":
-		element, err := unmarshalBlockElement(r, &RichTextInputBlockElement{})
-		if err != nil {
+		element := &RichTextInputBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.RichTextInputElement = element.(*RichTextInputBlockElement)
+		a.RichTextInputElement = element
 	case "radio_buttons":
-		element, err := unmarshalBlockElement(r, &RadioButtonsBlockElement{})
-		if err != nil {
+		element := &RadioButtonsBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.RadioButtonsElement = element.(*RadioButtonsBlockElement)
+		a.RadioButtonsElement = element
 	case "static_select", "external_select", "users_select", "conversations_select", "channels_select":
-		element, err := unmarshalBlockElement(r, &SelectBlockElement{})
-		if err != nil {
+		element := &SelectBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.SelectElement = element.(*SelectBlockElement)
+		a.SelectElement = element
 	case "multi_static_select", "multi_external_select", "multi_users_select", "multi_conversations_select", "multi_channels_select":
-		element, err := unmarshalBlockElement(r, &MultiSelectBlockElement{})
-		if err != nil {
+		element := &MultiSelectBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.MultiSelectElement = element.(*MultiSelectBlockElement)
+		a.MultiSelectElement = element
 	case "checkboxes":
-		element, err := unmarshalBlockElement(r, &CheckboxGroupsBlockElement{})
-		if err != nil {
+		element := &CheckboxGroupsBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.CheckboxGroupsBlockElement = element.(*CheckboxGroupsBlockElement)
+		a.CheckboxGroupsBlockElement = element
 	case "workflow_button":
-		element, err := unmarshalBlockElement(r, &WorkflowButtonBlockElement{})
-		if err != nil {
+		element := &WorkflowButtonBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.WorkflowButtonElement = element.(*WorkflowButtonBlockElement)
+		a.WorkflowButtonElement = element
 	default:
-		element, err := unmarshalBlockElement(r, &UnknownBlockElement{})
-		if err != nil {
+		element := &UnknownBlockElement{}
+		if err := json.Unmarshal(r, element); err != nil {
 			return err
 		}
-		a.UnknownElement = element.(*UnknownBlockElement)
+		a.UnknownElement = element
 	}
 
 	return nil
-}
-
-func unmarshalBlockElement(r json.RawMessage, element BlockElement) (BlockElement, error) {
-	err := json.Unmarshal(r, element)
-	if err != nil {
-		return nil, err
-	}
-	return element, nil
 }
 
 func toBlockElement(element *Accessory) BlockElement {
@@ -448,15 +411,9 @@ func toBlockElement(element *Accessory) BlockElement {
 	return nil
 }
 
-// MarshalJSON implements the Marshaller interface for ContextElements so that any JSON
-// marshalling is delegated and proper type determination can be made before marshal
-func (e *ContextElements) MarshalJSON() ([]byte, error) {
-	bytes, err := json.Marshal(e.Elements)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+// MarshalJSON encodes the underlying context element slice.
+func (e ContextElements) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Elements)
 }
 
 // UnmarshalJSON implements the Unmarshaller interface for ContextElements, so that any JSON
@@ -480,28 +437,23 @@ func (e *ContextElements) UnmarshalJSON(data []byte) error {
 			return err
 		}
 
-		var contextElementType string
-		if s.TypeVal != "" {
-			contextElementType = s.TypeVal
-		}
-
-		switch contextElementType {
+		switch s.TypeVal {
 		case PlainTextType, MarkdownType:
-			elem, err := unmarshalBlockObject(r, &TextBlockObject{})
-			if err != nil {
+			elem := &TextBlockObject{}
+			if err := json.Unmarshal(r, elem); err != nil {
 				return err
 			}
 
-			e.Elements = append(e.Elements, elem.(*TextBlockObject))
+			e.Elements = append(e.Elements, elem)
 		case "image":
-			elem, err := unmarshalBlockElement(r, &ImageBlockElement{})
-			if err != nil {
+			elem := &ImageBlockElement{}
+			if err := json.Unmarshal(r, elem); err != nil {
 				return err
 			}
 
-			e.Elements = append(e.Elements, elem.(*ImageBlockElement))
+			e.Elements = append(e.Elements, elem)
 		default:
-			return fmt.Errorf("unsupported context element type %v", contextElementType)
+			return fmt.Errorf("unsupported context element type %v", s.TypeVal)
 		}
 	}
 

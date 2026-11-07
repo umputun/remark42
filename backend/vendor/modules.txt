@@ -1,5 +1,5 @@
-# cloud.google.com/go/compute/metadata v0.9.0
-## explicit; go 1.24.0
+# cloud.google.com/go/compute/metadata v0.10.0
+## explicit; go 1.26.0
 cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma/v2 v2.0.0
 ## explicit; go 1.18
@@ -13,7 +13,7 @@ github.com/alecthomas/chroma/v2
 github.com/alecthomas/chroma/v2/formatters/html
 github.com/alecthomas/chroma/v2/lexers
 github.com/alecthomas/chroma/v2/styles
-# github.com/andybalholm/cascadia v1.3.4
+# github.com/andybalholm/cascadia v1.3.5
 ## explicit; go 1.25.0
 github.com/andybalholm/cascadia
 # github.com/aymerick/douceur v0.2.0
@@ -34,17 +34,17 @@ github.com/didip/tollbooth/v8/errors
 github.com/didip/tollbooth/v8/internal/time/rate
 github.com/didip/tollbooth/v8/libstring
 github.com/didip/tollbooth/v8/limiter
-# github.com/dlclark/regexp2/v2 v2.7.1
+# github.com/dlclark/regexp2/v2 v2.12.0
 ## explicit; go 1.25
 github.com/dlclark/regexp2/v2
 github.com/dlclark/regexp2/v2/helpers
 github.com/dlclark/regexp2/v2/syntax
-# github.com/go-oauth2/oauth2/v4 v4.5.4
+# github.com/go-oauth2/oauth2/v4 v4.6.0
 ## explicit; go 1.21
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.3.1
+# github.com/go-pkgz/auth/v2 v2.3.2
 ## explicit; go 1.25.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
@@ -62,7 +62,7 @@ github.com/go-pkgz/expirable-cache/v3
 # github.com/go-pkgz/jrpc v0.4.2
 ## explicit; go 1.24.0
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw/v2 v2.1.0
+# github.com/go-pkgz/lcw/v2 v2.1.1
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
@@ -113,13 +113,14 @@ github.com/hashicorp/golang-lru/v2/simplelru
 # github.com/jessevdk/go-flags v1.6.1
 ## explicit; go 1.20
 github.com/jessevdk/go-flags
-# github.com/klauspost/compress v1.19.2
-## explicit; go 1.24
+# github.com/klauspost/compress v1.20.3
+## explicit; go 1.25
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/le
+github.com/klauspost/compress/internal/regmask
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
@@ -130,11 +131,11 @@ github.com/kyokomi/emoji/v2
 ## explicit; go 1.19
 github.com/microcosm-cc/bluemonday
 github.com/microcosm-cc/bluemonday/css
-# github.com/montanaflynn/stats v0.12.4
-## explicit; go 1.13
+# github.com/montanaflynn/stats v0.14.0
+## explicit; go 1.17
 github.com/montanaflynn/stats
-# github.com/redis/go-redis/v9 v9.22.0
-## explicit; go 1.24
+# github.com/redis/go-redis/v9 v9.23.0
+## explicit; go 1.26.0
 github.com/redis/go-redis/v9
 github.com/redis/go-redis/v9/auth
 github.com/redis/go-redis/v9/internal
@@ -164,12 +165,12 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.29.0
-## explicit; go 1.25
+# github.com/slack-go/slack v0.35.0
+## explicit; go 1.26
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
-github.com/slack-go/slack/internal/timex
+github.com/slack-go/slack/internal/redact
 github.com/slack-go/slack/slackutilsx
 # github.com/stretchr/testify v1.12.1
 ## explicit; go 1.17
@@ -178,11 +179,8 @@ github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/internal/difflib
 github.com/stretchr/testify/internal/spew
 github.com/stretchr/testify/require
-# github.com/xdg-go/pbkdf2 v1.0.0
-## explicit; go 1.9
-github.com/xdg-go/pbkdf2
-# github.com/xdg-go/scram v1.2.0
-## explicit; go 1.18
+# github.com/xdg-go/scram v1.4.0
+## explicit; go 1.24
 github.com/xdg-go/scram
 # github.com/xdg-go/stringprep v1.0.4
 ## explicit; go 1.11
@@ -196,7 +194,7 @@ go.etcd.io/bbolt
 go.etcd.io/bbolt/errors
 go.etcd.io/bbolt/internal/common
 go.etcd.io/bbolt/internal/freelist
-# go.mongodb.org/mongo-driver v1.17.9
+# go.mongodb.org/mongo-driver v1.17.10
 ## explicit; go 1.18
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
@@ -246,7 +244,7 @@ go.mongodb.org/mongo-driver/x/mongo/driver/operation
 go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
-# go.uber.org/atomic v1.11.0
+# go.uber.org/atomic v1.12.0
 ## explicit; go 1.18
 go.uber.org/atomic
 # go.uber.org/goleak v1.3.0

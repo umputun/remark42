@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -103,6 +104,7 @@ func OptionLog(l logger) func(*Client) {
 // "conversations.join"), the request payload ([url.Values] for form-encoded
 // requests or []byte for JSON requests), and a [Warning] with the warning
 // codes and messages.
+// Form and query parameter maps are copied with the token parameter omitted.
 //
 // Example:
 //
@@ -202,7 +204,7 @@ func New(token string, options ...Option) *Client {
 }
 
 // AuthTest tests if the user is able to do authenticated requests or not
-func (api *Client) AuthTest() (response *AuthTestResponse, error error) {
+func (api *Client) AuthTest() (response *AuthTestResponse, err error) {
 	return api.AuthTestContext(context.Background())
 }
 
@@ -222,14 +224,14 @@ func (api *Client) AuthTestContext(ctx context.Context) (response *AuthTestRespo
 // Debugf print a formatted debug line.
 func (api *Client) Debugf(format string, v ...any) {
 	if api.debug {
-		api.log.Output(2, fmt.Sprintf(format, v...))
+		_ = api.log.Output(2, fmt.Sprintf(format, v...))
 	}
 }
 
 // Debugln print a debug line.
 func (api *Client) Debugln(v ...any) {
 	if api.debug {
-		api.log.Output(2, fmt.Sprintln(v...))
+		_ = api.log.Output(2, fmt.Sprintln(v...))
 	}
 }
 
@@ -268,6 +270,11 @@ func (api *Client) checkWarnings(intf any, path string, request any) {
 	}
 	if w, ok := intf.(warner); ok {
 		if warning := w.Warn(); warning != nil {
+			if values, ok := request.(url.Values); ok {
+				redacted := maps.Clone(values)
+				redacted.Del("token")
+				request = redacted
+			}
 			api.onWarning(path, request, warning)
 		}
 	}

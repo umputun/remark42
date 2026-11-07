@@ -2,7 +2,8 @@ package stats
 
 import "math"
 
-// Median gets the median number in a slice of numbers
+// Median gets the median number in a slice of numbers. If the slice
+// contains a NaN the result is NaN.
 func Median(input Float64Data) (median float64, err error) {
 
 	// Start by sorting a copy of the slice
@@ -15,6 +16,9 @@ func Median(input Float64Data) (median float64, err error) {
 	l := len(c)
 	if l == 0 {
 		return math.NaN(), EmptyInputErr
+	} else if hasNaN(c) {
+		// Sorting places a NaN below every number, so it has no rank
+		return math.NaN(), nil
 	} else if l%2 == 0 {
 		median, _ = Mean(c[l/2-1 : l/2+1])
 	} else {

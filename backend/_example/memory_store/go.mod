@@ -14,9 +14,9 @@ require (
 	github.com/Depado/bfchroma/v2 v2.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.13.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
-	github.com/andybalholm/cascadia v1.3.4 // indirect
+	github.com/andybalholm/cascadia v1.3.5 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.7.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.12.0 // indirect
 	github.com/go-pkgz/rest v1.24.0 // indirect
 	github.com/go-pkgz/routegroup v1.6.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect

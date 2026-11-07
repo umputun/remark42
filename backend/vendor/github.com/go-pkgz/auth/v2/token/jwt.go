@@ -84,6 +84,23 @@ type Opts struct {
 	AudSecrets        bool          // uses different secret for differed auds. important: adds pre-parsing of unverified token
 	SendJWTHeader     bool          // if enabled, also send JWT as a response header (in addition to the cookie)
 	SameSite          http.SameSite // define a cookie attribute making it impossible for the browser to send this cookie cross-site
+	// PartitionedCookies marks the auth cookies Partitioned (CHIPS), keying them to the embedding
+	// top-level site as well as their own, so they survive the phase-out of unpartitioned
+	// third-party cookies where the application is framed by another site.
+	//
+	// Requires SecureCookies: http.Cookie.Valid rejects Partitioned without Secure, and browsers
+	// drop such a cookie. SameSite=None is separate and is what makes the cookie get sent from a
+	// third-party frame at all, rather than what makes it accepted.
+	//
+	// Only helps where Set runs inside the frame, which is the direct, telegram and email-code
+	// flows. It does NOT help OAuth: the partition key is the top-level site at the moment the
+	// cookie is set, and an OAuth popup is its own top-level context, so a callback cookie is
+	// keyed to the auth site and the framed application never sees it. Enabling this converts a
+	// working OAuth session into an invisible one wherever unpartitioned third-party cookies are
+	// still allowed. Making OAuth work in a frame needs document.requestStorageAccess, or the
+	// popup handing a one-shot code to the frame to exchange so Set runs under the embedder's
+	// partition; both are application-side work.
+	PartitionedCookies bool
 }
 
 // NewService makes JWT service
@@ -277,12 +294,22 @@ func (j *Service) Set(w http.ResponseWriter, claims Claims) (Claims, error) {
 		cookieExpiration = int(j.CookieDuration.Seconds())
 	}
 
+	if j.PartitionedCookies {
+		// a pair written before the option was turned on is a different cookie to the browser and
+		// stays next to the partitioned one. It is sent first, so Get keeps reading it and the refresh
+		// in middleware keeps writing fresh claims into a partitioned pair nothing reads, until the
+		// legacy cookie runs out its CookieDuration. Expiring it moves the session over on the first
+		// refresh. The expiry goes before the live pair: a browser without CHIPS ignores Partitioned,
+		// so both address the same cookie there and the later header wins
+		j.expireLegacyCookies(w)
+	}
+
 	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: tokenString, HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // Secure and SameSite come from service config
-		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
+		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite, Partitioned: j.PartitionedCookies}
 	http.SetCookie(w, &jwtCookie)
 
 	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: claims.ID, HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // HttpOnly false by design, JS reads it for the X-XSRF-Token header
-		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite}
+		MaxAge: cookieExpiration, Secure: j.SecureCookies, SameSite: j.SameSite, Partitioned: j.PartitionedCookies}
 	http.SetCookie(w, &xsrfCookie)
 
 	return claims, nil
@@ -357,15 +384,39 @@ func (j *Service) IsExpired(claims Claims) bool {
 
 // Reset token's cookies
 func (j *Service) Reset(w http.ResponseWriter) {
-	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // expired removal cookie, carries no value
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
+	// HttpOnly as on the live cookie: a browser rejects an expiry for a __Http- prefixed name without it
+	jwtCookie := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // Secure and SameSite come from service config
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite, Partitioned: j.PartitionedCookies}
 	http.SetCookie(w, &jwtCookie)
 
 	xsrfCookie := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // expired removal cookie, carries no value
-		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite, Partitioned: j.PartitionedCookies}
 	http.SetCookie(w, &xsrfCookie)
 
+	if j.PartitionedCookies {
+		// a partitioned expiry does not match an unpartitioned cookie, so any pair written before
+		// the option was turned on survives this. The browser then sends both, sorted oldest
+		// first, and Request.Cookie returns the first occurrence: Get reads the legacy one, which
+		// is expired but still validly signed, and the refresh in middleware turns it back into a
+		// live session. Clearing both forms is what actually signs the reader out
+		j.expireLegacyCookies(w)
+	}
+
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+}
+
+// expireLegacyCookies clears the unpartitioned JWT and XSRF cookies a browser may still hold from
+// before PartitionedCookies was turned on. In a blocked third-party context the unpartitioned
+// header is dropped, so it costs nothing there
+func (j *Service) expireLegacyCookies(w http.ResponseWriter) {
+	// HttpOnly as on the live cookie: a browser rejects an expiry for a __Http- prefixed name without it
+	legacyJWT := http.Cookie{Name: j.JWTCookieName, Value: "", HttpOnly: true, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // Secure and SameSite come from service config
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
+	http.SetCookie(w, &legacyJWT)
+
+	legacyXSRF := http.Cookie{Name: j.XSRFCookieName, Value: "", HttpOnly: false, Path: "/", Domain: j.JWTCookieDomain, //nolint:gosec // expired removal cookie, carries no value
+		MaxAge: -1, Expires: time.Unix(0, 0), Secure: j.SecureCookies, SameSite: j.SameSite}
+	http.SetCookie(w, &legacyXSRF)
 }
 
 // checkAuds verifies if claims.Audience in the list of allowed by audReader

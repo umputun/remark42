@@ -60,6 +60,17 @@ type Opts struct {
 	JWTQuery          string        // default "token"
 	SendJWTHeader     bool          // if enabled, also send JWT as a response header (in addition to the cookie)
 	SameSiteCookie    http.SameSite // limit cross-origin requests with SameSite cookie attribute
+	// PartitionedCookies marks auth cookies Partitioned (CHIPS) so they survive third-party cookie
+	// blocking when the application is framed by another site.
+	//
+	// Requires SecureCookies, since browsers reject Partitioned without Secure, and wants
+	// SameSiteCookie set to http.SameSiteNoneMode so the cookie is sent from a third-party frame.
+	//
+	// Only helps where the cookie is set from inside the frame: direct, telegram and email-code.
+	// OAuth sessions are keyed to the auth site, because a popup is its own top-level context, so
+	// they will not reach the frame and enabling this makes an otherwise working OAuth session
+	// invisible to it. See token.Opts.PartitionedCookies for the detail.
+	PartitionedCookies bool
 
 	Issuer string // optional value for iss claim, usually the application name, default "go-pkgz/auth"
 
@@ -123,25 +134,26 @@ func NewService(opts Opts) (res *Service) {
 	}
 
 	jwtService := token.NewService(token.Opts{
-		SecretReader:      opts.SecretReader,
-		ClaimsUpd:         opts.ClaimsUpd,
-		SecureCookies:     opts.SecureCookies,
-		TokenDuration:     opts.TokenDuration,
-		CookieDuration:    opts.CookieDuration,
-		DisableXSRF:       opts.DisableXSRF,
-		DisableIAT:        opts.DisableIAT,
-		JWTCookieName:     opts.JWTCookieName,
-		JWTCookieDomain:   opts.JWTCookieDomain,
-		JWTHeaderKey:      opts.JWTHeaderKey,
-		XSRFCookieName:    opts.XSRFCookieName,
-		XSRFHeaderKey:     opts.XSRFHeaderKey,
-		XSRFIgnoreMethods: opts.XSRFIgnoreMethods,
-		SendJWTHeader:     opts.SendJWTHeader,
-		JWTQuery:          opts.JWTQuery,
-		Issuer:            res.issuer,
-		AudienceReader:    opts.AudienceReader,
-		AudSecrets:        opts.AudSecrets,
-		SameSite:          opts.SameSiteCookie,
+		SecretReader:       opts.SecretReader,
+		ClaimsUpd:          opts.ClaimsUpd,
+		SecureCookies:      opts.SecureCookies,
+		TokenDuration:      opts.TokenDuration,
+		CookieDuration:     opts.CookieDuration,
+		DisableXSRF:        opts.DisableXSRF,
+		DisableIAT:         opts.DisableIAT,
+		JWTCookieName:      opts.JWTCookieName,
+		JWTCookieDomain:    opts.JWTCookieDomain,
+		JWTHeaderKey:       opts.JWTHeaderKey,
+		XSRFCookieName:     opts.XSRFCookieName,
+		XSRFHeaderKey:      opts.XSRFHeaderKey,
+		XSRFIgnoreMethods:  opts.XSRFIgnoreMethods,
+		SendJWTHeader:      opts.SendJWTHeader,
+		JWTQuery:           opts.JWTQuery,
+		Issuer:             res.issuer,
+		AudienceReader:     opts.AudienceReader,
+		AudSecrets:         opts.AudSecrets,
+		SameSite:           opts.SameSiteCookie,
+		PartitionedCookies: opts.PartitionedCookies,
 	})
 
 	if opts.SecretReader == nil {
@@ -149,6 +161,14 @@ func NewService(opts Opts) (res *Service) {
 			return "", fmt.Errorf("secrets reader not available")
 		})
 		res.logger.Logf("[WARN] no secret reader defined")
+	}
+
+	if opts.PartitionedCookies && !opts.SecureCookies {
+		// http.Cookie.Valid rejects this pairing, but SetCookie writes through String and never
+		// calls Valid, so the header goes out, browsers drop both cookies, Set returns no error
+		// and the login silently produces no session. Warn rather than force: overriding an
+		// explicit SecureCookies: false on a published field would be worse
+		res.logger.Logf("[WARN] PartitionedCookies requires SecureCookies, browsers will reject the cookie")
 	}
 
 	res.jwtService = jwtService

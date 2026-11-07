@@ -12,14 +12,17 @@ type listPinsResponseFull struct {
 	SlackResponse
 }
 
-// AddPin pins an item in a channel.
+// AddPin pins a message in a channel.
 // For more details, see AddPinContext documentation.
 func (api *Client) AddPin(channel string, item ItemRef) error {
 	return api.AddPinContext(context.Background(), channel, item)
 }
 
-// AddPinContext pins an item in a channel with a custom context.
-// Slack API docs: https://api.slack.com/methods/pins.add
+// AddPinContext pins a message in a channel with a custom context.
+// Set item.Timestamp to the message timestamp. Slack no longer supports pinning
+// files or file comments directly; use the file's channel message instead.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/pins.add
 func (api *Client) AddPinContext(ctx context.Context, channel string, item ItemRef) error {
 	values := url.Values{
 		"channel": {channel},
@@ -74,14 +77,14 @@ func (api *Client) RemovePinContext(ctx context.Context, channel string, item It
 	return response.Err()
 }
 
-// ListPins returns information about the items a user reacted to.
+// ListPins returns the items pinned in a channel.
 // For more details, see ListPinsContext documentation.
 func (api *Client) ListPins(channel string) ([]Item, *Paging, error) {
 	return api.ListPinsContext(context.Background(), channel)
 }
 
-// ListPinsContext returns information about the items a user reacted to with a custom context.
-// Slack API docs: https://api.slack.com/methods/pins.list
+// ListPinsContext returns the items pinned in a channel with a custom context.
+// Slack API docs: https://docs.slack.dev/reference/methods/pins.list
 func (api *Client) ListPinsContext(ctx context.Context, channel string) ([]Item, *Paging, error) {
 	values := url.Values{
 		"channel": {channel},

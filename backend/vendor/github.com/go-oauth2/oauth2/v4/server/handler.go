@@ -33,13 +33,13 @@ type (
 	RefreshingValidationHandler func(ti oauth2.TokenInfo) (allowed bool, err error)
 
 	// ResponseErrorHandler response error handing
-	ResponseErrorHandler func(re *errors.Response)
+	ResponseErrorHandler func(ctx context.Context, re *errors.Response)
 
 	// InternalErrorHandler internal error handing
-	InternalErrorHandler func(err error) (re *errors.Response)
+	InternalErrorHandler func(ctx context.Context, err error) (re *errors.Response)
 
 	// PreRedirectErrorHandler is used to override "redirect-on-error" behavior
-	PreRedirectErrorHandler func(w http.ResponseWriter, req *AuthorizeRequest, err error) error
+	PreRedirectErrorHandler func(ctx context.Context, w http.ResponseWriter, req *AuthorizeRequest, err error) error
 
 	// AuthorizeScopeHandler set the authorized scope
 	AuthorizeScopeHandler func(w http.ResponseWriter, r *http.Request) (scope string, err error)

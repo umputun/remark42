@@ -1,5 +1,7 @@
 package stats
 
+import "math"
+
 // Rescale normalizes the input values to the range of 0 to 1
 // by subtracting the minimum and dividing by the range,
 // also known as min-max normalization.
@@ -16,8 +18,18 @@ func Rescale(input Float64Data) ([]float64, error) {
 	}
 
 	r := make([]float64, len(input))
+	if span := max - min; !math.IsInf(span, 1) {
+		for i, v := range input {
+			r[i] = (v - min) / span
+		}
+		return r, nil
+	}
+
+	// When max - min overflows, halve every term, which is
+	// exact for values this large, so the range stays finite
+	span := max/2 - min/2
 	for i, v := range input {
-		r[i] = (v - min) / (max - min)
+		r[i] = (v/2 - min/2) / span
 	}
 	return r, nil
 }

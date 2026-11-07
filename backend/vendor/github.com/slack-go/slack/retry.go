@@ -59,7 +59,7 @@ type RetryConfig struct {
 	RetryAfterJitter time.Duration
 	// BackoffInitial is the initial backoff for 5xx and connection errors.
 	BackoffInitial time.Duration
-	// BackoffMax caps the backoff duration.
+	// BackoffMax caps the backoff duration before BackoffJitter is added.
 	BackoffMax time.Duration
 	// BackoffJitter adds random jitter [0, BackoffJitter] to backoff to avoid thundering herd (0 to disable).
 	BackoffJitter time.Duration
@@ -130,7 +130,7 @@ func (h *rateLimitErrorRetryHandler) ShouldRetry(state *RetryState, req *http.Re
 	}
 	dur = max(dur, minRetryAfter429)
 	if h.cfg.RetryAfterJitter > 0 {
-		dur += time.Duration(rand.IntN(int(h.cfg.RetryAfterJitter)))
+		dur += rand.N(h.cfg.RetryAfterJitter) // #nosec G404 -- Retry jitter does not need cryptographic randomness.
 	}
 	return true, dur
 }

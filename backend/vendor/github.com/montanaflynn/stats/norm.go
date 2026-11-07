@@ -180,18 +180,34 @@ func NormIsf(p float64, loc float64, scale float64) float64 {
 	return loc - scale*NormPpf(p, 0, 1)
 }
 
-// NormMoment approximates the non-central (raw) moment of order n.
+// NormMoment returns the non-central (raw) moment of order n, E[X^n] for
+// X ~ N(loc, scale^2). It returns 0 for n < 0.
+// It uses the recurrence M(n) = loc*M(n-1) + (n-1)*scale^2*M(n-2), with
+// M(0) = 1 and M(1) = loc, evaluated in float64, so it only overflows to
+// ±Inf when the moment itself is too large for a float64.
 // For more information please visit: https://math.stackexchange.com/questions/1945448/methods-for-finding-raw-moments-of-the-normal-distribution
 func NormMoment(n int, loc float64, scale float64) float64 {
-	toReturn := 0.0
-	for i := 0; i < n+1; i++ {
-		if (n-i)%2 == 0 {
-			toReturn += float64(Ncr(n, i)) * (math.Pow(loc, float64(i))) * (math.Pow(scale, float64(n-i))) *
-				(float64(factorial(n-i)) / ((math.Pow(2.0, float64((n-i)/2))) *
-					float64(factorial((n-i)/2))))
-		}
+	if n < 0 {
+		return 0
 	}
-	return toReturn
+	if n == 0 {
+		return 1
+	}
+	variance := scale * scale
+	prev, cur := 1.0, loc // M(0), M(1)
+	for k := 2; k <= n; k++ {
+		// Skip terms whose coefficient is exactly zero so that an earlier
+		// moment that overflowed to ±Inf does not turn 0*Inf into NaN.
+		next := 0.0
+		if loc != 0 {
+			next = loc * cur
+		}
+		if variance != 0 {
+			next += float64(k-1) * variance * prev
+		}
+		prev, cur = cur, next
+	}
+	return cur
 }
 
 // NormStats returns the mean, variance, skew, and/or kurtosis.
@@ -224,11 +240,7 @@ func NormEntropy(loc float64, scale float64) float64 {
 // Takes array of float64 values.
 // Returns array of Mean followed by Standard Deviation.
 func NormFit(data []float64) [2]float64 {
-	sum := 0.00
-	for i := 0; i < len(data); i++ {
-		sum += data[i]
-	}
-	mean := sum / float64(len(data))
+	mean, _ := Mean(data)
 	stdNumerator := 0.00
 	for i := 0; i < len(data); i++ {
 		stdNumerator += math.Pow(data[i]-mean, 2)
@@ -264,29 +276,39 @@ func NormInterval(alpha float64, loc float64, scale float64) [2]float64 {
 	return [2]float64{loc + scale*z, loc - scale*z}
 }
 
-// factorial is the naive factorial algorithm.
-func factorial(x int) int {
-	if x == 0 {
-		return 1
+// gcd returns the greatest common divisor of two positive ints.
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
 	}
-	return x * factorial(x-1)
+	return a
 }
 
-// Ncr is an N choose R algorithm.
-// Aaron Cannon's algorithm.
+// Ncr returns the binomial coefficient "n choose r", the number of ways
+// to choose r items from n without regard to order.
+//
+// Ncr returns 0 when r < 0 or r > n, since no such selection exists.
+// When the coefficient is too large to fit in an int, Ncr returns
+// math.MaxInt instead of an overflowed value, so a result equal to
+// math.MaxInt almost certainly means the true value did not fit.
 func Ncr(n, r int) int {
-	if n <= 1 || r == 0 || n == r {
-		return 1
+	if r < 0 || r > n {
+		return 0
 	}
-	if newR := n - r; newR < r {
-		r = newR
+	if n-r < r {
+		r = n - r
 	}
-	if r == 1 {
-		return n
-	}
-	ret := int(n - r + 1)
-	for i, j := ret+1, int(2); j <= r; i, j = i+1, j+1 {
-		ret = ret * i / j
+	// After step j, ret is C(n-r+j, j). Dividing out gcd(ret, j) first
+	// keeps ret*i/j exact without forming the possibly-overflowing ret*i.
+	ret := 1
+	for j := 1; j <= r; j++ {
+		i := n - r + j
+		g := gcd(ret, j)
+		ret, i = ret/g, i/(j/g)
+		if ret > math.MaxInt/i {
+			return math.MaxInt
+		}
+		ret *= i
 	}
 	return ret
 }

@@ -7,6 +7,625 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-11-05
+
+A big thank you to @jjiang-stripe for the security find and fix!
+
+### Breaking changes (but mostly shouldn't affect anyone)
+
+> [!WARNING]
+> **`slackevents.Profile` now includes three huddle fields.** Positional struct
+> literals no longer compile. Use keyed literals when constructing a profile:
+
+```go
+profile := slackevents.Profile{
+  DisplayName: "Alex",
+  Team:        "T123ABC456",
+}
+```
+
+### Security
+
+- `InteractionCallbackParse` no longer falls back to the URL query string for the
+  `payload` field. A request's signature only covers its POST body, so the fallback
+  let a validly-signed request be replayed with an attacker-controlled payload
+  smuggled in via the query string.
+  Callers must supply `payload` in an `application/x-www-form-urlencoded` request
+  body. Form parsing errors are now returned to the caller.
+
+### Fixed
+
+- Prevent repeated escaping and data races when reusing a `MsgOptionText` option.
+- Preserve plus signs and percent signs in slacktest message blocks and attachments.
+- Encode context block elements as an array when a block is passed by value.
+- Keep slacktest bot identities independent when generating RTM connection information.
+- Preserve huddle state, expiration, and call ID in Events API user profiles as
+  `slackevents.Profile.HuddleState`, `HuddleStateExpirationTS`, and `HuddleStateCallID`.
+  These fields follow Slack's documented
+  [`user_huddle_changed` payload](https://docs.slack.dev/reference/events/user_huddle_changed/).
+- Fix retry jitter panics for large durations on 32-bit platforms.
+- Decode JSONTime timestamps outside the 32-bit integer range on 32-bit platforms.
+
+## [0.34.0] - 2026-11-03
+
+Huge thank you to Michal Mazurek (@akfaew) for submitting a bunch of patches for this
+release.
+
+### Breaking changes — read before upgrading
+
+> [!WARNING]
+> **v0.34.0 includes breaking API, decoding, serialization, and event-dispatch changes.**
+>
+> **Your code may fail to compile. Code that still compiles may decode, serialize,
+> or route events differently. Malformed payloads can cause an entire Events API
+> event to be rejected.**
+>
+> Review every item below before upgrading, including interfaces, mocks, custom
+> event decoders, and stored payloads.
+
+#### 1. Retired user APIs have been removed
+
+- **`SetUserAsActive` and `SetUserAsActiveContext` are gone.** Remove these calls.
+  `SetUserPresence` still supports `away` and `auto`, but marking user as active is gone.
+- **`GetUsersOptionPresence` is gone.** Remove it from `GetUsers`, `GetUsersContext`,
+  and `GetUsersPaginated` calls. User-list requests no longer send the retired
+  `presence` parameter. Use `GetUserPresence` or `GetUserPresenceContext` for
+  individual presence checks.
+
+#### 2. Team-info method signatures have changed
+
+`GetTeamInfo`, `GetTeamInfoContext`, `GetOtherTeamInfo`, and
+`GetOtherTeamInfoContext` now accept `...GetTeamInfoOption`. **Update interfaces,
+mocks, and assigned function types to include the variadic parameter.** Existing
+direct calls remain valid.
+
+#### 3. Auth-provider blocks have a new concrete type and lose raw JSON
+
+> [!NOTE]
+> This is a brand new block. For now experimental as it doesn't yet appear in the slack
+> docs but is already part of their official node sdk.
+
+- **`auth_provider` blocks now decode as `*AuthProviderBlock`, replacing
+  `*UnknownBlock`.** Update type assertions and type switches.
+
+**An unchanged JSON round trip is no longer guaranteed.** Marshaling drops unknown
+fields, adds zero values for absent required fields, and can omit explicit nulls
+or empty optional values. Keep the original payload if you need to preserve its JSON.
+
+#### 4. Stricter decoding can reject whole events or manifests
+
+Values that were previously ignored or accepted can now return errors:
+
+- **Input blocks:** malformed input elements fail decoding of the input block and
+  its containing `Blocks`. Missing elements and JSON `null` input retain their
+  previous behavior.
+- **Auth-provider blocks:** malformed known fields, such as `"name":42`, fail
+  decoding of the containing `Blocks`.
+- **Messages:** malformed `display_as_bot` values, such as `"false"`, `0`, `[]`, or
+  `{}`, fail message decoding. Missing and `null` values remain accepted.
+  Marshaling now emits explicit `true` and `false` values that were previously
+  discarded.
+
+**A malformed message or block can cause `slackevents.ParseEvent` to reject the
+entire event, preventing its delivery to your handler.** Check error handling and
+any captured payloads you replay.
+
+#### 5. Positional struct literals no longer compile
+
+New fields in `Features`, `TeamInfo`, `Msg`, and `Tab` break positional literals for
+these types. **Use keyed literals with field names.** Existing keyed literals
+remain valid.
+
+#### 6. Built-in user-connection decoders take precedence
+
+The built-in `user_connection` and `user_connection_status_requested` decoders take
+precedence over custom entries in `slack.EventMapping`. **Register custom decoders
+for these events in `slackevents.EventsAPIInnerEventMapping`.**
+
+#### 7. Socket Mode dispatch changes for envelopes without inner events
+
+**Empty-string event handlers no longer receive these envelopes.** Register
+handlers by the outer event type, for example
+`HandleEvents(slackevents.AppRateLimited, handler)` for `app_rate_limited`.
+
+A matching outer-type handler can now suppress the default handler. Check
+applications that relied on the default handler receiving these envelopes.
+
+### Added
+
+- Add `GetCanvasContent` and `GetCanvasContentContext`, with optional Markdown or
+  HTML output. [Slack API reference](https://docs.slack.dev/reference/methods/canvases.getContent/).
+
+- Add `GetTeamInfoOptionIncludeSlackbotAvailability` and
+  `TeamInfo.SlackbotAvailability` for advisory workspace availability.
+  [Slack API reference](https://docs.slack.dev/reference/methods/team.info/).
+
+- Add `RequestUserConnectionAuth`, `BulkUpdateUserConnections`, their context
+  variants, and per-user bulk-update failures. Add `AuthProviderBlock`, the
+  `user_connection` and `user_connection_status_requested` events, and manifest
+  `features.user_connections`. The authentication APIs, status-requested event,
+  and manifest configuration follow the official Node SDK schemas; their standalone
+  reference pages were unavailable when added.
+  `AuthProviderBlock` support is experimental: `auth_provider` is not live in Slack
+  yet. This implementation uses the official Node SDK as a guide. Its schema and
+  behavior may change when Slack releases the block.
+  [Node SDK release](https://github.com/slackapi/node-slack-sdk/releases/tag/%40slack/web-api%408.3.0),
+  [auth provider schema](https://docs.slack.dev/tools/node-slack-sdk/reference/types/interfaces/AuthProviderBlock/),
+  [user connection event](https://docs.slack.dev/reference/events/user_connection/).
+
+- Configure RTM WebSocket handshake headers with `RTMOptionDialHeaders`.
+  Headers are copied and reused on reconnect; existing defaults remain unchanged.
+
+- Decode `data.file_id` on channel tabs as `Tab.Data.FileID`, so the tab that
+  shows a given canvas can be identified from `conversations.info`. Preserve
+  absent `data` and `file_id` fields when marshaling tabs.
+
+### Changed
+
+- Document the undocumented preference endpoints and authentication limits of
+  `GetUserPrefs`, `GetUserPrefsContext`, `MuteChat`, and `UnMuteChat`. The mute
+  helpers use the legacy `muted_channels` preference, which may differ from the
+  current client's notification settings.
+
+### Removed
+
+- **Breaking:** Remove `SetUserAsActive` and `SetUserAsActiveContext`, which called
+  the non-functional `users.setActive` endpoint. Remove these calls from clients;
+  `SetUserPresence` still supports `away` and `auto`, but neither forces a user active.
+  Slack retired this endpoint in 2018; see its
+  [retirement notice](https://docs.slack.dev/changelog/2018-01-presence-present-and-future/).
+
+- **Breaking:** Remove `GetUsersOptionPresence` and stop sending the retired
+  `presence` parameter on `users.list` requests. Remove that option from `GetUsers`,
+  `GetUsersContext`, and `GetUsersPaginated` calls. Use `GetUserPresence` or
+  `GetUserPresenceContext` when individual presence information is needed.
+  Slack retired these features in 2018; see its
+  [retirement notice](https://docs.slack.dev/changelog/2018-01-presence-present-and-future/).
+
+### Fixed
+
+- Remove the requested channel from the legacy muted-channel preference in
+  `UnMuteChat`. Skip updates when the channel is already unmuted, without panicking.
+
+- Honor `ListTeamsParameters.Limit` in `ListTeams` and `ListTeamsContext` requests.
+
+- Encode multiple user IDs as a comma-separated list in `MigrationExchange` requests.
+
+- Omit unset `TimestampTo` and `Limit` parameters in `ListRemoteFiles` and
+  `ListRemoteFilesContext`, so Slack can apply its defaults.
+
+- Preserve optional `display_as_bot` values in messages, including thread
+  broadcasts, as `Msg.DisplayAsBot`. Use a pointer to distinguish false from an
+  absent field. The remaining thread-broadcast fields already decode through
+  `slackevents.MessageEvent.Message`.
+  [Node SDK change](https://github.com/slackapi/node-slack-sdk/commit/e02e7feeb500bfde1f947401a639633e42ce2f91).
+
+- Route Events API envelopes without an inner event, such as `app_rate_limited`,
+  to handlers registered for the outer event type in Socket Mode.
+
+- Reject request timestamps so far in the future that the duration difference
+  overflows, instead of allowing them to pass the five-minute timestamp check.
+
+- Decode confirmation dialogs, options, and option groups in `BlockObjects`
+  using their documented object and array fields instead of silently dropping them.
+  [Slack composition objects](https://docs.slack.dev/reference/block-kit/composition-objects/).
+
+- Decode `internal_team_ids` in EKM original connected channel responses instead
+  of looking for `internal_team_ids_count`.
+  [Slack API reference](https://docs.slack.dev/reference/methods/admin.conversations.ekm.listOriginalConnectedChannelInfo/).
+
+- Honor the `Types` filter in `ListFiles` and `ListFilesContext` requests.
+  [Slack API reference](https://docs.slack.dev/reference/methods/files.list/).
+
+- Send the requested Y crop coordinate in user photo uploads.
+
+- Preserve the initial pagination state after failed conversations and stars
+  requests, so a rate-limited first page is retried instead of reporting an
+  empty successful result.
+
+- Return Slack API errors from starred-item pagination rather than silently
+  treating them as the end of the list.
+
+- Synchronize RTM connection-info reads with reconnect updates.
+
+- Reconnect RTM connections on permanent WebSocket read errors instead of
+  retrying until Gorilla WebSocket panics on a truncated stream. Continue
+  tolerating empty or incomplete JSON messages on healthy connections.
+
+- Deliver warnings from user-profile and event-authorization requests.
+
+- Avoid a nil-pointer panic when decoding a `null` conversation-kick response.
+
+- Honor the configured API endpoint in `SetUserCustomFields` and
+  `SetUserCustomFieldsContext`.
+
+- Preserve error causes in legacy admin helpers and Events API parsing, and
+  recognize wrapped rate-limit, pagination, and RTM errors.
+
+- Accept valid non-ASCII text in `TextBlockObject.Validate` by counting Unicode
+  code points for the 3000-character limit.
+
+- Return custom option errors from `FunctionCompleteSuccess` and
+  `FunctionCompleteSuccessContext` before sending a request.
+- Return decoding errors for malformed input elements from
+  `InputBlock.UnmarshalJSON` and `Blocks.UnmarshalJSON`. Missing elements and
+  JSON `null` input retain their previous decoding behavior.
+
+## [0.33.0] - 2026-10-30
+
+### Added
+
+- Arrange Block Kit content in rows and columns with `LayoutBlock`, including
+  item widths and alignment, grid borders, fallback content for older clients,
+  and decoding of nested child blocks. Run `go run ./examples/layout` to preview
+  an example or add `-channel C_CHANNEL` to post it.
+- Create, inspect, update, list, enable, disable, and delete Slackbot skills with
+  all seven `slackbot.skills.*` methods. Optional fields use variadic options,
+  including explicit empty values for clearing metadata and MCP declarations.
+  The new methods use the existing form transport with JSON-encoded array
+  fields. Existing endpoints' request formatting is unaffected.
+- Manage Enterprise skill inventory, catalog publication, and deployment with
+  all four `admin.slackbot.skills.*` methods. Batch failures and audience
+  validation details remain available alongside returned errors. All eleven
+  methods have `Context` variants.
+  Admin methods use the `AdminSlackbotSkillsList`, `AdminSlackbotSkillsPublish`,
+  `AdminSlackbotSkillsSetAutoEnabled`, and `AdminSlackbotSkillsUnpublish` names.
+- Run individual methods or verify complete groups with
+  [`examples/slackbot_skills`](examples/slackbot_skills/README.md) and
+  [`examples/admin_slackbot_skills`](examples/admin_slackbot_skills/README.md).
+  Group workflows create, verify, and clean up temporary skills.
+
+## [0.32.0] - 2026-10-28
+
+### Breaking changes
+
+- **Update interfaces, mocks, and function values that use the old canvas creation
+  signatures.** `CreateCanvas` and `CreateCanvasContext` now accept
+  `options ...CreateCanvasOption`. Existing direct calls still compile, but these
+  methods no longer satisfy interfaces with the old fixed signatures. Add the
+  variadic parameter to interface and mock declarations; adapt stored function
+  values or wrap the call in a function with the old signature.
+- **Use field names when initializing `Properties`, `SlackResponse`,
+  `KickUserFromConversationSlackResponse`, or `SlackErrorResponse`.** New fields
+  make positional literals fail to compile. Existing keyed literals still work.
+
+### Added
+
+- **Show code diffs, HTML reports, Block Kit interfaces, and canvases in Slack Code
+  channels.** Use `SetAgentConversationView` to publish or update a view,
+  `ListAgentConversationViews` to discover attached views, and
+  `RemoveAgentConversationView` to remove them. All have `Context` variants.
+  Slack documents pull-request views too, but live requests have returned
+  `invalid_view_type`; publish a unified diff with `AgentViewTypeDiff` if that
+  happens.
+- **Give a code channel useful context.** Set context-bar links, action items,
+  a summary message, and external resource details with
+  `SetAgentConversationProperties` or its `Context` variant. Read session status,
+  title, assigned agents, origin message, context-bar ownership, summary, and
+  managed views through `Properties.AgentSession` and `Properties.CodeChannel`
+  in conversation responses.
+- **Read and revise canvases attached to code channels.**
+  `GetAgentConversationCanvas` retrieves markdown and comment threads, including
+  replies and optional resolved threads. `SetAgentConversationCanvasContent`
+  replaces the markdown while preserving section IDs and comment anchors on
+  unchanged sections. Both have `Context` variants.
+- **Create a canvas directly in a channel**, including in free workspaces that
+  require a channel. Pass `CreateCanvasOptionChannelID(channelID)` to
+  `CreateCanvas` or `CreateCanvasContext` (#1623).
+- Try the new [`examples/slack_code`](examples/slack_code) CLI for channel
+  setup, context bars, views, canvases, commands, metadata inspection, and archival.
+  It includes sample HTML, Block Kit, markdown, and unified-diff files.
+
+### Fixed
+
+- **See which scopes are missing when an API call fails.** Slack's `needed` and
+  `provided` values are now preserved in responses and `SlackErrorResponse`, even
+  for methods that return only an error. Use `errors.As` to inspect `Needed` and
+  `Provided`; the error text is unchanged.
+- **Discover code-channel views even when Slack returns an empty legacy `views`
+  array.** `ListAgentConversationViews` also preserves `session_views`, including
+  view types, names, and owner IDs.
+- **Receive slash commands when Slack omits `is_enterprise_install`.** JSON
+  decoding now accepts absent or null values, including observed Slack Code
+  context-bar action deliveries over Socket Mode.
+- **Send workflow buttons without an action ID.** An empty
+  `WorkflowButtonBlockElement.ActionID` is omitted from JSON so the button passes
+  Slack's block validation. Populated IDs are preserved.
+
+### Documentation and testing
+
+- Clarify that Slack documents `raw_number` table cells for publishing. If a
+  workspace rejects them with `invalid_blocks`, send the number as a
+  `TableRawTextCell`. Null cells remain a received-only representation.
+- Add regression coverage for code-channel lifecycle events, Block Kit view
+  interactions, and agent slash commands through the existing HTTP and Socket
+  Mode parsers and handlers.
+
+## [0.31.0] - 2026-10-26
+
+### Breaking changes
+
+- **`ButtonBlockElement` is no longer comparable** because `VisibleToUserIDs` is a slice.
+  Value comparisons and map keys using it no longer compile; interface comparisons
+  containing button values can panic. Use comparable identifiers as map keys and compare
+  button contents explicitly:
+
+  ```go
+  // Before
+  same := a == b
+  // After (import "reflect")
+  same := reflect.DeepEqual(a, b)
+  ```
+
+- **If you create these structs without naming their fields, update that code.** New fields
+  were added to Block Kit elements, `Attachment`, `File`, `RemoteFile` and `Features`.
+  Code that supplies values by position now fails to compile. Include the field names,
+  or use the existing `New...` helper functions where available:
+
+  ```go
+  // Before: values depend on field order.
+  element := slack.RichTextSectionBroadcastElement{slack.RTSEBroadcast, "here"}
+  // After: each value names its field.
+  element := slack.RichTextSectionBroadcastElement{
+      Type:  slack.RTSEBroadcast,
+      Range: "here",
+  }
+  ```
+
+- **Newly supported rich-text elements decode into concrete types** instead of
+  `*RichTextSectionUnknownElement`. Update type assertions and switches for attachment,
+  workflow, Work Object and message mentions; tags; canvas elements; citations; file and
+  List record references; and Salesforce data fields.
+- **Request signature validation is stricter, and mismatch errors have changed.**
+  `NewSecretsVerifier` rejects signatures without the `v0=` prefix or whose decoded length
+  is not 32 bytes. Update any test fixtures that relied on the previous permissive parsing.
+  `SecretsVerifier.Ensure` returns `ErrInvalidSignature` on a mismatch; replace checks of
+  the old error text with `errors.Is(err, slack.ErrInvalidSignature)`.
+- **`UninstallApp` and `RotateTokens` now use POST**, including their `Context` variants.
+  Update mocks or custom transports that expect GET requests or credentials in the URL
+  to accept form-encoded POST bodies.
+- **`OptionOnWarning` callbacks no longer receive the `token` parameter** in form or query
+  parameter maps. Update callbacks that rely on that field.
+
+### Security
+
+- `SecretsVerifier.Ensure` now returns `ErrInvalidSignature` on a signature mismatch
+  without including the computed signature in the error. Debug logs include only short
+  signature prefixes. `NewSecretsVerifier` requires the `v0=` prefix and a 32-byte signature.
+- `SlashCommand.ValidateToken` uses constant-time comparison for each candidate token.
+- `UninstallApp` and `RotateTokens` (including their `Context` variants) send credentials
+  in POST bodies instead of request URLs.
+- `OptionOnWarning` omits the `token` parameter from form and query parameter maps passed
+  to callbacks, without changing the outgoing request.
+- Socket Mode debug logs redact known credential fields in incoming and outgoing payloads
+  and omit credentials from connection URLs. Logs still include message content and other
+  user data.
+
+### Added
+
+- Add `RTMOptionReadLimit` and `socketmode.OptionReadLimit` to limit incoming WebSocket
+  message sizes on every connection, including reconnects. The default remains unlimited;
+  exceeding a configured limit closes the connection and triggers normal reconnect handling.
+  With compression enabled through a custom dialer, the limit counts compressed bytes and
+  does not bound the size after decompression.
+
+- Block Kit: Add typed [Salesforce data fields](https://docs.slack.dev/reference/block-kit/block-elements/salesforce-data-field-element/)
+  with record IDs, field metadata, label visibility, and styles. These now decode into
+  `RichTextSectionSalesforceDataFieldElement` instead of `RichTextSectionUnknownElement`.
+
+  > [!WARNING]
+  > `has_withheld_salesforce_field_names` is based on live Slack responses and is absent from the reference and SDK models.
+
+- Block Kit: Add typed [workflow mentions](https://docs.slack.dev/reference/block-kit/block-elements/workflow-mention-element/)
+  with workflow and trigger IDs, display text, URLs, message locations, and styles. These now decode
+  into `RichTextSectionWorkflowMentionElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [Work Object mentions](https://docs.slack.dev/reference/block-kit/block-elements/work-object-mention-element/)
+  with entity and app IDs, display text, URLs, icons, preview settings, product names, and styles.
+  These now decode into `RichTextSectionWorkObjectMentionElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [attachment mentions](https://docs.slack.dev/reference/block-kit/block-elements/attachment-mention-element/)
+  with app, entity, icon, message, preview, and product metadata. These now decode into
+  `RichTextSectionAttachmentMentionElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [rich-text tags](https://docs.slack.dev/reference/block-kit/block-elements/tag-element/)
+  with styles and constants for all nine colors. Tags now decode into
+  `RichTextSectionTagElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [List record references](https://docs.slack.dev/reference/block-kit/block-elements/list-record-element/)
+  with record and view IDs, display text, URLs, and styles. These now decode into
+  `RichTextSectionListRecordElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [canvas user mentions](https://docs.slack.dev/reference/block-kit/block-elements/canvas-user-mention-element/)
+  and [canvas message unfurls](https://docs.slack.dev/reference/block-kit/block-elements/canvas-message-unfurl-element/),
+  including thread IDs and styles. These now decode into concrete types instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [canvas rich-text elements](https://docs.slack.dev/reference/block-kit/block-elements/canvas-element/)
+  with labels, section links, title visibility, styles, and skill metadata. These now decode
+  into `RichTextSectionCanvasElement` instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add `RichTextSectionCitationElement` with typed file, external, web, message,
+  and memory details for [rich-text citations](https://docs.slack.dev/reference/block-kit/block-elements/citation-element/).
+  Preserve unknown detail variants as raw JSON. Citations now decode into this concrete type
+  instead of `RichTextSectionUnknownElement`.
+
+- Block Kit: Add typed [file](https://docs.slack.dev/reference/block-kit/block-elements/file-element/)
+  and [message mention](https://docs.slack.dev/reference/block-kit/block-elements/message-mention-element/)
+  rich-text elements, including styles and optional metadata. These now decode into concrete
+  types instead of `RichTextSectionUnknownElement`.
+
+- Add image alt text, GIF, PDF, 800px and inline thumbnails, audio and transcription
+  metadata, preview truncation, remote file identifiers, canvas and List metadata,
+  title blocks, and sharing and app metadata to
+  [`File`](https://docs.slack.dev/reference/objects/file-object/).
+  Preserve sharing and app metadata in `RemoteFile` responses.
+
+- Block Kit: Add missing [element fields](https://docs.slack.dev/reference/block-kit/block-elements/)
+  for button accessibility, agent prompts, visibility, conversation selection, rich-text input
+  sizing, and rich-text styles and metadata, including shared emoji URLs.
+
+- Add `IsShare`, `IsMsgUnfurl` and `Files` to `Attachment`, so the files of a forwarded
+  message are decoded rather than dropped.
+- Add `CreateAgentConversation` and `ArchiveAgentConversation` (plus `Context` variants)
+  for [`agents.conversations.create`](https://docs.slack.dev/reference/methods/agents.conversations.create/)
+  and [`agents.conversations.archive`](https://docs.slack.dev/reference/methods/agents.conversations.archive/).
+- Add `SetAgentConversationCommands` (plus `Context` variant) and `Features.CodeChannels`
+  for [agent slash commands](https://docs.slack.dev/ai/slack-code/agent-slash-commands/).
+- Add all 12 [Slack Lists API methods](https://docs.slack.dev/reference/methods/?family=lists),
+  with `Context` variants and scoped options for lists, access, items, and exports.
+- Block Kit: Add `DataTableActionCell` for buttons in
+  [`data_table`](https://docs.slack.dev/reference/block-kit/blocks/data-table-block/)
+  blocks, with an optional `raw_text` or `raw_number` fallback (#1618).
+- Add `AdminAppsApprovedList` and `AdminAppsRestrictedList` (plus `Context` variants) for the
+  [`admin.apps.approved.list`](https://docs.slack.dev/reference/methods/admin.apps.approved.list)
+  and [`admin.apps.restricted.list`](https://docs.slack.dev/reference/methods/admin.apps.restricted.list)
+  methods, with typed app, scope and pagination responses (#1614).
+- Add `AdminAppsRequestsList` (plus `Context` variant) for the
+  [`admin.apps.requests.list`](https://docs.slack.dev/reference/methods/admin.apps.requests.list)
+  method, with typed request and pagination responses (#1615).
+
+- `File` now unmarshals the video fields of the
+  [file object](https://docs.slack.dev/reference/objects/file-object): the video
+  thumbnail (`ThumbVideo`, `ThumbVideoW`, `ThumbVideoH` and `ThumbVideoTimestamp`) and
+  `DurationMs`, `HLS`, `HLSEmbed`, `HLSPreview`, `MediaDisplayType`, `MP4`, `MP4Low` and
+  `VTT`.
+
+### Changed
+
+- Add a `Deprecated:` doc comment to `SlashCommand.ValidateToken` to reflect
+  [Slack's existing deprecation of verification tokens](https://docs.slack.dev/authentication/verifying-requests-from-slack/).
+  The helper remains available with the same signature. For HTTP requests, create a verifier
+  with `NewSecretsVerifier`, the request headers and signing secret, write the raw request
+  body to it, and call `Ensure` before handling the command. See the
+  [slash command example](examples/slash/slash.go).
+- Clarify that Socket Mode handlers must be registered before dispatch starts, and
+  `EventMapping` and `slackevents.EventsAPIInnerEventMapping` must be configured sequentially
+  before event processing. Concurrent registration or registry mutation is unsupported.
+
+### Fixed
+
+- RTM: Keep reader errors scoped to their connection and stop the old reader before
+  reconnecting, so stale errors cannot close the next connection.
+- `slackevents.ParseEvent` returns an error for an `event_callback` with a missing or null
+  inner `event` instead of panicking.
+- Release multipart upload writers when a request fails or returns before consuming the
+  request body.
+
+## [0.30.1] - 2026-10-04
+
+### Security
+
+- `GetFile`, `GetFileContext` and `UploadToURL` now send the token only to https URLs on
+  `slack.com`, `slack-gov.com` and their subdomains, and to the host set with `OptionAPIURL`.
+  Any other URL returns an error before a request is made. The `url_private` of a remote or
+  external file (`File.IsExternal`) points outside Slack, so `GetFile(file.URLPrivate)` sent
+  the token to that host
+  ([GHSA-3q3v-34v2-g88f](https://github.com/slack-go/slack/security/advisories/GHSA-3q3v-34v2-g88f)).
+  A test that points `GetFile` at an `httptest` server must also pass that server to
+  `OptionAPIURL`.
+
+## [0.30.0] - 2026-10-04
+
+### Added
+
+- `slackevents`: Add the Agent messaging events
+  [`app_context_changed`](https://docs.slack.dev/reference/events/app_context_changed)
+  (`AppContextChangedEvent`),
+  [`agent_session_stopped`](https://docs.slack.dev/reference/events/agent_session_stopped)
+  (`AgentSessionStoppedEvent`) and
+  [`agent_session_title_changed`](https://docs.slack.dev/reference/events/agent_session_title_changed)
+  (`AgentSessionTitleChangedEvent`). The shared `AppContext` object is also exposed as
+  `AppHomeOpenedEvent.Context` and `MessageEvent.AppContext`, which Slack populates once
+  the app subscribes to `app_context_changed`. An `AppContextEntity` carries a string
+  `Value` for channel, canvas and list entities and a `Message` for `message_context`
+  entities, whose value is an object.
+- `slackevents`: `EventsAPICallbackEvent` now unmarshals `authorizations`, so the
+  installations an event was delivered for can be read without a second request.
+- Add `SetAgentSessionStatus` and `RenameAgentSession` (plus `Context` variants) for the
+  [`agents.sessions.setStatus`](https://docs.slack.dev/reference/methods/agents.sessions.setStatus)
+  and [`agents.sessions.rename`](https://docs.slack.dev/reference/methods/agents.sessions.rename)
+  methods, with `AgentSessionStatus*` constants for the accepted statuses.
+- `CreateManifest` now returns the new app's `AppId`, `Credentials` and `OAuthAuthorizeUrl`
+  from [`apps.manifest.create`](https://docs.slack.dev/reference/methods/apps.manifest.create).
+  Slack sends the credentials only in this response (#1587).
+- Add `Features.AgentView` and `Features.AssistantView` for the `features.agent_view` and
+  `features.assistant_view` [app manifest](https://docs.slack.dev/reference/app-manifest)
+  settings, so a typed export and update keeps them (#1588, #1589).
+- Add `Features.UnfurlDomains`, `Features.RichPreviews`, `Features.Search`,
+  `OAuthConfig.PKCEEnabled`, `OAuthConfig.TokenManagementEnabled`, `Settings.IsMCPEnabled`,
+  `Settings.TokenRotationEnabled`, `Settings.IncomingWebhooks`, `Settings.FunctionRuntime`,
+  `Settings.SIWSLinks`, `EventSubscriptions.MetadataSubscriptions` and `OutgoingDomains` for the
+  matching [app manifest](https://docs.slack.dev/reference/app-manifest) keys, so a typed export
+  and update keeps them. `Features.Search` covers the two callback IDs, not `slackbot_metadata`
+  (#1588).
+- Add `Attachment.HideColor` (`hide_color`), which removes the color bar from a file unfurl
+  sent with [`chat.unfurl`](https://docs.slack.dev/reference/methods/chat.unfurl) (#1590).
+- Block Kit: Add `TaskCardBlock.HideTitle` (`hide_title`) and `WithHideTitle`, which hide the
+  title of a [`task_card`](https://docs.slack.dev/reference/block-kit/blocks/task-card-block)
+  block so `details` becomes the top element (#1590).
+- Add `CreateUserGroupOptionAdditionalChannels`, `UpdateUserGroupsOptionAdditionalChannels`
+  and `UpdateUserGroupsOptionIncludeCount` for the `additional_channels` and `include_count`
+  arguments of [`usergroups.create`](https://docs.slack.dev/reference/methods/usergroups.create)
+  and [`usergroups.update`](https://docs.slack.dev/reference/methods/usergroups.update)
+  (#1598, #1599).
+- Add `SetAppIcon` (plus `Context` variant) for the
+  [`apps.icon.set`](https://docs.slack.dev/reference/methods/apps.icon.set) method, which sets an
+  app's icon from a public URL or an uploaded image (#1596, #1597).
+- Add `AdminTeamsList` for the
+  [`admin.teams.list`](https://docs.slack.dev/reference/methods/admin.teams.list) method, with
+  `AdminTeamsListOptionLimit` and `AdminTeamsListOptionCursor` (#1592, #1593).
+- Add `AdminUsersList` for the
+  [`admin.users.list`](https://docs.slack.dev/reference/methods/admin.users.list) method, with
+  an `AdminUsersListOption<Field>` option for each argument (#1594, #1595).
+- `UserGroup` now exposes `AutoProvision`, `ChannelCount`, `EnterpriseSubteamID`,
+  `IsEditingRestricted`, `IsIDPGroup`, `IsMembershipLocked`, `IsOrgLevel`, `IsSection`,
+  `IsSubteam` and `IsVisible` (#1604, #1605).
+- Add `GetUsersOptionIncludeLocale` and `GetUserInfoOptionIncludeLocale` to choose whether
+  [`users.list`](https://docs.slack.dev/reference/methods/users.list) and
+  [`users.info`](https://docs.slack.dev/reference/methods/users.info) return the user's `locale`.
+  Both methods still ask for it by default. `GetUserInfo` and `GetUserInfoContext` take the new
+  option through a variadic `options ...GetUserInfoOption`, so an interface or mock that
+  declares their old signature needs the new parameter (#1602, #1603).
+- Add `CreateManifestRaw`, `UpdateManifestRaw`, `ExportManifestRaw` and `ValidateManifestRaw`
+  (plus `Context` variants), which send and return the app manifest as raw JSON, so keys that
+  `Manifest` does not model are kept (#1600, #1601).
+- Add `CreateManifestOptionTeamID` to create an app in a given workspace with an org-level
+  configuration token. `CreateManifest` and `CreateManifestContext` take it through a variadic
+  `options ...CreateManifestOption`, so an interface or mock that declares their old signature
+  needs the new parameter (#1600, #1601).
+
+### Changed
+
+- The minimum supported Go version is now 1.26. The library supports the two most recent Go
+  releases, so the test matrix covers Go 1.26 and Go 1.27.
+- `DeleteFileComment` now takes `(fileID, commentID)`, the same order as
+  `DeleteFileCommentContext` (#1591). A call that still passes a comment ID (`Fc…`) first
+  returns an error and sends nothing to Slack.
+
+  > [!WARNING]
+  > **Breaking change.** Swap the arguments of every `DeleteFileComment` call:
+  >
+  > ```go
+  > // Before
+  > err := api.DeleteFileComment(commentID, fileID)
+  > // After
+  > err := api.DeleteFileComment(fileID, commentID)
+  > ```
+
+### Fixed
+
+- `socketmode` and RTM reconnects now wait at most 5 minutes between attempts, and
+  `RetryConfig.BackoffMax` now caps the Web API retry delay. The backoff ignored its
+  maximum and kept doubling, so after a long outage a Socket Mode client could stay asleep
+  long after the network recovered and miss the events sent in that window (#1585, #1586).
+- `socketmode`: The client now reconnects when the WebSocket stream ends in the middle of a TLS
+  record. Before, it read the failed connection again until gorilla/websocket panicked with
+  `repeated read on failed websocket connection`, which stopped the process. The client also
+  reconnects after 10 empty or malformed frames in a row (#1608).
+- `GetFile` now returns an error when the token cannot read the file. Slack then redirects the
+  download to the workspace sign-in page, and `GetFile` used to write that HTML page as the
+  file (#1284, #1582).
+
 ## [0.29.0] - 2026-08-15
 
 ### Fixed
@@ -630,7 +1249,14 @@ for details.
 [#1196]: https://github.com/slack-go/slack/issues/1196
 [#1547]: https://github.com/slack-go/slack/pull/1547
 
-[Unreleased]: https://github.com/slack-go/slack/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/slack-go/slack/compare/v0.35.0...HEAD
+[0.35.0]: https://github.com/slack-go/slack/compare/v0.34.0...v0.35.0
+[0.34.0]: https://github.com/slack-go/slack/compare/v0.33.0...v0.34.0
+[0.33.0]: https://github.com/slack-go/slack/compare/v0.32.0...v0.33.0
+[0.32.0]: https://github.com/slack-go/slack/compare/v0.31.0...v0.32.0
+[0.31.0]: https://github.com/slack-go/slack/compare/v0.30.1...v0.31.0
+[0.30.1]: https://github.com/slack-go/slack/compare/v0.30.0...v0.30.1
+[0.30.0]: https://github.com/slack-go/slack/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/slack-go/slack/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/slack-go/slack/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/slack-go/slack/compare/v0.26.0...v0.27.0
@@ -639,7 +1265,7 @@ for details.
 [0.24.0]: https://github.com/slack-go/slack/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/slack-go/slack/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/slack-go/slack/compare/v0.22.0...v0.23.0
-[0.22.0]: https://github.com/slack-go/slack/compare/v0.21.1...0.22.0
+[0.22.0]: https://github.com/slack-go/slack/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/slack-go/slack/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/slack-go/slack/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/slack-go/slack/compare/v0.19.0...v0.20.0

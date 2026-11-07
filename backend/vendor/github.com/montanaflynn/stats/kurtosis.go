@@ -15,12 +15,17 @@ func PopulationKurtosis(input Float64Data) (float64, error) {
 		return math.NaN(), ErrEmptyInput
 	}
 
+	// Kurtosis is scale-invariant, so scale the deviations by a power of two
+	// near the largest magnitude to keep their fourth powers from
+	// overflowing or underflowing. Scaling by a power of two is exact.
+	f := math.Ldexp(1, -unitExponent(input))
 	mean, _ := Mean(input)
+	mean *= f
 
 	// Compute sums of squared and fourth-power differences from the mean
 	var sumOfSquares, sumOfFourths float64
 	for _, v := range input {
-		d := v - mean
+		d := v*f - mean
 		d2 := d * d
 		sumOfSquares += d2
 		sumOfFourths += d2 * d2

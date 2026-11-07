@@ -148,6 +148,12 @@ func (sc *ServerConversation) firstMsg(c1 string) (string, error) {
 	msg, err := parseClientFirst(c1)
 	if err != nil {
 		sc.state = serverDone
+		switch {
+		case errors.Is(err, errInvalidUsernameEncoding):
+			return ErrInvalidUsernameEncoding, err
+		case errors.Is(err, errInvalidAuthzIDEncoding):
+			return ErrInvalidEncoding, err
+		}
 		return "", err
 	}
 

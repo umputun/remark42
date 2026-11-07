@@ -61,8 +61,9 @@ type ConfirmationField struct {
 
 // Attachment contains all the information for an attachment
 type Attachment struct {
-	Color    string `json:"color,omitempty"`
-	Fallback string `json:"fallback,omitempty"`
+	Color     string `json:"color,omitempty"`
+	HideColor bool   `json:"hide_color,omitempty"`
+	Fallback  string `json:"fallback,omitempty"`
 
 	CallbackID string `json:"callback_id,omitempty"`
 	ID         int    `json:"id,omitempty"`
@@ -88,6 +89,12 @@ type Attachment struct {
 	ServiceIcon string `json:"service_icon,omitempty"`
 	FromURL     string `json:"from_url,omitempty"`
 	OriginalURL string `json:"original_url,omitempty"`
+
+	// IsShare is set on the attachment Slack adds to a forwarded message, and
+	// Files holds the forwarded message's files.
+	IsShare     bool   `json:"is_share,omitempty"`
+	IsMsgUnfurl bool   `json:"is_msg_unfurl,omitempty"`
+	Files       []File `json:"files,omitempty"`
 
 	Fields     []AttachmentField  `json:"fields,omitempty"`
 	Actions    []AttachmentAction `json:"actions,omitempty"`

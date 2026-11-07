@@ -1,10 +1,10 @@
 package slack
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 )
 
@@ -50,13 +50,21 @@ func SlashCommandParse(r *http.Request) (s SlashCommand, err error) {
 	return s, nil
 }
 
-// ValidateToken validates verificationTokens
+// ValidateToken reports whether the command's token matches any of verificationTokens.
+//
+// Deprecated: Slack's verification-token authentication is deprecated.
+// Authenticate the original HTTP request using NewSecretsVerifier,
+// the signing secret, and the raw request body instead.
 func (s SlashCommand) ValidateToken(verificationTokens ...string) bool {
-	return slices.Contains(verificationTokens, s.Token)
+	match := 0
+	for _, token := range verificationTokens {
+		match |= subtle.ConstantTimeCompare([]byte(s.Token), []byte(token))
+	}
+	return match == 1
 }
 
-// UnmarshalJSON handles is_enterprise_install being either a boolean or a
-// string when parsing JSON from various payloads
+// UnmarshalJSON handles an optional is_enterprise_install boolean or string.
+// An absent or null value leaves the field unchanged, matching encoding/json.
 func (s *SlashCommand) UnmarshalJSON(data []byte) error {
 	type SlashCommandCopy SlashCommand
 	scopy := &struct {
@@ -71,6 +79,8 @@ func (s *SlashCommand) UnmarshalJSON(data []byte) error {
 	}
 
 	switch rawValue := scopy.IsEnterpriseInstall.(type) {
+	case nil:
+		// Some Socket Mode slash-command payloads omit this field.
 	case string:
 		b, err := strconv.ParseBool(rawValue)
 		if err != nil {

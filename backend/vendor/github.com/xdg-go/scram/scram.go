@@ -10,6 +10,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	"hash"
 
@@ -38,6 +39,11 @@ var SHA512 HashGeneratorFcn = func() hash.Hash { return sha512.New() }
 // factory receiver.  This constructor will normalize the username, password
 // and authzID via the SASLprep algorithm, as recommended by RFC-5802.  If
 // SASLprep fails, the method returns an error.
+//
+// SASLprep rejects code points unassigned in Unicode 3.2, which includes
+// all emoji, and rejects strings that mix right-to-left and left-to-right
+// text. Passwords set on systems that skip SASLprep may therefore fail
+// here; use NewClientUnprepped for those.
 func (f HashGeneratorFcn) NewClient(username, password, authzID string) (*Client, error) {
 	var userprep, passprep, authprep string
 	var err error
@@ -46,13 +52,23 @@ func (f HashGeneratorFcn) NewClient(username, password, authzID string) (*Client
 		return nil, fmt.Errorf("Error SASLprepping username '%s': %v", username, err)
 	}
 	if passprep, err = stringprep.SASLprep.Prepare(password); err != nil {
-		return nil, fmt.Errorf("Error SASLprepping password '%s': %v", password, err)
+		return nil, passwordPrepError(err)
 	}
 	if authprep, err = stringprep.SASLprep.Prepare(authzID); err != nil {
 		return nil, fmt.Errorf("Error SASLprepping authzID '%s': %v", authzID, err)
 	}
 
 	return newClient(userprep, passprep, authprep, f), nil
+}
+
+// passwordPrepError reports why SASLprep failed without echoing any part of
+// the password; stringprep.Error.Error() includes the offending rune.
+func passwordPrepError(err error) error {
+	var prepErr stringprep.Error
+	if errors.As(err, &prepErr) {
+		return fmt.Errorf("Error SASLprepping password: %s", prepErr.Msg)
+	}
+	return errors.New("Error SASLprepping password")
 }
 
 // NewClientUnprepped acts like NewClient, except none of the arguments will
