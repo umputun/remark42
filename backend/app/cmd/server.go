@@ -81,6 +81,7 @@ type ServerCommand struct {
 	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
 	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window; set to 0 to disable comment editing and staged image cleanup"`
 	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
+	UserWebsite                bool          `long:"user-website" env:"USER_WEBSITE" description:"let users set a website shown in their profile"`
 	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
 	WebRoot                    string        `long:"web-root" env:"REMARK_WEB_ROOT" default:"./web" description:"web root directory"`
@@ -648,6 +649,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		Engine:                 storeEngine,
 		EditDuration:           s.EditDuration,
 		AdminEdits:             s.AdminEdit,
+		UserWebsite:            s.UserWebsite,
 		AdminStore:             adminStore,
 		MinCommentSize:         s.MinCommentSize,
 		MaxCommentSize:         s.MaxCommentSize,

@@ -44,6 +44,7 @@ type private struct {
 	remarkURL                  string
 	anonVote                   bool
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
+	userWebsite                bool // users may set a website shown in their profile
 }
 
 // telegramService is a subset of Telegram service used for setting up user telegram notifications
@@ -63,6 +64,8 @@ type privStore interface {
 	SetUserEmail(siteID, userID, value string) (string, error)
 	GetUserTelegram(siteID, userID string) (string, error)
 	SetUserTelegram(siteID, userID, value string) (string, error)
+	GetUserWebsite(siteID, userID string) (string, error)
+	SetUserWebsite(siteID, userID, value string) (string, error)
 	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
 	ValidateComment(c *store.Comment) error
 	IsVerified(siteID, userID string) bool
@@ -785,4 +788,56 @@ func extractIP(remoteAddr string) string {
 		return remoteAddr // already a bare IP (no port)
 	}
 	return ip
+}
+
+// GET /website?site=site-id - returns the current user's website
+func (s *private) getWebsiteCtrl(w http.ResponseWriter, r *http.Request) {
+	if !s.userWebsite {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("user website is disabled"), "user website is disabled", rest.ErrActionRejected)
+		return
+	}
+	user := rest.MustGetUserInfo(r)
+	siteID := r.URL.Query().Get("site")
+	website, err := s.dataService.GetUserWebsite(siteID, user.ID)
+	if err != nil {
+		log.Printf("[WARN] can't read website for %s, %v", user.ID, err)
+	}
+	R.RenderJSON(w, R.JSON{"website": website})
+}
+
+// PUT /website?site=site-id with {"website": "https://example.com"} - sets the current user's website.
+// Only absolute http(s) URLs of a public host are accepted; an empty value removes the website.
+func (s *private) setWebsiteCtrl(w http.ResponseWriter, r *http.Request) {
+	if !s.userWebsite {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("user website is disabled"), "user website is disabled", rest.ErrActionRejected)
+		return
+	}
+	user := rest.MustGetUserInfo(r)
+	siteID := r.URL.Query().Get("site")
+	req := struct {
+		Website string `json:"website"`
+	}{}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&req); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse website request", rest.ErrDecode)
+		return
+	}
+
+	if strings.TrimSpace(req.Website) == "" {
+		if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserWebsite); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete website", rest.ErrInternal)
+			return
+		}
+		s.cache.Flush(cache.Flusher(siteID))
+		R.RenderJSON(w, R.JSON{"website": ""})
+		return
+	}
+
+	website, err := s.dataService.SetUserWebsite(siteID, user.ID, req.Website)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid website", rest.ErrActionRejected)
+		return
+	}
+	// the website is shown on every comment of the user, on any post of the site
+	s.cache.Flush(cache.Flusher(siteID))
+	R.RenderJSON(w, R.JSON{"website": website})
 }

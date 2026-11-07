@@ -143,6 +143,18 @@ export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post(
  */
 export const unsubscribeFromEmailUpdates = () => apiFetcher.delete('/email');
 
+/**
+ * Current user's website. Rejected with 403 when the server doesn't enable USER_WEBSITE.
+ */
+export const getMyWebsite = (): Promise<{ website: string }> => apiFetcher.get('/website');
+
+/**
+ * Sets the current user's website; an empty string removes it.
+ * The server accepts only http(s) URLs of a public host and returns the normalized value.
+ */
+export const setMyWebsite = (website: string): Promise<{ website: string }> =>
+  apiFetcher.put('/website', {}, { website });
+
 /* GDPR Methods */
 
 export const deleteMe = (): Promise<{ user_id: string; link: string }> => apiFetcher.post('/deleteme');

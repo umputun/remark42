@@ -1030,14 +1030,33 @@ func TestService_SetMetas(t *testing.T) {
 	err := b.SetMetas("radio-t", umetas, pmetas)
 	assert.NoError(t, err, "empty metas")
 
-	um1 := UserMetaData{ID: "user1", Verified: true, Details: engine.UserDetailEntry{Email: "test@example.org"}}
+	um1 := UserMetaData{ID: "user1", Verified: true, Details: engine.UserDetailEntry{Email: "test@example.org", Website: "https://example.org/me"}}
 	um2 := UserMetaData{ID: "user2"}
 	um2.Blocked.Status = true
 	um2.Blocked.Until = time.Now().AddDate(0, 1, 1)
+	um3 := UserMetaData{ID: "user3", Details: engine.UserDetailEntry{Website: "https://example.com"}}
 
 	pmetas = []PostMetaData{{URL: "https://radio-t.com", ReadOnly: true}}
-	err = b.SetMetas("radio-t", []UserMetaData{um1, um2}, pmetas)
+	err = b.SetMetas("radio-t", []UserMetaData{um1, um2, um3}, pmetas)
 	assert.NoError(t, err)
+	assert.False(t, b.UserWebsite, "website is restored with the option off")
+	website, err := b.GetUserWebsite("radio-t", "user1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.org/me", website)
+	website, err = b.GetUserWebsite("radio-t", "user3")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com", website, "website of a user without comments")
+	website, err = b.GetUserWebsite("radio-t", "user2")
+	require.NoError(t, err)
+	assert.Empty(t, website)
+
+	um4 := UserMetaData{ID: "user4", Details: engine.UserDetailEntry{Website: "javascript:alert(1)"}}
+	err = b.SetMetas("radio-t", []UserMetaData{um4}, nil)
+	require.ErrorIs(t, err, ErrInvalidWebsite, "invalid website is reported, not dropped silently")
+	assert.Contains(t, err.Error(), "user4")
+	website, err = b.GetUserWebsite("radio-t", "user4")
+	require.NoError(t, err)
+	assert.Empty(t, website)
 
 	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}))
 	assert.True(t, b.IsVerified("radio-t", "user1"))

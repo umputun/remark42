@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -26,12 +27,14 @@ type admin struct {
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
+	userWebsite   bool
 }
 
 type adminStore interface {
 	Delete(locator store.Locator, commentID string, mode store.DeleteMode) error
 	DeleteUser(siteID, userID string, mode store.DeleteMode) error
 	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
+	SetUserWebsite(siteID, userID, value string) (string, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	IsBlocked(siteID, userID string) bool
 	SetBlock(siteID, userID string, status bool, ttl time.Duration) error
@@ -269,4 +272,49 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+}
+
+// PUT /website/{userid}?site=site-id with {"website": "https://example.com"} - sets a user's website,
+// for example one imported from another system. An empty value removes it.
+func (a *admin) setWebsiteCtrl(w http.ResponseWriter, r *http.Request) {
+	if !a.userWebsite {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, errors.New("user website is disabled"), "user website is disabled", rest.ErrActionRejected)
+		return
+	}
+	userID := r.PathValue("userid")
+	siteID := r.URL.Query().Get("site")
+	req := struct {
+		Website string `json:"website"`
+	}{}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, hardBodyLimit)).Decode(&req); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't parse website request", rest.ErrDecode)
+		return
+	}
+	website := ""
+	if strings.TrimSpace(req.Website) == "" {
+		if err := a.dataService.DeleteUserDetail(siteID, userID, engine.UserWebsite); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete website", rest.ErrInternal)
+			return
+		}
+	} else {
+		var err error
+		if website, err = a.dataService.SetUserWebsite(siteID, userID, req.Website); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid website", rest.ErrActionRejected)
+			return
+		}
+	}
+	a.cache.Flush(cache.Flusher(siteID))
+	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID, "website": website})
+}
+
+// DELETE /website/{userid}?site=site-id - removes a user's website (moderation)
+func (a *admin) deleteWebsiteCtrl(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("userid")
+	siteID := r.URL.Query().Get("site")
+	if err := a.dataService.DeleteUserDetail(siteID, userID, engine.UserWebsite); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete website", rest.ErrInternal)
+		return
+	}
+	a.cache.Flush(cache.Flusher(siteID))
+	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID, "deleted": true})
 }

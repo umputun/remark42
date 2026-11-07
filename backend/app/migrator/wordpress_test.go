@@ -43,6 +43,10 @@ func TestWordPress_Import(t *testing.T) {
 	assert.Equal(t, ts, c.Timestamp)
 	assert.Equal(t, "<p>«Mekkatorque» was over in that tent up to the right</p>\n", c.Text)
 	assert.True(t, c.Imported)
+	assert.Empty(t, c.User.Website, "website is not stored in the comment")
+	website, err := dataStore.GetUserWebsite(siteID, c.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "http://realmenweardress.es", website, "comment_author_url imported as the user website")
 
 	posts, err := dataStore.List(siteID, 0, 0)
 	assert.NoError(t, err)
@@ -89,6 +93,8 @@ func TestWordPress_Convert(t *testing.T) {
 			Name: "Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual",
 			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
 			IP:   "74.200.244.101",
+			// comment_author_url travels with the converted comment; Import stores it as a user detail
+			Website: "http://cynwise.wordpress.com/2010/07/21/wednesday-reading-8/",
 		},
 		Imported: true,
 	}
