@@ -103,6 +103,16 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	assert.Equal(t, int32(100), hits.Load())
 }
 
+func TestTitle_CachesLongURL(t *testing.T) {
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
+	defer ex.Close()
+
+	longURL := "https://example.com/" + strings.Repeat("a", 2*teCacheMaxRecs)
+	_, err := ex.cache.Get(longURL, func() (string, error) { return "title", nil })
+	require.NoError(t, err)
+	assert.Equal(t, 1, ex.cache.Stat().Keys, "long url is cached")
+}
+
 func TestTitle_GetFailed(t *testing.T) {
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	defer ex.Close()
