@@ -65,7 +65,7 @@ services:
 | avatar.fs.path                 | AVATAR_FS_PATH                 | `./var/avatars`         | avatars location for `fs` store                          |
 | avatar.bolt.file               | AVATAR_BOLT_FILE               | `./var/avatars.db`      | avatars `bolt` file location                             |
 | avatar.uri                     | AVATAR_URI                     | `./var/avatars`         | avatars store URI                                        |
-| avatar.rsz-lmt                 | AVATAR_RESIZE                  | `0` (disabled)          | max image size for resizing avatars on save              |
+| avatar.rsz-lmt                 | AVATAR_RESIZE                  | `0` (disabled)          | max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio |
 | image.type                     | IMAGE_TYPE                     | `fs`                    | type of image storage, `fs`, `bolt` or `rpc`             |
 | image.fs.path                  | IMAGE_FS_PATH                  | `./var/pictures`        | permanent location of images                             |
 | image.fs.staging               | IMAGE_FS_STAGING               | `./var/pictures.staging` | staging location of images                               |

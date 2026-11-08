@@ -218,7 +218,7 @@ type AvatarGroup struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
-	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio"`
 }
 
 // CacheGroup defines options group for cache params
