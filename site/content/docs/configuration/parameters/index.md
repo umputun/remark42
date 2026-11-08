@@ -53,7 +53,7 @@ services:
 | admin.rpc.auth_passwd          | ADMIN_RPC_AUTH_PASSWD          |                         | basic auth user password                                 |
 | admin.rpc.secret_per_site      | ADMIN_RPC_SECRET_PER_SITE      |                         | enable JWT secret retrieval per aud, which is site_id in this case |
 | admin.shared.id                | ADMIN_SHARED_ID                |                         | admin IDs (list of user IDs), _multi_                    |
-| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@${REMARK_URL}`   | admin emails, _multi_                                    |
+| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@` + host of `REMARK_URL` | admin emails, _multi_                            |
 | backup                         | BACKUP_PATH                    | `./var/backup`          | backups location                                         |
 | max-back                       | MAX_BACKUP_FILES               | `10`                    | max backup files to keep                                 |
 | cache.type                     | CACHE_TYPE                     | `mem`                   | type of cache, `redis_pub_sub` or `mem` or `none`        |
@@ -161,13 +161,13 @@ services:
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
-| edit-time                      | EDIT_TIME                      | `5m`                    | edit window; set to `0` to disable comment editing and staged image cleanup |
+| edit-time                      | EDIT_TIME                      | `5m`                    | edit window; `0` hides editing in the widget and disables staged image cleanup, but the API does not limit edit time |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |
 | read-age                       | READONLY_AGE                   |                         | read-only age of comments, days                          |
 | image-proxy.http2https         | IMAGE_PROXY_HTTP2HTTPS         | `false`                 | enable HTTP->HTTPS proxy for images                      |
 | image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
-| simple-view                    | SIMPLE_VIEW                    | `false`                 | minimized UI with basic info only                        |
+| simple-view                    | SIMPLE_VIEW                    | `false`                 | simplified comment form, without the formatting toolbar and preview |
 | proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
 | allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |
@@ -277,6 +277,7 @@ The following list of command-line options is deprecated and might be removed in
 | notify.email.notify_admin | notify.admins=email | NOTIFY_EMAIL_ADMIN | NOTIFY_ADMINS=email | |     | 1.9.0               |
 | notify.telegram.token | telegram.token | NOTIFY_TELEGRAM_TOKEN | TELEGRAM_TOKEN | | Telegram token | 1.9.0               |
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | | Telegram timeout | 1.9.0     |
+| notify.telegram.api | telegram.api-url | NOTIFY_TELEGRAM_API | TELEGRAM_API_URL | `https://api.telegram.org/bot` | Telegram API prefix | 1.9.0 |
 | auth.twitter.cid    | none        | AUTH_TWITTER_CID      | none         |        | Twitter Consumer API Key | 1.14.0     |                                  |
 | auth.twitter.csec   | none        | AUTH_TWITTER_CSEC     | none         |     | Twitter Consumer API Secret key | 1.14.0 |                           |
 

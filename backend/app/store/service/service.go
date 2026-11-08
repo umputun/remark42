@@ -374,7 +374,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, fmt.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
 	}
 
-	maxVotes := s.MaxVotes // 0 value allowed and treated as "no comments allowed"
+	maxVotes := s.MaxVotes // 0 value allowed and treated as "no votes allowed"
 	if s.MaxVotes < 0 {    // any negative value reset max votes to unlimited
 		maxVotes = UnlimitedVotes
 	}

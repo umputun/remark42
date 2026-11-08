@@ -23,7 +23,7 @@ aliases:
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
 - **`show_telegram_subscription`**`: boolean` (optional, `true` by default) – shows Telegram subscription controls when Telegram user notifications are enabled on the backend
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
-- **`simple_view`**`: boolean` (optional, `false` by default) – enables a minimal UI with basic information only; `false` does not disable `SIMPLE_VIEW` enabled on the backend
+- **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 
 Configuration example:
