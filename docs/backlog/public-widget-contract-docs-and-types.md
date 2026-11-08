@@ -56,3 +56,8 @@ separate call.
 
 Whatever is chosen, fixing the two integration manuals to stop using `any` is the visible win, and
 #1714 should get the pull request linked when it lands, as promised there.
+
+`components` is a gap the public declaration has to close. It is documented
+(`configuration/frontend/_index.md:13`) and every loader template reads it to decide which widget
+scripts to load, but `RemarkConfig` in `global.d.ts` does not declare it, because the bundled code
+never reads it.
