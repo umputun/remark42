@@ -1512,6 +1512,20 @@ func TestServerCommand_demoSiteID(t *testing.T) {
 	}
 }
 
+func TestServerApp_WebhookUsesConfiguredTimeout(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Notify.Admins = []string{"webhook"}
+	cmd.Notify.Webhook.URL = "http://127.0.0.1/hook"
+	cmd.Notify.Webhook.Timeout = 17 * time.Second
+
+	destinations, err := cmd.makeNotifyDestinations(nil)
+	require.NoError(t, err)
+	require.Len(t, destinations, 1)
+	wh, ok := destinations[0].(*notify.Webhook)
+	require.True(t, ok, "webhook destination, got %T", destinations[0])
+	assert.Equal(t, 17*time.Second, wh.Timeout, "NOTIFY_WEBHOOK_TIMEOUT reaches the webhook")
+}
+
 // TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.

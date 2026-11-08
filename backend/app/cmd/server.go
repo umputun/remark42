@@ -1329,7 +1329,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			URL:      s.Notify.Webhook.URL,
 			Template: s.Notify.Webhook.Template,
 			Headers:  webhookHeaders,
-			Timeout:  time.Second * 5,
+			Timeout:  s.Notify.Webhook.Timeout,
 		}
 		webhook, err := notify.NewWebhook(whParams)
 		if err != nil {
