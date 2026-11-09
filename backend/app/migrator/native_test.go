@@ -210,3 +210,89 @@ func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 		_ = os.Remove(testDB)
 	}
 }
+
+func TestNative_ImportMalformedStream(t *testing.T) {
+	tbl := []struct {
+		name, tail string
+	}{
+		{"truncated", `{"id":"c2","text":"some te`},
+		{"invalid json", `{"id":"c2", text}` + "\n" + `{"id":"c3","text":"x","locator":{"site":"radio-t","url":"https://radio-t.com"}}`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			b, teardown := prep(t)
+			defer teardown()
+			inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false},"verified":true}],"posts":[]}
+	{"id":"c1","text":"some text","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}
+	` + tt.tail
+
+			type result struct {
+				size int
+				err  error
+			}
+			done := make(chan result, 1)
+			go func() {
+				r := Native{DataStore: b}
+				size, err := r.Import(strings.NewReader(inp), "radio-t")
+				done <- result{size, err}
+			}()
+			var res result
+			require.Eventually(t, func() bool {
+				select {
+				case res = <-done:
+					return true
+				default:
+					return false
+				}
+			}, 30*time.Second, 10*time.Millisecond, "import of a malformed stream must finish")
+
+			require.Error(t, res.err)
+			assert.Contains(t, res.err.Error(), "can't decode comment after 1 records")
+			assert.NotContains(t, res.err.Error(), "failed to save")
+			assert.Equal(t, 1, res.size)
+			assert.True(t, b.IsVerified("radio-t", "user1"), "metas are restored")
+		})
+	}
+}
+
+func TestNative_ImportRestoresMetasWhenCommentRejected(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2100-01-01T00:00:00Z"}}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
+	{"id":"c1","text":"some text","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}
+	{}`
+
+	r := Native{DataStore: b}
+	size, err := r.Import(strings.NewReader(inp), "radio-t")
+	require.EqualError(t, err, "failed to save 1 comments")
+	assert.Equal(t, 1, size)
+	assert.True(t, b.IsVerified("radio-t", "user1"), "verified flag restored")
+	assert.True(t, b.IsBlocked("radio-t", "user2"), "block restored")
+	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}), "read-only post restored")
+}
+
+func TestNative_ImportSkipsRecordWithWrongValue(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false},"verified":true}],"posts":[]}
+	{"id":"c1","text":"text 1","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}
+	{"id":"c2","text":"text 2","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":"x","time":"2017-12-20T15:18:23-06:00"}
+	{"id":"c3","text":"text 3","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"not a time"}
+	{"id":"c4","text":"text 4","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:25-06:00"}`
+
+	r := Native{DataStore: b}
+	size, err := r.Import(strings.NewReader(inp), "radio-t")
+	require.EqualError(t, err, "failed to save 2 comments")
+	assert.Equal(t, 2, size)
+
+	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time", store.User{})
+	require.NoError(t, err)
+	ids := make([]string, 0, len(comments))
+	for _, c := range comments {
+		ids = append(ids, c.ID)
+	}
+	assert.Equal(t, []string{"c1", "c4"}, ids, "records after a wrong value are restored")
+	assert.True(t, b.IsVerified("radio-t", "user1"))
+}
