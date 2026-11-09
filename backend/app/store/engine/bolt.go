@@ -334,47 +334,41 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 // ListFlags get list of flagged keys, like blocked & verified user
 // works for full locator (post flags) or with userID
 func (b *BoltDB) ListFlags(req FlagRequest) (res []any, err error) {
-	bdb, e := b.db(req.Locator.SiteID)
-	if e != nil {
-		return nil, e
-	}
-
 	res = []any{}
-	switch req.Flag {
-	case Verified:
-		err = bdb.View(func(tx *bolt.Tx) error {
-			usersBkt := tx.Bucket([]byte(verifiedBucketName))
-			_ = usersBkt.ForEach(func(k, _ []byte) error {
+	var blocked []store.BlockedUser
+	err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
+		switch req.Flag {
+		case Verified:
+			return tx.Bucket([]byte(verifiedBucketName)).ForEach(func(k, _ []byte) error {
 				res = append(res, string(k))
 				return nil
 			})
-			return nil
-		})
-		return res, err
-	case Blocked:
-		err = bdb.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(blocksBucketName))
-			return bucket.ForEach(func(k []byte, v []byte) error {
-				ts, errParse := time.ParseInLocation(tsNano, string(v), time.Local)
-				if errParse != nil {
-					return fmt.Errorf("can't parse block ts: %w", errParse)
+		case Blocked:
+			return tx.Bucket([]byte(blocksBucketName)).ForEach(func(k, v []byte) error {
+				until, e := time.Parse(tsNano, string(v))
+				if e != nil {
+					return fmt.Errorf("can't parse block ts: %w", e)
 				}
-				if time.Now().Before(ts) {
-					// get user name from comment user section
-					userName := ""
-					findReq := FindRequest{Locator: store.Locator{SiteID: req.Locator.SiteID}, UserID: string(k), Limit: 1}
-					userComments, errUser := b.Find(findReq)
-					if errUser == nil && len(userComments) > 0 {
-						userName = userComments[0].User.Name
-					}
-					res = append(res, store.BlockedUser{ID: string(k), Name: userName, Until: ts})
+				if time.Now().Before(until) {
+					blocked = append(blocked, store.BlockedUser{ID: string(k), Until: until})
 				}
 				return nil
 			})
-		})
-		return res, err
+		}
+		return fmt.Errorf("flag %s not listable", req.Flag)
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("flag %s not listable", req.Flag)
+
+	// names come from the user's latest comment, read after the transaction above is closed
+	for _, u := range blocked {
+		if comments, e := b.userComments(req.Locator.SiteID, u.ID, 1, 0); e == nil && len(comments) > 0 {
+			u.Name = comments[0].User.Name
+		}
+		res = append(res, u)
+	}
+	return res, nil
 }
 
 // Delete post(s), user, comment, user details, or everything
@@ -511,107 +505,71 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 }
 
 func (b *BoltDB) checkFlag(req FlagRequest) (val bool) {
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
-		return false
-	}
-
-	key := req.Locator.URL
-	if req.UserID != "" {
-		key = req.UserID
-	}
-
-	if req.Flag == Blocked {
-		var blocked bool
-		_ = bdb.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(blocksBucketName))
-			v := bucket.Get([]byte(key))
-			if v == nil {
-				blocked = false
-				return nil
-			}
-
-			until, e := time.Parse(tsNano, string(v))
-			if e != nil {
-				blocked = false
-				return nil
-			}
-			blocked = time.Now().Before(until)
-			return nil
-		})
-		return blocked
-	}
-
-	_ = bdb.View(func(tx *bolt.Tx) error {
-		var bucket *bolt.Bucket
-		if bucket, err = b.flagBucket(tx, req.Flag); err != nil {
+	_ = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
+		bucket, err := b.flagBucket(tx, req.Flag)
+		if err != nil {
 			return err
 		}
-		val = bucket.Get([]byte(key)) != nil
+		v := bucket.Get(flagKey(req))
+		if req.Flag != Blocked || v == nil {
+			val = v != nil
+			return nil
+		}
+		// blocked flag holds the time the block expires
+		until, err := time.Parse(tsNano, string(v))
+		val = err == nil && time.Now().Before(until)
 		return nil
 	})
 	return val
 }
 
 func (b *BoltDB) setFlag(req FlagRequest) (res bool, err error) {
-	bdb, e := b.db(req.Locator.SiteID)
-	if e != nil {
-		return false, e
-	}
-
-	key := req.Locator.URL
-	if req.UserID != "" {
-		key = req.UserID
-	}
-
-	err = bdb.Update(func(tx *bolt.Tx) error {
-		var bucket *bolt.Bucket
-		if bucket, err = b.flagBucket(tx, req.Flag); err != nil {
-			return err
+	err = b.update(req.Locator.SiteID, func(tx *bolt.Tx) error {
+		bucket, e := b.flagBucket(tx, req.Flag)
+		if e != nil {
+			return e
 		}
+		key := flagKey(req)
 		switch req.Update {
 		case FlagTrue:
+			val := time.Now()
 			if req.Flag == Blocked {
-				val := time.Now().AddDate(100, 0, 0).Format(tsNano) // permanent is 100 year
+				val = val.AddDate(100, 0, 0) // permanent is 100 years
 				if req.TTL > 0 {
-					val = time.Now().Add(req.TTL).Format(tsNano)
+					val = time.Now().Add(req.TTL)
 				}
-				if e = bucket.Put([]byte(key), []byte(val)); e != nil {
-					return fmt.Errorf("failed to put blocked to %s: %w", key, e)
-				}
-				res = true
-				return nil
 			}
-
-			if e = bucket.Put([]byte(key), []byte(time.Now().Format(tsNano))); e != nil {
-				return fmt.Errorf("failed to set flag %s for %s: %w", req.Flag, req.Locator.URL, e)
+			if e = bucket.Put(key, []byte(val.Format(tsNano))); e != nil {
+				return fmt.Errorf("failed to set flag %s for %s: %w", req.Flag, key, e)
 			}
 			res = true
-			return nil
 		case FlagFalse:
-			if e = bucket.Delete([]byte(key)); e != nil {
-				return fmt.Errorf("failed to clean flag %s for %s: %w", req.Flag, req.Locator.URL, e)
+			if e = bucket.Delete(key); e != nil {
+				return fmt.Errorf("failed to clean flag %s for %s: %w", req.Flag, key, e)
 			}
-			res = false
 		}
 		return nil
 	})
-
 	return res, err
 }
 
-func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (bkt *bolt.Bucket, err error) {
-	switch flag {
-	case ReadOnly:
-		bkt = tx.Bucket([]byte(readonlyBucketName))
-	case Blocked:
-		bkt = tx.Bucket([]byte(blocksBucketName))
-	case Verified:
-		bkt = tx.Bucket([]byte(verifiedBucketName))
-	default:
+// flagBuckets maps each flag to the top-level bucket holding it
+var flagBuckets = map[Flag]string{ReadOnly: readonlyBucketName, Blocked: blocksBucketName, Verified: verifiedBucketName}
+
+func (b *BoltDB) flagBucket(tx *bolt.Tx, flag Flag) (*bolt.Bucket, error) {
+	name, ok := flagBuckets[flag]
+	if !ok {
 		return nil, fmt.Errorf("unsupported flag %v", flag)
 	}
-	return bkt, nil
+	return tx.Bucket([]byte(name)), nil
+}
+
+// flagKey returns the key of a flag: user ID for user flags, post URL for post flags
+func flagKey(req FlagRequest) []byte {
+	if req.UserID != "" {
+		return []byte(req.UserID)
+	}
+	return []byte(req.Locator.URL)
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
