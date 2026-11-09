@@ -506,7 +506,8 @@ func (s *private) parseHandshake(tkn string) (userID, address string, herr *hand
 	}
 	elems := strings.Split(claims.Handshake.ID, "::")
 	if len(elems) != 2 {
-		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("%s", claims.Handshake.ID), details: "invalid handshake token"}
+		// the handshake carries the address, so it is not echoed into the error
+		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
 	}
 	return elems[0], elems[1], nil
 }
@@ -537,10 +538,13 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	claims.User.Email = address
-	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
-		return
+	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
+	if claims.User != nil {
+		claims.User.Email = address
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
 	}
 	R.RenderJSON(w, R.JSON{"updated": true, "address": val})
 }
@@ -632,7 +636,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	if claims.User.Email != "" {
+	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
 		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)

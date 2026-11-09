@@ -1805,3 +1805,87 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, email, "email not set on the site named only in the body")
 }
+
+// the admin password sent along with a token that has no user, such as a confirmation token, passes
+// authentication; setting and deleting the email then has no token user to update, which is not a panic
+func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(method, url, body string) (int, string) {
+		var reqBody io.Reader = http.NoBody
+		if body != "" {
+			reqBody = strings.NewReader(body)
+		}
+		req, reqErr := http.NewRequest(method, ts.URL+url, reqBody)
+		require.NoError(t, reqErr)
+		req.SetBasicAuth("admin", "password")
+		req.Header.Add("X-JWT", tkn)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		b, reqErr := io.ReadAll(resp.Body)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send(http.MethodPost, "/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn))
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
+
+	code, body = send(http.MethodDelete, "/api/v1/email?site=remark42", "")
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err = srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Empty(t, email)
+}
+
+// a malformed handshake carries the address, which stays out of the error sent back and logged
+func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+		strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+	assert.NotContains(t, string(b), "secret@example.com", "confirm error echoes the address")
+
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.NotContains(t, body, "secret@example.com", "unsubscribe error echoes the address")
+}
