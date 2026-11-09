@@ -6,11 +6,15 @@ package safehttp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 )
+
+// ErrPrivateAddress is returned by the Transport dialer for a host resolving to a private or reserved address
+var ErrPrivateAddress = errors.New("access to private address is not allowed")
 
 // Transport returns an *http.Transport whose DialContext refuses any address
 // that resolves to a private/reserved IP, choosing the IP itself for the dial
@@ -39,7 +43,7 @@ func Transport() *http.Transport {
 
 		for _, ip := range ips {
 			if IsPrivateIP(ip.IP) {
-				return nil, fmt.Errorf("access to private address is not allowed")
+				return nil, ErrPrivateAddress
 			}
 		}
 

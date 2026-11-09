@@ -292,3 +292,24 @@ func cleanRssFormatting(expected, actual string) (cleanExp, cleanAct string) {
 	actual = reSpaces.ReplaceAllString(actual, " ")
 	return expected, actual
 }
+
+func TestServer_RssPostLimitsItems(t *testing.T) {
+	ts, rst, teardown := startupT(t)
+	defer teardown()
+
+	base, _ := rssPubTime()
+	for i := range maxRssItems + 5 {
+		_, err := rst.DataService.Create(store.Comment{
+			ID:        fmt.Sprintf("id-%02d", i),
+			Text:      fmt.Sprintf("comment %d", i),
+			Timestamp: base.Add(time.Duration(i) * time.Second),
+			Locator:   store.Locator{URL: "https://radio-t.com/many", SiteID: "remark42"},
+			User:      store.User{ID: "u1", Name: "developer one"},
+		})
+		require.NoError(t, err)
+	}
+
+	res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url=https://radio-t.com/many")
+	require.Equal(t, http.StatusOK, code)
+	assert.Equal(t, maxRssItems, strings.Count(res, "<item>"), "post feed has at most maxRssItems items")
+}

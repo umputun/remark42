@@ -144,12 +144,14 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
+	ctx, cancel := context.WithTimeout(r.Context(), timeOut)
 	defer cancel()
 	for m.isBusy(siteID) {
-
 		select {
 		case <-ctx.Done():
+			if r.Context().Err() != nil {
+				return // the client has gone, nobody to answer
+			}
 			_ = R.EncodeJSON(w, http.StatusGatewayTimeout, R.JSON{"status": "timeout expired", "site_id": siteID})
 			return
 		case <-time.After(100 * time.Millisecond):

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -8,12 +9,14 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark42/backend/app/safehttp"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
@@ -828,4 +831,21 @@ func imgHTTPTestsServer(t *testing.T) *httptest.Server {
 	}))
 
 	return ts
+}
+
+// refusingTransport fails every request the way safehttp.Transport refuses a private address
+type refusingTransport struct{ calls atomic.Int32 }
+
+func (rt *refusingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	rt.calls.Add(1)
+	return nil, fmt.Errorf("dial: %w", safehttp.ErrPrivateAddress)
+}
+
+func TestImage_PrivateAddressNotRetried(t *testing.T) {
+	rt := &refusingTransport{}
+	img := Image{Timeout: 10 * time.Second, Transport: rt}
+
+	_, err := img.downloadImage(context.Background(), "http://10.0.0.1/image.png")
+	require.ErrorIs(t, err, safehttp.ErrPrivateAddress)
+	assert.Equal(t, int32(1), rt.calls.Load(), "a refused address is tried once")
 }

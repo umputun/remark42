@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -852,3 +854,24 @@ Thanks for the article!]]></wp:comment_content>
 	</channel>
 </rss>
 `
+
+func TestMigrator_WaitStopsWhenClientGoes(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &Migrator{}
+		require.True(t, m.setBusyIfFree("remark42"))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		req := httptest.NewRequest(http.MethodGet, "/wait?site=remark42", http.NoBody).WithContext(ctx)
+		done := make(chan struct{})
+		start := time.Now()
+		go func() {
+			m.waitCtrl(httptest.NewRecorder(), req)
+			close(done)
+		}()
+
+		time.Sleep(time.Second)
+		cancel()
+		<-done
+		assert.Equal(t, time.Second, time.Since(start), "waiting ends when the client disconnects, not at the 15 minute timeout")
+	})
+}
