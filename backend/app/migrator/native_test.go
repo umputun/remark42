@@ -296,3 +296,49 @@ func TestNative_ImportSkipsRecordWithWrongValue(t *testing.T) {
 	assert.Equal(t, []string{"c1", "c4"}, ids, "records after a wrong value are restored")
 	assert.True(t, b.IsVerified("radio-t", "user1"))
 }
+
+func TestNative_ExportKeepsStoredComments(t *testing.T) {
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
+	b.MaxVotes = service.UnlimitedVotes
+	_, err := b.Vote(service.VoteReq{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"},
+		CommentID: "efbc17f177ee1a1c0ee6e1e025749966ec071adc", UserID: "user3", UserIP: "1.2.3.4", Val: true})
+	require.NoError(t, err)
+	require.NoError(t, b.SetBlock("radio-t", "user1", true, time.Hour))
+
+	buf := &bytes.Buffer{}
+	r := Native{DataStore: b}
+	size, err := r.Export(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	dec := json.NewDecoder(buf)
+	require.NoError(t, dec.Decode(&meta{}))
+	c := store.Comment{}
+	require.NoError(t, dec.Decode(&c))
+	require.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", c.ID)
+	assert.Equal(t, map[string]bool{"user3": true}, c.Votes, "votes are exported")
+	assert.Equal(t, 1, c.Score)
+	assert.Empty(t, c.VotedIPs, "voters' IP hashes are not exported")
+	assert.False(t, c.User.Blocked, "blocked status lives in the users meta, not in the comment")
+}
+
+func TestNative_ImportClearsBlockedMarkInComments(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	// backups made by earlier versions carry "block":true inside comments of a user blocked at export time
+	inp := `{"version":1,"users":[],"posts":[]}
+	{"id":"c1","text":"some text","user":{"name":"user name","id":"user1","block":true},"locator":{"site":"radio-t","url":"https://radio-t.com"},"votes":{"user3":true},"score":1,"time":"2017-12-20T15:18:22-06:00"}`
+
+	r := Native{DataStore: b}
+	size, err := r.Import(strings.NewReader(inp), "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 1, size)
+
+	comments, err := b.Find(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, "time", store.User{})
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.False(t, comments[0].User.Blocked, "user is not blocked after restore")
+	assert.Equal(t, 1, comments[0].Score)
+}

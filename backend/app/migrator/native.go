@@ -50,12 +50,13 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for _, topic := range slices.Backward(topics) { // topics from List sorted in opposite direction
 
-		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time", adminUser)
+		comments, e := n.DataStore.FindRaw(store.Locator{SiteID: siteID, URL: topic.URL})
 		if e != nil {
 			return commentsCount, e
 		}
 
 		for _, comment := range comments {
+			comment.VotedIPs = nil // voters' IP hashes stay out of backups, as before
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
@@ -171,6 +172,9 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			continue
 		}
 		comment.Imported = true
+		// exports made by earlier versions stored the blocked status of the time inside comments;
+		// it is kept in the users metadata, and leaving it in the comment marks the user blocked forever
+		comment.User.Blocked = false
 
 		// write comments in parallel
 		grp.Go(func(context.Context) {

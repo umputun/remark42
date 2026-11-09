@@ -37,7 +37,7 @@ type MapperMaker func(reader io.Reader) (Mapper, error)
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)
-	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
+	FindRaw(locator store.Locator) ([]store.Comment, error)
 	List(siteID string, limit, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
 	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
