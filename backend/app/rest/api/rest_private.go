@@ -335,6 +335,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
+	subscribe.Site = verifiedSite(r, subscribe.Site)
 	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
 	if getErr != nil {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, getErr)
@@ -468,25 +469,57 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	confClaims, err := s.authenticator.TokenService().Parse(confirm.Token)
+	userID, address, herr := s.parseHandshake(confirm.Token)
+	if herr != nil {
+		rest.SendErrorJSON(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	if userID != user.ID {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("handshake for %s, request from %s", userID, user.ID),
+			"invalid handshake token", rest.ErrInternal)
+		return
+	}
+	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
+}
+
+// handshakeError is a failure to read the handshake from a confirmation token,
+// with the response status and details to report it with
+type handshakeError struct {
+	status  int
+	err     error
+	details string
+}
+
+// parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl or for the email unsubscribe link,
+// and returns the user ID and address from its handshake, which is user.ID + "::" + address.
+// A token without a handshake, such as a login token, is rejected as invalid.
+func (s *private) parseHandshake(tkn string) (userID, address string, herr *handshakeError) {
+	claims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
+		return "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
 	}
+	if s.authenticator.TokenService().IsExpired(claims) {
+		return "", "", &handshakeError{status: http.StatusForbidden, err: fmt.Errorf("expired"), details: "failed to verify confirmation token"}
+	}
+	if claims.Handshake == nil {
+		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("no handshake in token"), details: "invalid handshake token"}
+	}
+	elems := strings.Split(claims.Handshake.ID, "::")
+	if len(elems) != 2 || elems[0] == "" || elems[1] == "" {
+		// the handshake carries the address, so it is not echoed into the error
+		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
+	}
+	return elems[0], elems[1], nil
+}
 
-	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal)
-		return
+// verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
+// The site in the request body is used only when the query has none, which matchSiteID allows only for
+// the basic-auth admin.
+func verifiedSite(r *http.Request, bodySite string) string {
+	if site := r.URL.Query().Get("site"); site != "" {
+		return site
 	}
-
-	// handshake.ID is user.ID + "::" + address
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 || elems[0] != user.ID {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
-		return
-	}
-	address := elems[1]
-	s.setEmail(w, r, user.ID, confirm.Site, address)
+	return bodySite
 }
 
 func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteID, address string) {
@@ -505,10 +538,13 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	claims.User.Email = address
-	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
-		return
+	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
+	if claims.User != nil {
+		claims.User.Email = address
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
 	}
 	R.RenderJSON(w, R.JSON{"updated": true, "address": val})
 }
@@ -522,25 +558,11 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	siteID := r.URL.Query().Get("site")
 
-	confClaims, err := s.authenticator.TokenService().Parse(tkn)
-	if err != nil {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+	userID, address, herr := s.parseHandshake(tkn)
+	if herr != nil {
+		rest.SendErrorHTML(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
 		return
 	}
-
-	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-
-	// handshake.ID is user.ID + "::" + address
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
-		return
-	}
-	userID := elems[0]
-	address := elems[1]
 
 	existingAddress, err := s.dataService.GetUserEmail(siteID, userID)
 	if err != nil {
@@ -614,7 +636,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	if claims.User.Email != "" {
+	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
 		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)

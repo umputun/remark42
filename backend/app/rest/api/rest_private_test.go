@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -22,10 +23,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
@@ -1698,6 +1701,229 @@ func TestExtractIP(t *testing.T) {
 	for _, tt := range tbl {
 		t.Run(tt.addr, func(t *testing.T) {
 			assert.Equal(t, tt.exp, extractIP(tt.addr))
+		})
+	}
+}
+
+// a token without a handshake, such as the login token, used as a confirmation token is rejected as invalid,
+// not dereferenced
+func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	tbl := []struct {
+		name, method, url, body string
+		code                    int
+	}{
+		{name: "confirm with a login token", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, devToken), code: http.StatusBadRequest},
+		{name: "confirm with another user's handshake", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, otherUserTkn), code: http.StatusBadRequest},
+		{name: "unsubscribe with a login token", method: http.MethodGet, url: "/email/unsubscribe.html?site=remark42&tkn=" + devToken,
+			code: http.StatusBadRequest},
+	}
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var body io.Reader = http.NoBody
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			req, err := http.NewRequest(tt.method, ts.URL+tt.url, body)
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, tt.code, resp.StatusCode, string(b))
+		})
+	}
+}
+
+// subscribe and confirm act on the site matchSiteID verified in the query, not on a different site named in the body
+func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		dir := t.TempDir()
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(dir, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(dir, "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+	})
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(url, body string) int {
+		req, reqErr := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, reqErr)
+		req.Header.Add("X-JWT", devToken)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// the session belongs to remark42; the body names the other site.
+	// The address is already confirmed on the verified site, so subscribing to it again conflicts
+	_, err = srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusConflict, send("/api/v1/email/subscribe?site=remark42", `{"site":"other","address":"good@example.com"}`),
+		"subscribe checks the verified site")
+	require.NoError(t, srv.DataService.DeleteUserDetail("remark42", "provider1_dev", engine.UserEmail))
+
+	assert.Equal(t, http.StatusOK, send("/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"other","token":%q}`, tkn)))
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Equal(t, "good@example.com", email, "email set on the verified site")
+	email, err = srv.DataService.GetUserEmail("other", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "email not set on the site named only in the body")
+}
+
+// the admin password sent along with a token that has no user, such as a confirmation token, passes
+// authentication; setting and deleting the email then has no token user to update, which is not a panic
+func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(method, url, body string) (int, string) {
+		var reqBody io.Reader = http.NoBody
+		if body != "" {
+			reqBody = strings.NewReader(body)
+		}
+		req, reqErr := http.NewRequest(method, ts.URL+url, reqBody)
+		require.NoError(t, reqErr)
+		req.SetBasicAuth("admin", "password")
+		req.Header.Add("X-JWT", tkn)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		b, reqErr := io.ReadAll(resp.Body)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send(http.MethodPost, "/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn))
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
+
+	code, body = send(http.MethodDelete, "/api/v1/email?site=remark42", "")
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err = srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Empty(t, email)
+}
+
+// a malformed handshake carries the address, which stays out of the error sent back and logged
+func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+		strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+	assert.NotContains(t, string(b), "secret@example.com", "confirm error echoes the address")
+
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.NotContains(t, body, "secret@example.com", "unsubscribe error echoes the address")
+}
+
+// a handshake with an empty user or address is rejected, not acted on with the empty part
+func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	for _, hs := range []string{"provider1_dev::", "::good@example.com"} {
+		t.Run(hs, func(t *testing.T) {
+			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+				Handshake: &token.Handshake{ID: hs},
+				RegisteredClaims: jwt.RegisteredClaims{
+					Audience:  jwt.ClaimStrings{"remark42"},
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+					NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+					Issuer:    "remark42",
+				},
+			})
+			require.NoError(t, err)
+
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+				strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "confirm rejects the handshake: %s", string(b))
+
+			body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+			assert.Equal(t, http.StatusBadRequest, code, "unsubscribe rejects the handshake: %s", body)
 		})
 	}
 }

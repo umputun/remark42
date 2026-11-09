@@ -79,7 +79,10 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
 	ucomments, err := a.dataService.User(siteID, userID, 1, 0, rest.GetUserOrEmpty(r))
-	if err != nil || len(ucomments) == 0 {
+	if err == nil && len(ucomments) == 0 {
+		err = fmt.Errorf("no comments for user %s", userID)
+	}
+	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
 	}
@@ -94,6 +97,12 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	claims, err := a.authenticator.TokenService().Parse(token)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token", rest.ErrActionRejected)
+		return
+	}
+
+	// a token without a user, such as an email confirmation token, can't carry the delete_me attribute
+	if claims.User == nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("no user in token"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
 
