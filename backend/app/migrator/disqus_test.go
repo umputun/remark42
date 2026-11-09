@@ -120,12 +120,12 @@ func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
 	fh, err := os.Open("testdata/disqus.xml")
 	require.NoError(t, err)
-	ch := d.convert(fh, "test")
-
 	res := make([]store.Comment, 0, 4)
-	for comment := range ch {
-		res = append(res, comment)
-	}
+	err = d.convert(fh, "test", func(c store.Comment) error {
+		res = append(res, c)
+		return nil
+	})
+	require.NoError(t, err)
 	require.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
 
 	exp0 := store.Comment{

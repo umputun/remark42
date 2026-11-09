@@ -54,6 +54,53 @@ type ImportParams struct {
 
 var adminUser = store.User{Admin: true}
 
+// converter reads an export of another comment system from r and passes each comment to emit.
+// It returns the first error of emit, or an error when r can't be read to the end.
+type converter func(r io.Reader, siteID string, emit func(store.Comment) error) error
+
+// importComments replaces the comments of siteID with the ones convert reads from r.
+// The site is cleared when the first comment arrives, or once a conversion without comments
+// completes, so an input that can't be read at all leaves the site as it was.
+func importComments(ds Store, r io.Reader, siteID string, convert converter) (passed int, err error) {
+	cleared, failed := false, 0
+	clearSite := func() error {
+		if cleared {
+			return nil
+		}
+		cleared = true
+		return ds.DeleteAll(siteID)
+	}
+
+	err = convert(r, siteID, func(c store.Comment) error {
+		if e := clearSite(); e != nil {
+			return e
+		}
+		if _, e := ds.Create(c); e != nil {
+			failed++
+			return nil
+		}
+		passed++
+		return nil
+	})
+	if err == nil {
+		err = clearSite()
+	}
+	if err != nil {
+		return passed, err
+	}
+
+	if failed > 0 {
+		err = fmt.Errorf("failed to save %d comments", failed)
+		if passed == 0 {
+			err = fmt.Errorf("import failed")
+		}
+	}
+
+	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
+
+	return passed, err
+}
+
 // ImportComments imports from given provider format and saves to store
 func ImportComments(p ImportParams) (int, error) {
 	log.Printf("[INFO] import from %s (%s) to %s", p.InputFile, p.Provider, p.SiteID)

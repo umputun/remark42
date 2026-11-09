@@ -54,98 +54,82 @@ type commentoCommenter struct {
 
 // Import comments from Commento and save to store
 func (d *Commento) Import(r io.Reader, siteID string) (size int, err error) {
-	if e := d.DataStore.DeleteAll(siteID); e != nil {
-		return 0, e
-	}
-
-	commentsCh := d.convert(r, siteID)
-	failed, passed := 0, 0
-	for c := range commentsCh {
-		if _, err = d.DataStore.Create(c); err != nil {
-			failed++
-			continue
-		}
-		passed++
-	}
-
-	if failed > 0 {
-		err = fmt.Errorf("failed to save %d comments", failed)
-		if passed == 0 {
-			err = fmt.Errorf("import failed")
-		}
-	}
-
-	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
-
-	return passed, err
+	return importComments(d.DataStore, r, siteID, d.convert)
 }
 
-func (d *Commento) convert(r io.Reader, siteID string) (ch chan store.Comment) {
-	commentsCh := make(chan store.Comment)
+// convert reads Commento export (json) from r and passes each comment to emit
+func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) error) error {
+	// any JSON object decodes into commentoExport, so check for the lists a Commento export always has
+	var raw struct {
+		Comments   json.RawMessage `json:"comments"`
+		Commenters json.RawMessage `json:"commenters"`
+	}
+	if err := json.NewDecoder(r).Decode(&raw); err != nil {
+		return fmt.Errorf("can't read commento export: %w", err)
+	}
+	if raw.Comments == nil || raw.Commenters == nil {
+		return fmt.Errorf("not a commento export, no comments and commenters lists found")
+	}
+	var exportedData commentoExport
+	if err := json.Unmarshal(raw.Comments, &exportedData.Comments); err != nil {
+		return fmt.Errorf("can't read commento comments: %w", err)
+	}
+	if err := json.Unmarshal(raw.Commenters, &exportedData.Commenters); err != nil {
+		return fmt.Errorf("can't read commento commenters: %w", err)
+	}
 
-	decoder := json.NewDecoder(r)
+	usersMap := map[string]store.User{}
+	for _, commenter := range exportedData.Commenters {
+		usersMap[commenter.CommenterHex] = store.User{
+			Name:    commenter.Name,
+			ID:      "commento_" + store.EncodeID(commenter.CommenterHex),
+			Picture: commenter.Photo,
+		}
+	}
 
-	go func() {
-		var exportedData commentoExport
-		err := decoder.Decode(&exportedData)
+	usersMap["anonymous"] = store.User{
+		Name: "Anonymous",
+		ID:   "commento_" + store.EncodeID("anonymous"),
+	}
+
+	for _, comment := range exportedData.Comments {
+		u, ok := usersMap[comment.CommenterHex]
+		if !ok {
+			continue
+		}
+
+		if comment.Deleted {
+			continue
+		}
+
+		parentID := comment.ParentHex
+		// comments with ParentHex == "root" are top-level comments
+		if parentID == "root" {
+			parentID = ""
+		}
+
+		commentURL, err := url.JoinPath("https://", comment.Domain, comment.Path)
 		if err != nil {
-			log.Printf("[WARN] can't decode commento export json, %s", err.Error())
+			log.Printf("[WARN] can't construct comment URL in commento import, %s", err)
 		}
 
-		usersMap := map[string]store.User{}
-		for _, commenter := range exportedData.Commenters {
-			usersMap[commenter.CommenterHex] = store.User{
-				Name:    commenter.Name,
-				ID:      "commento_" + store.EncodeID(commenter.CommenterHex),
-				Picture: commenter.Photo,
-			}
+		c := store.Comment{
+			ID: comment.CommentHex,
+			Locator: store.Locator{
+				URL:    commentURL,
+				SiteID: siteID,
+			},
+			User:      u,
+			Text:      comment.Markdown,
+			Timestamp: comment.CreationDate,
+			ParentID:  parentID,
+			Imported:  true,
 		}
 
-		usersMap["anonymous"] = store.User{
-			Name: "Anonymous",
-			ID:   "commento_" + store.EncodeID("anonymous"),
+		if err := emit(c); err != nil {
+			return err
 		}
+	}
 
-		for _, comment := range exportedData.Comments {
-			u, ok := usersMap[comment.CommenterHex]
-			if !ok {
-				continue
-			}
-
-			if comment.Deleted {
-				continue
-			}
-
-			parentID := comment.ParentHex
-			// comments with ParentHex == "root" are top-level comments
-			if parentID == "root" {
-				parentID = ""
-			}
-
-			commentURL, e := url.JoinPath("https://", comment.Domain, comment.Path)
-			if e != nil {
-				log.Printf("[WARN] can't construct comment URL in commento import, %s", err.Error())
-			}
-			log.Printf("[ERROR] commentoURL: %s", commentURL)
-
-			c := store.Comment{
-				ID: comment.CommentHex,
-				Locator: store.Locator{
-					URL:    commentURL,
-					SiteID: siteID,
-				},
-				User:      u,
-				Text:      comment.Markdown,
-				Timestamp: comment.CreationDate,
-				ParentID:  parentID,
-				Imported:  true,
-			}
-
-			commentsCh <- c
-		}
-
-		close(commentsCh)
-	}()
-
-	return commentsCh
+	return nil
 }
