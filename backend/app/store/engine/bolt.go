@@ -573,94 +573,58 @@ func flagKey(req FlagRequest) []byte {
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
-// as an only element of the slice.
+// as an only element of the slice, or an empty slice if the user has no details.
 func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
-	bdb, e := b.db(req.Locator.SiteID)
-	if e != nil {
-		return result, e
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
-		var entry UserDetailEntry
-		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		value := bucket.Get([]byte(req.UserID))
-		// return no error in case of absent entry
-		if value != nil {
-			if err = json.Unmarshal(value, &entry); err != nil {
-				return fmt.Errorf("failed to unmarshal entry: %w", e)
-			}
-			switch req.Detail {
-			case UserEmail:
-				result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
-			case UserTelegram:
-				result = []UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
-			}
+	err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
+		entry, found, e := b.loadDetail(tx, req.UserID)
+		if e != nil || !found {
+			return e
+		}
+		switch req.Detail {
+		case UserEmail:
+			result = []UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
+		case UserTelegram:
+			result = []UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
 		}
 		return nil
 	})
-
 	return result, err
 }
 
-// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an onlyIps
+// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an only
 // element of the slice in case of success
-func (b *BoltDB) setUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
-	bdb, e := b.db(req.Locator.SiteID)
-	if e != nil {
-		return result, e
-	}
-
+func (b *BoltDB) setUserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	var entry UserDetailEntry
-	err = bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		value := bucket.Get([]byte(req.UserID))
-		// return no error in case of absent entry
-		if value != nil {
-			if err = json.Unmarshal(value, &entry); err != nil {
-				return fmt.Errorf("failed to unmarshal entry: %w", e)
-			}
+	err := b.update(req.Locator.SiteID, func(tx *bolt.Tx) (err error) {
+		if entry, _, err = b.loadDetail(tx, req.UserID); err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return result, err
-	}
-
-	if entry.UserID == "" {
-		// new entry to be created, need to set UserID for it
-		entry.UserID = req.UserID
-	}
-
-	switch req.Detail {
-	case UserEmail:
-		entry.Email = req.Update
-	case UserTelegram:
-		entry.Telegram = req.Update
-	}
-
-	err = bdb.Update(func(tx *bolt.Tx) error {
-		err = b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry)
-		if err != nil {
+		if entry.UserID == "" { // new entry
+			entry.UserID = req.UserID
+		}
+		switch req.Detail {
+		case UserEmail:
+			entry.Email = req.Update
+		case UserTelegram:
+			entry.Telegram = req.Update
+		}
+		if err = b.save(tx.Bucket([]byte(userDetailsBucketName)), req.UserID, entry); err != nil {
 			return fmt.Errorf("failed to update detail %s for %s in %s: %w", req.Detail, req.UserID, req.Locator.SiteID, err)
 		}
 		return nil
 	})
-
-	return []UserDetailEntry{entry}, err
+	if err != nil {
+		return nil, err
+	}
+	return []UserDetailEntry{entry}, nil
 }
 
 // listDetails lists all available users details for given site
 func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err error) {
-	bdb, e := b.db(loc.SiteID)
-	if e != nil {
-		return result, e
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
-		var entry UserDetailEntry
-		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		return bucket.ForEach(func(_, value []byte) error {
-			if err = json.Unmarshal(value, &entry); err != nil {
+	err = b.view(loc.SiteID, func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte(userDetailsBucketName)).ForEach(func(_, value []byte) error {
+			var entry UserDetailEntry // fresh for each user, json.Unmarshal leaves absent fields as they were
+			if e := json.Unmarshal(value, &entry); e != nil {
 				return fmt.Errorf("failed to unmarshal entry: %w", e)
 			}
 			result = append(result, entry)
@@ -672,55 +636,45 @@ func (b *BoltDB) listDetails(loc store.Locator) (result []UserDetailEntry, err e
 
 // deleteUserDetail deletes requested UserDetail or whole UserDetailEntry
 func (b *BoltDB) deleteUserDetail(bdb *bolt.DB, userID string, userDetail UserDetail) error {
-	var entry UserDetailEntry
-	err := bdb.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(userDetailsBucketName))
-		value := bucket.Get([]byte(userID))
-		// return no error in case of absent entry
-		if value != nil {
-			if err := json.Unmarshal(value, &entry); err != nil {
-				return fmt.Errorf("failed to unmarshal entry: %w", err)
-			}
+	return bdb.Update(func(tx *bolt.Tx) error {
+		entry, _, err := b.loadDetail(tx, userID)
+		if err != nil || entry == (UserDetailEntry{}) { // nothing to delete
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
 
-	if entry == (UserDetailEntry{}) {
-		// absent entry means that we should not do anything
-		return nil
-	}
+		switch userDetail {
+		case UserEmail:
+			entry.Email = ""
+		case UserTelegram:
+			entry.Telegram = ""
+		case AllUserDetails:
+			entry = UserDetailEntry{UserID: userID}
+		}
 
-	switch userDetail {
-	case UserEmail:
-		entry.Email = ""
-	case UserTelegram:
-		entry.Telegram = ""
-	case AllUserDetails:
-		entry = UserDetailEntry{UserID: userID}
-	}
-
-	if entry == (UserDetailEntry{UserID: userID}) {
-		// if entry doesn't have non-empty details, we should delete it
-		return bdb.Update(func(tx *bolt.Tx) error {
-			err := tx.Bucket([]byte(userDetailsBucketName)).Delete([]byte(userID))
-			if err != nil {
+		bucket := tx.Bucket([]byte(userDetailsBucketName))
+		if entry == (UserDetailEntry{UserID: userID}) { // no details left, drop the entry
+			if err = bucket.Delete([]byte(userID)); err != nil {
 				return fmt.Errorf("failed to delete user detail %s for %s: %w", userDetail, userID, err)
 			}
 			return nil
-		})
-	}
-
-	return bdb.Update(func(tx *bolt.Tx) error {
-		// updated entry is not empty and we need to store its updated copy
-		err := b.save(tx.Bucket([]byte(userDetailsBucketName)), userID, entry)
-		if err != nil {
+		}
+		if err = b.save(bucket, userID, entry); err != nil {
 			return fmt.Errorf("failed to update detail %s for %s: %w", userDetail, userID, err)
 		}
 		return nil
 	})
+}
+
+// loadDetail reads user's entry from the user details bucket; found is false if there is none
+func (b *BoltDB) loadDetail(tx *bolt.Tx, userID string) (entry UserDetailEntry, found bool, err error) {
+	value := tx.Bucket([]byte(userDetailsBucketName)).Get([]byte(userID))
+	if value == nil {
+		return entry, false, nil
+	}
+	if err = json.Unmarshal(value, &entry); err != nil {
+		return entry, false, fmt.Errorf("failed to unmarshal entry for %s: %w", userID, err)
+	}
+	return entry, true, nil
 }
 
 func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID string, mode store.DeleteMode) error {

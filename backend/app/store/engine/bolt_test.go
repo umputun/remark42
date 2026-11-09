@@ -667,6 +667,22 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	}
 }
 
+func TestBoltDB_ListDetailsKeepsEntriesSeparate(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	loc := store.Locator{SiteID: "radio-t"}
+	_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserEmail, Update: "u1@example.com"})
+	require.NoError(t, err)
+	_, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u2", Detail: UserTelegram, Update: "u2_telegram"})
+	require.NoError(t, err)
+
+	// u2 has no email, so listing must not carry u1's email over into u2's entry
+	res, err := b.UserDetail(UserDetailRequest{Locator: loc, Detail: AllUserDetails})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}, {UserID: "u2", Telegram: "u2_telegram"}}, res)
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
