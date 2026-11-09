@@ -361,3 +361,35 @@ func TestNative_ImportRestoresUserDetails(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "user2_tg", tg, "telegram restored")
 }
+
+func TestNative_ExportImportKeepsEachUsersDetails(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	// user1 sorts before user2 in the details bucket, so a value left over from user1's record would reach user2's
+	_, err := b.SetUserTelegram("radio-t", "user1", "user1_tg")
+	require.NoError(t, err)
+	_, err = b.SetUserEmail("radio-t", "user2", "user2@example.com")
+	require.NoError(t, err)
+
+	r := Native{DataStore: b}
+	buf := &bytes.Buffer{}
+	_, err = r.Export(buf, "radio-t")
+	require.NoError(t, err)
+	_, err = r.Import(buf, "radio-t")
+	require.NoError(t, err)
+
+	tg, err := b.GetUserTelegram("radio-t", "user1")
+	require.NoError(t, err)
+	assert.Equal(t, "user1_tg", tg)
+	email, err := b.GetUserEmail("radio-t", "user1")
+	require.NoError(t, err)
+	assert.Empty(t, email, "telegram-only user has no email after restore")
+
+	email, err = b.GetUserEmail("radio-t", "user2")
+	require.NoError(t, err)
+	assert.Equal(t, "user2@example.com", email)
+	tg, err = b.GetUserTelegram("radio-t", "user2")
+	require.NoError(t, err)
+	assert.Empty(t, tg, "email-only user has no telegram after restore")
+}
