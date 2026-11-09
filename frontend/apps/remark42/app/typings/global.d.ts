@@ -14,7 +14,7 @@ type RemarkConfig = {
   // doesn't contain query params and hash. For example, default URL for 'https://example/com/example-post?id=1#hash'
   // would be 'https://example/com/example-post'
   url?: string;
-  // Optional, '15' by default. Maximum number of comments that is rendered on mobile version.
+  // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
   max_shown_comments?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.
   max_last_comments?: number;
@@ -37,7 +37,8 @@ type RemarkConfig = {
   show_telegram_subscription?: boolean;
   // Optional, 'true' by default. Enables RSS subscription feature in interface.
   show_rss_subscription?: boolean;
-  // Optional, 'false' by default. Overrides the parameter from the backend minimized UI with basic info only.
+  // Optional, 'false' by default. Simplifies the comment form, hiding the formatting toolbar and the
+  // preview button; 'false' does not disable SIMPLE_VIEW enabled on the backend.
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
   no_footer?: boolean;

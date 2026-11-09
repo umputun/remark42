@@ -79,7 +79,7 @@ type ServerCommand struct {
 	CriticalScore              int           `long:"critical-score" env:"CRITICAL_SCORE" default:"-10" description:"critical score threshold"`
 	PositiveScore              bool          `long:"positive-score" env:"POSITIVE_SCORE" description:"enable positive score only"`
 	ReadOnlyAge                int           `long:"read-age" env:"READONLY_AGE" default:"0" description:"read-only age of comments, days"`
-	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window; set to 0 to disable comment editing and staged image cleanup"`
+	EditDuration               time.Duration `long:"edit-time" env:"EDIT_TIME" default:"5m" description:"edit window; 0 hides editing in the widget and disables staged image cleanup, but the API does not limit edit time"`
 	AdminEdit                  bool          `long:"admin-edit" env:"ADMIN_EDIT" description:"unlimited edit for admins"`
 	Port                       int           `long:"port" env:"REMARK_PORT" default:"8080" description:"port"`
 	Address                    string        `long:"address" env:"REMARK_ADDRESS" default:"" description:"listening address"`
@@ -148,7 +148,7 @@ type ImageProxyGroup struct {
 // AppleGroup defines options for Apple auth params
 type AppleGroup struct {
 	CID                string `long:"cid" env:"CID" description:"Apple client ID (App ID or Services ID)"`
-	TID                string `long:"tid" env:"TID" description:"Apple service ID"`
+	TID                string `long:"tid" env:"TID" description:"Apple Team ID"`
 	KID                string `long:"kid" env:"KID" description:"Private key ID"`
 	PrivateKeyFilePath string `long:"private-key-filepath" env:"PRIVATE_KEY_FILEPATH" description:"Private key file location" default:"/srv/var/apple.p8"`
 }
@@ -218,7 +218,7 @@ type AvatarGroup struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
 	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
-	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max image size for resizing avatars on save"`
+	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio"`
 }
 
 // CacheGroup defines options group for cache params
@@ -271,7 +271,7 @@ type NotifyGroup struct {
 	QueueSize int      `long:"queue" env:"QUEUE" description:"size of notification queue" default:"100"`
 	Telegram  struct {
 		Channel string        `long:"chan" env:"CHAN" description:"the ID of telegram channel for admin notifications"`
-		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"[deprecated, not used] telegram api prefix"`
+		API     string        `long:"api" env:"API" default:"https://api.telegram.org/bot" description:"[deprecated, use --telegram.api-url] telegram api prefix"`
 		Token   string        `long:"token" env:"TOKEN" description:"[deprecated, use --telegram.token] telegram token"`
 		Timeout time.Duration `long:"timeout" env:"TIMEOUT" default:"5s" description:"[deprecated, use --telegram.timeout] telegram timeout"`
 	} `group:"telegram" namespace:"telegram" env-namespace:"TELEGRAM"`
@@ -1329,7 +1329,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			URL:      s.Notify.Webhook.URL,
 			Template: s.Notify.Webhook.Template,
 			Headers:  webhookHeaders,
-			Timeout:  time.Second * 5,
+			Timeout:  s.Notify.Webhook.Timeout,
 		}
 		webhook, err := notify.NewWebhook(whParams)
 		if err != nil {
