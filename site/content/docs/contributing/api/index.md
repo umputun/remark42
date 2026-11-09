@@ -95,7 +95,7 @@ type response struct {
 ```
 
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
-- `POST /api/v1/count?site=siteID` - get number of comments for posts from post body (list of post IDs)
+- `POST /api/v1/counts?site=siteID` - get number of comments for posts from post body (list of post IDs)
 - `GET /api/v1/list?site=site-id&limit=5&skip=2` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
 
 ```go

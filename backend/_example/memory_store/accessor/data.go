@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/go-pkgz/lgr"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
 )
@@ -260,14 +259,13 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []any, err error) {
 	switch req.Flag {
 	case engine.Verified:
 		for _, u := range m.metaUsers {
-			if u.SiteID == req.Locator.SiteID {
+			if u.SiteID == req.Locator.SiteID && u.Verified {
 				res = append(res, u.UserID)
 			}
 		}
 		return res, nil
 
 	case engine.Blocked:
-		log.Printf("[INFO] metaUsers: %+v", m.metaUsers)
 		for _, u := range m.metaUsers {
 			if u.SiteID == req.Locator.SiteID && u.Blocked && u.BlockedUntil.After(time.Now()) {
 				res = append(res, store.BlockedUser{ID: u.UserID, Until: u.BlockedUntil})
@@ -389,6 +387,14 @@ func (m *MemData) checkFlag(req engine.FlagRequest) (val bool) {
 	return false
 }
 
+// userMeta returns the stored meta of the user on the site, or a new one, so a flag change keeps the other fields
+func (m *MemData) userMeta(userID, siteID string) metaUser {
+	if meta, ok := m.metaUsers[userID]; ok && meta.SiteID == siteID {
+		return meta
+	}
+	return metaUser{UserID: userID, SiteID: siteID, Details: engine.UserDetailEntry{UserID: userID}}
+}
+
 func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 
 	status := req.Update == engine.FlagTrue
@@ -403,20 +409,14 @@ func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
 				until = time.Now().Add(req.TTL)
 			}
 		}
-		meta := metaUser{
-			UserID:       req.UserID,
-			SiteID:       req.Locator.SiteID,
-			Blocked:      status,
-			BlockedUntil: until,
-		}
+		meta := m.userMeta(req.UserID, req.Locator.SiteID)
+		meta.Blocked = status
+		meta.BlockedUntil = until
 		m.metaUsers[req.UserID] = meta
 
 	case engine.Verified:
-		meta := metaUser{
-			UserID:   req.UserID,
-			SiteID:   req.Locator.SiteID,
-			Verified: status,
-		}
+		meta := m.userMeta(req.UserID, req.Locator.SiteID)
+		meta.Verified = status
 		m.metaUsers[req.UserID] = meta
 
 	case engine.ReadOnly:

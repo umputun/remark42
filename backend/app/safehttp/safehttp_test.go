@@ -60,6 +60,7 @@ func TestTransport_BlocksPrivate(t *testing.T) {
 	}
 	require.Error(t, err, "private address must be refused")
 	assert.Contains(t, err.Error(), "access to private address is not allowed")
+	assert.ErrorIs(t, err, ErrPrivateAddress, "the refusal is found in the client's error chain")
 }
 
 func TestTransport_AllowsPublic(t *testing.T) {

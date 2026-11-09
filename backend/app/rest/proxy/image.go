@@ -230,7 +230,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		}
 		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; transport contract above
 		return e
-	})
+	}, safehttp.ErrPrivateAddress) // a refused address stays refused, retrying only delays the failure
 	if err != nil {
 		return nil, fmt.Errorf("can't download image %s: %w", imgURL, err)
 	}

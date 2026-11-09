@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -128,7 +129,7 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 
 // get all posts via GET /list?site=siteID&limit=50&skip=10
 func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
-	listURL := fmt.Sprintf("%s/api/v1/list?site=%s&limit=10000", cc.RemarkURL, cc.Site)
+	listURL := fmt.Sprintf("%s/api/v1/list?site=%s&limit=10000", cc.RemarkURL, url.QueryEscape(cc.Site))
 	client := http.Client{Timeout: 30 * time.Second}
 	defer client.CloseIdleConnections()
 	r, err := client.Get(listURL)
@@ -150,7 +151,7 @@ func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
 
 // get all comments for post url via /find?site=siteID&url=post-url&format=[tree|plain]
 func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) {
-	commentsURL := fmt.Sprintf("%s/api/v1/find?site=%s&url=%s&format=plain", cc.RemarkURL, cc.Site, postURL)
+	commentsURL := fmt.Sprintf("%s/api/v1/find?site=%s&url=%s&format=plain", cc.RemarkURL, url.QueryEscape(cc.Site), url.QueryEscape(postURL))
 
 	var r *http.Response
 	var err error
@@ -190,7 +191,8 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) deleteComment(c store.Comment) error { //nolint:dupl // not worth combining
-	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
+	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, url.PathEscape(c.ID),
+		url.QueryEscape(cc.Site), url.QueryEscape(c.Locator.URL))
 	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to make delete request for comment %s, %s: %w", c.ID, c.Locator.URL, err)
@@ -212,7 +214,8 @@ func (cc *CleanupCommand) deleteComment(c store.Comment) error { //nolint:dupl /
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) setTitle(c store.Comment) error { //nolint:dupl // not worth combining
-	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, c.ID, cc.Site, c.Locator.URL)
+	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, url.PathEscape(c.ID),
+		url.QueryEscape(cc.Site), url.QueryEscape(c.Locator.URL))
 	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to make title request for comment %s, %s: %w", c.ID, c.Locator.URL, err)

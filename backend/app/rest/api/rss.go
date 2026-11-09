@@ -142,6 +142,9 @@ func (s *rss) toRssFeed(url string, comments []store.Comment, description string
 
 	feed.Items = []*feeds.Item{}
 	for i, c := range comments {
+		if i >= maxRssItems {
+			break
+		}
 		f := feeds.Item{
 			Title:       c.User.Name,
 			Link:        &feeds.Link{Href: c.Locator.URL + uiNav + c.ID},
@@ -165,9 +168,6 @@ func (s *rss) toRssFeed(url string, comments []store.Comment, description string
 		}
 
 		feed.Items = append(feed.Items, &f)
-		if i > maxRssItems {
-			break
-		}
 	}
 	return feed.ToRss()
 }
