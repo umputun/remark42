@@ -1758,9 +1758,10 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 	ts, srv, teardown := startupT(t, func(srv *Rest) {
 		require.NoError(t, srv.DataService.Engine.Close())
+		dir := t.TempDir()
 		b, err := engine.NewBoltDB(bolt.Options{},
-			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark42.db"), SiteID: "remark42"},
-			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "other.db"), SiteID: "other"})
+			engine.BoltSite{FileName: filepath.Join(dir, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(dir, "other.db"), SiteID: "other"})
 		require.NoError(t, err)
 		srv.DataService.Engine = b
 	})
@@ -1888,4 +1889,41 @@ func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
 	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
 	assert.Equal(t, http.StatusBadRequest, code, body)
 	assert.NotContains(t, body, "secret@example.com", "unsubscribe error echoes the address")
+}
+
+// a handshake with an empty user or address is rejected, not acted on with the empty part
+func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	for _, hs := range []string{"provider1_dev::", "::good@example.com"} {
+		t.Run(hs, func(t *testing.T) {
+			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+				Handshake: &token.Handshake{ID: hs},
+				RegisteredClaims: jwt.RegisteredClaims{
+					Audience:  jwt.ClaimStrings{"remark42"},
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+					NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+					Issuer:    "remark42",
+				},
+			})
+			require.NoError(t, err)
+
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+				strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "confirm rejects the handshake: %s", string(b))
+
+			body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+			assert.Equal(t, http.StatusBadRequest, code, "unsubscribe rejects the handshake: %s", body)
+		})
+	}
 }

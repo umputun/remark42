@@ -505,7 +505,7 @@ func (s *private) parseHandshake(tkn string) (userID, address string, herr *hand
 		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("no handshake in token"), details: "invalid handshake token"}
 	}
 	elems := strings.Split(claims.Handshake.ID, "::")
-	if len(elems) != 2 {
+	if len(elems) != 2 || elems[0] == "" || elems[1] == "" {
 		// the handshake carries the address, so it is not echoed into the error
 		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
 	}
