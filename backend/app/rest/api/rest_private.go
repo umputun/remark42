@@ -638,6 +638,14 @@ func (s *private) deleteTelegramCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"deleted": true})
 }
 
+const (
+	// userDataPageSize is how many comments userAllDataCtrl requests from the store at a time
+	userDataPageSize = 100
+	// maxUserDataComments bounds the user data export, so a store that keeps returning full pages
+	// (one ignoring skip, say) cannot make the export run forever; reaching it is logged
+	maxUserDataComments = 10000
+)
+
 // GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
 func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
@@ -648,48 +656,70 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// the first page is read before anything is written, so a store error still gets a normal JSON error
+	page, err := s.dataService.User(siteID, user.ID, userDataPageSize, 0, rest.GetUserOrEmpty(r))
+	if err != nil {
+		if !isNoUserComments(err) {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
+			return
+		}
+		page = nil // a user without comments still gets an export with their info
+	}
+
 	exportFile := fmt.Sprintf("%s-%s-%s.json.gz", siteID, user.ID, time.Now().Format("20060102"))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
+
+	// stream page by page, so memory use stays at one page whatever the user's history.
+	// After the first byte an error can only be logged; the gzip stream is then left unterminated,
+	// so the client sees a broken download instead of a complete-looking but truncated export.
 	gzWriter := gzip.NewWriter(w)
-	defer func() {
-		if e := gzWriter.Close(); e != nil {
-			log.Printf("[WARN] can't close gzip writer, %s", e)
+	write := func(b []byte) bool {
+		if _, e := gzWriter.Write(b); e != nil {
+			log.Printf("[WARN] can't write user data export for %s, %v", user.ID, e)
+			return false
 		}
-	}()
-
-	write := func(val []byte) error {
-		_, e := gzWriter.Write(val)
-		return e
+		return true
 	}
-
-	// send user prefix, user info and comments prefix
-	errs := []error{write([]byte(`{"info": `)), write(userB), write([]byte(`, "comments":`))}
-
-	// get comments in 100 in each paginated request
-	for i := range 100 {
-		comments, errUser := s.dataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
-		if errUser != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
-			return
-		}
-		b, errUser := json.Marshal(comments)
-		if errUser != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't marshal user comments", rest.ErrInternal)
-			return
-		}
-
-		errs = append(errs, write(b))
-		if len(comments) != 100 {
-			break
-		}
-	}
-
-	errs = append(errs, write([]byte(`}`)))
-	if err := errors.Join(errs...); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user info", rest.ErrInternal)
+	if !write([]byte(`{"info": `)) || !write(userB) || !write([]byte(`, "comments":[`)) {
 		return
 	}
+	for exported, skip := 0, 0; len(page) > 0; {
+		pageB, e := json.Marshal(page)
+		if e != nil {
+			log.Printf("[WARN] can't marshal user data export for %s, %v", user.ID, e)
+			return
+		}
+		pageB = pageB[1 : len(pageB)-1] // array elements only, the brackets are written once around all pages
+		if (exported > 0 && !write([]byte(","))) || !write(pageB) {
+			return
+		}
+		exported += len(page)
+		if len(page) < userDataPageSize {
+			break
+		}
+		if exported >= maxUserDataComments {
+			log.Printf("[WARN] user data export for %s stopped at %d comments", user.ID, exported)
+			break
+		}
+		skip += userDataPageSize
+		if page, e = s.dataService.User(siteID, user.ID, userDataPageSize, skip, rest.GetUserOrEmpty(r)); e != nil {
+			log.Printf("[WARN] can't get user comments for data export of %s, %v", user.ID, e)
+			return
+		}
+	}
+	if !write([]byte(`]}`)) {
+		return
+	}
+	if err = gzWriter.Close(); err != nil {
+		log.Printf("[WARN] can't close gzip writer, %v", err)
+	}
+}
+
+// isNoUserComments reports whether err means the user has no comments. The bolt store returns the
+// engine.ErrNoUserComments sentinel; the rpc store loses typed errors over jrpc, so its message is matched too.
+func isNoUserComments(err error) bool {
+	return errors.Is(err, engine.ErrNoUserComments) || strings.Contains(err.Error(), engine.ErrNoUserComments.Error())
 }
 
 // POST /deleteme?site_id=site - requesting delete of all user info

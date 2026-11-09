@@ -1465,6 +1465,62 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	assert.Equal(t, 51, strings.Count(strUngzBody, `"text":`), "51 comments inside")
 }
 
+func TestRest_UserAllDataPageBoundaries(t *testing.T) {
+	for _, n := range []int{100, 101, 250} {
+		t.Run(fmt.Sprintf("%d comments", n), func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			user := store.User{ID: "provider1_dev", Name: "user name 1"}
+			c := store.Comment{User: user, Text: "test", Locator: store.Locator{SiteID: "remark42",
+				URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.UTC)}
+			for i := range n {
+				c.ID = fmt.Sprintf("id-%03d", i)
+				c.Timestamp = c.Timestamp.Add(time.Second)
+				_, err := srv.DataService.Create(c)
+				require.NoError(t, err)
+			}
+
+			parsed := getUserAllData(t, ts.URL)
+			assert.Equal(t, n, len(parsed.Comments), "every comment is exported in one JSON array")
+		})
+	}
+}
+
+func TestRest_UserAllDataNoComments(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	parsed := getUserAllData(t, ts.URL)
+	assert.Equal(t, "provider1_dev", parsed.Info.ID)
+	assert.Empty(t, parsed.Comments)
+}
+
+// getUserAllData requests /userdata as the dev user and decodes the gzipped JSON export
+func getUserAllData(t *testing.T, url string) (res struct {
+	Info     store.User      `json:"info"`
+	Comments []store.Comment `json:"comments"`
+}) {
+	t.Helper()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url+"/api/v1/userdata?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	require.NoError(t, err)
+	body, err := io.ReadAll(ungzReader)
+	require.NoError(t, err, "gzip body decodes")
+	require.NoError(t, json.Unmarshal(body, &res), "export is valid JSON")
+	return res
+}
+
 func TestRest_DeleteMe(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
