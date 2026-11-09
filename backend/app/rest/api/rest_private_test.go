@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -22,10 +23,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
@@ -1749,4 +1752,56 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 			assert.Equal(t, tt.code, resp.StatusCode, string(b))
 		})
 	}
+}
+
+// subscribe and confirm act on the site matchSiteID verified in the query, not on a different site named in the body
+func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+	})
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(url, body string) int {
+		req, reqErr := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, reqErr)
+		req.Header.Add("X-JWT", devToken)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// the session belongs to remark42; the body names the other site.
+	// The address is already confirmed on the verified site, so subscribing to it again conflicts
+	_, err = srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusConflict, send("/api/v1/email/subscribe?site=remark42", `{"site":"other","address":"good@example.com"}`),
+		"subscribe checks the verified site")
+	require.NoError(t, srv.DataService.DeleteUserDetail("remark42", "provider1_dev", engine.UserEmail))
+
+	assert.Equal(t, http.StatusOK, send("/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"other","token":%q}`, tkn)))
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Equal(t, "good@example.com", email, "email set on the verified site")
+	email, err = srv.DataService.GetUserEmail("other", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "email not set on the site named only in the body")
 }

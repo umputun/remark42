@@ -335,6 +335,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
+	subscribe.Site = verifiedSite(r, subscribe.Site)
 	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
 	if getErr != nil {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, getErr)
@@ -478,7 +479,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 			"invalid handshake token", rest.ErrInternal)
 		return
 	}
-	s.setEmail(w, r, user.ID, confirm.Site, address)
+	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
 }
 
 // handshakeError is a failure to read the handshake from a confirmation token,
@@ -508,6 +509,16 @@ func (s *private) parseHandshake(tkn string) (userID, address string, herr *hand
 		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("%s", claims.Handshake.ID), details: "invalid handshake token"}
 	}
 	return elems[0], elems[1], nil
+}
+
+// verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
+// The site in the request body is used only when the query has none, which matchSiteID allows only for
+// the basic-auth admin.
+func verifiedSite(r *http.Request, bodySite string) string {
+	if site := r.URL.Query().Get("site"); site != "" {
+		return site
+	}
+	return bodySite
 }
 
 func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteID, address string) {
