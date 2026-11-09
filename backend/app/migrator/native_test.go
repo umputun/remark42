@@ -99,6 +99,44 @@ func TestNative_Import(t *testing.T) {
 
 	assert.Equal(t, true, b.IsBlocked("radio-t", "user2"))
 	assert.Equal(t, false, b.IsVerified("radio-t", "user2"))
+
+	website, err := b.GetUserWebsite("radio-t", "user1") // backup made before websites existed
+	require.NoError(t, err)
+	assert.Empty(t, website)
+}
+
+func TestNative_ExportImportWebsites(t *testing.T) {
+	src, teardownSrc := prep(t) // user1 and user2 have comments
+	defer teardownSrc()
+	_, err := src.SetUserWebsite("radio-t", "user1", "https://example.org/me")
+	require.NoError(t, err)
+	_, err = src.SetUserWebsite("radio-t", "user3", "example.com") // no comments
+	require.NoError(t, err)
+
+	buf := &bytes.Buffer{}
+	_, err = (&Native{DataStore: src}).Export(buf, "radio-t")
+	require.NoError(t, err)
+
+	dst, teardownDst := prep(t)
+	defer teardownDst()
+	require.NoError(t, dst.DeleteAll("radio-t"))
+	size, err := (&Native{DataStore: dst}).Import(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	// restored with USER_WEBSITE off
+	website, err := dst.GetUserWebsite("radio-t", "user1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.org/me", website)
+	website, err = dst.GetUserWebsite("radio-t", "user3")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com", website)
+
+	dst.UserWebsite = true
+	comments, err := dst.User("radio-t", "user1", 10, 0, store.User{})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(comments))
+	assert.Equal(t, "https://example.org/me", comments[0].User.Website)
 }
 
 func TestNative_ImportWithMapper(t *testing.T) {

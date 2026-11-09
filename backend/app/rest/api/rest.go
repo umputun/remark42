@@ -339,6 +339,8 @@ func (s *Rest) routes() http.Handler {
 			r.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
 			r.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
 			r.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
+			r.HandleFunc("PUT /website/{userid}", s.adminRest.setWebsiteCtrl)
+			r.HandleFunc("DELETE /website/{userid}", s.adminRest.deleteWebsiteCtrl)
 		})
 
 		// migrator routes deliberately run without R.Timeout: GET /export streams a full-site
@@ -370,6 +372,8 @@ func (s *Rest) routes() http.Handler {
 		rauth.With(rejectAnonUser).HandleFunc("DELETE /email", s.privRest.deleteEmailCtrl)
 		rauth.With(rejectAnonUser, rejectHead("GET")).HandleFunc("GET /telegram/subscribe", s.privRest.telegramSubscribeCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("DELETE /telegram", s.privRest.deleteTelegramCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("GET /website", s.privRest.getWebsiteCtrl)
+		rauth.With(rejectAnonUser).HandleFunc("PUT /website", s.privRest.setWebsiteCtrl)
 	})
 
 	// protected routes, anonymous rejected
@@ -404,6 +408,7 @@ func (s *Rest) routes() http.Handler {
 }
 
 func (s *Rest) controllerGroups() (public, private, admin, rss) {
+	userWebsite := s.DataService != nil && s.DataService.UserWebsite
 	pubGrp := public{
 		dataService:      s.DataService,
 		cache:            s.Cache,
@@ -424,6 +429,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		remarkURL:                  s.RemarkURL,
 		anonVote:                   s.AnonVote,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
+		userWebsite:                userWebsite,
 	}
 
 	admGrp := admin{
@@ -432,6 +438,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		cache:         s.Cache,
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
+		userWebsite:   userWebsite,
 	}
 
 	rssGrp := rss{
@@ -479,6 +486,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		SimpleView            bool     `json:"simple_view"`
 		SendJWTHeader         bool     `json:"send_jwt_header"`
 		SubscribersOnly       bool     `json:"subscribers_only"`
+		UserWebsite           bool     `json:"user_website"`
 	}{
 		Version:               s.Version,
 		EditDuration:          int(s.DataService.EditDuration.Seconds()),
@@ -498,6 +506,7 @@ func (s *Rest) configCtrl(w http.ResponseWriter, r *http.Request) {
 		AnonVote:              s.AnonVote,
 		SimpleView:            s.SimpleView,
 		SendJWTHeader:         s.SendJWTHeader,
+		UserWebsite:           s.DataService.UserWebsite,
 		SubscribersOnly:       s.SubscribersOnly,
 	}
 

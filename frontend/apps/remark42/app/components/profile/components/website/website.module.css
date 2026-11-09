@@ -1,0 +1,43 @@
+.link {
+  display: block;
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  color: rgb(var(--primary-color));
+  font-size: 13px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link:hover,
+.link:focus-visible {
+  text-decoration: underline;
+}
+
+.toggle {
+  margin-top: 6px;
+  padding: 0;
+}
+
+.form {
+  margin-top: 8px;
+}
+
+.input {
+  width: 100%;
+}
+
+.error {
+  margin: 4px 0 0;
+  color: var(--error-color);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
