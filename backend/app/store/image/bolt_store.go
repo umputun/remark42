@@ -103,13 +103,15 @@ func (b *Bolt) ResetCleanupTimer(id string) error {
 func (b *Bolt) Load(id string) ([]byte, error) {
 	var data []byte
 	err := b.db.View(func(tx *bolt.Tx) error {
-		data = tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
-		if data == nil {
-			data = tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
+		value := tx.Bucket([]byte(imagesBktName)).Get([]byte(id))
+		if value == nil {
+			value = tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		}
-		if data == nil {
+		if value == nil {
 			return fmt.Errorf("can't load image %s", id)
 		}
+		// the value points into bolt's memory map and is only valid until the transaction ends
+		data = bytes.Clone(value)
 		return nil
 	})
 	if err != nil {
