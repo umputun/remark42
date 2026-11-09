@@ -820,3 +820,26 @@ func getReq(locator store.Locator, commentID string) engine.GetRequest {
 		CommentID: commentID,
 	}
 }
+
+func TestMemData_FlagsKeepUserMeta(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+
+	_, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1", Update: "u1@example.com"})
+	require.NoError(t, err)
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+
+	verified, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, verified, "a blocked user with an email is not listed as verified")
+
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+	blocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1"})
+	require.NoError(t, err)
+	assert.True(t, blocked, "verifying a user keeps the block")
+	email, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1"})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, email, "flag changes keep the email")
+}
