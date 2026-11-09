@@ -384,7 +384,7 @@ func (b *BoltDB) Delete(req DeleteRequest) error {
 	case req.Locator.URL != "" && req.CommentID != "" && req.UserDetail == "": // delete comment
 		return b.deleteComment(bdb, req.Locator, req.CommentID, req.DeleteMode)
 	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "": // delete user
-		return b.deleteUser(bdb, req.Locator.SiteID, req.UserID, req.DeleteMode)
+		return b.deleteUser(bdb, req.UserID, req.DeleteMode)
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
 		return b.deleteAll(bdb, req.Locator.SiteID)
 	}
@@ -779,27 +779,20 @@ func (b *BoltDB) deleteAll(bdb *bolt.DB, siteID string) error {
 
 // deleteUser removes all comments and details for given user. Everything will be market as deleted
 // and user name and userID will be changed to "deleted". Also removes from last and from user buckets.
-func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.DeleteMode) error {
-	// get list of all comments outside of transaction loop
-	posts, err := b.Info(InfoRequest{Locator: store.Locator{SiteID: siteID}})
-	if err != nil {
-		return err
-	}
-
+func (b *BoltDB) deleteUser(bdb *bolt.DB, userID string, mode store.DeleteMode) error {
 	type commentInfo struct {
 		locator   store.Locator
 		commentID string
 	}
 
-	// get list of commentID for all user's comment
+	// collect all user's comments in one pass over the posts
 	comments := []commentInfo{}
-	for _, postInfo := range posts {
-		err = bdb.View(func(tx *bolt.Tx) error {
-			postsBkt := tx.Bucket([]byte(postsBucketName))
-			postBkt := postsBkt.Bucket([]byte(postInfo.URL))
-			err = postBkt.ForEach(func(_ []byte, commentVal []byte) error {
+	err := bdb.View(func(tx *bolt.Tx) error {
+		postsBkt := tx.Bucket([]byte(postsBucketName))
+		return postsBkt.ForEachBucket(func(postURL []byte) error {
+			e := postsBkt.Bucket(postURL).ForEach(func(_, commentVal []byte) error {
 				comment := store.Comment{}
-				if err = json.Unmarshal(commentVal, &comment); err != nil {
+				if err := json.Unmarshal(commentVal, &comment); err != nil {
 					return fmt.Errorf("failed to unmarshal: %w", err)
 				}
 				if comment.User.ID == userID {
@@ -807,14 +800,14 @@ func (b *BoltDB) deleteUser(bdb *bolt.DB, siteID, userID string, mode store.Dele
 				}
 				return nil
 			})
-			if err != nil {
-				return fmt.Errorf("failed to collect list of comments for deletion from %s: %w", postInfo.URL, err)
+			if e != nil {
+				return fmt.Errorf("failed to collect list of comments for deletion from %s: %w", postURL, e)
 			}
 			return nil
 		})
-		if err != nil {
-			return err
-		}
+	})
+	if err != nil {
+		return err
 	}
 
 	log.Printf("[DEBUG] comments for removal=%d", len(comments))
