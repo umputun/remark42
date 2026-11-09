@@ -1403,6 +1403,7 @@ func TestRest_UserAllData(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	require.NoError(t, err)
+	defer ungzReader.Close()
 	require.NoError(t, resp.Body.Close())
 	ungzBody, err := io.ReadAll(ungzReader)
 	require.NoError(t, err)
@@ -1456,6 +1457,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
+	defer ungzReader.Close()
 	assert.NoError(t, resp.Body.Close())
 	ungzBody, err := io.ReadAll(ungzReader)
 	assert.NoError(t, err)
@@ -1515,6 +1517,7 @@ func getUserAllData(t *testing.T, url string) (res struct {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	require.NoError(t, err)
+	defer ungzReader.Close()
 	body, err := io.ReadAll(ungzReader)
 	require.NoError(t, err, "gzip body decodes")
 	require.NoError(t, json.Unmarshal(body, &res), "export is valid JSON")
