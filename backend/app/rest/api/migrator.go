@@ -253,12 +253,12 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[DEBUG] start import for site=%s", siteID)
 		mappedReader := migrator.WithMapper(fh, mapper)
 		size, e := m.NativeImporter.Import(mappedReader, siteID)
+		m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID)) // a failed import may have changed the site's comments too
 		if e != nil {
 			log.Printf("[WARN] import failed with %+v", e)
 			return
 		}
 
-		m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
 		log.Printf("[DEBUG] convert request completed. site=%s, comments=%d", siteID, size)
 	}()
 
@@ -294,11 +294,11 @@ func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 	}
 
 	size, err := importer.Import(fh, siteID)
+	m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID)) // a failed import may have changed the site's comments too
 	if err != nil {
 		log.Printf("[WARN] import failed, %v", err)
 		return
 	}
-	m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
 	log.Printf("[DEBUG] import request completed. site=%s, provider=%s, comments=%d", siteID, provider, size)
 }
 

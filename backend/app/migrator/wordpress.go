@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -61,35 +62,12 @@ func (w *WordPress) Convert(text string) string {
 
 // Import comments from WP and save to store
 func (w *WordPress) Import(r io.Reader, siteID string) (size int, err error) {
-	if e := w.DataStore.DeleteAll(siteID); e != nil {
-		return 0, e
-	}
-
-	commentsCh := w.convert(r, siteID)
-	failed, passed := 0, 0
-	for c := range commentsCh {
-		if _, err = w.DataStore.Create(c); err != nil {
-			failed++
-			continue
-		}
-		passed++
-	}
-
-	if failed > 0 {
-		err = fmt.Errorf("failed to save %d comments", failed)
-		if passed == 0 {
-			err = fmt.Errorf("import failed")
-		}
-	}
-
-	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
-
-	return passed, err
+	return importComments(w.DataStore, r, siteID, w.convert)
 }
 
-func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
+// convert reads WordPress export (xml) from r and passes each approved comment to emit
+func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment) error) error {
 	decoder := xml.NewDecoder(r)
-	commentsCh := make(chan store.Comment)
 
 	stats := struct {
 		inpItems, failedItems       int
@@ -99,58 +77,81 @@ func (w *WordPress) convert(r io.Reader, siteID string) chan store.Comment {
 
 	commentFormatter := store.NewCommentFormatter(w)
 
-	go func() {
-		for {
-			t, err := decoder.Token()
-			if t == nil || err != nil {
-				break
+	rootSeen, wxrSeen := false, false // a WordPress export (WXR) is an rss document with <wp:wxr_version> in its channel
+	for {
+		t, err := decoder.Token()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("can't read wordpress export: %w", err)
+		}
+		if se, ok := t.(xml.StartElement); ok && !rootSeen {
+			if se.Name.Local != "rss" {
+				return fmt.Errorf("not a wordpress export, the root element is <%s>", se.Name.Local)
 			}
+			rootSeen = true
+			continue
+		}
 
-			if el, ok := t.(xml.StartElement); ok {
-				if el.Name.Local == "item" {
-					stats.inpItems++
-					item := wpItem{}
-					if err = decoder.DecodeElement(&item, &el); err != nil {
-						log.Printf("[WARN] Can't decode item, %s", err)
-						stats.failedItems++
-						continue
-					}
-					if item.Comments != nil {
-						for _, comment := range item.Comments {
-							if comment.Approved != "1" {
-								stats.rejectedComments++
-								continue
-							}
+		if el, ok := t.(xml.StartElement); ok {
+			if el.Name.Local == "wxr_version" {
+				wxrSeen = true
+				continue
+			}
+			if el.Name.Local == "item" {
+				if !wxrSeen {
+					return fmt.Errorf("not a wordpress export, no <wp:wxr_version> before the first item")
+				}
+				stats.inpItems++
+				item := wpItem{}
+				if err = decoder.DecodeElement(&item, &el); err != nil {
+					log.Printf("[WARN] Can't decode item, %s", err)
+					stats.failedItems++
+					continue
+				}
+				if item.Comments != nil {
+					for _, comment := range item.Comments {
+						if comment.Approved != "1" {
+							stats.rejectedComments++
+							continue
+						}
 
-							if comment.PID == "0" {
-								comment.PID = ""
-							}
+						if comment.PID == "0" {
+							comment.PID = ""
+						}
 
-							c := store.Comment{
-								ID:      comment.ID,
-								Locator: store.Locator{URL: item.Link, SiteID: siteID},
-								User: store.User{
-									ID:   "wordpress_" + store.EncodeID(comment.Author),
-									Name: comment.Author,
-									IP:   comment.AuthorIP,
-								},
-								Text:      comment.Content,
-								Timestamp: comment.Date.time,
-								ParentID:  comment.PID,
-								Imported:  true,
-							}
-							commentsCh <- commentFormatter.Format(c, w.DisableFancyTextFormatting)
-							stats.inpComments++
-							if stats.inpComments%1000 == 0 {
-								log.Printf("[DEBUG] processed %d comments", stats.inpComments)
-							}
+						c := store.Comment{
+							ID:      comment.ID,
+							Locator: store.Locator{URL: item.Link, SiteID: siteID},
+							User: store.User{
+								ID:   "wordpress_" + store.EncodeID(comment.Author),
+								Name: comment.Author,
+								IP:   comment.AuthorIP,
+							},
+							Text:      comment.Content,
+							Timestamp: comment.Date.time,
+							ParentID:  comment.PID,
+							Imported:  true,
+						}
+						if err := emit(commentFormatter.Format(c, w.DisableFancyTextFormatting)); err != nil {
+							return err
+						}
+						stats.inpComments++
+						if stats.inpComments%1000 == 0 {
+							log.Printf("[DEBUG] processed %d comments", stats.inpComments)
 						}
 					}
 				}
 			}
 		}
-		close(commentsCh)
-		log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
-	}()
-	return commentsCh
+	}
+	if !rootSeen || !wxrSeen {
+		return fmt.Errorf("not a wordpress export, no <rss> element with <wp:wxr_version> found")
+	}
+	if stats.inpComments == 0 && stats.failedItems > 0 {
+		return fmt.Errorf("no comments could be read from the wordpress export, %d items failed to decode", stats.failedItems)
+	}
+	log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
+	return nil
 }

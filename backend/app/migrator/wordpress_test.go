@@ -70,12 +70,12 @@ func TestWordPress_Import(t *testing.T) {
 
 func TestWordPress_Convert(t *testing.T) {
 	wp := WordPress{}
-	ch := wp.convert(strings.NewReader(xmlTestWP), "testWP")
-
 	comments := make([]store.Comment, 0, 3)
-	for c := range ch {
+	err := wp.convert(strings.NewReader(xmlTestWP), "testWP", func(c store.Comment) error {
 		comments = append(comments, c)
-	}
+		return nil
+	})
+	require.NoError(t, err)
 	require.Equal(t, 3, len(comments), "3 comments exported, 1 excluded")
 
 	exp1 := store.Comment{
@@ -98,12 +98,12 @@ func TestWordPress_Convert(t *testing.T) {
 
 func TestWP_Convert_MD(t *testing.T) {
 	wp := WordPress{}
-	ch := wp.convert(strings.NewReader(xmlTestWPmd), "siteID")
-
 	comments := make([]store.Comment, 0, 3)
-	for c := range ch {
+	err := wp.convert(strings.NewReader(xmlTestWPmd), "siteID", func(c store.Comment) error {
 		comments = append(comments, c)
-	}
+		return nil
+	})
+	require.NoError(t, err)
 	require.Equal(t, 3, len(comments), "3 comments exported")
 
 	assert.Equal(t, "<p>Row1<br/>\nRow2</p>\n\n<p>Row4</p>\n", comments[0].Text)
@@ -273,7 +273,9 @@ var xmlTestWP = `
 // parts of unused xml tags are omitted
 var xmlTestWPmd = `
 <?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
 <channel>
+	<wp:wxr_version>1.2</wp:wxr_version>
 	<item>
 		<title>Deploying RancherOS on Vultr instances</title>
 		<link>https://realmenweardress.es/2016/07/deploying-rancheros-on-vultr-instances/</link>
