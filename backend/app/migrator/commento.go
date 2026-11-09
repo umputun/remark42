@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -64,8 +65,13 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 		Comments   json.RawMessage `json:"comments"`
 		Commenters json.RawMessage `json:"commenters"`
 	}
-	if err := json.NewDecoder(r).Decode(&raw); err != nil {
+	dec := json.NewDecoder(r)
+	if err := dec.Decode(&raw); err != nil {
 		return fmt.Errorf("can't read commento export: %w", err)
+	}
+	// the export is a single object, anything after it means the file is not what it claims to be
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return fmt.Errorf("can't read commento export: unexpected data after the export object")
 	}
 	if raw.Comments == nil || raw.Commenters == nil {
 		return fmt.Errorf("not a commento export, no comments and commenters lists found")

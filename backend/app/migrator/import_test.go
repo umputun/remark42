@@ -45,6 +45,10 @@ func TestImporters_UnreadableInput(t *testing.T) {
 		{"commento given native export", func(ds Store) Importer { return &Commento{DataStore: ds} },
 			`{"version":1,"users":[{"id":"u1"}],"posts":[{"url":"https://example.com/p1"}]}` + "\n" + `{"id":"c1","text":"t"}` + "\n", true},
 		{"commento given other json", func(ds Store) Importer { return &Commento{DataStore: ds} }, `{"name":"x","items":[1,2]}`, true},
+		{"commento export followed by garbage", func(ds Store) Importer { return &Commento{DataStore: ds} },
+			`{"comments":[],"commenters":[]}garbage`, true},
+		{"commento export followed by a truncated object", func(ds Store) Importer { return &Commento{DataStore: ds} },
+			`{"comments":[],"commenters":[]} {"comments":[`, true},
 		{"disqus every record failed", func(ds Store) Importer { return &Disqus{DataStore: ds} },
 			`<disqus><thread dsq:id="t1"><link>https://example.com/p2</link><createdAt>bad</createdAt></thread>` +
 				`<post dsq:id="p1"><message>m</message><createdAt>bad</createdAt><thread dsq:id="t1"/></post></disqus>`, true},
