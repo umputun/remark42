@@ -1091,3 +1091,46 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	_, code = getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=remark42&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, http.StatusBadRequest, code, "no info about user")
 }
+
+// a token without a user, such as an email confirmation token, is refused, not dereferenced
+func TestAdmin_DeleteMeRequestTokenWithoutUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::me@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			Issuer:    "remark42",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		},
+	})
+	require.NoError(t, err)
+
+	body, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn))
+	assert.Equal(t, http.StatusForbidden, code, body)
+}
+
+// emptyUserFinder answers a user's comments with an empty list and no error, as a remote engine such as
+// the memory_store example does for a user it has never seen
+type emptyUserFinder struct{ engine.Interface }
+
+func (e emptyUserFinder) Find(req engine.FindRequest) ([]store.Comment, error) {
+	if req.UserID != "" {
+		return []store.Comment{}, nil
+	}
+	return e.Interface.Find(req)
+}
+
+// an empty user list without an error is reported as a client error, not passed on as a nil error
+func TestAdmin_GetUserInfoEmptyWithoutError(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.DataService.Engine = emptyUserFinder{Interface: srv.DataService.Engine}
+	})
+	defer teardown()
+
+	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/user/nobody?site=remark42")
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.Contains(t, body, "no comments for user nobody")
+}

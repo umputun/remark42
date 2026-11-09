@@ -1701,3 +1701,52 @@ func TestExtractIP(t *testing.T) {
 		})
 	}
 }
+
+// a token without a handshake, such as the login token, used as a confirmation token is rejected as invalid,
+// not dereferenced
+func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{"remark42"},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:    "remark42",
+		},
+	})
+	require.NoError(t, err)
+
+	tbl := []struct {
+		name, method, url, body string
+		code                    int
+	}{
+		{name: "confirm with a login token", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, devToken), code: http.StatusBadRequest},
+		{name: "confirm with another user's handshake", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, otherUserTkn), code: http.StatusBadRequest},
+		{name: "unsubscribe with a login token", method: http.MethodGet, url: "/email/unsubscribe.html?site=remark42&tkn=" + devToken,
+			code: http.StatusBadRequest},
+	}
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var body io.Reader = http.NoBody
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			req, err := http.NewRequest(tt.method, ts.URL+tt.url, body)
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, tt.code, resp.StatusCode, string(b))
+		})
+	}
+}
