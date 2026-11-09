@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	cache "github.com/go-pkgz/lcw/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -237,6 +239,43 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, comments.Info.Count)
 	require.Equal(t, 2, len(comments.Comments), "2 comments with 1 reply")
+}
+
+func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+		srv.Migrator.Cache = srv.Cache
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah-before-import"
+	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is listed, and the listing is cached")
+
+	// both items read, so the site is replaced, then the input breaks off
+	wp := strings.ReplaceAll(xmlTestWP, "'", "`")
+	truncated := wp[:strings.LastIndex(wp, "</item>")+len("</item>")] + "\n<item><title>cut"
+
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=wordpress", strings.NewReader(truncated))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusAccepted, resp.StatusCode)
+	waitForMigrationCompletion(t, ts)
+
+	res, _ = get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after a failed import")
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://realmenweardress.es/2010/07/do-you-rp/")
+	require.Equal(t, http.StatusOK, code)
+	assert.Contains(t, res, `"count":3`, "comments read before the input broke off are imported")
 }
 
 func TestMigrator_ImportFromCommento(t *testing.T) {
@@ -650,6 +689,45 @@ func TestMigrator_Remap(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, comments.Info.Count)
 	require.Equal(t, 0, len(comments.Comments))
+}
+
+// clearingFailedImporter clears the site and then fails, like an import that breaks off part way
+type clearingFailedImporter struct{ ds *service.DataStore }
+
+func (c clearingFailedImporter) Import(r io.Reader, siteID string) (int, error) {
+	if _, err := io.Copy(io.Discard, r); err != nil { // the remap mapper writes into a pipe until it is read
+		return 0, err
+	}
+	if err := c.ds.DeleteAll(siteID); err != nil {
+		return 0, err
+	}
+	return 0, errors.New("import broke off")
+}
+
+func TestMigrator_RemapFailureFlushesCache(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+		srv.Migrator.Cache = srv.Cache
+		srv.Migrator.NativeImporter = clearingFailedImporter{ds: srv.DataService}
+	})
+	defer teardown()
+
+	const postURL = "https://remark42.com/demo/"
+	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is listed, and the listing is cached")
+
+	resp, err := post(t, ts.URL+"/api/v1/admin/remap?site=remark42", "https://remark42.com/* https://www.remark42.com/*")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusAccepted, resp.StatusCode)
+	waitForMigrationCompletion(t, ts)
+
+	res, _ = get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after a failed remap import")
 }
 
 func TestMigrator_RemapReject(t *testing.T) {
