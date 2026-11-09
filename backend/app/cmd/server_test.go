@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1565,4 +1566,19 @@ func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
 
 	cancel()
 	app.Wait()
+}
+
+func TestServerCommand_ExecuteReturnsSetupError(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p := flags.NewParser(&s, flags.Default)
+	tmp := t.TempDir()
+	args := []string{"--store.bolt.path=/dev/null", "--backup=" + tmp, "--image.fs.path=" + tmp,
+		"--avatar.fs.path=" + filepath.Join(tmp, "avatars")}
+	_, err := p.ParseArgs(args)
+	require.NoError(t, err)
+
+	// a misconfiguration comes back as an error for main to report, without a stack dump and exit
+	err = s.Execute(args)
+	require.ErrorContains(t, err, "failed to setup application: failed to make data store engine")
 }

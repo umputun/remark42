@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-pkgz/auth/v2/avatar"
@@ -46,4 +47,17 @@ type avatarMigratorMock struct {
 func (a *avatarMigratorMock) Migrate(_, _ avatar.Store) (int, error) {
 	a.called++
 	return a.retCount, a.retError
+}
+
+func TestAvatar_ExecuteURIStore(t *testing.T) {
+	tmp := t.TempDir()
+	mock := &avatarMigratorMock{retCount: 1}
+	cmd := AvatarCommand{migrator: mock}
+	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
+	p := flags.NewParser(&cmd, flags.Default)
+	_, err := p.ParseArgs([]string{"--src.type=uri", "--src.uri=" + filepath.Join(tmp, "src"),
+		"--dst.type=uri", "--dst.uri=bolt://" + filepath.Join(tmp, "dst.db")})
+	require.NoError(t, err)
+	require.NoError(t, cmd.Execute(nil), "the uri store type offered by --src.type and --dst.type is accepted")
+	assert.Equal(t, 1, mock.called)
 }

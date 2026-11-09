@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -361,18 +360,23 @@ func (s *ServerCommand) Execute(_ []string) error {
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop)
 	go func() { // catch signal and invoke graceful termination
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-		<-stop
-		log.Printf("[WARN] interrupt signal")
-		cancel()
+		select {
+		case <-stop:
+			log.Printf("[WARN] interrupt signal")
+			cancel()
+		case <-ctx.Done():
+		}
 	}()
 
 	app, err := s.newServerApp(ctx)
 	if err != nil {
-		log.Printf("[PANIC] failed to setup application, %+v", err)
-		return err
+		// returned to main, which logs it; a PANIC level here would dump the stack and exit before the return
+		return fmt.Errorf("failed to setup application: %w", err)
 	}
 	if err = app.run(ctx); err != nil {
 		log.Printf("[ERROR] remark terminated with error %+v", err)
@@ -987,22 +991,7 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 
 func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 	log.Printf("[INFO] make avatar store, type=%s", s.Avatar.Type)
-
-	switch s.Avatar.Type {
-	case "fs":
-		if err := makeDirs(s.Avatar.FS.Path); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
-		}
-		return avatar.NewLocalFS(s.Avatar.FS.Path), nil
-	case "bolt":
-		if err := makeDirs(path.Dir(s.Avatar.Bolt.File)); err != nil {
-			return nil, fmt.Errorf("failed to create avatar store: %w", err)
-		}
-		return avatar.NewBoltDB(s.Avatar.Bolt.File, bolt.Options{})
-	case "uri":
-		return avatar.NewStore(s.Avatar.URI)
-	}
-	return nil, fmt.Errorf("unsupported avatar store type %s", s.Avatar.Type)
+	return newAvatarStore(s.Avatar)
 }
 
 func (s *ServerCommand) makePicturesStore() (*image.Service, error) {

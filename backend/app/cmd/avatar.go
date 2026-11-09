@@ -69,6 +69,11 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 
 func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 	log.Printf("[DEBUG] make avatar store, type=%s", gr.Type)
+	return newAvatarStore(gr)
+}
+
+// newAvatarStore makes the avatar store of the configured type, shared by the server and the avatar command
+func newAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 	switch gr.Type {
 	case "fs":
 		if err := makeDirs(gr.FS.Path); err != nil {
@@ -80,6 +85,8 @@ func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 			return nil, fmt.Errorf("failed to create avatar store: %w", err)
 		}
 		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{})
+	case "uri":
+		return avatar.NewStore(gr.URI)
 	}
 	return nil, fmt.Errorf("unsupported avatar store type %s", gr.Type)
 }
