@@ -28,6 +28,24 @@ func TestService_CloseDeliversQueued(t *testing.T) {
 	})
 }
 
+func TestService_CloseDeliversBothQueues(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		d := &slowDest{delay: 100 * time.Millisecond}
+		s := NewService(nil, 10, d)
+		for _, id := range []string{"1", "2", "3"} {
+			s.Submit(Request{Comment: store.Comment{ID: id}})
+			s.SubmitVerification(VerificationRequest{SiteID: "site", User: "u" + id, Email: id + "@example.com", Token: "t"})
+		}
+		synctest.Wait() // the consumer holds one request in a send, the rest stay queued in both queues
+		require.NotEmpty(t, s.queue, "notifications still queued when Close is called")
+		require.NotEmpty(t, s.verificationQueue, "verifications still queued when Close is called")
+		s.Close()
+		assert.Equal(t, int32(3), d.delivered.Load(), "queued notifications delivered before Close returns")
+		assert.Equal(t, int32(3), d.verified.Load(), "queued verifications delivered before Close returns")
+		assert.Equal(t, int32(0), d.aborted.Load())
+	})
+}
+
 func TestService_CloseCancelsAfterTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		d := &slowDest{delay: time.Hour}
@@ -96,6 +114,7 @@ func TestService_CloseTwiceWithDestinations(t *testing.T) {
 type slowDest struct {
 	delay     time.Duration
 	delivered atomic.Int32
+	verified  atomic.Int32
 	aborted   atomic.Int32
 }
 
@@ -111,7 +130,15 @@ func (d *slowDest) Send(ctx context.Context, _ Request) error {
 	return nil
 }
 
-func (d *slowDest) SendVerification(context.Context, VerificationRequest) error { return nil }
+func (d *slowDest) SendVerification(ctx context.Context, _ VerificationRequest) error {
+	select {
+	case <-time.After(d.delay):
+		d.verified.Add(1)
+	case <-ctx.Done():
+		d.aborted.Add(1)
+	}
+	return nil
+}
 
 // blockingStore blocks the parent lookup in Submit until released
 type blockingStore struct {
