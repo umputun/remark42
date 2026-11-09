@@ -1,7 +1,9 @@
 package image
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -57,6 +59,23 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 
 	_, err = svc.Load("abcd")
 	assert.Error(t, err)
+}
+
+func TestBoltStore_LoadedDataSurvivesLaterWrites(t *testing.T) {
+	svc, teardown := prepareBoltImageStorageTest(t)
+	defer teardown()
+
+	// the image is large enough to take its own overflow pages, which bolt reuses once it's deleted
+	orig := bytes.Repeat([]byte("A"), 8192)
+	require.NoError(t, svc.Save("u/first", orig))
+	got, err := svc.Load("u/first")
+	require.NoError(t, err)
+
+	require.NoError(t, svc.Delete("u/first"))
+	for i := 0; i < 50; i++ {
+		require.NoError(t, svc.Save(fmt.Sprintf("u/other%d", i), bytes.Repeat([]byte("C"), 8192)))
+	}
+	assert.True(t, bytes.Equal(orig, got), "loaded image changed after later writes to the store, starts with %q", got[:16])
 }
 
 func TestBoltStore_LoadAfterDelete(t *testing.T) {
