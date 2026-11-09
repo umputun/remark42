@@ -84,8 +84,7 @@ func NewBoltDB(options bolt.Options, sites ...BoltSite) (*BoltDB, error) {
 
 // Create saves new comment to store. Adds to posts bucket, reference to last and user bucket and increments count bucket
 func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
-	bdb, err := b.db(comment.Locator.SiteID)
-	if err != nil {
+	if _, err = b.db(comment.Locator.SiteID); err != nil {
 		return "", err
 	}
 
@@ -93,7 +92,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 
-	err = bdb.Update(func(tx *bolt.Tx) (err error) {
+	err = b.update(comment.Locator.SiteID, func(tx *bolt.Tx) (err error) {
 		var postBkt, lastBkt, userBkt *bolt.Bucket
 
 		if postBkt, err = b.makePostBucket(tx, comment.Locator.URL); err != nil {
@@ -139,12 +138,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 
 // Get returns comment for locator.URL and commentID string
 func (b *BoltDB) Get(req GetRequest) (comment store.Comment, err error) {
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
-		return comment, err
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
+	err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 		bucket, e := b.getPostBucket(tx, req.Locator.URL)
 		if e != nil {
 			return e
@@ -158,14 +152,13 @@ func (b *BoltDB) Get(req GetRequest) (comment store.Comment, err error) {
 func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
+	if _, err = b.db(req.Locator.SiteID); err != nil {
 		return nil, err
 	}
 
 	switch {
 	case req.Locator.SiteID != "" && req.Locator.URL != "": // find post comments, i.e. for site and url
-		err = bdb.View(func(tx *bolt.Tx) error {
+		err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 			bucket, e := b.getPostBucket(tx, req.Locator.URL)
 			if e != nil {
 				return e
@@ -242,12 +235,7 @@ func (b *BoltDB) Update(comment store.Comment) error {
 		comment.User = curComment.User
 	}
 
-	bdb, err := b.db(comment.Locator.SiteID)
-	if err != nil {
-		return err
-	}
-
-	return bdb.Update(func(tx *bolt.Tx) error {
+	return b.update(comment.Locator.SiteID, func(tx *bolt.Tx) error {
 		bucket, e := b.getPostBucket(tx, comment.Locator.URL)
 		if e != nil {
 			return e
@@ -258,13 +246,12 @@ func (b *BoltDB) Update(comment store.Comment) error {
 
 // Count returns number of comments for post or user
 func (b *BoltDB) Count(req FindRequest) (count int, err error) {
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
+	if _, err = b.db(req.Locator.SiteID); err != nil {
 		return 0, err
 	}
 
 	if req.Locator.URL != "" { // comment's count for post
-		err = bdb.View(func(tx *bolt.Tx) error {
+		err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 			var e error
 			count, e = b.count(tx, req.Locator.URL, 0)
 			return e
@@ -273,7 +260,7 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 	}
 
 	if req.UserID != "" { // comment's count for user
-		err = bdb.View(func(tx *bolt.Tx) error {
+		err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 			usersBkt := tx.Bucket([]byte(userBucketName))
 			userIDBkt := usersBkt.Bucket([]byte(req.UserID))
 			if userIDBkt == nil {
@@ -291,14 +278,13 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 
 // Info get post(s) meta info
 func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
-	bdb, err := b.db(req.Locator.SiteID)
-	if err != nil {
+	if _, err := b.db(req.Locator.SiteID); err != nil {
 		return []store.PostInfo{}, err
 	}
 
 	if req.Locator.URL != "" { // post info
 		info := store.PostInfo{}
-		err = bdb.View(func(tx *bolt.Tx) error {
+		err := b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 			infoBkt := tx.Bucket([]byte(infoBucketName))
 			if e := b.load(infoBkt, req.Locator.URL, &info); e != nil {
 				return fmt.Errorf("can't load info for %s: %w", req.Locator.URL, e)
@@ -316,7 +302,7 @@ func (b *BoltDB) Info(req InfoRequest) ([]store.PostInfo, error) {
 
 	if req.Locator.URL == "" && req.Locator.SiteID != "" { // site info (list)
 		list := []store.PostInfo{}
-		err = bdb.View(func(tx *bolt.Tx) error {
+		err := b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 			postsBkt := tx.Bucket([]byte(postsBucketName))
 
 			c := postsBkt.Cursor()
@@ -432,12 +418,7 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 		maximum = lastLimit
 	}
 
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = bdb.View(func(tx *bolt.Tx) error {
+	err = b.view(siteID, func(tx *bolt.Tx) error {
 		lastBkt := tx.Bucket([]byte(lastBucketName))
 		c := lastBkt.Cursor()
 
@@ -483,17 +464,12 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 	comments = []store.Comment{}
 	commentRefs := []string{}
 
-	bdb, err := b.db(siteID)
-	if err != nil {
-		return nil, err
-	}
-
 	if limit == 0 || limit > userLimit {
 		limit = userLimit
 	}
 
 	// get list of references to comments
-	err = bdb.View(func(tx *bolt.Tx) error {
+	err = b.view(siteID, func(tx *bolt.Tx) error {
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
 		if userIDBkt == nil {
@@ -1013,6 +989,24 @@ func (b *BoltDB) db(siteID string) (*bolt.DB, error) {
 		return res, nil
 	}
 	return nil, fmt.Errorf("site %q %w", siteID, ErrSiteNotFound)
+}
+
+// view runs fn in a read-only transaction on the site's db
+func (b *BoltDB) view(siteID string, fn func(tx *bolt.Tx) error) error {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+	return bdb.View(fn)
+}
+
+// update runs fn in a read-write transaction on the site's db
+func (b *BoltDB) update(siteID string, fn func(tx *bolt.Tx) error) error {
+	bdb, err := b.db(siteID)
+	if err != nil {
+		return err
+	}
+	return bdb.Update(fn)
 }
 
 // makeRef creates reference combining url and comment id
