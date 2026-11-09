@@ -31,6 +31,7 @@ type Comment struct {
 	Deleted     bool                   `json:"delete,omitempty" bson:"delete"`
 	Imported    bool                   `json:"imported,omitempty" bson:"imported"`
 	PostTitle   string                 `json:"title,omitempty" bson:"title"`
+	Approved    bool                   `json:"approved,omitempty" bson:"approved"`
 }
 
 // Locator keeps site and url of the post
@@ -95,6 +96,7 @@ func (c *Comment) PrepareUntrusted() {
 	c.Pin = false
 	c.Deleted = false
 	c.Imported = false
+	c.Approved = false // TODO: check if this actually goes here
 }
 
 // SetDeleted clears comment info, reset to deleted state. hard flag will clear all user info as well
@@ -108,6 +110,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Edit = nil
 	c.Deleted = true
 	c.Pin = false
+	c.Approved = false
 
 	if mode == HardDelete {
 		c.User.Name = "deleted"

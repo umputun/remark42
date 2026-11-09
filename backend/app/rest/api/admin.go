@@ -26,6 +26,7 @@ type admin struct {
 	authenticator *auth.Service
 	readOnlyAge   int
 	migrator      *Migrator
+	premoderation Premoderation
 }
 
 type adminStore interface {
@@ -41,6 +42,7 @@ type adminStore interface {
 	SetVerified(siteID, userID string, status bool) error
 	SetReadOnly(locator store.Locator, status bool) error
 	SetPin(locator store.Locator, commentID string, status bool) error
+	ApproveComments(locator store.Locator, commentID string, approvePreviousComments bool) (comment store.Comment, err error)
 }
 
 // DELETE /comment/{id}?site=siteID&url=post-url - removes comment
@@ -269,4 +271,30 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
+}
+
+// PUT /comment/{id}/approve?site=siteID&url=post-url - approves comment
+func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
+	log.Printf("[INFO] approving comment %s", id)
+
+	var comment store.Comment
+	var err error
+	switch a.premoderation {
+	// if we use the "ApproveFirst" strategy we need to approve all pending comments once one is approved
+	case PremoderationFirst:
+		comment, err = a.dataService.ApproveComments(locator, id, true)
+	default:
+		comment, err = a.dataService.ApproveComments(locator, id, false)
+	}
+
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't approve comment", rest.ErrInternal)
+		return
+	}
+
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
+	log.Printf("[INFO] returning comment %+v", comment)
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": comment.Approved})
 }
