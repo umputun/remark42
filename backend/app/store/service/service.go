@@ -945,6 +945,11 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 			_, err := s.Engine.UserDetail(req)
 			errs = append(errs, err)
 		}
+		if um.Details.Telegram != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserTelegram, Update: um.Details.Telegram}
+			_, err := s.Engine.UserDetail(req)
+			errs = append(errs, err)
+		}
 	}
 
 	return errors.Join(errs...)

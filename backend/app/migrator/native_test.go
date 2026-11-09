@@ -342,3 +342,22 @@ func TestNative_ImportClearsBlockedMarkInComments(t *testing.T) {
 	assert.False(t, comments[0].User.Blocked, "user is not blocked after restore")
 	assert.Equal(t, 1, comments[0].Score)
 }
+
+func TestNative_ImportRestoresUserDetails(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	inp := `{"version":1,"users":[{"id":"user1","details":{"user_id":"user1","email":"user1@example.com"}},{"id":"user2","details":{"user_id":"user2","telegram":"user2_tg"}}],"posts":[]}
+	{"id":"c1","text":"some text","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}`
+
+	r := Native{DataStore: b}
+	_, err := r.Import(strings.NewReader(inp), "radio-t")
+	require.NoError(t, err)
+
+	email, err := b.GetUserEmail("radio-t", "user1")
+	require.NoError(t, err)
+	assert.Equal(t, "user1@example.com", email)
+	tg, err := b.GetUserTelegram("radio-t", "user2")
+	require.NoError(t, err)
+	assert.Equal(t, "user2_tg", tg, "telegram restored")
+}
