@@ -65,17 +65,20 @@ func TestBoltStore_LoadedDataSurvivesLaterWrites(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
 
-	// the image is large enough to take its own overflow pages, which bolt reuses once it's deleted
-	orig := bytes.Repeat([]byte("A"), 8192)
+	// the image is large enough to take its own overflow pages, which bolt reuses once it's deleted,
+	// and the later saves write enough of the same size to reuse them
+	const imageSize, laterSaves = 8192, 50
+	orig := bytes.Repeat([]byte("A"), imageSize)
 	require.NoError(t, svc.Save("u/first", orig))
 	got, err := svc.Load("u/first")
 	require.NoError(t, err)
 
 	require.NoError(t, svc.Delete("u/first"))
-	for i := 0; i < 50; i++ {
-		require.NoError(t, svc.Save(fmt.Sprintf("u/other%d", i), bytes.Repeat([]byte("C"), 8192)))
+	for i := range laterSaves {
+		require.NoError(t, svc.Save(fmt.Sprintf("u/other%d", i), bytes.Repeat([]byte("C"), imageSize)))
 	}
-	assert.True(t, bytes.Equal(orig, got), "loaded image changed after later writes to the store, starts with %q", got[:16])
+	assert.True(t, bytes.Equal(orig, got), "loaded image changed after later writes to the store, %d bytes starting with %q",
+		len(got), got[:min(16, len(got))])
 }
 
 func TestBoltStore_LoadAfterDelete(t *testing.T) {
