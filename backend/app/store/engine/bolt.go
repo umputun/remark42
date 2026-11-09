@@ -815,12 +815,6 @@ func (b *BoltDB) deleteComment(bdb *bolt.DB, locator store.Locator, commentID st
 			return fmt.Errorf("can't save deleted comment for key %s from bucket %s: %w", commentID, locator.URL, e)
 		}
 
-		// delete from "last" bucket
-		lastBkt := tx.Bucket([]byte(lastBucketName))
-		if e = lastBkt.Delete([]byte(commentID)); e != nil {
-			return fmt.Errorf("can't delete key %s from bucket %s: %w", commentID, lastBucketName, e)
-		}
-
 		return nil
 	})
 }
