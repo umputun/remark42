@@ -497,7 +497,7 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
 		if userIDBkt == nil {
-			return fmt.Errorf("no comments for user %s in store", userID)
+			return fmt.Errorf("%w %s in store", ErrNoUserComments, userID)
 		}
 
 		c := userIDBkt.Cursor()
