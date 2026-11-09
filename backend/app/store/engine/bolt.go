@@ -573,7 +573,7 @@ func flagKey(req FlagRequest) []byte {
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
-// as an only element of the slice, or an empty slice if the user has no details.
+// as an only element of the slice, or nil if the user has no details.
 func (b *BoltDB) getUserDetail(req UserDetailRequest) (result []UserDetailEntry, err error) {
 	err = b.view(req.Locator.SiteID, func(tx *bolt.Tx) error {
 		entry, found, e := b.loadDetail(tx, req.UserID)
