@@ -112,14 +112,13 @@ func resetEnv(envs ...string) {
 }
 
 // adminRequest sends an admin request to endpoint with the escaped query and basic auth, and hands a 2xx
-// response to handle; any other status comes back as responseError. name labels the request in errors,
-// e.g. "export".
-func (o SupportCmdOpts) adminRequest(ctx context.Context, name, method, endpoint string, query url.Values,
-	body io.Reader, handle func(*http.Response) error) error {
+// response to handle when it is set; any other status comes back as responseError
+func (o SupportCmdOpts) adminRequest(ctx context.Context, method, endpoint string, query url.Values, body io.Reader,
+	handle func(*http.Response) error) error {
 	reqURL := endpoint + "?" + query.Encode()
 	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
 	if err != nil {
-		return fmt.Errorf("can't make %s request for %s: %w", name, reqURL, err)
+		return fmt.Errorf("can't make request for %s: %w", reqURL, err)
 	}
 	req.SetBasicAuth("admin", o.AdminPasswd)
 
@@ -137,7 +136,20 @@ func (o SupportCmdOpts) adminRequest(ctx context.Context, name, method, endpoint
 	if resp.StatusCode >= 300 {
 		return responseError(resp)
 	}
+	if handle == nil {
+		return nil
+	}
 	return handle(resp)
+}
+
+// logResponse logs the status and body of a completed admin request
+func logResponse(resp *http.Response) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("can't get response: %w", err)
+	}
+	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
+	return nil
 }
 
 // responseError returns error with status and response body

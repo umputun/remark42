@@ -213,13 +213,15 @@ func cleanupRoutes(t *testing.T, r *http.ServeMux, c *cleanedComments) {
 func TestCleanup_RequestsKeepPostURLQuery(t *testing.T) {
 	const postURL = "https://example.com/post?id=1&lang=en"
 	const site = "site&x"
-	type received struct{ path, site, url string }
+	type received struct{ method, path, site, url, format, user string }
 	var lock sync.Mutex
 	var got []received
 	record := func(r *http.Request) {
 		lock.Lock()
 		defer lock.Unlock()
-		got = append(got, received{path: r.URL.Path, site: r.URL.Query().Get("site"), url: r.URL.Query().Get("url")})
+		user, _, _ := r.BasicAuth()
+		got = append(got, received{method: r.Method, path: r.URL.Path, site: r.URL.Query().Get("site"),
+			url: r.URL.Query().Get("url"), format: r.URL.Query().Get("format"), user: user})
 	}
 
 	mux := http.NewServeMux()
@@ -245,8 +247,8 @@ func TestCleanup_RequestsKeepPostURLQuery(t *testing.T) {
 	require.NoError(t, cmd.setTitle(c))
 
 	assert.Equal(t, []received{
-		{path: "/api/v1/find", site: site, url: postURL},
-		{path: "/api/v1/admin/comment/1", site: site, url: postURL},
-		{path: "/api/v1/admin/title/1", site: site, url: postURL},
+		{method: "GET", path: "/api/v1/find", site: site, url: postURL, format: "plain"},
+		{method: "DELETE", path: "/api/v1/admin/comment/1", site: site, url: postURL, format: "plain", user: "admin"},
+		{method: "PUT", path: "/api/v1/admin/title/1", site: site, url: postURL, format: "plain", user: "admin"},
 	}, got, "site and post URL arrive intact, including the post URL's own query")
 }

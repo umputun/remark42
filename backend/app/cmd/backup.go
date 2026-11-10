@@ -39,7 +39,7 @@ func (ec *BackupCommand) Execute(_ []string) error {
 	defer cancel()
 	query := url.Values{"mode": {"file"}, "site": {ec.Site}}
 	endpoint := ec.RemarkURL + "/api/v1/admin/export"
-	return ec.adminRequest(ctx, "export", http.MethodGet, endpoint, query, http.NoBody, func(resp *http.Response) error {
+	return ec.adminRequest(ctx, http.MethodGet, endpoint, query, http.NoBody, func(resp *http.Response) error {
 		fh, err := os.Create(fname) //nolint:gosec // harmless
 		if err != nil {
 			return fmt.Errorf("can't create backup file %s: %w", fname, err)
