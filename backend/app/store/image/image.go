@@ -23,7 +23,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -40,12 +39,13 @@ import (
 type Service struct {
 	ServiceParams
 
-	store       Store
-	wg          sync.WaitGroup
-	submitCh    chan submitReq
-	once        sync.Once
-	term        atomic.Int32 // term value used atomically to detect emergency termination
-	submitCount atomic.Int32 // atomic increment for counting submitted images
+	store     Store
+	wg        sync.WaitGroup
+	once      sync.Once      // starts the submitter on the first Submit
+	mu        sync.RWMutex   // Submit sends to submitCh under the read lock, Close closes it under the write lock
+	submitCh  chan submitReq // created by the first Submit
+	done      chan struct{}  // closed by Close, so queued submits commit without waiting out EditDuration
+	closeOnce sync.Once
 }
 
 // ServiceParams contains externally adjustable parameters of Service
@@ -87,7 +87,7 @@ type submitReq struct {
 
 // NewService returns new Service instance
 func NewService(s Store, p ServiceParams) *Service {
-	return &Service{ServiceParams: p, store: s}
+	return &Service{ServiceParams: p, store: s, done: make(chan struct{})}
 }
 
 // Commit multiple ids immediately
@@ -108,34 +108,40 @@ func (s *Service) Submit(idsFn func() []string) {
 		return
 	}
 
-	s.once.Do(func() {
-		log.Printf("[DEBUG] image submitter activated")
-		s.submitCh = make(chan submitReq, submitQueueSize)
-		s.wg.Go(func() {
-			for req := range s.submitCh {
-				// wait for EditDuration expiration with emergency pass on term
-				for s.term.Load() == 0 && time.Since(req.TS) <= s.EditDuration {
-					time.Sleep(time.Millisecond * 10) // small sleep to relive busy wait but keep reactive for term (close)
-				}
-				err := s.Commit(req.idsFn)
-				if err != nil {
-					log.Printf("[WARN] image commit error %v", err)
-				}
-
-				s.submitCount.Add(-1)
-			}
-			log.Printf("[INFO] image submitter terminated")
-		})
-	})
-
-	s.submitCount.Add(1)
-
 	// reset cleanup timer before submitting the images
 	// to prevent them from being cleaned up while waiting for EditDuration to expire
 	for _, imgID := range idsFn() {
 		_ = s.store.ResetCleanupTimer(imgID)
 	}
 
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	select {
+	case <-s.done: // closed, nothing is left to wait out EditDuration, so commit right away
+		if err := s.Commit(idsFn); err != nil {
+			log.Printf("[WARN] image commit error %v", err)
+		}
+		return
+	default:
+	}
+
+	s.once.Do(func() {
+		log.Printf("[DEBUG] image submitter activated")
+		s.submitCh = make(chan submitReq, submitQueueSize)
+		s.wg.Go(func() {
+			for req := range s.submitCh {
+				// wait for EditDuration expiration, Close cuts the wait short
+				select {
+				case <-time.After(time.Until(req.TS.Add(s.EditDuration))):
+				case <-s.done:
+				}
+				if err := s.Commit(req.idsFn); err != nil {
+					log.Printf("[WARN] image commit error %v", err)
+				}
+			}
+			log.Printf("[INFO] image submitter terminated")
+		})
+	})
 	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
 }
 
@@ -185,31 +191,18 @@ func (s *Service) Info() (StoreInfo, error) {
 	return s.store.Info()
 }
 
-// Close flushes all in-progress submits and enforces waiting commits
-func (s *Service) Close(ctx context.Context) {
+// Close commits all submitted images without waiting for EditDuration and returns once they are committed.
+// Submit after Close commits immediately.
+func (s *Service) Close(_ context.Context) {
 	log.Printf("[INFO] close image service ")
-
-	waitForTerm := func(ctx context.Context) {
-		ticker := time.NewTicker(10 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if s.submitCount.Load() == 0 {
-					return
-				}
-			}
+	s.closeOnce.Do(func() {
+		close(s.done) // before taking the lock: a Submit blocked on a full queue holds the read lock until the queue drains
+		s.mu.Lock()
+		if s.submitCh != nil {
+			close(s.submitCh)
 		}
-	}
-
-	s.term.Store(1) // enforce non-delayed commits for all ids left in submitCh
-	waitForTerm(ctx)
-
-	if s.submitCh != nil {
-		close(s.submitCh)
-	}
+		s.mu.Unlock()
+	})
 	s.wg.Wait()
 }
 
