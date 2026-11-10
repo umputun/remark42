@@ -174,8 +174,8 @@ func TestProfile_LoadingAndFailureStates(t *testing.T) {
 		<-release
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"error":"failed"}`),
 		}); err != nil {
 			t.Errorf("fulfill profile comments failure: %v", err)
 		}

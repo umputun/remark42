@@ -59,7 +59,7 @@ func signInAnon(t *testing.T, page playwright.Page, frame playwright.FrameLocato
 	// going to change. the input is validated against a pattern, see anonName
 	_, err := page.ExpectResponse("**/auth/anonymous/login**", func() error {
 		return frame.Locator(".auth-submit").Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the anonymous form was never submitted, most likely because %q is not "+
 		"a username it accepts", username)
 
@@ -148,7 +148,7 @@ func assertSignedIn(t *testing.T, page playwright.Page, frame playwright.FrameLo
 	signOut := frame.Locator(`[title="Sign out"]`)
 	if err := signOut.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateVisible,
-		Timeout: playwright.Float(float64(authRepaintWait.Milliseconds())),
+		Timeout: new(float64(authRepaintWait.Milliseconds())),
 	}); err != nil {
 		pauseForAuthLimit()
 		require.NoError(t, page.Locator("#remark42 iframe").Press("Tab"))
@@ -253,8 +253,8 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"error":"failed"}`),
 		}); err != nil {
 			t.Errorf("fulfill transient auth failure: %v", err)
 		}

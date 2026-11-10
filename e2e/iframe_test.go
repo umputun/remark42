@@ -122,7 +122,7 @@ func openWithBlockedIframeDoc(t *testing.T, page playwright.Page) {
 	require.NoError(t, err)
 	require.NoError(t, page.Locator("#remark42 iframe").WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateAttached,
-		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
+		Timeout: new(float64(waitTimeout.Milliseconds())),
 	}))
 }
 
@@ -327,4 +327,3 @@ func TestIframe_IsRevealedByTheTimeoutWhenInitedNeverArrives(t *testing.T) {
 			"the reveal came too early to have been the fallback timer")
 	})
 }
-

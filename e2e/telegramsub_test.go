@@ -81,7 +81,7 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 
 	resp, err := page.ExpectResponse("**/api/v1/telegram**", func() error {
 		return unsubscribe.Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, http.MethodDelete, resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the telegram unsubscribe")
@@ -106,8 +106,8 @@ func TestTelegramSub_StartFailureIsShown(t *testing.T) {
 	require.NoError(t, page.Route("**/api/v1/telegram/subscribe**", func(route playwright.Route) {
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"error":"failed"}`),
 		}); err != nil {
 			t.Errorf("fulfill Telegram subscription failure: %v", err)
 		}
@@ -155,7 +155,7 @@ func confirmTelegramSubscription(
 
 	resp, err := page.ExpectResponse("**/api/v1/telegram/subscribe**", func() error {
 		return frame.Locator(`button:text-is("Check")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Check asked the server nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused a subscription token the bot confirmed")
 	waitVisible(t, frame.Locator(`text=You have subscribed to Telegram updates`))
@@ -205,8 +205,8 @@ func TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne(t *testing.T) {
 		refuse = false
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"error":"failed"}`),
 		}); err != nil {
 			t.Errorf("fulfill telegram unsubscribe failure: %v", err)
 		}
@@ -259,8 +259,8 @@ func TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne(t *testing.T) {
 		refuse = false
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"error":"failed"}`),
 		}); err != nil {
 			t.Errorf("fulfill telegram check failure: %v", err)
 		}
