@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -221,7 +222,7 @@ func TestService_Close(t *testing.T) {
 		CommitFunc:            func(string) error { return nil },
 		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
+	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -405,12 +406,70 @@ func TestCachedImgID(t *testing.T) {
 	assert.Equal(t, "cached_images/"+Sha1Str("example.org")+"-"+Sha1Str(imgURL), img)
 }
 
-func TestService_DoubleClose(*testing.T) {
-	store := StoreMock{}
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+func TestService_DoubleClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} }) // starts the submitter, so Close has a queue to close
+		svc.Close(context.TODO())
+		assert.NotPanics(t, func() { svc.Close(context.TODO()) }, "second Close")
+		assert.Len(t, store.CommitCalls(), 1)
+	})
+}
+
+func TestService_SubmitAfterClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		svc.Close(context.TODO())
+		start := time.Now()
+		require.NotPanics(t, func() { svc.Submit(func() []string { return []string{"id2", "id3"} }) }, "Submit after Close")
+		require.Len(t, store.CommitCalls(), 3, "Submit after Close commits at once")
+		assert.Equal(t, "id2", store.CommitCalls()[1].ID)
+		assert.Zero(t, time.Since(start), "Submit after Close does not wait for EditDuration")
+	})
+}
+
+func TestService_CloseHonoursContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		store := StoreMock{
+			CommitFunc:            func(string) error { <-release; return nil }, // a commit that stalls until released
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		start := time.Now()
+		svc.Close(ctx)
+		assert.Equal(t, time.Minute, time.Since(start), "Close returns at the context deadline while a commit stalls")
+		close(release)
+		svc.Close(context.Background()) // waits for the released commit, so nothing outlives the bubble
+		assert.Len(t, store.CommitCalls(), 1)
+	})
+}
+
+func TestService_SubmitRacingClose(t *testing.T) {
+	store := StoreMock{
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
+	}
+	svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Go(func() { svc.Submit(func() []string { return []string{strconv.Itoa(i)} }) })
+	}
 	svc.Close(context.TODO())
-	// second call should not result in panic
-	svc.Close(context.TODO())
+	wg.Wait()
+	assert.Len(t, store.CommitCalls(), 100, "every submit is committed, whether it lands before or after Close")
 }
 
 // TestSafeImgContentType now lives in the rest package alongside the SafeImgContentType

@@ -190,35 +190,22 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 }
 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) deleteComment(c store.Comment) error { //nolint:dupl // not worth combining
-	deleteURL := fmt.Sprintf("%s/api/v1/admin/comment/%s?site=%s&url=%s&format=plain", cc.RemarkURL, url.PathEscape(c.ID),
-		url.QueryEscape(cc.Site), url.QueryEscape(c.Locator.URL))
-	req, err := http.NewRequest("DELETE", deleteURL, http.NoBody)
-	if err != nil {
-		return fmt.Errorf("failed to make delete request for comment %s, %s: %w", c.ID, c.Locator.URL, err)
-	}
-	req.SetBasicAuth("admin", cc.AdminPasswd)
-
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	r, err := client.Do(req) //nolint:gosec // RemarkURL comes from operator CLI flag, not user input
-	if err != nil {
-		return fmt.Errorf("delete request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
-	}
-	defer func() { _ = r.Body.Close() }()
-	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("delete request failed with status %s", r.Status)
-	}
-	return nil
+func (cc *CleanupCommand) deleteComment(c store.Comment) error {
+	return cc.commentRequest(http.MethodDelete, "comment", "delete", c)
 }
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) setTitle(c store.Comment) error { //nolint:dupl // not worth combining
-	titleURL := fmt.Sprintf("%s/api/v1/admin/title/%s?site=%s&url=%s&format=plain", cc.RemarkURL, url.PathEscape(c.ID),
+func (cc *CleanupCommand) setTitle(c store.Comment) error {
+	return cc.commentRequest(http.MethodPut, "title", "title", c)
+}
+
+// commentRequest sends method to /admin/{route}/{id}?site=siteID&url=post-url, name labels it in errors
+func (cc *CleanupCommand) commentRequest(method, route, name string, c store.Comment) error {
+	reqURL := fmt.Sprintf("%s/api/v1/admin/%s/%s?site=%s&url=%s&format=plain", cc.RemarkURL, route, url.PathEscape(c.ID),
 		url.QueryEscape(cc.Site), url.QueryEscape(c.Locator.URL))
-	req, err := http.NewRequest("PUT", titleURL, http.NoBody)
+	req, err := http.NewRequest(method, reqURL, http.NoBody)
 	if err != nil {
-		return fmt.Errorf("failed to make title request for comment %s, %s: %w", c.ID, c.Locator.URL, err)
+		return fmt.Errorf("failed to make %s request for comment %s, %s: %w", name, c.ID, c.Locator.URL, err)
 	}
 	req.SetBasicAuth("admin", cc.AdminPasswd)
 
@@ -226,11 +213,11 @@ func (cc *CleanupCommand) setTitle(c store.Comment) error { //nolint:dupl // not
 	defer client.CloseIdleConnections()
 	r, err := client.Do(req) //nolint:gosec // RemarkURL comes from operator CLI flag, not user input
 	if err != nil {
-		return fmt.Errorf("title request failed for comment %s, %s: %w", c.ID, c.Locator.URL, err)
+		return fmt.Errorf("%s request failed for comment %s, %s: %w", name, c.ID, c.Locator.URL, err)
 	}
 	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("title request failed with status %s", r.Status)
+		return fmt.Errorf("%s request failed with status %s", name, r.Status)
 	}
 	return nil
 }

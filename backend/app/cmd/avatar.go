@@ -17,20 +17,8 @@ type AvatarCommand struct {
 	AvatarSrc AvatarGroup `group:"src" namespace:"src"`
 	AvatarDst AvatarGroup `group:"dst" namespace:"dst"`
 
-	migrator AvatarMigrator
+	migrate func(dst, src avatar.Store) (int, error) // avatar.Migrate unless a test sets it
 	CommonOpts
-}
-
-// AvatarMigrator defines interface for migration
-type AvatarMigrator interface {
-	Migrate(avatar.Store, avatar.Store) (int, error)
-}
-
-type avatarMigrator struct{}
-
-// Migrate from one avatar store to another. Can be used to convert between stores
-func (a avatarMigrator) Migrate(dst, src avatar.Store) (int, error) {
-	return avatar.Migrate(dst, src)
 }
 
 // Execute runs  with AvatarCommand parameters, entry point for "avatar" command
@@ -47,11 +35,11 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 		return fmt.Errorf("can't make avatart store for %s: %w", ac.AvatarDst.Type, err)
 	}
 
-	if ac.migrator == nil {
-		ac.migrator = avatarMigrator{}
+	if ac.migrate == nil {
+		ac.migrate = avatar.Migrate
 	}
 
-	count, err := ac.migrator.Migrate(dst, src)
+	count, err := ac.migrate(dst, src)
 	if err != nil {
 		return err
 	}

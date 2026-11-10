@@ -70,13 +70,6 @@ func (m *MockDest) GetVerify() []VerificationRequest {
 	return res
 }
 
-// IsClosed returns closed status safely
-func (m *MockDest) IsClosed() bool {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	return m.closed
-}
-
 func (m *MockDest) String() string {
 	m.lock.Lock()
 	defer m.lock.Unlock()

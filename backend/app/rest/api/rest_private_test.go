@@ -13,7 +13,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -951,11 +953,46 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	}
 }
 
+// fakeDestination is a notify.Destination recording what it was asked to send
+type fakeDestination struct {
+	mu            sync.Mutex
+	requests      []notify.Request
+	verifications []notify.VerificationRequest
+}
+
+func (f *fakeDestination) Send(_ context.Context, r notify.Request) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.requests = append(f.requests, r)
+	return nil
+}
+
+func (f *fakeDestination) SendVerification(_ context.Context, v notify.VerificationRequest) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.verifications = append(f.verifications, v)
+	return nil
+}
+
+func (f *fakeDestination) String() string { return "fake destination" }
+
+func (f *fakeDestination) Get() []notify.Request {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.requests)
+}
+
+func (f *fakeDestination) GetVerify() []notify.VerificationRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.verifications)
+}
+
 func TestRest_EmailNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	mockDestination := &notify.MockDest{}
+	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
 	defer srv.privRest.notifyService.Close()
 
@@ -1191,7 +1228,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	mockDestination := &notify.MockDest{}
+	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
 	defer srv.privRest.notifyService.Close()
 
