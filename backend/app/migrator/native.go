@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -49,12 +50,13 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 	commentsCount := 0
 	for _, topic := range slices.Backward(topics) { // topics from List sorted in opposite direction
 
-		comments, e := n.DataStore.Find(store.Locator{SiteID: siteID, URL: topic.URL}, "time", adminUser)
+		comments, e := n.DataStore.FindRaw(store.Locator{SiteID: siteID, URL: topic.URL})
 		if e != nil {
 			return commentsCount, e
 		}
 
 		for _, comment := range comments {
+			comment.VotedIPs = nil // voters' IP hashes stay out of backups, as before
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
@@ -144,6 +146,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	}
 
 	var failed, total, comments int64
+	var decodeErr error
 
 	concurrent := defaultConcurrent
 	if n.Concurrent > 0 {
@@ -152,20 +155,26 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	grp := syncs.NewSizedGroup(concurrent, syncs.Preemptive)
 
 	for {
-		comment := store.Comment{}
-		err = dec.Decode(&comment)
-		comment.Imported = true
-		if err == io.EOF {
+		// read each record as raw JSON first: the decoder can't move past a syntax error or a truncated record
+		// and returns it again on every call, while a well-formed record with a wrong value is skipped below
+		var rec json.RawMessage
+		if err = dec.Decode(&rec); err != nil {
+			if err != io.EOF {
+				decodeErr = fmt.Errorf("can't decode comment after %d records: %w", total, err)
+			}
 			break
 		}
-
 		total++
-
-		if err != nil {
+		comment := store.Comment{}
+		if err = json.Unmarshal(rec, &comment); err != nil {
 			atomic.AddInt64(&failed, 1)
-			failed++
+			log.Printf("[WARN] can't decode comment record %d, %s", total, err)
 			continue
 		}
+		comment.Imported = true
+		// exports made by earlier versions stored the blocked status of the time inside comments;
+		// it is kept in the users metadata, and leaving it in the comment marks the user blocked forever
+		comment.User.Blocked = false
 
 		// write comments in parallel
 		grp.Go(func(context.Context) {
@@ -182,13 +191,17 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	}
 
 	grp.Wait()
-
-	if failed > 0 {
-		return int(comments), fmt.Errorf("failed to save %d comments", failed)
-	}
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
 
-	err = n.DataStore.SetMetas(siteID, m.Users, m.Posts)
-
-	return int(comments), err
+	// metas are restored even when some comments failed, so blocks, verified users, read-only posts
+	// and user details are not lost because of one bad record
+	var errs []error
+	if decodeErr != nil {
+		errs = append(errs, decodeErr)
+	}
+	if failed > 0 {
+		errs = append(errs, fmt.Errorf("failed to save %d comments", failed))
+	}
+	errs = append(errs, n.DataStore.SetMetas(siteID, m.Users, m.Posts))
+	return int(comments), errors.Join(errs...)
 }

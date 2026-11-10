@@ -149,6 +149,12 @@ func (s *DataStore) FindSince(locator store.Locator, sortMethod string, user sto
 	return comments, nil
 }
 
+// FindRaw returns the post's comments sorted by time as the engine stores them, without the changes
+// Find makes for a reader: blocked and verified marks, hidden votes and voter IPs. Used for backups.
+func (s *DataStore) FindRaw(locator store.Locator) ([]store.Comment, error) {
+	return s.Engine.Find(engine.FindRequest{Locator: locator, Sort: "time"})
+}
+
 // Get comment by ID
 func (s *DataStore) Get(locator store.Locator, commentID string, user store.User) (store.Comment, error) {
 	c, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
@@ -936,6 +942,11 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 		// this code doesn't delete user details in case they are not set in import but present in DB already
 		if um.Details.Email != "" {
 			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserEmail, Update: um.Details.Email}
+			_, err := s.Engine.UserDetail(req)
+			errs = append(errs, err)
+		}
+		if um.Details.Telegram != "" {
+			req := engine.UserDetailRequest{Locator: store.Locator{SiteID: siteID}, UserID: um.ID, Detail: engine.UserTelegram, Update: um.Details.Telegram}
 			_, err := s.Engine.UserDetail(req)
 			errs = append(errs, err)
 		}
