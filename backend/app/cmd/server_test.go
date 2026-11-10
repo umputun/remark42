@@ -1389,8 +1389,6 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Admin.Type = "shared"
 	cmd.Admin.Shared.Admins = []string{"id1", "id2"}
 	cmd.RestrictedNames = []string{"umputun", "bobuk"}
-	cmd.emailMsgTemplatePath = "../../templates/email_reply.html.tmpl"
-	cmd.emailVerificationTemplatePath = "../../templates/email_confirmation_subscription.html.tmpl"
 
 	cmd = fn(cmd)
 	// as is uses port, call it after fn which could set it
@@ -1534,7 +1532,6 @@ func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
 	port := chooseUnusedPort(t)
 	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Port = port
-		o.emailMsgTemplatePath, o.emailVerificationTemplatePath = "", "" // the embedded templates, as in production
 		return o
 	})
 	defer cancel()

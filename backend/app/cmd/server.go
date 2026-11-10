@@ -133,9 +133,6 @@ type ServerCommand struct {
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
 	CommonOpts
-
-	emailMsgTemplatePath          string // used only in tests
-	emailVerificationTemplatePath string // used only in tests
 }
 
 // ImageProxyGroup defines options group for image proxy
@@ -1337,8 +1334,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 	// because api.Rest.EmailNotifications would be set to false.
 	if contains("email", s.Notify.Users) || contains("email", s.Notify.Admins) {
 		emailParams := notify.EmailParams{
-			MsgTemplatePath:          s.emailMsgTemplatePath,
-			VerificationTemplatePath: s.emailVerificationTemplatePath, From: s.Notify.Email.From,
+			From:                s.Notify.Email.From,
 			VerificationSubject: s.Notify.Email.VerificationSubject,
 			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
 			// TODO: uncomment after #560 frontend part is ready and URL is known
