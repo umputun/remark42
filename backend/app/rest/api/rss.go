@@ -36,7 +36,7 @@ func (s *rss) postCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
-	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
+	key := cache.NewKey(locator.SiteID).ID(urlKey(r, false)).Scopes(locator.SiteID, locator.URL)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
 		comments, e := s.dataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
 		if e != nil {
@@ -66,7 +66,7 @@ func (s *rss) siteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss for site %s", siteID)
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
+	key := cache.NewKey(siteID).ID(urlKey(r, false)).Scopes(siteID, lastCommentsScope)
 	data, err := s.cache.Get(key, func() ([]byte, error) {
 		comments, e := s.dataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
@@ -98,7 +98,7 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
+	key := cache.NewKey(siteID).ID(urlKey(r, false)).Scopes(siteID, lastCommentsScope)
 	data, err := s.cache.Get(key, func() (res []byte, e error) {
 		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {

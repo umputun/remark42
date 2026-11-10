@@ -42,7 +42,6 @@ type private struct {
 	authenticator              *auth.Service
 	telegramService            telegramService
 	remarkURL                  string
-	anonVote                   bool
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 }
 
@@ -254,10 +253,6 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
-	if !s.anonVote && strings.HasPrefix(user.ID, "anonymous_") {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := r.PathValue("id")
 	log.Printf("[DEBUG] vote for comment %s", id)
@@ -438,8 +433,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 
 	val, err := s.dataService.SetUserTelegram(siteID, user.ID, address)
 	if err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", rest.ErrInternal)
 		return
 	}
 
@@ -527,8 +521,7 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 
 	val, err := s.dataService.SetUserEmail(siteID, userID, address)
 	if err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", rest.ErrInternal)
 		return
 	}
 
@@ -582,8 +575,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] unsubscribe user %s", userID)
 
 	if err = s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
 	// clean User.Email from the token, if user has the token
@@ -626,8 +618,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] remove email for user %s", user.ID)
 
 	if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserEmail); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
 	// clean User.Email from the token
@@ -653,8 +644,7 @@ func (s *private) deleteTelegramCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] remove telegram for user %s", user.ID)
 
 	if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserTelegram); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete telegram for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete telegram for user", rest.ErrInternal)
 		return
 	}
 	R.RenderJSON(w, R.JSON{"deleted": true})

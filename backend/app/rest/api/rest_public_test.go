@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1331,4 +1332,124 @@ func TestRest_LoadPictureRejectsNonImage(t *testing.T) {
 		resp.Header.Get("Content-Security-Policy"))
 	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
 	assert.Equal(t, `inline; filename="image"`, resp.Header.Get("Content-Disposition"))
+}
+
+// keyRecorder is a LoadingCache recording the string form of every key it is asked for
+type keyRecorder struct {
+	LoadingCache
+	mu   sync.Mutex
+	keys []string
+}
+
+func (k *keyRecorder) Get(key cache.Key, fn func() ([]byte, error)) ([]byte, error) {
+	k.mu.Lock()
+	k.keys = append(k.keys, key.String())
+	k.mu.Unlock()
+	return k.LoadingCache.Get(key, fn)
+}
+
+func (k *keyRecorder) take() []string {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	res := k.keys
+	k.keys = nil
+	return res
+}
+
+// TestRest_CacheKeys pins the cache key of every cached read for anonymous, regular and admin users.
+// The keys are what an external cache (redis) holds across restarts, so they must not change
+func TestRest_CacheKeys(t *testing.T) {
+	rec := &keyRecorder{}
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		rec.LoadingCache = srv.Cache
+		srv.Cache = rec
+	})
+	defer teardown()
+
+	const post = "https://radio-t.com/blah1"
+	countsBody := `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`
+	reqs := []struct {
+		method, path, body string
+	}{
+		{"GET", "/api/v1/find?site=remark42&url=" + post + "&sort=-time&format=tree", ""},
+		{"GET", "/api/v1/info?site=remark42&url=" + post, ""},
+		{"GET", "/api/v1/last/5?site=remark42", ""},
+		{"GET", "/api/v1/comments?site=remark42&user=provider1_dev&limit=10", ""},
+		{"POST", "/api/v1/counts?site=remark42", countsBody},
+		{"GET", "/api/v1/list?site=remark42&limit=10", ""},
+		{"GET", "/api/v1/rss/post?site=remark42&url=" + post, ""},
+		{"GET", "/api/v1/rss/site?site=remark42", ""},
+		{"GET", "/api/v1/rss/reply?site=remark42&user=provider1_dev", ""},
+	}
+	auths := []struct {
+		name string
+		set  func(r *http.Request)
+	}{
+		{"anonymous", func(*http.Request) {}},
+		{"user", func(r *http.Request) { r.Header.Set("X-JWT", devToken) }},
+		{"admin token", func(r *http.Request) { r.Header.Set("X-JWT", adminUmputunToken) }},
+		{"admin password", func(r *http.Request) { r.SetBasicAuth("admin", "password") }},
+	}
+	want := map[string][]string{
+		"anonymous": {
+			"remark42@@/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
+			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
+			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
+			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
+			"remark42@@/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@/api/v1/rss/site?site=remark42@@remark42$$last",
+			"remark42@@/api/v1/rss/reply?site=remark42&user=provider1_dev@@remark42$$last",
+		},
+		"user": {
+			"remark42@@provider1_dev!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
+			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@provider1_dev!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
+			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
+			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
+			"remark42@@/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@/api/v1/rss/site?site=remark42@@remark42$$last",
+			"remark42@@/api/v1/rss/reply?site=remark42&user=provider1_dev@@remark42$$last",
+		},
+		"admin token": {
+			"remark42@@admin!!github_ef0f706a7!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!github_ef0f706a7!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
+			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
+			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
+			"remark42@@admin!!/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!/api/v1/rss/site?site=remark42@@remark42$$last",
+			"remark42@@admin!!/api/v1/rss/reply?site=remark42&user=provider1_dev@@remark42$$last",
+		},
+		"admin password": {
+			"remark42@@admin!!admin!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!admin!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
+			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
+			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
+			"remark42@@admin!!/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
+			"remark42@@admin!!/api/v1/rss/site?site=remark42@@remark42$$last",
+			"remark42@@admin!!/api/v1/rss/reply?site=remark42&user=provider1_dev@@remark42$$last",
+		},
+	}
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	got := map[string][]string{}
+	for _, a := range auths {
+		for _, rq := range reqs {
+			req, err := http.NewRequest(rq.method, ts.URL+rq.path, strings.NewReader(rq.body))
+			require.NoError(t, err)
+			a.set(req)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			got[a.name] = append(got[a.name], rec.take()...)
+		}
+	}
+	assert.Equal(t, want, got)
 }

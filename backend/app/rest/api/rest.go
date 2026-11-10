@@ -362,7 +362,11 @@ func (s *Rest) routes() http.Handler {
 		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
 		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
-		rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		if s.AnonVote {
+			rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		} else {
+			rauth.With(rejectAnonUser).HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		}
 		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
@@ -422,7 +426,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		notifyService:              s.NotifyService,
 		telegramService:            s.TelegramService,
 		remarkURL:                  s.RemarkURL,
-		anonVote:                   s.AnonVote,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
 	}
 
@@ -572,28 +575,20 @@ func filterComments(comments []store.Comment, fn func(c store.Comment) bool) []s
 	return filtered
 }
 
-// URLKey gets url from request to use it as cache key
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKey(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin {
-		key = adminPrefix + key // make separate cache key for admins
+// urlKey makes a cache key from the request url. Admins get keys of their own, so admin-only data never
+// reaches regular users, and with perUser so does every authenticated user, for responses carrying
+// per-user data. A request url starts with "/" or a scheme, so it can't pose as an admin key
+func urlKey(r *http.Request, perUser bool) string {
+	key := r.URL.String()
+	user, err := rest.GetUserInfo(r)
+	if err != nil {
+		return key
 	}
-	return key
-}
-
-// URLKeyWithUser gets url from request to use it as cache key and attaching user ID
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKeyWithUser(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil {
-		if user.Admin {
-			key = adminPrefix + user.ID + "!!" + key // make separate cache key for admins
-		} else {
-			key = user.ID + "!!" + key // make separate cache key for authed users
-		}
+	if perUser {
+		key = user.ID + "!!" + key
+	}
+	if user.Admin {
+		key = "admin!!" + key
 	}
 	return key
 }

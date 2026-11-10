@@ -307,8 +307,8 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, true, j["block"])
 	assert.Equal(t, "remark42", j["site_id"])
 
-	assert.True(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"))
-	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user2"))
+	assert.True(t, srv.DataService.IsBlocked("remark42", "user1"))
+	assert.False(t, srv.DataService.IsBlocked("remark42", "user2"))
 
 	// get last to confirm one comment deleted
 	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
@@ -350,7 +350,7 @@ func TestAdmin_Block(t *testing.T) {
 	makeTwoComments()
 	code, _ = block(1, "500ms")
 	require.Equal(t, http.StatusOK, code)
-	require.True(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"), "user1 blocked with ttl")
+	require.True(t, srv.DataService.IsBlocked("remark42", "user1"), "user1 blocked with ttl")
 
 	// get as regular user
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
@@ -368,7 +368,7 @@ func TestAdmin_Block(t *testing.T) {
 	// the ttl above is wide enough that the checks in between cannot outlast it, so reaching
 	// here still inside the block, and the wait below observes it lapse
 	require.Eventually(t, func() bool {
-		return !srv.adminRest.dataService.IsBlocked("remark42", "user1")
+		return !srv.DataService.IsBlocked("remark42", "user1")
 	}, waitTimeout, pollInterval, "block with ttl did not expire")
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
@@ -380,8 +380,8 @@ func TestAdmin_Block(t *testing.T) {
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "restored")
 	assert.False(t, comments.Comments[2].Deleted)
 
-	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user1"))
-	assert.False(t, srv.adminRest.dataService.IsBlocked("remark42", "user2"))
+	assert.False(t, srv.DataService.IsBlocked("remark42", "user1"))
+	assert.False(t, srv.DataService.IsBlocked("remark42", "user2"))
 }
 
 func TestAdmin_BlockedList(t *testing.T) {

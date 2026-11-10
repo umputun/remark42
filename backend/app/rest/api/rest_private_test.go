@@ -802,28 +802,34 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_AnonVote(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	// startServer starts a server with two comments and returns it with the id of the first one
+	startServer := func(anonVote bool) (ts *httptest.Server, id1 string) {
+		ts, _, teardown := startupT(t, func(srv *Rest) { srv.AnonVote = anonVote })
+		t.Cleanup(teardown)
 
-	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c1 := store.Comment{Text: "test test #1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
-	id1 := addComment(t, c1, ts)
-	addComment(t, c2, ts)
+		id1 = addComment(t, c1, ts)
+		addComment(t, c2, ts)
+		return ts, id1
+	}
 
-	vote := func(val int) int {
+	vote := func(ts *httptest.Server, id string, val int) (body string, code int) {
 		client := http.Client{}
 		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
-		assert.NoError(t, err)
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id, val), http.NoBody)
+		require.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
 		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return string(b), resp.StatusCode
 	}
 
 	getWithAnonAuth := func(url string) (body string, code int) {
@@ -840,11 +846,17 @@ func TestRest_AnonVote(t *testing.T) {
 		return string(b), r.StatusCode
 	}
 
-	assert.Equal(t, http.StatusForbidden, vote(1), "vote is disallowed with anonVote false")
-	srv.privRest.anonVote = true
-	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
-	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
-	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	ts, id1 := startServer(false)
+	body, code := vote(ts, id1, 1)
+	assert.Equal(t, http.StatusForbidden, code, "vote is disallowed with anonVote false")
+	assert.Equal(t, "Access denied\n", body)
+
+	ts, id1 = startServer(true)
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusOK, code, "first vote allowed")
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusBadRequest, code, "second vote rejected")
+	body, code = getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 
 	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}

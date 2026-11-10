@@ -495,15 +495,17 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
-func Test_URLKey(t *testing.T) {
+func Test_urlKey(t *testing.T) {
 	tbl := []struct {
-		url  string
-		user store.User
-		key  string
+		url     string
+		user    store.User
+		key     string
+		userKey string
 	}{
-		{"http://example.com/1", store.User{}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1"},
+		{"http://example.com/1", store.User{}, "http://example.com/1", "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1", "user!!http://example.com/1"},
+		{"http://example.com/2", store.User{ID: "user2"}, "http://example.com/2", "user2!!http://example.com/2"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1", "admin!!user!!http://example.com/1"},
 	}
 
 	for i, tt := range tbl {
@@ -511,33 +513,12 @@ func Test_URLKey(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
 			if tt.user.ID != "" {
-				r = rest.SetUserInfo(r, tt.user)
+				u := token.User{ID: tt.user.ID}
+				u.SetAdmin(tt.user.Admin)
+				r = token.SetUserInfo(r, u)
 			}
-			assert.Equal(t, tt.key, URLKey(r))
-		})
-	}
-}
-
-func Test_URLKeyWithUser(t *testing.T) {
-	tbl := []struct {
-		url  string
-		user store.User
-		key  string
-	}{
-		{"http://example.com/1", store.User{}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user"}, "user!!http://example.com/1"},
-		{"http://example.com/2", store.User{ID: "user2"}, "user2!!http://example.com/2"},
-		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!user!!http://example.com/1"},
-	}
-
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := http.NewRequest("GET", tt.url, http.NoBody)
-			require.NoError(t, err)
-			if tt.user.ID != "" {
-				r = rest.SetUserInfo(r, tt.user)
-			}
-			assert.Equal(t, tt.key, URLKeyWithUser(r))
+			assert.Equal(t, tt.key, urlKey(r, false))
+			assert.Equal(t, tt.userKey, urlKey(r, true))
 		})
 	}
 }
@@ -653,7 +634,6 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
 			URLMapperMaker:    migrator.NewURLMapper,
 			Cache:             memCache,
-			KeyStore:          astore,
 		},
 		NotifyService:    notify.NopService,
 		EmojiEnabled:     true,
@@ -728,7 +708,7 @@ func waitForCountSettled(t *testing.T, want int, got func() int, msgAndArgs ...a
 func fakeAuth(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("fake_id") != "" {
-			r = rest.SetUserInfo(r, store.User{
+			r = token.SetUserInfo(r, token.User{
 				ID:   r.URL.Query().Get("fake_id"),
 				Name: r.URL.Query().Get("fake_name"),
 			})

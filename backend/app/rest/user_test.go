@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-pkgz/auth/v2/token"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/umputun/remark42/backend/app/store"
@@ -15,7 +16,7 @@ func TestUser_GetUserInfo(t *testing.T) {
 	_, err = GetUserInfo(r)
 	assert.Error(t, err, "no user info")
 
-	r = SetUserInfo(r, store.User{Name: "test", ID: "id", SiteID: "test"})
+	r = token.SetUserInfo(r, token.User{Name: "test", ID: "id", Audience: "test"})
 	u, err := GetUserInfo(r)
 	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "test", ID: "id", SiteID: "test"}, u)
@@ -33,7 +34,7 @@ func TestUser_MustGetUserInfo(t *testing.T) {
 	_ = MustGetUserInfo(r)
 	assert.Fail(t, "should panic")
 
-	r = SetUserInfo(r, store.User{Name: "test", ID: "id"})
+	r = token.SetUserInfo(r, token.User{Name: "test", ID: "id"})
 	u := MustGetUserInfo(r)
 	assert.NoError(t, err)
 	assert.Equal(t, store.User{Name: "test", ID: "id"}, u)
