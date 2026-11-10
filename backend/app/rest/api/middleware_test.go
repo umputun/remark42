@@ -14,8 +14,6 @@ import (
 	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/umputun/remark42/backend/app/rest"
-	"github.com/umputun/remark42/backend/app/store"
 )
 
 // routes() wraps bounded routes with the enforcing rest.Timeout and deliberately leaves the
@@ -387,7 +385,7 @@ func TestRest_matchSiteID(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				r = rest.SetUserInfo(r, store.User{ID: "u", Name: "u", SiteID: c.userSite})
+				r = token.SetUserInfo(r, token.User{ID: "u", Name: "u", Audience: c.userSite})
 				wrapped.ServeHTTP(w, r)
 			})
 			ts := httptest.NewServer(h)

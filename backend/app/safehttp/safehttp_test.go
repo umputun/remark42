@@ -89,3 +89,52 @@ func TestTransport_PreservesDefaultTransportSettings(t *testing.T) {
 	assert.Equal(t, def.TLSHandshakeTimeout, tr.TLSHandshakeTimeout, "TLSHandshakeTimeout")
 	assert.Equal(t, def.ExpectContinueTimeout, tr.ExpectContinueTimeout, "ExpectContinueTimeout")
 }
+
+// TestIsPrivateIP_RangeBoundaries pins the refused set: the first and last address of every refused
+// range are refused, the addresses just outside them are not, and neither are ranges deliberately allowed
+func TestIsPrivateIP_RangeBoundaries(t *testing.T) {
+	refused := []string{
+		"0.0.0.0", "::", "::ffff:0.0.0.0",
+		"10.0.0.0", "10.255.255.255", "::ffff:10.0.0.1",
+		"172.16.0.0", "172.31.255.255", "::ffff:172.16.0.1",
+		"192.168.0.0", "192.168.255.255", "::ffff:192.168.1.1",
+		"100.64.0.0", "100.127.255.255", "::ffff:100.64.0.1",
+		"127.0.0.0", "127.255.255.255", "::ffff:127.0.0.1",
+		"169.254.0.0", "169.254.255.255", "::ffff:169.254.1.1",
+		"::1",
+		"fc00::", "fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+		"fe80::", "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+	}
+	allowed := []string{
+		"0.0.0.1", "::2", "::ffff:8.8.8.8",
+		"9.255.255.255", "11.0.0.0",
+		"172.15.255.255", "172.32.0.0",
+		"192.167.255.255", "192.169.0.0",
+		"100.63.255.255", "100.128.0.0",
+		"126.255.255.255", "128.0.0.0",
+		"169.253.255.255", "169.255.0.0",
+		"fbff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fe00::",
+		"fe7f:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "fec0::",
+		"::127.0.0.1", "::10.0.0.1", // ipv4-compatible, not ipv4-mapped
+		"224.0.0.1", "255.255.255.255", "198.18.0.1", "240.0.0.1", // multicast, broadcast, benchmark, reserved
+		"ff02::1", "ff01::1", "2001:db8::1", "64:ff9b::a00:1",
+	}
+	for _, s := range refused {
+		ip := net.ParseIP(s)
+		require.NotNil(t, ip, s)
+		assert.True(t, IsPrivateIP(ip), "%s must be refused", s)
+		if v4 := ip.To4(); v4 != nil {
+			assert.True(t, IsPrivateIP(v4), "4-byte %s must be refused", s)
+		}
+	}
+	for _, s := range allowed {
+		ip := net.ParseIP(s)
+		require.NotNil(t, ip, s)
+		assert.False(t, IsPrivateIP(ip), "%s must be allowed", s)
+		if v4 := ip.To4(); v4 != nil {
+			assert.False(t, IsPrivateIP(v4), "4-byte %s must be allowed", s)
+		}
+	}
+	assert.False(t, IsPrivateIP(nil), "nil")
+	assert.False(t, IsPrivateIP(net.IP{1, 2, 3}), "malformed length")
+}

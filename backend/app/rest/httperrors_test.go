@@ -7,10 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-pkgz/auth/v2/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/umputun/remark42/backend/app/store"
 )
 
 func TestSendErrorJSON(t *testing.T) {
@@ -79,7 +78,7 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", http.NoBody)
 		require.NoError(t, err)
 		req.RemoteAddr = "127.0.0.1:1234"
-		req = SetUserInfo(req, store.User{Name: "test", ID: "id"})
+		req = token.SetUserInfo(req, token.User{Name: "test", ID: "id"})
 		require.NoError(t, err)
 		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 34567)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (34567) - test/id - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")

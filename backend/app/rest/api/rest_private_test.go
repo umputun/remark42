@@ -804,28 +804,34 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_AnonVote(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	// startServer starts a server with two comments and returns it with the id of the first one
+	startServer := func(anonVote bool) (ts *httptest.Server, id1 string) {
+		ts, _, teardown := startupT(t, func(srv *Rest) { srv.AnonVote = anonVote })
+		t.Cleanup(teardown)
 
-	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c1 := store.Comment{Text: "test test #1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
-	id1 := addComment(t, c1, ts)
-	addComment(t, c2, ts)
+		id1 = addComment(t, c1, ts)
+		addComment(t, c2, ts)
+		return ts, id1
+	}
 
-	vote := func(val int) int {
+	vote := func(ts *httptest.Server, id string, val int) (body string, code int) {
 		client := http.Client{}
 		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
-		assert.NoError(t, err)
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id, val), http.NoBody)
+		require.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
 		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return string(b), resp.StatusCode
 	}
 
 	getWithAnonAuth := func(url string) (body string, code int) {
@@ -842,11 +848,17 @@ func TestRest_AnonVote(t *testing.T) {
 		return string(b), r.StatusCode
 	}
 
-	assert.Equal(t, http.StatusForbidden, vote(1), "vote is disallowed with anonVote false")
-	srv.privRest.anonVote = true
-	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
-	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
-	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	ts, id1 := startServer(false)
+	body, code := vote(ts, id1, 1)
+	assert.Equal(t, http.StatusForbidden, code, "vote is disallowed with anonVote false")
+	assert.Equal(t, "Access denied\n", body)
+
+	ts, id1 = startServer(true)
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusOK, code, "first vote allowed")
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusBadRequest, code, "second vote rejected")
+	body, code = getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 
 	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}
@@ -2020,6 +2032,86 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 
 			body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
 			assert.Equal(t, http.StatusBadRequest, code, "unsubscribe rejects the handshake: %s", body)
+		})
+	}
+}
+
+// a template on disk takes precedence over the embedded one; when it is broken, the html pages
+// fail with a plain 500 instead of a half-rendered page
+func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"error_response.html.tmpl", "email_unsubscribe.html.tmpl"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte("{{ .Broken"), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	for name, url := range map[string]string{
+		"error page":       "/email/unsubscribe.html?site=remark42",
+		"unsubscribe page": "/email/unsubscribe.html?site=remark42&tkn=" + tkn,
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+url)
+			assert.Equal(t, http.StatusInternalServerError, code)
+			assert.Equal(t, "Internal Server Error\n", body)
+		})
+	}
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "the unsubscribe itself went through before the page failed")
+}
+
+// a template on disk may wrap its content in {{define "error"}} or {{define "unsubscribe"}}, the names
+// the pages are executed under, and still renders
+func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"error_response.html.tmpl":    `{{define "error"}}custom error page: {{.Error}}{{end}}`,
+		"email_unsubscribe.html.tmpl": `{{define "unsubscribe"}}custom unsubscribe page{{end}}`,
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	for name, tc := range map[string]struct {
+		url  string
+		code int
+		body string
+	}{
+		"error page":       {url: "/email/unsubscribe.html?site=remark42", code: http.StatusBadRequest, body: "custom error page: "},
+		"unsubscribe page": {url: "/email/unsubscribe.html?site=remark42&tkn=" + tkn, code: http.StatusOK, body: "custom unsubscribe page"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+tc.url)
+			assert.Equal(t, tc.code, code)
+			assert.True(t, strings.HasPrefix(body, tc.body), "the override's defined template renders: %q", body)
 		})
 	}
 }

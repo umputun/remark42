@@ -702,7 +702,6 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
 		URLMapperMaker:    migrator.NewURLMapper,
-		KeyStore:          adminStore,
 	}
 
 	notifyDestinations, err := s.makeNotifyDestinations(authenticator)

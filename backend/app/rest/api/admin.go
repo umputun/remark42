@@ -33,7 +33,6 @@ type adminStore interface {
 	DeleteUser(siteID, userID string, mode store.DeleteMode) error
 	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
-	IsBlocked(siteID, userID string) bool
 	SetBlock(siteID, userID string, status bool, ttl time.Duration) error
 	BlockedUsers(siteID string) ([]store.BlockedUser, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
@@ -131,8 +130,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", rest.ErrInternal)
 		return
 	}
 

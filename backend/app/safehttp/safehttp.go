@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"time"
 )
 
@@ -60,31 +61,15 @@ func Transport() *http.Transport {
 	return t
 }
 
-// privateCIDRs holds pre-parsed private/reserved CIDR blocks.
-var privateCIDRs = func() []*net.IPNet {
-	cidrs := []string{
-		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-		"100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
-		"::1/128", "fc00::/7", "fe80::/10",
-	}
-	blocks := make([]*net.IPNet, 0, len(cidrs))
-	for _, cidr := range cidrs {
-		_, block, _ := net.ParseCIDR(cidr)
-		blocks = append(blocks, block)
-	}
-	return blocks
-}()
+// cgnat is the carrier-grade NAT range (RFC 6598), shared address space the stdlib does not classify
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
 
-// IsPrivateIP reports whether ip falls in any private, loopback, link-local,
-// CGNAT, or reserved range — including IPv4 and IPv6 unspecified addresses.
+// IsPrivateIP reports whether ip is unspecified, loopback, private (RFC 1918, RFC 4193),
+// link-local unicast or CGNAT, in IPv4, IPv6 or IPv4-mapped IPv6 form.
 func IsPrivateIP(ip net.IP) bool {
-	if ip.IsUnspecified() {
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
 		return true
 	}
-	for _, block := range privateCIDRs {
-		if block.Contains(ip) {
-			return true
-		}
-	}
-	return false
+	addr, ok := netip.AddrFromSlice(ip)
+	return ok && cgnat.Contains(addr.Unmap())
 }
