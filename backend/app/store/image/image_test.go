@@ -437,6 +437,26 @@ func TestService_SubmitAfterClose(t *testing.T) {
 	})
 }
 
+func TestService_CloseHonoursContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		store := StoreMock{
+			CommitFunc:            func(string) error { <-release; return nil }, // a commit that stalls until released
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		start := time.Now()
+		svc.Close(ctx)
+		assert.Equal(t, time.Minute, time.Since(start), "Close returns at the context deadline while a commit stalls")
+		close(release)
+		svc.Close(context.Background()) // waits for the released commit, so nothing outlives the bubble
+		assert.Len(t, store.CommitCalls(), 1)
+	})
+}
+
 func TestService_SubmitRacingClose(t *testing.T) {
 	store := StoreMock{
 		CommitFunc:            func(string) error { return nil },

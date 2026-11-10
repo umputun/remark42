@@ -45,6 +45,7 @@ type Service struct {
 	mu        sync.RWMutex   // Submit sends to submitCh under the read lock, Close closes it under the write lock
 	submitCh  chan submitReq // created by the first Submit
 	done      chan struct{}  // closed by Close, so queued submits commit without waiting out EditDuration
+	closed    chan struct{}  // closed once every submitted image is committed after Close
 	closeOnce sync.Once
 }
 
@@ -87,7 +88,7 @@ type submitReq struct {
 
 // NewService returns new Service instance
 func NewService(s Store, p ServiceParams) *Service {
-	return &Service{ServiceParams: p, store: s, done: make(chan struct{})}
+	return &Service{ServiceParams: p, store: s, done: make(chan struct{}), closed: make(chan struct{})}
 }
 
 // Commit multiple ids immediately
@@ -191,19 +192,27 @@ func (s *Service) Info() (StoreInfo, error) {
 	return s.store.Info()
 }
 
-// Close commits all submitted images without waiting for EditDuration and returns once they are committed.
-// Submit after Close commits immediately.
-func (s *Service) Close(_ context.Context) {
+// Close commits all submitted images without waiting for EditDuration and returns once they are committed,
+// or when ctx is done, leaving the rest to finish in the background. Submit after Close commits immediately.
+func (s *Service) Close(ctx context.Context) {
 	log.Printf("[INFO] close image service ")
 	s.closeOnce.Do(func() {
 		close(s.done) // before taking the lock: a Submit blocked on a full queue holds the read lock until the queue drains
-		s.mu.Lock()
-		if s.submitCh != nil {
-			close(s.submitCh)
-		}
-		s.mu.Unlock()
+		go func() {
+			s.mu.Lock()
+			if s.submitCh != nil {
+				close(s.submitCh)
+			}
+			s.mu.Unlock()
+			s.wg.Wait()
+			close(s.closed)
+		}()
 	})
-	s.wg.Wait()
+	select {
+	case <-s.closed:
+	case <-ctx.Done():
+		log.Printf("[WARN] image service closed before all submitted images were committed, %v", ctx.Err())
+	}
 }
 
 // Load wraps storage Load function.
