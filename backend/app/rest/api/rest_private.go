@@ -588,7 +588,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	page, err := rest.RenderTemplate("email_unsubscribe.html.tmpl", nil)
+	page, err := rest.RenderTemplate("unsubscribe", "email_unsubscribe.html.tmpl", nil)
 	if err != nil {
 		log.Printf("[WARN] can't make unsubscribe page, %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

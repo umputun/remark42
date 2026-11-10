@@ -2036,3 +2036,45 @@ func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, email, "the unsubscribe itself went through before the page failed")
 }
+
+// a template on disk may wrap its content in {{define "error"}} or {{define "unsubscribe"}}, the names
+// the pages are executed under, and still renders
+func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"error_response.html.tmpl":    `{{define "error"}}custom error page: {{.Error}}{{end}}`,
+		"email_unsubscribe.html.tmpl": `{{define "unsubscribe"}}custom unsubscribe page{{end}}`,
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	for name, tc := range map[string]struct {
+		url  string
+		code int
+		body string
+	}{
+		"error page":       {url: "/email/unsubscribe.html?site=remark42", code: http.StatusBadRequest, body: "custom error page: "},
+		"unsubscribe page": {url: "/email/unsubscribe.html?site=remark42&tkn=" + tkn, code: http.StatusOK, body: "custom unsubscribe page"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+tc.url)
+			assert.Equal(t, tc.code, code)
+			assert.True(t, strings.HasPrefix(body, tc.body), "the override's defined template renders: %q", body)
+		})
+	}
+}

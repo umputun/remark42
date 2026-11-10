@@ -50,7 +50,7 @@ type errTmplData struct {
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
-	page, e := RenderTemplate("error_response.html.tmpl", errTmplData{Error: err.Error(), Details: details})
+	page, e := RenderTemplate("error", "error_response.html.tmpl", errTmplData{Error: err.Error(), Details: details})
 	if e != nil {
 		log.Printf("[WARN] can't make error page, %v", e)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -59,20 +59,22 @@ func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, e
 	HTMLResponse(w, httpStatusCode, page)
 }
 
-// RenderTemplate executes the named html template with data. The template is read from the working
-// directory when present there, so an operator can override it, and from the embedded copy otherwise
-func RenderTemplate(name string, data any) (string, error) {
-	file, err := templates.Read(name)
+// RenderTemplate executes html template file under the given name with data. The file is read from the
+// working directory when present there, so an operator can override it, and from the embedded copy
+// otherwise. An override may wrap its content in {{define "<name>"}}, so the name is kept independent of
+// the file name.
+func RenderTemplate(name, file string, data any) (string, error) {
+	content, err := templates.Read(file)
 	if err != nil {
-		return "", fmt.Errorf("can't read template %s: %w", name, err)
+		return "", fmt.Errorf("can't read template %s: %w", file, err)
 	}
-	tmpl, err := template.New(name).Parse(string(file))
+	tmpl, err := template.New(name).Parse(string(content))
 	if err != nil {
-		return "", fmt.Errorf("can't parse template %s: %w", name, err)
+		return "", fmt.Errorf("can't parse template %s: %w", file, err)
 	}
 	var buf bytes.Buffer
 	if err = tmpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("can't execute template %s: %w", name, err)
+		return "", fmt.Errorf("can't execute template %s: %w", file, err)
 	}
 	return buf.String(), nil
 }
