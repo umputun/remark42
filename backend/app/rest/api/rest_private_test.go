@@ -879,12 +879,10 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	// issue good token
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	}
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
@@ -1821,12 +1819,10 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 
 	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1877,12 +1873,10 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1923,12 +1917,10 @@ func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1971,12 +1963,10 @@ func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -2008,12 +1998,10 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 		t.Run(hs, func(t *testing.T) {
 			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 				Handshake: &token.Handshake{ID: hs},
-				RegisteredClaims: jwt.RegisteredClaims{
-					Audience:  jwt.ClaimStrings{"remark42"},
-					ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-					NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-					Issuer:    "remark42",
-				},
+				Audience:  jwt.ClaimStrings{"remark42"},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+				Issuer:    "remark42",
 			})
 			require.NoError(t, err)
 

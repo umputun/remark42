@@ -743,13 +743,11 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ID:        "1234567",
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
+		Audience:    jwt.ClaimStrings{"remark42"},
+		ID:          "1234567",
+		Issuer:      "remark42",
+		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		User: &token.User{
 			ID:      "user1",
 			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image", // production-shaped URL: removal must path.Base it to the avatar id
@@ -807,14 +805,12 @@ func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		SessionOnly: true,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"other"},
-			ID:        "3456789",
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
-		User: &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
+		Audience:    jwt.ClaimStrings{"other"},
+		ID:          "3456789",
+		Issuer:      "remark42",
+		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		User:        &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
 	})
 	require.NoError(t, err)
 
@@ -856,13 +852,11 @@ func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ID:        "2345678",
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
+		Audience:    jwt.ClaimStrings{"remark42"},
+		ID:          "2345678",
+		Issuer:      "remark42",
+		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		User: &token.User{
 			ID:      "user3",
 			Picture: "missing.image", // no avatar file exists for this picture in the store
@@ -907,13 +901,11 @@ func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
 
 	claims := token.Claims{
 		SessionOnly: true,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ID:        "4567890",
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
+		Audience:    jwt.ClaimStrings{"remark42"},
+		ID:          "4567890",
+		Issuer:      "remark42",
+		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		User: &token.User{
 			ID:      "user5",
 			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
@@ -987,13 +979,11 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	// try with bad auth
 	claims := token.Claims{
 		SessionOnly: true,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ID:        "provider1_1234567",
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
+		Audience:    jwt.ClaimStrings{"remark42"},
+		ID:          "provider1_1234567",
+		Issuer:      "remark42",
+		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 		User: &token.User{
 			ID: "provider1_user1",
 			Attributes: map[string]any{
@@ -1099,12 +1089,10 @@ func TestAdmin_DeleteMeRequestTokenWithoutUser(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::me@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			Issuer:    "remark42",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		Issuer:    "remark42",
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 	})
 	require.NoError(t, err)
 

@@ -1321,12 +1321,10 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
-					RegisteredClaims: jwt.RegisteredClaims{
-						Audience:  jwt.ClaimStrings{site},
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour)),
-						NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-						Issuer:    "remark42",
-					},
+					Audience:  jwt.ClaimStrings{site},
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour)),
+					NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+					Issuer:    "remark42",
 				}
 				tkn, err := authenticator.TokenService().Token(claims)
 				if err != nil {

@@ -352,12 +352,10 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	}
 
 	tkn, err := s.authenticator.TokenService().Token(claims)
@@ -727,12 +725,10 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	claims := token.Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{siteID},
-			Issuer:    "remark42",
-			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 3, 0)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		},
+		Audience:  jwt.ClaimStrings{siteID},
+		Issuer:    "remark42",
+		ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 3, 0)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		User: &token.User{
 			ID:      user.ID,
 			Name:    user.Name,

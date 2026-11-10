@@ -575,8 +575,8 @@ func TestServerApp_ClaimsUpd(t *testing.T) {
 
 	claimsFor := func(id, name string) token.Claims {
 		return token.Claims{
-			RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}},
-			User:             &token.User{ID: id, Name: name},
+			Audience: jwt.ClaimStrings{"remark"},
+			User:     &token.User{ID: id, Name: name},
 		}
 	}
 
@@ -621,7 +621,7 @@ func TestServerApp_ClaimsUpd(t *testing.T) {
 	})
 
 	t.Run("claims without a user pass through", func(t *testing.T) {
-		res := upd.Update(token.Claims{RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}}})
+		res := upd.Update(token.Claims{Audience: jwt.ClaimStrings{"remark"}})
 		assert.Nil(t, res.User)
 	})
 
@@ -876,12 +876,10 @@ func TestServerAuthHooks(t *testing.T) {
 	tkService.TokenDuration = time.Hour
 
 	claims := token.Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark"},
-			Issuer:    "remark",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		},
+		Audience:  jwt.ClaimStrings{"remark"},
+		Issuer:    "remark",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		User: &token.User{
 			ID:   "github_dev",
 			Name: "developer one",
@@ -1188,14 +1186,14 @@ func Test_getAllowedDomains(t *testing.T) {
 		allowedDomains []string
 	}{
 		// correct example, parsed and returned as allowed domain
-		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "https://remark42.example.org"}}, []string{"example.org"}},
-		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "http://remark42.example.org"}}, []string{"example.org"}},
-		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "http://localhost"}}, []string{"localhost"}},
+		{ServerCommand{AllowedHosts: []string{}, RemarkURL: "https://remark42.example.org"}, []string{"example.org"}},
+		{ServerCommand{AllowedHosts: []string{}, RemarkURL: "http://remark42.example.org"}, []string{"example.org"}},
+		{ServerCommand{AllowedHosts: []string{}, RemarkURL: "http://localhost"}, []string{"localhost"}},
 		// incorrect URLs, so Hostname is empty but returned list doesn't include empty string as it would allow any domain
-		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "bad hostname"}}, []string{}},
-		{ServerCommand{AllowedHosts: []string{}, CommonOpts: CommonOpts{RemarkURL: "not_a_hostname"}}, []string{}},
+		{ServerCommand{AllowedHosts: []string{}, RemarkURL: "bad hostname"}, []string{}},
+		{ServerCommand{AllowedHosts: []string{}, RemarkURL: "not_a_hostname"}, []string{}},
 		// test removal of 'self', multiple AllowedHosts. No deduplication is expected
-		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, CommonOpts: CommonOpts{RemarkURL: "https://example.org"}}, []string{"example.org", "test.example.org", "remark42.com", "example.org"}},
+		{ServerCommand{AllowedHosts: []string{"'self'", "example.org", "test.example.org", "remark42.com"}, RemarkURL: "https://example.org"}, []string{"example.org", "test.example.org", "remark42.com", "example.org"}},
 	}
 	for i, tt := range tbl {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

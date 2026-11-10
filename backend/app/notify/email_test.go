@@ -99,8 +99,7 @@ func Test_initTemplatesErr(t *testing.T) {
 
 func TestEmailSendErrors(t *testing.T) {
 	var err error
-	e := Email{}
-	e.TokenGenFn = TokenGenFn
+	e := Email{TokenGenFn: TokenGenFn}
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
