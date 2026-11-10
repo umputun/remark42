@@ -112,74 +112,58 @@ func (s *Rest) Run(address string, port int) {
 		address = ""
 	}
 
+	// without SSL the http server on port serves the api; with SSL the https server does, and the
+	// http server only redirects to it (static) or answers the ACME challenge (auto)
+	var httpHandler http.Handler
+	var httpsServer *http.Server
+	var httpName, certFile, keyFile string
 	switch s.SSLConfig.SSLMode {
 	case None:
 		log.Printf("[INFO] activate http rest server on %s:%d", address, port)
-
-		s.lock.Lock()
-		s.httpServer = s.makeHTTPServer(address, port, s.routes())
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-		s.lock.Unlock()
-
-		err := s.httpServer.ListenAndServe()
-		log.Printf("[WARN] http server terminated, %s", err)
+		httpHandler = s.routes()
 	case Static:
 		log.Printf("[INFO] activate https server in 'static' mode on %s:%d", address, s.SSLConfig.Port)
-
-		s.lock.Lock()
-		s.httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes())
-		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-
-		s.httpServer = s.makeHTTPServer(address, port, s.httpToHTTPSRouter())
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-		s.lock.Unlock()
-
-		go func() {
-			log.Printf("[INFO] activate http redirect server on %s:%d", address, port)
-			err := s.httpServer.ListenAndServe()
-			log.Printf("[WARN] http redirect server terminated, %s", err)
-		}()
-
-		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
-		log.Printf("[WARN] https server terminated, %s", err)
+		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes())
+		httpHandler, httpName = s.httpToHTTPSRouter(), "http redirect"
+		certFile, keyFile = s.SSLConfig.Cert, s.SSLConfig.Key
 	case Auto:
 		log.Printf("[INFO] activate https server in 'auto' mode on %s:%d", address, s.SSLConfig.Port)
-
 		m := s.makeAutocertManager()
-		s.lock.Lock()
-		s.httpsServer = s.makeHTTPSAutocertServer(address, s.SSLConfig.Port, s.routes(), m)
-		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-
-		s.httpServer = s.makeHTTPServer(address, port, s.httpChallengeRouter(m))
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-
-		s.lock.Unlock()
-
-		go func() {
-			log.Printf("[INFO] activate http challenge server on port %d", port)
-
-			err := s.httpServer.ListenAndServe()
-			log.Printf("[WARN] http challenge server terminated, %s", err)
-		}()
-
-		err := s.httpsServer.ListenAndServeTLS("", "")
-		log.Printf("[WARN] https server terminated, %s", err)
+		httpsServer = s.makeHTTPSAutocertServer(address, s.SSLConfig.Port, s.routes(), m)
+		httpHandler, httpName = s.httpChallengeRouter(m), "http challenge"
+	default:
+		return
 	}
+
+	httpServer := s.makeHTTPServer(address, port, httpHandler)
+	httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+	if httpsServer != nil {
+		httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+	}
+
+	s.lock.Lock()
+	if s.shutdownRequested {
+		s.lock.Unlock()
+		log.Print("[WARN] rest server start canceled")
+		return
+	}
+	s.httpServer, s.httpsServer = httpServer, httpsServer
+	s.lock.Unlock()
+
+	if httpsServer == nil {
+		err := httpServer.ListenAndServe()
+		log.Printf("[WARN] http server terminated, %s", err)
+		return
+	}
+
+	go func() {
+		log.Printf("[INFO] activate %s server on %s:%d", httpName, address, port)
+		err := httpServer.ListenAndServe()
+		log.Printf("[WARN] %s server terminated, %s", httpName, err)
+	}()
+
+	err := httpsServer.ListenAndServeTLS(certFile, keyFile)
+	log.Printf("[WARN] https server terminated, %s", err)
 }
 
 // Shutdown rest http server
@@ -249,11 +233,13 @@ func (s *Rest) routes() http.Handler {
 		r.Handle("/auth/", authHandler)
 	})
 
-	router.Route(func(r *routegroup.Bundle) {
+	// avatars are served at the root, where pictures stored by older versions point, and under the api
+	avatarRoutes := func(r *routegroup.Bundle) {
 		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
 		r.Handle("/avatar/", avatarHandler)
-	})
+	}
+	router.Route(avatarRoutes)
 
 	authMiddleware := s.Authenticator.Middleware()
 
@@ -261,11 +247,7 @@ func (s *Rest) routes() http.Handler {
 	rapi := router.Mount("/api/v1")
 	rapi.Use(apiCSPMiddleware)
 
-	rapi.Group().Route(func(rava *routegroup.Bundle) {
-		rava.Use(R.Timeout(5 * time.Second))
-		rava.Use(rateLimiter(100))
-		rava.Handle("/avatar/", avatarHandler)
-	})
+	rapi.Group().Route(avatarRoutes)
 
 	// open routes
 	rapi.Group().Route(func(ropen *routegroup.Bundle) {

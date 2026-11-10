@@ -42,9 +42,7 @@ type Migrator struct {
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
-	if !m.setBusyIfFree(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"),
-			"import rejected", rest.ErrActionRejected)
+	if !m.claim(w, r, siteID, "import rejected") {
 		return
 	}
 	handedOff := false
@@ -71,9 +69,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
-	if !m.setBusyIfFree(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"),
-			"import rejected", rest.ErrActionRejected)
+	if !m.claim(w, r, siteID, "import rejected") {
 		return
 	}
 	handedOff := false
@@ -214,9 +210,7 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close() //nolint gosec // we don't care about response body
-	if !m.setBusyIfFree(siteID) {
-		rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"),
-			"remap rejected", rest.ErrActionRejected)
+	if !m.claim(w, r, siteID, "remap rejected") {
 		return
 	}
 
@@ -324,6 +318,16 @@ func (m *Migrator) saveTemp(r io.Reader) (string, error) {
 	return tmpfile.Name(), nil
 }
 
+// claim takes a site's migration slot for a handler, answering 409 with details when another
+// operation holds it
+func (m *Migrator) claim(w http.ResponseWriter, r *http.Request, siteID, details string) bool {
+	if m.setBusyIfFree(siteID) {
+		return true
+	}
+	rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"), details, rest.ErrActionRejected)
+	return false
+}
+
 // setBusyIfFree claims a site's migration slot. The handler calls it before starting background
 // work, so wait and competing requests see the operation as soon as its acceptance is returned.
 func (m *Migrator) setBusyIfFree(siteID string) bool {
@@ -343,18 +347,12 @@ func (m *Migrator) setBusyIfFree(siteID string) bool {
 func (m *Migrator) isBusy(siteID string) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if m.busy == nil {
-		m.busy = map[string]bool{}
-	}
-	return m.busy[siteID]
+	return m.busy[siteID] // reading a nil map, before the first claim, gives false
 }
 
 // clearBusy releases a site's migration slot
 func (m *Migrator) clearBusy(siteID string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if m.busy == nil {
-		m.busy = map[string]bool{}
-	}
-	m.busy[siteID] = false
+	delete(m.busy, siteID)
 }
