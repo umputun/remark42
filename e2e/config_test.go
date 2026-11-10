@@ -32,7 +32,7 @@ func TestConfig_ColorsReachTheWidget(t *testing.T) {
 
 	value, err := page.FrameLocator("#remark42 iframe").Locator(":root").Evaluate(
 		`(el) => getComputedStyle(el).getPropertyValue('--color15').trim()`, nil,
-		playwright.LocatorEvaluateOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	assert.Equal(t, "rgb(1, 2, 3)", value, "the colors an integrator sets never reached the widget document")
 }
@@ -53,13 +53,13 @@ func TestConfig_CustomPropertiesReachTheWidget(t *testing.T) {
 	frame := widget(t, page)
 
 	rendered, err := frame.Locator("body").Evaluate(`(el) => getComputedStyle(el).fontFamily`, nil,
-		playwright.LocatorEvaluateOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	assert.Contains(t, rendered, "Georgia", "custom_properties reached the variable but body isn't actually rendering it")
 
 	value, err := frame.Locator(":root").Evaluate(
 		`(el) => getComputedStyle(el).getPropertyValue('--font-family').trim()`, nil,
-		playwright.LocatorEvaluateOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	assert.Equal(t, "Georgia", value, "custom_properties never reached the widget document")
 }
@@ -289,14 +289,14 @@ func TestConfig_StandaloneWidgetSendsNoPlaceholderTitle(t *testing.T) {
 	require.NoError(t, page.Locator(".auth-input-username").Fill(anonName("standalone")))
 	_, err = page.ExpectResponse("**/auth/anonymous/login**", func() error {
 		return page.Locator(".auth-submit").Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	waitVisible(t, page.Locator(`[title="Sign out"]`))
 
 	req, err := page.ExpectRequest("**/api/v1/comment?**", func() error {
 		submitForm(t, page.Locator(commentFormSel).First(), "standalone "+runID)
 		return nil
-	}, playwright.PageExpectRequestOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectRequestOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	raw, err := req.PostData()
 	require.NoError(t, err)

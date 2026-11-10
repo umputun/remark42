@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -191,35 +192,19 @@ func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) 
 
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) deleteComment(c store.Comment) error {
-	return cc.commentRequest(http.MethodDelete, "comment", "delete", c)
+	return cc.commentRequest(http.MethodDelete, "comment", c)
 }
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
 func (cc *CleanupCommand) setTitle(c store.Comment) error {
-	return cc.commentRequest(http.MethodPut, "title", "title", c)
+	return cc.commentRequest(http.MethodPut, "title", c)
 }
 
-// commentRequest sends method to /admin/{route}/{id}?site=siteID&url=post-url, name labels it in errors
-func (cc *CleanupCommand) commentRequest(method, route, name string, c store.Comment) error {
-	reqURL := fmt.Sprintf("%s/api/v1/admin/%s/%s?site=%s&url=%s&format=plain", cc.RemarkURL, route, url.PathEscape(c.ID),
-		url.QueryEscape(cc.Site), url.QueryEscape(c.Locator.URL))
-	req, err := http.NewRequest(method, reqURL, http.NoBody)
-	if err != nil {
-		return fmt.Errorf("failed to make %s request for comment %s, %s: %w", name, c.ID, c.Locator.URL, err)
-	}
-	req.SetBasicAuth("admin", cc.AdminPasswd)
-
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	r, err := client.Do(req) //nolint:gosec // RemarkURL comes from operator CLI flag, not user input
-	if err != nil {
-		return fmt.Errorf("%s request failed for comment %s, %s: %w", name, c.ID, c.Locator.URL, err)
-	}
-	defer func() { _ = r.Body.Close() }()
-	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s request failed with status %s", name, r.Status)
-	}
-	return nil
+// commentRequest sends method to /admin/{route}/{id}?site=siteID&url=post-url
+func (cc *CleanupCommand) commentRequest(method, route string, c store.Comment) error {
+	endpoint := fmt.Sprintf("%s/api/v1/admin/%s/%s", cc.RemarkURL, route, url.PathEscape(c.ID))
+	query := url.Values{"site": {cc.Site}, "url": {c.Locator.URL}, "format": {"plain"}}
+	return cc.adminRequest(context.Background(), method, endpoint, query, http.NoBody, nil)
 }
 
 // isSpam calculates spam's probability as a score

@@ -216,8 +216,7 @@ func localeCount(t *testing.T) int {
 
 // exitStderr is what the command wrote to stderr, which Output keeps out of the parsed result
 func exitStderr(err error) string {
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return string(exit.Stderr)
 	}
 	return ""

@@ -39,7 +39,7 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	css, err := page.ExpectResponse("**/last-comments.css", func() error {
 		_, gerr := page.Goto(baseURL + "/web/last-comments.html")
 		return gerr
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the page never asked for its stylesheet")
 	assert.Equal(t, 200, css.Status(), "the last-comments stylesheet did not load")
 
@@ -95,7 +95,7 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 	// node carrying this test's own thread, which only the data-url branch can resolve
 	thread := threadURL(t)
 	err := page.AddInitScript(playwright.Script{
-		Content: playwright.String(`document.addEventListener('DOMContentLoaded', () => {
+		Content: new(`document.addEventListener('DOMContentLoaded', () => {
 			const node = document.createElement('span');
 			node.className = 'remark42__counter';
 			node.id = 'own-thread-counter';
@@ -165,7 +165,7 @@ func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, blank, "the counter must start blank or the assertion below is vacuous")
 
-	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/counter.js")})
+	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: new(baseURL + "/web/counter.js")})
 	require.NoError(t, err)
 
 	eventually(t, waitTimeout, "the legacy counter.js url never filled the counter", func() bool {
@@ -262,8 +262,8 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
 				if err := route.Fulfill(playwright.RouteFulfillOptions{
 					Status:      playwright.Int(http.StatusOK),
-					ContentType: playwright.String("application/json"),
-					Body:        playwright.String(`{"status":"not logged in"}`),
+					ContentType: new("application/json"),
+					Body:        new(`{"status":"not logged in"}`),
 				}); err != nil {
 					t.Errorf("fulfill signed-out status for locale %s: %v", locale, err)
 				}
@@ -280,7 +280,7 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			}`, []any{baseURL, threadURL(t), locale})
 			require.NoError(t, eerr)
 
-			_, aerr := page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/embed.mjs")})
+			_, aerr := page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: new(baseURL + "/web/embed.mjs")})
 			require.NoError(t, aerr)
 
 			// not widget(): commentFormSel matches the form's aria-label, which is itself

@@ -36,14 +36,7 @@ func (ic *ImportCommand) Execute(_ []string) error {
 	defer cancel()
 	query := url.Values{"site": {ic.Site}, "provider": {ic.Provider}}
 	endpoint := ic.RemarkURL + "/api/v1/admin/import"
-	return ic.adminRequest(ctx, "import", http.MethodPost, endpoint, query, reader, func(resp *http.Response) error {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("can't get response from importer: %w", err)
-		}
-		log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
-		return nil
-	})
+	return ic.adminRequest(ctx, http.MethodPost, endpoint, query, reader, logResponse)
 }
 
 // reader returns reader for file. For .gz file wraps with gunzip

@@ -879,12 +879,10 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	// issue good token
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	}
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
@@ -1821,12 +1819,10 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 
 	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1877,12 +1873,10 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1923,12 +1917,10 @@ func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -1971,12 +1963,10 @@ func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	})
 	require.NoError(t, err)
 
@@ -2008,12 +1998,10 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 		t.Run(hs, func(t *testing.T) {
 			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 				Handshake: &token.Handshake{ID: hs},
-				RegisteredClaims: jwt.RegisteredClaims{
-					Audience:  jwt.ClaimStrings{"remark42"},
-					ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-					NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-					Issuer:    "remark42",
-				},
+				Audience:  jwt.ClaimStrings{"remark42"},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+				Issuer:    "remark42",
 			})
 			require.NoError(t, err)
 
@@ -2036,6 +2024,22 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 	}
 }
 
+// subscribedUserToken stores an email for provider1_dev and returns the token of its unsubscribe link
+func subscribedUserToken(t *testing.T, srv *Rest) string {
+	t.Helper()
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+	return tkn
+}
+
 // a template on disk takes precedence over the embedded one; when it is broken, the html pages
 // fail with a plain 500 instead of a half-rendered page
 func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
@@ -2047,17 +2051,7 @@ func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
 
 	ts, srv, teardown := startupT(t)
 	defer teardown()
-
-	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
-	require.NoError(t, err)
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
-	})
-	require.NoError(t, err)
+	tkn := subscribedUserToken(t, srv)
 
 	for name, url := range map[string]string{
 		"error page":       "/email/unsubscribe.html?site=remark42",
@@ -2088,17 +2082,7 @@ func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
 
 	ts, srv, teardown := startupT(t)
 	defer teardown()
-
-	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
-	require.NoError(t, err)
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
-	})
-	require.NoError(t, err)
+	tkn := subscribedUserToken(t, srv)
 
 	for name, tc := range map[string]struct {
 		url  string

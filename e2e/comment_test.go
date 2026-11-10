@@ -134,7 +134,7 @@ func TestComment_EditExpiresAfterTheDeadline(t *testing.T) {
 	// to outlast the window itself, which started when the comment was posted
 	expiry := playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateHidden,
-		Timeout: playwright.Float(float64((waitTimeout + editWindow).Milliseconds())),
+		Timeout: new(float64((waitTimeout + editWindow).Milliseconds())),
 	}
 	require.NoError(t, editButton.WaitFor(expiry))
 	require.NoError(t, timer.WaitFor(expiry))
@@ -255,8 +255,8 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 	require.NoError(t, page.Route("**/api/v1/comment?**", func(route playwright.Route) {
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusBadRequest),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"code":19,"details":"comment contains restricted words","error":"rejected"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"code":19,"details":"comment contains restricted words","error":"rejected"}`),
 		}); err != nil {
 			t.Errorf("fulfill refused comment response: %v", err)
 		}
@@ -358,8 +358,8 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 			time.Sleep(300 * time.Millisecond)
 			if err := route.Fulfill(playwright.RouteFulfillOptions{
 				Status:      playwright.Int(http.StatusInternalServerError),
-				ContentType: playwright.String("application/json"),
-				Body:        playwright.String(`{"code":0,"details":"upload failed","error":"nope"}`),
+				ContentType: new("application/json"),
+				Body:        new(`{"code":0,"details":"upload failed","error":"nope"}`),
 			}); err != nil {
 				t.Errorf("fulfill failed upload response: %v", err)
 			}

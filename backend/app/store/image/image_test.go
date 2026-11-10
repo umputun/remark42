@@ -81,7 +81,7 @@ func assertImageFits(t *testing.T, data []byte, limitW, limitH int) {
 }
 
 func TestService_SaveTooLarge(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+	svc := Service{ImageAPI: "/blah/"}
 	svc.MaxSize = 2000
 	_, err := svc.Save("user2", io.MultiReader(gopherPNG(), gopherPNG()))
 	assert.Error(t, err)
@@ -92,14 +92,14 @@ func TestService_SaveTooLarge(t *testing.T) {
 }
 
 func TestService_WrongFormat(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+	svc := Service{ImageAPI: "/blah/"}
 
 	_, err := svc.Save("user1", strings.NewReader("blah blah bad image"))
 	assert.Error(t, err)
 }
 
 func TestService_ExtractPictures(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/", ProxyAPI: "/non_existent"}}
+	svc := Service{ImageAPI: "/blah/", ProxyAPI: "/non_existent"}
 	html := `blah <img src="/blah/user1/pic1.png"/> foo
 <img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/> <img src="https://i.ibb.co/0cqqqnD/ezgif-5-3b07b6b97610.png" alt="">`
 	ids := svc.ExtractPictures(html)
@@ -107,7 +107,7 @@ func TestService_ExtractPictures(t *testing.T) {
 	assert.Equal(t, "user1/pic1.png", ids[0])
 	assert.Equal(t, "user2/pic3.png", ids[1])
 
-	svc = Service{ServiceParams: ServiceParams{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/", ProxyAPI: "https://remark42.radio-t.com/api/v1/img"}}
+	svc = Service{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/", ProxyAPI: "https://remark42.radio-t.com/api/v1/img"}
 	html = `<p>TLDR: такое в go пока правильно посчитать трудно. То, что они считают это общее количество go packages в коде.
 </p>\n\n<p>Пакеты в го это средство организации кода, они могут быть связанны друг с другом в рамках одной библиотеки (модуля).
 Например одна из моих вот так выглядит на libraries.io:</p>\n\n
@@ -311,7 +311,7 @@ func TestService_resize(t *testing.T) {
 func TestService_SaveWithIDShortPayload(t *testing.T) {
 	short := []byte("not an image")
 
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/", MaxSize: 1500, MaxWidth: 32, MaxHeight: 32}}
+	svc := Service{ImageAPI: "/blah/", MaxSize: 1500, MaxWidth: 32, MaxHeight: 32}
 	err := svc.SaveWithID("test_id", bytes.NewReader(short))
 	require.Error(t, err, "short non-image body must return an error, not panic")
 	assert.Contains(t, err.Error(), "file format not allowed")
@@ -333,7 +333,7 @@ func TestService_SaveWithIDWebP(t *testing.T) {
 	require.Equal(t, 1, cfg.Height)
 
 	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
-	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+	svc := Service{store: &store, MaxSize: 1500}
 
 	err = svc.SaveWithID("webp_id", bytes.NewReader(webp))
 	require.NoError(t, err, "valid WebP must round-trip through SaveWithID")
@@ -369,7 +369,7 @@ func TestService_resizeRejectsDecompressionBomb(t *testing.T) {
 	// integration-level: SaveWithID must reject the same bomb without panicking
 	// or allocating gigabytes of raster memory.
 	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
-	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+	svc := Service{store: &store, MaxSize: 1500}
 	err = svc.SaveWithID("bomb_id", bytes.NewReader(bomb))
 	require.Error(t, err, "SaveWithID must reject decompression bomb")
 	assert.Equal(t, 0, len(store.SaveCalls()), "rejected bomb must not be stored")

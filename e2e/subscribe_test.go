@@ -61,7 +61,7 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	// the request the panel makes, so a submit going nowhere fails as itself
 	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
 		return frame.Locator(`button:text-is("Submit")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the panel asked the server for nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
 
@@ -79,7 +79,7 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 
 	resp, err = page.ExpectResponse("**/api/v1/email**", func() error {
 		return unsubscribe.Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, "DELETE", resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the unsubscribe")
@@ -189,7 +189,7 @@ func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
 	// the request that moves the panel to the token step, so a submit going nowhere fails as itself
 	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
 		return frame.Locator(`button:text-is("Submit")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the panel asked the server for nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
 

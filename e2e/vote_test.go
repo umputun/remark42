@@ -100,8 +100,8 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 		// error handling fails altogether. asserting a distinct string is what makes this
 		// assertion mean anything
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(409),
-			ContentType: playwright.String("application/json"),
+			Status:      new(409),
+			ContentType: new("application/json"),
 			Body:        `{"code":19,"details":"vote rejected","error":"failed"}`,
 		}); err != nil {
 			t.Errorf("fulfill refused vote response: %v", err)
@@ -266,7 +266,7 @@ func TestVote_WithoutTheXSRFHeaderIsRefused(t *testing.T) {
 
 	resp, err := voter.ExpectResponse("**/api/v1/vote/**", func() error {
 		return target.Locator(`button[title="Vote up"]`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "the vote was never sent")
 	assert.GreaterOrEqual(t, resp.Status(), http.StatusBadRequest,
 		"a vote without the XSRF header was accepted, so the check that forces anonymous-first "+

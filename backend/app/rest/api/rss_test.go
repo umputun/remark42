@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 )
 
@@ -312,4 +315,52 @@ func TestServer_RssPostLimitsItems(t *testing.T) {
 	res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url=https://radio-t.com/many")
 	require.Equal(t, http.StatusOK, code)
 	assert.Equal(t, maxRssItems, strings.Count(res, "<item>"), "post feed has at most maxRssItems items")
+}
+
+// TestServer_RssResponses pins what every feed answers besides the feed itself: the content type on
+// success and the status, details and code of the JSON error for an unknown site
+func TestServer_RssResponses(t *testing.T) {
+	ts, rst, teardown := startupT(t)
+	defer teardown()
+
+	_, err := rst.DataService.Create(store.Comment{ID: "c1", Text: "test 123", Timestamp: time.Now(),
+		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"}, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+
+	tbl := []struct {
+		name, path, badPath string
+		details             string
+		errCode             int
+	}{
+		{"post", "/api/v1/rss/post?site=remark42&url=https://radio-t.com/blah1", "/api/v1/rss/post?site=bad&url=https://radio-t.com/blah1",
+			"can't find comments", rest.ErrPostNotFound},
+		{"site", "/api/v1/rss/site?site=remark42", "/api/v1/rss/site?site=bad", "can't get last comments", rest.ErrSiteNotFound},
+		{"reply", "/api/v1/rss/reply?user=u1&site=remark42", "/api/v1/rss/reply?user=u1&site=bad", "can't get replies", rest.ErrSiteNotFound},
+	}
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.Get(ts.URL + tt.path)
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Equal(t, "application/xml; charset=utf-8", resp.Header.Get("Content-Type"))
+			assert.Contains(t, string(body), "<title>Remark42 comments</title>")
+
+			resp, err = client.Get(ts.URL + tt.badPath)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			j := struct {
+				Details string `json:"details"`
+				Code    int    `json:"code"`
+			}{}
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&j))
+			assert.Equal(t, tt.details, j.Details)
+			assert.Equal(t, tt.errCode, j.Code)
+		})
+	}
 }

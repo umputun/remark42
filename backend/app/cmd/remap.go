@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,12 +33,5 @@ func (rc *RemapCommand) Execute(_ []string) error {
 	defer cancel()
 	query := url.Values{"site": {rc.Site}}
 	endpoint := rc.RemarkURL + "/api/v1/admin/remap"
-	return rc.adminRequest(ctx, "remap", http.MethodPost, endpoint, query, rulesReader, func(resp *http.Response) error {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("can't get response: %w", err)
-		}
-		log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
-		return nil
-	})
+	return rc.adminRequest(ctx, http.MethodPost, endpoint, query, rulesReader, logResponse)
 }

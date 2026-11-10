@@ -186,8 +186,8 @@ func TestMain(m *testing.M) {
 		slowMo = 50 // slow the visible browser down enough to follow
 	}
 	browser, err = pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(headless),
-		SlowMo:   playwright.Float(slowMo),
+		Headless: new(headless),
+		SlowMo:   new(slowMo),
 		Args: []string{
 			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
 				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
@@ -349,7 +349,7 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 
 	// the https services carry a self-signed certificate, and a context that refuses it cannot
 	// reach them at all. harmless for the http ones
-	opts.IgnoreHttpsErrors = playwright.Bool(true)
+	opts.IgnoreHttpsErrors = new(true)
 
 	ctx, err := b.NewContext(opts)
 	require.NoError(t, err)
@@ -378,11 +378,11 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 
 	// the reveal timers start when the iframe element is created, so the tests that bound
 	// them have to measure from there and not from anything this process can time
-	require.NoError(t, ctx.AddInitScript(playwright.Script{Content: playwright.String(iframeMarkScript)}))
+	require.NoError(t, ctx.AddInitScript(playwright.Script{Content: new(iframeMarkScript)}))
 
 	tracing := ctx.Tracing().Start(playwright.TracingStartOptions{
-		Screenshots: playwright.Bool(true),
-		Snapshots:   playwright.Bool(true),
+		Screenshots: new(true),
+		Snapshots:   new(true),
 	}) == nil
 	// a test that opens two contexts would otherwise have them write the same file, and
 	// cleanup runs last-in-first-out, so the surviving trace would be of the page that was
@@ -530,7 +530,7 @@ func browserFor(t *testing.T, name string) playwright.Browser {
 	}
 
 	b, err := bt.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(os.Getenv("E2E_HEADLESS") != "false"),
+		Headless: new(os.Getenv("E2E_HEADLESS") != "false"),
 	})
 	require.NoError(t, err)
 	extraBrowsers[name] = b
@@ -646,7 +646,7 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 	}`, []any{config, strings.Join(placeholder, "")})
 	require.NoError(t, err)
 
-	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: playwright.String(baseURL + "/web/embed.mjs")})
+	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: new(baseURL + "/web/embed.mjs")})
 	require.NoError(t, err)
 }
 
@@ -657,8 +657,8 @@ func stubSignedOut(t *testing.T, page playwright.Page) {
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
 		if err := route.Fulfill(playwright.RouteFulfillOptions{
 			Status:      playwright.Int(http.StatusOK),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"status":"not logged in"}`),
+			ContentType: new("application/json"),
+			Body:        new(`{"status":"not logged in"}`),
 		}); err != nil {
 			t.Errorf("fulfill signed-out auth status: %v", err)
 		}
@@ -677,7 +677,7 @@ func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	_, err := page.ExpectResponse("**/api/v1/find**", func() error {
 		_, rerr := page.Reload()
 		return rerr
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 
 	frame := widget(t, page)
@@ -767,7 +767,7 @@ func waitVisible(t *testing.T, loc playwright.Locator) {
 	t.Helper()
 	require.NoError(t, loc.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateVisible,
-		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
+		Timeout: new(float64(waitTimeout.Milliseconds())),
 	}))
 }
 
@@ -777,7 +777,7 @@ func waitHidden(t *testing.T, loc playwright.Locator, msgAndArgs ...any) {
 	t.Helper()
 	err := loc.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateHidden,
-		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
+		Timeout: new(float64(waitTimeout.Milliseconds())),
 	})
 	require.NoError(t, err, msgAndArgs...)
 }
@@ -785,14 +785,14 @@ func waitHidden(t *testing.T, loc playwright.Locator, msgAndArgs ...any) {
 // pollText reads an element's text with a timeout short enough to be used inside eventually
 func pollText(loc playwright.Locator) (string, error) {
 	return loc.InnerText(playwright.LocatorInnerTextOptions{
-		Timeout: playwright.Float(float64(pollTimeout.Milliseconds())),
+		Timeout: new(float64(pollTimeout.Milliseconds())),
 	})
 }
 
 // pollAttr reads an attribute with the same short timeout
 func pollAttr(loc playwright.Locator, name string) (string, error) {
 	return loc.GetAttribute(name, playwright.LocatorGetAttributeOptions{
-		Timeout: playwright.Float(float64(pollTimeout.Milliseconds())),
+		Timeout: new(float64(pollTimeout.Milliseconds())),
 	})
 }
 
