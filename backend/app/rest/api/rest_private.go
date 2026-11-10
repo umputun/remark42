@@ -1,14 +1,12 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec //not used for security
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -29,7 +27,6 @@ import (
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
-	"github.com/umputun/remark42/backend/app/templates"
 )
 
 type private struct {
@@ -591,24 +588,13 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
-		if err := tmpl.Execute(wr, data); err != nil {
-			panic(err)
-		}
+	page, err := rest.RenderTemplate("email_unsubscribe.html.tmpl", nil)
+	if err != nil {
+		log.Printf("[WARN] can't make unsubscribe page, %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	MustRead := func(path string) string {
-		file, err := templates.Read(path)
-		if err != nil {
-			panic(err)
-		}
-		return string(file)
-	}
-	tmplstr := MustRead("email_unsubscribe.html.tmpl")
-	tmpl := template.Must(template.New("unsubscribe").Parse(tmplstr))
-	msg := bytes.Buffer{}
-	MustExecute(tmpl, &msg, nil)
-	rest.HTMLResponse(w, http.StatusOK, msg.String())
+	rest.HTMLResponse(w, http.StatusOK, page)
 }
 
 // DELETE /email?site=siteID - removes user's email

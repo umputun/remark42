@@ -1998,3 +1998,41 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 		})
 	}
 }
+
+// a template on disk takes precedence over the embedded one; when it is broken, the html pages
+// fail with a plain 500 instead of a half-rendered page
+func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"error_response.html.tmpl", "email_unsubscribe.html.tmpl"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte("{{ .Broken"), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	for name, url := range map[string]string{
+		"error page":       "/email/unsubscribe.html?site=remark42",
+		"unsubscribe page": "/email/unsubscribe.html?site=remark42&tkn=" + tkn,
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+url)
+			assert.Equal(t, http.StatusInternalServerError, code)
+			assert.Equal(t, "Internal Server Error\n", body)
+		})
+	}
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "the unsubscribe itself went through before the page failed")
+}

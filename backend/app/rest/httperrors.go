@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -50,30 +49,32 @@ type errTmplData struct {
 // SendErrorHTML makes html body from error_response.html.tmpl template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
-		if err = tmpl.Execute(wr, data); err != nil {
-			panic(err)
-		}
-	}
-	MustRead := func(path string) string {
-		file, e := templates.Read(path)
-		if e != nil {
-			panic(e)
-		}
-		return string(file)
-	}
-	tmplstr := MustRead("error_response.html.tmpl")
-	tmpl := template.Must(template.New("error").Parse(tmplstr))
 	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	page, e := RenderTemplate("error_response.html.tmpl", errTmplData{Error: err.Error(), Details: details})
+	if e != nil {
+		log.Printf("[WARN] can't make error page, %v", e)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	HTMLResponse(w, httpStatusCode, page)
+}
 
-	msg := bytes.Buffer{}
-	MustExecute(tmpl, &msg, errTmplData{
-		Error:   err.Error(),
-		Details: details,
-	})
-
-	HTMLResponse(w, httpStatusCode, msg.String())
+// RenderTemplate executes the named html template with data. The template is read from the working
+// directory when present there, so an operator can override it, and from the embedded copy otherwise
+func RenderTemplate(name string, data any) (string, error) {
+	file, err := templates.Read(name)
+	if err != nil {
+		return "", fmt.Errorf("can't read template %s: %w", name, err)
+	}
+	tmpl, err := template.New(name).Parse(string(file))
+	if err != nil {
+		return "", fmt.Errorf("can't parse template %s: %w", name, err)
+	}
+	var buf bytes.Buffer
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("can't execute template %s: %w", name, err)
+	}
+	return buf.String(), nil
 }
 
 // SendErrorJSON makes {error: blah, details: blah, code: 42} json body and responds with error code
