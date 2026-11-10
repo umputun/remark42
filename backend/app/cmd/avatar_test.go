@@ -16,7 +16,7 @@ func TestAvatar_Execute(t *testing.T) {
 	defer os.RemoveAll("/tmp/ava-test")
 
 	// from fs to bolt
-	cmd := AvatarCommand{migrator: &avatarMigratorMock{retCount: 100}}
+	cmd := AvatarCommand{migrate: (&avatarMigratorMock{retCount: 100}).Migrate}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
@@ -27,7 +27,7 @@ func TestAvatar_Execute(t *testing.T) {
 	assert.NoError(t, err)
 
 	// failed
-	cmd = AvatarCommand{migrator: &avatarMigratorMock{retCount: 0, retError: fmt.Errorf("failed blah")}}
+	cmd = AvatarCommand{migrate: (&avatarMigratorMock{retCount: 0, retError: fmt.Errorf("failed blah")}).Migrate}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p = flags.NewParser(&cmd, flags.Default)
 	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
@@ -52,7 +52,7 @@ func (a *avatarMigratorMock) Migrate(_, _ avatar.Store) (int, error) {
 func TestAvatar_ExecuteURIStore(t *testing.T) {
 	tmp := t.TempDir()
 	mock := &avatarMigratorMock{retCount: 1}
-	cmd := AvatarCommand{migrator: mock}
+	cmd := AvatarCommand{migrate: mock.Migrate}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--src.type=uri", "--src.uri=" + filepath.Join(tmp, "src"),

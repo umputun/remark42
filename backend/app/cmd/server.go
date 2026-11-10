@@ -312,18 +312,10 @@ type AdminRPCGroup struct {
 	SecretPerSite bool `long:"secret_per_site" env:"SECRET_PER_SITE" description:"enable JWT secret retrieval per aud, which is site_id in this case"`
 }
 
-// LoadingCache defines interface for caching
-type LoadingCache interface {
-	Get(key cache.Key, fn func() ([]byte, error)) (data []byte, err error) // load from cache if found or put to cache and return
-	Flush(req cache.FlusherRequest)                                        // evict matched records
-	Close() error
-}
-
 // serverApp holds all active objects
 type serverApp struct {
 	*ServerCommand
 	restSrv       *api.Rest
-	migratorSrv   *api.Migrator
 	exporter      migrator.Exporter
 	devAuth       *provider.DevAuthServer
 	dataService   *service.DataStore
@@ -607,8 +599,8 @@ func (c CustomAuthGroup) missingRequired() []string {
 
 // newServerApp prepares application and return it with all active parts
 // doesn't start anything
-func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
-	if err := makeDirs(s.BackupLocation); err != nil {
+func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err error) {
+	if err = makeDirs(s.BackupLocation); err != nil {
 		return nil, fmt.Errorf("failed to create backup store: %w", err)
 	}
 
@@ -661,38 +653,42 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
 	dataService.RestrictSameIPVotes.Duration = s.DurationVoteIP
 
+	// from here on a failed setup closes what it has opened
+	var refreshCache *authRefreshCache
+	defer func() {
+		if err == nil {
+			return
+		}
+		_ = dataService.Close()
+		if refreshCache != nil {
+			_ = refreshCache.Close()
+		}
+	}()
+
 	loadingCache, err := s.makeCache()
 	if err != nil {
-		_ = dataService.Close()
 		return nil, fmt.Errorf("failed to make cache: %w", err)
 	}
 
 	avatarStore, err := s.makeAvatarStore()
 	if err != nil {
-		_ = dataService.Close()
 		return nil, fmt.Errorf("failed to make avatar store: %w", err)
 	}
-	authRefreshCache := newAuthRefreshCache()
-	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, authRefreshCache)
+	refreshCache = newAuthRefreshCache()
+	authenticator := s.getAuthenticator(dataService, avatarStore, adminStore, refreshCache)
 
 	// telegram auth requires the TelegramAPI listener started below
 	telegramAuth, err := s.makeTelegramAuth(authenticator)
 	if err != nil {
-		_ = dataService.Close()
-		_ = authRefreshCache.Close()
 		return nil, err
 	}
 	telegramService, err := s.startTelegramAuthAndNotify(ctx, telegramAuth)
 	if err != nil {
-		_ = dataService.Close()
-		_ = authRefreshCache.Close()
 		return nil, err
 	}
 
 	err = s.addAuthProviders(authenticator)
 	if err != nil {
-		_ = dataService.Close()
-		_ = authRefreshCache.Close()
 		return nil, fmt.Errorf("failed to make authenticator: %w", err)
 	}
 
@@ -731,8 +727,6 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
-		_ = dataService.Close()
-		_ = authRefreshCache.Close()
 		return nil, fmt.Errorf("failed to make config of ssl server params: %w", err)
 	}
 
@@ -783,8 +777,6 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	if s.Auth.Dev {
 		da, errDevAuth := authenticator.DevAuth()
 		if errDevAuth != nil {
-			_ = dataService.Close()
-			_ = authRefreshCache.Close()
 			return nil, fmt.Errorf("can't make dev oauth2 server: %w", errDevAuth)
 		}
 		devAuth = da
@@ -793,7 +785,6 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 	return &serverApp{
 		ServerCommand:    s,
 		restSrv:          srv,
-		migratorSrv:      migr,
 		exporter:         exporter,
 		devAuth:          devAuth,
 		dataService:      dataService,
@@ -802,7 +793,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (*serverApp, error) {
 		imageService:     imageService,
 		authenticator:    authenticator,
 		terminated:       make(chan struct{}),
-		authRefreshCache: authRefreshCache,
+		authRefreshCache: refreshCache,
 	}, nil
 }
 
@@ -1055,7 +1046,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 	}
 }
 
-func (s *ServerCommand) makeCache() (LoadingCache, error) {
+func (s *ServerCommand) makeCache() (api.LoadingCache, error) {
 	log.Printf("[INFO] make cache, type=%s", s.Cache.Type)
 	o := cache.NewOpts[[]byte]()
 	switch s.Cache.Type {
@@ -1083,7 +1074,6 @@ func (s *ServerCommand) makeCache() (LoadingCache, error) {
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-//nolint:gocyclo // simple code but many if checks
 func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	providersCount := 0
 	if s.Auth.Telegram {
@@ -1104,36 +1094,25 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		}
 		providersCount++
 	}
-	if s.Auth.Google.CID != "" && s.Auth.Google.CSEC != "" {
-		authenticator.AddProvider("google", s.Auth.Google.CID, s.Auth.Google.CSEC)
-		providersCount++
-	}
-	if s.Auth.Github.CID != "" && s.Auth.Github.CSEC != "" {
-		authenticator.AddProvider("github", s.Auth.Github.CID, s.Auth.Github.CSEC)
-		providersCount++
-	}
-	if s.Auth.Facebook.CID != "" && s.Auth.Facebook.CSEC != "" {
-		authenticator.AddProvider("facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC)
-		providersCount++
-	}
-	if s.Auth.Microsoft.CID != "" && s.Auth.Microsoft.CSEC != "" {
-		authenticator.AddMicrosoftProvider(s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC, s.Auth.Microsoft.Tenant)
-		providersCount++
-	}
-	if s.Auth.Yandex.CID != "" && s.Auth.Yandex.CSEC != "" {
-		authenticator.AddProvider("yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC)
-		providersCount++
-	}
-	if s.Auth.Twitter.CID != "" && s.Auth.Twitter.CSEC != "" {
-		authenticator.AddProvider("twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC)
-		providersCount++
-	}
-	if s.Auth.Patreon.CID != "" && s.Auth.Patreon.CSEC != "" {
-		authenticator.AddProvider("patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC)
-		providersCount++
-	}
-	if s.Auth.Discord.CID != "" && s.Auth.Discord.CSEC != "" {
-		authenticator.AddProvider("discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC)
+	// registration order is the order of providers in /api/v1/config
+	for _, p := range []struct{ name, cid, csec string }{
+		{"google", s.Auth.Google.CID, s.Auth.Google.CSEC},
+		{"github", s.Auth.Github.CID, s.Auth.Github.CSEC},
+		{"facebook", s.Auth.Facebook.CID, s.Auth.Facebook.CSEC},
+		{"microsoft", s.Auth.Microsoft.CID, s.Auth.Microsoft.CSEC},
+		{"yandex", s.Auth.Yandex.CID, s.Auth.Yandex.CSEC},
+		{"twitter", s.Auth.Twitter.CID, s.Auth.Twitter.CSEC},
+		{"patreon", s.Auth.Patreon.CID, s.Auth.Patreon.CSEC},
+		{"discord", s.Auth.Discord.CID, s.Auth.Discord.CSEC},
+	} {
+		if p.cid == "" || p.csec == "" {
+			continue
+		}
+		if p.name == "microsoft" {
+			authenticator.AddMicrosoftProvider(p.cid, p.csec, s.Auth.Microsoft.Tenant)
+		} else {
+			authenticator.AddProvider(p.name, p.cid, p.csec)
+		}
 		providersCount++
 	}
 
@@ -1213,31 +1192,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
-		var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
-		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(func(user, _ string) (ok bool, err error) {
-
-			// don't allow anon with space prefix or suffix
-			if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
-				log.Printf("[WARN] name %q has space as a suffix or prefix", user)
-				return false, nil
-			}
-
-			user = strings.TrimSpace(user)
-			if len(user) < 3 {
-				log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
-				return false, nil
-			}
-			if len(user) > 64 {
-				log.Printf("[WARN] name %q is too long, should be up to 64 characters", user)
-				return false, nil
-			}
-
-			if !isValidAnonName(user) {
-				log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", user)
-				return false, nil
-			}
-			return true, nil
-		}),
+		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(checkAnonymousName),
 			// custom user ID generator, used to distinguish anonymous users with the same login
 			// coming from different IPs
 			func(user string, r *http.Request) string {
@@ -1250,6 +1205,34 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	}
 
 	return nil
+}
+
+var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
+
+// checkAnonymousName accepts a name for anonymous login: 3 to 64 letters, digits, underscores and spaces,
+// with no space at either end
+func checkAnonymousName(user, _ string) (ok bool, err error) {
+	// don't allow anon with space prefix or suffix
+	if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
+		log.Printf("[WARN] name %q has space as a suffix or prefix", user)
+		return false, nil
+	}
+
+	user = strings.TrimSpace(user)
+	if len(user) < 3 {
+		log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
+		return false, nil
+	}
+	if len(user) > 64 {
+		log.Printf("[WARN] name %q is too long, should be up to 64 characters", user)
+		return false, nil
+	}
+
+	if !isValidAnonName(user) {
+		log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", user)
+		return false, nil
+	}
+	return true, nil
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
@@ -1286,9 +1269,6 @@ func (s *ServerCommand) makeTelegramAuth(authenticator *auth.Service) (*provider
 }
 
 func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinations []notify.Destination, telegram *notify.Telegram) *notify.Service {
-	if destinations == nil {
-		destinations = []notify.Destination{}
-	}
 	// it's possible that telegram notification service was created for auth but should not be used for notifications
 	if telegram != nil && (contains("telegram", s.Notify.Users) || contains("telegram", s.Notify.Admins)) {
 		destinations = append(destinations, telegram)

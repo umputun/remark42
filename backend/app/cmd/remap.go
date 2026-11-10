@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	log "github.com/go-pkgz/lgr"
@@ -29,35 +30,16 @@ func (rc *RemapCommand) Execute(_ []string) error {
 		return fmt.Errorf("cant open file %s: %w", rc.InputFile, err)
 	}
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), rc.Timeout)
 	defer cancel()
-	remapURL := fmt.Sprintf("%s/api/v1/admin/remap?site=%s", rc.RemarkURL, rc.Site)
-	req, err := http.NewRequest(http.MethodPost, remapURL, rulesReader) //nolint:gosec // RemarkURL is operator CLI flag, not user input
-	if err != nil {
-		return fmt.Errorf("can't make remap request for %s: %w", remapURL, err)
-	}
-	req.SetBasicAuth("admin", rc.AdminPasswd)
-
-	resp, err := client.Do(req.WithContext(ctx)) //nolint:gosec // see above
-	if err != nil {
-		return fmt.Errorf("request failed for %s: %w", remapURL, err)
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Printf("[WARN] failed to close response, %s", err)
+	query := url.Values{"site": {rc.Site}}
+	endpoint := rc.RemarkURL + "/api/v1/admin/remap"
+	return rc.adminRequest(ctx, "remap", http.MethodPost, endpoint, query, rulesReader, func(resp *http.Response) error {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("can't get response: %w", err)
 		}
-	}()
-	if resp.StatusCode >= 300 {
-		return responseError(resp)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("can't get response: %w", err)
-	}
-
-	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
-	return nil
+		log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
+		return nil
+	})
 }
