@@ -135,7 +135,7 @@ describe('embed', () => {
     });
 
     it('mounts into the given element instead of the one with the default id', async () => {
-      const root = await mount();
+      await mount();
       const node = document.createElement('div');
       document.body.appendChild(node);
 
