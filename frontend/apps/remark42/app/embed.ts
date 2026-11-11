@@ -30,7 +30,15 @@ function init() {
 }
 
 function createInstance(config: typeof window.remark_config) {
-  const root = document.getElementById(NODE_ID);
+  // `node` lets a single-page application mount the widget into an element it owns instead of
+  // the one carrying the default id. config may be undefined here, the check below reports it
+  const node = config?.node;
+
+  if (node != null && !(node instanceof Element)) {
+    throw new Error('Remark42: `node` must be a DOM element.');
+  }
+
+  const root = node ?? document.getElementById(NODE_ID);
 
   if (!root) {
     throw new Error("Remark42: Can't find root node.");
@@ -46,7 +54,7 @@ function createInstance(config: typeof window.remark_config) {
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(config);
+  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(params());
   iframe.setAttribute(IFRAME_MARKER, '');
 
   root.appendChild(iframe);
@@ -68,6 +76,13 @@ function createInstance(config: typeof window.remark_config) {
       characterData: true,
       childList: true,
     });
+  }
+
+  // the configuration as it goes into an iframe URL, which cannot carry a DOM element
+  function params() {
+    const { node: _node, ...rest } = config;
+
+    return rest;
   }
 
   function handleReceiveMessage(event: MessageEvent): void {
@@ -92,7 +107,7 @@ function createInstance(config: typeof window.remark_config) {
       if (data.profile === null) {
         closeProfile();
       } else {
-        openProfile({ ...config, ...data.profile });
+        openProfile({ ...params(), ...data.profile });
       }
     }
 
