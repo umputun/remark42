@@ -129,6 +129,63 @@ describe('embed', () => {
     scrollTo.mockRestore();
   });
 
+  describe('node', () => {
+    afterEach(() => {
+      delete window.remark_config.node;
+    });
+
+    it('mounts into the given element instead of the one with the default id', async () => {
+      const root = await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+
+    it('does not need the element with the default id', async () => {
+      document.body.innerHTML = '<section id="spa"></section>';
+      const node = document.getElementById('spa')!;
+      window.remark_config.node = node;
+      jest.resetModules();
+      await import('./embed');
+
+      expect(node.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+
+    it('keeps the element out of the iframe URL', async () => {
+      const root = await mount();
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.REMARK42.createInstance({ ...window.remark_config, node });
+
+      const src = new URL(node.querySelector(MARKED)!.getAttribute('src')!);
+
+      expect(src.searchParams.get('site_id')).toBe('remark');
+      expect(src.searchParams.has('node')).toBe(false);
+      expect(root.querySelectorAll(MARKED)).toHaveLength(1);
+    });
+
+    it('rejects a value that is not an element', async () => {
+      await mount();
+
+      expect(() =>
+        window.REMARK42.createInstance({ ...window.remark_config, node: '#remark42' as unknown as HTMLElement })
+      ).toThrow('Remark42: `node` must be a DOM element.');
+    });
+
+    it('falls back to the default id when no element is given', async () => {
+      const root = await mount();
+      root.querySelector(MARKED)!.remove();
+
+      window.REMARK42.createInstance({ ...window.remark_config, node: undefined });
+
+      expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+    });
+  });
+
   describe('theme', () => {
     afterEach(() => {
       delete window.remark_config.theme;
