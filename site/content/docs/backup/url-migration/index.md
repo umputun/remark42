@@ -26,7 +26,7 @@ remark42 remap --admin-passwd <password> -s <your site ID> -f var/rules
 If running in a docker container, the command becomes (`ADMIN_PASSWD` will be taken from the environment):
 
 ```shell
-docker exec -it remark42 remap -s <your site ID> -f var/rules
+docker exec -it remark42 remark42 remap -s <your site ID> -f var/rules
 ```
 
 The command above sends a _request_ to start the remap job. You can see the job execution logs by running:
