@@ -3,8 +3,10 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/sha1" //nolint:gosec // used only to compute expected user ids
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -450,6 +452,18 @@ func TestServerApp_Failed(t *testing.T) {
 		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
 			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
 	t.Log(err)
+
+	// custom oauth gravatar set without the provider
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.gravatar"})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	assert.EqualError(t, err,
+		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
+			"AUTH_CUSTOM_NAME, AUTH_CUSTOM_CID, AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
+	t.Log(err)
 }
 
 func TestIsReservedCustomProviderName(t *testing.T) {
@@ -492,6 +506,74 @@ func TestCustomProviderSourceID(t *testing.T) {
 	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
 	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
 	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+}
+
+func TestCustomProviderUser(t *testing.T) {
+	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
+	gravatarCalls := []string{}
+	gravatarURL := func(email string) (string, error) {
+		gravatarCalls = append(gravatarCalls, email)
+		if email == "missing@example.com" {
+			return "", errors.New("404 Not Found")
+		}
+		return "https://www.gravatar.com/avatar/" + email, nil
+	}
+	hashID := token.HashID(sha1.New(), "user-1") //nolint:gosec // matches the provider user id hash
+
+	t.Run("fields mapped", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "name": "alice", "email": "a@example.com",
+			"picture": "https://example.com/avatar.png"}, cfg, gravatarURL)
+		assert.Equal(t, token.User{ID: "oidc_" + hashID, Name: "alice", Email: "a@example.com",
+			Picture: "https://example.com/avatar.png"}, user)
+		assert.Empty(t, gravatarCalls)
+	})
+
+	t.Run("noname fallback", func(t *testing.T) {
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1"}, cfg, gravatarURL)
+		assert.Equal(t, "noname_"+hashID[:4], user.Name)
+	})
+
+	t.Run("gravatar disabled", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg, gravatarURL)
+		assert.Empty(t, user.Picture)
+		assert.Empty(t, gravatarCalls)
+	})
+
+	gravatarCfg := cfg
+	gravatarCfg.Gravatar = true
+
+	t.Run("gravatar used without picture", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "email": "a@example.com"}, gravatarCfg, gravatarURL)
+		assert.Equal(t, "https://www.gravatar.com/avatar/a@example.com", user.Picture)
+		assert.Equal(t, []string{"a@example.com"}, gravatarCalls)
+	})
+
+	t.Run("provider picture preferred over gravatar", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "email": "a@example.com",
+			"picture": "https://example.com/avatar.png"}, gravatarCfg, gravatarURL)
+		assert.Equal(t, "https://example.com/avatar.png", user.Picture)
+		assert.Empty(t, gravatarCalls)
+	})
+
+	t.Run("no gravatar for the email", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "email": "missing@example.com"}, gravatarCfg, gravatarURL)
+		assert.Empty(t, user.Picture)
+		assert.Equal(t, []string{"missing@example.com"}, gravatarCalls)
+	})
+
+	t.Run("no lookup without a valid email", func(t *testing.T) {
+		gravatarCalls = gravatarCalls[:0]
+		user := customProviderUser("oidc", provider.UserData{"sub": "user-1", "email": "not-an-email"}, gravatarCfg, gravatarURL)
+		assert.Empty(t, user.Picture)
+		user = customProviderUser("oidc", provider.UserData{"sub": "user-1"}, gravatarCfg, gravatarURL)
+		assert.Empty(t, user.Picture)
+		assert.Empty(t, gravatarCalls)
+	})
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
