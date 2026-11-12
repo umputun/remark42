@@ -5,8 +5,8 @@
   padding: 8px 12px;
   margin-top: 8px;
   border-radius: 4px;
-  background: rgba(var(--primary-color), 0.08);
-  border: 1px solid rgba(var(--primary-color), 0.2);
+  background: rgb(var(--primary-color), 0.08);
+  border: 1px solid rgb(var(--primary-color), 0.2);
   font-size: 13px;
   color: rgb(var(--primary-text-color));
   animation: slide-in 0.15s ease-out;
@@ -38,7 +38,7 @@
 
 .cancelButton {
   padding: 4px 12px;
-  border: 1px solid rgba(var(--primary-text-color), 0.2);
+  border: 1px solid rgb(var(--primary-text-color), 0.2);
   border-radius: 3px;
   background: transparent;
   color: rgb(var(--secondary-text-color));
@@ -47,7 +47,7 @@
 }
 
 .cancelButton:hover {
-  background: rgba(var(--primary-text-color), 0.05);
+  background: rgb(var(--primary-text-color), 0.05);
 }
 
 @keyframes slide-in {
