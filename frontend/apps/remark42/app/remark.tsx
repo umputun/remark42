@@ -27,6 +27,11 @@ if (document.readyState === 'loading') {
   init();
 }
 
+// the embed script resolves 'auto' before posting, so the document only ever receives light or dark
+function isTheme(value: unknown): value is Theme {
+  return THEMES.includes(value as Theme);
+}
+
 function applyTheme(next: Theme) {
   document.body.classList.toggle('dark', next === 'dark');
   document.documentElement.style.colorScheme = next;
@@ -52,7 +57,7 @@ async function init(): Promise<void> {
 
     const data = parseMessage(evt);
 
-    if (data.theme && THEMES.includes(data.theme)) {
+    if (isTheme(data.theme)) {
       applyTheme(data.theme);
     }
   });
@@ -60,7 +65,7 @@ async function init(): Promise<void> {
   // the inline listener in iframe.ejs keeps the latest theme the parent posted before this bundle
   // ran; the URL only has the one the iframe was built with
   const current = window.remark_config?.theme;
-  applyTheme(current && THEMES.includes(current) ? current : theme);
+  applyTheme(isTheme(current) ? current : theme);
 
   const messages = await loadLocale(locale).catch(() => ({}));
 

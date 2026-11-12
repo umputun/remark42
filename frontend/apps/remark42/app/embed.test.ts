@@ -156,5 +156,136 @@ describe('embed', () => {
 
       expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ theme: expect.anything() }), '*');
     });
+
+    describe('auto', () => {
+      let systemDark = false;
+      const schemeListeners = new Set<() => void>();
+
+      function setSystemScheme(dark: boolean) {
+        systemDark = dark;
+        schemeListeners.forEach((listener) => listener());
+      }
+
+      beforeEach(() => {
+        systemDark = false;
+        schemeListeners.clear();
+        window.matchMedia = jest.fn((query: string) => ({
+          media: query,
+          get matches() {
+            return query === '(prefers-color-scheme: dark)' && systemDark;
+          },
+          addEventListener: (_: string, listener: () => void) => schemeListeners.add(listener),
+          removeEventListener: (_: string, listener: () => void) => schemeListeners.delete(listener),
+        })) as unknown as typeof window.matchMedia;
+      });
+
+      afterEach(() => {
+        // jsdom has no matchMedia of its own
+        delete (window as Partial<Window>).matchMedia;
+      });
+
+      it('builds the iframe in the theme the system prefers', async () => {
+        window.remark_config.theme = 'auto';
+        systemDark = true;
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+        expect(new URL(iframe.src).searchParams.get('theme')).toBe('dark');
+        expect(iframe.style.colorScheme).toBe('dark');
+        // the host page's config keeps the setting, so the widget goes on following the system
+        expect(window.remark_config.theme).toBe('auto');
+      });
+
+      it('posts the resolved theme once the frame reports inited', async () => {
+        window.remark_config.theme = 'auto';
+        systemDark = true;
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+        const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+
+        window.dispatchEvent(new MessageEvent('message', { data: { inited: true }, source: iframe.contentWindow }));
+
+        expect(postMessage).toHaveBeenCalledWith({ theme: 'dark' }, '*');
+      });
+
+      it('switches along with the system preference', async () => {
+        window.remark_config.theme = 'auto';
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+        const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+
+        setSystemScheme(true);
+
+        expect(iframe.style.colorScheme).toBe('dark');
+        expect(postMessage).toHaveBeenLastCalledWith({ theme: 'dark' }, '*');
+
+        setSystemScheme(false);
+
+        expect(iframe.style.colorScheme).toBe('light');
+        expect(postMessage).toHaveBeenLastCalledWith({ theme: 'light' }, '*');
+      });
+
+      it('starts following the system preference on changeTheme', async () => {
+        window.remark_config.theme = 'light';
+        systemDark = true;
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+        const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+
+        window.REMARK42.changeTheme!('auto');
+
+        expect(iframe.style.colorScheme).toBe('dark');
+        expect(postMessage).toHaveBeenLastCalledWith({ theme: 'dark' }, '*');
+
+        setSystemScheme(false);
+
+        expect(postMessage).toHaveBeenLastCalledWith({ theme: 'light' }, '*');
+      });
+
+      it('stops following the system preference once a fixed theme is set', async () => {
+        window.remark_config.theme = 'auto';
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+        window.REMARK42.changeTheme!('light');
+        const postMessage = jest.spyOn(iframe.contentWindow!, 'postMessage');
+        setSystemScheme(true);
+
+        expect(iframe.style.colorScheme).toBe('light');
+        expect(postMessage).not.toHaveBeenCalled();
+      });
+
+      it('opens the profile in the resolved theme', async () => {
+        window.remark_config.theme = 'auto';
+        systemDark = true;
+        const root = await mount();
+        const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+        window.dispatchEvent(
+          new MessageEvent('message', { data: { profile: { id: 'user' } }, source: iframe.contentWindow })
+        );
+
+        const profile = Array.from(document.querySelectorAll('iframe')).find((frame) => frame !== iframe)!;
+        expect(new URL(profile.src).searchParams.get('theme')).toBe('dark');
+      });
+
+      it('stops listening to the system preference on destroy', async () => {
+        window.remark_config.theme = 'auto';
+        await mount();
+
+        window.REMARK42.destroy!();
+
+        expect(schemeListeners.size).toBe(0);
+      });
+
+      it('leaves a single listener when createInstance is called again', async () => {
+        window.remark_config.theme = 'auto';
+        await mount();
+
+        window.REMARK42.createInstance(window.remark_config);
+
+        expect(schemeListeners.size).toBe(1);
+      });
+    });
   });
 });

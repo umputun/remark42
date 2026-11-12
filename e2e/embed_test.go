@@ -116,6 +116,38 @@ func TestEmbed_ThemeChangesReachTheWidgetAfterLoad(t *testing.T) {
 	assert.Equal(t, "dark", onElement, "the parent left the old scheme on the iframe element")
 }
 
+// TestEmbed_AutoThemeFollowsTheSystemPreference covers theme 'auto', which takes the visitor's
+// system preference and follows it while the page is open. The embed script reads the preference
+// on the host page, since inside the iframe prefers-color-scheme reports the color-scheme of the
+// iframe element, which is the theme the widget was given. So the case flips the preference the
+// page sees and expects the iframe element and the document inside it to follow
+func TestEmbed_AutoThemeFollowsTheSystemPreference(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	require.NoError(t, page.EmulateMedia(playwright.PageEmulateMediaOptions{ColorScheme: playwright.ColorSchemeDark}))
+	stubSignedOut(t, page)
+	embedConfig(t, page, map[string]any{"theme": "auto"})
+	widget(t, page)
+
+	require.Equal(t, "dark", widgetColorScheme(t, page), "the widget did not start in the scheme the system prefers")
+
+	require.NoError(t, page.EmulateMedia(playwright.PageEmulateMediaOptions{ColorScheme: playwright.ColorSchemeLight}))
+
+	eventually(t, waitTimeout, "the widget document never followed the system preference", func() bool {
+		return widgetColorScheme(t, page) == "light"
+	})
+
+	onElement, err := page.Evaluate(`() => document.querySelector('#remark42 iframe').style.colorScheme`)
+	require.NoError(t, err)
+	assert.Equal(t, "light", onElement, "the parent left the old scheme on the iframe element")
+
+	// the setting stays 'auto' on the host page, so the next change is followed too
+	setting, err := page.Evaluate(`() => window.remark_config.theme`)
+	require.NoError(t, err)
+	assert.Equal(t, "auto", setting, "the host page's config lost the 'auto' setting")
+}
+
 // TestEmbed_ThemeChangedWhileLoadingReachesTheWidget covers a changeTheme made before the widget
 // can hear it: while its document is still loading, and after the document has reported inited
 // but before the bundle has run. Neither has a listener for the theme, so the change used to be

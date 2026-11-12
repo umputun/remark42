@@ -17,7 +17,7 @@ aliases:
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
-- **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
+- **`theme`**`: 'light' | 'dark' | 'auto'` (optional, `'light'` by default) – changes UI theme, `'auto'` follows the visitor's system preference, see [Themes](#themes)
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
@@ -84,6 +84,8 @@ Remark42 has two themes: light and dark. You can pick one using a configuration 
 ```js
 window.REMARK42.changeTheme("light")
 ```
+
+Set `theme` to `'auto'` to follow the visitor's system preference instead: the widget opens in dark when their system asks for a dark color scheme (the `prefers-color-scheme` media query) and in light otherwise, and switches as soon as that preference changes, without a reload. This suits a site whose own styles follow the same media query. `changeTheme("auto")` turns this on at runtime, and `changeTheme("light")` or `changeTheme("dark")` turns it off again.
 
 `changeTheme` can be called as soon as `window.REMARK42` exists, even before the comments have finished loading: the widget opens in the last theme it was given. Set `theme` in the configuration object to the theme your page is in when it loads, so the widget does not have to switch after it appears.
 
