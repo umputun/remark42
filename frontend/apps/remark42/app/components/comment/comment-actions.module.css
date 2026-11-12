@@ -15,12 +15,12 @@
 }
 
 @media (hover: hover) {
-  .additionalActions:not(.alwaysVisible) {
+  .additionalActions {
     opacity: 0;
     transition: opacity 0.15s;
   }
 
-  .root:hover .additionalActions:not(.alwaysVisible) {
+  .root:hover .additionalActions {
     opacity: 1;
   }
 }

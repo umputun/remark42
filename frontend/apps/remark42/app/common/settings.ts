@@ -29,4 +29,3 @@ export const token = rawParams.token;
 export const locale = rawParams.locale || 'en';
 export const noFooter = rawParams.no_footer === 'true';
 export const inlineConfirm = rawParams.inline_confirm === 'true';
-export const actionsAlwaysVisible = rawParams.actions_always_visible === 'true';

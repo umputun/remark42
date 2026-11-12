@@ -45,8 +45,6 @@ type RemarkConfig = {
   // Optional, 'false' by default. Uses inline confirmation dialogs instead of window.confirm().
   // This fixes issues on iOS Safari where window.confirm() is blocked inside iframes.
   inline_confirm?: boolean;
-  // Optional, 'false' by default. Shows comment actions (copy, pin, block, delete) without hovering.
-  actions_always_visible?: boolean;
   // Optional. Overrides CSS custom properties on the widget's own document, e.g.
   // { '--primary-color': '0, 100, 200', '--font-family': 'Georgia' }. Only properties the widget's
   // own stylesheets already declare have any effect. Read once at load time (via the iframe's

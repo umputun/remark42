@@ -3,7 +3,6 @@ import { h, Fragment } from 'preact';
 
 import { defineMessages, useIntl } from 'common/intl';
 import type { BlockTTL } from 'common/types';
-import { actionsAlwaysVisible } from 'common/settings';
 import { Select } from 'components/select';
 import { Countdown } from 'components/countdown';
 import { Button } from 'components/auth/components/button';
@@ -87,7 +86,7 @@ export function CommentActions({
       )}
       <div
         data-testid="comment-actions-additional"
-        className={clsx('comment-actions-additional', styles.additionalActions, actionsAlwaysVisible && styles.alwaysVisible)}
+        className={clsx('comment-actions-additional', styles.additionalActions)}
       >
         {!currentUser && (
           <Button kind="link" size="sm" onClick={onHideUser}>
