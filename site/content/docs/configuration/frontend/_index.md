@@ -25,6 +25,7 @@ aliases:
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
+- **`inline_confirm`**`: boolean` (optional, `false` by default) – asks for confirmation of comment actions (delete, pin, verify, block, hide) inline in the comment instead of `window.confirm()`, which iOS Safari blocks inside iframes
 
 Configuration example:
 
