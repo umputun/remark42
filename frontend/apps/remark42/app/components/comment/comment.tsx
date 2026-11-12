@@ -172,10 +172,9 @@ export class Comment extends Component<CommentProps, State> {
 
   onConfirmAccept = () => {
     const { confirmAction } = this.state;
-    if (confirmAction) {
-      confirmAction.action();
-    }
+    // clear the dialog before running the action: some actions (e.g. hideUser) unmount this comment
     this.setState({ confirmAction: null });
+    confirmAction?.action();
   };
 
   onConfirmCancel = () => {
