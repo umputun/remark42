@@ -27,7 +27,7 @@ func TestCustomProviderUser(t *testing.T) {
 		t.Helper()
 		data := provider.UserData{}
 		require.NoError(t, json.Unmarshal([]byte(raw), &data))
-		return customProviderUser("oidc", data, []byte(raw), cfg)
+		return customProviderUser("oidc", data, []byte(raw), cfg, nil)
 	}
 
 	tbl := []struct {

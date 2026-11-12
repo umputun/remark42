@@ -143,7 +143,8 @@ You can configure any OAuth2-compatible provider by setting these variables:
 - `AUTH_CUSTOM_ID_FIELD` - user info field used as unique id (default `sub`); set it when the provider identifies users by another field, such as `id`
 - `AUTH_CUSTOM_NAME_FIELD` - optional user info field used as display name (default `name`)
 - `AUTH_CUSTOM_PICTURE_FIELD` - optional user info field used as avatar URL (default `picture`)
-- `AUTH_CUSTOM_EMAIL_FIELD` - optional user info field holding the email (default `email`); used only to make the user's unique id when the response has no value in the `AUTH_CUSTOM_ID_FIELD` field, and not stored
+- `AUTH_CUSTOM_EMAIL_FIELD` - optional user info field holding the email (default `email`); used to make the user's unique id when the response has no value in the `AUTH_CUSTOM_ID_FIELD` field, and with `AUTH_CUSTOM_GRAVATAR` to find the user's Gravatar picture, and not stored
+- `AUTH_CUSTOM_GRAVATAR` - optional, set to `true` to use the [Gravatar](https://gravatar.com) picture of the user's email when the provider returns no picture (default `false`)
 
 Callback URL format:
 
@@ -158,6 +159,7 @@ Notes:
 - The field variables name top-level keys of the user info response only; a field nested inside an object cannot be used.
 - Remark42 sends a PKCE (S256) challenge with every authorization request; providers without PKCE support ignore it.
 - The user's picture is downloaded from the URL in the picture field without the access token, and only from a public address. A picture on a private, loopback or link-local address, or one that needs the token, is not loaded, and the user gets a generated avatar.
+- With `AUTH_CUSTOM_GRAVATAR` enabled, Remark42 looks the email up on Gravatar at each login, which sends its hash to gravatar.com, so existing users get their Gravatar picture on their next login. Users without a Gravatar picture, or without an email in the user info response, get the generated avatar as before.
 
 ### Your Site's Own Accounts
 
