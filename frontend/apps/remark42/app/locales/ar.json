@@ -87,6 +87,8 @@
   "commentsSort.oldest": "الأقدم",
   "commentsSort.recently-updated": "الأجدد تحديثاً",
   "commentsSort.worst": "الأسوأ",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "لا تعليقات للآن",
   "errors.0": "ثمّة عطلٌ ما. فضلاً عاود المحاولة لاحقاً.",
   "errors.1": "لا يمكن إيجاد التعليق. فضلاً حدث الصفحة وعاود المحاولة.",

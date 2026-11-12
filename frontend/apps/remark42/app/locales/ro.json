@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Cele mai vechi",
   "commentsSort.recently-updated": "Actualizate recent",
   "commentsSort.worst": "Cele mai slabe",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Încă nu există comentarii",
   "errors.0": "Ceva nu a mers bine. Te rugăm să încerci din nou puțin mai târziu.",
   "errors.1": "Comentariul nu poate fi găsit. Reîmprospătează pagina și încearcă din nou.",

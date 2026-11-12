@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Legrégebbi",
   "commentsSort.recently-updated": "Nemrég frissítve",
   "commentsSort.worst": "Legrosszabb",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Még nincsenek hozzászólások",
   "errors.0": "Valami hiba történt. Kérjük, próbálja újra később.",
   "errors.1": "A hozzászólás nem található. Kérjük, frissítse az oldalt, és próbálja újra.",

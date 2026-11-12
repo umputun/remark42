@@ -87,6 +87,8 @@
   "commentsSort.oldest": "เก่าสุด",
   "commentsSort.recently-updated": "อัปเดตล่าสุด",
   "commentsSort.worst": "แย่ที่สุด",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "ยังไม่มีความคิดเห็น",
   "errors.0": "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ โปรดลองใหม่อีกครั้ง",
   "errors.1": "ไม่พบความคิดเห็น โปรดรีเฟรชหน้าแล้วลองอีกครั้ง",

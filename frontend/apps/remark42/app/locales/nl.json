@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Oudste",
   "commentsSort.recently-updated": "Recent bijgewerkt",
   "commentsSort.worst": "Slechtste",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Nog geen reacties",
   "errors.0": "Er is iets misgegaan. Probeer het later opnieuw.",
   "errors.1": "Reactie niet gevonden. Vernieuw de pagina en probeer het opnieuw.",

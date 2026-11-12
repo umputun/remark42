@@ -87,6 +87,8 @@
   "commentsSort.oldest": "En eskiler",
   "commentsSort.recently-updated": "En son güncellenen",
   "commentsSort.worst": "En kötüler",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Henüz yorum yok",
   "errors.0": "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
   "errors.1": "Yorum bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.",

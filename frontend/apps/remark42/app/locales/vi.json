@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Cũ nhất",
   "commentsSort.recently-updated": "Mới được cập nhật",
   "commentsSort.worst": "Tệ nhất",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Chưa có bình luận nào",
   "errors.0": "Có gì đó sai sai. Vui lòng thử lại sau.",
   "errors.1": "Không tìm thấy bình luận, xin hãy tải lại trang và thử lại.",
