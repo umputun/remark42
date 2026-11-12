@@ -19,7 +19,7 @@ aliases:
 - **`comments_page_size`**`: number` (optional, `100` by default) – how many comments the widget loads at a time. A top-level comment always comes with all its replies, so a page can hold more; "Show more" at the bottom loads the next page, and a link to a comment on a page not loaded yet loads the rest of the thread. `0` loads the whole thread at once
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`default_sort`**`: string` (optional, `'-active'` by default) – comment order for a reader who has not picked one in the sort picker: `'-score'` (best), `'+score'` (worst), `'-time'` (newest), `'+time'` (oldest), `'-active'` (recently updated), `'+active'` (least recently updated), `'-controversy'` (most controversial) or `'+controversy'` (least controversial). A reader's own choice in the sort picker is remembered and wins over this setting
-- **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
+- **`theme`**`: 'light' | 'dark' | 'auto'` (optional, `'light'` by default) – changes UI theme, `'auto'` follows the visitor's system preference, see [Themes](#themes)
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – shows the email subscription control when email notifications for users are enabled on the backend; `false` hides it from readers and does not affect admin notifications
@@ -89,6 +89,8 @@ Remark42 has two themes: light and dark. You can pick one using a configuration 
 ```js
 window.REMARK42.changeTheme("light")
 ```
+
+Set `theme` to `'auto'` to follow the visitor's system preference instead: the widget opens in dark when their system asks for a dark color scheme (the `prefers-color-scheme` media query) and in light otherwise, and switches as soon as that preference changes, without a reload. This suits a site whose own styles follow the same media query. `changeTheme("auto")` turns this on at runtime, and `changeTheme("light")` or `changeTheme("dark")` turns it off again.
 
 `changeTheme` can be called as soon as `window.REMARK42` exists, even before the comments have finished loading: the widget opens in the last theme it was given. Set `theme` in the configuration object to the theme your page is in when it loads, so the widget does not have to switch after it appears.
 

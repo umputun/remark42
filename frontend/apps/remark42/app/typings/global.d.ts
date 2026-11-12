@@ -1,5 +1,5 @@
 import 'jest-fetch-mock';
-import type { Sorting, Theme } from 'common/types';
+import type { Sorting, ThemeSetting } from 'common/types';
 
 type RemarkConfig = {
   // URL of Remark42 server including the scheme, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
@@ -24,8 +24,9 @@ type RemarkConfig = {
   max_last_comments?: number;
   // Optional, '-active' by default. Comment order for a reader who has not picked one in the sort picker.
   default_sort?: Sorting;
-  // Optional, 'dark' or 'light', 'light' by default. Changes UI theme.
-  theme?: Theme;
+  // Optional, 'light', 'dark' or 'auto', 'light' by default. Changes UI theme; 'auto' follows the
+  // visitor's system preference (prefers-color-scheme) and switches along with it.
+  theme?: ThemeSetting;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
   // Not for the host page to set. The host page's title as the embed script last posted it,
@@ -64,11 +65,11 @@ declare global {
     ReduxStore: typeof store;
     remark_config: RemarkConfig;
     REMARK42: {
-      changeTheme?: (theme: Theme) => void;
+      changeTheme?: (theme: ThemeSetting) => void;
       destroy?: () => void;
       createInstance: (remark_config: RemarkConfig) =>
         | {
-            changeTheme(theme: Theme): void;
+            changeTheme(theme: ThemeSetting): void;
             destroy(): void;
           }
         | undefined;
