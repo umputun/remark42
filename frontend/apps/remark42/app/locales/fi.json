@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Vanhin",
   "commentsSort.recently-updated": "Äskettäin päivitetty",
   "commentsSort.worst": "Huonoin",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Ei vielä kommentteja",
   "errors.0": "Jotain meni pieleen. Yritä uudelleen myöhemmin.",
   "errors.1": "Kommenttia ei löydy. Päivitä sivu ja yritä uudelleen.",

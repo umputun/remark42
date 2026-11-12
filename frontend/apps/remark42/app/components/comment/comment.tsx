@@ -22,6 +22,8 @@ import { getBlockingDurations } from './getBlockingDurations';
 import type { boundActions } from './connected-comment';
 import { CommentVotes } from './comment-votes';
 import { CommentActions } from './comment-actions';
+import { ConfirmDialog } from 'components/confirm-dialog';
+import { inlineConfirm } from 'common/settings';
 
 import styles from './comment.module.css';
 import './styles';
@@ -61,6 +63,7 @@ export interface State {
   isCopied: boolean;
   editDeadline?: number;
   initial: boolean;
+  confirmAction?: { message: string; action: () => void } | null;
 }
 
 export class Comment extends Component<CommentProps, State> {
@@ -158,14 +161,34 @@ export class Comment extends Component<CommentProps, State> {
     postMessageToParent({ profile });
   };
 
+  /** Shows inline confirm dialog or falls back to window.confirm() */
+  confirmWithMessage = (message: string, action: () => void) => {
+    if (inlineConfirm) {
+      this.setState({ confirmAction: { message, action } });
+    } else if (window.confirm(message)) {
+      action();
+    }
+  };
+
+  onConfirmAccept = () => {
+    const { confirmAction } = this.state;
+    // clear the dialog before running the action: some actions (e.g. hideUser) unmount this comment
+    this.setState({ confirmAction: null });
+    confirmAction?.action();
+  };
+
+  onConfirmCancel = () => {
+    this.setState({ confirmAction: null });
+  };
+
   togglePin = () => {
     const value = !this.props.data.pin;
     const intl = this.props.intl;
     const promptMessage = value ? intl.formatMessage(messages.pinComment) : intl.formatMessage(messages.unpinComment);
 
-    if (window.confirm(promptMessage)) {
+    this.confirmWithMessage(promptMessage, () => {
       this.props.setPinState!(this.props.data.id, value);
-    }
+    });
   };
 
   toggleVerify = () => {
@@ -175,9 +198,9 @@ export class Comment extends Component<CommentProps, State> {
     const userName = this.props.data.user.name;
     const promptMessage = intl.formatMessage(value ? messages.verifyUser : messages.unverifyUser, { userName });
 
-    if (window.confirm(promptMessage)) {
+    this.confirmWithMessage(promptMessage, () => {
       this.props.setVerifiedStatus!(userId, value);
-    }
+    });
   };
 
   blockUser = debounce((ttl: BlockTTL): void => {
@@ -191,40 +214,40 @@ export class Comment extends Component<CommentProps, State> {
     // only the first letter is lowered, so the label reads mid-sentence while languages that
     // capitalise nouns, such as German, keep them capitalised
     const duration = blockDuration.label;
-    const blockUser = this.props.intl.formatMessage(messages.blockUser, {
+    const blockUserMsg = this.props.intl.formatMessage(messages.blockUser, {
       userName: user.name,
       duration: duration.charAt(0).toLowerCase() + duration.slice(1),
     });
-    if (window.confirm(blockUser)) {
+    this.confirmWithMessage(blockUserMsg, () => {
       this.props.blockUser!(user.id, user.name, ttl);
-    }
+    });
   }, 100);
 
   unblockUser = () => {
     const { user } = this.props.data;
-    const unblockUser = this.props.intl.formatMessage(messages.unblockUser, { userName: user.name });
+    const unblockUserMsg = this.props.intl.formatMessage(messages.unblockUser, { userName: user.name });
 
-    if (window.confirm(unblockUser)) {
+    this.confirmWithMessage(unblockUserMsg, () => {
       this.props.unblockUser!(user.id);
-    }
+    });
   };
 
   deleteComment = () => {
-    const deleteComment = this.props.intl.formatMessage(messages.deleteMessage);
+    const deleteCommentMsg = this.props.intl.formatMessage(messages.deleteMessage);
 
-    if (window.confirm(deleteComment)) {
+    this.confirmWithMessage(deleteCommentMsg, () => {
       this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
-
       this.props.removeComment!(this.props.data.id);
-    }
+    });
   };
 
   hideUser = () => {
     const hideUserComment = this.props.intl.formatMessage(messages.hideUserComments, {
       userName: this.props.data.user.name,
     });
-    if (!window.confirm(hideUserComment)) return;
-    this.props.hideUser!(this.props.data.user);
+    this.confirmWithMessage(hideUserComment, () => {
+      this.props.hideUser!(this.props.data.user);
+    });
   };
 
   addComment = async (text: string, title: string, pid?: CommentType['id']) => {
@@ -512,6 +535,13 @@ export class Comment extends Component<CommentProps, State> {
               onHideUser={this.hideUser}
               onBlockUser={this.blockUser}
               onUnblockUser={this.unblockUser}
+            />
+          )}
+          {state.confirmAction && (
+            <ConfirmDialog
+              message={state.confirmAction.message}
+              onConfirm={this.onConfirmAccept}
+              onCancel={this.onConfirmCancel}
             />
           )}
         </div>

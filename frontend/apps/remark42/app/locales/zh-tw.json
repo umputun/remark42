@@ -87,6 +87,8 @@
   "commentsSort.oldest": "最舊",
   "commentsSort.recently-updated": "最近更新",
   "commentsSort.worst": "最差",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "尚無留言",
   "errors.0": "發生錯誤，請稍候再試。",
   "errors.1": "找不到留言，請重新整理頁面後再試。",

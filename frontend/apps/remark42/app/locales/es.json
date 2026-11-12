@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Más antiguo",
   "commentsSort.recently-updated": "Actualizado más recientemente",
   "commentsSort.worst": "Peor",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Todavía no hay comentarios",
   "errors.0": "Algo salió mal. Por favor vuelve a intentar más tarde.",
   "errors.1": "No se ha encontrado el comentario. Por favor refresca la página y vuelve a intentar.",

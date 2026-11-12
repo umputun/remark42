@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Старі",
   "commentsSort.recently-updated": "Нещодавно оновлені",
   "commentsSort.worst": "Гірші",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Поки немає коментарів",
   "errors.0": "Щось пішло не так,спробуйте ще раз пізніше.",
   "errors.1": "Коментар не знайдено. Перезавантажте сторінку і спробуйте ще раз.",

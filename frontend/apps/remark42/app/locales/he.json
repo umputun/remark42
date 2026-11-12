@@ -87,6 +87,8 @@
   "commentsSort.oldest": "הישנות ביותר",
   "commentsSort.recently-updated": "עודכנו לאחרונה",
   "commentsSort.worst": "הגרועות ביותר",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "אין עדיין תגובות",
   "errors.0": "משהו השתבש. יש לנסות שוב מאוחר יותר.",
   "errors.1": "התגובה לא נמצאה. יש לרענן את הדף ולנסות שוב.",

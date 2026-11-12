@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Най-стар",
   "commentsSort.recently-updated": "Най-скоро променен",
   "commentsSort.worst": "Най-лошия",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Все още няма коментари",
   "errors.0": "Има някакъв проблем. Моля, опитайте отново по-късно.",
   "errors.1": "Коментара не бе намерен. Моля презаредете страницата и опитайте пак.",

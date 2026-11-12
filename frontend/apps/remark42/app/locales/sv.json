@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Äldst",
   "commentsSort.recently-updated": "Nyligen uppdaterad",
   "commentsSort.worst": "Sämst",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Inga kommentarer än",
   "errors.0": "Något gick fel. Försök igen om en liten stund.",
   "errors.1": "Kommentaren kan inte hittas. Uppdatera sidan och försök igen.",
