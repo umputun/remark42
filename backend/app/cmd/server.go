@@ -175,6 +175,7 @@ type CustomAuthGroup struct {
 	NameField    string   `long:"name-field" env:"NAME_FIELD" default:"name" description:"user info field used as display name"`
 	PictureField string   `long:"picture-field" env:"PICTURE_FIELD" default:"picture" description:"user info field used as avatar url"`
 	EmailField   string   `long:"email-field" env:"EMAIL_FIELD" default:"email" description:"user info field used as email"`
+	Gravatar     bool     `long:"gravatar" env:"GRAVATAR" description:"use Gravatar picture for users without one"`
 }
 
 // StoreGroup defines options group for store params
@@ -569,9 +570,34 @@ func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string 
 	return sourceID
 }
 
+// customProviderUser maps user info returned by the custom OAuth2 provider to token.User.
+// With cfg.Gravatar set, a user without a picture gets the Gravatar one for their email, if it exists.
+func customProviderUser(name string, data provider.UserData, cfg CustomAuthGroup, gravatarURL func(email string) (string, error)) token.User {
+	hashID := token.HashID(sha1.New(), customProviderSourceID(data, cfg)) //nolint:gosec // stable provider user id hash
+	user := token.User{
+		ID:      name + "_" + hashID,
+		Name:    data.Value(cfg.NameField),
+		Picture: data.Value(cfg.PictureField),
+		Email:   data.Value(cfg.EmailField),
+	}
+	if user.Name == "" {
+		user.Name = "noname_" + hashID[:4]
+	}
+	if cfg.Gravatar && user.Picture == "" && strings.Contains(user.Email, "@") {
+		picURL, err := gravatarURL(user.Email)
+		if err != nil {
+			log.Printf("[DEBUG] no gravatar for custom oauth user %s, %v", user.ID, err)
+			return user
+		}
+		user.Picture = picURL
+	}
+	return user
+}
+
 func (c CustomAuthGroup) isConfigured() bool {
 	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
-		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
+		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email" ||
+		c.Gravatar
 }
 
 func (c CustomAuthGroup) missingRequired() []string {
@@ -1137,18 +1163,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
 			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				sourceID := customProviderSourceID(data, s.Auth.Custom)
-				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
-				user := token.User{
-					ID:      customName + "_" + hashID,
-					Name:    data.Value(s.Auth.Custom.NameField),
-					Picture: data.Value(s.Auth.Custom.PictureField),
-					Email:   data.Value(s.Auth.Custom.EmailField),
-				}
-				if user.Name == "" {
-					user.Name = "noname_" + hashID[:4]
-				}
-				return user
+				return customProviderUser(customName, data, s.Auth.Custom, avatar.GetGravatarURL)
 			},
 		})
 		providersCount++
