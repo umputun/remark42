@@ -8,29 +8,22 @@ Example of nginx configuration (reverse proxy) running remark42 service on remar
 
 ```nginx
 server {
-    listen      443;
+    listen      443 ssl;
     server_name remark42.example.com;
-    ssl    on;
     ssl_certificate        /etc/nginx/ssl/remark42.example.com.crt;
     ssl_certificate_key    /etc/nginx/ssl/remark42.example.com.key;
+
+    # room for image uploads up to IMAGE_MAX_SIZE (5 MB by default)
+    client_max_body_size 10m;
 
     gzip on;
     gzip_types text/plain application/json text/css application/javascript application/x-javascript text/javascript text/xml application/xml application/rss+xml application/atom+xml application/rdf+xml;
     gzip_min_length 1000;
     gzip_proxied any;
 
-
     location ~ /\.git {
         deny all;
     }
-
-    location /index.html {
-         proxy_redirect          off;
-         proxy_set_header        X-Real-IP $remote_addr;
-         proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
-         proxy_set_header        Host $http_host;
-         proxy_pass              http://remark42:8080/web/index.html;
-     }
 
     location / {
          proxy_redirect          off;
@@ -50,6 +43,12 @@ server {
   return      301 https://remark42.example.com$request_uri;
 }
 ```
+
+A single `location /` is all Remark42 needs: the API, the auth routes and the widget files under `/web/` are all served by Remark42 itself.
+
+TLS is enabled with the `ssl` parameter of `listen`. The older `ssl on;` directive was removed in nginx 1.25.1, and a configuration that still uses it fails to load.
+
+`client_max_body_size` has to be at least [`IMAGE_MAX_SIZE`](../../configuration/parameters/) (5 MB by default) for image uploads to work, as nginx answers larger requests with `413 Request Entity Too Large` before they reach Remark42. Raise it further if you import backups through the admin API (`/api/v1/admin/import`).
 
 Note: `proxy_pass` points to internal DNS name `remark42` and is expected to run from the same compose. If Nginx runs outside compose, the real IP (or docker's bridge IP) should be used
 
