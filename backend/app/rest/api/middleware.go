@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -128,7 +129,8 @@ func ParseTrustedProxies(entries []string) ([]*net.IPNet, error) {
 // CorsUnsafeAnyOriginWithCredentials. The wildcard stays because the comment widget is embedded on
 // arbitrary third-party sites, which makes the set of origins unknowable. The consequence it carries
 // is that any site a signed-in user visits can read authenticated responses, so state-changing
-// requests have to keep being protected by something other than the origin, X-XSRF-Token today.
+// requests have to keep being protected by something other than the origin: X-XSRF-Token for
+// cookie sessions, rejectCrossSiteBasicAuth for Basic auth.
 func corsMiddleware() func(http.Handler) http.Handler {
 	return R.CORS(
 		R.CorsAllowedOrigins("*"),
@@ -203,6 +205,29 @@ func matchSiteID(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+// rejectCrossSiteBasicAuth refuses Basic-auth requests a browser marks as cross-site or sends
+// from another origin. Basic auth skips the XSRF check, and the reflected CORS policy would let
+// any page drive the API with credentials a browser has cached. CLI tools send neither header.
+func (s *Rest) rejectCrossSiteBasicAuth(next http.Handler) http.Handler {
+	own := ""
+	if u, err := url.Parse(s.RemarkURL); err == nil && u.Scheme != "" && u.Host != "" {
+		own = u.Scheme + "://" + u.Host
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, _, ok := r.BasicAuth(); !ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		origin := r.Header.Get("Origin")
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" || (origin != "" && !strings.EqualFold(origin, own)) {
+			log.Printf("[WARN] cross-site basic auth request rejected, origin %q, %s %s", origin, r.Method, r.URL.Path)
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // cacheControl is a middleware setting cache expiration. Using url+version as etag
