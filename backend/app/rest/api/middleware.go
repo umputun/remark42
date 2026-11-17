@@ -213,7 +213,14 @@ func matchSiteID(next http.Handler) http.Handler {
 func (s *Rest) rejectCrossSiteBasicAuth(next http.Handler) http.Handler {
 	own := ""
 	if u, err := url.Parse(s.RemarkURL); err == nil && u.Scheme != "" && u.Host != "" {
-		own = u.Scheme + "://" + u.Host
+		host := u.Host
+		switch u.Scheme { // browsers leave the default port out of Origin
+		case "https":
+			host = strings.TrimSuffix(host, ":443")
+		case "http":
+			host = strings.TrimSuffix(host, ":80")
+		}
+		own = u.Scheme + "://" + host
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, _, ok := r.BasicAuth(); !ok {

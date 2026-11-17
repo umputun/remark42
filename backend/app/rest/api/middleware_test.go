@@ -416,6 +416,8 @@ func TestRest_rejectCrossSiteBasicAuth(t *testing.T) {
 		{name: "basic auth, foreign origin", remarkURL: "https://r.example.com", basic: true, origin: "https://evil.example", want: http.StatusForbidden},
 		{name: "basic auth, null origin", remarkURL: "https://r.example.com", basic: true, origin: "null", want: http.StatusForbidden},
 		{name: "basic auth, origin of a remark url with path", remarkURL: "https://example.com/remark42", basic: true, origin: "https://example.com", want: http.StatusOK},
+		{name: "basic auth, remark url with default https port", remarkURL: "https://r.example.com:443", basic: true, origin: "https://r.example.com", want: http.StatusOK},
+		{name: "basic auth, remark url with default http port", remarkURL: "http://r.example.com:80", basic: true, origin: "http://r.example.com", want: http.StatusOK},
 		{name: "basic auth, origin with another port", remarkURL: "https://r.example.com:8443", basic: true, origin: "https://r.example.com", want: http.StatusForbidden},
 		{name: "basic auth, unparseable remark url", remarkURL: "://bad", basic: true, origin: "https://r.example.com", want: http.StatusForbidden},
 	}
