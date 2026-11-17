@@ -348,6 +348,50 @@ func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
 	})
 }
 
+// regression: a browser holding cached admin basic credentials replayed them for a cross-site page
+func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+
+	comment := `{"text": "test", "locator": {"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+	cases := []struct {
+		name      string
+		method    string
+		path      string
+		body      string
+		fetchSite string
+		origin    string
+		want      int
+	}{
+		{name: "admin read without browser signals", method: "GET", path: "/api/v1/admin/blocked?site=remark42", want: http.StatusOK},
+		{name: "admin read from own origin", method: "GET", path: "/api/v1/admin/blocked?site=remark42", origin: "https://demo.remark42.com", want: http.StatusOK},
+		{name: "admin read from foreign origin", method: "GET", path: "/api/v1/admin/blocked?site=remark42", origin: "https://evil.example", want: http.StatusForbidden},
+		{name: "comment post without browser signals", method: "POST", path: "/api/v1/comment", body: comment, want: http.StatusCreated},
+		{name: "comment post marked cross-site", method: "POST", path: "/api/v1/comment", body: comment, fetchSite: "cross-site", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(c.method, ts.URL+c.path, strings.NewReader(c.body))
+			require.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			if c.fetchSite != "" {
+				req.Header.Set("Sec-Fetch-Site", c.fetchSite)
+			}
+			if c.origin != "" {
+				req.Header.Set("Origin", c.origin)
+			}
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+		})
+	}
+}
+
 // TestRest_AvatarMounts verifies both avatar mounts (root /avatar/ and /api/v1/avatar/)
 // still route to the avatar handler after the chi Mount -> ServeMux Handle rewiring,
 // rather than falling through to a router 404.

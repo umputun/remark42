@@ -245,7 +245,7 @@ func (s *Rest) routes() http.Handler {
 
 	// api routes
 	rapi := router.Mount("/api/v1")
-	rapi.Use(apiCSPMiddleware)
+	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth)
 
 	rapi.Group().Route(avatarRoutes)
 

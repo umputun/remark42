@@ -398,6 +398,53 @@ func TestRest_matchSiteID(t *testing.T) {
 	}
 }
 
+func TestRest_rejectCrossSiteBasicAuth(t *testing.T) {
+	cases := []struct {
+		name      string
+		remarkURL string
+		basic     bool
+		fetchSite string
+		origin    string
+		want      int
+	}{
+		{name: "no basic auth, cross-site", remarkURL: "https://r.example.com", fetchSite: "cross-site", origin: "https://evil.example", want: http.StatusOK},
+		{name: "basic auth without browser signals", remarkURL: "https://r.example.com", basic: true, want: http.StatusOK},
+		{name: "basic auth, cross-site", remarkURL: "https://r.example.com", basic: true, fetchSite: "cross-site", want: http.StatusForbidden},
+		{name: "basic auth, same origin", remarkURL: "https://r.example.com", basic: true, fetchSite: "same-origin", origin: "https://r.example.com", want: http.StatusOK},
+		{name: "basic auth, origin case differs", remarkURL: "https://R.example.com", basic: true, origin: "https://r.example.com", want: http.StatusOK},
+		{name: "basic auth, same-site sibling origin", remarkURL: "https://r.example.com", basic: true, fetchSite: "same-site", origin: "https://blog.example.com", want: http.StatusForbidden},
+		{name: "basic auth, foreign origin", remarkURL: "https://r.example.com", basic: true, origin: "https://evil.example", want: http.StatusForbidden},
+		{name: "basic auth, null origin", remarkURL: "https://r.example.com", basic: true, origin: "null", want: http.StatusForbidden},
+		{name: "basic auth, origin of a remark url with path", remarkURL: "https://example.com/remark42", basic: true, origin: "https://example.com", want: http.StatusOK},
+		{name: "basic auth, remark url with default https port", remarkURL: "https://r.example.com:443", basic: true, origin: "https://r.example.com", want: http.StatusOK},
+		{name: "basic auth, remark url with default http port", remarkURL: "http://r.example.com:80", basic: true, origin: "http://r.example.com", want: http.StatusOK},
+		{name: "basic auth, origin with another port", remarkURL: "https://r.example.com:8443", basic: true, origin: "https://r.example.com", want: http.StatusForbidden},
+		{name: "basic auth, unparseable remark url", remarkURL: "://bad", basic: true, origin: "https://r.example.com", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := &Rest{RemarkURL: c.remarkURL}
+			h := srv.rejectCrossSiteBasicAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/blocked", http.NoBody)
+			if c.basic {
+				req.SetBasicAuth("admin", "password")
+			}
+			if c.fetchSite != "" {
+				req.Header.Set("Sec-Fetch-Site", c.fetchSite)
+			}
+			if c.origin != "" {
+				req.Header.Set("Origin", c.origin)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			assert.Equal(t, c.want, rec.Code)
+		})
+	}
+}
+
 func TestCorsMiddleware(t *testing.T) {
 	h := corsMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
