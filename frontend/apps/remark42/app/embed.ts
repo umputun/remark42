@@ -1,14 +1,19 @@
 import { NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
 import { parseMessage, postMessageToIframe } from 'utils/post-message';
 import { createIframe } from 'utils/create-iframe';
-import type { Theme } from 'common/types';
+import type { Theme, ThemeSetting } from 'common/types';
 import { closeProfile, openProfile, ownsWindow } from 'profile';
 
 // marks the iframe this module owns, so a second createInstance reuses it instead of adopting
 // whatever the integrator left in the root as a loading placeholder
 const IFRAME_MARKER = 'data-remark42-iframe';
 
-// detaches the listeners of whichever instance is current. every createInstance installs three of
+// what the 'auto' theme follows. Evaluated on the host page: inside the iframe the query reports the
+// color-scheme of the iframe element, which is the theme the widget was given, not the visitor's
+// preference
+const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
+
+// detaches the listeners of whichever instance is current. every createInstance installs four of
 // them plus a title observer, all closing over that call's iframe, while the call reuses an
 // existing iframe rather than building one. Without this a second call leaves the first set
 // attached for good, since destroy() can only reach the newest closure
@@ -29,6 +34,21 @@ function init() {
   window.dispatchEvent(new Event('REMARK42::ready'));
 }
 
+// resolves 'auto' to the theme the visitor's system prefers. The widget itself only knows light and dark
+function resolveTheme(theme: ThemeSetting): Theme {
+  if (theme !== 'auto') {
+    return theme;
+  }
+
+  return window.matchMedia?.(DARK_SCHEME_QUERY).matches ? 'dark' : 'light';
+}
+
+// the config with 'auto' resolved, for building an iframe: its URL carries the theme the document
+// starts in, and the document only knows light and dark
+function withResolvedTheme(config: typeof window.remark_config) {
+  return config.theme ? { ...config, theme: resolveTheme(config.theme) } : config;
+}
+
 function createInstance(config: typeof window.remark_config) {
   const root = document.getElementById(NODE_ID);
 
@@ -43,10 +63,14 @@ function createInstance(config: typeof window.remark_config) {
   }
 
   let titleObserver: MutationObserver | null = null;
+  // absent where the browser has no matchMedia, and then 'auto' stays light
+  const darkScheme = window.matchMedia?.(DARK_SCHEME_QUERY);
 
   config.url = (config.url || `${window.location.origin}${window.location.pathname}`).split('#')[0];
 
-  const iframe = root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ?? createIframe(config);
+  const iframe =
+    root.querySelector<HTMLIFrameElement>(`:scope > iframe[${IFRAME_MARKER}]`) ??
+    createIframe(withResolvedTheme(config));
   iframe.setAttribute(IFRAME_MARKER, '');
 
   root.appendChild(iframe);
@@ -58,6 +82,7 @@ function createInstance(config: typeof window.remark_config) {
   window.addEventListener('message', handleReceiveMessage);
   window.addEventListener('hashchange', handleHashChange);
   document.addEventListener('click', postClickOutsideToIframe);
+  darkScheme?.addEventListener('change', handleSchemeChange);
 
   const titleElement = document.querySelector('title');
 
@@ -92,7 +117,7 @@ function createInstance(config: typeof window.remark_config) {
       if (data.profile === null) {
         closeProfile();
       } else {
-        openProfile({ ...config, ...data.profile });
+        openProfile({ ...withResolvedTheme(config), ...data.profile });
       }
     }
 
@@ -110,7 +135,7 @@ function createInstance(config: typeof window.remark_config) {
       postTitleToIframe(document.title);
       // a changeTheme made before the document loaded was posted to a frame with no one listening,
       // and the iframe URL only carries the theme it was built with
-      postThemeToIframe();
+      applyTheme();
     }
   }
 
@@ -132,9 +157,22 @@ function createInstance(config: typeof window.remark_config) {
     postMessageToIframe(iframe, { title });
   }
 
-  function postThemeToIframe() {
-    if (config.theme) {
-      postMessageToIframe(iframe, { theme: config.theme });
+  // sets the configured theme, with 'auto' resolved, on the iframe element and posts it to the
+  // document inside, which matches its own color-scheme to it
+  function applyTheme() {
+    if (!config.theme) {
+      return;
+    }
+
+    const theme = resolveTheme(config.theme);
+
+    iframe.style.colorScheme = theme;
+    postMessageToIframe(iframe, { theme });
+  }
+
+  function handleSchemeChange() {
+    if (config.theme === 'auto') {
+      applyTheme();
     }
   }
 
@@ -145,17 +183,17 @@ function createInstance(config: typeof window.remark_config) {
     postMessageToIframe(iframe, { clickOutside: true });
   }
 
-  function changeTheme(theme: Theme) {
+  function changeTheme(theme: ThemeSetting) {
     config.theme = theme;
     window.remark_config.theme = theme;
-    iframe.style.colorScheme = theme;
-    postMessageToIframe(iframe, { theme });
+    applyTheme();
   }
 
   function detach() {
     window.removeEventListener('message', handleReceiveMessage);
     window.removeEventListener('hashchange', handleHashChange);
     document.removeEventListener('click', postClickOutsideToIframe);
+    darkScheme?.removeEventListener('change', handleSchemeChange);
 
     if (titleObserver) {
       titleObserver.disconnect();

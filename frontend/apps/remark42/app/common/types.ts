@@ -129,6 +129,8 @@ export interface Config {
 export type Sorting = '-time' | '+time' | '-active' | '+active' | '-score' | '+score' | '-controversy' | '+controversy';
 export type BlockTTL = 'permanently' | '43200m' | '10080m' | '1440m';
 export type Theme = 'light' | 'dark';
+/** a theme as the host page sets it: 'auto' follows the visitor's system preference */
+export type ThemeSetting = Theme | 'auto';
 
 /**
  * Comment component's edit mode:
