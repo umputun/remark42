@@ -65,7 +65,7 @@ func TestErrorDetailsMsg(t *testing.T) {
 		req, err := http.NewRequest("GET", "https://example.com/test?k1=v1&k2=v2", http.NoBody)
 		require.NoError(t, err)
 		req.RemoteAddr = "1.2.3.4"
-		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 123)
+		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 123, 0)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (123) - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
 		// error line in the middle of the message is not checked
 		assert.Contains(t, msg, " rest.TestErrorDetailsMsg]")
@@ -80,7 +80,7 @@ func TestErrorDetailsMsgWithUser(t *testing.T) {
 		req.RemoteAddr = "127.0.0.1:1234"
 		req = token.SetUserInfo(req, token.User{Name: "test", ID: "id"})
 		require.NoError(t, err)
-		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 34567)
+		msg := errDetailsMsg(req, 500, fmt.Errorf("error 500"), "error details 123456", 34567, 0)
 		assert.Contains(t, msg, "error details 123456 - error 500 - 500 (34567) - test/id - https://example.com/test?k1=v1&k2=v2 - [app/rest/httperrors_test.go:")
 		// error line in the middle of the message is not checked
 		assert.Contains(t, msg, " rest.TestErrorDetailsMsgWithUser]")

@@ -51,7 +51,7 @@ type errTmplData struct {
 // SendErrorHTML makes html body from error_response.html.tmpl template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 0))
 	page, e := RenderTemplate("error", "error_response.html.tmpl", errTmplData{Error: err.Error(), Details: details})
 	if e != nil {
 		log.Printf("[WARN] can't make error page, %v", e)
@@ -83,7 +83,18 @@ func RenderTemplate(name, file string, data any) (string, error) {
 
 // SendErrorJSON makes {error: blah, details: blah, code: 42} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 0))
+	writeErrorJSON(w, httpStatusCode, err, details, errCode)
+}
+
+// SendErrorJSONFromHelper is SendErrorJSON for a helper which sends errors for its callers: the logged
+// source line is where the helper was called, not the line inside the helper
+func SendErrorJSONFromHelper(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 1))
+	writeErrorJSON(w, httpStatusCode, err, details, errCode)
+}
+
+func writeErrorJSON(w http.ResponseWriter, httpStatusCode int, err error, details string, errCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
 	rest.RenderJSON(w, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
@@ -103,7 +114,9 @@ func PlainTextResponse(w http.ResponseWriter, status int, text string) {
 	_, _ = w.Write([]byte(text))
 }
 
-func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details string, errCode int) string {
+// errDetailsMsg makes the log line of an error sent to the client. It names the source line which called
+// the function calling errDetailsMsg, or the one skip frames further up the stack.
+func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details string, errCode, skip int) string {
 	uinfoStr := ""
 	if user, e := GetUserInfo(r); e == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
@@ -114,7 +127,7 @@ func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details strin
 	}
 
 	srcFileInfo := ""
-	if pc, file, line, ok := runtime.Caller(2); ok {
+	if pc, file, line, ok := runtime.Caller(2 + skip); ok {
 		fnameElems := strings.Split(file, "/")
 		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
 		srcFileInfo = fmt.Sprintf("[%s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),

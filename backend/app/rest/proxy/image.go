@@ -180,7 +180,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 // Defense headers from SetImageDefenseHeaders at the top of the handler survive.
 func sendImageProxyError(w http.ResponseWriter, r *http.Request, status int, err error, details string, errCode int) {
 	w.Header().Set("Cache-Control", "no-store")
-	rest.SendErrorJSON(w, r, status, err, details, errCode)
+	rest.SendErrorJSONFromHelper(w, r, status, err, details, errCode)
 }
 
 // cache image from provided Reader using given ID

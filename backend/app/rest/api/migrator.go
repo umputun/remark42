@@ -313,7 +313,7 @@ func (m *Migrator) claim(w http.ResponseWriter, r *http.Request, siteID, details
 	if m.setBusyIfFree(siteID) {
 		return true
 	}
-	rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"), details, rest.ErrActionRejected)
+	rest.SendErrorJSONFromHelper(w, r, http.StatusConflict, fmt.Errorf("already running"), details, rest.ErrActionRejected)
 	return false
 }
 
