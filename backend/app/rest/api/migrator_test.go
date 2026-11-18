@@ -366,6 +366,57 @@ func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
 	require.Equal(t, 5, len(comments.Comments), "five comments with two replies")
 }
 
+func TestMigrator_ImportProvider(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	post := func(path, contentType string, body io.Reader) int {
+		req, err := http.NewRequest("POST", ts.URL+path, body)
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		req.Header.Set("Content-Type", contentType)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+	backup := `{"version":1} {"id":"c1","pid":"","text":"<p>test</p>","user":{"name":"dev","id":"dev"},` +
+		`"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"time":"2018-04-30T01:37:00Z"}`
+
+	assert.Equal(t, http.StatusBadRequest, post("/api/v1/admin/import?site=remark42&provider=wordpres", "", strings.NewReader(backup)))
+	assert.Equal(t, http.StatusBadRequest, post("/api/v1/admin/import/form?site=remark42&provider=wordpres",
+		"multipart/form-data; boundary=x", strings.NewReader("--x--")))
+
+	// the documented backup import names no provider and must keep working, on a site the rejections left free
+	assert.Equal(t, http.StatusAccepted, post("/api/v1/admin/import?site=remark42", "", strings.NewReader(backup)))
+	waitForMigrationCompletion(t, ts)
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &comments))
+	assert.Equal(t, 1, comments.Info.Count)
+}
+
+type panickingImporter struct{}
+
+func (panickingImporter) Import(io.Reader, string) (int, error) { panic("importer bug") }
+
+func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Migrator.DisqusImporter = panickingImporter{} })
+	defer teardown()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=disqus", strings.NewReader("<disqus/>"))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+	waitForMigrationCompletion(t, ts) // the site is released after the panic and the server still answers
+}
+
 func TestMigrator_ImportRejected(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

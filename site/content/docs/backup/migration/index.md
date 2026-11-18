@@ -20,6 +20,8 @@ The import also fetches each commenter's avatar from Disqus and stores it with t
 
 Only approved comments are imported. Pingbacks, trackbacks and records plugins keep as comments, such as WooCommerce order notes, are left out.
 
+Comment text is shown the way WordPress shows it: blank lines start paragraphs, line breaks are kept, bare links and email addresses become links and text smilies become emoji. Markdown is not interpreted, as WordPress does not interpret it either. Quotes and dashes are curled unless `DISABLE_FANCY_TEXT_FORMATTING` is set.
+
 ### Initial import from Commento
 
 1. Move exported json file to your Remark42 host within `./var`

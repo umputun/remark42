@@ -47,8 +47,12 @@ func (f *CommentFormatter) Format(c Comment, raw bool) Comment {
 func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
 	mdExt, rend := GetMdExtensionsAndRenderer(raw)
 	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
-	res = f.unEscape(res)
+	return f.FormatHTML(f.unEscape(res))
+}
 
+// FormatHTML applies external converters to text that is already HTML, shortens its links and marks its images lazy.
+func (f *CommentFormatter) FormatHTML(commentHTML string) (res string) {
+	res = commentHTML
 	for _, conv := range f.converters {
 		res = conv.Convert(res)
 	}

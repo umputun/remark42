@@ -57,7 +57,9 @@ func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return err
 }
 
-// Convert satisfies formatter.CommentConverter
+// Convert satisfies formatter.CommentConverter by unescaping HTML entities.
+//
+// Deprecated: the importer keeps entities and no longer calls Convert; it stays for existing callers.
 func (w *WordPress) Convert(text string) string {
 	return html.UnescapeString(text) // sanitize remains on comment create
 }
@@ -78,7 +80,7 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 		skippedComments             int // pingbacks, trackbacks and other non-comment types
 	}{}
 
-	commentFormatter := store.NewCommentFormatter(w)
+	commentFormatter := store.NewCommentFormatter()
 
 	rootSeen, wxrSeen := false, false // a WordPress export (WXR) is an rss document with <wp:wxr_version> in its channel
 	for {
@@ -137,12 +139,12 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 								Name: comment.Author,
 								IP:   comment.AuthorIP,
 							},
-							Text:      comment.Content,
+							Text:      commentFormatter.FormatHTML(wpCommentHTML(comment.Content, !w.DisableFancyTextFormatting)),
 							Timestamp: comment.Date.time,
 							ParentID:  comment.PID,
 							Imported:  true,
 						}
-						if err := emit(commentFormatter.Format(c, w.DisableFancyTextFormatting)); err != nil {
+						if err := emit(c); err != nil {
 							return err
 						}
 						stats.inpComments++
