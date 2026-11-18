@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -54,14 +55,8 @@ const (
 )
 
 func TestServerApp(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	app := startServerApp(t, nil)
+	port := app.Port
 
 	// send ping
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
@@ -90,22 +85,15 @@ func TestServerApp(t *testing.T) {
 	email, err := app.dataService.AdminStore.Email("")
 	assert.NoError(t, err)
 	assert.Equal(t, "admin@demo.remark42.com", email, "default admin email")
-
-	cancel()
-	app.Wait()
 }
 
 func TestServerApp_DevMode(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
 		o.AdminPasswd = "password"
 		o.Auth.Dev = true
 		return o
 	})
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	port := app.Port
 
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 10+1, len(providers), "extra auth provider")
@@ -119,15 +107,10 @@ func TestServerApp_DevMode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
 	assert.Equal(t, "pong", string(body))
-
-	cancel()
-	app.Wait()
 }
 
 func TestServerApp_CustomOAuthProvider(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Auth.Custom.Name = "oidc"
 		o.Auth.Custom.CID = "cid"
 		o.Auth.Custom.CSEC = "csec"
@@ -137,27 +120,17 @@ func TestServerApp_CustomOAuthProvider(t *testing.T) {
 		return o
 	})
 
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
-
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 10+1, len(providers), "extra auth provider")
 	assert.Equal(t, "oidc", providers[len(providers)-2].Name(), "custom auth provider")
-
-	cancel()
-	app.Wait()
 }
 
 func TestServerApp_AnonMode(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Auth.Anonymous = true
 		return o
 	})
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	port := app.Port
 
 	providers := app.restSrv.Authenticator.Providers()
 	require.Equal(t, 10+1, len(providers), "extra auth provider for anon")
@@ -244,9 +217,6 @@ func TestServerApp_AnonMode(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-	cancel()
-	app.Wait()
 }
 
 func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn string, claims token.Claims) {
@@ -265,16 +235,11 @@ func TestServerApp_WithSSL(t *testing.T) {
 	tmp := t.TempDir()
 	opts := ServerCommand{}
 	sslPort := chooseUnusedPort(t)
-	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
-
-	// prepare options
-	p := flags.NewParser(&opts, flags.Default)
 	port := chooseUnusedPort(t)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=" + tmp + "/xyz",
-		"--backup=" + tmp, "--avatar.type=bolt", "--avatar.bolt.file=" + tmp + "/ava-test.db",
+	parseCmd(t, &opts, fmt.Sprintf("https://localhost:%d", sslPort), "--admin-passwd=password", "--port="+strconv.Itoa(port),
+		"--store.bolt.path="+tmp+"/xyz", "--backup="+tmp, "--avatar.type=bolt", "--avatar.bolt.file="+tmp+"/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
-		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=" + tmp})
-	require.NoError(t, err)
+		"--ssl.port="+strconv.Itoa(sslPort), "--image.fs.path="+tmp)
 
 	// create app
 	app, err := opts.newServerApp(context.Background())
@@ -321,16 +286,11 @@ func TestServerApp_WithSSL(t *testing.T) {
 func TestServerApp_WithRemote(t *testing.T) {
 	tmp := t.TempDir()
 	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	// prepare options
-	p := flags.NewParser(&opts, flags.Default)
 	port := chooseUnusedPort(t)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
+	parseCmd(t, &opts, "https://demo.remark42.com", "--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
-		"--port=" + strconv.Itoa(port), "--avatar.fs.path=" + tmp,
-		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1"})
-	require.NoError(t, err)
+		"--port="+strconv.Itoa(port), "--avatar.fs.path="+tmp,
+		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1")
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
 	opts.BackupLocation, opts.Image.FS.Path = tmp, tmp
 
@@ -359,110 +319,59 @@ func TestServerApp_WithRemote(t *testing.T) {
 
 func TestServerApp_Failed(t *testing.T) {
 	tmp := t.TempDir()
-	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	p := flags.NewParser(&opts, flags.Default)
-
-	// RO bolt location
-	_, err := p.ParseArgs([]string{"--backup=" + tmp, "--store.bolt.path=/dev/null", "--image.fs.path=" + tmp})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
-	t.Log(err)
-
-	// RO backup location
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=/dev/null/not-writable"})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
-	t.Log(err)
-
-	// invalid url
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com", SharedSecret: "123456"})
-
-	_, err = p.ParseArgs([]string{"--backup=" + tmp, "----store.bolt.path=" + tmp})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
-	t.Log(err)
-
-	// invalid trusted proxy CIDR fails fast, before any resource is created
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--backup=" + tmp, "--trusted-proxy=nonsense"})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, `invalid --trusted-proxy: invalid trusted proxy "nonsense"`)
-	t.Log(err)
+	tbl := []struct {
+		name, url string
+		args      []string
+		storeType string // set after parsing, for a value the parser refuses
+		err       string
+	}{
+		{name: "RO bolt location", args: []string{"--backup=" + tmp, "--store.bolt.path=/dev/null", "--image.fs.path=" + tmp},
+			err: "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory"},
+		{name: "RO backup location", args: []string{"--store.bolt.path=" + tmp, "--backup=/dev/null/not-writable"},
+			err: "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory"},
+		{name: "invalid url", url: "demo.remark42.com", args: []string{"--backup=" + tmp, "--store.bolt.path=" + tmp},
+			err: "invalid remark42 url demo.remark42.com"},
+		{name: "invalid trusted proxy fails before any resource is created", args: []string{"--backup=" + tmp, "--trusted-proxy=nonsense"},
+			err: `invalid --trusted-proxy: invalid trusted proxy "nonsense"`},
+		{name: "wrong store type", args: []string{"--backup=" + tmp}, storeType: "blah",
+			err: "failed to make data store engine: unsupported store type blah"},
+		{name: "wrong redis location", args: []string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+			"--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"},
+			err: "failed to make cache: cache backend initialization, redis PubSub initialisation: " +
+				"problem subscribing to channel remark42-cache on address wrong_address: " +
+				"dial tcp: address wrong_address: missing port in address"},
+		{name: "wrong apple private key type", args: []string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+			"--avatar.fs.path=" + tmp, "--auth.apple.cid=123", "--auth.apple.tid=123", "--auth.apple.kid=123",
+			"--auth.apple.private-key-filepath=testdata/apple-bad.p8"},
+			err: "failed to make authenticator: an AppleProvider creating failed: provided private key is not ECDSA"},
+		{name: "incomplete custom oauth config", args: []string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+			"--avatar.fs.path=" + tmp, "--auth.custom.name=oidc", "--auth.custom.cid=123"},
+			err: "failed to make authenticator: custom oauth provider configuration is incomplete, missing: " +
+				"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := ServerCommand{}
+			parseCmd(t, &opts, cmp.Or(tt.url, "https://demo.remark42.com"), tt.args...)
+			opts.Store.Type = cmp.Or(tt.storeType, opts.Store.Type)
+			_, err := opts.newServerApp(context.Background())
+			assert.EqualError(t, err, tt.err)
+		})
+	}
 
 	// unreadable restricted words file fails fast, before any resource is created
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--backup=/tmp", "--restricted-words-file=" + filepath.Join(t.TempDir(), "missing.txt")})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --restricted-words-file: failed to stat")
+	t.Run("unreadable restricted words file", func(t *testing.T) {
+		opts := ServerCommand{}
+		parseCmd(t, &opts, "https://demo.remark42.com", "--backup="+tmp, "--restricted-words-file="+filepath.Join(tmp, "missing.txt"))
+		_, err := opts.newServerApp(context.Background())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid --restricted-words-file: failed to stat")
+	})
 
-	// wrong store type
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	_, err = p.ParseArgs([]string{"--backup=" + tmp, "--store.type=blah"})
+	// the parser itself refuses a store type outside the choices
+	opts := ServerCommand{}
+	_, err := flags.NewParser(&opts, flags.Default).ParseArgs([]string{"--store.type=blah"})
 	assert.Error(t, err, "blah is invalid type")
-
-	opts.Store.Type = "blah"
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err, "failed to make data store engine: unsupported store type blah")
-	t.Log(err)
-
-	// wrong redis location
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
-		"--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err,
-		"failed to make cache: cache backend initialization, redis PubSub initialisation: "+
-			"problem subscribing to channel remark42-cache on address wrong_address: "+
-			"dial tcp: address wrong_address: missing port in address")
-	t.Log(err)
-
-	// wrong apple private key type
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
-		"--avatar.fs.path=" + tmp, "--auth.apple.cid=123", "--auth.apple.tid=123",
-		"--auth.apple.kid=123", "--auth.apple.private-key-filepath=testdata/apple-bad.p8"})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err,
-		"failed to make authenticator: an AppleProvider creating failed: "+
-			"provided private key is not ECDSA")
-	t.Log(err)
-
-	// incomplete custom oauth config
-	opts = ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
-		"--avatar.fs.path=" + tmp, "--auth.custom.name=oidc", "--auth.custom.cid=123"})
-	assert.NoError(t, err)
-	_, err = opts.newServerApp(context.Background())
-	assert.EqualError(t, err,
-		"failed to make authenticator: custom oauth provider configuration is incomplete, missing: "+
-			"AUTH_CUSTOM_CSEC, AUTH_CUSTOM_AUTH_URL, AUTH_CUSTOM_TOKEN_URL, AUTH_CUSTOM_INFO_URL")
-	t.Log(err)
 }
 
 func TestIsReservedCustomProviderName(t *testing.T) {
@@ -523,40 +432,28 @@ func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
 
 	t.Run("reserved", func(t *testing.T) {
 		opts := ServerCommand{}
-		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-		p := flags.NewParser(&opts, flags.Default)
-		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=twitter"))
-		require.NoError(t, err)
-
-		_, err = opts.newServerApp(context.Background())
+		parseCmd(t, &opts, "https://demo.remark42.com", append(baseArgs, "--auth.custom.name=twitter")...)
+		_, err := opts.newServerApp(context.Background())
 		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "twitter" is reserved`)
 	})
 
 	t.Run("not_url_safe", func(t *testing.T) {
 		opts := ServerCommand{}
-		opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-		p := flags.NewParser(&opts, flags.Default)
-		_, err := p.ParseArgs(append(baseArgs, "--auth.custom.name=bad name"))
-		require.NoError(t, err)
-
-		_, err = opts.newServerApp(context.Background())
+		parseCmd(t, &opts, "https://demo.remark42.com", append(baseArgs, "--auth.custom.name=bad name")...)
+		_, err := opts.newServerApp(context.Background())
 		assert.EqualError(t, err, `failed to make authenticator: custom oauth provider name "bad name" is invalid, expected pattern "^[a-z0-9][a-z0-9_-]*$"`)
 	})
 }
 
 func TestServerApp_Shutdown(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
+	app, ctx, cancel := prepServerApp(t, nil)
 
 	// cancel once the server actually answers, so the test measures shutdown and not startup.
 	// the deferred cancel also covers a failed wait, keeping app.run from racing the next test
 	errCh := make(chan error, 1)
 	go func() { errCh <- app.run(ctx) }()
 	defer cancel()
-	waitForHTTPServerStart(t, port)
+	waitForHTTPServerStart(t, app.Port)
 	cancel()
 
 	select {
@@ -572,18 +469,9 @@ func TestServerApp_Shutdown(t *testing.T) {
 // included: it stamps admin, blocked and email onto the claims and blocks impersonation of a
 // restricted name. Calling the updater directly keeps it independent of when a token expires.
 func TestServerApp_ClaimsUpd(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
-
 	// the app owns stores and services that only run closes, so it goes through the usual
 	// lifecycle here rather than being built and abandoned
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
-	defer app.Wait()
-	defer cancel()
+	app := startServerApp(t, nil)
 
 	upd := app.restSrv.Authenticator.TokenService().ClaimsUpd
 	require.NotNil(t, upd, "claims updater wired into the token service")
@@ -665,15 +553,11 @@ func TestServerApp_MainSignal(t *testing.T) {
 	sigErr := make(chan error, 1)
 
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	p := flags.NewParser(&s, flags.Default)
 	port := chooseUnusedPort(t)
 	tmp := t.TempDir()
 	args := []string{"test", "--store.bolt.path=" + tmp + "/xyz", "--backup=" + tmp, "--avatar.type=bolt",
 		"--avatar.bolt.file=" + tmp + "/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=" + tmp}
-	_, err := p.ParseArgs(args)
-	require.NoError(t, err)
+	parseCmd(t, &s, "https://demo.remark42.com", args...)
 	// the signal goes out only once the server answers: SIGTERM landing before the handler is
 	// installed kills the test process, so a wait that timed out reports instead of sending it
 	go func() {
@@ -687,17 +571,13 @@ func TestServerApp_MainSignal(t *testing.T) {
 		sigErr <- killErr
 	}()
 
-	err = s.Execute(args)
+	err := s.Execute(args)
 	assert.NoError(t, err, "execute should be without errors")
 	require.NoError(t, <-sigErr, "SIGTERM not delivered")
 }
 
 func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
+	app, ctx, cancel := prepServerApp(t, nil)
 	cancel()
 
 	errCh := make(chan error, 1)
@@ -710,7 +590,7 @@ func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
 		require.NoError(t, err)
 		app.Wait()
 	case <-time.After(serverStartTimeout):
-		waitForHTTPServerStart(t, port)
+		waitForHTTPServerStart(t, app.Port)
 		app.restSrv.Shutdown()
 		select {
 		case <-errCh:
@@ -724,9 +604,6 @@ func TestServerApp_RunCanceledBeforeRESTStart(t *testing.T) {
 
 func TestServerApp_DeprecatedArgs(t *testing.T) {
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
 		"--notify.type=email",
@@ -754,8 +631,7 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Empty(t, s.SMTP.Username)
 	assert.Empty(t, s.SMTP.Password)
 	assert.Empty(t, s.SMTP.TimeOut)
-	_, err := p.ParseArgs(args)
-	require.NoError(t, err)
+	parseCmd(t, &s, "https://demo.remark42.com", args...)
 	deprecatedFlags := s.HandleDeprecatedFlags()
 	assert.ElementsMatch(t,
 		[]DeprecatedFlag{
@@ -798,9 +674,6 @@ func (s *ServerCommand) findDeprecatedFlagsCollisions() []DeprecatedFlag {
 
 func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-
-	p := flags.NewParser(&s, flags.Default)
 	args := []string{
 		"test",
 		"--auth.email.host=smtp-old.example.org",
@@ -823,8 +696,7 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 		"--notify.telegram.api=http://old.example.org/bot",
 		"--telegram.api-url=http://new.example.org",
 	}
-	_, err := p.ParseArgs(args)
-	require.NoError(t, err)
+	parseCmd(t, &s, "https://demo.remark42.com", args...)
 	deprecatedFlagsCollisions := s.findDeprecatedFlagsCollisions()
 	assert.ElementsMatch(t,
 		[]DeprecatedFlag{
@@ -843,70 +715,38 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 	// an old flag next to an empty new one is no collision; without a shell, "--smtp.host=''"
 	// would set the host to the two quote characters
 	s = ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p = flags.NewParser(&s, flags.Default)
-	args = []string{
-		"test",
-		"--auth.email.host=smtp-old.example.org",
-		"--smtp.host=",
-	}
-	_, err = p.ParseArgs(args)
-	require.NoError(t, err)
+	parseCmd(t, &s, "https://demo.remark42.com", "test", "--auth.email.host=smtp-old.example.org", "--smtp.host=")
 	deprecatedFlagsCollisions = s.findDeprecatedFlagsCollisions()
 	assert.Empty(t, deprecatedFlagsCollisions)
 }
 
 func Test_ACMEEmail(t *testing.T) {
-	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
-	p := flags.NewParser(&cmd, flags.Default)
-	args := []string{"--ssl.type=auto"}
-	_, err := p.ParseArgs(args)
-	require.NoError(t, err)
-	cfg, err := cmd.makeSSLConfig()
-	require.NoError(t, err)
-	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
-
-	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--ssl.acme-email=adminname@adminhost.com"}
-	_, err = p.ParseArgs(args)
-	require.NoError(t, err)
-	cfg, err = cmd.makeSSLConfig()
-	require.NoError(t, err)
-	assert.Equal(t, "adminname@adminhost.com", cfg.ACMEEmail)
-
-	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com", SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--admin.type=shared", "--admin.shared.email=superadmin@admin.com"}
-	_, err = p.ParseArgs(args)
-	require.NoError(t, err)
-	cfg, err = cmd.makeSSLConfig()
-	require.NoError(t, err)
-	assert.Equal(t, "superadmin@admin.com", cfg.ACMEEmail)
-
-	cmd = ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://remark.com:443", SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	args = []string{"--ssl.type=auto", "--admin.type=shared"}
-	_, err = p.ParseArgs(args)
-	require.NoError(t, err)
-	cfg, err = cmd.makeSSLConfig()
-	require.NoError(t, err)
-	assert.Equal(t, "admin@remark.com", cfg.ACMEEmail)
+	tbl := []struct {
+		name, url string
+		args      []string
+		want      string
+	}{
+		{name: "from remark url", url: "https://remark.com:443", want: "admin@remark.com"},
+		{name: "acme email set", url: "https://remark.com", args: []string{"--ssl.acme-email=adminname@adminhost.com"},
+			want: "adminname@adminhost.com"},
+		{name: "shared admin email", url: "https://remark.com", args: []string{"--admin.type=shared", "--admin.shared.email=superadmin@admin.com"},
+			want: "superadmin@admin.com"},
+		{name: "shared admin without email", url: "https://remark.com:443", args: []string{"--admin.type=shared"},
+			want: "admin@remark.com"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{}
+			parseCmd(t, &cmd, tt.url, append([]string{"--ssl.type=auto"}, tt.args...)...)
+			cfg, err := cmd.makeSSLConfig()
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.ACMEEmail)
+		})
+	}
 }
 
 func TestServerAuthHooks(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	app := startServerApp(t, nil)
 
 	// make a token for user dev. nothing here checks expiry, so the lifetime only has to
 	// outlast the whole test
@@ -925,20 +765,35 @@ func TestServerAuthHooks(t *testing.T) {
 	}
 	tk, err := tkService.Token(claims)
 	require.NoError(t, err)
-	t.Log(tk)
 
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
 
-	// add comment
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-630/", "site": "remark"}}`))
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tk)
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusCreated, resp.StatusCode, "non-blocked user able to post")
+	// do sends one request with the token, or with the admin's basic auth for tkn "admin", and
+	// returns the status and the body
+	do := func(method, path, body, tkn string) (int, string) {
+		t.Helper()
+		req, e := http.NewRequest(method, fmt.Sprintf("http://localhost:%d%s", app.Port, path), strings.NewReader(body))
+		require.NoError(t, e)
+		if tkn == "admin" {
+			req.SetBasicAuth("admin", "password")
+		} else {
+			req.Header.Set("X-JWT", tkn)
+		}
+		resp, e := client.Do(req)
+		require.NoError(t, e)
+		b, e := io.ReadAll(resp.Body)
+		require.NoError(t, e)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+	comment := func(postURL string) string {
+		return `{"text": "test 123", "locator":{"url": "` + postURL + `", "site": "remark"}}`
+	}
+	const addComment = "/api/v1/comment?site=remark"
+
+	status, body := do(http.MethodPost, addComment, comment("https://radio-t.com/p/2018/12/29/podcast-630/"), tk)
+	assert.Equal(t, http.StatusCreated, status, "non-blocked user able to post, %s", body)
 
 	// try to add comment with no-aud claim
 	// the token service refuses to issue it, so sign it the way a holder of the secret could
@@ -946,146 +801,63 @@ func TestServerAuthHooks(t *testing.T) {
 	badClaimsNoAud.Audience = jwt.ClaimStrings{""}
 	_, err = tkService.Token(badClaimsNoAud)
 	require.Error(t, err, "token service must not issue a token with an empty audience")
-	tkNoAud := signRawToken(t, badClaimsNoAud)
-	t.Logf("no-aud claims: %s", tkNoAud)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
-	"site": "remark"}}`))
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tkNoAud)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without aud claim rejected, \n"+tkNoAud+"\n"+string(body))
+	status, body = do(http.MethodPost, addComment, comment("https://radio-t.com/p/2018/12/29/podcast-631/"), signRawToken(t, badClaimsNoAud))
+	assert.Equal(t, http.StatusUnauthorized, status, "user without aud claim rejected, %s", body)
 
 	// a token for a site this instance does not serve is neither issued nor accepted
 	badClaimsOtherSite := claims
 	badClaimsOtherSite.Audience = jwt.ClaimStrings{"<b>other</b>"}
 	_, err = tkService.Token(badClaimsOtherSite)
 	require.Error(t, err, "token service must not issue a token for a site it does not serve")
-	tkOtherSite := signRawToken(t, badClaimsOtherSite)
-	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=%s", port, url.QueryEscape("<b>other</b>")), http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tkOtherSite)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a site not served rejected, %s", body)
+	status, body = do(http.MethodGet, "/api/v1/user?site="+url.QueryEscape("<b>other</b>"), "", signRawToken(t, badClaimsOtherSite))
+	assert.Equal(t, http.StatusUnauthorized, status, "token for a site not served rejected, %s", body)
 
 	// the auth package matches audiences ignoring case, so it issues this token, but the bolt store
 	// keys sites by the exact name and the session must not be accepted
 	tkOtherCase, err := tkService.Token(func() token.Claims { c := claims; c.Audience = jwt.ClaimStrings{"REMARK"}; return c }())
 	require.NoError(t, err)
-	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/user?site=REMARK", port), http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tkOtherCase)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "token for a differently cased site rejected, %s", body)
+	status, body = do(http.MethodGet, "/api/v1/user?site=REMARK", "", tkOtherCase)
+	assert.Equal(t, http.StatusUnauthorized, status, "token for a differently cased site rejected, %s", body)
 
 	// try to add comment with multiple auds
 	badClaimsMultipleAud := claims
 	badClaimsMultipleAud.Audience = jwt.ClaimStrings{"remark", "second_aud"}
 	tkMultipleAuds, err := tkService.Token(badClaimsMultipleAud)
 	require.NoError(t, err)
-	t.Logf("multiple aud claims: %s", tkMultipleAuds)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
-	"site": "remark"}}`))
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tkMultipleAuds)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user with multiple auds claim rejected, \n"+tkMultipleAuds+"\n"+string(body))
+	status, body = do(http.MethodPost, addComment, comment("https://radio-t.com/p/2018/12/29/podcast-631/"), tkMultipleAuds)
+	assert.Equal(t, http.StatusUnauthorized, status, "user with multiple auds claim rejected, %s", body)
 
 	// try to add comment without user set
 	badClaimsNoUser := claims
-	badClaimsNoUser.Audience = jwt.ClaimStrings{"remark"}
 	badClaimsNoUser.User = nil
 	tkNoUser, err := tkService.Token(badClaimsNoUser)
 	require.NoError(t, err)
-	t.Logf("no user claims: %s", tkNoUser)
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
-		strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-631/",
-	"site": "remark"}}`))
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tkNoUser)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "user without user information rejected, \n"+tkNoUser+"\n"+string(body))
+	status, body = do(http.MethodPost, addComment, comment("https://radio-t.com/p/2018/12/29/podcast-631/"), tkNoUser)
+	assert.Equal(t, http.StatusUnauthorized, status, "user without user information rejected, %s", body)
 
 	// a delete-me token, as the endpoint issues it, is a deletion request for the admin and not a session
-	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/api/v1/deleteme?site=remark", port), http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tk)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+	status, body = do(http.MethodPost, "/api/v1/deleteme?site=remark", "", tk)
+	require.Equal(t, http.StatusOK, status, body)
 	deleteMe := struct {
 		Token string `json:"token"`
 	}{}
-	require.NoError(t, json.Unmarshal(body, &deleteMe))
+	require.NoError(t, json.Unmarshal([]byte(body), &deleteMe))
 	require.NotEmpty(t, deleteMe.Token)
 	for _, probe := range []struct{ method, path, body string }{
 		{http.MethodGet, "/api/v1/user?site=remark", ""},
-		{http.MethodPost, "/api/v1/comment?site=remark",
-			`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/2018/12/29/podcast-632/", "site": "remark"}}`},
+		{http.MethodPost, addComment, comment("https://radio-t.com/p/2018/12/29/podcast-632/")},
 	} {
-		req, err = http.NewRequest(probe.method, fmt.Sprintf("http://localhost:%d%s", port, probe.path), strings.NewReader(probe.body))
-		require.NoError(t, err)
-		req.Header.Set("X-JWT", deleteMe.Token)
-		resp, err = client.Do(req)
-		require.NoError(t, err)
-		body, err = io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "delete-me token rejected on %s %s, %s", probe.method, probe.path, body)
+		status, body = do(probe.method, probe.path, probe.body, deleteMe.Token)
+		assert.Equal(t, http.StatusUnauthorized, status, "delete-me token rejected on %s %s, %s", probe.method, probe.path, body)
 	}
 
 	// block user github_dev as admin
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", port), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "user github_dev blocked")
-	b, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	t.Log(string(b))
+	status, body = do(http.MethodPut, "/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", "", "admin")
+	assert.Equal(t, http.StatusOK, status, "user github_dev blocked, %s", body)
 
 	// try add a comment with blocked user
-	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", port),
-		strings.NewReader(`{"text": "test 123 blah", "locator":{"url": "https://radio-t.com/blah1", "site": "remark"}}`))
-	require.NoError(t, err)
-	req.Header.Set("X-JWT", tk)
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "blocked user can't post, \n"+tk+"\n"+string(body))
-
-	cancel()
-	app.Wait()
-	client.CloseIdleConnections()
+	status, body = do(http.MethodPost, addComment, comment("https://radio-t.com/blah1"), tk)
+	assert.Equal(t, http.StatusForbidden, status, "blocked user can't post, %s", body)
 }
 
 func TestServerCommand_parseSameSite(t *testing.T) {
@@ -1143,9 +915,7 @@ func TestServerCommand_TelegramAuthAcceptsLoginBeforeFirstSharedPoll(t *testing.
 
 func TestServerApp_TelegramAuthAloneDoesNotOfferNotifications(t *testing.T) {
 	telegramAPI := newTelegramAPITestServer(t)
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(cmd ServerCommand) ServerCommand {
-		cmd.Port = port
+	app := startServerApp(t, func(cmd ServerCommand) ServerCommand {
 		cmd.Auth.Telegram = true
 		cmd.Telegram.Token = "stub-token"
 		cmd.Telegram.Timeout = time.Second
@@ -1155,11 +925,6 @@ func TestServerApp_TelegramAuthAloneDoesNotOfferNotifications(t *testing.T) {
 
 	require.Nil(t, app.restSrv.TelegramService,
 		"telegram auth alone must not put a typed nil or an update-only client behind the subscription endpoint")
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
-	cancel()
-	app.Wait()
 }
 
 func TestServerCommand_TelegramCustomAPIErrorStopsRequestedFeature(t *testing.T) {
@@ -1350,7 +1115,7 @@ func waitForServerPort(port int, timeout time.Duration) bool {
 // service and the checks it makes before issuing
 func signRawToken(t *testing.T, claims token.Claims) string {
 	t.Helper()
-	tkn, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("secret"))
+	tkn, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testSharedSecret))
 	require.NoError(t, err)
 	return tkn
 }
@@ -1359,16 +1124,11 @@ func signRawToken(t *testing.T, claims token.Claims) string {
 // the session token and is echoed back in responses, so a site the instance does not serve gets
 // no session at all.
 func TestServerApp_LoginRejectsUnknownSite(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
 		o.Auth.Anonymous = true
 		return o
 	})
-	defer cancel()
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	port := app.Port
 
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
@@ -1387,19 +1147,32 @@ func TestServerApp_LoginRejectsUnknownSite(t *testing.T) {
 	resp = getRetryThrottled(t, &client, fmt.Sprintf("http://localhost:%d/auth/anonymous/login?user=blah123&aud=remark", port))
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	cancel()
-	app.Wait()
 }
 
+// startServerApp builds the app with prepServerApp, runs it and waits until it answers on app.Port.
+// the app is stopped, and waited for, when the test ends
+func startServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) *serverApp {
+	t.Helper()
+	app, ctx, cancel := prepServerApp(t, fn)
+	go func() { _ = app.run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-app.terminated:
+		case <-time.After(serverStopTimeout):
+			t.Errorf("server app on port %d did not stop after context cancel", app.Port)
+		}
+	})
+	waitForHTTPServerStart(t, app.Port)
+	return app
+}
+
+// prepServerApp builds the app on a free port with the options the server tests share; fn, if
+// not nil, changes them
 func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serverApp, context.Context, context.CancelFunc) {
 	cmd := ServerCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
-
-	// prepare options
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
-	require.NoError(t, err)
+	parseCmd(t, &cmd, "https://demo.remark42.com", "--admin-passwd=password", "--site=remark")
+	cmd.Port = chooseUnusedPort(t)
 	tmp := t.TempDir()
 	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.Image.FS.Path = filepath.Join(tmp, "avatars"), "fs", filepath.Join(tmp, "images")
 	cmd.Store.Bolt.Timeout = 10 * time.Second
@@ -1430,7 +1203,9 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Admin.Shared.Admins = []string{"id1", "id2"}
 	cmd.RestrictedNames = []string{"umputun", "bobuk"}
 
-	cmd = fn(cmd)
+	if fn != nil {
+		cmd = fn(cmd)
+	}
 	// the test's own directory, also when fn set another bolt path
 	cmd.Store.Bolt.Path = filepath.Join(tmp, "db")
 
@@ -1473,10 +1248,7 @@ func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 	}
 
 	opts := ServerCommand{}
-	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p := flags.NewParser(&opts, flags.Default)
-	_, err := p.ParseArgs([]string{})
-	require.NoError(t, err)
+	parseCmd(t, &opts, "https://demo.remark42.com")
 
 	c, err := opts.makeCache()
 	require.NoError(t, err)
@@ -1592,15 +1364,8 @@ func TestServerApp_WebhookUsesConfiguredTimeout(t *testing.T) {
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.
 func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
-	port := chooseUnusedPort(t)
-	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
-		o.Port = port
-		return o
-	})
-	defer cancel()
-
-	go func() { _ = app.run(ctx) }()
-	waitForHTTPServerStart(t, port)
+	app := startServerApp(t, nil)
+	port := app.Port
 
 	destinations, err := app.makeNotifyDestinations(app.authenticator)
 	require.NoError(t, err)
@@ -1623,22 +1388,16 @@ func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
 	for _, c := range resp.Cookies() {
 		assert.NotEqual(t, "JWT", c.Name, "no session from an unsubscribe token")
 	}
-
-	cancel()
-	app.Wait()
 }
 
 func TestServerCommand_ExecuteReturnsSetupError(t *testing.T) {
 	s := ServerCommand{}
-	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
-	p := flags.NewParser(&s, flags.Default)
 	tmp := t.TempDir()
 	args := []string{"--store.bolt.path=/dev/null", "--backup=" + tmp, "--image.fs.path=" + tmp,
 		"--avatar.fs.path=" + filepath.Join(tmp, "avatars")}
-	_, err := p.ParseArgs(args)
-	require.NoError(t, err)
+	parseCmd(t, &s, "https://demo.remark42.com", args...)
 
 	// a misconfiguration comes back as an error for main to report, without a stack dump and exit
-	err = s.Execute(args)
+	err := s.Execute(args)
 	require.ErrorContains(t, err, "failed to setup application: failed to make data store engine")
 }
