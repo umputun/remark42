@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import type { IntlShape } from 'common/intl';
 import { FormattedMessage, defineMessages } from 'common/intl';
 import { COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants';
+import { webAssetUrl } from 'common/web-asset';
 
 import { StaticStore } from 'common/static-store';
 import { debounce } from 'utils/debounce';
@@ -430,7 +431,7 @@ export class Comment extends Component<CommentProps, State> {
               <img
                 width={12}
                 height={12}
-                src={require('assets/social/patreon.svg').default}
+                src={webAssetUrl('patreon.svg')}
                 alt={intl.formatMessage(messages.paidPatreon)}
               />
             )}

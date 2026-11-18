@@ -22,7 +22,10 @@ func TestFS_Contents(t *testing.T) {
 		assert.NotZero(t, info.Size(), "%s is empty", e.Name())
 		names = append(names, e.Name())
 	}
-	assert.Equal(t, []string{"400x400.jpeg", "markdown-help.html", "privacy.html"}, names)
+	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "custom.svg", "dev.svg", "discord.svg",
+		"facebook.svg", "ghost.svg", "github-dark.svg", "github-light.svg", "google.svg", "markdown-help.html",
+		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
+		"yandex.svg"}, names)
 }
 
 // TestFS_ContentShape catches an asset that has been truncated or replaced by something of the
@@ -50,6 +53,24 @@ func TestFS_ContentShape(t *testing.T) {
 			}
 			assert.True(t, strings.HasPrefix(strings.TrimSpace(string(b)), tt.want), "not an HTML document")
 			assert.Contains(t, string(b), "</html>", "the document is truncated")
+		})
+	}
+}
+
+// TestFS_SVGShape does the same for the images the widget loads by name: the ghost avatar and the
+// sign-in provider icons. A file that is not a whole SVG document shows as a broken image.
+func TestFS_SVGShape(t *testing.T) {
+	names, err := fs.Glob(FS, "*.svg")
+	require.NoError(t, err)
+	require.Len(t, names, 16, "the ghost avatar and fifteen provider icons")
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			b, err := fs.ReadFile(FS, name)
+			require.NoError(t, err)
+			s := strings.TrimSpace(string(b))
+			assert.True(t, strings.HasPrefix(s, "<svg"), "not an SVG document")
+			assert.True(t, strings.HasSuffix(s, "</svg>"), "the document is truncated")
 		})
 	}
 }

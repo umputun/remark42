@@ -85,11 +85,11 @@ func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
 }
 
 // TestAssets_WidgetImagesActuallyLoad covers a class of defect the unit suite structurally cannot
-// see. Asset URLs come from webpack's public path, and the jest stub for `.svg` returns a relative
-// string, so a component that prefixes an already-absolute asset URL with the instance origin
-// looks right under test and ships a doubled URL. That is how the oauth provider icons and the
-// ghost avatar came to 404 on every master build: `${BASE_URL}${icon}` produced
-// `https://hosthttps://host/web/google.svg`.
+// see. The ghost avatar and the oauth provider icons are files the server embeds from
+// app/webassets, and the widget builds their URLs from the instance address. A unit test sees only
+// the string it built, never whether the server answers it: a doubled origin such as
+// `https://hosthttps://host/web/google.svg`, which once made these images 404 on every master
+// build, or a file missing from the embedded set, both look right there.
 //
 // naturalWidth is the discriminator. A broken <img> still exists in the DOM with its src attribute
 // intact, so asserting the element or the attribute proves nothing; only a decoded image has a
