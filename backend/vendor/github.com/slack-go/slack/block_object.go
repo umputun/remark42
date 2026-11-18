@@ -30,14 +30,16 @@ type BlockObjects struct {
 	OptionGroupObjects  []*OptionGroupBlockObject
 }
 
-// UnmarshalJSON implements the Unmarshaller interface for BlockObjects, so that any JSON
-// unmarshalling is delegated and proper type determination can be made before unmarshal
+// UnmarshalJSON replaces all object collections in b on success. Empty arrays
+// and JSON null clear previous objects. After a decoding error, callers must
+// not rely on its contents, which may be cleared or partially replaced.
 func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 	var raw []json.RawMessage
 	err := json.Unmarshal(data, &raw)
 	if err != nil {
 		return err
 	}
+	*b = BlockObjects{}
 
 	for _, r := range raw {
 		var obj map[string]any

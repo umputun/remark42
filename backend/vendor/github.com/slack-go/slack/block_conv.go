@@ -265,9 +265,10 @@ func (a *Accessory) MarshalJSON() ([]byte, error) {
 	return json.Marshal(toBlockElement(a))
 }
 
-// UnmarshalJSON implements the Unmarshaller interface for Accessory, so that any JSON
-// unmarshalling is delegated and proper type determination can be made before unmarshal
-// Note: datetimepicker is not supported in Accessory
+// UnmarshalJSON replaces a with the decoded accessory on success. On error, a
+// may be cleared; callers must not rely on its contents. JSON null clears
+// previous variants; the legacy {"accessory":null} wrapper leaves a unchanged.
+// Note: datetimepicker is not supported in Accessory.
 func (a *Accessory) UnmarshalJSON(data []byte) error {
 	var r json.RawMessage
 
@@ -286,6 +287,7 @@ func (a *Accessory) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	*a = Accessory{}
 	switch s.TypeVal {
 	case "image":
 		element := &ImageBlockElement{}
@@ -416,8 +418,10 @@ func (e ContextElements) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Elements)
 }
 
-// UnmarshalJSON implements the Unmarshaller interface for ContextElements, so that any JSON
-// unmarshalling is delegated and proper type determination can be made before unmarshal
+// UnmarshalJSON replaces e.Elements with the decoded elements on success.
+// Empty arrays and JSON null clear previous elements. The legacy
+// {"elements":null} wrapper leaves e unchanged. After a decoding error, callers
+// must not rely on its contents, which may be cleared or partially replaced.
 func (e *ContextElements) UnmarshalJSON(data []byte) error {
 	var raw []json.RawMessage
 
@@ -429,6 +433,7 @@ func (e *ContextElements) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	e.Elements = nil
 
 	for _, r := range raw {
 		s := sumtype{}

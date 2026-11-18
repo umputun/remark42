@@ -24,6 +24,9 @@ import (
 var (
 	// DefaultMatchTimeout used when running regexp matches -- "forever"
 	DefaultMatchTimeout = time.Duration(math.MaxInt64)
+	// ErrMatchTimeout is wrapped by errors returned when a match exceeds MatchTimeout.
+	// Use errors.Is to identify these errors.
+	ErrMatchTimeout = errors.New("match timeout")
 	// ErrBacktrackingStackLimit is returned when a match exceeds its configured backtracking stack size.
 	ErrBacktrackingStackLimit = errors.New("regexp2: maximum backtracking stack size exceeded")
 )
@@ -127,6 +130,7 @@ func compile(expr string, c compileConfig) (*Regexp, error) {
 			re.stringPrefixFilter = withEqualASCIIPrefixSearch(re.stringPrefixFilter, re.prefixSearch, opts.MinRequiredLength)
 		}
 	}
+	re.findFirstChar = compileFindFirstChar(code)
 	re.initCaptureNames()
 	re.initCaches()
 	return re, nil

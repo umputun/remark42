@@ -19,6 +19,9 @@ type Document struct {
 	*Selection
 	Url      *url.URL
 	rootNode *html.Node
+	// parse options this document was built with, reused whenever an HTML
+	// string is parsed into it later on
+	parseOptions []html.ParseOption
 }
 
 // NewDocumentFromNode is a Document constructor that takes a root html Node
@@ -56,6 +59,21 @@ func NewDocumentFromReader(r io.Reader) (*Document, error) {
 	return newDocument(root, nil), nil
 }
 
+// NewDocumentFromReaderWithOptions is like NewDocumentFromReader, with the
+// parse options of the html package.
+//
+// For example:
+//
+//	doc, err := goquery.NewDocumentFromReaderWithOptions(r,
+//		html.ParseOptionEnableScripting(false))
+func NewDocumentFromReaderWithOptions(r io.Reader, opts ...html.ParseOption) (*Document, error) {
+	root, e := html.ParseWithOptions(r, opts...)
+	if e != nil {
+		return nil, e
+	}
+	return newDocument(root, nil, opts...), nil
+}
+
 // NewDocumentFromResponse is another Document constructor that takes an http response as argument.
 // It loads the specified response's document, parses it, and stores the root Document
 // node, ready to be manipulated. The response's body is closed on return.
@@ -82,13 +100,13 @@ func NewDocumentFromResponse(res *http.Response) (*Document, error) {
 
 // CloneDocument creates a deep-clone of a document.
 func CloneDocument(doc *Document) *Document {
-	return newDocument(cloneNode(doc.rootNode), doc.Url)
+	return newDocument(cloneNode(doc.rootNode), doc.Url, doc.parseOptions...)
 }
 
 // Private constructor, make sure all fields are correctly filled.
-func newDocument(root *html.Node, url *url.URL) *Document {
+func newDocument(root *html.Node, url *url.URL, opts ...html.ParseOption) *Document {
 	// Create and fill the document
-	d := &Document{nil, url, root}
+	d := &Document{Url: url, rootNode: root, parseOptions: opts}
 	d.Selection = newSingleSelection(root, d)
 	return d
 }
@@ -121,18 +139,19 @@ type Matcher interface {
 	Filter([]*html.Node) []*html.Node
 }
 
-// Single compiles a selector string to a Matcher that stops after the first
-// match is found.
+// Single compiles a selector string to a Matcher that returns at most one
+// match per call to Matcher.MatchAll.
 //
 // By default, Selection.Find and other functions that accept a selector string
 // to select nodes will use all matches corresponding to that selector. By
-// using the Matcher returned by Single, at most the first match will be
-// selected.
+// using the Matcher returned by Single, each call to MatchAll returns at most
+// the first match. The number of nodes selected depends on how the Selection
+// method calls MatchAll. For example, FindMatcher calls it separately for each
+// element child of each node in the source selection, so it can return one
+// match from each child subtree.
 //
-// For example, those two statements are semantically equivalent:
-//
-//     sel1 := doc.Find("a").First()
-//     sel2 := doc.FindMatcher(goquery.Single("a"))
+// To select only the first match across the entire result set, use
+// Find(selector).First().
 //
 // The one using Single is optimized to be potentially much faster on large
 // documents.

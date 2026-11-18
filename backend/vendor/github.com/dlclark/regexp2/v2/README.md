@@ -38,7 +38,7 @@ if isMatch, _ := re.MatchString(`Something to match`); isMatch {
 }
 ```
 
-The `*Match*` methods can return a timeout error if you set the `re.MatchTimeout` field, or `ErrBacktrackingStackLimit` if a match exceeds its configured backtracking stack size. Any other error is a bug in the `regexp2` package. If you need more details about capture groups in a match then use the `FindStringMatch` method, like so:
+The `*Match*` methods can return an error wrapping `ErrMatchTimeout` if you set the `re.MatchTimeout` field, or `ErrBacktrackingStackLimit` if a match exceeds its configured backtracking stack size. Any other error is a bug in the `regexp2` package. If you need more details about capture groups in a match then use the `FindStringMatch` method, like so:
 
 ```go
 if m, _ := re.FindStringMatch(`Something to match`); m != nil {
@@ -304,8 +304,12 @@ all memory used by a match. Literal empty expressions repeated any number of
 times are optimized away and do not consume backtracking stack space.
 
 `Regexp.MatchTimeout` can be set to limit the impact of such behavior; the
-match will fail with an error after approximately MatchTimeout. No timeout
-checks are done by default.
+match will fail with an error wrapping `ErrMatchTimeout` after approximately
+`MatchTimeout`. Callers can identify it with
+`errors.Is(err, regexp2.ErrMatchTimeout)`, including when the error is wrapped
+again. The error message includes the configured timeout (for example,
+`match timeout after 10ms`) and omits the input text. No timeout checks are done
+by default.
 
 Timeout checking is not free. The current timeout checking implementation starts
 a background worker that updates a clock value approximately once every 100

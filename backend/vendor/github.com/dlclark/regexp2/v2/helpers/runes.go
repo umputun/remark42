@@ -1,6 +1,9 @@
 package helpers
 
-import "unicode"
+import (
+	"unicode"
+	"unicode/utf8"
+)
 
 func IsBetween(val rune, first, last rune) bool {
 	if val > last {
@@ -19,12 +22,12 @@ func IsBetween(val rune, first, last rune) bool {
 func IsWordChar(r rune) bool {
 	// matches charclass.go
 
-	//TODO: add optimization here for ascii
-
+	if r < utf8.RuneSelf {
+		// In ASCII, L, Mn, Nd and Pc are these runes only.
+		return 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9' || r == '_'
+	}
 	//"L", "Mn", "Nd", "Pc"
-	return unicode.In(r,
-		unicode.Categories["L"], unicode.Categories["Mn"],
-		unicode.Categories["Nd"], unicode.Categories["Pc"]) || r == '\u200D' || r == '\u200C'
+	return unicode.In(r, unicode.L, unicode.Mn, unicode.Nd, unicode.Pc) || r == '\u200D' || r == '\u200C'
 	//return 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z' || '0' <= r && r <= '9' || r == '_'
 }
 

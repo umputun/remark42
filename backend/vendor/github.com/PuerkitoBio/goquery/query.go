@@ -1,6 +1,10 @@
 package goquery
 
-import "golang.org/x/net/html"
+import (
+	"slices"
+
+	"golang.org/x/net/html"
+)
 
 // Is checks the current matched set of elements against a selector and
 // returns true if at least one of these elements matches.
@@ -11,12 +15,7 @@ func (s *Selection) Is(selector string) bool {
 // IsMatcher checks the current matched set of elements against a matcher and
 // returns true if at least one of these elements matches.
 func (s *Selection) IsMatcher(m Matcher) bool {
-	for _, n := range s.Nodes {
-		if m.Match(n) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(s.Nodes, m.Match)
 }
 
 // IsFunction checks the current matched set of elements against a predicate and

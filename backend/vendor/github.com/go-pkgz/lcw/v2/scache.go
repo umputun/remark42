@@ -96,15 +96,28 @@ func (k Key) Scopes(scopes ...string) Key {
 
 // String makes full string key from primary key, partition and scopes
 // key string made as <partition>@@<id>@@<scope1>$$<scope2>....
+// Each part is escaped, so an id or scope containing @@ or $$ (a URL, for example) keeps the key parseable.
 func (k Key) String() string {
 	bld := strings.Builder{}
-	_, _ = bld.WriteString(k.partition)
+	_, _ = bld.WriteString(keyEscaper.Replace(k.partition))
 	_, _ = bld.WriteString("@@")
-	_, _ = bld.WriteString(k.id)
+	_, _ = bld.WriteString(keyEscaper.Replace(k.id))
 	_, _ = bld.WriteString("@@")
-	_, _ = bld.WriteString(strings.Join(k.scopes, "$$"))
+	for i, s := range k.scopes {
+		if i > 0 {
+			_, _ = bld.WriteString("$$")
+		}
+		_, _ = bld.WriteString(keyEscaper.Replace(s))
+	}
 	return bld.String()
 }
+
+// keyEscaper replaces the characters of the key separators, and the escape character itself,
+// so escaped parts never contain @ or $; keyUnescaper reverses it
+var (
+	keyEscaper   = strings.NewReplacer("%", "%25", "@", "%40", "$", "%24")
+	keyUnescaper = strings.NewReplacer("%25", "%", "%40", "@", "%24", "$")
+)
 
 // parseKey gets compound key string created by Key func and split it to the actual key, partition and scopes
 // key string made as <partition>@@<id>@@<scope1>$$<scope2>....
@@ -118,9 +131,12 @@ func parseKey(keyStr string) (Key, error) {
 	if len(scopes) == 1 && scopes[0] == "" {
 		scopes = []string{}
 	}
+	for i := range scopes {
+		scopes[i] = keyUnescaper.Replace(scopes[i])
+	}
 	key := Key{
-		partition: elems[0],
-		id:        elems[1],
+		partition: keyUnescaper.Replace(elems[0]),
+		id:        keyUnescaper.Replace(elems[1]),
 		scopes:    scopes,
 	}
 
