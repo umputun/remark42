@@ -58,13 +58,3 @@ linters:
         path: _test\.go
     paths:
       - vendor
-      - third_party$
-      - builtin$
-      - examples$
-formatters:
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
