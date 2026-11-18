@@ -98,16 +98,11 @@ func TestImage_Replace(t *testing.T) {
 func TestImage_Routes(t *testing.T) {
 	// no image supposed to be cached
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
+	ts := startProxy(t, Image{
 		HTTP2HTTPS:   true,
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
@@ -150,15 +145,10 @@ func TestImage_Routes(t *testing.T) {
 
 func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
@@ -183,16 +173,11 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 			return nil
 		},
 	}
-	img := Image{
+	ts := startProxy(t, Image{
 		CacheExternal: true,
-		RemarkURL:     "https://demo.remark42.com",
-		RoutePath:     "/api/v1/proxy",
 		ImageService:  image.NewService(&imageStore, image.ServiceParams{MaxSize: 1500}),
 		Transport:     http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
@@ -217,15 +202,10 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 		imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 			return gopherPNGBytes(), nil
 		}}
-		img := Image{
+		ts := startProxy(t, Image{
 			CacheExternal: true,
-			RemarkURL:     "https://demo.remark42.com",
-			RoutePath:     "/api/v1/proxy",
 			ImageService:  image.NewService(&imageStore, image.ServiceParams{}),
-		}
-
-		ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-		defer ts.Close()
+		})
 		httpSrv := imgHTTPTestsServer(t)
 		defer httpSrv.Close()
 
@@ -243,15 +223,10 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 		imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 			return nonImage, nil
 		}}
-		img := Image{
+		ts := startProxy(t, Image{
 			CacheExternal: true,
-			RemarkURL:     "https://demo.remark42.com",
-			RoutePath:     "/api/v1/proxy",
 			ImageService:  image.NewService(&imageStore, image.ServiceParams{}),
-		}
-
-		ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-		defer ts.Close()
+		})
 		httpSrv := imgHTTPTestsServer(t)
 		defer httpSrv.Close()
 
@@ -271,17 +246,12 @@ func TestImage_RoutesUsingCachedImage(t *testing.T) {
 func TestImage_RoutesTimedOut(t *testing.T) {
 	// no image supposed to be cached
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
+	ts := startProxy(t, Image{
 		HTTP2HTTPS:   true,
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
 		Timeout:      50 * time.Millisecond,
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
@@ -339,17 +309,12 @@ func TestImage_ConvertCachingMode(t *testing.T) {
 
 func TestImage_PrivateIPBlocking(t *testing.T) {
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
+	ts := startProxy(t, Image{
 		HTTP2HTTPS:   true,
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
 		Timeout:      100 * time.Millisecond,
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		// no Transport override — uses SSRF-safe transport
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 
 	tbl := []struct {
 		name string
@@ -392,16 +357,11 @@ func TestImage_ErrorSanitization(t *testing.T) {
 	defer httpSrv.Close()
 
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		Timeout:      2 * time.Second,
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/image.png"))
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
@@ -428,15 +388,10 @@ func TestImage_ResponseSizeLimit(t *testing.T) {
 	defer httpSrv.Close()
 
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		ImageService: image.NewService(&imageStore, image.ServiceParams{MaxSize: 1000}),
 		Transport:    http.DefaultTransport,
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 
 	encodedImgURL := base64.URLEncoding.EncodeToString([]byte(httpSrv.URL + "/big-image.png"))
 	resp, err := http.Get(ts.URL + "/?src=" + encodedImgURL)
@@ -513,15 +468,10 @@ func TestImage_ContentTypeHandling(t *testing.T) {
 			defer upstream.Close()
 
 			imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-			img := Image{
-				RemarkURL:    "https://demo.remark42.com",
-				RoutePath:    "/api/v1/proxy",
+			ts := startProxy(t, Image{
 				ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 				Transport:    http.DefaultTransport,
-			}
-
-			ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-			defer ts.Close()
+			})
 
 			encodedURL := base64.URLEncoding.EncodeToString([]byte(upstream.URL + "/logo.png"))
 			resp, err := http.Get(ts.URL + "/?src=" + encodedURL)
@@ -595,15 +545,11 @@ func TestImage_ContentTypeHandling_CacheHit(t *testing.T) {
 			imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) {
 				return tt.cached, nil
 			}}
-			img := Image{
+			ts := startProxy(t, Image{
 				CacheExternal: true,
-				RemarkURL:     "https://demo.remark42.com",
-				RoutePath:     "/api/v1/proxy",
 				ImageService:  image.NewService(&imageStore, image.ServiceParams{}),
 				// no Transport — cache hit must not reach upstream
-			}
-			ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-			defer ts.Close()
+			})
 
 			encodedURL := base64.URLEncoding.EncodeToString([]byte("https://attacker.example.com/logo.png"))
 			resp, err := http.Get(ts.URL + "/?src=" + encodedURL)
@@ -642,14 +588,10 @@ func TestImage_ContentTypeHandling_CacheHit(t *testing.T) {
 // godoc for the tradeoff.
 func TestImage_EtagVersioned(t *testing.T) {
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 	httpSrv := imgHTTPTestsServer(t)
 	defer httpSrv.Close()
 
@@ -705,14 +647,10 @@ func TestImage_RevalidationSkipsIO(t *testing.T) {
 		t.Fatal("Load must not be called on the revalidation short-circuit path")
 		return nil, nil
 	}}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		// no Transport — any downloadImage attempt would also fail
-	}
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 
 	encodedSrc := base64.URLEncoding.EncodeToString([]byte("https://example.com/whatever.png"))
 	currentEtag := `"v2:` + encodedSrc + `"`
@@ -760,14 +698,10 @@ func TestImage_PerRequestRevalidation(t *testing.T) {
 	defer upstream.Close()
 
 	imageStore := image.StoreMock{LoadFunc: func(string) ([]byte, error) { return nil, nil }}
-	img := Image{
-		RemarkURL:    "https://demo.remark42.com",
-		RoutePath:    "/api/v1/proxy",
+	ts := startProxy(t, Image{
 		ImageService: image.NewService(&imageStore, image.ServiceParams{}),
 		Transport:    http.DefaultTransport,
-	}
-	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
-	defer ts.Close()
+	})
 
 	// alternate calls: PNG, HTML, PNG, HTML — each must be judged on its own bytes.
 	type step struct {
@@ -848,4 +782,12 @@ func TestImage_PrivateAddressNotRetried(t *testing.T) {
 	_, err := img.downloadImage(context.Background(), "http://10.0.0.1/image.png")
 	require.ErrorIs(t, err, safehttp.ErrPrivateAddress)
 	assert.Equal(t, int32(1), rt.calls.Load(), "a refused address is tried once")
+}
+
+// startProxy serves img's handler from a test server closed when the test ends
+func startProxy(t *testing.T, img Image) *httptest.Server {
+	t.Helper()
+	ts := httptest.NewServer(http.HandlerFunc(img.Handler))
+	t.Cleanup(ts.Close)
+	return ts
 }
