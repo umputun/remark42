@@ -32,7 +32,7 @@ func Test_Main(t *testing.T) {
 	go func() {
 		<-done
 		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, e)
+		assert.NoError(t, e)
 	}()
 
 	finished := make(chan struct{})
@@ -91,7 +91,7 @@ func TestMain_WithWebhook(t *testing.T) {
 	go func() {
 		<-done
 		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, e)
+		assert.NoError(t, e)
 	}()
 
 	finished := make(chan struct{})

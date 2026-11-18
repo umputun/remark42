@@ -816,19 +816,20 @@ func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
 		},
 		deprecatedFlagsCollisions)
 
-	// case which should return nothing
+	// an old flag next to an empty new one is no collision; without a shell, "--smtp.host=''"
+	// would set the host to the two quote characters
 	s = ServerCommand{}
 	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&s, flags.Default)
 	args = []string{
 		"test",
 		"--auth.email.host=smtp-old.example.org",
-		"--smtp.host=''",
+		"--smtp.host=",
 	}
 	_, err = p.ParseArgs(args)
 	require.NoError(t, err)
 	deprecatedFlagsCollisions = s.findDeprecatedFlagsCollisions()
-	assert.Empty(t, []DeprecatedFlag{}, deprecatedFlagsCollisions)
+	assert.Empty(t, deprecatedFlagsCollisions)
 }
 
 func Test_ACMEEmail(t *testing.T) {

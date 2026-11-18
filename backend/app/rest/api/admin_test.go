@@ -213,7 +213,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 
 	assert.Equal(t, "", cmntWithInfo.Comments[2].Text)
 	assert.Equal(t, "", cmntWithInfo.Comments[2].Orig)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[1].User)
+	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[2].User)
 	assert.True(t, cmntWithInfo.Comments[2].Deleted)
 }
 

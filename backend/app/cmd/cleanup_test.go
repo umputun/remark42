@@ -143,8 +143,8 @@ func TestCleanup_ExecuteTitle(t *testing.T) {
 
 func cleanupRoutes(t *testing.T, r *http.ServeMux, c *cleanedComments) {
 	r.HandleFunc("/api/v1/list", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "site=remark&limit=10000", r.URL.RawQuery)
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "site=remark&limit=10000", r.URL.RawQuery)
 		list := []store.PostInfo{
 			{
 				URL:     "http://test.com/post1",
@@ -162,13 +162,13 @@ func cleanupRoutes(t *testing.T, r *http.ServeMux, c *cleanedComments) {
 				LastTS:  time.Date(2018, 12, 19, 10, 30, 0, 0, time.Local),
 			},
 		}
-		require.NoError(t, json.NewEncoder(w).Encode(list))
+		assert.NoError(t, json.NewEncoder(w).Encode(list))
 	})
 
 	r.HandleFunc("/api/v1/find", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "remark", r.URL.Query().Get("site"))
-		require.Equal(t, "plain", r.URL.Query().Get("format"))
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "remark", r.URL.Query().Get("site"))
+		assert.Equal(t, "plain", r.URL.Query().Get("format"))
 
 		commentsWithInfo := struct {
 			Comments []store.Comment `json:"comments"`
@@ -190,11 +190,11 @@ func cleanupRoutes(t *testing.T, r *http.ServeMux, c *cleanedComments) {
 			commentsWithInfo.Comments = []store.Comment{}
 		}
 
-		require.NoError(t, json.NewEncoder(w).Encode(commentsWithInfo))
+		assert.NoError(t, json.NewEncoder(w).Encode(commentsWithInfo))
 	})
 
 	r.HandleFunc("/api/v1/admin/comment/{id}", func(_ http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "DELETE", r.Method)
 		t.Log("delete ", r.URL.Path)
 		c.lock.Lock()
 		c.ids = append(c.ids, r.URL.Path)
@@ -202,7 +202,7 @@ func cleanupRoutes(t *testing.T, r *http.ServeMux, c *cleanedComments) {
 	})
 
 	r.HandleFunc("/api/v1/admin/title/{id}", func(_ http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "PUT", r.Method)
 		t.Log("title for ", r.URL.Path)
 		c.lock.Lock()
 		c.ids = append(c.ids, r.URL.Path)
