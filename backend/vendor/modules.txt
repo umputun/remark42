@@ -277,6 +277,7 @@ golang.org/x/image/webp
 ## explicit; go 1.26.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
+golang.org/x/net/http/httpproxy
 golang.org/x/net/idna
 # golang.org/x/oauth2 v0.38.0
 ## explicit; go 1.26.0

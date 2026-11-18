@@ -2,6 +2,8 @@
 // connections are dialed using a pre-resolved IP, with a check that all
 // resolved IPs sit outside private/reserved ranges. This blocks both naive
 // SSRF (private IP literals in user-supplied URLs) and DNS rebinding.
+// When an outbound proxy is configured, the request's target host is checked
+// instead of the proxy's address, which may be private.
 package safehttp
 
 import (
@@ -11,10 +13,15 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"time"
+	"unicode/utf8"
+
+	"golang.org/x/net/http/httpproxy"
+	"golang.org/x/net/idna"
 )
 
-// ErrPrivateAddress is returned by the Transport dialer for a host resolving to a private or reserved address
+// ErrPrivateAddress is returned by the Transport for a host resolving to a private or reserved address
 var ErrPrivateAddress = errors.New("access to private address is not allowed")
 
 // Transport returns an *http.Transport whose DialContext refuses any address
@@ -22,30 +29,59 @@ var ErrPrivateAddress = errors.New("access to private address is not allowed")
 // to defeat DNS rebinding (an attacker cannot have the resolver hand back a
 // public IP at the check and a private one at the connect).
 //
+// The proxy comes from HTTP_PROXY, HTTPS_PROXY and NO_PROXY, read on each call.
+// For a proxied request the dialer only sees the proxy's address, so the Proxy
+// hook checks the target host instead and the dialer lets the proxy itself
+// through. The proxy resolves the target's name on its own, so the check
+// covers address literals and what the local resolver returns, not the
+// address the proxy finally connects to.
+//
 // The returned transport is a clone of http.DefaultTransport with only
-// DialContext overridden, preserving Proxy, HTTP/2, idle/keep-alive and
+// Proxy and DialContext overridden, preserving HTTP/2, idle/keep-alive and
 // TLS handshake timeouts that bare &http.Transport{} would lose.
 func Transport() *http.Transport {
+	cfg := httpproxy.FromEnvironment()
+	proxyFunc := cfg.ProxyFunc()
+
+	// the addresses the transport dials for a proxy, taken from the same config with NO_PROXY cleared
+	proxies := map[string]bool{}
+	anyHost := *cfg
+	anyHost.NoProxy = ""
+	anyHostProxy := anyHost.ProxyFunc()
+	for _, scheme := range []string{"http", "https"} {
+		if u, err := anyHostProxy(&url.URL{Scheme: scheme, Host: "example.com"}); err == nil && u != nil {
+			proxies[hostPort(u)] = true
+		}
+	}
+
 	dialer := &net.Dialer{Timeout: 30 * time.Second}
 	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.Proxy = func(req *http.Request) (*url.URL, error) {
+		proxyURL, err := proxyFunc(req.URL)
+		if err != nil {
+			return nil, err
+		}
+		// the dialer passes a proxy's address unchecked, so a target is checked here when it goes
+		// through a proxy and when it is a proxy's address reached directly (NO_PROXY, loopback)
+		if proxyURL != nil || proxies[hostPort(req.URL)] {
+			if _, err := publicIPs(req.Context(), asciiHost(req.URL.Hostname())); err != nil {
+				return nil, err
+			}
+		}
+		return proxyURL, nil
+	}
 	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if proxies[addr] {
+			return dialer.DialContext(ctx, network, addr)
+		}
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid address %s: %w", addr, err)
 		}
 
-		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		ips, err := publicIPs(ctx, host)
 		if err != nil {
-			return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
-		}
-		if len(ips) == 0 {
-			return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
-		}
-
-		for _, ip := range ips {
-			if IsPrivateIP(ip.IP) {
-				return nil, ErrPrivateAddress
-			}
+			return nil, err
 		}
 
 		var lastErr error
@@ -59,6 +95,48 @@ func Transport() *http.Transport {
 		return nil, fmt.Errorf("can't connect to %s: %w", host, lastErr)
 	}
 	return t
+}
+
+// lookupIPAddr resolves a host name; tests replace it to avoid depending on DNS
+var lookupIPAddr = net.DefaultResolver.LookupIPAddr
+
+// publicIPs resolves host and returns its addresses, or ErrPrivateAddress if any of them is private
+func publicIPs(ctx context.Context, host string) ([]net.IPAddr, error) {
+	ips, err := lookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("can't resolve host %s: %w", host, err)
+	}
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no IP addresses resolved for host %s", host)
+	}
+	for _, ip := range ips {
+		if IsPrivateIP(ip.IP) {
+			return nil, ErrPrivateAddress
+		}
+	}
+	return ips, nil
+}
+
+// hostPort returns the address http.Transport dials for u: the ASCII host and the port, or the scheme's default
+func hostPort(u *url.URL) string {
+	port := u.Port()
+	if port == "" {
+		port = map[string]string{"http": "80", "https": "443", "socks5": "1080", "socks5h": "1080"}[u.Scheme]
+	}
+	return net.JoinHostPort(asciiHost(u.Hostname()), port)
+}
+
+// asciiHost returns host IDNA-encoded unless it is already ASCII, the form http.Transport dials and resolves
+func asciiHost(host string) string {
+	for i := range len(host) {
+		if host[i] >= utf8.RuneSelf {
+			if v, err := idna.Lookup.ToASCII(host); err == nil {
+				return v
+			}
+			return host
+		}
+	}
+	return host
 }
 
 // cgnat is the carrier-grade NAT range (RFC 6598), shared address space the stdlib does not classify
