@@ -596,6 +596,9 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 				return nil, "", fmt.Errorf("can't get parent comment: %w", e)
 			}
 			if pc.User.ID == userID {
+				if userName == "" { // the user's own comments may all be deleted; a deleted one keeps the name
+					userName = pc.User.Name
+				}
 				replies = append(replies, c)
 			}
 		}

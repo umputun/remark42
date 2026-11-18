@@ -1263,6 +1263,13 @@ func TestService_UserReplies(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(cc), "0 replies to uxxx")
 		assert.Equal(t, "", u)
+
+		// with u1's only comment deleted, the name comes from the replied-to comment, which keeps it
+		require.NoError(t, b.Delete(c1.Locator, c1.ID, store.SoftDelete))
+		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, 3, len(cc), "replies to a deleted comment are still listed")
+		assert.Equal(t, "developer one u1", u)
 	})
 }
 

@@ -178,7 +178,7 @@ func (b *BoltDB) Find(req FindRequest) (comments []store.Comment, err error) {
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.UserID == "": // find last comments for site
 		comments, err = b.lastComments(req.Locator.SiteID, req.Limit, req.Since)
 	case req.Locator.SiteID != "" && req.UserID != "": // find comments for user
-		comments, err = b.userComments(req.Locator.SiteID, req.UserID, req.Limit, req.Skip)
+		comments, err = b.userComments(req.Locator.SiteID, req.UserID, req.Limit, req.Skip, false)
 	}
 
 	if err != nil {
@@ -266,9 +266,9 @@ func (b *BoltDB) Count(req FindRequest) (count int, err error) {
 			if userIDBkt == nil {
 				return fmt.Errorf("no comments for user %s in store for %s site", req.UserID, req.Locator.SiteID)
 			}
-			stats := userIDBkt.Stats()
-			count = stats.KeyN
-			return nil
+			var e error
+			count, e = b.countUserComments(tx, userIDBkt)
+			return e
 		})
 		return count, err
 	}
@@ -361,9 +361,10 @@ func (b *BoltDB) ListFlags(req FlagRequest) (res []any, err error) {
 		return nil, err
 	}
 
-	// names come from the user's latest comment, read after the transaction above is closed
+	// names come from the user's latest comment, read after the transaction above is closed.
+	// Deleted comments keep the user's name and are often all a blocked user has left.
 	for _, u := range blocked {
-		if comments, e := b.userComments(req.Locator.SiteID, u.ID, 1, 0); e == nil && len(comments) > 0 {
+		if comments, e := b.userComments(req.Locator.SiteID, u.ID, 1, 0, true); e == nil && len(comments) > 0 {
 			u.Name = comments[0].User.Name
 		}
 		res = append(res, u)
@@ -452,9 +453,11 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 	return comments, err
 }
 
-// userComments extracts all comments for given site and given userID
-// "users" bucket has sub-bucket for each userID, and keeps it as ts:ref
-func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments []store.Comment, err error) {
+// userComments extracts comments for given site and given userID, newest first.
+// "users" bucket has sub-bucket for each userID, and keeps it as ts:ref.
+// Deleted comments keep their reference there; unless withDeleted is set they are passed over
+// and do not count towards limit or skip.
+func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDeleted bool) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
 	commentRefs := []string{}
 
@@ -470,11 +473,21 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 			return fmt.Errorf("%w %s in store", ErrNoUserComments, userID)
 		}
 
+		postsBkt := tx.Bucket([]byte(postsBucketName))
 		c := userIDBkt.Cursor()
 		skipComments := 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			if len(commentRefs) >= limit {
 				break
+			}
+			if !withDeleted {
+				live, e := b.isLiveRef(postsBkt, v)
+				if e != nil {
+					return e
+				}
+				if !live {
+					continue
+				}
 			}
 			if skip > 0 && skipComments < skip {
 				skipComments++
@@ -502,6 +515,46 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int) (comments 
 	}
 
 	return comments, err
+}
+
+// countUserComments counts the comments referenced from a user's bucket that are not deleted.
+// Deleted comments keep their reference, so the bucket's key count alone would include them.
+func (b *BoltDB) countUserComments(tx *bolt.Tx, userIDBkt *bolt.Bucket) (count int, err error) {
+	postsBkt := tx.Bucket([]byte(postsBucketName))
+	err = userIDBkt.ForEach(func(_, ref []byte) error {
+		live, e := b.isLiveRef(postsBkt, ref)
+		if live {
+			count++
+		}
+		return e
+	})
+	return count, err
+}
+
+// isLiveRef reports whether a user bucket's url!!id reference points to a stored comment that is not deleted.
+// Only the deleted flag is decoded from the comment. A reference that cannot be parsed, as happens for a
+// page url containing "!!", is logged and passed over, so one such comment does not fail the whole list.
+func (b *BoltDB) isLiveRef(postsBkt *bolt.Bucket, ref []byte) (bool, error) {
+	url, commentID, err := b.parseRef(ref)
+	if err != nil {
+		log.Printf("[WARN] skip user comment reference %s: %v", ref, err)
+		return false, nil
+	}
+	postBkt := postsBkt.Bucket([]byte(url))
+	if postBkt == nil {
+		return false, nil
+	}
+	data := postBkt.Get([]byte(commentID))
+	if data == nil {
+		return false, nil
+	}
+	var c struct {
+		Deleted bool `json:"delete"`
+	}
+	if err = json.Unmarshal(data, &c); err != nil {
+		return false, fmt.Errorf("failed to unmarshal comment %s: %w", ref, err)
+	}
+	return !c.Deleted, nil
 }
 
 func (b *BoltDB) checkFlag(req FlagRequest) (val bool) {

@@ -278,6 +278,30 @@ func TestBoltDB_FindForUserPagination(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(res))
+
+	// deleted comments take no place in a page and are not counted by skip
+	for _, id := range []string{"id-199", "id-197", "id-190"} {
+		require.NoError(t, b.Delete(DeleteRequest{Locator: c.Locator, CommentID: id, DeleteMode: store.SoftDelete}))
+	}
+	req.Skip, req.Limit = 0, 5
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-198", "id-196", "id-195", "id-194", "id-193"}, commentIDs(res))
+	req.Skip, req.Limit = 5, 3
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-192", "id-191", "id-189"}, commentIDs(res))
+	count, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
+	require.NoError(t, err)
+	assert.Equal(t, 197, count)
+}
+
+func commentIDs(comments []store.Comment) []string {
+	ids := make([]string, 0, len(comments))
+	for _, c := range comments {
+		ids = append(ids, c.ID)
+	}
+	return ids
 }
 
 func TestBoltDB_CountPost(t *testing.T) {
@@ -307,6 +331,30 @@ func TestBoltDB_CountUser(t *testing.T) {
 	c, err := b.Count(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, c)
+
+	// a comment on another post counts, a deleted one does not
+	_, err = b.Create(store.Comment{ID: "id-3", Text: "some text3", Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 3, c)
+	require.NoError(t, b.Delete(DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: "id-1", DeleteMode: store.SoftDelete}))
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 2, c, "soft-deleted comment is not counted")
+
+	// a page url with the reference delimiter in it makes an unparsable reference, which is passed over
+	_, err = b.Create(store.Comment{ID: "id-4", Text: "some text4", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/a!!b", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 2, c, "unparsable reference is not counted")
+	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Sort: "-time"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-3", "id-2"}, commentIDs(comments))
 
 	req = FindRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1"}
 	_, err = b.Count(req)
@@ -943,11 +991,7 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
 	assert.NoError(t, err, "no comments for user user1 in store")
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.True(t, comments[0].Deleted)
-	assert.True(t, comments[1].Deleted)
-	assert.Equal(t, "", comments[0].Text)
-	assert.Equal(t, "", comments[1].Text)
+	assert.Empty(t, comments, "deleted comments are not listed for the user")
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.NoError(t, err)
