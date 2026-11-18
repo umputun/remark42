@@ -28,18 +28,17 @@
 package e2e
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	neturl "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -125,13 +124,14 @@ var (
 	// distinguishes this run's threads from those a previous run left in the database.
 	// E2E_RUN_ID pins it, so the urls a CI run works on name that run and not the moment
 	// the process started
-	runID = firstNonEmpty(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
+	runID = cmp.Or(os.Getenv("E2E_RUN_ID"), fmt.Sprintf("%d", time.Now().UnixNano()))
 
 	contextSeq atomic.Int64
 
 	// Intercept only traffic going to a Remark42 instance. Routing every resource disables the
 	// browser cache and puts unrelated host-page traffic through Playwright's driver pipe, which
-	// distorts the iframe timing cases this suite measures.
+	// distorts the iframe timing cases this suite measures. An authority is matched whole, port
+	// included, so a host reached on a port the stack does not serve is not one of ours.
 	readerIPRoutePattern = func() *regexp.Regexp {
 		// the dots in an address are escaped, so they cannot stand for any character
 		quoted := make([]string, 0, len(readerIPAuthorities))
@@ -261,15 +261,6 @@ func ensureStack() error {
 	return assertStackMatches(stamp, false)
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, v := range values {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
-}
-
 // stackReady reports whether every service the suite needs answers
 func stackReady(timeout time.Duration) bool {
 	for _, url := range []string{
@@ -366,10 +357,6 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 				!strings.Contains(strings.ToLower(routeErr.Error()), "target closed") {
 				t.Errorf("continue routed request: %v", routeErr)
 			}
-		}
-		if !requestNeedsReaderIP(route.Request().URL()) {
-			continueRequest()
-			return
 		}
 		headers := route.Request().Headers()
 		headers["X-Real-IP"] = readerIP
@@ -469,20 +456,6 @@ var readerIPAuthorities = []string{
 	"127.0.0.1:8086",
 	"127.0.0.1:8087",
 	"127.0.0.1:8443",
-}
-
-// requestNeedsReaderIP answers whether a request is going to a remark42 instance. The port is part
-// of the answer: an address is matched whole, so a host reached on a port the stack does not serve
-// is not one of ours.
-func requestNeedsReaderIP(rawURL string) bool {
-	u, err := neturl.Parse(rawURL)
-	if err != nil {
-		return false
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return false
-	}
-	return slices.Contains(readerIPAuthorities, u.Host)
 }
 
 // installOpts asks for the browser system libraries on CI only: install-deps shells out to
@@ -655,14 +628,21 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 func stubSignedOut(t *testing.T, page playwright.Page) {
 	t.Helper()
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusOK),
-			ContentType: new("application/json"),
-			Body:        new(`{"status":"not logged in"}`),
-		}); err != nil {
-			t.Errorf("fulfill signed-out auth status: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusOK, `{"status":"not logged in"}`)
 	}))
+}
+
+// fulfillJSON answers an intercepted request with a JSON body. Route handlers run on playwright's
+// goroutine, so a failure is reported with t.Errorf and not require
+func fulfillJSON(t *testing.T, route playwright.Route, status int, body string) {
+	t.Helper()
+	if err := route.Fulfill(playwright.RouteFulfillOptions{
+		Status:      new(status),
+		ContentType: new("application/json"),
+		Body:        body,
+	}); err != nil {
+		t.Errorf("fulfill %s with %d: %v", route.Request().URL(), status, err)
+	}
 }
 
 // reload re-navigates and returns the widget once the thread itself has loaded.
@@ -786,6 +766,16 @@ func waitHidden(t *testing.T, loc playwright.Locator, msgAndArgs ...any) {
 func pollText(loc playwright.Locator) (string, error) {
 	return loc.InnerText(playwright.LocatorInnerTextOptions{
 		Timeout: new(float64(pollTimeout.Milliseconds())),
+	})
+}
+
+// waitText polls the element's text until it reads want, for text that settles after the element
+// is already visible, such as a score or a counter
+func waitText(t *testing.T, loc playwright.Locator, want, msg string) {
+	t.Helper()
+	eventually(t, waitTimeout, msg, func() bool {
+		got, err := pollText(loc)
+		return err == nil && got == want
 	})
 }
 

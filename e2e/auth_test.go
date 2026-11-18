@@ -251,13 +251,7 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 	// one failure, then out of the way. Unroute and not a counter, so the restored state is the
 	// real endpoint and not a stub standing in for it
 	require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: new("application/json"),
-			Body:        new(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill transient auth failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	snapshotJSCoverage(t, page)

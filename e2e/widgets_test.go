@@ -5,7 +5,6 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	neturl "net/url"
 	"os"
 	"path/filepath"
@@ -121,18 +120,12 @@ func TestWidgets_CounterFillsInTheCommentCount(t *testing.T) {
 		if id == "own-thread-counter" {
 			continue // asserted separately below, it counts a different url
 		}
-		eventually(t, waitTimeout, "counter never reported the seeded comments", func() bool {
-			txt, ierr := pollText(node)
-			return ierr == nil && txt == want
-		})
+		waitText(t, node, want, "counter never reported the seeded comments")
 	}
 
 	// and the data-url branch resolves to its own thread and not the page's
 	own := strconv.Itoa(commentCount(t, poster, thread))
-	eventually(t, waitTimeout, "the data-url counter did not report its own thread", func() bool {
-		txt, ierr := pollText(page.Locator("#own-thread-counter"))
-		return ierr == nil && txt == own
-	})
+	waitText(t, page.Locator("#own-thread-counter"), own, "the data-url counter did not report its own thread")
 }
 
 func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
@@ -168,10 +161,7 @@ func TestWidgets_LegacyJSURLLoadsAsAClassicScript(t *testing.T) {
 	_, err = page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: new(baseURL + "/web/counter.js")})
 	require.NoError(t, err)
 
-	eventually(t, waitTimeout, "the legacy counter.js url never filled the counter", func() bool {
-		txt, ierr := pollText(counter)
-		return ierr == nil && txt == want
-	})
+	waitText(t, counter, want, "the legacy counter.js url never filled the counter")
 }
 
 // commentCount asks the API what the counter should be showing
@@ -235,8 +225,6 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 	t.Parallel()
 
-	const localesDir = "../frontend/apps/remark42/app/locales"
-
 	entries, err := os.ReadDir(localesDir)
 	require.NoError(t, err, "reading %s", localesDir)
 	require.NotEmpty(t, entries, "no catalogs in %s, so this test would assert nothing", localesDir)
@@ -257,31 +245,9 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			require.NotEmpty(t, want, "%s carries no placeholder message to compare against", entry.Name())
 
 			page := newPage(t)
-			// auth state is outside this translation case. keeping its status response local means
-			// a translation failure cannot be caused by an auth deployment beside it.
-			require.NoError(t, page.Route("**/auth/status**", func(route playwright.Route) {
-				if err := route.Fulfill(playwright.RouteFulfillOptions{
-					Status:      playwright.Int(http.StatusOK),
-					ContentType: new("application/json"),
-					Body:        new(`{"status":"not logged in"}`),
-				}); err != nil {
-					t.Errorf("fulfill signed-out status for locale %s: %v", locale, err)
-				}
-			}))
-
-			_, gerr := page.Goto(baseURL + "/web/privacy.html")
-			require.NoError(t, gerr)
-
-			_, eerr := page.Evaluate(`([host, url, locale]) => {
-				window.remark_config = { host, site_id: 'remark', url, locale };
-				const node = document.createElement('div');
-				node.id = 'remark42';
-				document.body.appendChild(node);
-			}`, []any{baseURL, threadURL(t), locale})
-			require.NoError(t, eerr)
-
-			_, aerr := page.AddScriptTag(playwright.PageAddScriptTagOptions{URL: new(baseURL + "/web/embed.mjs")})
-			require.NoError(t, aerr)
+			// auth state is outside this translation case
+			stubSignedOut(t, page)
+			embedConfig(t, page, map[string]any{"locale": locale})
 
 			// not widget(): commentFormSel matches the form's aria-label, which is itself
 			// translated, so the shared helper only ever finds an english widget

@@ -253,13 +253,7 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 	signInDev(t, page, frame)
 
 	require.NoError(t, page.Route("**/api/v1/comment?**", func(route playwright.Route) {
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusBadRequest),
-			ContentType: new("application/json"),
-			Body:        new(`{"code":19,"details":"comment contains restricted words","error":"rejected"}`),
-		}); err != nil {
-			t.Errorf("fulfill refused comment response: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusBadRequest, `{"code":19,"details":"comment contains restricted words","error":"rejected"}`)
 	}))
 
 	text := "rejected " + runID

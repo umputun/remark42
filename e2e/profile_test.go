@@ -172,13 +172,7 @@ func TestProfile_LoadingAndFailureStates(t *testing.T) {
 	profileList := regexp.MustCompile(`/api/v1/comments\?.*user=`)
 	require.NoError(t, page.Route(profileList, func(route playwright.Route) {
 		<-release
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: new("application/json"),
-			Body:        new(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill profile comments failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	overlay := profileFrame(t, page, frame)
