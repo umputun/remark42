@@ -5,18 +5,57 @@ on:
     workflows: [backend, frontend]
     types: [completed]
 
+# the event is part of the key: a pull request from a fork whose branch is called master would
+# otherwise share the group of master pushes and cancel an image build in flight
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.event }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Docker image (${{ matrix.platform }})
+  # a push touching both backend and frontend completes two workflows, and each completion starts
+  # this one. Build only once the other workflow has finished green for the same commit, or never
+  # ran for it: when it is still running, its own completion starts the build again
+  gate:
+    name: Check the other workflow
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event != 'pull_request' &&
       (github.event.workflow_run.head_branch == 'master' ||
        startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      build: ${{ steps.sibling.outputs.build }}
+    steps:
+      - name: read the other workflow's run for this commit
+        id: sibling
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TRIGGER: ${{ github.event.workflow_run.name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          case "$TRIGGER" in
+            backend) sibling=ci-frontend.yml ;;
+            frontend) sibling=ci-backend.yml ;;
+            *) echo "unexpected triggering workflow: $TRIGGER" >&2; exit 1 ;;
+          esac
+          runs=$(gh api -X GET "repos/$REPO/actions/workflows/$sibling/runs" \
+            -f head_sha="$HEAD_SHA" -f branch="$HEAD_BRANCH" -f event="$EVENT" -f per_page=1)
+          state=$(jq -r '.workflow_runs[0] // {} | "\(.status // "none") \(.conclusion // "")"' <<< "$runs")
+          echo "$sibling for $HEAD_SHA on $HEAD_BRANCH: $state"
+          case "$state" in
+            "none "* | "completed success") echo "build=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "build=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    name: Build Docker image (${{ matrix.platform }})
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     permissions:
       contents: read
       packages: write
