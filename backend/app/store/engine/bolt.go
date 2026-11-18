@@ -929,15 +929,19 @@ func (b *BoltDB) setInfo(tx *bolt.Tx, comment store.Comment) (store.PostInfo, er
 	infoBkt := tx.Bucket([]byte(infoBucketName))
 	info := store.PostInfo{}
 	if err := b.load(infoBkt, comment.Locator.URL, &info); err != nil {
-		info = store.PostInfo{
-			Count:   0,
-			URL:     comment.Locator.URL,
-			FirstTS: comment.Timestamp,
-			LastTS:  comment.Timestamp,
-		}
+		info = store.PostInfo{URL: comment.Locator.URL}
 	}
-	info.Count++
-	info.LastTS = comment.Timestamp
+	// imports and backup restores create comments out of time order, and may create deleted ones;
+	// a deleted comment is not counted, the same as after a delete, and still sets the first and last time
+	if !comment.Deleted {
+		info.Count++
+	}
+	if info.FirstTS.IsZero() || comment.Timestamp.Before(info.FirstTS) {
+		info.FirstTS = comment.Timestamp
+	}
+	if comment.Timestamp.After(info.LastTS) {
+		info.LastTS = comment.Timestamp
+	}
 	err := b.save(infoBkt, comment.Locator.URL, &info)
 	return info, err
 }

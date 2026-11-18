@@ -52,11 +52,11 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 		Provider:  "wordpress",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, 2, size)
 
 	last, err := dataStore.Last("test", 10, time.Time{}, store.User{})
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(last), "3 comments imported")
+	assert.Equal(t, 2, len(last), "2 comments imported, the pingback skipped")
 }
 
 func TestMigrator_ImportCommento(t *testing.T) {
@@ -108,13 +108,14 @@ func TestMigrator_ImportNative(t *testing.T) {
 }
 
 func TestMigrator_ImportFailed(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.xml")
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b}
 	defer dataStore.Close()
 	_, err = ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test.xml",
+		InputFile: "testdata/disqus.xml",
 		SiteID:    "test",
 		Provider:  "bad",
 	})
@@ -123,9 +124,9 @@ func TestMigrator_ImportFailed(t *testing.T) {
 
 	_, err = ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test-bad.xml",
+		InputFile: missing,
 		SiteID:    "test",
 		Provider:  "native",
 	})
-	assert.EqualError(t, err, "can't open import file /tmp/disqus-test-bad.xml: open /tmp/disqus-test-bad.xml: no such file or directory")
+	assert.EqualError(t, err, "can't open import file "+missing+": open "+missing+": no such file or directory")
 }

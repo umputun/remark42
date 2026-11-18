@@ -124,7 +124,17 @@ func TestDisqus_Convert(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
+	require.Equal(t, 5, len(res), "4 comments and 1 spam placeholder, 1 bad excluded")
+	var spam []store.Comment
+	for _, c := range res {
+		if c.Deleted {
+			spam = append(spam, c)
+		}
+	}
+	require.Len(t, spam, 1, "spam is kept as a deleted placeholder")
+	assert.Empty(t, spam[0].Text)
+	assert.Equal(t, "deleted", spam[0].User.ID)
+	assert.Empty(t, spam[0].User.IP)
 
 	exp0 := store.Comment{
 		ID: "299619020",
@@ -138,7 +148,8 @@ func TestDisqus_Convert(t *testing.T) {
 			ID:   "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434",
 			IP:   "178.178.178.178",
 		},
-		Imported: true,
+		PostTitle: "Радио-Т: Радио-Т 229",
+		Imported:  true,
 	}
 	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
 	assert.Equal(t, exp0, res[0])

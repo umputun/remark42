@@ -15,7 +15,8 @@ import (
 
 // Commento implements Importer from commento export json
 type Commento struct {
-	DataStore Store
+	DataStore                  Store
+	DisableFancyTextFormatting bool
 }
 
 // Credit: https://gitlab.com/commento/commento/-/blob/master/api/domain_import_commento.go#L11-L15
@@ -86,11 +87,15 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 
 	usersMap := map[string]store.User{}
 	for _, commenter := range exportedData.Commenters {
-		usersMap[commenter.CommenterHex] = store.User{
-			Name:    commenter.Name,
-			ID:      "commento_" + store.EncodeID(commenter.CommenterHex),
-			Picture: commenter.Photo,
+		u := store.User{
+			Name: commenter.Name,
+			ID:   "commento_" + store.EncodeID(commenter.CommenterHex),
 		}
+		// commento writes "undefined" for a commenter without a photo
+		if pic, err := url.Parse(commenter.Photo); err == nil && (pic.Scheme == "http" || pic.Scheme == "https") && pic.Host != "" {
+			u.Picture = commenter.Photo
+		}
+		usersMap[commenter.CommenterHex] = u
 	}
 
 	usersMap["anonymous"] = store.User{
@@ -98,13 +103,15 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 		ID:   "commento_" + store.EncodeID("anonymous"),
 	}
 
+	formatter := store.NewCommentFormatter()
 	for _, comment := range exportedData.Comments {
 		u, ok := usersMap[comment.CommenterHex]
 		if !ok {
 			continue
 		}
 
-		if comment.Deleted {
+		// commento shows only approved comments to readers, the others wait for a moderator or were flagged as spam
+		if comment.State != "" && comment.State != "approved" {
 			continue
 		}
 
@@ -126,10 +133,15 @@ func (d *Commento) convert(r io.Reader, siteID string, emit func(store.Comment) 
 				SiteID: siteID,
 			},
 			User:      u,
-			Text:      comment.Markdown,
+			Text:      formatter.FormatText(comment.Markdown, d.DisableFancyTextFormatting),
 			Timestamp: comment.CreationDate,
 			ParentID:  parentID,
 			Imported:  true,
+		}
+		// commento keeps a deleted comment as "[deleted]" by the anonymous commenter, and its export
+		// leaves out the deleted flag; the comment stays as a placeholder for its replies
+		if comment.Deleted || (comment.Markdown == "[deleted]" && comment.CommenterHex == "anonymous") {
+			c.SetDeleted(store.HardDelete)
 		}
 
 		if err := emit(c); err != nil {

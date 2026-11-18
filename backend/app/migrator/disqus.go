@@ -98,7 +98,7 @@ func (d *Disqus) convert(r io.Reader, siteID string, emit func(store.Comment) er
 
 // convertWithAvatars is convert that sets the avatar URLs of disqus users from pictures, by username
 func (d *Disqus) convertWithAvatars(r io.Reader, siteID string, pictures map[string]string, emit func(store.Comment) error) error {
-	postsMap := map[string]string{} // tid:url
+	postsMap := map[string]disqusThread{} // tid:thread
 	decoder := xml.NewDecoder(r)
 
 	stats := struct {
@@ -137,7 +137,7 @@ func (d *Disqus) convertWithAvatars(r io.Reader, siteID string, pictures map[str
 				if thread.Deleted {
 					continue
 				}
-				postsMap[thread.UID] = thread.Link
+				postsMap[thread.UID] = thread
 				continue
 			}
 
@@ -149,24 +149,16 @@ func (d *Disqus) convertWithAvatars(r io.Reader, siteID string, pictures map[str
 					stats.failedPosts++
 					continue
 				}
-				if comment.Deleted {
-					stats.deletedComments++
-					continue
-				}
-				if comment.IsSpam {
-					stats.spamComments++
-					continue
-				}
-
-				url, ok := postsMap[comment.Tid.Val]
+				thread, ok := postsMap[comment.Tid.Val]
 				if !ok {
 					stats.skippedComments++
 					continue
 				}
 
 				c := store.Comment{
-					ID:      comment.UID,
-					Locator: store.Locator{URL: url, SiteID: siteID},
+					ID:        comment.UID,
+					Locator:   store.Locator{URL: thread.Link, SiteID: siteID},
+					PostTitle: thread.Title,
 					User: store.User{
 						ID:   disqusUserID(comment.AuthorUserName),
 						Name: comment.AuthorName,
@@ -186,6 +178,20 @@ func (d *Disqus) convertWithAvatars(r io.Reader, siteID string, pictures map[str
 				}
 				if c.ID == "" { // no comment.UID
 					c.ID = comment.ID
+				}
+				if comment.Deleted || comment.IsSpam {
+					// kept without its text and author, so replies to it stay in their thread,
+					// the way Disqus shows them; with no replies it is not shown at all
+					if comment.Deleted {
+						stats.deletedComments++
+					} else {
+						stats.spamComments++
+					}
+					c.SetDeleted(store.HardDelete)
+					if err := emit(c); err != nil {
+						return err
+					}
+					continue
 				}
 				if err := emit(c); err != nil {
 					return err

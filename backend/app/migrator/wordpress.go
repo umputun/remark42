@@ -23,6 +23,7 @@ type WordPress struct {
 
 type wpItem struct {
 	Link     string      `xml:"link"`
+	Title    string      `xml:"title"`
 	Comments []wpComment `xml:"comment"`
 }
 
@@ -35,6 +36,7 @@ type wpComment struct {
 	Content     string `xml:"comment_content"`
 	Approved    string `xml:"comment_approved"`
 	PID         string `xml:"comment_parent"`
+	Type        string `xml:"comment_type"`
 }
 
 type wpTime struct {
@@ -73,6 +75,7 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 		inpItems, failedItems       int
 		inpComments, failedComments int
 		rejectedComments            int // not approved
+		skippedComments             int // pingbacks, trackbacks and other non-comment types
 	}{}
 
 	commentFormatter := store.NewCommentFormatter(w)
@@ -116,14 +119,19 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 							stats.rejectedComments++
 							continue
 						}
+						if !wpReaderComment(comment.Type) {
+							stats.skippedComments++
+							continue
+						}
 
 						if comment.PID == "0" {
 							comment.PID = ""
 						}
 
 						c := store.Comment{
-							ID:      comment.ID,
-							Locator: store.Locator{URL: item.Link, SiteID: siteID},
+							ID:        comment.ID,
+							Locator:   store.Locator{URL: item.Link, SiteID: siteID},
+							PostTitle: item.Title,
 							User: store.User{
 								ID:   "wordpress_" + store.EncodeID(comment.Author),
 								Name: comment.Author,
@@ -154,4 +162,15 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 	}
 	log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
 	return nil
+}
+
+// wpReaderComment reports whether a WordPress comment of the given type was written by a reader.
+// Pingbacks and trackbacks are notices about links from other sites, and plugins keep their own
+// records as comments too, such as WooCommerce order notes, which are not public.
+func wpReaderComment(commentType string) bool {
+	switch commentType {
+	case "", "comment", "review": // WordPress 5.5+ writes "comment", WooCommerce product reviews are "review"
+		return true
+	}
+	return false
 }

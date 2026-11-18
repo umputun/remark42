@@ -3,6 +3,7 @@ package store
 import (
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Depado/bfchroma/v2"
 	"github.com/PuerkitoBio/goquery"
@@ -64,7 +65,8 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, maximum int) (re
 	}
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		if href, ok := s.Attr("href"); ok {
-			if href != s.Text() || len(href) < maximum+3 || maximum < 3 {
+			// the link is cut by runes below, so its length is counted in runes too
+			if href != s.Text() || utf8.RuneCountInString(href) < maximum+3 || maximum < 3 {
 				return
 			}
 			commentURL, e := url.Parse(href)

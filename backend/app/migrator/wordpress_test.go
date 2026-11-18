@@ -26,14 +26,16 @@ func TestWordPress_Import(t *testing.T) {
 	wp := WordPress{DataStore: &dataStore, DisableFancyTextFormatting: false}
 	size, err := wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, 2, size)
 
 	last, err := dataStore.Last(siteID, 10, time.Time{}, adminUser)
 	assert.NoError(t, err)
-	require.Equal(t, 3, len(last), "3 comments imported")
+	require.Equal(t, 2, len(last), "2 comments imported, the pingback skipped")
 
 	c := last[0]
 	assert.Equal(t, "14", c.ID)
+	assert.Empty(t, c.ParentID, "the reply to the skipped pingback is a top-level comment")
+	assert.Equal(t, "Post with comments. One is not approved", c.PostTitle)
 	assert.Equal(t, store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID}, c.Locator)
 	assert.Equal(t, "wordpress_75b2b81081f82495d7af26759e67af6554ffda4a", c.User.ID)
 	assert.Equal(t, "SuperUser3", c.User.Name)
@@ -52,17 +54,17 @@ func TestWordPress_Import(t *testing.T) {
 
 	count, err := dataStore.Count(store.Locator{URL: "https://realmenweardress.es/2010/07/do-you-rp/", SiteID: siteID})
 	assert.NoError(t, err)
-	assert.Equal(t, 3, count)
+	assert.Equal(t, 2, count)
 
 	// test with DisableFancyTextFormatting
 	wp = WordPress{DataStore: &dataStore, DisableFancyTextFormatting: true}
 	size, err = wp.Import(strings.NewReader(xmlTestWP), siteID)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, 2, size)
 
 	last, err = dataStore.Last(siteID, 10, time.Time{}, adminUser)
 	assert.NoError(t, err)
-	require.Equal(t, 3, len(last), "3 comments imported")
+	require.Equal(t, 2, len(last), "2 comments imported")
 
 	assert.Equal(t, "<p>&#34;Mekkatorque&#34; was over in that tent up to the right</p>\n", last[0].Text)
 }
@@ -75,24 +77,57 @@ func TestWordPress_Convert(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, 3, len(comments), "3 comments exported, 1 excluded")
+	require.Equal(t, 2, len(comments), "2 comments exported, 1 not approved and 1 pingback excluded")
 
 	exp1 := store.Comment{
-		ID: "13",
+		ID: "14",
 		Locator: store.Locator{
 			SiteID: "testWP",
 			URL:    "https://realmenweardress.es/2010/07/do-you-rp/",
 		},
-		Text: `<p>[…] I know I’m a bit loony with my attachment to my bankers.  I’m glad I’m not the only one. […]</p>` + "\n",
+		Text: "<p>«Mekkatorque» was over in that tent up to the right</p>\n",
 		User: store.User{
-			Name: "Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual",
-			ID:   "wordpress_" + store.EncodeID("Wednesday Reading &laquo; Cynwise&#039;s Battlefield Manual"),
-			IP:   "74.200.244.101",
+			Name: "SuperUser3",
+			ID:   "wordpress_" + store.EncodeID("SuperUser3"),
+			IP:   "128.243.253.117",
 		},
-		Imported: true,
+		ParentID:  "13",
+		PostTitle: "Post with comments. One is not approved",
+		Imported:  true,
 	}
-	exp1.Timestamp, _ = time.Parse(wpTimeLayout, "2010-07-21 14:02:08")
+	exp1.Timestamp, _ = time.Parse(wpTimeLayout, "2010-08-18 15:19:14")
 	assert.Equal(t, exp1, comments[1])
+}
+
+func TestWordPress_ReaderCommentTypes(t *testing.T) {
+	tbl := []struct {
+		commentType string
+		imported    bool
+	}{
+		{"", true}, {"comment", true}, {"review", true},
+		{"pingback", false}, {"trackback", false}, {"order_note", false}, {"webhook_delivery", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.commentType, func(t *testing.T) {
+			xml := `<rss><channel><wp:wxr_version>1.2</wp:wxr_version><item><title>Post</title><link>https://example.com/p1</link>` +
+				`<wp:comment><wp:comment_id>1</wp:comment_id><wp:comment_author>A</wp:comment_author>` +
+				`<wp:comment_date_gmt>2020-01-01 10:00:00</wp:comment_date_gmt><wp:comment_content>text</wp:comment_content>` +
+				`<wp:comment_approved>1</wp:comment_approved><wp:comment_type>` + tt.commentType + `</wp:comment_type>` +
+				`<wp:comment_parent>0</wp:comment_parent></wp:comment></item></channel></rss>`
+			var res []store.Comment
+			err := (&WordPress{}).convert(strings.NewReader(xml), "site", func(c store.Comment) error {
+				res = append(res, c)
+				return nil
+			})
+			require.NoError(t, err)
+			if !tt.imported {
+				assert.Empty(t, res)
+				return
+			}
+			require.Len(t, res, 1)
+			assert.Equal(t, "Post", res[0].PostTitle)
+		})
+	}
 }
 
 func TestWP_Convert_MD(t *testing.T) {
