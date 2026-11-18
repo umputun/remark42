@@ -350,7 +350,7 @@ func validEmailAuth() func(http.Handler) http.Handler {
 
 			if u := r.URL.Query().Get("user"); u != "" {
 				if !reUser.MatchString(u) {
-					log.Printf("[WARN] suspicious user rejected: %s", u)
+					log.Printf("[WARN] suspicious user rejected: %s", store.MaskForLog(u))
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -358,7 +358,7 @@ func validEmailAuth() func(http.Handler) http.Handler {
 
 			if a := r.URL.Query().Get("address"); a != "" {
 				if _, err := mail.ParseAddress(a); err != nil {
-					log.Printf("[WARN] suspicious address rejected: %s", a)
+					log.Printf("[WARN] suspicious address rejected: %s", store.MaskForLog(err.Error())) // it can quote the input
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -366,7 +366,7 @@ func validEmailAuth() func(http.Handler) http.Handler {
 
 			if s := r.URL.Query().Get("site"); s != "" {
 				if !reSite.MatchString(s) {
-					log.Printf("[WARN] suspicious site rejected: %s", s)
+					log.Printf("[WARN] suspicious site rejected: %s", store.MaskForLog(s))
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}

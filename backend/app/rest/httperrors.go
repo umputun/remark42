@@ -11,7 +11,9 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/logger"
 
+	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/templates"
 )
 
@@ -119,6 +121,17 @@ func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details strin
 			line, funcNameElems[len(funcNameElems)-1])
 	}
 
-	return fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s",
-		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo)
+	// the url and the error can carry the user's email address, as the email login and subscription requests do
+	return store.MaskForLog(fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s",
+		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo))
+}
+
+// MaskedLog is a log backend passing every line through store.MaskForLog, for logs that record user input
+type MaskedLog struct {
+	L logger.Backend
+}
+
+// Logf formats the line and writes it to L with email addresses and tokens hidden
+func (m MaskedLog) Logf(format string, args ...any) {
+	m.L.Logf("%s", store.MaskForLog(fmt.Sprintf(format, args...)))
 }

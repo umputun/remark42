@@ -222,7 +222,9 @@ func (s *Rest) routes() http.Handler {
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
-	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
+	// request urls and bodies carry email addresses (email login, subscription) and tokens, the log hides both
+	reqLog := logger.Log(rest.MaskedLog{L: log.Default()})
+	logInfoWithBody := logger.New(reqLog, logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
@@ -363,7 +365,7 @@ func (s *Rest) routes() http.Handler {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
 		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
-		rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+		rauth.Use(logger.New(reqLog, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
 	})
 

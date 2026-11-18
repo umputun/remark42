@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
+	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
@@ -390,6 +392,92 @@ func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
 			assert.Equal(t, c.want, resp.StatusCode)
 		})
 	}
+}
+
+// regression: the request log wrote the email address of every email login and subscription in plain text
+func TestRest_RequestLogHidesEmail(t *testing.T) {
+	logs := &lockedBuffer{}
+	lgr.Setup(lgr.Out(logs), lgr.Err(io.Discard))
+	t.Cleanup(func() { lgr.Setup() })
+	ts, _, teardown := startupT(t) // routes() picks up the logger set above
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+
+	const address, addressEscaped = "secret.person+tag@example.com", "secret.person%2Btag%40example.com"
+	jwtPrefix := devToken[:40] // the payload of devToken holds an email address too
+	cases := []struct {
+		name, method, path, body string
+		status                   int
+		want                     string // what the request's log line must show in place of the hidden value
+	}{
+		{name: "email login", method: "GET", path: "/auth/email/login?site=remark42&user=someone&address=" + addressEscaped,
+			status: http.StatusOK, want: "address=********"},
+		{name: "mistyped email login rejected", method: "GET",
+			path:   "/auth/email/login?site=remark42&user=someone&address=secret.person%40%40example.com",
+			status: http.StatusForbidden, want: "address=********"},
+		{name: "email subscribe", method: "POST", path: "/api/v1/email/subscribe?site=remark42",
+			body: `{"site":"remark42","address":"` + address + `"}`, status: http.StatusOK, want: `"address":"********"`},
+		{name: "email subscribe, old query param", method: "POST",
+			path: "/api/v1/email/subscribe?site=remark42&address=" + addressEscaped, status: http.StatusOK, want: "address=********"},
+		{name: "email confirm, token in body", method: "POST", path: "/api/v1/email/confirm?site=remark42",
+			body: `{"site":"remark42","token":"` + devToken + `"}`, status: http.StatusBadRequest, want: `"token":"********"`},
+		{name: "email confirm, token in query", method: "POST", path: "/api/v1/email/confirm?site=remark42&tkn=" + devToken,
+			status: http.StatusBadRequest, want: "tkn=********"},
+		{name: "session token in query", method: "GET", path: "/api/v1/config?site=remark42&jwt=" + devToken,
+			status: http.StatusOK, want: "jwt=********"},
+		{name: "comment keeps mentions and urls", method: "POST", path: "/api/v1/comment?site=remark42",
+			body:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`,
+			status: http.StatusCreated,
+			want:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(c.method, ts.URL+c.path, strings.NewReader(c.body))
+			require.NoError(t, err)
+			req.Header.Set("X-JWT", devToken)
+			req.Header.Set("X-Request-ID", c.name) // the logger appends it, so the line can be told apart
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, c.status, resp.StatusCode) // a rate-limited request would skip the handlers that log
+
+			// the line is written after the response is sent
+			require.EventuallyWithT(t, func(ct *assert.CollectT) {
+				var line string
+				for l := range strings.Lines(logs.String()) {
+					if strings.Contains(l, " - "+c.name) {
+						line = l
+					}
+				}
+				assert.Contains(ct, line, c.want)
+			}, waitTimeout, pollInterval)
+		})
+	}
+
+	// error lines (SendErrorJSON) print the url too, so the whole log is checked, not only the request lines
+	assert.NotContains(t, logs.String(), "secret.person")
+	assert.NotContains(t, logs.String(), jwtPrefix)
+}
+
+// lockedBuffer is a log destination safe for the handlers writing to it concurrently
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 // TestRest_AvatarMounts verifies both avatar mounts (root /avatar/ and /api/v1/avatar/)

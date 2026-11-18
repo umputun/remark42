@@ -36,6 +36,7 @@ import (
 	"github.com/umputun/remark42/backend/app/migrator"
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/providers"
+	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/rest/api"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/safehttp"
@@ -1487,7 +1488,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		AvatarStore:       avas,
 		AvatarResizeLimit: s.Avatar.RszLmt,
 		AvatarRoutePath:   "/api/v1/avatar",
-		Logger:            log.Default(),
+		Logger:            rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
 		RefreshCache:      authRefreshCache,
 		UseGravatar:       true,
 		AudSecrets:        s.Admin.RPC.SecretPerSite,
