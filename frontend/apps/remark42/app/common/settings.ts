@@ -1,5 +1,6 @@
 import { parseQuery } from 'utils/parse-query';
-import { THEMES, MAX_SHOWN_ROOT_COMMENTS } from './constants';
+import { THEMES, MAX_SHOWN_ROOT_COMMENTS, DEFAULT_SORT } from './constants';
+import { parseSorting } from './sorting';
 
 function parseNumber(value: unknown) {
   if (typeof value !== 'string') {
@@ -16,6 +17,7 @@ function includes<T extends U, U>(coll: ReadonlyArray<T>, el: U): el is T {
 }
 
 export const rawParams = parseQuery();
+export const defaultSort = parseSorting(rawParams.default_sort) ?? DEFAULT_SORT;
 export const maxShownComments = parseNumber(rawParams.max_shown_comments) ?? MAX_SHOWN_ROOT_COMMENTS;
 export const isEmailSubscription = rawParams.show_email_subscription !== 'false';
 export const isTelegramSubscription = rawParams.show_telegram_subscription !== 'false';
