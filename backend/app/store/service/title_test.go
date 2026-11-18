@@ -28,6 +28,7 @@ func TestTitle_GetTitle(t *testing.T) {
 		{`<html><title>blah 123 `, true, "blah 123"},
 		{"<html><title>\n\n  blah 123 \n ", true, "blah 123"},
 		{`<html><body> 2222</body></html>`, false, ""},
+		{`<html><head><title></title></head><body> 2222</body></html>`, false, ""},
 	}
 
 	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{})
