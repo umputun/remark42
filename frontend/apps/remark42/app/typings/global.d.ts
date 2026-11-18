@@ -1,5 +1,5 @@
 import 'jest-fetch-mock';
-import type { Theme } from 'common/types';
+import type { Sorting, Theme } from 'common/types';
 
 type RemarkConfig = {
   // Hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
@@ -18,6 +18,8 @@ type RemarkConfig = {
   max_shown_comments?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.
   max_last_comments?: number;
+  // Optional, '-active' by default. Comment order for a reader who has not picked one in the sort picker.
+  default_sort?: Sorting;
   // Optional, 'dark' or 'light', 'light' by default. Changes UI theme.
   theme?: Theme;
   // Optional, 'document.title' by default. Title for current comments page.

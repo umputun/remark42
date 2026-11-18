@@ -17,6 +17,7 @@ aliases:
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
+- **`default_sort`**`: string` (optional, `'-active'` by default) – comment order for a reader who has not picked one in the sort picker: `'-score'` (best), `'+score'` (worst), `'-time'` (newest), `'+time'` (oldest), `'-active'` (recently updated), `'+active'` (least recently updated), `'-controversy'` (most controversial) or `'+controversy'` (least controversial). A reader's own choice in the sort picker is remembered and wins over this setting
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
