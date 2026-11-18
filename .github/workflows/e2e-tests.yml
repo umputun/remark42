@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
+      - ".github/actions/setup-go/**"
       - "backend/**"
       - "frontend/**"
       - "e2e/**"
@@ -16,6 +17,7 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/e2e-tests.yml"
+      - ".github/actions/setup-go/**"
       - "backend/**"
       - "frontend/**"
       - "e2e/**"
@@ -45,18 +47,10 @@ jobs:
       - name: Test image stamp
         run: sh e2e/stamp_test.sh
 
-      - name: read go version from e2e/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' e2e/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: e2e/go.mod
           cache-dependency-path: e2e/go.sum
 
       - name: Vet
@@ -84,18 +78,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: read go version from e2e/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' e2e/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: e2e/go.mod
           cache-dependency-path: e2e/go.sum
 
       # the expression env context can't see runner process variables, so ImageOS is copied in
