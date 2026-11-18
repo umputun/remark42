@@ -1026,6 +1026,8 @@ func Test_splitAtCommas(t *testing.T) {
 			[]string{"Access-Control-Allow-Headers:\"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type\"", "header123:val", "foo:\"bar1,bar2\""},
 		},
 		{"", []string{}},
+		{"   ", []string{}},
+		{"vv1, ,vv2", []string{"vv1", "", "vv2"}},
 	}
 
 	for i, tt := range tbl {
@@ -1288,6 +1290,58 @@ func TestMain(m *testing.M) {
 		// it ends on its own, but a binary that finishes inside that window is reported as leaking
 		goleak.IgnoreAnyFunction("github.com/dlclark/regexp2/v2.runClock"),
 	)
+}
+
+func TestServerApp_ClearSecretEnv(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p := flags.NewParser(&s, flags.Default)
+
+	// every option whose variable holds a credential, found from the flag definitions, so a new one
+	// is checked without being added here. the webhook headers have no env tag, they are read in code
+	isSecret := func(name string) bool {
+		for _, suffix := range []string{"_CSEC", "_KID", "_TOKEN", "_PASSWD", "_PASSWORD"} {
+			if strings.HasSuffix(name, suffix) {
+				return true
+			}
+		}
+		return name == "SECRET"
+	}
+	secrets := []string{"SECRET", "NOTIFY_WEBHOOK_HEADERS"}
+	var walk func(g *flags.Group)
+	walk = func(g *flags.Group) {
+		for _, opt := range g.Options() {
+			if name := opt.EnvKeyWithNamespace(); isSecret(name) {
+				secrets = append(secrets, name)
+			}
+		}
+		for _, sub := range g.Groups() {
+			walk(sub)
+		}
+	}
+	walk(p.Group)
+	require.Contains(t, secrets, "STORE_RPC_AUTH_PASSWD", "the walk reaches nested groups")
+
+	for _, name := range secrets {
+		t.Setenv(name, "x")
+	}
+	t.Setenv("NOTIFY_WEBHOOK_HEADERS", `Authorization:Bearer abc,X-List:"a,b"`)
+	_, err := p.ParseArgs([]string{"--notify.admins=webhook"})
+	require.NoError(t, err)
+
+	s.clearSecretEnv()
+	for _, name := range secrets {
+		_, ok := os.LookupEnv(name)
+		assert.False(t, ok, "%s is cleared from the environment", name)
+	}
+	assert.Equal(t, []string{"Authorization:Bearer abc", `X-List:"a,b"`}, s.Notify.Webhook.Headers,
+		"the webhook headers are kept in the options")
+
+	// the headers are parsed whether or not the webhook is enabled, so a blank value must not stop the start
+	blank := ServerCommand{}
+	t.Setenv("NOTIFY_WEBHOOK_HEADERS", " ")
+	require.NotPanics(t, blank.clearSecretEnv)
+	assert.Empty(t, blank.Notify.Webhook.Headers)
 }
 
 func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
