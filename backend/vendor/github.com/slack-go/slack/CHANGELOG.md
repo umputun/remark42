@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-11-14
+
+### Breaking changes
+
+> [!WARNING]
+> **v0.36.0 changes RTM, Events API, and JSON decoding types and behavior.**
+> Positional `slack.GroupRenameEvent` literals, string `slack.GroupRenameInfo.Created`
+> values, and `slackevents.CallRejectedEvent` envelope fields no longer compile.
+> `slackevents.ChallengeResponse` now marshals a lowercase `challenge` key, and decoding
+> into reused block and response values replaces their previous contents.
+>
+> See the **Breaking** entries under Changed for migration steps.
+
+### Added
+
+- Add `AdminUsersSetAdmin`, `AdminUsersSetOwner`, and `AdminUsersSetRegular`, with
+  `Context` variants, to change a user's account type on a workspace or Enterprise org.
+  With an org ID, `admin.users.setRegular` also removes the user's Workspace Owner
+  roles ([Slack changelog](https://docs.slack.dev/changelog/2026/11/13/admin-users-set-regular-org-demotion)).
+  The existing `SetRegular` still calls the legacy `users.admin.setRegular` endpoint.
+- Add `AdminUsersGetExpiration` and `AdminUsersSetExpiration`, with `Context`
+  variants, to read and set when a guest account is disabled.
+  `AdminUsersGetExpirationOptionTargetTeam` and `AdminUsersSetExpirationOptionTeamID`
+  select a workspace in the org. Slack API reference:
+  [`admin.users.getExpiration`](https://docs.slack.dev/reference/methods/admin.users.getExpiration),
+  [`admin.users.setExpiration`](https://docs.slack.dev/reference/methods/admin.users.setExpiration).
+- Add `AdminUsersAssign`, `AdminUsersInvite`, and `AdminUsersRemove`, with `Context`
+  variants and options for guest access, channels, and invite details, to manage
+  workspace membership in an Enterprise org. `InviteToTeam`, `InviteGuest`, and
+  `InviteRestricted` still call the legacy `users.admin.invite` endpoint.
+- Add `AdminUsersSessionList`, `AdminUsersSessionReset`, `AdminUsersSessionResetBulk`,
+  `AdminUsersSessionGetSettings`, `AdminUsersSessionSetSettings`, and
+  `AdminUsersSessionClearSettings`, with `Context` variants, to list and reset
+  member sessions and manage their session settings.
+- Add `AdminUsersUnsupportedVersionsExport` and its `Context` variant to have
+  Slackbot send a CSV of members on unsupported Slack clients.
+- Add `AdminUsersAccessPause` and `AdminUsersAccessResume`, with `Context` variants
+  and a `reason` option, to queue pausing or resuming org-wide access for frontline
+  members. On `failed_for_some_users`, the returned response lists the rejected
+  users in `InvalidUsers`; Slack still queues the others.
+
+### Changed
+
+- **Breaking:** `slack.GroupRenameEvent` gains `EventTimestamp string` for
+  `event_ts`. Replace positional struct literals with keyed literals, such as
+  `slack.GroupRenameEvent{Type: "group_rename", Group: info, Timestamp: ts}`.
+  `Timestamp` retains its `ts` JSON key. The new key is omitted when empty.
+- **Breaking:** `slack.GroupRenameInfo.Created` changes from `string` to `int64`.
+  Replace literals such as `Created: "1360782804"` with `Created: 1360782804`.
+  Parse input strings with `strconv.ParseInt(value, 10, 64)` before assigning;
+  use `strconv.FormatInt(info.Created, 10)` when a consumer still needs a string.
+  Marshaling now emits a JSON number, and decoding rejects quoted timestamps.
+- **Breaking:** `slackevents.ChallengeResponse` now marshals as `{"challenge":"..."}`
+  instead of `{"Challenge":"..."}`, matching Slack's documented URL-verification
+  response. Its `Challenge` field now has a JSON tag; assignments from untagged
+  anonymous structs must use `slackevents.ChallengeResponse{Challenge: value}` instead.
+- **Breaking:** Flatten `slackevents.CallRejectedEvent` to match the inner
+  `call_rejected` event. Replace `event.Event.CallID` with `event.CallID`, and
+  likewise for `Type`, `UserID`, `ChannelID`, and `ExternalUniqueID`. Decode full
+  callback payloads with `slackevents.ParseEvent`; envelope metadata belongs to the
+  returned `EventsAPIEvent` and its `*EventsAPICallbackEvent` data, rather than
+  `CallRejectedEvent`. The fields `Token`, `TeamID`, `APIAppID`, `EventID`, and
+  `AuthedUsers` are removed from `CallRejectedEvent`. Its `Type` now contains
+  `call_rejected`, rather than the outer `event_callback` type, and marshaling
+  produces the inner event object instead of the complete callback envelope.
+- **Breaking:** Decoding into reused `ActionCallbacks`, `ContextElements`, or
+  `BlockObjects` replaces previous entries instead of appending. Decoding `[A, B]`
+  followed by `[C]` now leaves `[C]`; `[]` and JSON `null` clear all entries. The
+  legacy `{"elements":null}` wrapper remains a no-op for `ContextElements`.
+  Failed decodes may clear or partially replace the destination; do not use it
+  after a decoding error. To retain previous data on failure, decode into a
+  separate value and assign it only after success. To accumulate entries,
+  decode separately and explicitly append the relevant slices.
+- **Breaking:** Successful decoding into a reused `Accessory` or
+  `SlackResponseErrors` replaces all previous variants instead of retaining
+  fields from earlier decodes. Keep previous values separately if needed, for
+  example with `previous := accessory` before decoding. JSON `null` clears the
+  previous accessory variants; it remains a no-op for `SlackResponseErrors` and
+  for the legacy `{"accessory":null}` wrapper. Failed decodes may change the
+  destination, including clearing an accessory. Do not use the destination after
+  a decoding error. To retain the previous value, decode into a separate value
+  and assign it only after success.
+
+### Fixed
+
+- Expose `event_ts` in RTM `group_rename` events as `EventTimestamp`, preserving
+  `Timestamp` for the separate `ts` field.
+- Decode numeric creation timestamps in RTM
+  [`group_rename`](https://docs.slack.dev/reference/events/group_rename/) events
+  instead of dispatching `unmarshalling_error`.
+- Use the lowercase `challenge` JSON key in Events API URL-verification responses.
+- Preserve call and user identifiers when parsing `call_rejected` Events API events.
+- Replace previous actions, context elements, and composition objects when decoding into reused values.
+- Replace stale accessory and API error variants when decoding into reused values.
+- Stop the Socket Mode handler's event dispatcher when its client returns an error,
+  preserving queued events before returning.
+
 ## [0.35.0] - 2026-11-05
 
 A big thank you to @jjiang-stripe for the security find and fix!
@@ -1249,7 +1346,8 @@ for details.
 [#1196]: https://github.com/slack-go/slack/issues/1196
 [#1547]: https://github.com/slack-go/slack/pull/1547
 
-[Unreleased]: https://github.com/slack-go/slack/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/slack-go/slack/compare/v0.36.0...HEAD
+[0.36.0]: https://github.com/slack-go/slack/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/slack-go/slack/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/slack-go/slack/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/slack-go/slack/compare/v0.32.0...v0.33.0

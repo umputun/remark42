@@ -13,6 +13,7 @@ import (
 	"net/http"
 	neturl "net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -36,6 +37,10 @@ type TelegramHandler struct {
 
 	ProviderName         string
 	ErrorMsg, SuccessMsg string
+
+	// ChatIDAttribute, when set, makes a fresh login store the user's Telegram chat ID as a string
+	// attribute under this key, so the app can message the user through the bot. Empty leaves it out.
+	ChatIDAttribute string
 
 	TokenService TokenService
 	AvatarSaver  AvatarSaver
@@ -200,12 +205,17 @@ func (th *TelegramHandler) processUpdates(ctx context.Context, updates *telegram
 		// Fetch the bytes here and hand them to the avatar store directly.
 		picture := th.saveTelegramAvatar(ctx, id, avatarURL)
 
-		authRequest.confirmed = true
-		authRequest.user = &authtoken.User{
+		user := &authtoken.User{
 			ID:      id,
 			Name:    update.Message.Chat.Name,
 			Picture: picture,
 		}
+		if th.ChatIDAttribute != "" {
+			user.SetStrAttr(th.ChatIDAttribute, strconv.Itoa(update.Message.Chat.ID))
+		}
+
+		authRequest.confirmed = true
+		authRequest.user = user
 
 		th.requests.Lock()
 		th.requests.data[token] = authRequest

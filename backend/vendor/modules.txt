@@ -4,8 +4,8 @@ cloud.google.com/go/compute/metadata
 # github.com/Depado/bfchroma/v2 v2.0.0
 ## explicit; go 1.18
 github.com/Depado/bfchroma/v2
-# github.com/PuerkitoBio/goquery v1.13.0
-## explicit; go 1.25.0
+# github.com/PuerkitoBio/goquery v1.14.0
+## explicit; go 1.26.0
 github.com/PuerkitoBio/goquery
 # github.com/alecthomas/chroma/v2 v2.27.0
 ## explicit; go 1.25
@@ -34,7 +34,7 @@ github.com/didip/tollbooth/v8/errors
 github.com/didip/tollbooth/v8/internal/time/rate
 github.com/didip/tollbooth/v8/libstring
 github.com/didip/tollbooth/v8/limiter
-# github.com/dlclark/regexp2/v2 v2.12.0
+# github.com/dlclark/regexp2/v2 v2.13.1
 ## explicit; go 1.25
 github.com/dlclark/regexp2/v2
 github.com/dlclark/regexp2/v2/helpers
@@ -44,7 +44,7 @@ github.com/dlclark/regexp2/v2/syntax
 github.com/go-oauth2/oauth2/v4
 github.com/go-oauth2/oauth2/v4/errors
 github.com/go-oauth2/oauth2/v4/server
-# github.com/go-pkgz/auth/v2 v2.3.2
+# github.com/go-pkgz/auth/v2 v2.4.0
 ## explicit; go 1.25.0
 github.com/go-pkgz/auth/v2
 github.com/go-pkgz/auth/v2/avatar
@@ -56,13 +56,13 @@ github.com/go-pkgz/auth/v2/token
 # github.com/go-pkgz/email v0.8.0
 ## explicit; go 1.19
 github.com/go-pkgz/email
-# github.com/go-pkgz/expirable-cache/v3 v3.1.1
+# github.com/go-pkgz/expirable-cache/v3 v3.2.0
 ## explicit; go 1.23
 github.com/go-pkgz/expirable-cache/v3
 # github.com/go-pkgz/jrpc v0.4.2
 ## explicit; go 1.24.0
 github.com/go-pkgz/jrpc
-# github.com/go-pkgz/lcw/v2 v2.1.1
+# github.com/go-pkgz/lcw/v2 v2.1.2
 ## explicit; go 1.21
 github.com/go-pkgz/lcw/v2
 github.com/go-pkgz/lcw/v2/eventbus
@@ -80,7 +80,7 @@ github.com/go-pkgz/repeater/v2
 github.com/go-pkgz/rest
 github.com/go-pkgz/rest/logger
 github.com/go-pkgz/rest/realip
-# github.com/go-pkgz/routegroup v1.6.1
+# github.com/go-pkgz/routegroup v1.6.2
 ## explicit; go 1.23
 github.com/go-pkgz/routegroup
 # github.com/go-pkgz/syncs v1.3.4
@@ -113,7 +113,7 @@ github.com/hashicorp/golang-lru/v2/simplelru
 # github.com/jessevdk/go-flags v1.6.1
 ## explicit; go 1.20
 github.com/jessevdk/go-flags
-# github.com/klauspost/compress v1.20.3
+# github.com/klauspost/compress v1.20.4
 ## explicit; go 1.25
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
@@ -165,7 +165,7 @@ github.com/russross/blackfriday/v2
 github.com/skip2/go-qrcode
 github.com/skip2/go-qrcode/bitset
 github.com/skip2/go-qrcode/reedsolomon
-# github.com/slack-go/slack v0.35.0
+# github.com/slack-go/slack v0.36.0
 ## explicit; go 1.26
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
@@ -251,10 +251,10 @@ go.uber.org/atomic
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# go.yaml.in/yaml/v3 v3.0.5
+# go.yaml.in/yaml/v3 v3.0.6
 ## explicit; go 1.16
 go.yaml.in/yaml/v3
-# golang.org/x/crypto v0.58.0
+# golang.org/x/crypto v0.59.0
 ## explicit; go 1.26.0
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
@@ -265,7 +265,7 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/ocsp
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/image v0.47.0
+# golang.org/x/image v0.48.0
 ## explicit; go 1.26.0
 golang.org/x/image/draw
 golang.org/x/image/math/f64
@@ -273,12 +273,12 @@ golang.org/x/image/riff
 golang.org/x/image/vp8
 golang.org/x/image/vp8l
 golang.org/x/image/webp
-# golang.org/x/net v0.62.0
+# golang.org/x/net v0.63.0
 ## explicit; go 1.26.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/idna
-# golang.org/x/oauth2 v0.37.0
+# golang.org/x/oauth2 v0.38.0
 ## explicit; go 1.26.0
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
@@ -295,17 +295,17 @@ golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 golang.org/x/oauth2/microsoft
 golang.org/x/oauth2/yandex
-# golang.org/x/sync v0.24.0
+# golang.org/x/sync v0.25.0
 ## explicit; go 1.26.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.49.0
+# golang.org/x/sys v0.50.0
 ## explicit; go 1.26.0
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.43.0
+# golang.org/x/text v0.44.0
 ## explicit; go 1.26.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform

@@ -486,10 +486,12 @@ func CharDescription(ch rune) string {
 // values from the Unicode character database, from UnicodeData.txt [UData], plus the U+200C
 // ZERO WIDTH NON-JOINER and U+200D ZERO WIDTH JOINER.
 func IsWordChar(r rune) bool {
+	if r < utf8.RuneSelf {
+		// In ASCII, L, Mn, Nd and Pc are these runes only.
+		return 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9' || r == '_'
+	}
 	//"L", "Mn", "Nd", "Pc"
-	return unicode.In(r,
-		unicode.Categories["L"], unicode.Categories["Mn"],
-		unicode.Categories["Nd"], unicode.Categories["Pc"]) || r == '\u200D' || r == '\u200C'
+	return unicode.In(r, unicode.L, unicode.Mn, unicode.Nd, unicode.Pc) || r == '\u200D' || r == '\u200C'
 	//return 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z' || '0' <= r && r <= '9' || r == '_'
 }
 
@@ -500,9 +502,7 @@ func IsWordChar(r rune) bool {
 // Deprecated: IsECMAWordChar is not the ECMAScript word character set; use
 // IsECMAWordCharWithOptions.
 func IsECMAWordChar(r rune) bool {
-	return unicode.In(r,
-		unicode.Categories["L"], unicode.Categories["Mn"],
-		unicode.Categories["Nd"], unicode.Categories["Pc"])
+	return unicode.In(r, unicode.L, unicode.Mn, unicode.Nd, unicode.Pc)
 
 	//return 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z' || '0' <= r && r <= '9' || r == '_'
 }

@@ -35,6 +35,9 @@ type Handshake struct {
 	State string `json:"state,omitempty"`
 	From  string `json:"from,omitempty"`
 	ID    string `json:"id,omitempty"`
+
+	// CodeVerifier is the PKCE code verifier of an oauth2 login, sent to the token endpoint on the callback
+	CodeVerifier string `json:"code_verifier,omitempty"`
 }
 
 // AuthProvider stores attributes of provider which has created a JWT token
