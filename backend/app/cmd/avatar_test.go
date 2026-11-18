@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,16 +12,15 @@ import (
 )
 
 func TestAvatar_Execute(t *testing.T) {
-	defer os.RemoveAll("/tmp/ava-test")
+	tmp := t.TempDir()
 
 	// from fs to bolt
 	cmd := AvatarCommand{migrate: (&avatarMigratorMock{retCount: 100}).Migrate}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
-		"--dst.bolt.file=/tmp/ava-test.db"})
+	_, err := p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=" + tmp + "/ava-test", "--dst.type=bolt",
+		"--dst.bolt.file=" + tmp + "/ava-test.db"})
 	require.NoError(t, err)
-	defer os.Remove("/tmp/ava-test.db")
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 
@@ -30,10 +28,9 @@ func TestAvatar_Execute(t *testing.T) {
 	cmd = AvatarCommand{migrate: (&avatarMigratorMock{retCount: 0, retError: fmt.Errorf("failed blah")}).Migrate}
 	cmd.SetCommon(CommonOpts{RemarkURL: "", SharedSecret: "123456"})
 	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=/tmp/ava-test", "--dst.type=bolt",
-		"--dst.bolt.file=/tmp/ava-test2.db"})
+	_, err = p.ParseArgs([]string{"--src.type=fs", "--src.fs.path=" + tmp + "/ava-test", "--dst.type=bolt",
+		"--dst.bolt.file=" + tmp + "/ava-test2.db"})
 	require.NoError(t, err)
-	defer os.Remove("/tmp/ava-test2.db")
 	err = cmd.Execute(nil)
 	assert.Error(t, err, "failed blah")
 }

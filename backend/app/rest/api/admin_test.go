@@ -757,8 +757,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, os.MkdirAll(os.TempDir()+"/ava-remark42/42", 0o700))
-	require.NoError(t, os.WriteFile(os.TempDir()+"/ava-remark42/42/pic.image", []byte("some image data"), 0o600))
+	require.NoError(t, os.MkdirAll(testAvatarDir(srv)+"/42", 0o700))
+	require.NoError(t, os.WriteFile(testAvatarDir(srv)+"/42/pic.image", []byte("some image data"), 0o600))
 
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.NoError(t, err)
@@ -781,7 +781,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, email, "user1 email was deleted")
 
-	assert.NoFileExists(t, os.TempDir()+"/ava-remark42/42/pic.image", "user's avatar should be removed on deleteme")
+	assert.NoFileExists(t, testAvatarDir(srv)+"/42/pic.image", "user's avatar should be removed on deleteme")
 }
 
 // an admin is an admin of the site the session belongs to, so a deletion token for another site
@@ -896,8 +896,8 @@ func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
 
 	// put a non-empty directory where the avatar file is expected, so Store.Remove fails with a real
 	// error (directory not empty), not os.ErrNotExist - "pic" hashes to partition 42
-	require.NoError(t, os.MkdirAll(os.TempDir()+"/ava-remark42/42/pic.image", 0o700))
-	require.NoError(t, os.WriteFile(os.TempDir()+"/ava-remark42/42/pic.image/child", []byte("x"), 0o600))
+	require.NoError(t, os.MkdirAll(testAvatarDir(srv)+"/42/pic.image", 0o700))
+	require.NoError(t, os.WriteFile(testAvatarDir(srv)+"/42/pic.image/child", []byte("x"), 0o600))
 
 	claims := token.Claims{
 		SessionOnly: true,

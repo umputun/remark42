@@ -59,18 +59,16 @@ var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0M
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
 func TestRest_FileServer(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	testHTMLName := "test-remark.html"
-	testHTMLFile := os.TempDir() + "/" + testHTMLName
-	err := os.WriteFile(testHTMLFile, []byte("some html"), 0o700)
+	err := os.WriteFile(filepath.Join(srv.WebRoot, testHTMLName), []byte("some html"), 0o600)
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/web/"+testHTMLName)
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "some html", body)
-	_ = os.Remove(testHTMLFile)
 }
 
 // TestRest_FileServerStaticAssets covers the static file server behaviors that are
@@ -621,11 +619,11 @@ func TestRest_frameAncestors(t *testing.T) {
 // startupT runs fully configured testing server
 // srvHook is an optional func to set some Rest param after the creation but prior to Run
 func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest, teardown func()) {
-	tmp := os.TempDir()
-	testDB := filepath.Join(t.TempDir(), "test-remark.db") // per-test dir, removed when the test ends
-
-	_ = os.RemoveAll(tmp + "/ava-remark42")
-	_ = os.RemoveAll(tmp + "/pics-remark42")
+	// every directory the server writes to is the test's own, so a run in another checkout can't remove it
+	tmp := t.TempDir()
+	testDB := filepath.Join(tmp, "test-remark.db")
+	webRoot := filepath.Join(tmp, "web")
+	require.NoError(t, os.Mkdir(webRoot, 0o700))
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "remark42"})
 	require.NoError(t, err)
@@ -651,11 +649,11 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
-			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
+			AvatarStore:  avatar.NewLocalFS(avatarDir(tmp)),
 			JWTQuery:     "jwt", // as in the server, "token" carries the delete-me token
 		}),
 		Cache:     memCache,
-		WebRoot:   tmp,
+		WebRoot:   webRoot,
 		RemarkURL: remarkURL,
 		ImageService: image.NewService(&image.FileSystem{
 			Location:   tmp + "/pics-remark42",
@@ -703,12 +701,16 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		_ = os.RemoveAll(tmp + "/ava-remark42")
-		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown
 }
+
+// avatarDir is where the server started by startupT keeps avatars, given its temporary directory
+func avatarDir(tmp string) string { return filepath.Join(tmp, "ava-remark42") }
+
+// testAvatarDir returns the avatar directory of a server started by startupT
+func testAvatarDir(srv *Rest) string { return avatarDir(filepath.Dir(srv.WebRoot)) }
 
 const (
 	// outer bound before a wait is called a hang, generous enough for a loaded CI runner
