@@ -92,7 +92,9 @@ func TestWebhook_Send(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to create webhook request")
 
-	wh, err = NewWebhook(WebhookParams{URL: "https://not-existing-url.net"})
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closed.Close() // nothing listens at its address any more
+	wh, err = NewWebhook(WebhookParams{URL: closed.URL})
 	assert.NoError(t, err)
 	err = wh.Send(context.Background(), Request{Comment: c})
 	require.Error(t, err)
