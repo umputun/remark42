@@ -1686,15 +1686,13 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 func TestRest_CreateWithPictures(t *testing.T) {
 	ts, svc, teardown := startupT(t)
-	defer func() {
-		teardown()
-		assert.NoError(t, os.RemoveAll("/tmp/remark42"))
-	}()
+	defer teardown()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
+	images := filepath.Join(t.TempDir(), "images")
 	imageService := image.NewService(&image.FileSystem{
-		Staging:  "/tmp/remark42/images.staging",
-		Location: "/tmp/remark42/images",
+		Staging:  images + ".staging",
+		Location: images,
 	}, image.ServiceParams{
 		// the "not moved yet" checks below run right after the comment POST returns, so the
 		// commit window has to be wide enough that a stalled runner cannot close it first
@@ -1757,14 +1755,14 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
 	for i := range ids {
-		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
+		_, err = os.Stat(filepath.Join(images, ids[i]))
 		assert.Error(t, err, "picture %d not moved from staging yet", i)
 	}
 
 	// the commit runs once EditDuration expires
 	for i := range ids {
 		require.Eventually(t, func() bool {
-			_, e := os.Stat("/tmp/remark42/images/" + ids[i])
+			_, e := os.Stat(filepath.Join(images, ids[i]))
 			return e == nil
 		}, waitTimeout, pollInterval, "picture %d moved from staging and available in permanent location", i)
 	}

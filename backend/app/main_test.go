@@ -25,7 +25,7 @@ func Test_Main(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	port := chooseUnusedPort(t)
-	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
+	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=" + dir,
 		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	done := make(chan struct{})
@@ -76,7 +76,7 @@ func TestMain_WithWebhook(t *testing.T) {
 	defer ts.Close()
 
 	port := chooseUnusedPort(t)
-	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
+	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=" + dir,
 		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg",
 		"--admin-passwd=password", "--site=remark", "--notify.admins=webhook"}
 

@@ -262,6 +262,7 @@ func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn s
 }
 
 func TestServerApp_WithSSL(t *testing.T) {
+	tmp := t.TempDir()
 	opts := ServerCommand{}
 	sslPort := chooseUnusedPort(t)
 	opts.SetCommon(CommonOpts{RemarkURL: fmt.Sprintf("https://localhost:%d", sslPort), SharedSecret: "123456"})
@@ -269,14 +270,11 @@ func TestServerApp_WithSSL(t *testing.T) {
 	// prepare options
 	p := flags.NewParser(&opts, flags.Default)
 	port := chooseUnusedPort(t)
-	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=/tmp/xyz", "--backup=/tmp",
-		"--avatar.type=bolt", "--avatar.bolt.file=/tmp/ava-test.db",
+	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--port=" + strconv.Itoa(port), "--store.bolt.path=" + tmp + "/xyz",
+		"--backup=" + tmp, "--avatar.type=bolt", "--avatar.bolt.file=" + tmp + "/ava-test.db",
 		"--ssl.type=static", "--ssl.cert=testdata/cert.pem", "--ssl.key=testdata/key.pem",
-		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=/tmp"})
+		"--ssl.port=" + strconv.Itoa(sslPort), "--image.fs.path=" + tmp})
 	require.NoError(t, err)
-	defer os.Remove("/tmp/xyz")
-	defer os.Remove("/tmp/xyz/remark.db")
-	defer os.Remove("/tmp/ava-test.db")
 
 	// create app
 	app, err := opts.newServerApp(context.Background())
@@ -321,6 +319,7 @@ func TestServerApp_WithSSL(t *testing.T) {
 }
 
 func TestServerApp_WithRemote(t *testing.T) {
+	tmp := t.TempDir()
 	opts := ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
@@ -329,11 +328,11 @@ func TestServerApp_WithRemote(t *testing.T) {
 	port := chooseUnusedPort(t)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--cache.type=none",
 		"--store.type=rpc", "--store.rpc.api=http://127.0.0.1",
-		"--port=" + strconv.Itoa(port), "--avatar.fs.path=/tmp",
+		"--port=" + strconv.Itoa(port), "--avatar.fs.path=" + tmp,
 		"--admin.type=rpc", "--admin.rpc.secret_per_site", "--admin.rpc.api=http://127.0.0.1"})
 	require.NoError(t, err)
 	opts.Auth.Github.CSEC, opts.Auth.Github.CID = "csec", "cid"
-	opts.BackupLocation, opts.Image.FS.Path = "/tmp", "/tmp"
+	opts.BackupLocation, opts.Image.FS.Path = tmp, tmp
 
 	// create app
 	app, err := opts.newServerApp(context.Background())
@@ -359,13 +358,14 @@ func TestServerApp_WithRemote(t *testing.T) {
 }
 
 func TestServerApp_Failed(t *testing.T) {
+	tmp := t.TempDir()
 	opts := ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
 	p := flags.NewParser(&opts, flags.Default)
 
 	// RO bolt location
-	_, err := p.ParseArgs([]string{"--backup=/tmp", "--store.bolt.path=/dev/null", "--image.fs.path=/tmp"})
+	_, err := p.ParseArgs([]string{"--backup=" + tmp, "--store.bolt.path=/dev/null", "--image.fs.path=" + tmp})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to make data store engine: failed to create bolt store: can't make directory /dev/null: mkdir /dev/null: not a directory")
@@ -375,9 +375,8 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
-	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/dev/null/not-writable"})
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=/dev/null/not-writable"})
 	assert.NoError(t, err)
-	defer os.Remove("/tmp/remark.db")
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "failed to create backup store: can't make directory /dev/null/not-writable: mkdir /dev/null: not a directory")
 	t.Log(err)
@@ -386,7 +385,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "demo.remark42.com", SharedSecret: "123456"})
 
-	_, err = p.ParseArgs([]string{"--backup=/tmp", "----store.bolt.path=/tmp"})
+	_, err = p.ParseArgs([]string{"--backup=" + tmp, "----store.bolt.path=" + tmp})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, "invalid remark42 url demo.remark42.com")
@@ -396,7 +395,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--backup=/tmp", "--trusted-proxy=nonsense"})
+	_, err = p.ParseArgs([]string{"--backup=" + tmp, "--trusted-proxy=nonsense"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err, `invalid --trusted-proxy: invalid trusted proxy "nonsense"`)
@@ -406,7 +405,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 
-	_, err = p.ParseArgs([]string{"--backup=/tmp", "--store.type=blah"})
+	_, err = p.ParseArgs([]string{"--backup=" + tmp, "--store.type=blah"})
 	assert.Error(t, err, "blah is invalid type")
 
 	opts.Store.Type = "blah"
@@ -418,7 +417,7 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
@@ -444,7 +443,8 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=/tmp", "--backup=/tmp", "--image.fs.path=/tmp", "--auth.custom.name=oidc", "--auth.custom.cid=123"})
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp, "--auth.custom.name=oidc",
+		"--auth.custom.cid=123"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
@@ -496,10 +496,11 @@ func TestCustomProviderSourceID(t *testing.T) {
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
+	tmp := t.TempDir()
 	baseArgs := []string{
-		"--store.bolt.path=/tmp",
-		"--backup=/tmp",
-		"--image.fs.path=/tmp",
+		"--store.bolt.path=" + tmp,
+		"--backup=" + tmp,
+		"--image.fs.path=" + tmp,
 		"--auth.custom.cid=123",
 		"--auth.custom.csec=456",
 		"--auth.custom.auth-url=https://example.com/oauth2/authorize",
@@ -655,11 +656,9 @@ func TestServerApp_MainSignal(t *testing.T) {
 
 	p := flags.NewParser(&s, flags.Default)
 	port := chooseUnusedPort(t)
-	args := []string{"test", "--store.bolt.path=/tmp/xyz", "--backup=/tmp", "--avatar.type=bolt",
-		"--avatar.bolt.file=/tmp/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=/tmp"}
-	defer os.Remove("/tmp/xyz")
-	defer os.Remove("/tmp/xyz/remark.db")
-	defer os.Remove("/tmp/ava-test.db")
+	tmp := t.TempDir()
+	args := []string{"test", "--store.bolt.path=" + tmp + "/xyz", "--backup=" + tmp, "--avatar.type=bolt",
+		"--avatar.bolt.file=" + tmp + "/ava-test.db", "--port=" + strconv.Itoa(port), "--image.fs.path=" + tmp}
 	_, err := p.ParseArgs(args)
 	require.NoError(t, err)
 	// the signal goes out only once the server answers: SIGTERM landing before the handler is
@@ -1373,7 +1372,8 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	p := flags.NewParser(&cmd, flags.Default)
 	_, err := p.ParseArgs([]string{"--admin-passwd=password", "--site=remark"})
 	require.NoError(t, err)
-	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.BackupLocation, cmd.Image.FS.Path = "/tmp/remark42_test", "fs", "/tmp/remark42_test", "/tmp/remark42_test"
+	tmp := t.TempDir()
+	cmd.Avatar.FS.Path, cmd.Avatar.Type, cmd.Image.FS.Path = filepath.Join(tmp, "avatars"), "fs", filepath.Join(tmp, "images")
 	cmd.Store.Bolt.Timeout = 10 * time.Second
 	cmd.Auth.Apple.CID, cmd.Auth.Apple.KID, cmd.Auth.Apple.TID = "cid", "kid", "tid"
 	cmd.Auth.Apple.PrivateKeyFilePath = "testdata/apple.p8"
@@ -1387,7 +1387,7 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.Auth.Discord.CSEC, cmd.Auth.Discord.CID = "csec", "cid"
 	cmd.Auth.Email.Enable = true
 	cmd.Auth.Email.MsgTemplate = "testdata/email.tmpl"
-	cmd.BackupLocation = "/tmp"
+	cmd.BackupLocation = tmp
 	cmd.Notify.Users = []string{"email"}
 	cmd.Notify.Admins = []string{"email"}
 	cmd.Notify.Email.From = "from@example.org"
@@ -1403,20 +1403,10 @@ func prepServerApp(t *testing.T, fn func(o ServerCommand) ServerCommand) (*serve
 	cmd.RestrictedNames = []string{"umputun", "bobuk"}
 
 	cmd = fn(cmd)
-	// as is uses port, call it after fn which could set it
-	cmd.Store.Bolt.Path = fmt.Sprintf("/tmp/%d", cmd.Port)
+	// the test's own directory, also when fn set another bolt path
+	cmd.Store.Bolt.Path = filepath.Join(tmp, "db")
 
-	app, ctx, cancel := createAppFromCmd(t, cmd)
-
-	// cleanup the remark.db file after context is canceled
-	go func() {
-		<-ctx.Done()
-		os.RemoveAll(cmd.Store.Bolt.Path)
-		os.RemoveAll(cmd.Avatar.FS.Path)
-
-	}()
-
-	return app, ctx, cancel
+	return createAppFromCmd(t, cmd)
 }
 
 func createAppFromCmd(t *testing.T, cmd ServerCommand) (*serverApp, context.Context, context.CancelFunc) {

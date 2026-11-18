@@ -15,6 +15,7 @@ import (
 )
 
 func TestBackup_Execute(t *testing.T) {
+	tmp := t.TempDir()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/export")
 		assert.Equal(t, "GET", r.Method)
@@ -29,18 +30,17 @@ func TestBackup_Execute(t *testing.T) {
 	cmd := BackupCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp", "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--path=" + tmp, "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
-	defer os.Remove("/tmp/remark-test.export")
-
-	data, err := os.ReadFile("/tmp/remark-test.export")
+	data, err := os.ReadFile(tmp + "/remark-test.export")
 	require.NoError(t, err)
 	assert.Equal(t, "blah\nblah2\n12345678\n", string(data))
 }
 
 func TestBackup_ExecuteNoPassword(t *testing.T) {
+	tmp := t.TempDir()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/export")
 		assert.Equal(t, "GET", r.Method)
@@ -56,13 +56,14 @@ func TestBackup_ExecuteNoPassword(t *testing.T) {
 	cmd := BackupCommand{}
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp", "--file={{.SITE}}-test.export"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--path=" + tmp, "--file={{.SITE}}-test.export"})
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, "error response \"401 Unauthorized\", ensure you have set ADMIN_PASSWD and provided it to the command you're running: Unauthorized")
 }
 
 func TestBackup_ExecuteFailedStatus(t *testing.T) {
+	tmp := t.TempDir()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/export")
 		assert.Equal(t, "GET", r.Method)
@@ -75,7 +76,7 @@ func TestBackup_ExecuteFailedStatus(t *testing.T) {
 	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
 
 	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=/tmp", "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
+	_, err := p.ParseArgs([]string{"--site=remark", "--path=" + tmp, "--file={{.SITE}}-test.export", "--admin-passwd=secret"})
 	require.NoError(t, err)
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, `error response "400 Bad Request", some error`)

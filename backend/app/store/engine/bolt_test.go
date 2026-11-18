@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"os"
+	"path/filepath"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -13,8 +13,6 @@ import (
 
 	"github.com/umputun/remark42/backend/app/store"
 )
-
-var testDB = "/tmp/test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
 	var b, teardown = prep(t)
@@ -222,13 +220,11 @@ func TestBoltDB_FindForUser(t *testing.T) {
 }
 
 func TestBoltDB_FindForUserPagination(t *testing.T) {
-	_ = os.Remove(testDB)
-	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDB, SiteID: "radio-t"})
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
 	require.NoError(t, err)
 
 	defer func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDB)
 	}()
 
 	c := store.Comment{
@@ -996,9 +992,7 @@ func TestBoltDB_DoubleClose(t *testing.T) {
 
 // makes new boltdb, put two records
 func prep(t *testing.T) (b *BoltDB, teardown func()) {
-	_ = os.Remove(testDB)
-
-	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDB, SiteID: "radio-t"})
+	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
 	assert.NoError(t, err)
 	b = boltStore
 
@@ -1024,7 +1018,6 @@ func prep(t *testing.T) (b *BoltDB, teardown func()) {
 
 	teardown = func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDB)
 	}
 	return b, teardown
 }
