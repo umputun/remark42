@@ -36,8 +36,8 @@ type Image struct {
 	ImageService  *image.Service
 	// Transport, if non-nil, is used as-is for outbound image fetches and is the
 	// caller's responsibility to make SSRF-safe. When nil, safehttp.Transport()
-	// is installed, which blocks dialing any private/reserved IP and resolves
-	// hostnames to defeat DNS rebinding.
+	// is installed, which refuses any private/reserved target, also through an
+	// outbound proxy, and resolves hostnames to defeat DNS rebinding.
 	Transport http.RoundTripper
 }
 
