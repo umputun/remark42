@@ -123,14 +123,14 @@ func (s *Rest) Run(address string, port int) {
 		httpHandler = s.routes()
 	case Static:
 		log.Printf("[INFO] activate https server in 'static' mode on %s:%d", address, s.SSLConfig.Port)
-		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes())
-		httpHandler, httpName = s.httpToHTTPSRouter(), "http redirect"
+		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes(), nil)
+		httpHandler, httpName = s.httpRouter(nil), "http redirect"
 		certFile, keyFile = s.SSLConfig.Cert, s.SSLConfig.Key
 	case Auto:
 		log.Printf("[INFO] activate https server in 'auto' mode on %s:%d", address, s.SSLConfig.Port)
 		m := s.makeAutocertManager()
-		httpsServer = s.makeHTTPSAutocertServer(address, s.SSLConfig.Port, s.routes(), m)
-		httpHandler, httpName = s.httpChallengeRouter(m), "http challenge"
+		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes(), m)
+		httpHandler, httpName = s.httpRouter(m), "http challenge"
 	default:
 		return
 	}

@@ -1313,6 +1313,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	err = json.Unmarshal(body, &subscribeRequest)
 	assert.NoError(t, err)
 	assert.Equal(t, "botUsername", subscribeRequest.Bot)
+	assert.Regexp(t, "^[0-9a-f]{40}$", subscribeRequest.Token, "the bot is handed a 40 hex character token")
 
 	// verify telegram, unsuccessfully because of not verified
 	req, err = http.NewRequest(http.MethodGet, ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), http.NoBody)

@@ -43,23 +43,17 @@ type Image struct {
 
 // Convert img src links to proxied links depends on enabled options
 func (p Image) Convert(commentHTML string) string {
-	if p.CacheExternal {
-		imgs, err := p.extract(commentHTML, func(img string) bool { return !strings.HasPrefix(img, p.RemarkURL) })
-		if err != nil {
-			return commentHTML
-		}
-		commentHTML = p.replace(commentHTML, imgs)
+	toHTTPS := p.HTTP2HTTPS && !strings.HasPrefix(p.RemarkURL, "http://")
+	if !p.CacheExternal && !toHTTPS {
+		return commentHTML
 	}
-
-	if p.HTTP2HTTPS && !strings.HasPrefix(p.RemarkURL, "http://") {
-		imgs, err := p.extract(commentHTML, func(img string) bool { return strings.HasPrefix(img, "http://") })
-		if err != nil {
-			return commentHTML
-		}
-		commentHTML = p.replace(commentHTML, imgs)
+	imgs, err := p.extract(commentHTML, func(img string) bool {
+		return (p.CacheExternal && !strings.HasPrefix(img, p.RemarkURL)) || (toHTTPS && strings.HasPrefix(img, "http://"))
+	})
+	if err != nil {
+		return commentHTML
 	}
-
-	return commentHTML
+	return p.replace(commentHTML, imgs)
 }
 
 // extract gets all images matching predicate and return list of src
