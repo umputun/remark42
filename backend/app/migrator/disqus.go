@@ -60,13 +60,13 @@ func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
 	pictures := map[string]string{}
 	if d.Avatars != nil || d.avatars != nil {
 		// the export is read twice, avatars first, so the site keeps its comments while they are fetched
-		rs, cleanup, e := seekable(r)
+		rs, start, cleanup, e := seekable(r)
 		if e != nil {
 			return 0, e
 		}
 		defer cleanup()
 		pictures = d.fetchAvatars(rs)
-		if _, e = rs.Seek(0, io.SeekStart); e != nil {
+		if _, e = rs.Seek(start, io.SeekStart); e != nil {
 			return 0, fmt.Errorf("can't rewind disqus export: %w", e)
 		}
 		r = rs

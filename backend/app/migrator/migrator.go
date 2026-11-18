@@ -133,27 +133,29 @@ func ImportComments(p ImportParams) (int, error) {
 	return importer.Import(fh, p.SiteID)
 }
 
-// seekable returns r as an io.ReadSeeker, copying it to a temporary file when it can't seek itself.
-// The returned cleanup removes that file.
-func seekable(r io.Reader) (io.ReadSeeker, func(), error) {
-	if rs, ok := r.(io.ReadSeeker); ok {
-		return rs, func() {}, nil
+// seekable returns r as an io.ReadSeeker together with the offset to rewind it to. A reader that can't seek,
+// including a pipe opened as *os.File, is copied to a temporary file first; the returned cleanup removes that file.
+func seekable(r io.Reader) (rs io.ReadSeeker, start int64, cleanup func(), err error) {
+	if in, ok := r.(io.ReadSeeker); ok {
+		if pos, e := in.Seek(0, io.SeekCurrent); e == nil {
+			return in, pos, func() {}, nil
+		}
 	}
 	fh, err := os.CreateTemp("", "remark42-import-*")
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't make temp file for import: %w", err)
+		return nil, 0, nil, fmt.Errorf("can't make temp file for import: %w", err)
 	}
-	cleanup := func() {
+	cleanup = func() {
 		_ = fh.Close()
 		_ = os.Remove(fh.Name()) //nolint:gosec // the name comes from os.CreateTemp
 	}
 	if _, err = io.Copy(fh, r); err != nil {
 		cleanup()
-		return nil, nil, fmt.Errorf("can't copy import to temp file: %w", err)
+		return nil, 0, nil, fmt.Errorf("can't copy import to temp file: %w", err)
 	}
 	if _, err = fh.Seek(0, io.SeekStart); err != nil {
 		cleanup()
-		return nil, nil, fmt.Errorf("can't rewind temp file: %w", err)
+		return nil, 0, nil, fmt.Errorf("can't rewind temp file: %w", err)
 	}
-	return fh, cleanup, nil
+	return fh, 0, cleanup, nil
 }

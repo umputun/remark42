@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -203,6 +204,57 @@ func TestDisqus_ImportAvatarsDisqusDown(t *testing.T) {
 	assert.Equal(t, 7, size)
 	assert.Equal(t, 4, f.requested("u5"))
 	assert.Zero(t, f.requested("u6"), "after five users in a row disqus failed for, the rest are not tried")
+}
+
+func TestDisqus_ImportAvatarsReaders(t *testing.T) {
+	exportOf := func(id string) string {
+		return `<disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals">` +
+			`<thread dsq:id="t1"><link>https://example.com/p1</link><createdAt>2020-01-01T09:00:00Z</createdAt></thread>` +
+			`<post dsq:id="` + id + `"><message>m</message><createdAt>2020-01-01T10:00:00Z</createdAt><author><name>A</name>` +
+			`<username>alice</username></author><thread dsq:id="t1"/></post></disqus>`
+	}
+	prefix, export := exportOf("c0"), exportOf("c1") // the reader starts after prefix, so c0 is not imported
+
+	tbl := []struct {
+		name   string
+		reader func(t *testing.T) io.Reader
+	}{
+		{name: "pipe opened as a file", reader: func(t *testing.T) io.Reader {
+			pr, pw, err := os.Pipe()
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = pr.Close() })
+			go func() {
+				_, _ = pw.WriteString(export)
+				_ = pw.Close()
+			}()
+			return pr
+		}},
+		{name: "file positioned past a prefix", reader: func(t *testing.T) io.Reader {
+			fh, err := os.Create(filepath.Join(t.TempDir(), "export.xml"))
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = fh.Close() })
+			_, err = fh.WriteString(prefix + export)
+			require.NoError(t, err)
+			_, err = fh.Seek(int64(len(prefix)), io.SeekStart)
+			require.NoError(t, err)
+			return fh
+		}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFakeDisqus(t)
+			alice := testPNG(t, color.RGBA{R: 255, A: 255})
+			f.images["alice"] = alice
+			ds := newAvatarTestStore(t)
+			avatars, proxy, _ := testAvatars(t, f)
+			size, err := (&Disqus{DataStore: ds, avatars: avatars}).Import(tt.reader(t), "test")
+			require.NoError(t, err)
+			assert.Equal(t, 1, size)
+			c, err := ds.Get(store.Locator{SiteID: "test", URL: "https://example.com/p1"}, "c1", adminUser)
+			require.NoError(t, err)
+			assert.Equal(t, alice, served(t, proxy, c.User.Picture))
+		})
+	}
 }
 
 func TestDisqus_ImportWithoutAvatars(t *testing.T) {
