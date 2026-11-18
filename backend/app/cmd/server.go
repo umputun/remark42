@@ -693,11 +693,15 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 	}
 
 	exporter := &migrator.Native{DataStore: dataService}
+	disqusImporter := &migrator.Disqus{DataStore: dataService}
+	if avatarProxy := authenticator.AvatarProxy(); avatarProxy != nil {
+		disqusImporter.Avatars = avatarProxy // imported avatars are stored and served the same way as the ones from login
+	}
 
 	migr := &api.Migrator{
 		Cache:             loadingCache,
 		NativeImporter:    &migrator.Native{DataStore: dataService},
-		DisqusImporter:    &migrator.Disqus{DataStore: dataService},
+		DisqusImporter:    disqusImporter,
 		WordPressImporter: &migrator.WordPress{DataStore: dataService, DisableFancyTextFormatting: s.DisableFancyTextFormatting},
 		CommentoImporter:  &migrator.Commento{DataStore: dataService},
 		NativeExporter:    &migrator.Native{DataStore: dataService},
