@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -345,20 +346,19 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 	textarea := form.Locator("textarea")
 
 	t.Run("a failed upload leaves the text as it was", func(t *testing.T) {
+		// held until the in-flight state has been seen: without it the placeholder comes and
+		// goes inside one frame, and "the text is unchanged" would hold just as well for an
+		// upload that never started
+		release := make(chan struct{})
+		var releaseOnce sync.Once
+		unblock := func() { releaseOnce.Do(func() { close(release) }) }
 		require.NoError(t, page.Route("**/api/v1/picture**", func(route playwright.Route) {
-			// held briefly so the in-flight state is observable: without it the placeholder
-			// comes and goes inside one frame, and "the text is unchanged" would hold just as
-			// well for an upload that never started
-			time.Sleep(300 * time.Millisecond)
-			if err := route.Fulfill(playwright.RouteFulfillOptions{
-				Status:      playwright.Int(http.StatusInternalServerError),
-				ContentType: new("application/json"),
-				Body:        new(`{"code":0,"details":"upload failed","error":"nope"}`),
-			}); err != nil {
-				t.Errorf("fulfill failed upload response: %v", err)
-			}
+			<-release
+			fulfillJSON(t, route, http.StatusInternalServerError, `{"code":0,"details":"upload failed","error":"nope"}`)
 		}))
 		defer func() { require.NoError(t, page.Unroute("**/api/v1/picture**")) }()
+		// on a failure below the handler would otherwise hold the intercepted request forever
+		defer unblock()
 
 		written := "before the upload " + runID
 		require.NoError(t, textarea.Fill(written))
@@ -368,6 +368,7 @@ func TestComment_ImageUploadRendersAndRecovers(t *testing.T) {
 			v, verr := textarea.InputValue()
 			return verr == nil && v != written
 		})
+		unblock()
 
 		waitVisible(t, form.Locator(`p[role="alert"]`))
 		eventually(t, waitTimeout, "the upload placeholder was left in the text after the failure", func() bool {
