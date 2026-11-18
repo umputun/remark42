@@ -16,6 +16,10 @@
 				"href": "/configuration/frontend/"
 			},
 			{
+				"title": "API for Single-Page Application",
+				"href": "/configuration/frontend/spa/"
+			},
+			{
 				"title": "Backend configuration",
 				"href": "/configuration/parameters/"
 			},
