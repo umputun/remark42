@@ -10,13 +10,16 @@
 # sources in this repository, and leaving it out let an edited stub run behind a stack the guard
 # had just accepted.
 #
+# .dockerignore decides what goes into the image, and the compose files configure the instances
+# the suite talks to, so an edit to either is a different stack too.
+#
 # Tracked content is covered exactly; an untracked file changes the digest when it appears,
 # by name, but later edits to it do not.
 set -eu
 
 cd "$(dirname "$0")/.."
 
-sources="backend frontend Dockerfile docker-init.sh e2e/telegramstub"
+sources="backend frontend Dockerfile docker-init.sh .dockerignore compose-e2e-test.yml compose-e2e-coverage.yml e2e/telegramstub"
 
 if command -v sha256sum >/dev/null 2>&1; then
 	sha256=sha256sum

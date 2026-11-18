@@ -134,7 +134,7 @@ A failing test also logs whatever the browser wrote to its console, which is whe
 
 The suite refuses a running stack that was not brought up from the sources under test. Every checkout builds the image tag the compose file names, so a stack from another worktree, or from this one before an edit, answers on these ports and passes every readiness probe while serving code nobody is looking at.
 
-`e2e/stamp.sh` digests the content of `backend`, `frontend`, `Dockerfile`, `docker-init.sh` and `e2e/telegramstub`, which is the second image compose builds from sources here; compose puts it in the container's environment and the suite reads it back. It digests content and not `HEAD`, so a commit touching only the suite does not invalidate a stack. `make e2e-up` stamps the same way, so a stack started by hand is accepted. On a mismatch the failure says to run `make e2e-down`.
+`e2e/stamp.sh` digests the content of `backend`, `frontend`, `Dockerfile`, `docker-init.sh`, `.dockerignore`, the two e2e compose files and `e2e/telegramstub`, which is the second image compose builds from sources here; compose puts it in the container's environment and the suite reads it back. It digests content and not `HEAD`, so a commit touching only the suite does not invalidate a stack. `make e2e-up` stamps the same way, so a stack started by hand is accepted. On a mismatch the failure says to run `make e2e-down`.
 
 Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --build-tags=e2e --config ../backend/.golangci.yml`. CI runs both, and neither is covered by a plain `go vet ./...` because of the build tag.
 
