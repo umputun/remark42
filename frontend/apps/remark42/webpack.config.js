@@ -175,19 +175,7 @@ module.exports = (_, { mode, analyze }) => {
     ],
   };
 
-  const urlRule = {
-    test: /\.(png|jpg|jpeg|gif|svg)$/,
-    exclude: /node_modules/,
-    use: {
-      loader: 'file-loader',
-      options: {
-        // no publicPath here, so the emitted url goes through the runtime one above
-        name: '[name].[ext]',
-      },
-    },
-  };
-
-  const rules = [cssRule, cssModulesRule, urlRule];
+  const rules = [cssRule, cssModulesRule];
 
   const devServer = {
     port: PORT,

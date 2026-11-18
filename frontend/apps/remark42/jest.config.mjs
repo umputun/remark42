@@ -26,7 +26,6 @@ const config = {
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
-    '\\.svg': '<rootDir>/app/__stubs__/svg.tsx',
   },
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',

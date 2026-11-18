@@ -1,7 +1,8 @@
 import clsx from 'clsx';
 import { h } from 'preact';
 
-import ghostIconUrl from './assets/ghost.svg';
+import { webAssetUrl } from 'common/web-asset';
+
 import styles from './avatar.module.css';
 
 type Props = {
@@ -9,7 +10,7 @@ type Props = {
 };
 
 export function Avatar({ url }: Props) {
-  const avatarUrl = url || ghostIconUrl;
+  const avatarUrl = url || webAssetUrl('ghost.svg');
 
   return (
     // eslint-disable-next-line jsx-a11y/alt-text
