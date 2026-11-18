@@ -560,7 +560,7 @@ func TestRest_FindUserComments(t *testing.T) {
 		err = json.Unmarshal([]byte(res), &resp)
 		assert.NoError(t, err)
 		require.Equal(t, 3, len(resp.Comments), "should have 3 comments")
-		assert.Equal(t, 4, resp.Count, "should have 3+1 count") // TODO: fix as we start to skip deleted
+		assert.Equal(t, 3, resp.Count, "deleted comment is not counted")
 
 		// user comment sorted with -time
 		assert.True(t, resp.Comments[0].Timestamp.After(resp.Comments[1].Timestamp))
@@ -579,10 +579,11 @@ func TestRest_FindUserComments(t *testing.T) {
 		err = json.Unmarshal([]byte(res), &resp)
 		assert.NoError(t, err)
 		require.Equal(t, 2, len(resp.Comments), "should have 2 comments due to the limit")
-		assert.Equal(t, 4, resp.Count, "should have 4 count")
+		assert.Equal(t, 3, resp.Count, "deleted comment is not counted")
 
-		assert.Equal(t, "https://radio-t.com/blah3", resp.Comments[0].Locator.URL)
-		assert.Equal(t, "https://radio-t.com/blah2", resp.Comments[1].Locator.URL)
+		// the deleted comment is the newest and takes no place in the page
+		assert.Equal(t, "https://radio-t.com/blah2", resp.Comments[0].Locator.URL)
+		assert.Equal(t, "https://radio-t.com/blah1", resp.Comments[1].Locator.URL)
 	}
 }
 

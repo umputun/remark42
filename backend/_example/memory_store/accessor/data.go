@@ -107,9 +107,9 @@ func (m *MemData) Find(req engine.FindRequest) (comments []store.Comment, err er
 		}
 		return comments, nil
 
-	case req.Locator.SiteID != "" && req.UserID != "": // find comments for user
+	case req.Locator.SiteID != "" && req.UserID != "": // find comments for user, deleted ones excluded as in Count
 		comments = m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
-			return c.User.ID == req.UserID
+			return c.User.ID == req.UserID && !c.Deleted
 		})
 	}
 
