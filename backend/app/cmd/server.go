@@ -1458,7 +1458,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 				for _, a := range s.RestrictedNames {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)
-						log.Printf("[INFO] blocked %+v, attempt to impersonate (restricted names)", c.User)
+						log.Printf("[INFO] blocked %s (%s), attempt to impersonate (restricted names)", c.User.ID, store.MaskForLog(c.User.Name))
 						break
 					}
 				}
