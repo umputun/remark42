@@ -1,8 +1,12 @@
 package service
 
 import (
+	"fmt"
+	"os"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -22,6 +26,55 @@ type StaticRestrictedWordsLister struct {
 // List provides restricted words in comments (ignores siteID)
 func (l StaticRestrictedWordsLister) List(_ string) (restricted []string, err error) {
 	return l.Words, nil
+}
+
+// FileRestrictedWordsLister provides restricted words for every site from a file, one pattern per line,
+// added to Words. Empty lines and lines starting with # are skipped. The file is read again when its
+// modification time or size changes; if it can't be read, the last successfully read patterns stay in use.
+type FileRestrictedWordsLister struct {
+	Path  string
+	Words []string
+
+	mu    sync.Mutex
+	mtime time.Time
+	size  int64
+	file  []string
+}
+
+// List provides restricted words from the file and Words (ignores siteID)
+func (l *FileRestrictedWordsLister) List(_ string) (restricted []string, err error) {
+	if err := l.Load(); err != nil {
+		log.Printf("[WARN] restricted words file %s: %v", l.Path, err)
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Concat(l.Words, l.file), nil
+}
+
+// Load reads the file if its modification time or size changed since the last read
+func (l *FileRestrictedWordsLister) Load() error {
+	fi, err := os.Stat(l.Path)
+	if err != nil {
+		return fmt.Errorf("failed to stat: %w", err)
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if fi.ModTime().Equal(l.mtime) && fi.Size() == l.size {
+		return nil
+	}
+	data, err := os.ReadFile(l.Path)
+	if err != nil {
+		return fmt.Errorf("failed to read: %w", err)
+	}
+	var words []string
+	// editors that save "UTF-8 with BOM" put U+FEFF before the first line, which TrimSpace keeps
+	for line := range strings.Lines(strings.TrimPrefix(string(data), "\ufeff")) {
+		if w := strings.TrimSpace(line); w != "" && !strings.HasPrefix(w, "#") {
+			words = append(words, w)
+		}
+	}
+	l.mtime, l.size, l.file = fi.ModTime(), fi.Size(), words
+	return nil
 }
 
 // RestrictedWordsMatcher matches comment text against restricted words

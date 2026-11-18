@@ -160,6 +160,7 @@ services:
 | critical-score                 | CRITICAL_SCORE                 | `-10`                   | critical score threshold                                 |
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
 | restricted-words               | RESTRICTED_WORDS               |                         | words banned in comments (can use `*`), _multi_          |
+| restricted-words-file          | RESTRICTED_WORDS_FILE          |                         | file with words banned in comments, one per line (can use `*`, lines starting with `#` are skipped), added to `restricted-words` and re-read when changed |
 | restricted-names               | RESTRICTED_NAMES               |                         | names prohibited to use by the user, _multi_             |
 | edit-time                      | EDIT_TIME                      | `5m`                    | edit window; `0` hides editing in the widget and disables staged image cleanup, but the API does not limit edit time |
 | admin-edit                     | ADMIN_EDIT                     | `false`                 | unlimited edit for admins                                |

@@ -401,6 +401,16 @@ func TestServerApp_Failed(t *testing.T) {
 	assert.EqualError(t, err, `invalid --trusted-proxy: invalid trusted proxy "nonsense"`)
 	t.Log(err)
 
+	// unreadable restricted words file fails fast, before any resource is created
+	opts = ServerCommand{}
+	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p = flags.NewParser(&opts, flags.Default)
+	_, err = p.ParseArgs([]string{"--backup=/tmp", "--restricted-words-file=" + filepath.Join(t.TempDir(), "missing.txt")})
+	assert.NoError(t, err)
+	_, err = opts.newServerApp(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --restricted-words-file: failed to stat")
+
 	// wrong store type
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})

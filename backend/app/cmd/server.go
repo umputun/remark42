@@ -86,6 +86,7 @@ type ServerCommand struct {
 	UpdateLimit                float64       `long:"update-limit" env:"UPDATE_LIMIT" default:"0.5" description:"updates/sec limit"`
 	TrustedProxies             []string      `long:"trusted-proxy" env:"TRUSTED_PROXY" description:"reverse-proxy networks (CIDR or IP) trusted to set the client IP; if unset, trusted from any client (see docs)" env-delim:","`
 	RestrictedWords            []string      `long:"restricted-words" env:"RESTRICTED_WORDS" description:"words prohibited to use in comments" env-delim:","`
+	RestrictedWordsFile        string        `long:"restricted-words-file" env:"RESTRICTED_WORDS_FILE" description:"file with words prohibited to use in comments, one per line, re-read on change"`
 	RestrictedNames            []string      `long:"restricted-names" env:"RESTRICTED_NAMES" description:"names prohibited to use by user" env-delim:","`
 	EnableEmoji                bool          `long:"emoji" env:"EMOJI" description:"enable emoji"`
 	SimpleView                 bool          `long:"simple-view" env:"SIMPLE_VIEW" description:"minimal comment editor mode"`
@@ -621,6 +622,16 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		log.Printf("[WARN] --trusted-proxy has a catch-all (0.0.0.0/0 or ::/0): forwarding headers are trusted from any client, re-opening the spoofing bypass; scope it to your proxy network")
 	}
 
+	// read the restricted words file up front so a wrong path fails before any resource is allocated
+	var restrictedWords service.RestrictedWordsLister = service.StaticRestrictedWordsLister{Words: s.RestrictedWords}
+	if s.RestrictedWordsFile != "" {
+		fileWords := &service.FileRestrictedWordsLister{Path: s.RestrictedWordsFile, Words: s.RestrictedWords}
+		if err = fileWords.Load(); err != nil {
+			return nil, fmt.Errorf("invalid --restricted-words-file: %w", err)
+		}
+		restrictedWords = fileWords
+	}
+
 	storeEngine, err := s.makeDataStore()
 	if err != nil {
 		return nil, fmt.Errorf("failed to make data store engine: %w", err)
@@ -648,7 +659,7 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		PositiveScore:          s.PositiveScore,
 		ImageService:           imageService,
 		TitleExtractor:         service.NewTitleExtractor(http.Client{Timeout: time.Second * 5, Transport: safehttp.Transport()}, s.getAllowedDomains()),
-		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: s.RestrictedWords}),
+		RestrictedWordsMatcher: service.NewRestrictedWordsMatcher(restrictedWords),
 	}
 	dataService.RestrictSameIPVotes.Enabled = s.RestrictVoteIP
 	dataService.RestrictSameIPVotes.Duration = s.DurationVoteIP
