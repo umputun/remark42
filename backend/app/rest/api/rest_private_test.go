@@ -1574,6 +1574,118 @@ func getUserAllData(t *testing.T, url string) (res struct {
 	return res
 }
 
+func TestRest_UserAllDataDetails(t *testing.T) {
+	const info = `{"info": {"name":"developer one","id":"provider1_dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}`
+	type details struct {
+		Email    string `json:"email"`
+		Telegram string `json:"telegram"`
+	}
+
+	tbl := []struct {
+		name            string
+		email, telegram string
+		comments        int
+		body            string // exact export, checked for the exports without comments
+		details         *details
+	}{
+		{name: "email", email: "good@example.com", details: &details{Email: "good@example.com"},
+			body: info + `, "details": {"email":"good@example.com"}, "comments":[]}`},
+		{name: "telegram", telegram: "good_telegram", details: &details{Telegram: "good_telegram"},
+			body: info + `, "details": {"telegram":"good_telegram"}, "comments":[]}`},
+		{name: "email and telegram", email: "good@example.com", telegram: "good_telegram",
+			details: &details{Email: "good@example.com", Telegram: "good_telegram"},
+			body:    info + `, "details": {"email":"good@example.com","telegram":"good_telegram"}, "comments":[]}`},
+		{name: "email with comments", email: "good@example.com", comments: 2, details: &details{Email: "good@example.com"}},
+		{name: "nothing stored", body: info + `, "comments":[]}`},
+		{name: "nothing stored with comments", comments: 2},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			if tt.email != "" {
+				_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", tt.email)
+				require.NoError(t, err)
+			}
+			if tt.telegram != "" {
+				_, err := srv.DataService.SetUserTelegram("remark42", "provider1_dev", tt.telegram)
+				require.NoError(t, err)
+			}
+			// details of another user never get into the export
+			_, err := srv.DataService.SetUserEmail("remark42", "provider1_other", "other@example.com")
+			require.NoError(t, err)
+			c := store.Comment{User: store.User{ID: "provider1_dev", Name: "user name 1"}, Text: "test",
+				Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+			for i := range tt.comments {
+				c.ID = fmt.Sprintf("id-%03d", i)
+				_, err = srv.DataService.Create(c)
+				require.NoError(t, err)
+			}
+
+			code, body := getUserAllDataBody(t, ts.URL)
+			require.Equal(t, http.StatusOK, code)
+			if tt.body != "" {
+				assert.Equal(t, tt.body, string(body))
+			}
+			assert.NotContains(t, string(body), "other@example.com")
+
+			parsed := struct {
+				Info     store.User      `json:"info"`
+				Details  *details        `json:"details"`
+				Comments []store.Comment `json:"comments"`
+			}{}
+			require.NoError(t, json.Unmarshal(body, &parsed), "export is valid JSON")
+			assert.Equal(t, "provider1_dev", parsed.Info.ID)
+			assert.Equal(t, tt.details, parsed.Details, "stored notification details are exported, the key is absent without them")
+			assert.Len(t, parsed.Comments, tt.comments)
+		})
+	}
+}
+
+func TestRest_UserAllDataDetailsError(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.privRest.dataService = failingDetailsStore{privStore: srv.privRest.dataService}
+
+	code, body := getUserAllDataBody(t, ts.URL)
+	assert.Equal(t, http.StatusInternalServerError, code)
+	assert.JSONEq(t, `{"code":0,"details":"can't get user details","error":"can't read telegram: no telegram today"}`, string(body),
+		"a failed read of the details is a JSON error, not an export without them")
+}
+
+// failingDetailsStore is a store unable to read the user's telegram
+type failingDetailsStore struct{ privStore }
+
+func (failingDetailsStore) GetUserTelegram(string, string) (string, error) {
+	return "", fmt.Errorf("no telegram today")
+}
+
+// getUserAllDataBody requests /userdata as the dev user and returns the status with the body, ungzipped for an export
+func getUserAllDataBody(t *testing.T, url string) (code int, body []byte) {
+	t.Helper()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url+"/api/v1/userdata?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var reader io.Reader = resp.Body
+	if resp.Header.Get("Content-Type") == "application/gzip" {
+		ungzReader, e := gzip.NewReader(resp.Body)
+		require.NoError(t, e)
+		defer ungzReader.Close()
+		reader = ungzReader
+	}
+	body, err = io.ReadAll(reader)
+	require.NoError(t, err, "body is readable to the end")
+	return resp.StatusCode, body
+}
+
 func TestRest_DeleteMe(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()

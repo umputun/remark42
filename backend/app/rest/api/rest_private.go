@@ -642,7 +642,8 @@ const (
 	maxUserDataComments = 10000
 )
 
-// GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
+// GET /userdata?site=siteID - exports all data about the user as a json with user info, the stored
+// notification details (email and telegram, if any) and list of all comments
 func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	user := rest.MustGetUserInfo(r)
@@ -662,6 +663,13 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		page = nil // a user without comments still gets an export with their info
 	}
 
+	// details are read before anything is written as well, for the same reason
+	detailsB, err := s.userDetailsJSON(siteID, user.ID)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user details", rest.ErrInternal)
+		return
+	}
+
 	exportFile := fmt.Sprintf("%s-%s-%s.json.gz", siteID, user.ID, time.Now().Format("20060102"))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
@@ -677,7 +685,13 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 		return true
 	}
-	if !write([]byte(`{"info": `)) || !write(userB) || !write([]byte(`, "comments":[`)) {
+	if !write([]byte(`{"info": `)) || !write(userB) {
+		return
+	}
+	if detailsB != nil && (!write([]byte(`, "details": `)) || !write(detailsB)) {
+		return
+	}
+	if !write([]byte(`, "comments":[`)) {
 		return
 	}
 	for exported, skip := 0, 0; len(page) > 0; {
@@ -710,6 +724,26 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	if err = gzWriter.Close(); err != nil {
 		log.Printf("[WARN] can't close gzip writer, %v", err)
 	}
+}
+
+// userDetailsJSON returns the notification details stored for the user, email and telegram, as a json object.
+// The result is nil for a user with none of them, so such an export has no "details" key.
+func (s *private) userDetailsJSON(siteID, userID string) ([]byte, error) {
+	var details struct {
+		Email    string `json:"email,omitempty"`
+		Telegram string `json:"telegram,omitempty"`
+	}
+	var err error
+	if details.Email, err = s.dataService.GetUserEmail(siteID, userID); err != nil {
+		return nil, fmt.Errorf("can't read email: %w", err)
+	}
+	if details.Telegram, err = s.dataService.GetUserTelegram(siteID, userID); err != nil {
+		return nil, fmt.Errorf("can't read telegram: %w", err)
+	}
+	if details.Email == "" && details.Telegram == "" {
+		return nil, nil
+	}
+	return json.Marshal(details)
 }
 
 // isNoUserComments reports whether err means the user has no comments. The bolt store returns the
