@@ -160,7 +160,7 @@ func (s *Service) SubmitVerification(req VerificationRequest) {
 	select {
 	case s.verificationQueue <- req:
 	default:
-		log.Printf("[WARN] can't send verification to queue, %s for %s", req.User, req.Email)
+		log.Printf("[WARN] can't send verification to queue for %s", req.User)
 	}
 }
 
@@ -227,7 +227,8 @@ func (s *Service) deliver(send func(Destination) error) {
 	for _, dest := range s.destinations {
 		wg.Go(func() {
 			if err := send(dest); err != nil {
-				log.Printf("[WARN] failed to send to %s, %s", dest, err)
+				// the error can name the recipient, an smtp server's reply often does
+				log.Printf("[WARN] failed to send to %s, %s", dest, store.MaskForLog(err.Error()))
 			}
 		})
 	}

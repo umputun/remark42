@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/v2/token"
+	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
@@ -356,6 +358,30 @@ func Test_validEmailAuth(t *testing.T) {
 			assert.NoError(t, resp.Body.Close())
 		})
 	}
+}
+
+// regression: a rejected login printed the user, address or site as typed, which can be an email address
+func Test_validEmailAuthLogHidesEmail(t *testing.T) {
+	logs := &lockedBuffer{}
+	lgr.Setup(lgr.Out(logs), lgr.Err(io.Discard))
+	t.Cleanup(func() { lgr.Setup() })
+
+	tbl := []struct{ name, query, want string }{
+		{"user", "site=remark42&address=a%40example.com&user=secret.person%40example.com", "suspicious user rejected: ********"},
+		{"address", "site=remark42&address=a%40example.com,secret.person%40example.com&user=someone",
+			`suspicious address rejected: mail: expected single address, got ",********"`},
+		{"site", "site=secret.person%40example.com&address=a%40example.com&user=someone", "suspicious site rejected: ********"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com/auth/email/login?"+tt.query, http.NoBody)
+			w := httptest.NewRecorder()
+			validEmailAuth()(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+			assert.Equal(t, http.StatusForbidden, w.Code)
+			assert.Contains(t, logs.String(), tt.want)
+		})
+	}
+	assert.NotContains(t, logs.String(), "secret.person")
 }
 
 // TestRest_matchSiteID reproduces the multi-tenant isolation gap in the matchSiteID
