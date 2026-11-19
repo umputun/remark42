@@ -222,6 +222,46 @@ func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 	})
 }
 
+// TestRest_FileServerDemoPageFromAssets covers a frontend build with no index.html, which is what
+// the bundler emits now that the demo page is a plain file among the assets: /web and /web/ have
+// to answer with that page, from a web root on disk and from the embedded frontend alike.
+func TestRest_FileServerDemoPageFromAssets(t *testing.T) {
+	want, err := fs.ReadFile(webassets.FS, "index.html")
+	require.NoError(t, err)
+	require.Contains(t, string(want), `id="remark42"`)
+
+	onDisk := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(onDisk, "iframe.html"), []byte("widget document"), 0o600))
+
+	tbl := []struct {
+		name     string
+		frontend fs.FS
+		webRoot  string
+	}{
+		{"embedded frontend", fstest.MapFS{"iframe.html": {Data: []byte("widget document")}}, filepath.Join(t.TempDir(), "absent")},
+		{"web root on disk", fstest.MapFS{}, onDisk},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			router := routegroup.New(http.NewServeMux())
+			addFileServer(router, tt.frontend, tt.webRoot, "test-version", "https://remark.example.com", "")
+			ts := httptest.NewServer(router)
+			defer ts.Close()
+
+			for _, path := range []string{"/web", "/web/", "/web/index.html"} {
+				body, code := get(t, ts.URL+path)
+				assert.Equal(t, http.StatusOK, code, path)
+				assert.Equal(t, string(want), body, path)
+			}
+
+			body, code := get(t, ts.URL+"/web/iframe.html")
+			assert.Equal(t, http.StatusOK, code)
+			assert.Equal(t, "widget document", body, "the build's own files still come first")
+		})
+	}
+}
+
 // TestRest_FileServerRoutesEmbedded drives the whole router the released binary runs: no web root
 // on disk, and the frontend read from WebFS. It is what pins the web/ prefix routes() strips, which
 // a test calling addFileServer directly cannot see.

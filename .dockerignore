@@ -27,7 +27,7 @@ backend/app/cmd/var
 # the frontend build stage supplies these; the committed placeholder has to stay, because
 # a SKIP_FRONTEND_BUILD image has nothing else to satisfy the go:embed with
 backend/app/cmd/web
-!backend/app/cmd/web/index.html
+!backend/app/cmd/web/placeholder.txt
 
 # binaries built by hand in the tree. the images build their own, and a stale one here is both
 # dead weight and a chance of being copied over the real thing

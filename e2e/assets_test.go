@@ -30,7 +30,7 @@ func TestAssets_InstanceURLIsFilledIn(t *testing.T) {
 	require.NoError(t, err)
 
 	// every file type the distributions rewrite, not only the one the widget happens to load
-	for _, name := range []string{"embed.mjs", "counter.mjs", "last-comments.mjs", "index.html"} {
+	for _, name := range []string{"embed.mjs", "counter.mjs", "last-comments.mjs", "index.html", "comments.html"} {
 		status, body := pageFetch(t, page, "GET", baseURL+"/web/"+name, nil)
 		require.Equal(t, 200, status, name)
 		assert.NotContains(t, body, remarkURLPlaceholder, "%s still carries the marker", name)
