@@ -11,7 +11,7 @@ For a better experience while using our Service, we may require you to provide u
 
 ### How users may request deletion of that data
 
-To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. When the administrator opens the link in that email, your comments, your name on them, the pictures you uploaded, your notification addresses and your avatar are removed. Backups made before then keep this data until they are replaced; by default the ten most recent daily backups are kept.
+To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. When the administrator opens the link in that email, your comments, your name on them, your notification addresses and your avatar are removed. Backups made before then keep this data until they are replaced; by default the ten most recent daily backups are kept.
 
 ### Log Data
 
