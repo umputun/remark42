@@ -289,8 +289,7 @@ func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
 			// signed in, since the preview button is only offered to somebody who could post
 			signInAnon(t, page, frame, anonName("simpleview"))
 
-			// by element name and not by test id, which the production bundle strips, or by
-			// class, which it hashes
+			// by element name and not by class, which the production bundle hashes
 			toolbar := frame.Locator(`md-bold`).First()
 			preview := frame.Locator(`button:has-text("Preview")`).First()
 

@@ -79,8 +79,7 @@ func TestProfile_ListsTheReadersOwnCommentsAndPaginates(t *testing.T) {
 	require.Zero(t, absent, "the oldest comment is on the first page, so the page size is not being applied")
 
 	// the count beside the heading, which nothing else reads. The class is kept outside the css
-	// modules for this; the unit suite selects the same element by a data-testid the production
-	// bundle strips
+	// modules for this; the unit suite selects the same element by its data-testid
 	counter := overlay.Locator(".comments-counter").First()
 	waitVisible(t, counter)
 	eventually(t, waitTimeout, "the profile never showed the number of comments the reader has", func() bool {

@@ -207,7 +207,7 @@ Everything else runs in Chromium alone, for the same reason inverted: those test
 
 ## Selectors
 
-The production bundle strips `data-testid`, so tests use what ships: the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
+Tests use the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
 
 - `.auth` only exists while signed out, so waiting on it hangs after sign-in. `widget()` waits on the comment form, which is present either way.
 - The production build hashes every css-module class name to a short opaque id, so a component's own class is not something a test can hold. `role` is: the footer is `[role="contentinfo"]` and the edit countdown is `[role="timer"]`.

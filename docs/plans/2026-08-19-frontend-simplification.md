@@ -112,7 +112,6 @@ The list any no-bundler proposal has to answer for.
 - derives asset URLs. Since #2197 the public path is computed at runtime from the URL the bundle was
   loaded from, so a sub-path install resolves its own assets. A build with no bundler inherits that
   requirement instead of the fix, and #2224 is what it costs when it goes wrong
-- strips test-only attributes through a local plugin, which nothing else replicates
 - minifies
 - substitutes build-time constants. The instance URL was the one with teeth, and #2198 moved that
   substitution to serve time in the Go file server, so a build with no bundler inherits a working
@@ -144,9 +143,9 @@ Each of these can move the answer.
   elements understates them, because they mutate the textarea selection, emit their own events and
   lazily load data, so rendering the tags is not the same as the behaviour working
 - **A build-output acceptance matrix.** The generated pages, the catalogue and emoji payloads, the
-  copied images, the stripped attributes and the size budgets are today the emergent result of
-  separate bundler rules and plugins. Without a statement of what the output must contain, a
-  replacement cannot be checked against anything
+  copied images and the size budgets are today the emergent result of separate bundler rules and
+  plugins. Without a statement of what the output must contain, a replacement cannot be checked
+  against anything
 - **The integrator contract.** The documented `/web` URLs, the component loader, and the legacy `.js`
   names, which must stay module-free. `/web` is an overlay: a `--web-root` file wins and only a
   missing name falls through to the embedded assets, so moving a page between the two sources
