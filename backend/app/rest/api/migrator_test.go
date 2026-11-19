@@ -231,16 +231,16 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 	comments := commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
-	require.Equal(t, 3, comments.Info.Count)
-	require.Equal(t, 3, len(comments.Comments))
+	require.Equal(t, 2, comments.Info.Count, "the pingback is skipped")
+	require.Equal(t, 2, len(comments.Comments))
 
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url=https://realmenweardress.es/2010/07/do-you-rp/")
 	require.Equal(t, http.StatusOK, code)
 	comments = commentsWithInfo{}
 	err = json.Unmarshal([]byte(res), &comments)
 	require.NoError(t, err)
-	require.Equal(t, 3, comments.Info.Count)
-	require.Equal(t, 2, len(comments.Comments), "2 comments with 1 reply")
+	require.Equal(t, 2, comments.Info.Count)
+	require.Equal(t, 2, len(comments.Comments), "the reply to the skipped pingback is a top-level comment")
 }
 
 func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
@@ -277,7 +277,7 @@ func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
 	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after a failed import")
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://realmenweardress.es/2010/07/do-you-rp/")
 	require.Equal(t, http.StatusOK, code)
-	assert.Contains(t, res, `"count":3`, "comments read before the input broke off are imported")
+	assert.Contains(t, res, `"count":2`, "comments read before the input broke off are imported")
 }
 
 func TestMigrator_ImportFromCommento(t *testing.T) {
@@ -364,6 +364,57 @@ func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 7, comments.Info.Count)
 	require.Equal(t, 5, len(comments.Comments), "five comments with two replies")
+}
+
+func TestMigrator_ImportProvider(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	post := func(path, contentType string, body io.Reader) int {
+		req, err := http.NewRequest("POST", ts.URL+path, body)
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		req.Header.Set("Content-Type", contentType)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+	backup := `{"version":1} {"id":"c1","pid":"","text":"<p>test</p>","user":{"name":"dev","id":"dev"},` +
+		`"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"time":"2018-04-30T01:37:00Z"}`
+
+	assert.Equal(t, http.StatusBadRequest, post("/api/v1/admin/import?site=remark42&provider=wordpres", "", strings.NewReader(backup)))
+	assert.Equal(t, http.StatusBadRequest, post("/api/v1/admin/import/form?site=remark42&provider=wordpres",
+		"multipart/form-data; boundary=x", strings.NewReader("--x--")))
+
+	// the documented backup import names no provider and must keep working, on a site the rejections left free
+	assert.Equal(t, http.StatusAccepted, post("/api/v1/admin/import?site=remark42", "", strings.NewReader(backup)))
+	waitForMigrationCompletion(t, ts)
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &comments))
+	assert.Equal(t, 1, comments.Info.Count)
+}
+
+type panickingImporter struct{}
+
+func (panickingImporter) Import(io.Reader, string) (int, error) { panic("importer bug") }
+
+func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Migrator.DisqusImporter = panickingImporter{} })
+	defer teardown()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=disqus", strings.NewReader("<disqus/>"))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+	waitForMigrationCompletion(t, ts) // the site is released after the panic and the server still answers
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {

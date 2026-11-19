@@ -100,6 +100,26 @@ func TestNative_Import(t *testing.T) {
 	assert.Equal(t, false, b.IsVerified("radio-t", "user2"))
 }
 
+func TestNative_ImportWithMapperBadRecord(t *testing.T) {
+	mapper, err := NewURLMapper(strings.NewReader("https://radio-t.com* https://rdt.c*"))
+	require.NoError(t, err)
+	good := `{"id":"c1","pid":"","text":"text","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}`
+	tbl := []struct{ name, bad string }{
+		{"bad value", `{"id":"c2","text":"text","time":"not a time"}`},
+		{"truncated", `{"id":"c2","text":"te`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			b, teardown := prep(t)
+			defer teardown()
+			inp := `{"version":1}` + "\n" + good + "\n" + tt.bad + "\n" + strings.ReplaceAll(good, `"c1"`, `"c3"`) + "\n"
+			size, err := (&Native{DataStore: b}).Import(WithMapper(strings.NewReader(inp), mapper), "radio-t")
+			require.Error(t, err, "a record the mapper can't read fails the import")
+			assert.Equal(t, 1, size)
+		})
+	}
+}
+
 func TestNative_ImportWithMapper(t *testing.T) {
 	b, teardown := prep(t) // write 2 comments
 	defer teardown()

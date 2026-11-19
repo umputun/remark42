@@ -23,6 +23,7 @@ type WordPress struct {
 
 type wpItem struct {
 	Link     string      `xml:"link"`
+	Title    string      `xml:"title"`
 	Comments []wpComment `xml:"comment"`
 }
 
@@ -35,6 +36,7 @@ type wpComment struct {
 	Content     string `xml:"comment_content"`
 	Approved    string `xml:"comment_approved"`
 	PID         string `xml:"comment_parent"`
+	Type        string `xml:"comment_type"`
 }
 
 type wpTime struct {
@@ -55,7 +57,9 @@ func (w *wpTime) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return err
 }
 
-// Convert satisfies formatter.CommentConverter
+// Convert satisfies formatter.CommentConverter by unescaping HTML entities.
+//
+// Deprecated: the importer keeps entities and no longer calls Convert; it stays for existing callers.
 func (w *WordPress) Convert(text string) string {
 	return html.UnescapeString(text) // sanitize remains on comment create
 }
@@ -73,9 +77,10 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 		inpItems, failedItems       int
 		inpComments, failedComments int
 		rejectedComments            int // not approved
+		skippedComments             int // pingbacks, trackbacks and other non-comment types
 	}{}
 
-	commentFormatter := store.NewCommentFormatter(w)
+	commentFormatter := store.NewCommentFormatter()
 
 	rootSeen, wxrSeen := false, false // a WordPress export (WXR) is an rss document with <wp:wxr_version> in its channel
 	for {
@@ -116,25 +121,30 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 							stats.rejectedComments++
 							continue
 						}
+						if !wpReaderComment(comment.Type) {
+							stats.skippedComments++
+							continue
+						}
 
 						if comment.PID == "0" {
 							comment.PID = ""
 						}
 
 						c := store.Comment{
-							ID:      comment.ID,
-							Locator: store.Locator{URL: item.Link, SiteID: siteID},
+							ID:        comment.ID,
+							Locator:   store.Locator{URL: item.Link, SiteID: siteID},
+							PostTitle: item.Title,
 							User: store.User{
 								ID:   "wordpress_" + store.EncodeID(comment.Author),
 								Name: comment.Author,
 								IP:   comment.AuthorIP,
 							},
-							Text:      comment.Content,
+							Text:      commentFormatter.FormatHTML(wpCommentHTML(comment.Content, !w.DisableFancyTextFormatting)),
 							Timestamp: comment.Date.time,
 							ParentID:  comment.PID,
 							Imported:  true,
 						}
-						if err := emit(commentFormatter.Format(c, w.DisableFancyTextFormatting)); err != nil {
+						if err := emit(c); err != nil {
 							return err
 						}
 						stats.inpComments++
@@ -154,4 +164,15 @@ func (w *WordPress) convert(r io.Reader, siteID string, emit func(store.Comment)
 	}
 	log.Printf("[INFO] converted %d comments, %+v", stats.inpComments-stats.failedComments, stats)
 	return nil
+}
+
+// wpReaderComment reports whether a WordPress comment of the given type was written by a reader.
+// Pingbacks and trackbacks are notices about links from other sites, and plugins keep their own
+// records as comments too, such as WooCommerce order notes, which are not public.
+func wpReaderComment(commentType string) bool {
+	switch commentType {
+	case "", "comment", "review": // WordPress 5.5+ writes "comment", WooCommerce product reviews are "review"
+		return true
+	}
+	return false
 }

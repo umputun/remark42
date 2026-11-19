@@ -18,9 +18,15 @@ The import also fetches each commenter's avatar from Disqus and stores it with t
 2. Move this file to your Remark42 host within `./var`
 3. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 import -p wordpress -f /srv/var/{wordpress-export-name}.xml -s {your site ID}`
 
+Only approved comments are imported. Pingbacks, trackbacks and records plugins keep as comments, such as WooCommerce order notes, are left out.
+
+Comment text is shown the way WordPress shows it: blank lines start paragraphs, line breaks are kept, bare links and email addresses become links and text smilies become emoji. Markdown is not interpreted, as WordPress does not interpret it either. Quotes and dashes are curled unless `DISABLE_FANCY_TEXT_FORMATTING` is set.
+
 ### Initial import from Commento
 
 1. Move exported json file to your Remark42 host within `./var`
 2. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 import -p commento -f /srv/var/{commento-export-name}.json -s {your site ID}`
+
+Comments waiting for moderation or flagged as spam in Commento are not imported.
 
 Comments are imported for the domain specified in the provided file, with `https://` prefix. If you want to import comments for a different domain or for `http://` domain, you'll need to export them after importing, alter the export file `url` property and re-import them.

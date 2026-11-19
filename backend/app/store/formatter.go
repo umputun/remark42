@@ -3,6 +3,7 @@ package store
 import (
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Depado/bfchroma/v2"
 	"github.com/PuerkitoBio/goquery"
@@ -46,8 +47,12 @@ func (f *CommentFormatter) Format(c Comment, raw bool) Comment {
 func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
 	mdExt, rend := GetMdExtensionsAndRenderer(raw)
 	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
-	res = f.unEscape(res)
+	return f.FormatHTML(f.unEscape(res))
+}
 
+// FormatHTML applies external converters to text that is already HTML, shortens its links and marks its images lazy.
+func (f *CommentFormatter) FormatHTML(commentHTML string) (res string) {
+	res = commentHTML
 	for _, conv := range f.converters {
 		res = conv.Convert(res)
 	}
@@ -64,7 +69,8 @@ func (f *CommentFormatter) shortenAutoLinks(commentHTML string, maximum int) (re
 	}
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
 		if href, ok := s.Attr("href"); ok {
-			if href != s.Text() || len(href) < maximum+3 || maximum < 3 {
+			// the link is cut by runes below, so its length is counted in runes too
+			if href != s.Text() || utf8.RuneCountInString(href) < maximum+3 || maximum < 3 {
 				return
 			}
 			commentURL, e := url.Parse(href)

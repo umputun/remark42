@@ -216,8 +216,8 @@ type BlockedUser struct {
 ```
 
 - `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to JSON stream or gz file
-- `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body
-- `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form
+- `POST /api/v1/admin/import?site=site-id&provider=native` - import comments from the backup, uses post body. `provider` is `native` (the default when omitted), `disqus`, `wordpress` or `commento`; any other value is rejected with 400
+- `POST /api/v1/admin/import/form?site=site-id&provider=native` - import comments from the backup, user post form, `provider` as above
 - `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect a list of "from-url new-url" pairs separated by \n. From-url and new-url parts are separated by space. If URLs end with an asterisk (\*), it means matching the prefix. Remap procedure based on export/import chain so make the backup first
 
 ```

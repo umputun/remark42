@@ -416,6 +416,40 @@ func TestBoltDB_InfoPost(t *testing.T) {
 		ReadOnly: true}}, r)
 }
 
+func TestBoltDB_InfoPostCreatedOutOfOrder(t *testing.T) {
+	// imports and backup restores create comments in any time order, deleted ones included
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	defer b.Close()
+
+	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, minute, 0, 0, time.UTC) }
+	mk := func(id, url string, minute int, deleted bool) {
+		c := store.Comment{ID: id, Text: "text", Timestamp: ts(minute), Locator: store.Locator{URL: url, SiteID: "radio-t"},
+			User: store.User{ID: "user1", Name: "user name"}}
+		if deleted {
+			c.SetDeleted(store.SoftDelete)
+		}
+		_, e := b.Create(c)
+		require.NoError(t, e)
+	}
+	mk("c1", "https://radio-t.com/1", 20, false)
+	mk("c2", "https://radio-t.com/1", 5, true)
+	mk("c3", "https://radio-t.com/1", 10, false)
+	mk("c4", "https://radio-t.com/1", 50, true)
+	mk("c5", "https://radio-t.com/1", 30, false)
+	mk("c6", "https://radio-t.com/2", 40, true)
+
+	r, err := b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/1", SiteID: "radio-t"}})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/1", Count: 3, FirstTS: ts(5), LastTS: ts(50)}}, r,
+		"deleted comments are not counted, first and last are the earliest and latest comments, as on the site the backup came from")
+
+	r, err = b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 0, FirstTS: ts(40), LastTS: ts(40), ReadOnly: true}}, r,
+		"a post with only a deleted comment has no comments and keeps its age")
+}
+
 func TestBoltDB_InfoList(t *testing.T) {
 	b, teardown := prep(t) // two comments for https://radio-t.com
 	defer teardown()

@@ -95,7 +95,12 @@ func WithMapper(reader io.Reader, mapper Mapper) io.Reader {
 		var err error
 		defer func() {
 			log.Printf("[DEBUG] finish write to pipe with %+v", err)
-			if e := w.Close(); e != nil {
+			if errors.Is(err, io.EOF) {
+				err = nil
+			}
+			// a record that can't be mapped ends the stream with its error, so the import fails on it
+			// and doesn't take the comments before it for the whole export
+			if e := w.CloseWithError(err); e != nil {
 				log.Printf("[WARN] failed close pipe writer with %+v", e)
 			}
 		}()

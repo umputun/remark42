@@ -6,7 +6,9 @@ package migrator
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 
 	log "github.com/go-pkgz/lgr"
 
@@ -61,6 +63,11 @@ type converter func(r io.Reader, siteID string, emit func(store.Comment) error) 
 // importComments replaces the comments of siteID with the ones convert reads from r.
 // The site is cleared when the first comment arrives, or once a conversion without comments
 // completes, so an input that can't be read at all leaves the site as it was.
+//
+// A reply is saved once its parent is, and a reply whose parent is not in the export or was not
+// imported becomes a top-level comment: the comments tree shows only replies it can reach from a
+// top-level comment, so a reply left pointing at a missing parent would be stored but never shown.
+// A deleted comment is saved only as a placeholder for replies to it, and is not counted in passed.
 func importComments(ds Store, r io.Reader, siteID string, convert converter) (passed int, err error) {
 	cleared, failed := false, 0
 	clearSite := func() error {
@@ -71,19 +78,106 @@ func importComments(ds Store, r io.Reader, siteID string, convert converter) (pa
 		return ds.DeleteAll(siteID)
 	}
 
+	saved := map[string]bool{}              // ids of the comments in the store
+	held := map[string]store.Comment{}      // deleted comments no reply has needed yet
+	waiting := map[string][]store.Comment{} // replies by the id of a parent not saved yet
+	save := func(c store.Comment) {
+		for queue := []store.Comment{c}; len(queue) > 0; {
+			c, queue = queue[0], queue[1:]
+			if _, e := ds.Create(c); e != nil {
+				failed++
+				continue
+			}
+			if !c.Deleted {
+				passed++
+			}
+			saved[c.ID] = true
+			queue = append(queue, waiting[c.ID]...)
+			delete(waiting, c.ID)
+		}
+	}
+	// place saves c together with the held deleted comments above it, or leaves them waiting
+	// for a parent that has not arrived yet
+	place := func(c store.Comment) {
+		chain := []store.Comment{c} // c and its held ancestors, the topmost last
+		for parentID := c.ParentID; parentID != "" && !saved[parentID]; {
+			p, ok := held[parentID]
+			if !ok {
+				break
+			}
+			delete(held, parentID)
+			chain = append(chain, p)
+			parentID = p.ParentID
+		}
+		for i := len(chain) - 1; i > 0; i-- {
+			waiting[chain[i].ID] = append(waiting[chain[i].ID], chain[i-1])
+		}
+		top := chain[len(chain)-1]
+		if top.ParentID != "" && !saved[top.ParentID] {
+			waiting[top.ParentID] = append(waiting[top.ParentID], top)
+			return
+		}
+		save(top)
+	}
+
 	err = convert(r, siteID, func(c store.Comment) error {
 		if e := clearSite(); e != nil {
 			return e
 		}
-		if _, e := ds.Create(c); e != nil {
-			failed++
+		if c.Deleted && len(waiting[c.ID]) == 0 {
+			held[c.ID] = c
 			return nil
 		}
-		passed++
+		place(c)
 		return nil
 	})
 	if err == nil {
 		err = clearSite()
+	}
+
+	// what is still waiting has no parent in the store, also when the input broke off, as the comments
+	// read before that are imported. Replies to a parent missing from the export become top-level,
+	// and saving them releases the replies waiting on them. A parent id that belongs to a waiting
+	// comment is resolved that way, unless the comments only wait on each other.
+	for len(waiting) > 0 {
+		pending := map[string]store.Comment{} // the waiting comments, by id
+		for _, replies := range waiting {
+			for _, c := range replies {
+				pending[c.ID] = c
+			}
+		}
+		parentIDs := slices.Sorted(maps.Keys(waiting))
+		missing := slices.DeleteFunc(slices.Clone(parentIDs), func(id string) bool { _, ok := pending[id]; return ok })
+		if len(missing) == 0 {
+			// every waiting comment waits on another waiting one, so following the parents from any of them
+			// ends in a cycle; the first comment reached twice is on it, becomes top-level and releases the rest
+			seen := map[string]bool{}
+			id := waiting[parentIDs[0]][0].ID
+			for !seen[id] {
+				seen[id] = true
+				id = pending[id].ParentID
+			}
+			c := pending[id]
+			siblings := slices.DeleteFunc(waiting[c.ParentID], func(r store.Comment) bool { return r.ID == c.ID })
+			if len(siblings) == 0 {
+				delete(waiting, c.ParentID)
+			} else {
+				waiting[c.ParentID] = siblings
+			}
+			log.Printf("[DEBUG] comment %s replies in a cycle, the comment becomes top-level", c.ID)
+			c.ParentID = ""
+			save(c)
+			continue
+		}
+		for _, parentID := range missing {
+			replies := waiting[parentID]
+			delete(waiting, parentID)
+			for _, c := range replies {
+				log.Printf("[DEBUG] parent %s of comment %s is not imported, the comment becomes top-level", parentID, c.ID)
+				c.ParentID = ""
+				save(c)
+			}
+		}
 	}
 	if err != nil {
 		return passed, err

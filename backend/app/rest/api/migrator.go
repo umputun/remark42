@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,7 +38,7 @@ type Migrator struct {
 	lock sync.Mutex
 }
 
-// POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress
+// POST /import?secret=key&site=site-id&provider=disqus|wordpress|commento|native
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	m.startImport(w, r, func() string {
@@ -50,7 +51,7 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
+// POST /import/form?secret=key&site=site-id&provider=disqus|wordpress|commento|native
 // imports comments from form body.
 func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	m.startImport(w, r, func() string {
@@ -95,7 +96,7 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 // or answers the request with an error and returns "".
 func (m *Migrator) startImport(w http.ResponseWriter, r *http.Request, save func() string) {
 	siteID := r.URL.Query().Get("site")
-	if !m.claim(w, r, siteID, "import rejected") {
+	if !m.knownProvider(w, r) || !m.claim(w, r, siteID, "import rejected") {
 		return
 	}
 	tmpfile := ""
@@ -244,26 +245,47 @@ func (m *Migrator) remapCtrl(w http.ResponseWriter, r *http.Request) {
 	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "convert request accepted"})
 }
 
+// importer returns the importer for the provider query parameter. The native backup format is the default,
+// and "native" and "remark" name it explicitly.
+func (m *Migrator) importer(provider string) (migrator.Importer, bool) {
+	switch provider {
+	case "disqus":
+		return m.DisqusImporter, true
+	case "wordpress":
+		return m.WordPressImporter, true
+	case "commento":
+		return m.CommentoImporter, true
+	case "", "native", "remark":
+		return m.NativeImporter, true
+	}
+	return nil, false
+}
+
+// knownProvider rejects a request for an import provider the server does not have
+func (m *Migrator) knownProvider(w http.ResponseWriter, r *http.Request) bool {
+	provider := r.URL.Query().Get("provider")
+	if _, ok := m.importer(provider); ok {
+		return true
+	}
+	rest.SendErrorJSONFromHelper(w, r, http.StatusBadRequest, fmt.Errorf("unknown import provider %q", provider),
+		"import rejected", rest.ErrActionRejected)
+	return false
+}
+
 // runImport reads from tmpfile and import for given siteID and provider
 func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 	defer func() {
+		if rec := recover(); rec != nil { // an importer bug must not stop the server
+			log.Printf("[ERROR] import for site=%s, provider=%s panicked, %v\n%s", siteID, provider, rec, debug.Stack())
+			m.Cache.Flush(cache.Flusher(siteID).Scopes(siteID))
+		}
 		m.clearBusy(siteID)
 		if err := os.Remove(tmpfile); err != nil {
 			log.Printf("[WARN] failed to remove tmp file %s, %v", tmpfile, err)
 		}
 	}()
 
-	var importer migrator.Importer
-	switch provider {
-	case "disqus":
-		importer = m.DisqusImporter
-	case "wordpress":
-		importer = m.WordPressImporter
-	case "commento":
-		importer = m.CommentoImporter
-	default:
-		importer = m.NativeImporter
-	}
+	importer, _ := m.importer(provider) // the handlers accept known providers only
 	log.Printf("[DEBUG] import request for site=%s, provider=%s", siteID, provider)
 
 	fh, err := os.Open(tmpfile) // nolint
@@ -278,7 +300,7 @@ func (m *Migrator) runImport(siteID, provider, tmpfile string) {
 		log.Printf("[WARN] import failed, %v", err)
 		return
 	}
-	log.Printf("[DEBUG] import request completed. site=%s, provider=%s, comments=%d", siteID, provider, size)
+	log.Printf("[INFO] import request completed. site=%s, provider=%s, comments=%d", siteID, provider, size)
 }
 
 // saveTemp reads from reader and saves to temp file

@@ -33,10 +33,8 @@ func TestCommento_Import(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 3, len(last), "3 comments imported")
 
-	t.Log(last[0])
-
 	c := last[0] // last reverses, get first one
-	assert.Equal(t, "Great reply!", c.Text)
+	assert.Equal(t, "<p>Great reply!</p>\n", c.Text)
 	assert.Equal(t, "ea5f7bcd6ac9bb7b657f7d0569831104e1bcf9c253d03c1e16bf9654c49a5ce9", c.ID)
 	assert.Equal(t, "7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854", c.ParentID)
 	assert.Equal(t, store.Locator{SiteID: "test", URL: "https://example.com/blog/post/1"}, c.Locator)
@@ -45,7 +43,7 @@ func TestCommento_Import(t *testing.T) {
 	assert.True(t, c.Imported)
 
 	c = last[2] // anonymous comment
-	assert.Equal(t, "Example comment created by user.", c.Text)
+	assert.Equal(t, "<p>Example comment created by user.</p>\n", c.Text)
 	assert.Equal(t, "e7069a7dfcfaed43caf62300a9b0edb1c124ad79d0f5887c93649c15d7f69945", c.ID)
 	assert.Equal(t, "", c.ParentID)
 	assert.Equal(t, store.Locator{SiteID: "test", URL: "https://example.com/blog/post/2"}, c.Locator)
