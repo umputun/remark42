@@ -8,12 +8,10 @@ import { StaticStore } from 'common/static-store';
 import type { Theme } from 'common/types';
 import { useTheme } from 'hooks/useTheme';
 
+import { loadEmoji } from './emoji-data';
+import type { Emoji } from './emoji-search';
+import { searchEmoji } from './emoji-search';
 import styles from './text-expander.module.css';
-
-type Emoji = {
-  key: string;
-  emoji: string;
-};
 
 function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme }) {
   const isDarkTheme = theme === `dark`;
@@ -35,11 +33,11 @@ function SuggestionList({ items, theme }: { items: Array<Emoji>; theme: Theme })
   );
 }
 
-function searchEmoji(key: string, text: string, theme: Theme) {
-  return import(/* webpackChunkName: "node-emoji" */ `node-emoji`)
-    .then((nodeEmoji) => {
+function suggestEmoji(key: string, text: string, theme: Theme) {
+  return loadEmoji()
+    .then((table) => {
       if (key === ':') {
-        const emojiList = nodeEmoji.search(text);
+        const emojiList = searchEmoji(table, text);
         if (emojiList.length === 0) {
           return Promise.resolve({ matched: false });
         }
@@ -77,7 +75,7 @@ export const TextExpander: FunctionalComponent = ({ children }) => {
       expander.setAttribute(`keys`, ':');
       const textExpanderChangeLister: EventListener = (event: Event) => {
         const { provide, key, text } = (event as ChangeListerEvent).detail;
-        provide(searchEmoji(key, text, theme));
+        provide(suggestEmoji(key, text, theme));
       };
       const textExpanderValueListener = (event: Event) => {
         const { key, item } = (event as ValueListerEvent).detail;

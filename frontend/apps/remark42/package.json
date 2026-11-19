@@ -30,7 +30,6 @@
     "@github/markdown-toolbar-element": "^2.2.3",
     "@github/text-expander-element": "^2.9.4",
     "clsx": "^2.1.1",
-    "node-emoji": "^1.11.0",
     "preact": "10.29.8",
     "redux": "^4.2.0",
     "redux-thunk": "^2.4.1"
@@ -45,7 +44,6 @@
     "@testing-library/preact": "3.2.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.2.0",
-    "@types/node-emoji": "^1.8.2",
     "@types/redux-mock-store": "^1.5.0",
     "@types/webpack-env": "^1.18.8",
     "@typescript-eslint/eslint-plugin": "^8.67.0",

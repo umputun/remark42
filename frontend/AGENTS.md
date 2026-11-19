@@ -95,23 +95,25 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
-- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, `node-emoji` 2 (renames the field `search()` returns), and `postcss-preset-env` 11 with `cssnano` 8 and `postcss-html` 2, which change generated CSS
+- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, and `postcss-preset-env` 11 with `cssnano` 8 and `postcss-html` 2, which change generated CSS
 - `redux` 4
 
 ## `/web` has a second source
 
 `privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar `ghost.svg`, the sign-in
-provider icons and the pages that host the widget (`index.html`, `counter.html`,
-`last-comments.html`, `deleteme.html`, `comments.html`) live in `backend/app/webassets/assets` and
-are embedded in the Go binary. Those pages are plain files: the bundler builds only `iframe.html`,
-from `templates/iframe.ejs`. The three that name a site spell it `site_id:"remark"`, exactly,
-because the server replaces that text with the first configured site, and `comments.html` carries
-`{% REMARK_URL %}`, which the server fills in too. `counter.mjs`, the comment counter for host
-pages, is a script written by hand in the same directory: no type checking, no lint, no transpiling.
-It has to stay a classic script with no module syntax, since the server answers `counter.js` with
-its bytes, and `TestFS_CounterIsAClassicScript` checks that. The widget
+provider icons, the emoji table `emoji.json` and the pages that host the widget (`index.html`,
+`counter.html`, `last-comments.html`, `deleteme.html`, `comments.html`) live in
+`backend/app/webassets/assets` and are embedded in the Go binary. Those pages are plain files: the
+bundler builds only `iframe.html`, from `templates/iframe.ejs`. The three that name a site spell it
+`site_id:"remark"`, exactly, because the server replaces that text with the first configured site,
+and `comments.html` carries `{% REMARK_URL %}`, which the server fills in too. `counter.mjs`, the
+comment counter for host pages, is a script written by hand in the same directory: no type checking,
+no lint, no transpiling. It has to stay a classic script with no module syntax, since the server
+answers `counter.js` with its bytes, and `TestFS_CounterIsAClassicScript` checks that. The widget
 addresses the images by name through `webAssetUrl` in `app/common/web-asset.ts`; the bundle resolves
-no image files. The frontend build wins for any name present in both, which is what
+no image files. The comment form fetches `emoji.json` relative to its own document on the first `:`
+typed (`emoji-data.ts`), and `emoji-search.ts` matches names against it. The frontend build wins
+for any name present in both, which is what
 lets an operator override one by dropping a file next to the frontend files in `--web-root`. That
 directory replaces the embedded frontend outright when it exists, so an override belongs in a
 populated one. These files sit outside this toolchain: prettier, stylelint and `pnpm lint` do not

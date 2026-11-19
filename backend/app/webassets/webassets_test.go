@@ -1,6 +1,7 @@
 package webassets
 
 import (
+	"encoding/json"
 	"io/fs"
 	"regexp"
 	"strings"
@@ -23,7 +24,7 @@ func TestFS_Contents(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "comments.html", "counter.html",
-		"counter.mjs", "custom.svg", "deleteme.html", "dev.svg", "discord.svg", "facebook.svg", "ghost.svg",
+		"counter.mjs", "custom.svg", "deleteme.html", "dev.svg", "discord.svg", "emoji.json", "facebook.svg", "ghost.svg",
 		"github-dark.svg", "github-light.svg", "google.svg", "index.html", "last-comments.html", "markdown-help.html",
 		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
 		"yandex.svg"}, names)
@@ -94,6 +95,23 @@ func TestFS_CounterIsAClassicScript(t *testing.T) {
 	assert.Empty(t, moduleSyntax.FindAllString(src, -1), "module syntax in counter.mjs")
 	assert.Contains(t, src, "{% REMARK_URL %}")
 	assert.Contains(t, src, "remark42__counter")
+}
+
+// TestFS_EmojiTable checks the table the comment form fetches for its emoji suggestions: a JSON
+// object of name to emoji. A file that does not parse, or parses to something else, leaves the
+// form with no suggestions and nothing else to show for it.
+func TestFS_EmojiTable(t *testing.T) {
+	b, err := fs.ReadFile(FS, "emoji.json")
+	require.NoError(t, err)
+
+	table := map[string]string{}
+	require.NoError(t, json.Unmarshal(b, &table), "not a JSON object of strings")
+	assert.Len(t, table, 1878)
+	assert.Equal(t, "😄", table["smile"])
+	for name, emoji := range table {
+		assert.NotEmpty(t, name, "a name is empty")
+		assert.NotEmpty(t, emoji, "%s has no emoji", name)
+	}
 }
 
 // TestFS_RelativeReferencesResolve keeps the two standalone pages self-contained: every relative

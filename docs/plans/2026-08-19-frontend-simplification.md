@@ -102,7 +102,7 @@ The list any no-bundler proposal has to answer for.
 - transpiles TypeScript and JSX
 - CSS modules, with nesting and with one `composes` that crosses a file boundary. That one has no
   plain-CSS equivalent and has to be flattened instead of translated
-- code-splits the locale catalogues and the emoji data
+- code-splits the locale catalogues
 - runs an autoprefixer pass against a browserslist query. Without a transpiler that query becomes the
   literal browser floor and source syntax ships as written
 - builds the widget's own document, `iframe.html`. The other pages are plain files among the
@@ -143,10 +143,10 @@ Each of these can move the answer.
   usable ESM build exists, the licence, and whether it is vendored or dropped. Vendoring the custom
   elements understates them, because they mutate the textarea selection, emit their own events and
   lazily load data, so rendering the tags is not the same as the behaviour working
-- **A build-output acceptance matrix.** The generated pages, the catalogue and emoji payloads, the
-  copied images and the size budgets are today the emergent result of separate bundler rules and
-  plugins. Without a statement of what the output must contain, a replacement cannot be checked
-  against anything
+- **A build-output acceptance matrix.** The generated pages, the catalogue payloads, the copied
+  images and the size budgets are today the emergent result of separate bundler rules and plugins.
+  Without a statement of what the output must contain, a replacement cannot be checked against
+  anything
 - **The integrator contract.** The documented `/web` URLs, the component loader, and the legacy `.js`
   names, which must stay module-free. `/web` is an overlay: a `--web-root` file wins and only a
   missing name falls through to the embedded assets, so moving a page between the two sources

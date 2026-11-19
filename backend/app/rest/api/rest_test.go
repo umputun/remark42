@@ -200,7 +200,7 @@ func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 		assert.Equal(t, "embedded frontend index", body)
 	})
 
-	for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg"} {
+	for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg", "emoji.json"} {
 		t.Run("falls back to "+name, func(t *testing.T) {
 			want, err := fs.ReadFile(webassets.FS, name)
 			require.NoError(t, err)
