@@ -102,8 +102,13 @@ These were deliberately not bumped because each is a config-migration or bundle-
 
 ## `/web` has a second source
 
-`privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar `ghost.svg` and the sign-in
-provider icons live in `backend/app/webassets/assets` and are embedded in the Go binary. The widget
+`privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar `ghost.svg`, the sign-in
+provider icons and the pages that host the widget (`index.html`, `counter.html`,
+`last-comments.html`, `deleteme.html`, `comments.html`) live in `backend/app/webassets/assets` and
+are embedded in the Go binary. Those pages are plain files: the bundler builds only `iframe.html`,
+from `templates/iframe.ejs`. The three that name a site spell it `site_id:"remark"`, exactly,
+because the server replaces that text with the first configured site, and `comments.html` carries
+`{% REMARK_URL %}`, which the server fills in too. The widget
 addresses the images by name through `webAssetUrl` in `app/common/web-asset.ts`; the bundle resolves
 no image files. The frontend build wins for any name present in both, which is what
 lets an operator override one by dropping a file next to the frontend files in `--web-root`. That

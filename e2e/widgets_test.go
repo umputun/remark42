@@ -309,9 +309,9 @@ func TestWidgets_SimpleViewHidesTheEditingFurniture(t *testing.T) {
 // widget sends a reader whose browser blocks third-party storage: the auth panel links it, and the
 // page mounts the widget on the instance's own origin, where the storage is first-party.
 //
-// The page is built from templates/comments.ejs by HtmlWebpackPlugin, and the build stopped
-// emitting it while the link went on pointing at it, so readers who followed it reached a 404.
-// Nothing noticed, because it is the one page no other test opens.
+// The page is a plain file among the embedded assets. While the bundler still built it from a
+// template, the build stopped emitting it and the link went on pointing at it, so readers who
+// followed it reached a 404. Nothing noticed, because it is the one page no other test opens.
 func TestWidgets_CommentsPageOpensAThreadOnItsOwnOrigin(t *testing.T) {
 	t.Parallel()
 

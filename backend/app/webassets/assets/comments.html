@@ -74,9 +74,15 @@
         }
         titleElement.textContent = 'Comments for ';
         titleElement.appendChild(link);
+        // the server fills in its own address when it serves this page. The frontend dev server
+        // serves the file as written, and there the page and the instance share an origin
+        var host = '{% REMARK_URL %}';
+        if (host.charAt(0) === '{') {
+          host = location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, '');
+        }
         var remark_config = {
           site_id: query.site_id,
-          host: '<%= htmlWebpackPlugin.options.REMARK_URL %>',
+          host: host,
           url: query.url,
         };
         (function (c, d) {

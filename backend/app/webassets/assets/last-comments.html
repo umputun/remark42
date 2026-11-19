@@ -15,9 +15,6 @@
         margin: 40px;
       }
     </style>
-    <% if (htmlWebpackPlugin.options.env === 'production') { %>
-    <link rel="stylesheet" href="last-comments.css" />
-    <% } %>
   </head>
   <body>
     <div class="container">
@@ -25,7 +22,9 @@
     </div>
     <script>
       var remark_config = {
-        site_id: 'remark',
+        // written exactly like this, with no space and in double quotes: the server replaces this
+        // text with the first site it is configured for
+        site_id:"remark",
         host: location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, ''),
         components: ['last-comments'],
       };
