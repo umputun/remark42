@@ -1,4 +1,3 @@
-import '@ungap/custom-elements';
 import '@github/markdown-toolbar-element';
 import { h, Component } from 'preact';
 

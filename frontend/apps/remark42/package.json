@@ -31,7 +31,6 @@
   "dependencies": {
     "@github/markdown-toolbar-element": "^2.2.3",
     "@github/text-expander-element": "^2.9.4",
-    "@ungap/custom-elements": "^1.3.0",
     "clsx": "^2.1.1",
     "lodash-es": "^4.18.1",
     "node-emoji": "^1.11.0",
