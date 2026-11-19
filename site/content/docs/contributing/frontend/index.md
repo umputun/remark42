@@ -46,7 +46,7 @@ pnpm exec cross-env REMARK_API_BASE_URL=http://127.0.0.1:8080 pnpm dev:custom
 ```
 
 {{< note "ℹ️" >}}
-If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. For such functional, we use `dotenv`.
+If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. A variable already set in the environment takes precedence over the file.
 {{< /note >}}
 
 ### Run frontend with backend locally

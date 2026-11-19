@@ -54,8 +54,8 @@ keeping the e2e coverage instrumentation out of the suites. The `data-testid` at
 suites query by ship in the bundle as written; nothing strips them.
 
 `tsconfig.json` types but never emits, so its `target` has no effect on output; browserslist in
-`.babelrc.js` decides that. Type checking runs out of band through
-`fork-ts-checker-webpack-plugin`.
+`.babelrc.js` decides that. The build does not type check: `pnpm type-check` does, as its own CI
+job, in the Dockerfile's test step and in `release.yml`.
 
 ## Type-only imports have to say so
 

@@ -1,4 +1,3 @@
-process.env.REMARK_NODE = 'remark42';
 // webpack defines it in the bundle; init assigns it before anything else
 globalThis.__webpack_public_path__ = '';
 

@@ -1,5 +1,3 @@
-process.env.REMARK_NODE = 'remark42';
-
 const MARKER = 'data-remark42-iframe';
 const MARKED = `iframe[${MARKER}]`;
 
