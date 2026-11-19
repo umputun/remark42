@@ -301,7 +301,7 @@ func TestAdmin_DeleteUserAvatar(t *testing.T) {
 			ts, srv, teardown := startupT(t)
 			defer teardown()
 
-			avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+			avatarFile := testAvatarDir(srv) + "/42/pic.image"
 			if avatarExists {
 				require.NoError(t, os.MkdirAll(filepath.Dir(avatarFile), 0o700))
 				require.NoError(t, os.WriteFile(avatarFile, []byte("some image data"), 0o600))
@@ -356,7 +356,7 @@ func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
 	require.Contains(t, findText(), "test test #1") // cached from here on
 
 	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
-	avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+	avatarFile := testAvatarDir(srv) + "/42/pic.image"
 	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
 	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
 
@@ -396,7 +396,7 @@ func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 	require.Contains(t, findText(), "test test #1") // cached from here on
 
 	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
-	avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+	avatarFile := testAvatarDir(srv) + "/42/pic.image"
 	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
 	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
 
