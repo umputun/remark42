@@ -1207,6 +1207,13 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	return nil
 }
 
+// impersonationLogLine makes the log line for a user blocked for taking a restricted name. It names
+// the user's ID and name only: the user in the claims also carries the notification email, which
+// must stay out of the log.
+func impersonationLogLine(u *token.User) string {
+	return fmt.Sprintf("[INFO] blocked %s (%s), attempt to impersonate (restricted names)", u.ID, store.MaskForLog(u.Name))
+}
+
 var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
 
 // checkAnonymousName accepts a name for anonymous login: 3 to 64 letters, digits, underscores and spaces,
@@ -1458,7 +1465,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 				for _, a := range s.RestrictedNames {
 					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
 						c.User.SetBoolAttr("blocked", true)
-						log.Printf("[INFO] blocked %s (%s), attempt to impersonate (restricted names)", c.User.ID, store.MaskForLog(c.User.Name))
+						log.Print(impersonationLogLine(c.User))
 						break
 					}
 				}
