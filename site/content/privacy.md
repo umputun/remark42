@@ -3,13 +3,15 @@ title: Privacy Policy
 ---
 
 Umputun operates the website [remark42.com](https://remark42.com), which provides the SERVICE. This page is used to inform website visitors regarding
-our policies with the collection, use, and disclosure of Personal Information if anyone decided to use our Service. If you choose to use our Service, then you agree to the collection and use of information in relation with this policy. The Personal Information that we collect are used for providing the Service. We will not use or share your information with anyone except as described in this Privacy Policy.
+our policies with the collection, use, and disclosure of Personal Information if anyone decided to use our Service. We process your name, user ID, picture and comments to run the comment service you signed in to; a hash of your IP address and the server logs to keep it secure and stop abuse; your notification address only if you subscribe. The Personal Information that we collect are used for providing the Service. We will not use or share your information with anyone except as described in this Privacy Policy.
 
 ### Information Collection and Use
 
-For a better experience while using our Service, we may require you to provide us with certain personally identifiable information, including but not limited to your name and email address. We can also obtain some basic information from third-party services used to perform login to our Service. The information that we collect will be used to contact or identify you.
+For a better experience while using our Service, we may require you to provide us with certain personally identifiable information, including but not limited to your name and email address. We can also obtain some basic information from third-party services used to perform login to our Service. The information that we collect will be used to contact or identify you. Your name, picture, user ID and comments are public and may be indexed by search engines. A keyed hash of your IP address is stored with each comment and vote; administrators can see the one on a comment.
 
 ### How users may request deletion of that data
+
+Comments, your avatar and notification address are kept until they are deleted at your request. By default, the sign-in cookie lasts 200 hours after your last visit.
 
 To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. When the administrator opens the link in that email, your comments, your name on them, your notification addresses and your avatar are removed. Backups made before then keep this data until they are replaced; by default the ten most recent daily backups are kept.
 
