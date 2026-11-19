@@ -537,7 +537,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	sslPort := chooseUnusedPort(t)
 	srv := Rest{
 		Authenticator: auth.NewService(auth.Opts{
-			AvatarStore:       avatar.NewLocalFS("/tmp"),
+			AvatarStore:       avatar.NewLocalFS(t.TempDir()),
 			AvatarResizeLimit: 300,
 		}),
 
@@ -969,7 +969,10 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 // collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
+	// probe on the loopback address the tests dial: on macOS a wildcard bind succeeds on a port
+	// another process holds on 127.0.0.1 only, and requests to that address then reach the other
+	// process instead of the server under test
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "no free port available")
 	port := ln.Addr().(*net.TCPAddr).Port
 	require.NoError(t, ln.Close())

@@ -15,10 +15,7 @@ import (
 )
 
 func TestBackup_RemoveOldBackupFiles(t *testing.T) {
-	loc := "/tmp/remark-backups.test"
-	defer os.RemoveAll(loc)
-
-	assert.NoError(t, os.MkdirAll(loc, 0o700))
+	loc := t.TempDir()
 
 	for i := 1; i <= 10; i++ {
 		fname := fmt.Sprintf("%s/backup-site1-201712%02d.gz", loc, i)
@@ -41,23 +38,19 @@ func TestBackup_RemoveOldBackupFiles(t *testing.T) {
 }
 
 func TestBackup_MakeBackup(t *testing.T) {
-	loc := "/tmp/remark-backups.test"
-	defer os.RemoveAll(loc)
-	assert.NoError(t, os.MkdirAll(loc, 0o700))
+	loc := t.TempDir()
 
 	bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}}
 	fname, err := bk.makeBackup()
 	assert.NoError(t, err)
-	expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
+	expFile := fmt.Sprintf("%s/backup-site1-%s.gz", loc, time.Now().Format("20060102"))
 	assert.Equal(t, expFile, fname)
 
 	assert.Equal(t, exportedPayload, gzContent(t, expFile))
 }
 
 func TestBackup_Do(t *testing.T) {
-	loc := "/tmp/remark-backups.test"
-	defer os.RemoveAll(loc)
-	assert.NoError(t, os.MkdirAll(loc, 0o700))
+	loc := t.TempDir()
 
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -69,7 +62,7 @@ func TestBackup_Do(t *testing.T) {
 		bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: 3, Exporter: &mockExporter{}, Duration: 600 * time.Millisecond}
 		bk.Do(ctx)
 
-		expFile := fmt.Sprintf("/tmp/remark-backups.test/backup-site1-%s.gz", time.Now().Format("20060102"))
+		expFile := fmt.Sprintf("%s/backup-site1-%s.gz", loc, time.Now().Format("20060102"))
 		assert.Equal(t, exportedPayload, gzContent(t, expFile))
 	})
 }

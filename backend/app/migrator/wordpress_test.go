@@ -1,7 +1,7 @@
 package migrator
 
 import (
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -18,8 +18,7 @@ import (
 
 func TestWordPress_Import(t *testing.T) {
 	siteID := "testWP"
-	defer func() { _ = os.Remove("/tmp/remark-test.db") }()
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: siteID})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: siteID})
 	assert.NoError(t, err, "create store")
 
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}

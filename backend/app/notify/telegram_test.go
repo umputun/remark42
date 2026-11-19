@@ -2,17 +2,24 @@ package notify
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/store"
 )
 
 func TestTelegram_NewError(t *testing.T) {
-	tb, err := NewTelegram(TelegramParams{})
-	assert.Error(t, err)
+	// a bot API that refuses the token, as the public one does for an empty token
+	ts := httptest.NewServer(http.NotFoundHandler())
+	defer ts.Close()
+	tb, err := NewTelegram(TelegramParams{APIURL: ts.URL})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected telegram API status code 404")
 	assert.Nil(t, tb)
 }
 

@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +18,7 @@ import (
 )
 
 func TestDisqus_Import(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -57,8 +57,7 @@ func TestDisqus_Import(t *testing.T) {
 }
 
 func TestDisqus_ImportDeletedThread(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -89,8 +88,7 @@ func TestDisqus_ImportDeletedThread(t *testing.T) {
 }
 
 func TestDisqus_ImportDeletedPost(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()

@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -1959,8 +1958,7 @@ func TestService_alterCommentsFlagCaching(t *testing.T) {
 }
 
 func Benchmark_ServiceCreate(b *testing.B) {
-	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
-	defer func() { _ = os.Remove(dbFile) }()
+	dbFile := path.Join(b.TempDir(), "test-remark42.db")
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
 	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -1981,8 +1979,7 @@ func Benchmark_ServiceCreate(b *testing.B) {
 }
 
 func TestService_DoubleClose_Bolt(t *testing.T) {
-	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
-	defer func() { _ = os.Remove(dbFile) }()
+	dbFile := path.Join(t.TempDir(), "test-remark42.db")
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
 	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -2006,10 +2003,7 @@ func TestService_DoubleClose_Static(t *testing.T) {
 
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
-	testDBLoc, err := os.MkdirTemp("", "test_image_r42")
-	require.NoError(t, err)
-	testDB := path.Join(testDBLoc, "test.db")
-	_ = os.Remove(testDB)
+	testDB := path.Join(t.TempDir(), "test.db")
 
 	st := time.Now()
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "radio-t"})
@@ -2037,7 +2031,6 @@ func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	t.Logf("prepared store engine in %v", time.Since(st))
 	return boltStore, func() {
 		assert.NoError(t, boltStore.Close())
-		_ = os.Remove(testDB)
 	}
 }
 

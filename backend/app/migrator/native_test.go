@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -180,7 +179,7 @@ func TestNative_ImportManyWithError(t *testing.T) {
 
 // makes new boltdb, put two records
 func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
-	testDB := fmt.Sprintf("/tmp/migrator-%d.db", rand.Intn(999999999))
+	testDB := filepath.Join(t.TempDir(), "migrator.db")
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{SiteID: "radio-t", FileName: testDB})
 	assert.NoError(t, err)
@@ -207,7 +206,6 @@ func prep(t *testing.T) (ds *service.DataStore, teardown func()) {
 
 	return b, func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDB)
 	}
 }
 

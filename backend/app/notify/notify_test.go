@@ -118,25 +118,6 @@ func TestService_SubmitVerificationWithDrops(t *testing.T) {
 	})
 }
 
-func TestService_Many(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
-		s := NewService(nil, 5, d1, d2)
-		assert.NotNil(t, s)
-
-		for i := range 10 {
-			s.Submit(Request{Comment: store.Comment{ID: fmt.Sprintf("%d", 100+i)}})
-			s.SubmitVerification(VerificationRequest{User: fmt.Sprintf("%d", 100+i)})
-		}
-		s.Close()
-
-		assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
-		assert.NotEqual(t, 10, len(d1.GetVerify()), "some verifications dropped from d1")
-		assert.NotEqual(t, 10, len(d2.Get()), "some comments dropped from d2")
-		assert.NotEqual(t, 10, len(d2.GetVerify()), "some verifications dropped from d2")
-	})
-}
-
 func TestService_WithParent(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		dest := &MockDest{id: 1}

@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,9 +17,7 @@ import (
 )
 
 func TestMigrator_ImportDisqus(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -37,21 +36,18 @@ func TestMigrator_ImportDisqus(t *testing.T) {
 }
 
 func TestMigrator_ImportWordPress(t *testing.T) {
-	defer func() {
-		os.Remove("/tmp/remark-test.db")
-		os.Remove("/tmp/wordpress-test.xml")
-	}()
-
-	err := os.WriteFile("/tmp/wordpress-test.xml", []byte(xmlTestWP), 0o600)
+	tmp := t.TempDir()
+	inputFile := filepath.Join(tmp, "wordpress-test.xml")
+	err := os.WriteFile(inputFile, []byte(xmlTestWP), 0o600)
 	require.NoError(t, err)
 
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(tmp, "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "/tmp/wordpress-test.xml",
+		InputFile: inputFile,
 		SiteID:    "test",
 		Provider:  "wordpress",
 	})
@@ -64,9 +60,7 @@ func TestMigrator_ImportWordPress(t *testing.T) {
 }
 
 func TestMigrator_ImportCommento(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -85,25 +79,23 @@ func TestMigrator_ImportCommento(t *testing.T) {
 }
 
 func TestMigrator_ImportNative(t *testing.T) {
-	defer func() {
-		os.Remove("/tmp/remark-test.db")
-		os.Remove("/tmp/disqus-test.r42")
-	}()
+	tmp := t.TempDir()
+	inputFile := filepath.Join(tmp, "disqus-test.r42")
 
 	data := `{"version":1} {"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}` + "\n" +
 		`{"id":"afbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","text":"some text2, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","profile":"","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}` + "\n"
 
-	err := os.WriteFile("/tmp/disqus-test.r42", []byte(data), 0o600)
+	err := os.WriteFile(inputFile, []byte(data), 0o600)
 	require.NoError(t, err)
 
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "radio-t"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(tmp, "remark-test.db"), SiteID: "radio-t"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
 
 	size, err := ImportComments(ImportParams{
 		DataStore: dataStore,
-		InputFile: "/tmp/disqus-test.r42",
+		InputFile: inputFile,
 		SiteID:    "radio-t",
 		Provider:  "native",
 	})
@@ -116,8 +108,7 @@ func TestMigrator_ImportNative(t *testing.T) {
 }
 
 func TestMigrator_ImportFailed(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := &service.DataStore{Engine: b}
 	defer dataStore.Close()
