@@ -46,8 +46,8 @@ type TelegramHandler struct {
 	AvatarSaver  AvatarSaver
 	Telegram     TelegramAPI
 
-	run      int32  // non-zero if Run goroutine has started
-	username string // bot username
+	run      atomic.Int32 // non-zero if Run goroutine has started
+	username string       // bot username
 	requests struct {
 		sync.RWMutex
 		data map[string]tgAuthRequest
@@ -76,7 +76,7 @@ var expiredCleanupInterval = time.Minute * 5 // interval to check and clean up e
 // Blocks caller
 func (th *TelegramHandler) Run(ctx context.Context) error {
 	// initialization
-	atomic.AddInt32(&th.run, 1)
+	th.run.Add(1)
 	info, err := th.Telegram.BotInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch bot info: %w", err)
@@ -95,7 +95,7 @@ func (th *TelegramHandler) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			processUpdatedTicker.Stop()
 			cleanupTicker.Stop()
-			atomic.AddInt32(&th.run, -1)
+			th.run.Add(-1)
 			return ctx.Err()
 		case <-processUpdatedTicker.C:
 			updates, err := th.Telegram.GetUpdates(ctx)
@@ -135,7 +135,7 @@ type telegramUpdate struct {
 // ProcessUpdate is alternative to Run, it processes provided plain text update from Telegram
 // so that caller could get updates and send it not only there but to multiple sources
 func (th *TelegramHandler) ProcessUpdate(ctx context.Context, textUpdate string) error {
-	if atomic.LoadInt32(&th.run) != 0 {
+	if th.run.Load() != 0 {
 		return fmt.Errorf("Run goroutine should not be used with ProcessUpdate")
 	}
 	defer func() {
@@ -635,7 +635,7 @@ func tokenRecoverable(msg, token string) bool {
 	// decode repeatedly, because one pass turns a double-encoded "%253A" into "%3A" and leaves the
 	// token just as recoverable as it was. The cap stops a pathological input looping
 	seen := msg
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if strings.Contains(strings.ToLower(seen), lowered) {
 			return true
 		}

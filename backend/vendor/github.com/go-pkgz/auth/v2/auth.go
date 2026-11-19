@@ -86,10 +86,11 @@ type Opts struct {
 	// only, pass a getter returning an empty slice.
 	AllowedRedirectHosts token.AllowedHosts
 
-	AvatarStore       avatar.Store // store to save/load avatars, required (use avatar.NoOp to disable avatars support)
-	AvatarResizeLimit int          // resize avatar's limit in pixels
-	AvatarRoutePath   string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
-	UseGravatar       bool         // for email based auth (verified provider) use gravatar service
+	AvatarStore         avatar.Store // store to save/load avatars, required (use avatar.NoOp to disable avatars support)
+	AvatarResizeLimit   int          // resize avatar's limit in pixels
+	AvatarIdenticonSize int          // size of generated identicon avatars in pixels, default 300
+	AvatarRoutePath     string       // avatar routing prefix, i.e. "/api/v1/avatar", default `/avatar`
+	UseGravatar         bool         // for email based auth (verified provider) use gravatar service
 
 	AdminPasswd      string                      // if presented, allows basic auth with user admin and given password
 	BasicAuthChecker middleware.BasicAuthFunc    // custom checker for basic auth; when set, AdminPasswd is bypassed entirely
@@ -177,11 +178,12 @@ func NewService(opts Opts) (res *Service) {
 
 	if opts.AvatarStore != nil {
 		res.avatarProxy = &avatar.Proxy{
-			Store:       opts.AvatarStore,
-			URL:         opts.URL,
-			RoutePath:   opts.AvatarRoutePath,
-			ResizeLimit: opts.AvatarResizeLimit,
-			L:           res.logger,
+			Store:         opts.AvatarStore,
+			URL:           opts.URL,
+			RoutePath:     opts.AvatarRoutePath,
+			ResizeLimit:   opts.AvatarResizeLimit,
+			IdenticonSize: opts.AvatarIdenticonSize,
+			L:             res.logger,
 		}
 		if res.avatarProxy.RoutePath == "" {
 			res.avatarProxy.RoutePath = "/avatar"

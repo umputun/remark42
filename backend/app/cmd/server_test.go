@@ -6,12 +6,14 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -21,6 +23,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	log "github.com/go-pkgz/lgr"
@@ -1491,6 +1494,38 @@ func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 		assert.Len(t, data, len(val))
 	}
 	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
+}
+
+func TestServerCommand_identiconSize(t *testing.T) {
+	tbl := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{name: "default", want: 48},
+		{name: "set", args: []string{"--avatar.identicon-size=96"}, want: 96},
+		{name: "resize limit below it", args: []string{"--avatar.rsz-lmt=24"}, want: 24},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{}
+			_, err := flags.NewParser(&cmd, flags.Default).ParseArgs(append([]string{"--admin-passwd=password", "--site=remark"}, tt.args...))
+			require.NoError(t, err)
+
+			store := avatar.NewLocalFS(t.TempDir())
+			authenticator := cmd.getAuthenticator(nil, store, nil, nil)
+			avatarURL, err := authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
+			require.NoError(t, err)
+
+			r, _, err := store.Get(path.Base(avatarURL))
+			require.NoError(t, err)
+			defer r.Close()
+			cfg, err := png.DecodeConfig(r)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.Width, "the identicon of a user without a picture is drawn at the configured size")
+			assert.Equal(t, tt.want, cfg.Height)
+		})
+	}
 }
 
 func TestServerCommand_tokenAudiences(t *testing.T) {

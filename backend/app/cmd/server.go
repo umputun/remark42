@@ -216,8 +216,9 @@ type AvatarGroup struct {
 	Bolt struct {
 		File string `long:"file" env:"FILE" default:"./var/avatars.db" description:"avatars bolt file location"`
 	} `group:"bolt" namespace:"bolt" env-namespace:"BOLT"`
-	URI    string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
-	RszLmt int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio"`
+	URI           string `long:"uri" env:"URI" default:"./var/avatars" description:"avatars store URI"`
+	RszLmt        int    `long:"rsz-lmt" env:"RESIZE" default:"0" description:"max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio"`
+	IdenticonSize int    `long:"identicon-size" env:"IDENTICON_SIZE" default:"48" description:"width and height in pixels of the avatar generated for users without a picture"`
 }
 
 // CacheGroup defines options group for cache params
@@ -1395,14 +1396,15 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			}
 			return !claims.User.BoolAttr("blocked")
 		}),
-		JWTQuery:          "jwt", // change default from "token" as it used for deleteme
-		AvatarStore:       avas,
-		AvatarResizeLimit: s.Avatar.RszLmt,
-		AvatarRoutePath:   "/api/v1/avatar",
-		Logger:            rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
-		RefreshCache:      authRefreshCache,
-		UseGravatar:       true,
-		AudSecrets:        s.Admin.RPC.SecretPerSite,
+		JWTQuery:            "jwt", // change default from "token" as it used for deleteme
+		AvatarStore:         avas,
+		AvatarResizeLimit:   s.Avatar.RszLmt,
+		AvatarIdenticonSize: s.Avatar.IdenticonSize,
+		AvatarRoutePath:     "/api/v1/avatar",
+		Logger:              rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
+		RefreshCache:        authRefreshCache,
+		UseGravatar:         true,
+		AudSecrets:          s.Admin.RPC.SecretPerSite,
 	})
 }
 

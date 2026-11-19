@@ -4,6 +4,10 @@
   border-radius: 4px;
 }
 
+.avatarIdenticon {
+  image-rendering: pixelated;
+}
+
 .avatarGhost {
   box-sizing: border-box;
   border: 1px solid var(--color40);
