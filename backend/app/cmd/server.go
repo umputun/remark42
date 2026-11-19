@@ -1098,11 +1098,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 	if s.Auth.Anonymous {
 		log.Print("[INFO] anonymous access enabled")
 		authenticator.AddDirectProviderWithUserIDFunc("anonymous", provider.CredCheckerFunc(checkAnonymousName),
-			// custom user ID generator, used to distinguish anonymous users with the same login
-			// coming from different IPs
-			func(user string, r *http.Request) string {
-				return user + r.RemoteAddr
-			})
+			anonymousUserID(s.SharedSecret))
 	}
 
 	if providersCount == 0 {
@@ -1117,6 +1113,18 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 // must stay out of the log.
 func impersonationLogLine(u *token.User) string {
 	return fmt.Sprintf("[INFO] blocked %s (%s), attempt to impersonate (restricted names)", u.ID, store.MaskForLog(u.Name))
+}
+
+// anonymousUserID makes the user ID of an anonymous login from the name and the client address, so
+// users with the same name coming from different addresses get different IDs. The ID is public and so
+// is the name, so the value is an HMAC keyed by the shared secret: a plain hash of the two would give
+// the address away to anyone trying every IPv4 address. The separator is a character a name can't
+// contain, so a name ending in digits and a shorter address can't add up to another user's input.
+// The result is 40 hex characters, which the auth library uses as is.
+func anonymousUserID(secret string) func(user string, r *http.Request) string {
+	return func(user string, r *http.Request) string {
+		return store.HashValue(user+"|"+r.RemoteAddr, secret)
+	}
 }
 
 var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
