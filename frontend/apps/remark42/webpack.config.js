@@ -1,16 +1,19 @@
-require('dotenv').config();
-
 const path = require('path');
-const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
 
-const NODE_ID = 'remark42';
+// a local .env may override the variables read below, PORT among them. loadEnvFile throws when
+// the file is absent, which is the usual case
+try {
+  process.loadEnvFile(path.resolve(__dirname, '.env'));
+} catch (e) {
+  if (e.code !== 'ENOENT') {
+    throw e;
+  }
+}
+
 const PUBLIC_PATH = '/web/';
 const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
@@ -53,7 +56,7 @@ const htmlMinifyOptions = {
   useShortDoctype: true,
 };
 
-module.exports = (_, { mode, analyze }) => {
+module.exports = (_, { mode }) => {
   const isDev = mode === 'development';
   // Add debug lib only for development throw webpack chunks and keep code clear
   const preactDebug = isDev ? ['preact/debug'] : [];
@@ -79,6 +82,7 @@ module.exports = (_, { mode, analyze }) => {
     // instance mounted under a path, which manuals/separate-domain documents, would otherwise ask
     // for /web/<asset> and miss its own prefix
     publicPath: 'auto',
+    clean: true,
   };
 
   const getTsRule = () => {
@@ -189,8 +193,8 @@ module.exports = (_, { mode, analyze }) => {
     static: [
       // entries are consulted in order, so the build output comes first here for the same reason
       // it does in the backend's file server
-      // the bundler serves its own output from memory and wipes this directory on every dev build,
-      // so watching it would only ever fire on the build's own writes
+      // the bundler serves its own output from memory and answers before this entry does, so
+      // nothing here changes while the server runs and there is nothing to watch
       { directory: PUBLIC_FOLDER_PATH, publicPath: PUBLIC_PATH, watch: false },
       // the assets the bundler does not build are served by the backend in production, so the dev
       // server reads them straight from where they live, or links to them 404 on this port
@@ -208,14 +212,6 @@ module.exports = (_, { mode, analyze }) => {
   };
 
   const plugins = [
-    new CleanWebpackPlugin(),
-    new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify(mode),
-      'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
-      // in development the backend is reached through the dev server's proxy, on its own origin.
-      // in production the server fills the placeholder in when it serves the bundle
-      'process.env.REMARK_URL': isDev ? 'window.location.origin' : JSON.stringify('{% REMARK_URL %}'),
-    }),
     new MiniCssExtractPlugin({
       filename: '[name].css',
     }),
@@ -245,7 +241,6 @@ module.exports = (_, { mode, analyze }) => {
     },
     plugins: [
       ...plugins,
-      new ForkTsCheckerWebpackPlugin(),
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'templates/iframe.ejs'),
         filename: 'iframe.html',
@@ -253,15 +248,6 @@ module.exports = (_, { mode, analyze }) => {
         env: mode,
         minify: htmlMinifyOptions,
       }),
-      ...(analyze
-        ? [
-            new BundleAnalyzerPlugin({
-              analyzerMode: 'static',
-              reportFilename: 'report.html',
-              reportTitle: 'Bundle',
-            }),
-          ]
-        : []),
     ],
     devServer,
   };

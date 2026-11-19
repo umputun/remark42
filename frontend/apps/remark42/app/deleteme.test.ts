@@ -9,7 +9,6 @@ const payload = '<img src=x onerror=window.__deletemeInjected=1>';
 
 /** loads the entry script against a fresh root node and waits for it to finish rendering */
 async function runPage(): Promise<HTMLElement> {
-  process.env.REMARK_NODE = 'remark42';
   document.body.innerHTML = '<div id="remark42"></div>';
   const root = document.getElementById('remark42')!;
 
