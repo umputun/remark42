@@ -5,7 +5,6 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
@@ -75,7 +74,9 @@ module.exports = (_, { mode, analyze }) => {
 
   const resolve = {
     extensions: ['.ts', '.tsx', '.js'],
-    plugins: [new TsconfigPathsPlugin()],
+    // imports are written from the app root (`common/…`, `components/…`). The app directory comes
+    // first, the order baseUrl gives the type checker in tsconfig.json
+    modules: [path.resolve(__dirname, 'app'), 'node_modules'],
   };
 
   const output = {
