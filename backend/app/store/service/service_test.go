@@ -1505,7 +1505,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
 			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-			User:      store.User{ID: "user1", Name: "user name"},
+			User:      store.User{ID: "dev", Name: "user name"}, // the author of the dev/ uploads
 		}
 		_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 		assert.NoError(t, err)
@@ -1516,7 +1516,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 			ParentID: "id-22",
 			Text:     `some text <img src="/images/dev/pic2.png"/> xx <img src="/images/dev/pic3.png"/>`,
 			Locator:  store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-			User:     store.User{ID: "user1", Name: "user name"},
+			User:     store.User{ID: "dev", Name: "user name"},
 		}
 		_, err = b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 		assert.NoError(t, err)
@@ -1550,6 +1550,51 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 		assert.Equal(t, 3, len(mockStore.DeleteCalls()))
 		assert.Equal(t, "dev/pic2.png", mockStore.DeleteCalls()[1].ID)
 		assert.Equal(t, "dev/pic3.png", mockStore.DeleteCalls()[2].ID)
+	})
+}
+
+// an admin deleting a comment removes only the pictures its author uploaded, and a user's own delete removes none
+func TestService_DeleteCommentPictures(t *testing.T) {
+	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		for _, c := range []store.Comment{
+			// user1 shows their own upload, user2's upload and a cached external image
+			{ID: "u1-a", Text: `<img src="/images/user1/own.png"/> <img src="/images/user2/up.png"/> ` + proxied,
+				Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user1"},
+				Timestamp: time.Now()},
+			{ID: "u2-b", Text: `<img src="/images/user2/up.png"/>`,
+				Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, User: store.User{ID: "user2"},
+				Timestamp: time.Now().Add(time.Second)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	for _, mode := range []store.DeleteMode{store.HardDelete, store.SoftDelete} {
+		t.Run(fmt.Sprintf("admin delete, mode %d", mode), func(t *testing.T) {
+			b, mockStore := prep(t)
+			require.NoError(t, b.Delete(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", mode))
+			// user2's upload and the cached external image stay although only the deleted comment shows them on page a
+			assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
+			c, err := b.Engine.Get(engine.GetRequest{Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, CommentID: "u2-b"})
+			require.NoError(t, err)
+			assert.Contains(t, c.Text, "/images/user2/up.png", "user2's comment untouched")
+		})
+	}
+
+	t.Run("user's own delete", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.Empty(t, deletedImages(mockStore), "a user's own delete removes no pictures")
 	})
 }
 

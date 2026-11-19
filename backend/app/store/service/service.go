@@ -816,7 +816,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		s.repliesCache.Delete(comment.ParentID)
 	}
 
-	// delete images from the comment if they are not reused elsewhere in comments to the same page
+	// delete the author's own images from the comment if they are not reused elsewhere in comments to the same page
 	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
 		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
 		if e != nil {
@@ -832,7 +832,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		}
 		return imgIDs
 	}
-	commentImgIDs := s.ImageService.ExtractPictures(comment.Text)
+	commentImgIDs := s.ownPictures(comment.User.ID, comment.Text)
 	pageImgIDs := idsFn()
 	for _, id := range commentImgIDs {
 		if !slices.Contains(pageImgIDs, id) {
@@ -863,6 +863,19 @@ func (s *DataStore) DeleteUser(siteID, userID string, mode store.DeleteMode) err
 	return nil
 }
 
+// ownPictures returns the IDs of the pictures in commentHTML that userID uploaded, saved as userID/<guid>.
+// A comment can also show another user's upload or a cached external image, which other comments may
+// use on any page, so deleting the comment or its author must leave those alone
+func (s *DataStore) ownPictures(userID, commentHTML string) []string {
+	res := []string{}
+	for _, id := range s.ImageService.ExtractPictures(commentHTML) {
+		if strings.HasPrefix(id, userID+"/") {
+			res = append(res, id)
+		}
+	}
+	return res
+}
+
 // userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
 // those other users' comments to the same pages also use, the same check Delete makes for one comment
 func (s *DataStore) userPictures(siteID, userID string) []string {
@@ -886,13 +899,9 @@ func (s *DataStore) userPictures(siteID, userID string) []string {
 			}
 			seen[key] = true
 			added++
-			// only the user's own uploads, saved as userID/<guid>: a comment can show another user's
-			// upload or a cached external image, which other comments may use on pages not checked here
-			for _, id := range s.ImageService.ExtractPictures(c.Text) {
-				if strings.HasPrefix(id, userID+"/") {
-					userImgIDs = append(userImgIDs, id)
-					pages[c.Locator.URL] = true
-				}
+			if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
+				userImgIDs = append(userImgIDs, ids...)
+				pages[c.Locator.URL] = true
 			}
 		}
 		if added == 0 {

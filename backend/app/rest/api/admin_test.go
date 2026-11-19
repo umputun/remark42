@@ -219,6 +219,48 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	assert.True(t, cmntWithInfo.Comments[2].Deleted)
 }
 
+// an admin deleting a comment removes the author's own upload and keeps another user's upload the comment showed
+func TestAdmin_DeleteCommentPictures(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+	imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+	defer imgSvc.Close(context.Background())
+	srv.DataService.ImageService = imgSvc
+
+	for _, id := range []string{"user1/own.png", "user2/other.png"} {
+		require.NoError(t, fs.Save(id, []byte("image data")))
+		require.NoError(t, fs.Commit(id))
+	}
+	now := time.Now()
+	for _, c := range []store.Comment{
+		{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/> <img src="` + srv.RemarkURL +
+			`/api/v1/picture/user2/other.png"/>`, Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+			User: store.User{ID: "user1", Name: "user1"}, Timestamp: now},
+		{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`,
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"},
+			User:    store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+	} {
+		_, err := srv.DataService.Engine.Create(c) // directly to the engine, the pictures are already committed
+		require.NoError(t, err)
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/comment/c1?site=remark42&url=https://radio-t.com/blah", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := sendReq(req, "")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	_, err = fs.Load("user1/own.png")
+	assert.Error(t, err, "the author's own upload removed")
+	data, err := fs.Load("user2/other.png")
+	require.NoError(t, err, "another user's upload kept, though the deleted comment showed it")
+	assert.Equal(t, "image data", string(data))
+}
+
 // every route that deletes a user's comments removes the pictures used in them and keeps those of other users
 func TestAdmin_DeleteUserPictures(t *testing.T) {
 	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) *http.Request {
