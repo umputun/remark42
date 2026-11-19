@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question, setup help or idea
+    url: https://github.com/umputun/remark42/discussions/new/choose
+    about: Ask how to do something, get help with an installation that does not work, or discuss an idea that is not yet a concrete change. Issues are for bugs in Remark42 and for concrete changes to it.

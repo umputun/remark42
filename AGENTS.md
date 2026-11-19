@@ -1,5 +1,13 @@
 # Remark42 Development Guidelines
 
+## Issues, Discussions and Pull Requests
+
+The same rules as `CONTRIBUTING.md`, for an agent working on behalf of someone who is not a maintainer.
+
+- **Bug, documentation and translation fixes go straight to a PR.**
+- **Other changes need a maintainer's agreement before a PR.** This includes features, new options or providers, dependency or tooling changes and refactoring. A maintainer's instruction to make the change counts as agreement. Without agreement, open or find an issue describing what should change and why, say there that you can make the PR, and stop until a maintainer agrees to the change.
+- **Issues are for bugs and concrete changes.** A question, a setup or configuration problem, or an idea that still needs discussion belongs in Discussions (Q&A or Ideas).
+
 ## Build/Test/Lint Commands
 - **Backend**:
   - Run server: `make rundev`
