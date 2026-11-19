@@ -71,11 +71,20 @@ func TestAdminRequest_EscapesQuery(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			tt.cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
-			_, err := flags.NewParser(tt.cmd, flags.Default).ParseArgs(append([]string{"--site=" + site}, tt.args...))
-			require.NoError(t, err)
+			parseCmd(t, tt.cmd, ts.URL, append([]string{"--site=" + site}, tt.args...)...)
 			require.NoError(t, tt.cmd.Execute(nil))
 			assert.Equal(t, tt.query, got, "query the server received")
 		})
 	}
+}
+
+// testSharedSecret is the shared secret parseCmd sets, which signRawToken signs with
+const testSharedSecret = "secret"
+
+// parseCmd sets the common options the way main does and parses args into cmd
+func parseCmd(t *testing.T, cmd interface{ SetCommon(CommonOpts) }, remarkURL string, args ...string) {
+	t.Helper()
+	cmd.SetCommon(CommonOpts{RemarkURL: remarkURL, SharedSecret: testSharedSecret})
+	_, err := flags.NewParser(cmd, flags.Default).ParseArgs(args)
+	require.NoError(t, err)
 }
