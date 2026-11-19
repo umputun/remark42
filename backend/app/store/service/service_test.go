@@ -750,6 +750,77 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 	})
 }
 
+func TestService_VotePrunesExpiredIPs(t *testing.T) {
+	const secret = "secret 123"
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	vote := func(b *DataStore, userID, ip string) error {
+		_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: userID, UserIP: ip, Val: true})
+		return err
+	}
+	// the service hides VotedIPs from its callers, so the stored comment is read from the engine
+	storedIPs := func(t *testing.T, eng engine.Interface) map[string]store.VotedIPInfo {
+		c, err := eng.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		return c.VotedIPs
+	}
+	oldIP, freshIP, lastIP := store.HashValue("10.0.0.1", secret), store.HashValue("10.0.0.2", secret), store.HashValue("10.0.0.3", secret)
+
+	tbl := []struct {
+		name     string
+		enabled  bool
+		duration time.Duration
+		pruned   bool
+	}{
+		{name: "restriction off", enabled: false, duration: 5 * time.Minute, pruned: true},
+		{name: "restriction on", enabled: true, duration: 5 * time.Minute, pruned: true},
+		{name: "restriction off, unlimited window", enabled: false, duration: 0, pruned: false},
+		{name: "restriction on, unlimited window", enabled: true, duration: 0, pruned: false},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				eng, teardown := prepStoreEngine(t)
+				defer teardown()
+				b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore(secret), MaxVotes: -1}
+				b.RestrictSameIPVotes.Enabled = tt.enabled
+				b.RestrictSameIPVotes.Duration = tt.duration
+
+				require.NoError(t, vote(&b, "user2", "10.0.0.1"))
+				time.Sleep(3 * time.Minute)
+				require.NoError(t, vote(&b, "user3", "10.0.0.2"))
+				assert.Len(t, storedIPs(t, eng), 2, "both votes are inside the window, nothing to drop")
+
+				time.Sleep(3 * time.Minute) // the first vote is 6 minutes old now, the second one 3 minutes
+				require.NoError(t, vote(&b, "user4", "10.0.0.3"))
+
+				ips := storedIPs(t, eng)
+				assert.Contains(t, ips, freshIP, "ip of a vote inside the window stays")
+				assert.Contains(t, ips, lastIP, "ip of the vote just made is recorded")
+				if tt.pruned {
+					assert.NotContains(t, ips, oldIP, "ip of a vote older than the window is dropped by the next vote")
+				} else {
+					assert.Contains(t, ips, oldIP, "zero duration never expires, so nothing is dropped")
+				}
+
+				// the same-ip limit keeps working on what is left
+				err := vote(&b, "user5", "10.0.0.2")
+				if tt.enabled {
+					assert.EqualError(t, err, "the same ip "+freshIP+" already voted for id-2", "ip inside the window is still limited")
+				} else {
+					assert.NoError(t, err, "no limit with the restriction off")
+				}
+				err = vote(&b, "user6", "10.0.0.1")
+				if tt.enabled && !tt.pruned {
+					assert.EqualError(t, err, "the same ip "+oldIP+" already voted for id-2", "unlimited window still limits the old ip")
+				} else {
+					assert.NoError(t, err, "ip outside the window can vote again")
+				}
+			})
+		})
+	}
+}
+
 func TestService_Controversy(t *testing.T) {
 	tbl := []struct {
 		ups, downs int
