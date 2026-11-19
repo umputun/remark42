@@ -132,6 +132,7 @@ You can configure any OAuth2-compatible provider by setting these variables:
 - `AUTH_CUSTOM_NAME_FIELD` - optional user info field used as display name (default `name`)
 - `AUTH_CUSTOM_PICTURE_FIELD` - optional user info field used as avatar URL (default `picture`)
 - `AUTH_CUSTOM_EMAIL_FIELD` - optional user info field used as email (default `email`)
+- `AUTH_CUSTOM_GRAVATAR` - optional, set to `true` to use the [Gravatar](https://gravatar.com) picture of the user's email when the provider returns no picture (default `false`)
 
 Callback URL format:
 
@@ -142,6 +143,7 @@ Notes:
 - `AUTH_CUSTOM_NAME` must match `^[a-z0-9][a-z0-9_-]*$` and should not conflict with built-in providers: `email`, `anonymous`, `google`, `github`, `facebook`, `yandex`, `twitter`, `microsoft`, `patreon`, `discord`, `telegram`, `dev`, `apple`.
 - If any required custom variable is missing, Remark42 will fail to start.
 - Remark42 currently supports only one custom OAuth2 provider at a time.
+- With `AUTH_CUSTOM_GRAVATAR` enabled, Remark42 looks the email up on Gravatar at each login, which sends its hash to gravatar.com, so existing users get their Gravatar picture on their next login. Users without a Gravatar picture, or without an email in the user info response, get the generated avatar as before.
 
 ### Telegram
 

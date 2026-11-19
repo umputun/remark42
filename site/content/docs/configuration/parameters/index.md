@@ -110,6 +110,7 @@ services:
 | auth.custom.name-field         | AUTH_CUSTOM_NAME_FIELD         | `name`                  | user info field used as display name                     |
 | auth.custom.picture-field      | AUTH_CUSTOM_PICTURE_FIELD      | `picture`               | user info field used as avatar URL                       |
 | auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field used as email                            |
+| auth.custom.gravatar           | AUTH_CUSTOM_GRAVATAR           | `false`                 | use Gravatar picture for users without one               |
 | auth.telegram                  | AUTH_TELEGRAM                  | `false`                 | Enable Telegram auth (telegram.token must be present)    |
 | auth.yandex.cid                | AUTH_YANDEX_CID                |                         | Yandex OAuth client ID                                   |
 | auth.yandex.csec               | AUTH_YANDEX_CSEC               |                         | Yandex OAuth client secret                               |
