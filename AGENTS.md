@@ -17,7 +17,7 @@
     installs nothing so a test that needs `node_modules` goes red. Their **value** imports write the
     extension in full (`./types.ts`) and use a relative path, never the `common/…` alias, because
     node resolves neither; a type-only import erases and keeps the ordinary style. See
-    `frontend/CLAUDE.md`.
+    `frontend/AGENTS.md`.
 - **End-to-end**: `make e2e` drives the widget in a real browser; see `e2e/README.md`. Build-tagged, so `go test ./...` never runs it.
 - **Lint**:
   - Backend: `cd backend && golangci-lint run`

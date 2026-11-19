@@ -33,7 +33,7 @@ ported to Go to satisfy the goal.
 
 Value imports in the node layer write the extension in full and use a relative path, never the
 `common/…` alias, because node resolves neither. Type-only imports erase and keep the ordinary
-style. This is recorded in both `CLAUDE.md` files; it is repeated here because it decides whether a
+style. This is recorded in both `AGENTS.md` files; it is repeated here because it decides whether a
 given jest case can move at all. A case whose subject imports through the alias cannot move until
 the subject does, which is why the split extracted the pure half of each module first.
 
