@@ -117,6 +117,9 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// PKCE (RFC 7636), sent to every server: one without PKCE support ignores the parameters
+	verifier := oauth2.GenerateVerifier()
+
 	aud := r.URL.Query().Get("site") // legacy, for back compat
 	if aud == "" {
 		aud = r.URL.Query().Get("aud")
@@ -124,8 +127,9 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	claims := token.Claims{
 		Handshake: &token.Handshake{
-			State: state,
-			From:  r.URL.Query().Get("from"),
+			State:        state,
+			From:         r.URL.Query().Get("from"),
+			CodeVerifier: verifier,
 		},
 		SessionOnly: sessionOnlyFromRequest(r),
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -150,8 +154,12 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	p.conf.RedirectURL = p.makeRedirURL(r.URL.Path)
 
 	// return login url
-	loginURL := p.conf.AuthCodeURL(state)
-	p.Logf("[DEBUG] login url %s, claims=%+v", loginURL, claims)
+	loginURL := p.conf.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	// claims print as JSON, so log a copy without the verifier
+	logged, hs := claims, *claims.Handshake
+	hs.CodeVerifier = ""
+	logged.Handshake = &hs
+	p.Logf("[DEBUG] login url %s, claims=%+v", loginURL, logged)
 
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
@@ -159,7 +167,7 @@ func (p Oauth2Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
-	oauthClaims, _, err := p.JwtService.Get(r)
+	oauthClaims, err := handshakeFromCookie(p.JwtService, r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "failed to get token")
 		return
@@ -179,7 +187,11 @@ func (p Oauth2Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	p.conf.RedirectURL = p.makeRedirURL(r.URL.Path)
 
 	p.Logf("[DEBUG] token with state %s", retrievedState)
-	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"))
+	var exchangeOpts []oauth2.AuthCodeOption
+	if v := oauthClaims.Handshake.CodeVerifier; v != "" { // empty for a login started before PKCE support
+		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(v))
+	}
+	tok, err := p.conf.Exchange(context.Background(), r.URL.Query().Get("code"), exchangeOpts...)
 	if err != nil {
 		rest.SendErrorJSON(w, r, p.L, http.StatusInternalServerError, err, "exchange failed")
 		return

@@ -191,7 +191,7 @@ func widgetColorScheme(t *testing.T, page playwright.Page) string {
 
 	v, err := page.FrameLocator("#remark42 iframe").Locator(":root").Evaluate(
 		`(el) => getComputedStyle(el).colorScheme`, nil,
-		playwright.LocatorEvaluateOptions{Timeout: playwright.Float(float64(pollTimeout.Milliseconds()))})
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(pollTimeout.Milliseconds()))})
 	if err != nil {
 		return ""
 	}

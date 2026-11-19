@@ -5,7 +5,6 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
@@ -15,7 +14,6 @@ const NODE_ID = 'remark42';
 const PUBLIC_PATH = '/web/';
 const PORT = process.env.PORT || 9000;
 const REMARK_API_BASE_URL = process.env.REMARK_API_BASE_URL || 'http://127.0.0.1:8080';
-const DEVSERVER_BASE_PATH = process.env.DEVSERVER_BASE_PATH || `http://127.0.0.1:${PORT}`;
 const PUBLIC_FOLDER_PATH = path.resolve(__dirname, 'public');
 const WEB_ASSETS_PATH = path.resolve(__dirname, '../../../backend/app/webassets/assets');
 const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
@@ -57,11 +55,6 @@ const htmlMinifyOptions = {
 
 module.exports = (_, { mode, analyze }) => {
   const isDev = mode === 'development';
-  // Use REMARK_URL or predefined host in dev environment
-  // In development: We use `http://127.0.0.1:9000` for access to backend and backend is accessible via dev server proxy
-  // In production: {% REMARK_URL %} will be replaced by `sed` on start of prod
-  const REMARK_URL = isDev ? DEVSERVER_BASE_PATH : '{% REMARK_URL %}';
-
   // Add debug lib only for development throw webpack chunks and keep code clear
   const preactDebug = isDev ? ['preact/debug'] : [];
 
@@ -75,7 +68,9 @@ module.exports = (_, { mode, analyze }) => {
 
   const resolve = {
     extensions: ['.ts', '.tsx', '.js'],
-    plugins: [new TsconfigPathsPlugin()],
+    // imports are written from the app root (`common/…`, `components/…`). The app directory comes
+    // first, the order baseUrl gives the type checker in tsconfig.json
+    modules: [path.resolve(__dirname, 'app'), 'node_modules'],
   };
 
   const output = {
@@ -175,19 +170,7 @@ module.exports = (_, { mode, analyze }) => {
     ],
   };
 
-  const urlRule = {
-    test: /\.(png|jpg|jpeg|gif|svg)$/,
-    exclude: /node_modules/,
-    use: {
-      loader: 'file-loader',
-      options: {
-        // no publicPath here, so the emitted url goes through the runtime one above
-        name: '[name].[ext]',
-      },
-    },
-  };
-
-  const rules = [cssRule, cssModulesRule, urlRule];
+  const rules = [cssRule, cssModulesRule];
 
   const devServer = {
     port: PORT,
@@ -229,7 +212,9 @@ module.exports = (_, { mode, analyze }) => {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.REMARK_NODE': JSON.stringify(NODE_ID),
-      'process.env.REMARK_URL': isDev ? 'window.location.origin' : JSON.stringify(REMARK_URL),
+      // in development the backend is reached through the dev server's proxy, on its own origin.
+      // in production the server fills the placeholder in when it serves the bundle
+      'process.env.REMARK_URL': isDev ? 'window.location.origin' : JSON.stringify('{% REMARK_URL %}'),
     }),
     new MiniCssExtractPlugin({
       filename: '[name].css',
@@ -266,44 +251,6 @@ module.exports = (_, { mode, analyze }) => {
         filename: 'iframe.html',
         inject: false,
         env: mode,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/demo.ejs'),
-        filename: 'index.html',
-        inject: false,
-        REMARK_URL,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/counter.ejs'),
-        filename: 'counter.html',
-        inject: false,
-        REMARK_URL,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/last-comments.ejs'),
-        filename: 'last-comments.html',
-        inject: false,
-        env: mode,
-        REMARK_URL,
-        minify: htmlMinifyOptions,
-      }),
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/deleteme.ejs'),
-        filename: 'deleteme.html',
-        inject: false,
-        REMARK_URL,
-        minify: htmlMinifyOptions,
-      }),
-      // the page the widget links to when third-party cookies are blocked, which is the only way
-      // a reader in that state can reach the comments at all
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/comments.ejs'),
-        filename: 'comments.html',
-        inject: false,
-        REMARK_URL,
         minify: htmlMinifyOptions,
       }),
       ...(analyze

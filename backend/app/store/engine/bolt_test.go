@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"os"
+	"path/filepath"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -13,8 +13,6 @@ import (
 
 	"github.com/umputun/remark42/backend/app/store"
 )
-
-var testDB = "/tmp/test-remark.db"
 
 func TestBoltDB_CreateAndFind(t *testing.T) {
 	var b, teardown = prep(t)
@@ -222,13 +220,11 @@ func TestBoltDB_FindForUser(t *testing.T) {
 }
 
 func TestBoltDB_FindForUserPagination(t *testing.T) {
-	_ = os.Remove(testDB)
-	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDB, SiteID: "radio-t"})
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
 	require.NoError(t, err)
 
 	defer func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDB)
 	}()
 
 	c := store.Comment{
@@ -282,6 +278,30 @@ func TestBoltDB_FindForUserPagination(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(res))
+
+	// deleted comments take no place in a page and are not counted by skip
+	for _, id := range []string{"id-199", "id-197", "id-190"} {
+		require.NoError(t, b.Delete(DeleteRequest{Locator: c.Locator, CommentID: id, DeleteMode: store.SoftDelete}))
+	}
+	req.Skip, req.Limit = 0, 5
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-198", "id-196", "id-195", "id-194", "id-193"}, commentIDs(res))
+	req.Skip, req.Limit = 5, 3
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-192", "id-191", "id-189"}, commentIDs(res))
+	count, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
+	require.NoError(t, err)
+	assert.Equal(t, 197, count)
+}
+
+func commentIDs(comments []store.Comment) []string {
+	ids := make([]string, 0, len(comments))
+	for _, c := range comments {
+		ids = append(ids, c.ID)
+	}
+	return ids
 }
 
 func TestBoltDB_CountPost(t *testing.T) {
@@ -311,6 +331,30 @@ func TestBoltDB_CountUser(t *testing.T) {
 	c, err := b.Count(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, c)
+
+	// a comment on another post counts, a deleted one does not
+	_, err = b.Create(store.Comment{ID: "id-3", Text: "some text3", Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 3, c)
+	require.NoError(t, b.Delete(DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: "id-1", DeleteMode: store.SoftDelete}))
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 2, c, "soft-deleted comment is not counted")
+
+	// a page url with the reference delimiter in it makes an unparsable reference, which is passed over
+	_, err = b.Create(store.Comment{ID: "id-4", Text: "some text4", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/a!!b", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	c, err = b.Count(req)
+	require.NoError(t, err)
+	assert.Equal(t, 2, c, "unparsable reference is not counted")
+	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Sort: "-time"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-3", "id-2"}, commentIDs(comments))
 
 	req = FindRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1"}
 	_, err = b.Count(req)
@@ -370,6 +414,40 @@ func TestBoltDB_InfoPost(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24),
 		ReadOnly: true}}, r)
+}
+
+func TestBoltDB_InfoPostCreatedOutOfOrder(t *testing.T) {
+	// imports and backup restores create comments in any time order, deleted ones included
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	defer b.Close()
+
+	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, minute, 0, 0, time.UTC) }
+	mk := func(id, url string, minute int, deleted bool) {
+		c := store.Comment{ID: id, Text: "text", Timestamp: ts(minute), Locator: store.Locator{URL: url, SiteID: "radio-t"},
+			User: store.User{ID: "user1", Name: "user name"}}
+		if deleted {
+			c.SetDeleted(store.SoftDelete)
+		}
+		_, e := b.Create(c)
+		require.NoError(t, e)
+	}
+	mk("c1", "https://radio-t.com/1", 20, false)
+	mk("c2", "https://radio-t.com/1", 5, true)
+	mk("c3", "https://radio-t.com/1", 10, false)
+	mk("c4", "https://radio-t.com/1", 50, true)
+	mk("c5", "https://radio-t.com/1", 30, false)
+	mk("c6", "https://radio-t.com/2", 40, true)
+
+	r, err := b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/1", SiteID: "radio-t"}})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/1", Count: 3, FirstTS: ts(5), LastTS: ts(50)}}, r,
+		"deleted comments are not counted, first and last are the earliest and latest comments, as on the site the backup came from")
+
+	r, err = b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 0, FirstTS: ts(40), LastTS: ts(40), ReadOnly: true}}, r,
+		"a post with only a deleted comment has no comments and keeps its age")
 }
 
 func TestBoltDB_InfoList(t *testing.T) {
@@ -667,6 +745,22 @@ func TestBoltDB_UserDetail(t *testing.T) {
 	}
 }
 
+func TestBoltDB_ListDetailsKeepsEntriesSeparate(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	loc := store.Locator{SiteID: "radio-t"}
+	_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserEmail, Update: "u1@example.com"})
+	require.NoError(t, err)
+	_, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u2", Detail: UserTelegram, Update: "u2_telegram"})
+	require.NoError(t, err)
+
+	// u2 has no email, so listing must not carry u1's email over into u2's entry
+	res, err := b.UserDetail(UserDetailRequest{Locator: loc, Detail: AllUserDetails})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}, {UserID: "u2", Telegram: "u2_telegram"}}, res)
+}
+
 func TestBolt_DeleteComment(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
@@ -931,11 +1025,7 @@ func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
 	assert.NoError(t, err, "no comments for user user1 in store")
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.True(t, comments[0].Deleted)
-	assert.True(t, comments[1].Deleted)
-	assert.Equal(t, "", comments[0].Text)
-	assert.Equal(t, "", comments[1].Text)
+	assert.Empty(t, comments, "deleted comments are not listed for the user")
 
 	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.NoError(t, err)
@@ -980,9 +1070,7 @@ func TestBoltDB_DoubleClose(t *testing.T) {
 
 // makes new boltdb, put two records
 func prep(t *testing.T) (b *BoltDB, teardown func()) {
-	_ = os.Remove(testDB)
-
-	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: testDB, SiteID: "radio-t"})
+	boltStore, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
 	assert.NoError(t, err)
 	b = boltStore
 
@@ -1008,7 +1096,6 @@ func prep(t *testing.T) (b *BoltDB, teardown func()) {
 
 	teardown = func() {
 		require.NoError(t, b.Close())
-		_ = os.Remove(testDB)
 	}
 	return b, teardown
 }

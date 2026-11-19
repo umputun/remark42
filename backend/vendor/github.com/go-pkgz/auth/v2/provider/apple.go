@@ -312,7 +312,7 @@ func (ah AppleHandler) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	// example response: {"name":{"firstName":"Chan","lastName":"Lu"},"email":"user@email.com"}
 	jUser := r.FormValue("user") // json string with user name
 
-	oauthClaims, _, err := ah.JwtService.Get(r)
+	oauthClaims, err := handshakeFromCookie(ah.JwtService, r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, ah.L, http.StatusInternalServerError, err, "failed to get token")
 		return

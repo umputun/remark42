@@ -36,9 +36,7 @@ func TestTelegramSub_NotOfferedToAReaderWithoutAnAccount(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, n, "Telegram subscription was offered to a reader with no account")
 
-	token := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+token, tgReaderID(t), "Control Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, tgReaderID(t), "Control Reader")
 	waitVisible(t, control)
 }
 
@@ -51,17 +49,9 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 	readerID := tgReaderID(t)
 
-	loginToken := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+loginToken, readerID, "Subscription Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, readerID, "Subscription Reader")
 
-	// a unique reader keeps runs isolated, and clearing here also makes a rerun against a kept
-	// stack deterministic if the same E2E_RUN_ID and process id are reused
-	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
-	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
-	clearTelegramSubscriptionSession(t, page)
-
-	frame = reload(t, page)
+	frame = clearTelegramSubscription(t, page)
 	// this instance runs NOTIFY_USERS=telegram, so the email control has to be absent. The telegram
 	// control opened just below is the positive control for it
 	waitHidden(t, frame.Locator(`[title="Subscribe by email"]`),
@@ -81,7 +71,7 @@ func TestTelegramSub_RoundTrip(t *testing.T) {
 
 	resp, err := page.ExpectResponse("**/api/v1/telegram**", func() error {
 		return unsubscribe.Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, http.MethodDelete, resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the telegram unsubscribe")
@@ -99,18 +89,10 @@ func TestTelegramSub_StartFailureIsShown(t *testing.T) {
 	page := newPage(t)
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 
-	loginToken := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+loginToken, tgReaderID(t), "Error Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, tgReaderID(t), "Error Reader")
 
 	require.NoError(t, page.Route("**/api/v1/telegram/subscribe**", func(route playwright.Route) {
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill Telegram subscription failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	require.NoError(t, frame.Locator(`[title="Subscribe by Telegram"]`).Click())
@@ -119,6 +101,25 @@ func TestTelegramSub_StartFailureIsShown(t *testing.T) {
 	text, err := errorMessage.TextContent()
 	require.NoError(t, err)
 	assert.Contains(t, strings.ToLower(text), "something went wrong")
+}
+
+// clearTelegramSubscription removes the reader's subscription and the panel state, then reloads.
+// A unique reader keeps runs isolated, and clearing also makes a rerun against a kept stack
+// deterministic if the same E2E_RUN_ID and process id are reused
+func clearTelegramSubscription(t *testing.T, page playwright.Page) playwright.FrameLocator {
+	t.Helper()
+	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
+	clearTelegramSubscriptionSession(t, page)
+	return reload(t, page)
+}
+
+// tgSendSubscriptionToken sends the subscription token to the bot and waits for its confirmation
+func tgSendSubscriptionToken(t *testing.T, token, readerID, firstName string) {
+	t.Helper()
+	before := len(tgSentMessages(t))
+	tgSendToBot(t, "/start "+token, readerID, firstName)
+	tgWaitForMessage(t, before, "successfully subscribed")
 }
 
 func clearTelegramSubscriptionSession(t *testing.T, page playwright.Page) {
@@ -149,13 +150,11 @@ func confirmTelegramSubscription(
 	t *testing.T, page playwright.Page, frame playwright.FrameLocator, token, readerID string,
 ) {
 	t.Helper()
-	before := len(tgSentMessages(t))
-	tgSendToBot(t, "/start "+token, readerID, "Subscription Reader")
-	tgWaitForMessage(t, before, "successfully subscribed")
+	tgSendSubscriptionToken(t, token, readerID, "Subscription Reader")
 
 	resp, err := page.ExpectResponse("**/api/v1/telegram/subscribe**", func() error {
 		return frame.Locator(`button:text-is("Check")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Check asked the server nothing")
 	require.Equal(t, http.StatusOK, resp.Status(), "the server refused a subscription token the bot confirmed")
 	waitVisible(t, frame.Locator(`text=You have subscribed to Telegram updates`))
@@ -174,15 +173,9 @@ func TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne(t *testing.T) {
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 	readerID := tgReaderID(t)
 
-	loginToken := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+loginToken, readerID, "Recovery Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, readerID, "Recovery Reader")
 
-	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
-	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
-	clearTelegramSubscriptionSession(t, page)
-
-	frame = reload(t, page)
+	frame = clearTelegramSubscription(t, page)
 	token := openTelegramSubscription(t, frame)
 	confirmTelegramSubscription(t, page, frame, token, readerID)
 
@@ -203,13 +196,7 @@ func TestTelegramSub_AFailedUnsubscribeIsClearedByASuccessfulOne(t *testing.T) {
 			return
 		}
 		refuse = false
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill telegram unsubscribe failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	require.NoError(t, unsubscribe.Click())
@@ -231,22 +218,14 @@ func TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne(t *testing.T) {
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 	readerID := tgReaderID(t)
 
-	loginToken := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+loginToken, readerID, "Check Recovery Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, readerID, "Check Recovery Reader")
 
-	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
-	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
-	clearTelegramSubscriptionSession(t, page)
-
-	frame = reload(t, page)
+	frame = clearTelegramSubscription(t, page)
 	token := openTelegramSubscription(t, frame)
 
 	// the reader has messaged the bot and the bot has acknowledged it, so a check would now
 	// succeed. The first one is refused anyway, which is what leaves the message the second clears
-	before := len(tgSentMessages(t))
-	tgSendToBot(t, "/start "+token, readerID, "Check Recovery Reader")
-	tgWaitForMessage(t, before, "successfully subscribed")
+	tgSendSubscriptionToken(t, token, readerID, "Check Recovery Reader")
 
 	refuse := true
 	require.NoError(t, page.Route("**/api/v1/telegram/subscribe**", func(route playwright.Route) {
@@ -257,13 +236,7 @@ func TestTelegramSub_AFailedCheckIsClearedByASuccessfulOne(t *testing.T) {
 			return
 		}
 		refuse = false
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill telegram check failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	check := frame.Locator(`button:text-is("Check")`)
@@ -287,20 +260,12 @@ func TestTelegramSub_ThePanelSaysItIsWorking(t *testing.T) {
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 	readerID := tgReaderID(t)
 
-	loginToken := tgStartSignIn(t, frame)
-	tgSendToBot(t, "/start "+loginToken, readerID, "Loading Reader")
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, readerID, "Loading Reader")
 
-	status, body := pageFetch(t, page, http.MethodDelete, telegramURL+"/api/v1/telegram?site=remark", nil)
-	require.Equal(t, http.StatusOK, status, "could not clear a telegram subscription left by an earlier run: %s", body)
-	clearTelegramSubscriptionSession(t, page)
-
-	frame = reload(t, page)
+	frame = clearTelegramSubscription(t, page)
 	token := openTelegramSubscription(t, frame)
 
-	before := len(tgSentMessages(t))
-	tgSendToBot(t, "/start "+token, readerID, "Loading Reader")
-	tgWaitForMessage(t, before, "successfully subscribed")
+	tgSendSubscriptionToken(t, token, readerID, "Loading Reader")
 
 	// held open, or the answer lands before anything can be read
 	release := make(chan struct{})

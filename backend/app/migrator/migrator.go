@@ -6,7 +6,9 @@ package migrator
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 
 	log "github.com/go-pkgz/lgr"
 
@@ -37,7 +39,7 @@ type MapperMaker func(reader io.Reader) (Mapper, error)
 // Store defines minimal interface needed to export and import comments
 type Store interface {
 	Create(comment store.Comment) (commentID string, err error)
-	Find(locator store.Locator, sort string, user store.User) ([]store.Comment, error)
+	FindRaw(locator store.Locator) ([]store.Comment, error)
 	List(siteID string, limit, skip int) ([]store.PostInfo, error)
 	DeleteAll(siteID string) error
 	Metas(siteID string) (umetas []service.UserMetaData, pmetas []service.PostMetaData, err error)
@@ -53,6 +55,145 @@ type ImportParams struct {
 }
 
 var adminUser = store.User{Admin: true}
+
+// converter reads an export of another comment system from r and passes each comment to emit.
+// It returns the first error of emit, or an error when r can't be read to the end.
+type converter func(r io.Reader, siteID string, emit func(store.Comment) error) error
+
+// importComments replaces the comments of siteID with the ones convert reads from r.
+// The site is cleared when the first comment arrives, or once a conversion without comments
+// completes, so an input that can't be read at all leaves the site as it was.
+//
+// A reply is saved once its parent is, and a reply whose parent is not in the export or was not
+// imported becomes a top-level comment: the comments tree shows only replies it can reach from a
+// top-level comment, so a reply left pointing at a missing parent would be stored but never shown.
+// A deleted comment is saved only as a placeholder for replies to it, and is not counted in passed.
+func importComments(ds Store, r io.Reader, siteID string, convert converter) (passed int, err error) {
+	cleared, failed := false, 0
+	clearSite := func() error {
+		if cleared {
+			return nil
+		}
+		cleared = true
+		return ds.DeleteAll(siteID)
+	}
+
+	saved := map[string]bool{}              // ids of the comments in the store
+	held := map[string]store.Comment{}      // deleted comments no reply has needed yet
+	waiting := map[string][]store.Comment{} // replies by the id of a parent not saved yet
+	save := func(c store.Comment) {
+		for queue := []store.Comment{c}; len(queue) > 0; {
+			c, queue = queue[0], queue[1:]
+			if _, e := ds.Create(c); e != nil {
+				failed++
+				continue
+			}
+			if !c.Deleted {
+				passed++
+			}
+			saved[c.ID] = true
+			queue = append(queue, waiting[c.ID]...)
+			delete(waiting, c.ID)
+		}
+	}
+	// place saves c together with the held deleted comments above it, or leaves them waiting
+	// for a parent that has not arrived yet
+	place := func(c store.Comment) {
+		chain := []store.Comment{c} // c and its held ancestors, the topmost last
+		for parentID := c.ParentID; parentID != "" && !saved[parentID]; {
+			p, ok := held[parentID]
+			if !ok {
+				break
+			}
+			delete(held, parentID)
+			chain = append(chain, p)
+			parentID = p.ParentID
+		}
+		for i := len(chain) - 1; i > 0; i-- {
+			waiting[chain[i].ID] = append(waiting[chain[i].ID], chain[i-1])
+		}
+		top := chain[len(chain)-1]
+		if top.ParentID != "" && !saved[top.ParentID] {
+			waiting[top.ParentID] = append(waiting[top.ParentID], top)
+			return
+		}
+		save(top)
+	}
+
+	err = convert(r, siteID, func(c store.Comment) error {
+		if e := clearSite(); e != nil {
+			return e
+		}
+		if c.Deleted && len(waiting[c.ID]) == 0 {
+			held[c.ID] = c
+			return nil
+		}
+		place(c)
+		return nil
+	})
+	if err == nil {
+		err = clearSite()
+	}
+
+	// what is still waiting has no parent in the store, also when the input broke off, as the comments
+	// read before that are imported. Replies to a parent missing from the export become top-level,
+	// and saving them releases the replies waiting on them. A parent id that belongs to a waiting
+	// comment is resolved that way, unless the comments only wait on each other.
+	for len(waiting) > 0 {
+		pending := map[string]store.Comment{} // the waiting comments, by id
+		for _, replies := range waiting {
+			for _, c := range replies {
+				pending[c.ID] = c
+			}
+		}
+		parentIDs := slices.Sorted(maps.Keys(waiting))
+		missing := slices.DeleteFunc(slices.Clone(parentIDs), func(id string) bool { _, ok := pending[id]; return ok })
+		if len(missing) == 0 {
+			// every waiting comment waits on another waiting one, so following the parents from any of them
+			// ends in a cycle; the first comment reached twice is on it, becomes top-level and releases the rest
+			seen := map[string]bool{}
+			id := waiting[parentIDs[0]][0].ID
+			for !seen[id] {
+				seen[id] = true
+				id = pending[id].ParentID
+			}
+			c := pending[id]
+			siblings := slices.DeleteFunc(waiting[c.ParentID], func(r store.Comment) bool { return r.ID == c.ID })
+			if len(siblings) == 0 {
+				delete(waiting, c.ParentID)
+			} else {
+				waiting[c.ParentID] = siblings
+			}
+			log.Printf("[DEBUG] comment %s replies in a cycle, the comment becomes top-level", c.ID)
+			c.ParentID = ""
+			save(c)
+			continue
+		}
+		for _, parentID := range missing {
+			replies := waiting[parentID]
+			delete(waiting, parentID)
+			for _, c := range replies {
+				log.Printf("[DEBUG] parent %s of comment %s is not imported, the comment becomes top-level", parentID, c.ID)
+				c.ParentID = ""
+				save(c)
+			}
+		}
+	}
+	if err != nil {
+		return passed, err
+	}
+
+	if failed > 0 {
+		err = fmt.Errorf("failed to save %d comments", failed)
+		if passed == 0 {
+			err = fmt.Errorf("import failed")
+		}
+	}
+
+	log.Printf("[DEBUG] imported %d comments to site %s", passed, siteID)
+
+	return passed, err
+}
 
 // ImportComments imports from given provider format and saves to store
 func ImportComments(p ImportParams) (int, error) {
@@ -84,4 +225,31 @@ func ImportComments(p ImportParams) (int, error) {
 	}()
 
 	return importer.Import(fh, p.SiteID)
+}
+
+// seekable returns r as an io.ReadSeeker together with the offset to rewind it to. A reader that can't seek,
+// including a pipe opened as *os.File, is copied to a temporary file first; the returned cleanup removes that file.
+func seekable(r io.Reader) (rs io.ReadSeeker, start int64, cleanup func(), err error) {
+	if in, ok := r.(io.ReadSeeker); ok {
+		if pos, e := in.Seek(0, io.SeekCurrent); e == nil {
+			return in, pos, func() {}, nil
+		}
+	}
+	fh, err := os.CreateTemp("", "remark42-import-*")
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("can't make temp file for import: %w", err)
+	}
+	cleanup = func() {
+		_ = fh.Close()
+		_ = os.Remove(fh.Name()) //nolint:gosec // the name comes from os.CreateTemp
+	}
+	if _, err = io.Copy(fh, r); err != nil {
+		cleanup()
+		return nil, 0, nil, fmt.Errorf("can't copy import to temp file: %w", err)
+	}
+	if _, err = fh.Seek(0, io.SeekStart); err != nil {
+		cleanup()
+		return nil, 0, nil, fmt.Errorf("can't rewind temp file: %w", err)
+	}
+	return fh, 0, cleanup, nil
 }

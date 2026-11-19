@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -80,7 +81,7 @@ func assertImageFits(t *testing.T, data []byte, limitW, limitH int) {
 }
 
 func TestService_SaveTooLarge(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+	svc := Service{ImageAPI: "/blah/"}
 	svc.MaxSize = 2000
 	_, err := svc.Save("user2", io.MultiReader(gopherPNG(), gopherPNG()))
 	assert.Error(t, err)
@@ -91,14 +92,14 @@ func TestService_SaveTooLarge(t *testing.T) {
 }
 
 func TestService_WrongFormat(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/"}}
+	svc := Service{ImageAPI: "/blah/"}
 
 	_, err := svc.Save("user1", strings.NewReader("blah blah bad image"))
 	assert.Error(t, err)
 }
 
 func TestService_ExtractPictures(t *testing.T) {
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/", ProxyAPI: "/non_existent"}}
+	svc := Service{ImageAPI: "/blah/", ProxyAPI: "/non_existent"}
 	html := `blah <img src="/blah/user1/pic1.png"/> foo
 <img src="/blah/user2/pic3.png"/> xyz <p>123</p> <img src="/pic3.png"/> <img src="https://i.ibb.co/0cqqqnD/ezgif-5-3b07b6b97610.png" alt="">`
 	ids := svc.ExtractPictures(html)
@@ -106,7 +107,7 @@ func TestService_ExtractPictures(t *testing.T) {
 	assert.Equal(t, "user1/pic1.png", ids[0])
 	assert.Equal(t, "user2/pic3.png", ids[1])
 
-	svc = Service{ServiceParams: ServiceParams{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/", ProxyAPI: "https://remark42.radio-t.com/api/v1/img"}}
+	svc = Service{ImageAPI: "https://remark42.radio-t.com/api/v1/picture/", ProxyAPI: "https://remark42.radio-t.com/api/v1/img"}
 	html = `<p>TLDR: такое в go пока правильно посчитать трудно. То, что они считают это общее количество go packages в коде.
 </p>\n\n<p>Пакеты в го это средство организации кода, они могут быть связанны друг с другом в рамках одной библиотеки (модуля).
 Например одна из моих вот так выглядит на libraries.io:</p>\n\n
@@ -221,7 +222,7 @@ func TestService_Close(t *testing.T) {
 		CommitFunc:            func(string) error { return nil },
 		ResetCleanupTimerFunc: func(string) error { return nil },
 	}
-	svc := Service{store: &store, ServiceParams: ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24}}
+	svc := NewService(&store, ServiceParams{ImageAPI: "/blah/", EditDuration: time.Hour * 24})
 	svc.Submit(func() []string { return []string{"id1", "id2", "id3"} })
 	svc.Submit(func() []string { return []string{"id4", "id5"} })
 	svc.Submit(nil)
@@ -310,7 +311,7 @@ func TestService_resize(t *testing.T) {
 func TestService_SaveWithIDShortPayload(t *testing.T) {
 	short := []byte("not an image")
 
-	svc := Service{ServiceParams: ServiceParams{ImageAPI: "/blah/", MaxSize: 1500, MaxWidth: 32, MaxHeight: 32}}
+	svc := Service{ImageAPI: "/blah/", MaxSize: 1500, MaxWidth: 32, MaxHeight: 32}
 	err := svc.SaveWithID("test_id", bytes.NewReader(short))
 	require.Error(t, err, "short non-image body must return an error, not panic")
 	assert.Contains(t, err.Error(), "file format not allowed")
@@ -332,7 +333,7 @@ func TestService_SaveWithIDWebP(t *testing.T) {
 	require.Equal(t, 1, cfg.Height)
 
 	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
-	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+	svc := Service{store: &store, MaxSize: 1500}
 
 	err = svc.SaveWithID("webp_id", bytes.NewReader(webp))
 	require.NoError(t, err, "valid WebP must round-trip through SaveWithID")
@@ -368,7 +369,7 @@ func TestService_resizeRejectsDecompressionBomb(t *testing.T) {
 	// integration-level: SaveWithID must reject the same bomb without panicking
 	// or allocating gigabytes of raster memory.
 	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
-	svc := Service{store: &store, ServiceParams: ServiceParams{MaxSize: 1500}}
+	svc := Service{store: &store, MaxSize: 1500}
 	err = svc.SaveWithID("bomb_id", bytes.NewReader(bomb))
 	require.Error(t, err, "SaveWithID must reject decompression bomb")
 	assert.Equal(t, 0, len(store.SaveCalls()), "rejected bomb must not be stored")
@@ -405,12 +406,70 @@ func TestCachedImgID(t *testing.T) {
 	assert.Equal(t, "cached_images/"+Sha1Str("example.org")+"-"+Sha1Str(imgURL), img)
 }
 
-func TestService_DoubleClose(*testing.T) {
-	store := StoreMock{}
-	svc := NewService(&store, ServiceParams{EditDuration: 20 * time.Millisecond})
+func TestService_DoubleClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} }) // starts the submitter, so Close has a queue to close
+		svc.Close(context.TODO())
+		assert.NotPanics(t, func() { svc.Close(context.TODO()) }, "second Close")
+		assert.Len(t, store.CommitCalls(), 1)
+	})
+}
+
+func TestService_SubmitAfterClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		svc.Close(context.TODO())
+		start := time.Now()
+		require.NotPanics(t, func() { svc.Submit(func() []string { return []string{"id2", "id3"} }) }, "Submit after Close")
+		require.Len(t, store.CommitCalls(), 3, "Submit after Close commits at once")
+		assert.Equal(t, "id2", store.CommitCalls()[1].ID)
+		assert.Zero(t, time.Since(start), "Submit after Close does not wait for EditDuration")
+	})
+}
+
+func TestService_CloseHonoursContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		store := StoreMock{
+			CommitFunc:            func(string) error { <-release; return nil }, // a commit that stalls until released
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		start := time.Now()
+		svc.Close(ctx)
+		assert.Equal(t, time.Minute, time.Since(start), "Close returns at the context deadline while a commit stalls")
+		close(release)
+		svc.Close(context.Background()) // waits for the released commit, so nothing outlives the bubble
+		assert.Len(t, store.CommitCalls(), 1)
+	})
+}
+
+func TestService_SubmitRacingClose(t *testing.T) {
+	store := StoreMock{
+		CommitFunc:            func(string) error { return nil },
+		ResetCleanupTimerFunc: func(string) error { return nil },
+	}
+	svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Go(func() { svc.Submit(func() []string { return []string{strconv.Itoa(i)} }) })
+	}
 	svc.Close(context.TODO())
-	// second call should not result in panic
-	svc.Close(context.TODO())
+	wg.Wait()
+	assert.Len(t, store.CommitCalls(), 100, "every submit is committed, whether it lands before or after Close")
 }
 
 // TestSafeImgContentType now lives in the rest package alongside the SafeImgContentType

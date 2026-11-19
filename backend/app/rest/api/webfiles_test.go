@@ -266,8 +266,40 @@ func TestTemplatedFS_SubstitutesTheInstanceURL(t *testing.T) {
 	}
 }
 
-// TestTemplatedFS_FillsTheDemoSite covers the demo, counter and last-comments pages, which the build
-// emits for site "remark". The docker image rewrites that literal in html files at container start,
+// TestTemplatedFS_FillsTheEmbeddedPages runs the pages the binary embeds through the substitution,
+// as the file server does. The demo, counter and last-comments pages name their site as one exact
+// literal, and comments.html carries the instance placeholder: a page that loses either keeps a
+// site the instance may not serve, or a host no reader can reach, and nothing else would notice.
+func TestTemplatedFS_FillsTheEmbeddedPages(t *testing.T) {
+	tfs := templatedFS{fs: webassets.FS, remarkURL: "https://remark.example.com", siteID: "myblog"}
+
+	read := func(t *testing.T, name string) string {
+		t.Helper()
+		f, err := tfs.Open(name)
+		require.NoError(t, err)
+		defer func() { assert.NoError(t, f.Close()) }()
+		body, err := io.ReadAll(f)
+		require.NoError(t, err)
+		return string(body)
+	}
+
+	for _, name := range []string{"index.html", "counter.html", "last-comments.html"} {
+		t.Run(name+" gets the first configured site", func(t *testing.T) {
+			body := read(t, name)
+			assert.Contains(t, body, `site_id:"myblog"`)
+			assert.NotContains(t, body, demoSiteLiteral)
+		})
+	}
+
+	t.Run("comments.html gets the instance url", func(t *testing.T) {
+		body := read(t, "comments.html")
+		assert.Contains(t, body, `var host = 'https://remark.example.com';`)
+		assert.NotContains(t, body, remarkURLPlaceholder)
+	})
+}
+
+// TestTemplatedFS_FillsTheDemoSite covers the demo, counter and last-comments pages, which name
+// their site as "remark". The docker image rewrites that literal in html files at container start,
 // and the binary has to do the same, or an instance serving another site answers those pages with
 // "site not found" and their widget asks the API about a site the reader is not signed in to.
 func TestTemplatedFS_FillsTheDemoSite(t *testing.T) {

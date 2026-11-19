@@ -33,35 +33,9 @@ func (e *RichTextBlock) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	elems := make([]RichTextElement, 0, len(raw.RawElements))
-	for _, r := range raw.RawElements {
-		var s struct {
-			Type RichTextElementType `json:"type"`
-		}
-		if err := json.Unmarshal(r, &s); err != nil {
-			return err
-		}
-		var elem RichTextElement
-		switch s.Type {
-		case RTESection:
-			elem = &RichTextSection{}
-		case RTEList:
-			elem = &RichTextList{}
-		case RTEQuote:
-			elem = &RichTextQuote{}
-		case RTEPreformatted:
-			elem = &RichTextPreformatted{}
-		default:
-			elems = append(elems, &RichTextUnknown{
-				Type: s.Type,
-				Raw:  string(r),
-			})
-			continue
-		}
-		if err := json.Unmarshal(r, &elem); err != nil {
-			return err
-		}
-		elems = append(elems, elem)
+	elems, err := unmarshalRichTextElements(raw.RawElements)
+	if err != nil {
+		return err
 	}
 	*e = RichTextBlock{
 		Type:     raw.Type,
@@ -152,13 +126,29 @@ func (e *RichTextList) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	elems := make([]RichTextElement, 0, len(raw.RawElements))
-	for _, r := range raw.RawElements {
+	elems, err := unmarshalRichTextElements(raw.RawElements)
+	if err != nil {
+		return err
+	}
+	*e = RichTextList{
+		Type:     RTEList,
+		Elements: elems,
+		Style:    raw.Style,
+		Indent:   raw.Indent,
+		Border:   raw.Border,
+		Offset:   raw.Offset,
+	}
+	return nil
+}
+
+func unmarshalRichTextElements(raw []json.RawMessage) ([]RichTextElement, error) {
+	elems := make([]RichTextElement, 0, len(raw))
+	for _, r := range raw {
 		var s struct {
 			Type RichTextElementType `json:"type"`
 		}
 		if err := json.Unmarshal(r, &s); err != nil {
-			return err
+			return nil, err
 		}
 		var elem RichTextElement
 		switch s.Type {
@@ -178,19 +168,11 @@ func (e *RichTextList) UnmarshalJSON(b []byte) error {
 			continue
 		}
 		if err := json.Unmarshal(r, elem); err != nil {
-			return err
+			return nil, err
 		}
 		elems = append(elems, elem)
 	}
-	*e = RichTextList{
-		Type:     RTEList,
-		Elements: elems,
-		Style:    raw.Style,
-		Indent:   raw.Indent,
-		Border:   raw.Border,
-		Offset:   raw.Offset,
-	}
-	return nil
+	return elems, nil
 }
 
 type RichTextSection struct {
@@ -226,18 +208,42 @@ func (e *RichTextSection) UnmarshalJSON(b []byte) error {
 		switch s.Type {
 		case RTSEText:
 			elem = &RichTextSectionTextElement{}
+		case RTSEAttachmentMention:
+			elem = &RichTextSectionAttachmentMentionElement{}
+		case RTSETag:
+			elem = &RichTextSectionTagElement{}
+		case RTSECanvas:
+			elem = &RichTextSectionCanvasElement{}
+		case RTSECanvasMessageUnfurl:
+			elem = &RichTextSectionCanvasMessageUnfurlElement{}
+		case RTSECanvasUserMention:
+			elem = &RichTextSectionCanvasUserMentionElement{}
 		case RTSEChannel:
 			elem = &RichTextSectionChannelElement{}
+		case RTSECitation:
+			elem = &RichTextSectionCitationElement{}
 		case RTSEUser:
 			elem = &RichTextSectionUserElement{}
 		case RTSEEmoji:
 			elem = &RichTextSectionEmojiElement{}
+		case RTSEFile:
+			elem = &RichTextSectionFileElement{}
 		case RTSELink:
 			elem = &RichTextSectionLinkElement{}
+		case RTSEListRecord:
+			elem = &RichTextSectionListRecordElement{}
+		case RTSEMessageMention:
+			elem = &RichTextSectionMessageMentionElement{}
+		case RTSESalesforceDataField:
+			elem = &RichTextSectionSalesforceDataFieldElement{}
 		case RTSETeam:
 			elem = &RichTextSectionTeamElement{}
 		case RTSEUserGroup:
 			elem = &RichTextSectionUserGroupElement{}
+		case RTSEWorkObjectMention:
+			elem = &RichTextSectionWorkObjectMentionElement{}
+		case RTSEWorkflowMention:
+			elem = &RichTextSectionWorkflowMentionElement{}
 		case RTSEDate:
 			elem = &RichTextSectionDateElement{}
 		case RTSEBroadcast:
@@ -279,16 +285,28 @@ func NewRichTextSection(elements ...RichTextSectionElement) *RichTextSection {
 type RichTextSectionElementType string
 
 const (
-	RTSEBroadcast RichTextSectionElementType = "broadcast"
-	RTSEChannel   RichTextSectionElementType = "channel"
-	RTSEColor     RichTextSectionElementType = "color"
-	RTSEDate      RichTextSectionElementType = "date"
-	RTSEEmoji     RichTextSectionElementType = "emoji"
-	RTSELink      RichTextSectionElementType = "link"
-	RTSETeam      RichTextSectionElementType = "team"
-	RTSEText      RichTextSectionElementType = "text"
-	RTSEUser      RichTextSectionElementType = "user"
-	RTSEUserGroup RichTextSectionElementType = "usergroup"
+	RTSEAttachmentMention   RichTextSectionElementType = "attachment_mention"
+	RTSEBroadcast           RichTextSectionElementType = "broadcast"
+	RTSECanvas              RichTextSectionElementType = "canvas"
+	RTSECanvasMessageUnfurl RichTextSectionElementType = "canvas_message_unfurl"
+	RTSECanvasUserMention   RichTextSectionElementType = "canvas_user_mention"
+	RTSEChannel             RichTextSectionElementType = "channel"
+	RTSECitation            RichTextSectionElementType = "citation"
+	RTSEColor               RichTextSectionElementType = "color"
+	RTSEDate                RichTextSectionElementType = "date"
+	RTSEEmoji               RichTextSectionElementType = "emoji"
+	RTSEFile                RichTextSectionElementType = "file"
+	RTSELink                RichTextSectionElementType = "link"
+	RTSEListRecord          RichTextSectionElementType = "list_record"
+	RTSEMessageMention      RichTextSectionElementType = "message_mention"
+	RTSESalesforceDataField RichTextSectionElementType = "salesforce_data_field"
+	RTSETag                 RichTextSectionElementType = "tag"
+	RTSETeam                RichTextSectionElementType = "team"
+	RTSEText                RichTextSectionElementType = "text"
+	RTSEUser                RichTextSectionElementType = "user"
+	RTSEUserGroup           RichTextSectionElementType = "usergroup"
+	RTSEWorkObjectMention   RichTextSectionElementType = "work_object_mention"
+	RTSEWorkflowMention     RichTextSectionElementType = "workflow_mention"
 
 	RTSEUnknown RichTextSectionElementType = "unknown"
 )
@@ -326,9 +344,44 @@ func NewRichTextSectionTextElement(text string, style *RichTextSectionTextStyle)
 	}
 }
 
+// RichTextTagColor specifies a rich-text tag's color.
+type RichTextTagColor string
+
+const (
+	RichTextTagColorGray   RichTextTagColor = "gray"
+	RichTextTagColorBrown  RichTextTagColor = "brown"
+	RichTextTagColorPurple RichTextTagColor = "purple"
+	RichTextTagColorIndigo RichTextTagColor = "indigo"
+	RichTextTagColorBlue   RichTextTagColor = "blue"
+	RichTextTagColorGreen  RichTextTagColor = "green"
+	RichTextTagColorYellow RichTextTagColor = "yellow"
+	RichTextTagColorOrange RichTextTagColor = "orange"
+	RichTextTagColorRed    RichTextTagColor = "red"
+)
+
+// RichTextSectionTagElement represents a tag within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/tag-element/
+type RichTextSectionTagElement struct {
+	Type  RichTextSectionElementType `json:"type"`
+	Text  string                     `json:"text"`
+	Color RichTextTagColor           `json:"color,omitempty"`
+	Style *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionTagElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionTagElement(text string, style *RichTextSectionTextStyle) *RichTextSectionTagElement {
+	return &RichTextSectionTagElement{Type: RTSETag, Text: text, Style: style}
+}
+
 type RichTextSectionChannelElement struct {
 	Type      RichTextSectionElementType `json:"type"`
 	ChannelID string                     `json:"channel_id"`
+	TabID     string                     `json:"tab_id,omitempty"`
+	FromLLM   *bool                      `json:"from_llm,omitempty"`
 	Style     *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
@@ -345,9 +398,10 @@ func NewRichTextSectionChannelElement(channelID string, style *RichTextSectionTe
 }
 
 type RichTextSectionUserElement struct {
-	Type   RichTextSectionElementType `json:"type"`
-	UserID string                     `json:"user_id"`
-	Style  *RichTextSectionTextStyle  `json:"style,omitempty"`
+	Type    RichTextSectionElementType `json:"type"`
+	UserID  string                     `json:"user_id"`
+	FromLLM *bool                      `json:"from_llm,omitempty"`
+	Style   *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionUserElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -367,7 +421,11 @@ type RichTextSectionEmojiElement struct {
 	Name     string                     `json:"name"`
 	SkinTone int                        `json:"skin_tone,omitempty"`
 	Unicode  string                     `json:"unicode,omitempty"`
-	Style    *RichTextSectionTextStyle  `json:"style,omitempty"`
+	// URL is used for custom emoji shared across workspaces.
+	// Slack's Node SDK documents this field; the Block Kit reference omits it.
+	// https://docs.slack.dev/tools/node-slack-sdk/reference/types/interfaces/RichTextEmoji/#url
+	URL   string                    `json:"url,omitempty"`
+	Style *RichTextSectionTextStyle `json:"style,omitempty"`
 }
 
 func (r RichTextSectionEmojiElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -383,11 +441,239 @@ func NewRichTextSectionEmojiElement(name string, skinTone int, style *RichTextSe
 	}
 }
 
+// RichTextSectionAttachmentMentionElement references an app attachment within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/attachment-mention-element/
+type RichTextSectionAttachmentMentionElement struct {
+	Type                   RichTextSectionElementType `json:"type"`
+	URL                    string                     `json:"url"`
+	Text                   string                     `json:"text,omitempty"`
+	AppID                  string                     `json:"app_id,omitempty"`
+	EntityID               string                     `json:"entity_id,omitempty"`
+	IconURL                string                     `json:"icon_url,omitempty"`
+	ChannelID              string                     `json:"channel_id,omitempty"`
+	Timestamp              string                     `json:"ts,omitempty"`
+	FullSizePreviewEnabled *bool                      `json:"full_size_preview_enabled,omitempty"`
+	IconName               string                     `json:"icon_name,omitempty"`
+	ReferenceObjectType    string                     `json:"reference_object_type,omitempty"`
+	ProductName            string                     `json:"product_name,omitempty"`
+	Style                  *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionAttachmentMentionElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionAttachmentMentionElement(url string, style *RichTextSectionTextStyle) *RichTextSectionAttachmentMentionElement {
+	return &RichTextSectionAttachmentMentionElement{Type: RTSEAttachmentMention, URL: url, Style: style}
+}
+
+// RichTextSectionWorkObjectMentionElement references a Work Object within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/work-object-mention-element/
+type RichTextSectionWorkObjectMentionElement struct {
+	Type                   RichTextSectionElementType `json:"type"`
+	EntityID               string                     `json:"entity_id"`
+	AppID                  string                     `json:"app_id"`
+	Text                   string                     `json:"text"`
+	URL                    string                     `json:"url"`
+	IconURL                string                     `json:"icon_url,omitempty"`
+	FullSizePreviewEnabled *bool                      `json:"full_size_preview_enabled,omitempty"`
+	ProductName            string                     `json:"product_name,omitempty"`
+	Style                  *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionWorkObjectMentionElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionWorkObjectMentionElement(entityID, appID, text, url string, style *RichTextSectionTextStyle) *RichTextSectionWorkObjectMentionElement {
+	return &RichTextSectionWorkObjectMentionElement{
+		Type: RTSEWorkObjectMention, EntityID: entityID, AppID: appID, Text: text, URL: url, Style: style,
+	}
+}
+
+// RichTextSectionWorkflowMentionElement references a workflow within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/workflow-mention-element/
+type RichTextSectionWorkflowMentionElement struct {
+	Type              RichTextSectionElementType `json:"type"`
+	WorkflowID        string                     `json:"workflow_id"`
+	FunctionTriggerID string                     `json:"function_trigger_id"`
+	Text              string                     `json:"text"`
+	URL               string                     `json:"url,omitempty"`
+	ChannelID         string                     `json:"channel_id,omitempty"`
+	Timestamp         string                     `json:"ts,omitempty"`
+	Style             *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionWorkflowMentionElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionWorkflowMentionElement(workflowID, functionTriggerID, text string, style *RichTextSectionTextStyle) *RichTextSectionWorkflowMentionElement {
+	return &RichTextSectionWorkflowMentionElement{
+		Type: RTSEWorkflowMention, WorkflowID: workflowID, FunctionTriggerID: functionTriggerID, Text: text, Style: style,
+	}
+}
+
+// RichTextSectionSalesforceDataFieldElement references a Salesforce record field within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/salesforce-data-field-element/
+type RichTextSectionSalesforceDataFieldElement struct {
+	Type              RichTextSectionElementType `json:"type"`
+	RecordID          string                     `json:"salesforce_record_id"`
+	FieldLabel        string                     `json:"salesforce_field_label,omitempty"`
+	FieldAPIName      string                     `json:"salesforce_field_api_name,omitempty"`
+	IncludeFieldLabel *bool                      `json:"salesforce_include_field_label,omitempty"`
+	// Observed in live responses; absent from Slack's reference and SDK models.
+	HasWithheldFieldNames *bool                     `json:"has_withheld_salesforce_field_names,omitempty"`
+	Style                 *RichTextSectionTextStyle `json:"style,omitempty"`
+}
+
+func (r RichTextSectionSalesforceDataFieldElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionSalesforceDataFieldElement(recordID string, style *RichTextSectionTextStyle) *RichTextSectionSalesforceDataFieldElement {
+	return &RichTextSectionSalesforceDataFieldElement{Type: RTSESalesforceDataField, RecordID: recordID, Style: style}
+}
+
+// RichTextSectionCanvasElement references a canvas within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/canvas-element/
+type RichTextSectionCanvasElement struct {
+	Type              RichTextSectionElementType `json:"type"`
+	FileID            string                     `json:"file_id"`
+	Label             *string                    `json:"label,omitempty"` // Slack preserves an explicitly empty label.
+	HideTitle         *bool                      `json:"hide_title,omitempty"`
+	SectionID         string                     `json:"section_id,omitempty"`
+	Style             *RichTextSectionTextStyle  `json:"style,omitempty"`
+	Text              string                     `json:"text,omitempty"`
+	URL               string                     `json:"url,omitempty"`
+	IsSkillInvocation *bool                      `json:"is_skill_invocation,omitempty"`
+}
+
+func (r RichTextSectionCanvasElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionCanvasElement(fileID string, style *RichTextSectionTextStyle) *RichTextSectionCanvasElement {
+	return &RichTextSectionCanvasElement{Type: RTSECanvas, FileID: fileID, Style: style}
+}
+
+// RichTextSectionCanvasUserMentionElement represents a user mention in canvas content.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/canvas-user-mention-element/
+type RichTextSectionCanvasUserMentionElement struct {
+	Type     RichTextSectionElementType `json:"type"`
+	UserID   string                     `json:"user_id"`
+	ThreadID string                     `json:"thread_id,omitempty"`
+	Style    *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionCanvasUserMentionElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionCanvasUserMentionElement(userID string, style *RichTextSectionTextStyle) *RichTextSectionCanvasUserMentionElement {
+	return &RichTextSectionCanvasUserMentionElement{Type: RTSECanvasUserMention, UserID: userID, Style: style}
+}
+
+// RichTextSectionCanvasMessageUnfurlElement represents a message reference in canvas content.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/canvas-message-unfurl-element/
+type RichTextSectionCanvasMessageUnfurlElement struct {
+	Type                 RichTextSectionElementType `json:"type"`
+	RootMessageChannel   string                     `json:"root_message_channel"`
+	RootMessageTimestamp string                     `json:"root_message_ts"`
+	Style                *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionCanvasMessageUnfurlElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionCanvasMessageUnfurlElement(rootMessageChannel, rootMessageTimestamp string, style *RichTextSectionTextStyle) *RichTextSectionCanvasMessageUnfurlElement {
+	return &RichTextSectionCanvasMessageUnfurlElement{
+		Type: RTSECanvasMessageUnfurl, RootMessageChannel: rootMessageChannel, RootMessageTimestamp: rootMessageTimestamp, Style: style,
+	}
+}
+
+// RichTextSectionFileElement references a file within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/file-element/
+type RichTextSectionFileElement struct {
+	Type              RichTextSectionElementType `json:"type"`
+	FileID            string                     `json:"file_id"`
+	Text              string                     `json:"text,omitempty"`
+	URL               string                     `json:"url,omitempty"`
+	Style             *RichTextSectionTextStyle  `json:"style,omitempty"`
+	IsSkillInvocation *bool                      `json:"is_skill_invocation,omitempty"`
+}
+
+func (r RichTextSectionFileElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionFileElement(fileID string, style *RichTextSectionTextStyle) *RichTextSectionFileElement {
+	return &RichTextSectionFileElement{Type: RTSEFile, FileID: fileID, Style: style}
+}
+
+// RichTextSectionListRecordElement references a Slack List or item within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/list-record-element/
+type RichTextSectionListRecordElement struct {
+	Type     RichTextSectionElementType `json:"type"`
+	FileID   string                     `json:"file_id"`
+	RecordID string                     `json:"record_id,omitempty"`
+	ViewID   string                     `json:"view_id,omitempty"`
+	Style    *RichTextSectionTextStyle  `json:"style,omitempty"`
+	Text     string                     `json:"text,omitempty"`
+	URL      string                     `json:"url,omitempty"`
+}
+
+func (r RichTextSectionListRecordElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionListRecordElement(fileID string, style *RichTextSectionTextStyle) *RichTextSectionListRecordElement {
+	return &RichTextSectionListRecordElement{Type: RTSEListRecord, FileID: fileID, Style: style}
+}
+
+// RichTextSectionMessageMentionElement references a message within rich text.
+//
+// Slack API docs: https://docs.slack.dev/reference/block-kit/block-elements/message-mention-element/
+type RichTextSectionMessageMentionElement struct {
+	Type             RichTextSectionElementType `json:"type"`
+	ChannelID        string                     `json:"channel_id"`
+	MessageTimestamp string                     `json:"message_ts"`
+	AuthorID         string                     `json:"author_id,omitempty"`
+	ThreadTimestamp  string                     `json:"thread_ts,omitempty"`
+	Text             string                     `json:"text,omitempty"`
+	URL              string                     `json:"url,omitempty"`
+	Style            *RichTextSectionTextStyle  `json:"style,omitempty"`
+}
+
+func (r RichTextSectionMessageMentionElement) RichTextSectionElementType() RichTextSectionElementType {
+	return r.Type
+}
+
+func NewRichTextSectionMessageMentionElement(channelID, messageTimestamp string, style *RichTextSectionTextStyle) *RichTextSectionMessageMentionElement {
+	return &RichTextSectionMessageMentionElement{
+		Type: RTSEMessageMention, ChannelID: channelID, MessageTimestamp: messageTimestamp, Style: style,
+	}
+}
+
 type RichTextSectionLinkElement struct {
-	Type  RichTextSectionElementType `json:"type"`
-	URL   string                     `json:"url"`
-	Text  string                     `json:"text,omitempty"`
-	Style *RichTextSectionTextStyle  `json:"style,omitempty"`
+	Type       RichTextSectionElementType `json:"type"`
+	URL        string                     `json:"url"`
+	Text       string                     `json:"text,omitempty"`
+	Unsafe     *bool                      `json:"unsafe,omitempty"`
+	FromLLM    *bool                      `json:"from_llm,omitempty"`
+	IsSlackURL *bool                      `json:"is_slack_url,omitempty"`
+	Truncated  *bool                      `json:"truncated,omitempty"`
+	Style      *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionLinkElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -442,8 +728,10 @@ type RichTextSectionDateElement struct {
 	Type      RichTextSectionElementType `json:"type"`
 	Timestamp JSONTime                   `json:"timestamp"`
 	Format    string                     `json:"format"`
+	Timezone  string                     `json:"timezone,omitempty"`
 	URL       *string                    `json:"url,omitempty"`
 	Fallback  *string                    `json:"fallback,omitempty"`
+	Style     *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionDateElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -463,6 +751,7 @@ func NewRichTextSectionDateElement(timestamp int64, format string, url *string, 
 type RichTextSectionBroadcastElement struct {
 	Type  RichTextSectionElementType `json:"type"`
 	Range string                     `json:"range"`
+	Style *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionBroadcastElement) RichTextSectionElementType() RichTextSectionElementType {
@@ -479,6 +768,7 @@ func NewRichTextSectionBroadcastElement(rangeStr string) *RichTextSectionBroadca
 type RichTextSectionColorElement struct {
 	Type  RichTextSectionElementType `json:"type"`
 	Value string                     `json:"value"`
+	Style *RichTextSectionTextStyle  `json:"style,omitempty"`
 }
 
 func (r RichTextSectionColorElement) RichTextSectionElementType() RichTextSectionElementType {

@@ -34,17 +34,17 @@ type internalLog struct {
 
 // Println replicates the behaviour of the standard logger.
 func (t internalLog) Println(v ...any) {
-	t.Output(2, fmt.Sprintln(v...))
+	_ = t.Output(2, fmt.Sprintln(v...))
 }
 
 // Printf replicates the behaviour of the standard logger.
 func (t internalLog) Printf(format string, v ...any) {
-	t.Output(2, fmt.Sprintf(format, v...))
+	_ = t.Output(2, fmt.Sprintf(format, v...))
 }
 
 // Print replicates the behaviour of the standard logger.
 func (t internalLog) Print(v ...any) {
-	t.Output(2, fmt.Sprint(v...))
+	_ = t.Output(2, fmt.Sprint(v...))
 }
 
 type discard struct{}

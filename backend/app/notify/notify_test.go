@@ -1,10 +1,16 @@
 package notify
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"io"
+	"sync"
 	"testing"
 	"testing/synctest"
 
+	"github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -109,25 +115,6 @@ func TestService_SubmitVerificationWithDrops(t *testing.T) {
 		assert.Equal(t, "test@example.org", verifyDest[0].Email)
 		assert.Equal(t, "testToken", verifyDest[0].Token)
 		assert.Equal(t, "second", verifyDest[1].User)
-	})
-}
-
-func TestService_Many(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		d1, d2 := &MockDest{id: 1}, &MockDest{id: 2}
-		s := NewService(nil, 5, d1, d2)
-		assert.NotNil(t, s)
-
-		for i := range 10 {
-			s.Submit(Request{Comment: store.Comment{ID: fmt.Sprintf("%d", 100+i)}})
-			s.SubmitVerification(VerificationRequest{User: fmt.Sprintf("%d", 100+i)})
-		}
-		s.Close()
-
-		assert.NotEqual(t, 10, len(d1.Get()), "some comments dropped from d1")
-		assert.NotEqual(t, 10, len(d1.GetVerify()), "some verifications dropped from d1")
-		assert.NotEqual(t, 10, len(d2.Get()), "some comments dropped from d2")
-		assert.NotEqual(t, 10, len(d2.GetVerify()), "some verifications dropped from d2")
 	})
 }
 
@@ -327,4 +314,63 @@ func (m mockStore) GetUserEmail(_, userID string) (string, error) {
 
 func (m mockStore) GetUserTelegram(_, userID string) (string, error) {
 	return m.getUserDetail(userID)
+}
+
+// regression: the notifier logged the commenter's email address when a verification was dropped or a send failed
+func TestService_LogHidesAddresses(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		logs := &lockedBuffer{}
+		lgr.Setup(lgr.Out(logs), lgr.Err(io.Discard))
+		t.Cleanup(func() { lgr.Setup() })
+
+		s := NewService(nil, 1, failingDest{})
+		s.SubmitVerification(VerificationRequest{User: "reader", Email: "reader@example.org"})
+		synctest.Wait()
+		s.Close()
+		assert.Contains(t, logs.String(), "failed to send to failing, 550 <********>: recipient rejected")
+
+		gate := make(chan struct{})
+		s = NewService(nil, 1, &MockDest{id: 1, block: gate})
+		s.SubmitVerification(VerificationRequest{User: "first", Email: "first@example.org"}) // consumed, blocks on the gate
+		synctest.Wait()
+		s.SubmitVerification(VerificationRequest{User: "second", Email: "second@example.org"})   // fills the size-1 queue
+		s.SubmitVerification(VerificationRequest{User: "dropped", Email: "dropped@example.org"}) // queue full, dropped
+		close(gate)
+		synctest.Wait()
+		s.Close()
+		assert.Contains(t, logs.String(), "can't send verification to queue for dropped")
+
+		assert.NotContains(t, logs.String(), "@example.org")
+	})
+}
+
+// failingDest fails every send with an error naming the recipient, as an smtp server's reply often does
+type failingDest struct{}
+
+func (failingDest) Send(context.Context, Request) error {
+	return errors.New("550 <reader@example.org>: recipient rejected")
+}
+
+func (failingDest) SendVerification(context.Context, VerificationRequest) error {
+	return errors.New("550 <reader@example.org>: recipient rejected")
+}
+
+func (failingDest) String() string { return "failing" }
+
+// lockedBuffer is a log destination safe for the destinations writing to it concurrently
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

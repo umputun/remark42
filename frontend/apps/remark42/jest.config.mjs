@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 // babel reads this to pick the test branch of .babelrc.js; setting it here rather than relying on
-// NODE_ENV means running the suite under any other NODE_ENV still keeps data-testid attributes
+// NODE_ENV means running the suite under any other NODE_ENV still compiles for the current node
 process.env.BABEL_ENV = 'test';
 
 /**
@@ -22,11 +22,10 @@ const config = {
   transform: {
     '^.+\\.(t|j|mj)sx?$': ['babel-jest', { configFile: path.join(import.meta.dirname, '.babelrc.js') }],
   },
-  transformIgnorePatterns: ['node_modules/.pnpm/(?!(@testing-library|preact|@github|lodash-es))'],
+  transformIgnorePatterns: ['node_modules/.pnpm/(?!(@testing-library|preact|@github))'],
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
-    '\\.svg': '<rootDir>/app/__stubs__/svg.tsx',
   },
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',

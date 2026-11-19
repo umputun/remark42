@@ -95,7 +95,7 @@ type response struct {
 ```
 
 - `GET /api/v1/count?site=site-id&url=post-url` - get comment's count for `{url}`
-- `POST /api/v1/count?site=siteID` - get number of comments for posts from post body (list of post IDs)
+- `POST /api/v1/counts?site=siteID` - get number of comments for posts from post body (list of post IDs)
 - `GET /api/v1/list?site=site-id&limit=5&skip=2` - list commented posts, returns array or `PostInfo`, limit=0 will return all posts
 
 ```go
@@ -110,7 +110,7 @@ type PostInfo struct {
 
 - `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease, _auth required_
-- `GET /api/v1/userdata?site=site-id` - export all user data to gz stream, _auth required_
+- `GET /api/v1/userdata?site=site-id` - export all user data to gz stream: user info, notification email and Telegram if stored, and all comments, _auth required_
 - `POST /api/v1/deleteme?site=site-id` - request deletion of user data, _auth required_
 - `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site
 
@@ -216,8 +216,8 @@ type BlockedUser struct {
 ```
 
 - `GET /api/v1/admin/export?site=site-id&mode=[stream|file]` - export all comments to JSON stream or gz file
-- `POST /api/v1/admin/import?site=site-id` - import comments from the backup, uses post body
-- `POST /api/v1/admin/import/form?site=site-id` - import comments from the backup, user post form
+- `POST /api/v1/admin/import?site=site-id&provider=native` - import comments from the backup, uses post body. `provider` is `native` (the default when omitted), `disqus`, `wordpress` or `commento`; any other value is rejected with 400
+- `POST /api/v1/admin/import/form?site=site-id&provider=native` - import comments from the backup, user post form, `provider` as above
 - `POST /api/v1/admin/remap?site=site-id` - remap comments to different URLs. Expect a list of "from-url new-url" pairs separated by \n. From-url and new-url parts are separated by space. If URLs end with an asterisk (\*), it means matching the prefix. Remap procedure based on export/import chain so make the backup first
 
 ```

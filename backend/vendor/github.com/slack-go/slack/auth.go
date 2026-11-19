@@ -29,7 +29,7 @@ func (api *Client) SendAuthRevoke(token string) (*AuthRevokeResponse, error) {
 	return api.SendAuthRevokeContext(context.Background(), token)
 }
 
-// SendAuthRevokeContext will send a revocation request for our token to api.revoke with a custom context.
+// SendAuthRevokeContext sends a revocation request for the token to auth.revoke with a custom context.
 // Slack API docs: https://api.slack.com/methods/auth.revoke
 func (api *Client) SendAuthRevokeContext(ctx context.Context, token string) (*AuthRevokeResponse, error) {
 	if token == "" {
@@ -64,6 +64,9 @@ func (api *Client) ListTeams(params ListTeamsParameters) ([]Team, string, error)
 func (api *Client) ListTeamsContext(ctx context.Context, params ListTeamsParameters) ([]Team, string, error) {
 	values := url.Values{
 		"token": {api.token},
+	}
+	if params.Limit != 0 {
+		values.Add("limit", strconv.Itoa(params.Limit))
 	}
 	if params.Cursor != "" {
 		values.Add("cursor", params.Cursor)

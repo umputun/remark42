@@ -79,8 +79,7 @@ func TestProfile_ListsTheReadersOwnCommentsAndPaginates(t *testing.T) {
 	require.Zero(t, absent, "the oldest comment is on the first page, so the page size is not being applied")
 
 	// the count beside the heading, which nothing else reads. The class is kept outside the css
-	// modules for this; the unit suite selects the same element by a data-testid the production
-	// bundle strips
+	// modules for this; the unit suite selects the same element by its data-testid
 	counter := overlay.Locator(".comments-counter").First()
 	waitVisible(t, counter)
 	eventually(t, waitTimeout, "the profile never showed the number of comments the reader has", func() bool {
@@ -172,13 +171,7 @@ func TestProfile_LoadingAndFailureStates(t *testing.T) {
 	profileList := regexp.MustCompile(`/api/v1/comments\?.*user=`)
 	require.NoError(t, page.Route(profileList, func(route playwright.Route) {
 		<-release
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      playwright.Int(http.StatusInternalServerError),
-			ContentType: playwright.String("application/json"),
-			Body:        playwright.String(`{"error":"failed"}`),
-		}); err != nil {
-			t.Errorf("fulfill profile comments failure: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
 	overlay := profileFrame(t, page, frame)

@@ -7,6 +7,7 @@
 package scram
 
 import (
+	"crypto/pbkdf2"
 	"sync"
 )
 
@@ -159,7 +160,7 @@ func (c *Client) GetStoredCredentials(kf KeyFactors) StoredCredentials {
 // return for a given username.
 //
 // Returns an error if PBKDF2 key derivation fails, which can occur with
-// invalid parameters in Go 1.24+ (e.g., invalid iteration counts or key lengths).
+// invalid parameters (e.g., invalid iteration counts or key lengths).
 func (c *Client) GetStoredCredentialsWithError(kf KeyFactors) (StoredCredentials, error) {
 	dk, err := c.getDerivedKeys(kf)
 	return StoredCredentials{
@@ -171,7 +172,7 @@ func (c *Client) GetStoredCredentialsWithError(kf KeyFactors) (StoredCredentials
 
 func (c *Client) computeKeys(kf KeyFactors) (derivedKeys, error) {
 	h := c.hashGen()
-	saltedPassword, err := pbkdf2Key(c.hashGen, c.password, []byte(kf.Salt), kf.Iters, h.Size())
+	saltedPassword, err := pbkdf2.Key(c.hashGen, c.password, []byte(kf.Salt), kf.Iters, h.Size())
 	if err != nil {
 		return derivedKeys{}, err
 	}

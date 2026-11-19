@@ -204,7 +204,7 @@ func TestHTTPS_SessionSurvivesThirdPartyCookieBlocking(t *testing.T) {
 	t.Parallel()
 
 	blocking, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless:          playwright.Bool(os.Getenv("E2E_HEADLESS") != "false"),
+		Headless:          new(os.Getenv("E2E_HEADLESS") != "false"),
 		IgnoreDefaultArgs: []string{playwrightDisabledFeatures},
 		Args: []string{
 			withPartitioningEnabled(t),

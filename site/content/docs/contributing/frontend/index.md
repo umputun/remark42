@@ -90,7 +90,8 @@ Run `pnpm build` inside `./frontend/apps/remark42`, and result files will be sav
 
 `/web` is served from two sources. This build output comes first; anything it does not emit is
 served from `backend/app/webassets/assets`, embedded in the backend binary, which is where
-`privacy.html`, `markdown-help.html` and `400x400.jpeg` live. A plain page or image the bundler
+`privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar, the sign-in provider
+icons and the demo, counter, last-comments, deleteme and comments pages live. A plain page or image the bundler
 does not process belongs there rather than here. Those files sit outside the frontend toolchain,
 so prettier, stylelint and `pnpm lint` do not see them.
 

@@ -3,6 +3,7 @@ package slack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"strconv"
 	"strings"
@@ -262,19 +263,40 @@ func (api *Client) GetUserPresenceContext(ctx context.Context, user string) (*Us
 	return &response.UserPresence, nil
 }
 
+type getUserInfoParams struct {
+	includeLocale bool
+}
+
+// GetUserInfoOption is an option for GetUserInfo.
+type GetUserInfoOption func(*getUserInfoParams)
+
+// GetUserInfoOptionIncludeLocale sets whether users.info returns the user's locale.
+// GetUserInfo sends include_locale=true unless this sets it to false.
+func GetUserInfoOptionIncludeLocale(includeLocale bool) GetUserInfoOption {
+	return func(params *getUserInfoParams) {
+		params.includeLocale = includeLocale
+	}
+}
+
 // GetUserInfo will retrieve the complete user information.
 // For more information see the GetUserInfoContext documentation.
-func (api *Client) GetUserInfo(user string) (*User, error) {
-	return api.GetUserInfoContext(context.Background(), user)
+func (api *Client) GetUserInfo(user string, options ...GetUserInfoOption) (*User, error) {
+	return api.GetUserInfoContext(context.Background(), user, options...)
 }
 
 // GetUserInfoContext will retrieve the complete user information with a custom context.
-// Slack API docs: https://api.slack.com/methods/users.info
-func (api *Client) GetUserInfoContext(ctx context.Context, user string) (*User, error) {
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/users.info
+func (api *Client) GetUserInfoContext(ctx context.Context, user string, options ...GetUserInfoOption) (*User, error) {
+	params := getUserInfoParams{includeLocale: true}
+	for _, opt := range options {
+		opt(&params)
+	}
+
 	values := url.Values{
 		"token":          {api.token},
 		"user":           {user},
-		"include_locale": {strconv.FormatBool(true)},
+		"include_locale": {strconv.FormatBool(params.includeLocale)},
 	}
 
 	response, err := api.userRequest(ctx, "users.info", values)
@@ -316,10 +338,11 @@ func GetUsersOptionLimit(n int) GetUsersOption {
 	}
 }
 
-// GetUsersOptionPresence include user presence
-func GetUsersOptionPresence(n bool) GetUsersOption {
+// GetUsersOptionIncludeLocale sets whether users.list returns each user's locale.
+// GetUsers sends include_locale=true unless this sets it to false.
+func GetUsersOptionIncludeLocale(includeLocale bool) GetUsersOption {
 	return func(p *UserPagination) {
-		p.presence = n
+		p.includeLocale = includeLocale
 	}
 }
 
@@ -339,8 +362,9 @@ func GetUsersOptionCursor(cursor string) GetUsersOption {
 
 func newUserPagination(c *Client, options ...GetUsersOption) (up UserPagination) {
 	up = UserPagination{
-		c:     c,
-		limit: 200, // per slack api documentation.
+		c:             c,
+		limit:         200, // per slack api documentation.
+		includeLocale: true,
 	}
 
 	for _, opt := range options {
@@ -352,18 +376,18 @@ func newUserPagination(c *Client, options ...GetUsersOption) (up UserPagination)
 
 // UserPagination allows for paginating over the users
 type UserPagination struct {
-	Users    []User
-	Cursor   string
-	limit    int
-	presence bool
-	teamId   string
-	complete bool
-	c        *Client
+	Users         []User
+	Cursor        string
+	limit         int
+	includeLocale bool
+	teamId        string
+	complete      bool
+	c             *Client
 }
 
 // Done checks if the pagination has completed
 func (UserPagination) Done(err error) bool {
-	return err == errPaginationComplete
+	return errors.Is(err, errPaginationComplete)
 }
 
 // Failure checks if pagination failed.
@@ -386,11 +410,10 @@ func (t UserPagination) Next(ctx context.Context) (_ UserPagination, err error) 
 
 	values := url.Values{
 		"limit":          {strconv.Itoa(t.limit)},
-		"presence":       {strconv.FormatBool(t.presence)},
 		"token":          {t.c.token},
 		"cursor":         {t.Cursor},
 		"team_id":        {t.teamId},
-		"include_locale": {strconv.FormatBool(true)},
+		"include_locale": {strconv.FormatBool(t.includeLocale)},
 	}
 
 	if resp, err = t.c.userRequest(ctx, "users.list", values); err != nil {
@@ -422,7 +445,7 @@ func (api *Client) GetUsersContext(ctx context.Context, options ...GetUsersOptio
 		p, err = p.Next(ctx)
 		if err == nil {
 			results = append(results, p.Users...)
-		} else if rateLimitedError, ok := err.(*RateLimitedError); ok {
+		} else if rateLimitedError, ok := errors.AsType[*RateLimitedError](err); ok {
 			select {
 			case <-ctx.Done():
 				err = ctx.Err()
@@ -453,23 +476,6 @@ func (api *Client) GetUserByEmailContext(ctx context.Context, email string) (*Us
 		return nil, err
 	}
 	return &response.User, nil
-}
-
-// SetUserAsActive marks the currently authenticated user as active.
-// For more information see the SetUserAsActiveContext documentation.
-func (api *Client) SetUserAsActive() error {
-	return api.SetUserAsActiveContext(context.Background())
-}
-
-// SetUserAsActiveContext marks the currently authenticated user as active with a custom context.
-// Slack API docs: https://api.slack.com/methods/users.setActive
-func (api *Client) SetUserAsActiveContext(ctx context.Context) (err error) {
-	values := url.Values{
-		"token": {api.token},
-	}
-
-	_, err = api.userRequest(ctx, "users.setActive", values)
-	return err
 }
 
 // SetUserPresence changes the currently authenticated user presence.
@@ -531,7 +537,7 @@ func (api *Client) SetUserPhotoContext(ctx context.Context, image string, params
 		values.Add("crop_x", strconv.Itoa(params.CropX))
 	}
 	if params.CropY != DEFAULT_USER_PHOTO_CROP_Y {
-		values.Add("crop_y", strconv.Itoa(params.CropX))
+		values.Add("crop_y", strconv.Itoa(params.CropY))
 	}
 	if params.CropW != DEFAULT_USER_PHOTO_CROP_W {
 		values.Add("crop_w", strconv.Itoa(params.CropW))
@@ -697,7 +703,7 @@ func (api *Client) SetUserCustomFieldsContext(ctx context.Context, userID string
 	}
 
 	response := &userResponseFull{}
-	if _, err := postForm(ctx, api.httpclient, APIURL+"users.profile.set", values, response, api); err != nil {
+	if err := api.postMethod(ctx, "users.profile.set", values, response); err != nil {
 		return err
 	}
 
@@ -816,7 +822,7 @@ func (api *Client) GetUserProfileContext(ctx context.Context, params *GetUserPro
 	}
 	resp := &getUserProfileResponse{}
 
-	err := api.postMethod(ctx, "users.profile.get", values, &resp)
+	err := api.postMethod(ctx, "users.profile.get", values, resp)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +18,7 @@ import (
 )
 
 func TestDisqus_Import(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -57,8 +57,7 @@ func TestDisqus_Import(t *testing.T) {
 }
 
 func TestDisqus_ImportDeletedThread(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -89,8 +88,7 @@ func TestDisqus_ImportDeletedThread(t *testing.T) {
 }
 
 func TestDisqus_ImportDeletedPost(t *testing.T) {
-	defer os.Remove("/tmp/remark-test.db")
-	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: "/tmp/remark-test.db", SiteID: "test"})
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark-test.db"), SiteID: "test"})
 	require.NoError(t, err, "create store")
 	dataStore := service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
 	defer dataStore.Close()
@@ -120,13 +118,23 @@ func TestDisqus_Convert(t *testing.T) {
 	d := Disqus{}
 	fh, err := os.Open("testdata/disqus.xml")
 	require.NoError(t, err)
-	ch := d.convert(fh, "test")
-
 	res := make([]store.Comment, 0, 4)
-	for comment := range ch {
-		res = append(res, comment)
+	err = d.convert(fh, "test", func(c store.Comment) error {
+		res = append(res, c)
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 5, len(res), "4 comments and 1 spam placeholder, 1 bad excluded")
+	var spam []store.Comment
+	for _, c := range res {
+		if c.Deleted {
+			spam = append(spam, c)
+		}
 	}
-	require.Equal(t, 4, len(res), "4 comments total, 1 spam excluded, 1 bad excluded")
+	require.Len(t, spam, 1, "spam is kept as a deleted placeholder")
+	assert.Empty(t, spam[0].Text)
+	assert.Equal(t, "deleted", spam[0].User.ID)
+	assert.Empty(t, spam[0].User.IP)
 
 	exp0 := store.Comment{
 		ID: "299619020",
@@ -140,7 +148,8 @@ func TestDisqus_Convert(t *testing.T) {
 			ID:   "disqus_328c8b68974aef73785f6b38c3d3fedfdf941434",
 			IP:   "178.178.178.178",
 		},
-		Imported: true,
+		PostTitle: "Радио-Т: Радио-Т 229",
+		Imported:  true,
 	}
 	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
 	assert.Equal(t, exp0, res[0])

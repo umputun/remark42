@@ -1,0 +1,77 @@
+package notify
+
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	log "github.com/go-pkgz/lgr"
+)
+
+// MockDest is a destination mock
+type MockDest struct {
+	data             []Request
+	verificationData []VerificationRequest
+	id               int
+	closed           bool
+	lock             sync.Mutex
+	block            chan struct{} // if non-nil, Send/SendVerification wait on it before recording, letting tests pin the consumer
+}
+
+// Send mock
+func (m *MockDest) Send(ctx context.Context, r Request) error {
+	if m.block != nil {
+		<-m.block
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if err := ctx.Err(); err != nil {
+		log.Printf("ctx closed %d", m.id)
+		m.closed = true
+		return nil
+	}
+	m.data = append(m.data, r)
+	log.Printf("sent %s -> %d", r.Comment.ID, m.id)
+	return nil
+}
+
+// SendVerification mock
+func (m *MockDest) SendVerification(ctx context.Context, v VerificationRequest) error {
+	if m.block != nil {
+		<-m.block
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if err := ctx.Err(); err != nil {
+		log.Printf("verification ctx closed %d", m.id)
+		m.closed = true
+		return nil
+	}
+	m.verificationData = append(m.verificationData, v)
+	log.Printf("sent verification %s -> %d", v.User, m.id)
+	return nil
+}
+
+// Get mock
+func (m *MockDest) Get() []Request {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	res := make([]Request, len(m.data))
+	copy(res, m.data)
+	return res
+}
+
+// GetVerify mock
+func (m *MockDest) GetVerify() []VerificationRequest {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	res := make([]VerificationRequest, len(m.verificationData))
+	copy(res, m.verificationData)
+	return res
+}
+
+func (m *MockDest) String() string {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return fmt.Sprintf("mock id=%d, closed=%v", m.id, m.closed)
+}

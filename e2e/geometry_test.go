@@ -217,7 +217,7 @@ func inWidget(t *testing.T, page playwright.Page, script string) float64 {
 	t.Helper()
 
 	v, err := page.FrameLocator("#remark42 iframe").Locator("body").Evaluate(script, nil,
-		playwright.LocatorEvaluateOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
 	return asNumber(t, v)
 }

@@ -76,7 +76,7 @@ func TestCrossOrigin_DisallowedHostNeverReportsInited(t *testing.T) {
 
 	require.NoError(t, page.Locator("#remark42 iframe").WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateAttached,
-		Timeout: playwright.Float(float64(waitTimeout.Milliseconds())),
+		Timeout: new(float64(waitTimeout.Milliseconds())),
 	}))
 
 	// hidden for as long as the fallback runs, since the document the browser refused cannot

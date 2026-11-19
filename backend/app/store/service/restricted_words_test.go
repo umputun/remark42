@@ -1,9 +1,13 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMatcher_Tokenize(t *testing.T) {
@@ -72,4 +76,35 @@ func TestMatcher_DoNotMatchIfNoRestrictedWords(t *testing.T) {
 	matcher := NewRestrictedWordsMatcher(StaticRestrictedWordsLister{[]string{"quack"}})
 	text := "What the duck it that?"
 	assert.False(t, matcher.Match("fakeID", text))
+}
+
+func TestFileRestrictedWordsLister(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "words.txt")
+	require.NoError(t, os.WriteFile(path, []byte("\ufeff# spam words, saved with a BOM\n  viagra  \n\n*casino*\n"), 0o600))
+	lister := &FileRestrictedWordsLister{Path: path, Words: []string{"duck"}}
+	matcher := NewRestrictedWordsMatcher(lister)
+
+	words, err := lister.List("site")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"duck", "viagra", "*casino*"}, words, "static words first, comments and empty lines skipped")
+	assert.True(t, matcher.Match("site", "best onlinecasino here"))
+	assert.True(t, matcher.Match("site", "What the duck"))
+	assert.False(t, matcher.Match("site", "a poker night"))
+
+	// a changed file is read again without a restart; pin a later mtime instead of waiting for the clock
+	require.NoError(t, os.WriteFile(path, []byte("poker\n"), 0o600))
+	later := time.Now().Add(time.Minute)
+	require.NoError(t, os.Chtimes(path, later, later))
+	words, err = lister.List("site")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"duck", "poker"}, words)
+	assert.True(t, matcher.Match("site", "a poker night"))
+	assert.False(t, matcher.Match("site", "best onlinecasino here"))
+
+	// a file that disappears keeps the last patterns that were read
+	require.NoError(t, os.Remove(path))
+	words, err = lister.List("site")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"duck", "poker"}, words)
+	require.Error(t, lister.Load())
 }

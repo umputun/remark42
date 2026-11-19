@@ -12,7 +12,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,10 +25,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
@@ -799,28 +804,34 @@ func TestRest_Vote(t *testing.T) {
 }
 
 func TestRest_AnonVote(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	// startServer starts a server with two comments and returns it with the id of the first one
+	startServer := func(anonVote bool) (ts *httptest.Server, id1 string) {
+		ts, _, teardown := startupT(t, func(srv *Rest) { srv.AnonVote = anonVote })
+		t.Cleanup(teardown)
 
-	c1 := store.Comment{Text: "test test #1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
-		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c1 := store.Comment{Text: "test test #1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
+		c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
-	id1 := addComment(t, c1, ts)
-	addComment(t, c2, ts)
+		id1 = addComment(t, c1, ts)
+		addComment(t, c2, ts)
+		return ts, id1
+	}
 
-	vote := func(val int) int {
+	vote := func(ts *httptest.Server, id string, val int) (body string, code int) {
 		client := http.Client{}
 		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id1, val), http.NoBody)
-		assert.NoError(t, err)
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=%d", ts.URL, id, val), http.NoBody)
+		require.NoError(t, err)
 		req.Header.Add("X-JWT", anonToken)
 		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return string(b), resp.StatusCode
 	}
 
 	getWithAnonAuth := func(url string) (body string, code int) {
@@ -837,11 +848,17 @@ func TestRest_AnonVote(t *testing.T) {
 		return string(b), r.StatusCode
 	}
 
-	assert.Equal(t, http.StatusForbidden, vote(1), "vote is disallowed with anonVote false")
-	srv.privRest.anonVote = true
-	assert.Equal(t, http.StatusOK, vote(1), "first vote allowed")
-	assert.Equal(t, http.StatusBadRequest, vote(1), "second vote rejected")
-	body, code := getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	ts, id1 := startServer(false)
+	body, code := vote(ts, id1, 1)
+	assert.Equal(t, http.StatusForbidden, code, "vote is disallowed with anonVote false")
+	assert.Equal(t, "Access denied\n", body)
+
+	ts, id1 = startServer(true)
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusOK, code, "first vote allowed")
+	_, code = vote(ts, id1, 1)
+	assert.Equal(t, http.StatusBadRequest, code, "second vote rejected")
+	body, code = getWithAnonAuth(fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
 
 	assert.Equal(t, http.StatusOK, code)
 	cr := store.Comment{}
@@ -862,12 +879,10 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	// issue good token
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{"remark42"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	}
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
@@ -948,11 +963,46 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 	}
 }
 
+// fakeDestination is a notify.Destination recording what it was asked to send
+type fakeDestination struct {
+	mu            sync.Mutex
+	requests      []notify.Request
+	verifications []notify.VerificationRequest
+}
+
+func (f *fakeDestination) Send(_ context.Context, r notify.Request) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.requests = append(f.requests, r)
+	return nil
+}
+
+func (f *fakeDestination) SendVerification(_ context.Context, v notify.VerificationRequest) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.verifications = append(f.verifications, v)
+	return nil
+}
+
+func (f *fakeDestination) String() string { return "fake destination" }
+
+func (f *fakeDestination) Get() []notify.Request {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.requests)
+}
+
+func (f *fakeDestination) GetVerify() []notify.VerificationRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.verifications)
+}
+
 func TestRest_EmailNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	mockDestination := &notify.MockDest{}
+	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
 	defer srv.privRest.notifyService.Close()
 
@@ -1188,7 +1238,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
 
-	mockDestination := &notify.MockDest{}
+	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
 	defer srv.privRest.notifyService.Close()
 
@@ -1263,6 +1313,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 	err = json.Unmarshal(body, &subscribeRequest)
 	assert.NoError(t, err)
 	assert.Equal(t, "botUsername", subscribeRequest.Bot)
+	assert.Regexp(t, "^[0-9a-f]{40}$", subscribeRequest.Token, "the bot is handed a 40 hex character token")
 
 	// verify telegram, unsuccessfully because of not verified
 	req, err = http.NewRequest(http.MethodGet, ts.URL+fmt.Sprintf("/api/v1/telegram/subscribe?site=remark42&tkn=%s", subscribeRequest.Token), http.NoBody)
@@ -1403,6 +1454,7 @@ func TestRest_UserAllData(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	require.NoError(t, err)
+	defer ungzReader.Close()
 	require.NoError(t, resp.Body.Close())
 	ungzBody, err := io.ReadAll(ungzReader)
 	require.NoError(t, err)
@@ -1456,6 +1508,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 
 	ungzReader, err := gzip.NewReader(resp.Body)
 	assert.NoError(t, err)
+	defer ungzReader.Close()
 	assert.NoError(t, resp.Body.Close())
 	ungzBody, err := io.ReadAll(ungzReader)
 	assert.NoError(t, err)
@@ -1463,6 +1516,175 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 	assert.True(t, strings.HasPrefix(strUngzBody,
 		`{"info": {"name":"developer one","id":"provider1_dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}, "comments":[{`))
 	assert.Equal(t, 51, strings.Count(strUngzBody, `"text":`), "51 comments inside")
+}
+
+func TestRest_UserAllDataPageBoundaries(t *testing.T) {
+	for _, n := range []int{100, 101, 250} {
+		t.Run(fmt.Sprintf("%d comments", n), func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			user := store.User{ID: "provider1_dev", Name: "user name 1"}
+			c := store.Comment{User: user, Text: "test", Locator: store.Locator{SiteID: "remark42",
+				URL: "https://radio-t.com/blah1"}, Timestamp: time.Date(2018, 5, 27, 1, 14, 10, 0, time.UTC)}
+			for i := range n {
+				c.ID = fmt.Sprintf("id-%03d", i)
+				c.Timestamp = c.Timestamp.Add(time.Second)
+				_, err := srv.DataService.Create(c)
+				require.NoError(t, err)
+			}
+
+			parsed := getUserAllData(t, ts.URL)
+			assert.Equal(t, n, len(parsed.Comments), "every comment is exported in one JSON array")
+		})
+	}
+}
+
+func TestRest_UserAllDataNoComments(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	parsed := getUserAllData(t, ts.URL)
+	assert.Equal(t, "provider1_dev", parsed.Info.ID)
+	assert.Empty(t, parsed.Comments)
+}
+
+// getUserAllData requests /userdata as the dev user and decodes the gzipped JSON export
+func getUserAllData(t *testing.T, url string) (res struct {
+	Info     store.User      `json:"info"`
+	Comments []store.Comment `json:"comments"`
+}) {
+	t.Helper()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url+"/api/v1/userdata?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/gzip", resp.Header.Get("Content-Type"))
+
+	ungzReader, err := gzip.NewReader(resp.Body)
+	require.NoError(t, err)
+	defer ungzReader.Close()
+	body, err := io.ReadAll(ungzReader)
+	require.NoError(t, err, "gzip body decodes")
+	require.NoError(t, json.Unmarshal(body, &res), "export is valid JSON")
+	return res
+}
+
+func TestRest_UserAllDataDetails(t *testing.T) {
+	const info = `{"info": {"name":"developer one","id":"provider1_dev","picture":"http://example.com/pic.png","ip":"127.0.0.1","admin":false,"site_id":"remark42"}`
+	type details struct {
+		Email    string `json:"email"`
+		Telegram string `json:"telegram"`
+	}
+
+	tbl := []struct {
+		name            string
+		email, telegram string
+		comments        int
+		body            string // exact export, checked for the exports without comments
+		details         *details
+	}{
+		{name: "email", email: "good@example.com", details: &details{Email: "good@example.com"},
+			body: info + `, "details": {"email":"good@example.com"}, "comments":[]}`},
+		{name: "telegram", telegram: "good_telegram", details: &details{Telegram: "good_telegram"},
+			body: info + `, "details": {"telegram":"good_telegram"}, "comments":[]}`},
+		{name: "email and telegram", email: "good@example.com", telegram: "good_telegram",
+			details: &details{Email: "good@example.com", Telegram: "good_telegram"},
+			body:    info + `, "details": {"email":"good@example.com","telegram":"good_telegram"}, "comments":[]}`},
+		{name: "email with comments", email: "good@example.com", comments: 2, details: &details{Email: "good@example.com"}},
+		{name: "nothing stored", body: info + `, "comments":[]}`},
+		{name: "nothing stored with comments", comments: 2},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			if tt.email != "" {
+				_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", tt.email)
+				require.NoError(t, err)
+			}
+			if tt.telegram != "" {
+				_, err := srv.DataService.SetUserTelegram("remark42", "provider1_dev", tt.telegram)
+				require.NoError(t, err)
+			}
+			// details of another user never get into the export
+			_, err := srv.DataService.SetUserEmail("remark42", "provider1_other", "other@example.com")
+			require.NoError(t, err)
+			c := store.Comment{User: store.User{ID: "provider1_dev", Name: "user name 1"}, Text: "test",
+				Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+			for i := range tt.comments {
+				c.ID = fmt.Sprintf("id-%03d", i)
+				_, err = srv.DataService.Create(c)
+				require.NoError(t, err)
+			}
+
+			code, body := getUserAllDataBody(t, ts.URL)
+			require.Equal(t, http.StatusOK, code)
+			if tt.body != "" {
+				assert.Equal(t, tt.body, string(body))
+			}
+			assert.NotContains(t, string(body), "other@example.com")
+
+			parsed := struct {
+				Info     store.User      `json:"info"`
+				Details  *details        `json:"details"`
+				Comments []store.Comment `json:"comments"`
+			}{}
+			require.NoError(t, json.Unmarshal(body, &parsed), "export is valid JSON")
+			assert.Equal(t, "provider1_dev", parsed.Info.ID)
+			assert.Equal(t, tt.details, parsed.Details, "stored notification details are exported, the key is absent without them")
+			assert.Len(t, parsed.Comments, tt.comments)
+		})
+	}
+}
+
+func TestRest_UserAllDataDetailsError(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	srv.privRest.dataService = failingDetailsStore{privStore: srv.privRest.dataService}
+
+	code, body := getUserAllDataBody(t, ts.URL)
+	assert.Equal(t, http.StatusInternalServerError, code)
+	assert.JSONEq(t, `{"code":0,"details":"can't get user details","error":"can't read telegram: no telegram today"}`, string(body),
+		"a failed read of the details is a JSON error, not an export without them")
+}
+
+// failingDetailsStore is a store unable to read the user's telegram
+type failingDetailsStore struct{ privStore }
+
+func (failingDetailsStore) GetUserTelegram(string, string) (string, error) {
+	return "", fmt.Errorf("no telegram today")
+}
+
+// getUserAllDataBody requests /userdata as the dev user and returns the status with the body, ungzipped for an export
+func getUserAllDataBody(t *testing.T, url string) (code int, body []byte) {
+	t.Helper()
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("GET", url+"/api/v1/userdata?site=remark42", http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var reader io.Reader = resp.Body
+	if resp.Header.Get("Content-Type") == "application/gzip" {
+		ungzReader, e := gzip.NewReader(resp.Body)
+		require.NoError(t, e)
+		defer ungzReader.Close()
+		reader = ungzReader
+	}
+	body, err = io.ReadAll(reader)
+	require.NoError(t, err, "body is readable to the end")
+	return resp.StatusCode, body
 }
 
 func TestRest_DeleteMe(t *testing.T) {
@@ -1577,15 +1799,13 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 func TestRest_CreateWithPictures(t *testing.T) {
 	ts, svc, teardown := startupT(t)
-	defer func() {
-		teardown()
-		assert.NoError(t, os.RemoveAll("/tmp/remark42"))
-	}()
+	defer teardown()
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
+	images := filepath.Join(t.TempDir(), "images")
 	imageService := image.NewService(&image.FileSystem{
-		Staging:  "/tmp/remark42/images.staging",
-		Location: "/tmp/remark42/images",
+		Staging:  images + ".staging",
+		Location: images,
 	}, image.ServiceParams{
 		// the "not moved yet" checks below run right after the comment POST returns, so the
 		// commit window has to be wide enough that a stalled runner cannot close it first
@@ -1648,14 +1868,14 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode, string(b))
 
 	for i := range ids {
-		_, err = os.Stat("/tmp/remark42/images/" + ids[i])
+		_, err = os.Stat(filepath.Join(images, ids[i]))
 		assert.Error(t, err, "picture %d not moved from staging yet", i)
 	}
 
 	// the commit runs once EditDuration expires
 	for i := range ids {
 		require.Eventually(t, func() bool {
-			_, e := os.Stat("/tmp/remark42/images/" + ids[i])
+			_, e := os.Stat(filepath.Join(images, ids[i]))
 			return e == nil
 		}, waitTimeout, pollInterval, "picture %d moved from staging and available in permanent location", i)
 	}
@@ -1698,6 +1918,295 @@ func TestExtractIP(t *testing.T) {
 	for _, tt := range tbl {
 		t.Run(tt.addr, func(t *testing.T) {
 			assert.Equal(t, tt.exp, extractIP(tt.addr))
+		})
+	}
+}
+
+// a token without a handshake, such as the login token, used as a confirmation token is rejected as invalid,
+// not dereferenced
+func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	tbl := []struct {
+		name, method, url, body string
+		code                    int
+	}{
+		{name: "confirm with a login token", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, devToken), code: http.StatusBadRequest},
+		{name: "confirm with another user's handshake", method: http.MethodPost, url: "/api/v1/email/confirm?site=remark42",
+			body: fmt.Sprintf(`{"site":"remark42","token":%q}`, otherUserTkn), code: http.StatusBadRequest},
+		{name: "unsubscribe with a login token", method: http.MethodGet, url: "/email/unsubscribe.html?site=remark42&tkn=" + devToken,
+			code: http.StatusBadRequest},
+	}
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var body io.Reader = http.NoBody
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			req, err := http.NewRequest(tt.method, ts.URL+tt.url, body)
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, tt.code, resp.StatusCode, string(b))
+		})
+	}
+}
+
+// subscribe and confirm act on the site matchSiteID verified in the query, not on a different site named in the body
+func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		dir := t.TempDir()
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(dir, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(dir, "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+	})
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(url, body string) int {
+		req, reqErr := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, reqErr)
+		req.Header.Add("X-JWT", devToken)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// the session belongs to remark42; the body names the other site.
+	// The address is already confirmed on the verified site, so subscribing to it again conflicts
+	_, err = srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusConflict, send("/api/v1/email/subscribe?site=remark42", `{"site":"other","address":"good@example.com"}`),
+		"subscribe checks the verified site")
+	require.NoError(t, srv.DataService.DeleteUserDetail("remark42", "provider1_dev", engine.UserEmail))
+
+	assert.Equal(t, http.StatusOK, send("/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"other","token":%q}`, tkn)))
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Equal(t, "good@example.com", email, "email set on the verified site")
+	email, err = srv.DataService.GetUserEmail("other", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "email not set on the site named only in the body")
+}
+
+// the admin password sent along with a token that has no user, such as a confirmation token, passes
+// authentication; setting and deleting the email then has no token user to update, which is not a panic
+func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(method, url, body string) (int, string) {
+		var reqBody io.Reader = http.NoBody
+		if body != "" {
+			reqBody = strings.NewReader(body)
+		}
+		req, reqErr := http.NewRequest(method, ts.URL+url, reqBody)
+		require.NoError(t, reqErr)
+		req.SetBasicAuth("admin", "password")
+		req.Header.Add("X-JWT", tkn)
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		b, reqErr := io.ReadAll(resp.Body)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send(http.MethodPost, "/api/v1/email/confirm?site=remark42", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn))
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
+
+	code, body = send(http.MethodDelete, "/api/v1/email?site=remark42", "")
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err = srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Empty(t, email)
+}
+
+// a malformed handshake carries the address, which stays out of the error sent back and logged
+func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+		strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+	assert.NotContains(t, string(b), "secret@example.com", "confirm error echoes the address")
+
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.NotContains(t, body, "secret@example.com", "unsubscribe error echoes the address")
+}
+
+// a handshake with an empty user or address is rejected, not acted on with the empty part
+func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	for _, hs := range []string{"provider1_dev::", "::good@example.com"} {
+		t.Run(hs, func(t *testing.T) {
+			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+				Handshake: &token.Handshake{ID: hs},
+				Audience:  jwt.ClaimStrings{"remark42"},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+				Issuer:    "remark42",
+			})
+			require.NoError(t, err)
+
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+				strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "confirm rejects the handshake: %s", string(b))
+
+			body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+			assert.Equal(t, http.StatusBadRequest, code, "unsubscribe rejects the handshake: %s", body)
+		})
+	}
+}
+
+// subscribedUserToken stores an email for provider1_dev and returns the token of its unsubscribe link
+func subscribedUserToken(t *testing.T, srv *Rest) string {
+	t.Helper()
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+	return tkn
+}
+
+// a template on disk takes precedence over the embedded one; when it is broken, the html pages
+// fail with a plain 500 instead of a half-rendered page
+func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"error_response.html.tmpl", "email_unsubscribe.html.tmpl"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte("{{ .Broken"), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	tkn := subscribedUserToken(t, srv)
+
+	for name, url := range map[string]string{
+		"error page":       "/email/unsubscribe.html?site=remark42",
+		"unsubscribe page": "/email/unsubscribe.html?site=remark42&tkn=" + tkn,
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+url)
+			assert.Equal(t, http.StatusInternalServerError, code)
+			assert.Equal(t, "Internal Server Error\n", body)
+		})
+	}
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Empty(t, email, "the unsubscribe itself went through before the page failed")
+}
+
+// a template on disk may wrap its content in {{define "error"}} or {{define "unsubscribe"}}, the names
+// the pages are executed under, and still renders
+func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"error_response.html.tmpl":    `{{define "error"}}custom error page: {{.Error}}{{end}}`,
+		"email_unsubscribe.html.tmpl": `{{define "unsubscribe"}}custom unsubscribe page{{end}}`,
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+	}
+	t.Chdir(dir)
+
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	tkn := subscribedUserToken(t, srv)
+
+	for name, tc := range map[string]struct {
+		url  string
+		code int
+		body string
+	}{
+		"error page":       {url: "/email/unsubscribe.html?site=remark42", code: http.StatusBadRequest, body: "custom error page: "},
+		"unsubscribe page": {url: "/email/unsubscribe.html?site=remark42&tkn=" + tkn, code: http.StatusOK, body: "custom unsubscribe page"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			body, code := get(t, ts.URL+tc.url)
+			assert.Equal(t, tc.code, code)
+			assert.True(t, strings.HasPrefix(body, tc.body), "the override's defined template renders: %q", body)
 		})
 	}
 }

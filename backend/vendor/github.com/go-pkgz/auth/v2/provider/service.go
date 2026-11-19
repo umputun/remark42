@@ -3,11 +3,13 @@ package provider
 import (
 	"crypto/rand"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/token"
@@ -128,6 +130,23 @@ func sessionOnlyFromRequest(r *http.Request) bool {
 		}
 	}
 	return false
+}
+
+// handshakeFromCookie reads the handshake token from the JWT cookie only, ignoring the JWT query
+// parameter and header that TokenService.Get would otherwise prefer. Get skips the expiry check for
+// cookies, so an expired token is rejected here; a token without exp is accepted.
+func handshakeFromCookie(svc TokenService, r *http.Request) (token.Claims, error) {
+	cr := r.Clone(r.Context())
+	cr.URL.RawQuery = ""
+	cr.Header = http.Header{"Cookie": r.Header.Values("Cookie")}
+	claims, _, err := svc.Get(cr)
+	if err != nil {
+		return token.Claims{}, err
+	}
+	if exp := claims.ExpiresAt; exp != nil && exp.Unix() > 0 && exp.Before(time.Now()) {
+		return token.Claims{}, errors.New("handshake token expired")
+	}
+	return claims, nil
 }
 
 func randToken() (string, error) {

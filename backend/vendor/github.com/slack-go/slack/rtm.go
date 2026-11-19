@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -94,6 +95,27 @@ func RTMOptionUseStart(b bool) RTMOption {
 func RTMOptionDialer(d *websocket.Dialer) RTMOption {
 	return func(rtm *RTM) {
 		rtm.dialer = d
+	}
+}
+
+// RTMOptionDialHeaders sets HTTP headers for the initial WebSocket handshake and
+// every reconnect. Headers are copied when the option is applied and before each
+// dial. The default Origin is used unless a non-empty Origin header is supplied.
+func RTMOptionDialHeaders(headers http.Header) RTMOption {
+	return func(rtm *RTM) {
+		rtm.dialHeaders = headers.Clone()
+	}
+}
+
+// RTMOptionReadLimit sets the maximum incoming WebSocket message size in bytes.
+// The default is unlimited; a non-positive limit also disables the limit.
+// The limit applies to each message, including all fragments, on every connection.
+// Exceeding it closes the connection and triggers the normal reconnect handling.
+// With compression enabled through a custom dialer, the limit counts compressed
+// bytes and does not bound the size after decompression.
+func RTMOptionReadLimit(limit int64) RTMOption {
+	return func(rtm *RTM) {
+		rtm.readLimit = limit
 	}
 }
 

@@ -34,7 +34,6 @@ type adminStore interface {
 	DeleteUser(siteID, userID string, mode store.DeleteMode) error
 	DeleteUserDetail(siteID, userID string, detail engine.UserDetail) error
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
-	IsBlocked(siteID, userID string) bool
 	SetBlock(siteID, userID string, status bool, ttl time.Duration) error
 	BlockedUsers(siteID string) ([]store.BlockedUser, error)
 	Info(locator store.Locator, readonlyAge int) (store.PostInfo, error)
@@ -66,7 +65,23 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
-	if err := a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
+	// the route carries only the user ID, so take the avatar from a comment and remove it before the
+	// hard delete clears the comments: if the removal fails, nothing is deleted yet and a retry still
+	// finds the avatar, and a retry after a failed DeleteUser meets avatar.ErrNotFound, which is tolerated
+	picture := ""
+	comments, err := a.dataService.User(siteID, userID, 1, 0, store.User{})
+	switch {
+	case err == nil && len(comments) > 0:
+		picture = comments[0].User.Picture
+	case err != nil && !errors.Is(err, engine.ErrNoUserComments):
+		log.Printf("[WARN] can't get comments of user %s on site %s to find the avatar, %v", userID, siteID, err)
+	}
+	if err = a.removeAvatar(picture, userID, siteID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		return
+	}
+
+	if err = a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
 		return
 	}
@@ -81,7 +96,10 @@ func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] get user info for %s, site %s", userID, siteID)
 
 	ucomments, err := a.dataService.User(siteID, userID, 1, 0, rest.GetUserOrEmpty(r))
-	if err != nil || len(ucomments) == 0 {
+	if err == nil && len(ucomments) == 0 {
+		err = fmt.Errorf("no comments for user %s", userID)
+	}
+	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get user info", rest.ErrInternal)
 		return
 	}
@@ -96,6 +114,12 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	claims, err := a.authenticator.TokenService().Parse(token)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't process token", rest.ErrActionRejected)
+		return
+	}
+
+	// a token without a user, such as an email confirmation token, can't carry the delete_me attribute
+	if claims.User == nil {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("no user in token"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
 
@@ -124,8 +148,7 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.dataService.DeleteUserDetail(audience, claims.User.ID, engine.AllUserDetails); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user details for user", rest.ErrInternal)
 		return
 	}
 
@@ -133,22 +156,33 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
+	// flush before the avatar removal, which can fail after the comments are gone
+	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 
-	if claims.User.Picture != "" && a.authenticator.AvatarProxy() != nil {
-		if avatarID := avatarIDFromPicture(claims.User.Picture); avatarID != "" {
-			// an already-removed avatar is fine (a repeated request stays idempotent), but a genuine
-			// store failure is surfaced now that avatar.ErrNotFound lets us tell the two apart
-			if err = a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
-				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
-				return
-			}
-		} else {
-			log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", claims.User.Picture, claims.User.ID, audience)
-		}
+	if err = a.removeAvatar(claims.User.Picture, claims.User.ID, audience); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		return
 	}
 
-	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
+}
+
+// removeAvatar removes the user's avatar from the avatar store. An already-removed avatar is fine
+// (a repeated request stays idempotent), but a genuine store failure is returned, which
+// avatar.ErrNotFound lets us tell apart
+func (a *admin) removeAvatar(picture, userID, siteID string) error {
+	if picture == "" || a.authenticator.AvatarProxy() == nil {
+		return nil
+	}
+	avatarID := avatarIDFromPicture(picture)
+	if avatarID == "" {
+		log.Printf("[WARN] unexpected avatar picture %q for user %s on site %s, skipping removal", picture, userID, siteID)
+		return nil
+	}
+	if err := a.authenticator.AvatarProxy().Store.Remove(avatarID); err != nil && !errors.Is(err, avatar.ErrNotFound) {
+		return err
+	}
+	return nil
 }
 
 // avatarIDFromPicture returns the avatar-store object id for a user picture, or "" if the picture

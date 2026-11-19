@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
+	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
 	"github.com/stretchr/testify/assert"
@@ -59,18 +61,16 @@ var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0M
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
 func TestRest_FileServer(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	testHTMLName := "test-remark.html"
-	testHTMLFile := os.TempDir() + "/" + testHTMLName
-	err := os.WriteFile(testHTMLFile, []byte("some html"), 0o700)
+	err := os.WriteFile(filepath.Join(srv.WebRoot, testHTMLName), []byte("some html"), 0o600)
 	assert.NoError(t, err)
 
 	body, code := get(t, ts.URL+"/web/"+testHTMLName)
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "some html", body)
-	_ = os.Remove(testHTMLFile)
 }
 
 // TestRest_FileServerStaticAssets covers the static file server behaviors that are
@@ -222,6 +222,46 @@ func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 	})
 }
 
+// TestRest_FileServerDemoPageFromAssets covers a frontend build with no index.html, which is what
+// the bundler emits now that the demo page is a plain file among the assets: /web and /web/ have
+// to answer with that page, from a web root on disk and from the embedded frontend alike.
+func TestRest_FileServerDemoPageFromAssets(t *testing.T) {
+	want, err := fs.ReadFile(webassets.FS, "index.html")
+	require.NoError(t, err)
+	require.Contains(t, string(want), `id="remark42"`)
+
+	onDisk := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(onDisk, "iframe.html"), []byte("widget document"), 0o600))
+
+	tbl := []struct {
+		name     string
+		frontend fs.FS
+		webRoot  string
+	}{
+		{"embedded frontend", fstest.MapFS{"iframe.html": {Data: []byte("widget document")}}, filepath.Join(t.TempDir(), "absent")},
+		{"web root on disk", fstest.MapFS{}, onDisk},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			router := routegroup.New(http.NewServeMux())
+			addFileServer(router, tt.frontend, tt.webRoot, "test-version", "https://remark.example.com", "")
+			ts := httptest.NewServer(router)
+			defer ts.Close()
+
+			for _, path := range []string{"/web", "/web/", "/web/index.html"} {
+				body, code := get(t, ts.URL+path)
+				assert.Equal(t, http.StatusOK, code, path)
+				assert.Equal(t, string(want), body, path)
+			}
+
+			body, code := get(t, ts.URL+"/web/iframe.html")
+			assert.Equal(t, http.StatusOK, code)
+			assert.Equal(t, "widget document", body, "the build's own files still come first")
+		})
+	}
+}
+
 // TestRest_FileServerRoutesEmbedded drives the whole router the released binary runs: no web root
 // on disk, and the frontend read from WebFS. It is what pins the web/ prefix routes() strips, which
 // a test calling addFileServer directly cannot see.
@@ -348,6 +388,136 @@ func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
 	})
 }
 
+// regression: a browser holding cached admin basic credentials replayed them for a cross-site page
+func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+
+	comment := `{"text": "test", "locator": {"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+	cases := []struct {
+		name      string
+		method    string
+		path      string
+		body      string
+		fetchSite string
+		origin    string
+		want      int
+	}{
+		{name: "admin read without browser signals", method: "GET", path: "/api/v1/admin/blocked?site=remark42", want: http.StatusOK},
+		{name: "admin read from own origin", method: "GET", path: "/api/v1/admin/blocked?site=remark42", origin: "https://demo.remark42.com", want: http.StatusOK},
+		{name: "admin read from foreign origin", method: "GET", path: "/api/v1/admin/blocked?site=remark42", origin: "https://evil.example", want: http.StatusForbidden},
+		{name: "comment post without browser signals", method: "POST", path: "/api/v1/comment", body: comment, want: http.StatusCreated},
+		{name: "comment post marked cross-site", method: "POST", path: "/api/v1/comment", body: comment, fetchSite: "cross-site", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(c.method, ts.URL+c.path, strings.NewReader(c.body))
+			require.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			if c.fetchSite != "" {
+				req.Header.Set("Sec-Fetch-Site", c.fetchSite)
+			}
+			if c.origin != "" {
+				req.Header.Set("Origin", c.origin)
+			}
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+		})
+	}
+}
+
+// regression: the request log wrote the email address of every email login and subscription in plain text
+func TestRest_RequestLogHidesEmail(t *testing.T) {
+	logs := &lockedBuffer{}
+	lgr.Setup(lgr.Out(logs), lgr.Err(io.Discard))
+	t.Cleanup(func() { lgr.Setup() })
+	ts, _, teardown := startupT(t) // routes() picks up the logger set above
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+
+	const address, addressEscaped = "secret.person+tag@example.com", "secret.person%2Btag%40example.com"
+	jwtPrefix := devToken[:40] // the payload of devToken holds an email address too
+	cases := []struct {
+		name, method, path, body string
+		status                   int
+		want                     string // what the request's log line must show in place of the hidden value
+	}{
+		{name: "email login", method: "GET", path: "/auth/email/login?site=remark42&user=someone&address=" + addressEscaped,
+			status: http.StatusOK, want: "address=********"},
+		{name: "mistyped email login rejected", method: "GET",
+			path:   "/auth/email/login?site=remark42&user=someone&address=secret.person%40%40example.com",
+			status: http.StatusForbidden, want: "address=********"},
+		{name: "email subscribe", method: "POST", path: "/api/v1/email/subscribe?site=remark42",
+			body: `{"site":"remark42","address":"` + address + `"}`, status: http.StatusOK, want: `"address":"********"`},
+		{name: "email subscribe, old query param", method: "POST",
+			path: "/api/v1/email/subscribe?site=remark42&address=" + addressEscaped, status: http.StatusOK, want: "address=********"},
+		{name: "email confirm, token in body", method: "POST", path: "/api/v1/email/confirm?site=remark42",
+			body: `{"site":"remark42","token":"` + devToken + `"}`, status: http.StatusBadRequest, want: `"token":"********"`},
+		{name: "email confirm, token in query", method: "POST", path: "/api/v1/email/confirm?site=remark42&tkn=" + devToken,
+			status: http.StatusBadRequest, want: "tkn=********"},
+		{name: "session token in query", method: "GET", path: "/api/v1/config?site=remark42&jwt=" + devToken,
+			status: http.StatusOK, want: "jwt=********"},
+		{name: "comment keeps mentions and urls", method: "POST", path: "/api/v1/comment?site=remark42",
+			body:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`,
+			status: http.StatusCreated,
+			want:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := http.NewRequest(c.method, ts.URL+c.path, strings.NewReader(c.body))
+			require.NoError(t, err)
+			req.Header.Set("X-JWT", devToken)
+			req.Header.Set("X-Request-ID", c.name) // the logger appends it, so the line can be told apart
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, c.status, resp.StatusCode) // a rate-limited request would skip the handlers that log
+
+			// the line is written after the response is sent
+			require.EventuallyWithT(t, func(ct *assert.CollectT) {
+				var line string
+				for l := range strings.Lines(logs.String()) {
+					if strings.Contains(l, " - "+c.name) {
+						line = l
+					}
+				}
+				assert.Contains(ct, line, c.want)
+			}, waitTimeout, pollInterval)
+		})
+	}
+
+	// error lines (SendErrorJSON) print the url too, so the whole log is checked, not only the request lines
+	assert.NotContains(t, logs.String(), "secret.person")
+	assert.NotContains(t, logs.String(), jwtPrefix)
+}
+
+// lockedBuffer is a log destination safe for the handlers writing to it concurrently
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 // TestRest_AvatarMounts verifies both avatar mounts (root /avatar/ and /api/v1/avatar/)
 // still route to the avatar handler after the chi Mount -> ServeMux Handle rewiring,
 // rather than falling through to a router 404.
@@ -407,7 +577,7 @@ func TestRest_RunStaticSSLMode(t *testing.T) {
 	sslPort := chooseUnusedPort(t)
 	srv := Rest{
 		Authenticator: auth.NewService(auth.Opts{
-			AvatarStore:       avatar.NewLocalFS("/tmp"),
+			AvatarStore:       avatar.NewLocalFS(t.TempDir()),
 			AvatarResizeLimit: 300,
 		}),
 
@@ -495,15 +665,17 @@ func TestRest_RunAutocertModeHTTPOnly(t *testing.T) {
 	srv.Shutdown()
 }
 
-func Test_URLKey(t *testing.T) {
+func Test_urlKey(t *testing.T) {
 	tbl := []struct {
-		url  string
-		user store.User
-		key  string
+		url     string
+		user    store.User
+		key     string
+		userKey string
 	}{
-		{"http://example.com/1", store.User{}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1"},
+		{"http://example.com/1", store.User{}, "http://example.com/1", "http://example.com/1"},
+		{"http://example.com/1", store.User{ID: "user"}, "http://example.com/1", "user!!http://example.com/1"},
+		{"http://example.com/2", store.User{ID: "user2"}, "http://example.com/2", "user2!!http://example.com/2"},
+		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!http://example.com/1", "admin!!user!!http://example.com/1"},
 	}
 
 	for i, tt := range tbl {
@@ -511,33 +683,12 @@ func Test_URLKey(t *testing.T) {
 			r, err := http.NewRequest("GET", tt.url, http.NoBody)
 			require.NoError(t, err)
 			if tt.user.ID != "" {
-				r = rest.SetUserInfo(r, tt.user)
+				u := token.User{ID: tt.user.ID}
+				u.SetAdmin(tt.user.Admin)
+				r = token.SetUserInfo(r, u)
 			}
-			assert.Equal(t, tt.key, URLKey(r))
-		})
-	}
-}
-
-func Test_URLKeyWithUser(t *testing.T) {
-	tbl := []struct {
-		url  string
-		user store.User
-		key  string
-	}{
-		{"http://example.com/1", store.User{}, "http://example.com/1"},
-		{"http://example.com/1", store.User{ID: "user"}, "user!!http://example.com/1"},
-		{"http://example.com/2", store.User{ID: "user2"}, "user2!!http://example.com/2"},
-		{"http://example.com/1", store.User{ID: "user", Admin: true}, "admin!!user!!http://example.com/1"},
-	}
-
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := http.NewRequest("GET", tt.url, http.NoBody)
-			require.NoError(t, err)
-			if tt.user.ID != "" {
-				r = rest.SetUserInfo(r, tt.user)
-			}
-			assert.Equal(t, tt.key, URLKeyWithUser(r))
+			assert.Equal(t, tt.key, urlKey(r, false))
+			assert.Equal(t, tt.userKey, urlKey(r, true))
 		})
 	}
 }
@@ -596,11 +747,11 @@ func TestRest_frameAncestors(t *testing.T) {
 // startupT runs fully configured testing server
 // srvHook is an optional func to set some Rest param after the creation but prior to Run
 func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest, teardown func()) {
-	tmp := os.TempDir()
-	testDB := filepath.Join(t.TempDir(), "test-remark.db") // per-test dir, removed when the test ends
-
-	_ = os.RemoveAll(tmp + "/ava-remark42")
-	_ = os.RemoveAll(tmp + "/pics-remark42")
+	// every directory the server writes to is the test's own, so a run in another checkout can't remove it
+	tmp := t.TempDir()
+	testDB := filepath.Join(tmp, "test-remark.db")
+	webRoot := filepath.Join(tmp, "web")
+	require.NoError(t, os.Mkdir(webRoot, 0o700))
 
 	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "remark42"})
 	require.NoError(t, err)
@@ -626,11 +777,11 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		Authenticator: auth.NewService(auth.Opts{
 			AdminPasswd:  "password",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil }),
-			AvatarStore:  avatar.NewLocalFS(tmp + "/ava-remark42"),
+			AvatarStore:  avatar.NewLocalFS(avatarDir(tmp)),
 			JWTQuery:     "jwt", // as in the server, "token" carries the delete-me token
 		}),
 		Cache:     memCache,
-		WebRoot:   tmp,
+		WebRoot:   webRoot,
 		RemarkURL: remarkURL,
 		ImageService: image.NewService(&image.FileSystem{
 			Location:   tmp + "/pics-remark42",
@@ -653,7 +804,6 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 			NativeExporter:    &migrator.Native{DataStore: dataStore},
 			URLMapperMaker:    migrator.NewURLMapper,
 			Cache:             memCache,
-			KeyStore:          astore,
 		},
 		NotifyService:    notify.NopService,
 		EmojiEnabled:     true,
@@ -680,12 +830,16 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	teardown = func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-		_ = os.RemoveAll(tmp + "/ava-remark42")
-		_ = os.RemoveAll(tmp + "/pics-remark42")
 	}
 
 	return ts, srv, teardown
 }
+
+// avatarDir is where the server started by startupT keeps avatars, given its temporary directory
+func avatarDir(tmp string) string { return filepath.Join(tmp, "ava-remark42") }
+
+// testAvatarDir returns the avatar directory of a server started by startupT
+func testAvatarDir(srv *Rest) string { return avatarDir(filepath.Dir(srv.WebRoot)) }
 
 const (
 	// outer bound before a wait is called a hang, generous enough for a loaded CI runner
@@ -729,7 +883,7 @@ func waitForCountSettled(t *testing.T, want int, got func() int, msgAndArgs ...a
 func fakeAuth(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("fake_id") != "" {
-			r = rest.SetUserInfo(r, store.User{
+			r = token.SetUserInfo(r, token.User{
 				ID:   r.URL.Query().Get("fake_id"),
 				Name: r.URL.Query().Get("fake_name"),
 			})
@@ -856,7 +1010,10 @@ func requireAdminOnly(t *testing.T, req *http.Request) {
 // collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
+	// probe on the loopback address the tests dial: on macOS a wildcard bind succeeds on a port
+	// another process holds on 127.0.0.1 only, and requests to that address then reach the other
+	// process instead of the server under test
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "no free port available")
 	port := ln.Addr().(*net.TCPAddr).Port
 	require.NoError(t, ln.Close())

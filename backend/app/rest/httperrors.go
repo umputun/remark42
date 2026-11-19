@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -12,7 +11,9 @@ import (
 
 	log "github.com/go-pkgz/lgr"
 	"github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/logger"
 
+	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/templates"
 )
 
@@ -51,35 +52,50 @@ type errTmplData struct {
 // SendErrorHTML makes html body from error_response.html.tmpl template and responds with provided http status code,
 // error code is not included in render as it is intended for UI developers and not for the users
 func SendErrorHTML(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
-		if err = tmpl.Execute(wr, data); err != nil {
-			panic(err)
-		}
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 0))
+	page, e := RenderTemplate("error", "error_response.html.tmpl", errTmplData{Error: err.Error(), Details: details})
+	if e != nil {
+		log.Printf("[WARN] can't make error page, %v", e)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	MustRead := func(path string) string {
-		file, e := templates.Read(path)
-		if e != nil {
-			panic(e)
-		}
-		return string(file)
+	HTMLResponse(w, httpStatusCode, page)
+}
+
+// RenderTemplate executes html template file under the given name with data. The file is read from the
+// working directory when present there, so an operator can override it, and from the embedded copy
+// otherwise. An override may wrap its content in {{define "<name>"}}, so the name is kept independent of
+// the file name.
+func RenderTemplate(name, file string, data any) (string, error) {
+	content, err := templates.Read(file)
+	if err != nil {
+		return "", fmt.Errorf("can't read template %s: %w", file, err)
 	}
-	tmplstr := MustRead("error_response.html.tmpl")
-	tmpl := template.Must(template.New("error").Parse(tmplstr))
-	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
-
-	msg := bytes.Buffer{}
-	MustExecute(tmpl, &msg, errTmplData{
-		Error:   err.Error(),
-		Details: details,
-	})
-
-	HTMLResponse(w, httpStatusCode, msg.String())
+	tmpl, err := template.New(name).Parse(string(content))
+	if err != nil {
+		return "", fmt.Errorf("can't parse template %s: %w", file, err)
+	}
+	var buf bytes.Buffer
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("can't execute template %s: %w", file, err)
+	}
+	return buf.String(), nil
 }
 
 // SendErrorJSON makes {error: blah, details: blah, code: 42} json body and responds with error code
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
-	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode))
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 0))
+	writeErrorJSON(w, httpStatusCode, err, details, errCode)
+}
+
+// SendErrorJSONFromHelper is SendErrorJSON for a helper which sends errors for its callers: the logged
+// source line is where the helper was called, not the line inside the helper
+func SendErrorJSONFromHelper(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 1))
+	writeErrorJSON(w, httpStatusCode, err, details, errCode)
+}
+
+func writeErrorJSON(w http.ResponseWriter, httpStatusCode int, err error, details string, errCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
 	rest.RenderJSON(w, rest.JSON{"error": err.Error(), "details": details, "code": errCode})
@@ -99,7 +115,9 @@ func PlainTextResponse(w http.ResponseWriter, status int, text string) {
 	_, _ = w.Write([]byte(text))
 }
 
-func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details string, errCode int) string {
+// errDetailsMsg makes the log line of an error sent to the client. It names the source line which called
+// the function calling errDetailsMsg, or the one skip frames further up the stack.
+func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details string, errCode, skip int) string {
 	uinfoStr := ""
 	if user, e := GetUserInfo(r); e == nil {
 		uinfoStr = user.Name + "/" + user.ID + " - "
@@ -110,13 +128,24 @@ func errDetailsMsg(r *http.Request, httpStatusCode int, err error, details strin
 	}
 
 	srcFileInfo := ""
-	if pc, file, line, ok := runtime.Caller(2); ok {
+	if pc, file, line, ok := runtime.Caller(2 + skip); ok {
 		fnameElems := strings.Split(file, "/")
 		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
 		srcFileInfo = fmt.Sprintf("[%s:%d %s]", strings.Join(fnameElems[len(fnameElems)-3:], "/"),
 			line, funcNameElems[len(funcNameElems)-1])
 	}
 
-	return fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s",
-		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo)
+	// the url and the error can carry the user's email address, as the email login and subscription requests do
+	return store.MaskForLog(fmt.Sprintf("%s - %v - %d (%d) - %s%s - %s",
+		details, err, httpStatusCode, errCode, uinfoStr, q, srcFileInfo))
+}
+
+// MaskedLog is a log backend passing every line through store.MaskForLog, for logs that record user input
+type MaskedLog struct {
+	L logger.Backend
+}
+
+// Logf formats the line and writes it to L with email addresses and tokens hidden
+func (m MaskedLog) Logf(format string, args ...any) {
+	m.L.Logf("%s", store.MaskForLog(fmt.Sprintf(format, args...)))
 }

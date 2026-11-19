@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strconv"
 	"time"
@@ -195,7 +196,7 @@ func (api *Client) ListAllStarsContext(ctx context.Context) (results []Item, err
 		p, err = p.next(ctx)
 		if err == nil {
 			results = append(results, p.Items...)
-		} else if rateLimitedError, ok := err.(*RateLimitedError); ok {
+		} else if rateLimitedError, ok := errors.AsType[*RateLimitedError](err); ok {
 			select {
 			case <-ctx.Done():
 				err = ctx.Err()
@@ -228,7 +229,7 @@ func newStarPagination(c *Client, options ...ListStarsOption) (sip StarredItemPa
 
 // done checks if the pagination has completed
 func (StarredItemPagination) done(err error) bool {
-	return err == errPaginationComplete
+	return errors.Is(err, errPaginationComplete)
 }
 
 // done checks if pagination failed.
@@ -242,23 +243,24 @@ func (t StarredItemPagination) failure(err error) error {
 
 // next gets the next list of starred items based on the cursor value
 func (t StarredItemPagination) next(ctx context.Context) (_ StarredItemPagination, err error) {
-	var (
-		resp *listResponsePaginated
-	)
+	var resp listResponsePaginated
 
 	if t.c == nil || (t.previousResp != nil && t.previousResp.Cursor == "") {
 		return t, errPaginationComplete
 	}
 
-	t.previousResp = t.previousResp.initialize()
+	previousResp := t.previousResp.initialize()
 
 	values := url.Values{
 		"limit":  {strconv.Itoa(t.limit)},
 		"token":  {t.c.token},
-		"cursor": {t.previousResp.Cursor},
+		"cursor": {previousResp.Cursor},
 	}
 
 	if err = t.c.postMethod(ctx, "stars.list", values, &resp); err != nil {
+		return t, err
+	}
+	if err = resp.Err(); err != nil {
 		return t, err
 	}
 

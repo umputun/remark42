@@ -1,28 +1,23 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestImport_Execute(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)
-		t.Logf("Authorization header: %+v", r.Header.Get("Authorization"))
-		auth, err := base64.StdEncoding.DecodeString(strings.Split(r.Header.Get("Authorization"), " ")[1])
-		require.NoError(t, err)
-		assert.Equal(t, "admin:secret", string(auth))
+		user, passwd, ok := r.BasicAuth()
+		assert.True(t, ok, "request carries basic auth")
+		assert.Equal(t, "admin:secret", user+":"+passwd)
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, "blah\nblah2\n12345678\n", string(body))
@@ -33,20 +28,12 @@ func TestImport_Execute(t *testing.T) {
 	defer ts.Close()
 
 	cmd := ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
-
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret"})
-	require.NoError(t, err)
-	err = cmd.Execute(nil)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret")
+	err := cmd.Execute(nil)
 	assert.NoError(t, err)
 
 	cmd = ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
-
-	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt.gz", "--admin-passwd=secret"})
-	require.NoError(t, err)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt.gz", "--admin-passwd=secret")
 	err = cmd.Execute(nil)
 	assert.NoError(t, err)
 }
@@ -55,10 +42,9 @@ func TestImport_ExecuteNoPassword(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.URL.Path, "/api/v1/admin/import")
 		assert.Equal(t, "POST", r.Method)
-		t.Logf("Authorization header: %+v", r.Header.Get("Authorization"))
-		auth, err := base64.StdEncoding.DecodeString(strings.Split(r.Header.Get("Authorization"), " ")[1])
-		require.NoError(t, err)
-		assert.Equal(t, "admin:", string(auth))
+		user, passwd, ok := r.BasicAuth()
+		assert.True(t, ok, "request carries basic auth")
+		assert.Equal(t, "admin:", user+":"+passwd)
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, "blah\nblah2\n12345678\n", string(body))
@@ -69,20 +55,12 @@ func TestImport_ExecuteNoPassword(t *testing.T) {
 	defer ts.Close()
 
 	cmd := ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
-
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt"})
-	require.NoError(t, err)
-	err = cmd.Execute(nil)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt")
+	err := cmd.Execute(nil)
 	assert.EqualError(t, err, "error response \"401 Unauthorized\", ensure you have set ADMIN_PASSWD and provided it to the command you're running: Unauthorized")
 
 	cmd = ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL})
-
-	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt.gz"})
-	require.NoError(t, err)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt.gz")
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, "error response \"401 Unauthorized\", ensure you have set ADMIN_PASSWD and provided it to the command you're running: Unauthorized")
 }
@@ -96,20 +74,14 @@ func TestImport_ExecuteFailed(t *testing.T) {
 	defer ts.Close()
 
 	cmd := ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--file=testdata/import-no.txt", "--admin-passwd=secret"})
-	require.NoError(t, err)
-	err = cmd.Execute(nil)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import-no.txt", "--admin-passwd=secret")
+	err := cmd.Execute(nil)
 	t.Log(err)
 	assert.Error(t, err, "fail on no such file")
 	assert.Contains(t, err.Error(), "no such file or directory")
 
 	cmd = ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: "http://127.0.0.1:12345", SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret"})
-	require.NoError(t, err)
+	parseCmd(t, &cmd, "http://127.0.0.1:12345", "--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret")
 	err = cmd.Execute(nil)
 	t.Log(err)
 	assert.Error(t, err, "fail on connection refused")
@@ -122,10 +94,7 @@ func TestImport_ExecuteFailed(t *testing.T) {
 	}))
 	defer ts2.Close()
 	cmd = ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts2.URL, SharedSecret: "123456"})
-	p = flags.NewParser(&cmd, flags.Default)
-	_, err = p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret"})
-	require.NoError(t, err)
+	parseCmd(t, &cmd, ts2.URL, "--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret")
 	err = cmd.Execute(nil)
 	t.Log(err)
 	assert.Error(t, err)
@@ -144,12 +113,8 @@ func TestImport_ExecuteTimeout(t *testing.T) {
 	defer ts.Close()
 
 	cmd := ImportCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
-
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--file=testdata/import.txt", "--timeout=300ms", "--admin-passwd=secret"})
-	require.NoError(t, err)
-	err = cmd.Execute(nil)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt", "--timeout=300ms", "--admin-passwd=secret")
+	err := cmd.Execute(nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "deadline exceeded")
 }

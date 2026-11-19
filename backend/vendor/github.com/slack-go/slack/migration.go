@@ -3,6 +3,7 @@ package slack
 import (
 	"context"
 	"net/url"
+	"strings"
 )
 
 type migrationExchangeResponseFull struct {
@@ -17,7 +18,7 @@ type migrationExchangeResponseFull struct {
 // MigrationExchange for Enterprise Grid workspaces, map local user IDs to global user IDs
 func (api *Client) MigrationExchange(ctx context.Context, teamID string, toOld bool, users []string) (map[string]string, []string, error) {
 	values := url.Values{
-		"users": users,
+		"users": {strings.Join(users, ",")},
 	}
 	if teamID != "" {
 		values.Add("team_id", teamID)

@@ -20,6 +20,7 @@ type TokenGenerateRequest struct {
 	CodeVerifier        string
 	AccessTokenExp      time.Duration
 	Request             *http.Request
+	Assertion           string
 }
 
 // Manager authorization management interface

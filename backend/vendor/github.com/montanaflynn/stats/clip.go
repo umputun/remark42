@@ -1,13 +1,16 @@
 package stats
 
+import "math"
+
 // Clip clamps each value in the input slice into the
-// inclusive range between min and max.
+// inclusive range between min and max. A min greater than max,
+// or a min or max that is NaN, returns ErrBounds.
 func Clip(input Float64Data, min, max float64) ([]float64, error) {
 	if input.Len() == 0 {
 		return nil, ErrEmptyInput
 	}
 
-	if min > max {
+	if math.IsNaN(min) || math.IsNaN(max) || min > max {
 		return nil, ErrBounds
 	}
 

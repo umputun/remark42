@@ -175,7 +175,7 @@ func (api *Client) SetAssistantThreadsSuggestedPromptsContext(ctx context.Contex
 
 	err = api.postMethod(ctx, "assistant.threads.setSuggestedPrompts", values, &response)
 	if err != nil {
-		return
+		return err
 	}
 
 	return response.Err()
@@ -230,7 +230,7 @@ func (api *Client) SetAssistantThreadsStatusContext(ctx context.Context, params 
 
 	err = api.postMethod(ctx, "assistant.threads.setStatus", values, &response)
 	if err != nil {
-		return
+		return err
 	}
 
 	return response.Err()

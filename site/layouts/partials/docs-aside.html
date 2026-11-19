@@ -11,17 +11,7 @@
       <ul class="docs-aside__list">
         {{- range .children }}
           {{- $href := printf "/docs%s" .href }}
-          <li>
-            <a class="docs-aside__link{{ if eq $current $href }} is-current{{ end }}" href="{{ $href }}">{{ .title }}</a>
-            {{- with .children }}
-              <ul class="docs-aside__list docs-aside__list--nested">
-                {{- range . }}
-                  {{- $childHref := printf "/docs%s" .href }}
-                  <li><a class="docs-aside__link{{ if eq $current $childHref }} is-current{{ end }}" href="{{ $childHref }}">{{ .title }}</a></li>
-                {{- end }}
-              </ul>
-            {{- end }}
-          </li>
+          <li><a class="docs-aside__link{{ if eq $current $href }} is-current{{ end }}" href="{{ $href }}">{{ .title }}</a></li>
         {{- end }}
       </ul>
     {{- end }}

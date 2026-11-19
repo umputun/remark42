@@ -16,8 +16,11 @@ func QuartileOutliers(input Float64Data) (Outliers, error) {
 	copy := sortedCopy(input)
 
 	// Calculate the quartiles and interquartile range
-	qs, _ := Quartile(copy)
-	iqr, _ := InterQuartileRange(copy)
+	qs, err := Quartile(copy)
+	if err != nil {
+		return Outliers{}, err
+	}
+	iqr := qs.Q3 - qs.Q1
 
 	// Calculate the lower and upper inner and outer fences
 	lif := qs.Q1 - (1.5 * iqr)

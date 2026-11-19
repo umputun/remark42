@@ -84,9 +84,14 @@ func (h Oauth1Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // AuthHandler fills user info and redirects to "from" url. This is callback url redirected locally by browser
 // GET /callback
 func (h Oauth1Handler) AuthHandler(w http.ResponseWriter, r *http.Request) {
-	oauthClaims, _, err := h.JwtService.Get(r)
+	oauthClaims, err := handshakeFromCookie(h.JwtService, r)
 	if err != nil {
 		rest.SendErrorJSON(w, r, h.L, http.StatusInternalServerError, err, "failed to get token")
+		return
+	}
+
+	if oauthClaims.Handshake == nil {
+		rest.SendErrorJSON(w, r, h.L, http.StatusForbidden, nil, "invalid handshake token")
 		return
 	}
 

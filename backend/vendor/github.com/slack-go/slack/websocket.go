@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -47,6 +48,10 @@ type RTM struct {
 	// Dialer.
 	dialer *websocket.Dialer
 
+	dialHeaders http.Header
+
+	readLimit int64
+
 	// mu is mutex used to prevent RTM connection race conditions
 	mu *sync.Mutex
 
@@ -79,6 +84,10 @@ func (rtm *RTM) Disconnect() error {
 // "startrtm", holding metadata needed to implement a full
 // chat client. It will be non-nil after a call to StartRTM().
 func (rtm *RTM) GetInfo() *Info {
+	if rtm.mu != nil {
+		rtm.mu.Lock()
+		defer rtm.mu.Unlock()
+	}
 	return rtm.info
 }
 

@@ -6,6 +6,7 @@ on:
     tags:
     paths:
       - ".github/workflows/ci-backend.yml"
+      - ".github/actions/setup-go/**"
       - "backend/**"
       - "Dockerfile"
       - "docker-init.sh"
@@ -15,6 +16,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/ci-backend.yml"
+      - ".github/actions/setup-go/**"
       - "backend/**"
       - "Dockerfile"
       - "docker-init.sh"
@@ -39,18 +41,10 @@ jobs:
         env:
           DEBUG: ${{secrets.DEBUG}}
 
-      - name: read go version from backend/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: install go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: backend/go.mod
           cache-dependency-path: backend
 
       - name: test and build backend
@@ -102,18 +96,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: read go version from backend/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: install go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: backend/go.mod
           # both go.sum files so the cache key covers the main and example modules scanned below
           cache-dependency-path: |
             backend/go.sum

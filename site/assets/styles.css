@@ -360,11 +360,6 @@ kbd {
   font-weight: 500;
 }
 
-.docs-aside__list--nested {
-  margin: 0 0 0 1rem;
-  font-weight: 400;
-}
-
 .docs-aside__list li {
   margin-block: 0.25rem;
 }

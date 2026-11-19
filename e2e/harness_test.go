@@ -50,8 +50,7 @@ func TestHarness_ReaderIPRequestScope(t *testing.T) {
 		{name: "non-http scheme", rawURL: "ftp://remark42:8080/file", want: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, requestNeedsReaderIP(tc.rawURL), tc.rawURL)
-			assert.Equal(t, tc.want, readerIPRoutePattern.MatchString(tc.rawURL), "route pattern: "+tc.rawURL)
+			assert.Equal(t, tc.want, readerIPRoutePattern.MatchString(tc.rawURL), tc.rawURL)
 		})
 	}
 }

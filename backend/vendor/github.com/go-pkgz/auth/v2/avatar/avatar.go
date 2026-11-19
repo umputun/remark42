@@ -36,6 +36,15 @@ const maxAvatarFetchSize = 10 << 20
 // full image.Decode runs. Defends against decompression-bomb inputs.
 const maxAvatarPixels = 16 * 1024 * 1024
 
+// defaultIdenticonSize is the side, in pixels, of a generated identicon when Proxy.IdenticonSize is not set
+const defaultIdenticonSize = 300
+
+// minIdenticonSize is the smallest side that still gives every block of the 5x5 identicon grid a pixel
+const minIdenticonSize = 5
+
+// maxIdenticonSize is the largest side whose square stays within maxAvatarPixels
+const maxIdenticonSize = 4096
+
 // Proxy provides http handler for avatars from avatar.Store
 // On user login token will call Put and it will retrieve and save picture locally.
 type Proxy struct {
@@ -44,6 +53,11 @@ type Proxy struct {
 	RoutePath   string
 	URL         string
 	ResizeLimit int
+	// IdenticonSize is the side, in pixels, of the identicon generated for a user without a usable
+	// picture. Values below 5 or above 4096, the side maxAvatarPixels allows, use the default of 300.
+	// The generated image is still subject to ResizeLimit, and scaling it down blurs the block edges,
+	// so keep it at or below the limit.
+	IdenticonSize int
 }
 
 // Put fetches u.Picture, validates and optionally resizes the body, stores it via
@@ -54,7 +68,7 @@ type Proxy struct {
 func (p *Proxy) Put(u token.User, client *http.Client) (avatarURL string, err error) {
 
 	genIdenticon := func(userID string) (avatarURL string, err error) {
-		b, e := GenerateAvatar(userID)
+		b, e := generateAvatar(userID, p.IdenticonSize)
 		if e != nil {
 			return "", fmt.Errorf("no picture for %s: %w", userID, e)
 		}
@@ -355,6 +369,15 @@ func setAvatarDefenseHeaders(w http.ResponseWriter) {
 
 // GenerateAvatar for give user with identicon
 func GenerateAvatar(user string) ([]byte, error) {
+	return generateAvatar(user, defaultIdenticonSize)
+}
+
+// generateAvatar draws the user's identicon as a size x size PNG, falling back to the default
+// size when size is too small to draw the grid or larger than any avatar the proxy accepts
+func generateAvatar(user string, size int) ([]byte, error) {
+	if size < minIdenticonSize || size > maxIdenticonSize {
+		size = defaultIdenticonSize
+	}
 
 	iconGen, err := identicon.New("pkgz/auth", 5, 5)
 	if err != nil {
@@ -367,7 +390,7 @@ func GenerateAvatar(user string) ([]byte, error) {
 	}
 
 	buf := &bytes.Buffer{}
-	err = ii.Png(300, buf)
+	err = ii.Png(size, buf)
 	return buf.Bytes(), err
 }
 

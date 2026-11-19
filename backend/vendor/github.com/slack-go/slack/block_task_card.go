@@ -31,14 +31,15 @@ func NewTaskCardSource(url, text string) TaskCardSource {
 //
 // More Information: https://docs.slack.dev/reference/block-kit/blocks/task-card-block/
 type TaskCardBlock struct {
-	Type    MessageBlockType `json:"type"`
-	BlockID string           `json:"block_id,omitempty"`
-	TaskID  string           `json:"task_id"`
-	Title   string           `json:"title"`
-	Status  TaskCardStatus   `json:"status,omitempty"`
-	Details *RichTextBlock   `json:"details,omitempty"`
-	Output  *RichTextBlock   `json:"output,omitempty"`
-	Sources []TaskCardSource `json:"sources,omitempty"`
+	Type      MessageBlockType `json:"type"`
+	BlockID   string           `json:"block_id,omitempty"`
+	TaskID    string           `json:"task_id"`
+	Title     string           `json:"title"`
+	Status    TaskCardStatus   `json:"status,omitempty"`
+	Details   *RichTextBlock   `json:"details,omitempty"`
+	Output    *RichTextBlock   `json:"output,omitempty"`
+	Sources   []TaskCardSource `json:"sources,omitempty"`
+	HideTitle bool             `json:"hide_title,omitempty"`
 }
 
 // BlockType returns the type of the block
@@ -99,5 +100,11 @@ func (s *TaskCardBlock) WithOutput(output *RichTextBlock) *TaskCardBlock {
 // WithSources sets the sources for the TaskCardBlock
 func (s *TaskCardBlock) WithSources(sources ...TaskCardSource) *TaskCardBlock {
 	s.Sources = sources
+	return s
+}
+
+// WithHideTitle hides the title of the TaskCardBlock, so details becomes the top element
+func (s *TaskCardBlock) WithHideTitle(hideTitle bool) *TaskCardBlock {
+	s.HideTitle = hideTitle
 	return s
 }

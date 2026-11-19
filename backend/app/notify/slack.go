@@ -12,6 +12,7 @@ import (
 // Slack implements notify.Destination for Slack
 type Slack struct {
 	*ntf.Slack
+	noVerification
 
 	channelName string
 }
@@ -49,11 +50,6 @@ func (s *Slack) Send(ctx context.Context, req Request) error {
 	)
 
 	return s.Slack.Send(ctx, destination, "New comment from "+user)
-}
-
-// SendVerification is not implemented for Slack
-func (s *Slack) SendVerification(_ context.Context, _ VerificationRequest) error {
-	return nil
 }
 
 func (s *Slack) String() string {

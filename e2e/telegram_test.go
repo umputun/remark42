@@ -178,6 +178,15 @@ func tgStartSignIn(t *testing.T, frame playwright.FrameLocator) string {
 	return telegramStartToken(t, href)
 }
 
+// tgSignIn signs the reader in through the bot: the panel mints a token, the reader sends it to the
+// bot under the given id and name, and the widget confirms it
+func tgSignIn(t *testing.T, page playwright.Page, frame playwright.FrameLocator, id, firstName string) {
+	t.Helper()
+	token := tgStartSignIn(t, frame)
+	tgSendToBot(t, "/start "+token, id, firstName)
+	tgConfirmSignIn(t, page, frame)
+}
+
 // TestTelegram_SignInThroughTheBot drives the whole two-step flow the widget performs: ask the
 // backend for a token, show the reader a link carrying it, and then verify once the reader has
 // messaged the bot. Both halves are asserted, since a widget that renders the link and never
@@ -208,14 +217,10 @@ func TestTelegram_CommentSurvivesAReload(t *testing.T) {
 	page := newPage(t)
 	frame := openURL(t, page, threadURLOn(t, telegramURL))
 
-	token := tgStartSignIn(t, frame)
-
 	// a distinct id per run, so the comments of one run cannot be read as another's. Digits only,
 	// the way anonName builds a name: E2E_RUN_ID is "<run>-<attempt>" on CI, so anything slicing it
 	// raw hands the stub something strconv cannot read
-	tgSendToBot(t, "/start "+token, tgReaderID(t), "Reload Reader")
-
-	tgConfirmSignIn(t, page, frame)
+	tgSignIn(t, page, frame, tgReaderID(t), "Reload Reader")
 
 	text := "posted after telegram sign-in " + runID
 	postComment(t, frame, text)

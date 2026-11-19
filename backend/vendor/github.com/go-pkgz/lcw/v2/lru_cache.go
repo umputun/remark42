@@ -177,7 +177,7 @@ func (c *LruCache[V]) allowed(key string, data V) bool {
 		return false
 	}
 	if size, ok := sizeOf(data); ok {
-		if c.maxValueSize > 0 && size >= c.maxValueSize {
+		if c.maxValueSize > 0 && size > c.maxValueSize {
 			return false
 		}
 	}

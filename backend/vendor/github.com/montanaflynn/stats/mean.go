@@ -10,8 +10,21 @@ func Mean(input Float64Data) (float64, error) {
 	}
 
 	sum, _ := input.Sum()
+	l := float64(input.Len())
 
-	return sum / float64(input.Len()), nil
+	// The sum of finite values near math.MaxFloat64 can overflow even
+	// though the mean cannot, so sum again scaled down by a power of two
+	// at least the length, which is exact, and scale the mean back up.
+	if math.IsInf(sum, 0) {
+		_, e := math.Frexp(l)
+		sum = 0
+		for _, n := range input {
+			sum += math.Ldexp(n, -e)
+		}
+		return math.Ldexp(sum/l, e), nil
+	}
+
+	return sum / l, nil
 }
 
 // GeometricMean gets the geometric mean for a slice of numbers

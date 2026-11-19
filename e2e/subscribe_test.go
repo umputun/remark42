@@ -40,34 +40,13 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	// message, so a fixed address would also let this read a token from an earlier run
 	address := fmt.Sprintf("subscriber-%s-%d@example.com", runID, os.Getpid())
 
-	// the dev user is shared by the whole suite and a subscription outlives the run in the
-	// stack's database, so a stack this has already run against starts on the subscribed step.
-	// cleared through the API and not the panel: the precondition is not what is under test.
-	// 200 and 400 both leave nothing subscribed, which is all this needs
-	status, body := pageFetch(t, page, "DELETE", baseURL+"/api/v1/email?site=remark", nil)
-	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
-		"could not clear a subscription left by an earlier run: %s", body)
-
-	frame = reload(t, page)
-
-	subscribe := frame.Locator(`[title="Subscribe by email"]`)
-	waitVisible(t, subscribe)
-	require.NoError(t, subscribe.Click())
-
-	email := frame.Locator(`input[placeholder="Email"]`)
-	waitVisible(t, email)
+	frame, email := openEmailStep(t, page)
 	require.NoError(t, email.Fill(address))
-
-	// the request the panel makes, so a submit going nowhere fails as itself
-	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
-		return frame.Locator(`button:text-is("Submit")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
-	require.NoError(t, err, "the panel asked the server for nothing")
-	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
+	submitEmail(t, page, frame)
 
 	// the token out of the message the server actually sent
 	token := verificationToken(t, mailpitMessage(t, address))
-	status, body = pageFetch(t, page,
+	status, body := pageFetch(t, page,
 		"POST", fmt.Sprintf("%s/api/v1/email/confirm?site=remark&tkn=%s", baseURL, token), nil)
 	assert.Equal(t, http.StatusOK, status, "the server refused the token it had just sent: %s", body)
 
@@ -77,9 +56,9 @@ func TestSubscribe_EmailRoundTrip(t *testing.T) {
 	unsubscribe := frame.Locator(`button:text-is("Unsubscribe")`)
 	waitVisible(t, unsubscribe)
 
-	resp, err = page.ExpectResponse("**/api/v1/email**", func() error {
+	resp, err := page.ExpectResponse("**/api/v1/email**", func() error {
 		return unsubscribe.Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err, "clicking Unsubscribe asked the server nothing")
 	assert.Equal(t, "DELETE", resp.Request().Method())
 	assert.Equal(t, http.StatusOK, resp.Status(), "the server refused the unsubscribe")
@@ -119,17 +98,7 @@ func TestSubscribe_PanelStaysOpenWhenAnInnerClickDetachesItsTarget(t *testing.T)
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
 
-	status, body := pageFetch(t, page, "DELETE", baseURL+"/api/v1/email?site=remark", nil)
-	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
-		"could not clear a subscription left by an earlier run: %s", body)
-	frame = reload(t, page)
-
-	subscribe := frame.Locator(`[title="Subscribe by email"]`)
-	waitVisible(t, subscribe)
-	require.NoError(t, subscribe.Click())
-
-	email := frame.Locator(`input[placeholder="Email"]`)
-	waitVisible(t, email)
+	frame, email := openEmailStep(t, page)
 
 	// the panel's own capture listener runs after the document's, so with the fix the document has
 	// already answered "inside" by the time the target goes; without it the document asks in the
@@ -173,25 +142,11 @@ func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
 	frame := openThread(t, page)
 	signInDev(t, page, frame)
 
-	status, body := pageFetch(t, page, "DELETE", baseURL+"/api/v1/email?site=remark", nil)
-	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
-		"could not clear a subscription left by an earlier run: %s", body)
-	frame = reload(t, page)
-
-	subscribe := frame.Locator(`[title="Subscribe by email"]`)
-	waitVisible(t, subscribe)
-	require.NoError(t, subscribe.Click())
-
-	email := frame.Locator(`input[placeholder="Email"]`)
-	waitVisible(t, email)
+	frame, email := openEmailStep(t, page)
 	require.NoError(t, email.Fill(fmt.Sprintf("back-%s-%d@example.com", runID, os.Getpid())))
 
-	// the request that moves the panel to the token step, so a submit going nowhere fails as itself
-	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
-		return frame.Locator(`button:text-is("Submit")`).Click()
-	}, playwright.PageExpectResponseOptions{Timeout: playwright.Float(float64(waitTimeout.Milliseconds()))})
-	require.NoError(t, err, "the panel asked the server for nothing")
-	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
+	// moves the panel to the token step
+	submitEmail(t, page, frame)
 
 	back := frame.Locator(`button:text-is("Back")`)
 	waitVisible(t, back)
@@ -200,4 +155,38 @@ func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
 	// the assertion the case exists for: the panel is still open, showing the email step again
 	waitVisible(t, frame.Locator(`div[role="listbox"]`))
 	waitVisible(t, email)
+}
+
+// openEmailStep clears the dev user's email subscription, reloads, opens the subscription panel and
+// returns the frame with the panel's email field.
+//
+// The dev user is shared by the whole suite and a subscription outlives the run in the stack's
+// database, so a stack this has already run against starts on the subscribed step. Cleared through
+// the API and not the panel: the precondition is not what is under test. 200 and 400 both leave
+// nothing subscribed, which is all this needs
+func openEmailStep(t *testing.T, page playwright.Page) (playwright.FrameLocator, playwright.Locator) {
+	t.Helper()
+	status, body := pageFetch(t, page, http.MethodDelete, baseURL+"/api/v1/email?site=remark", nil)
+	require.Contains(t, []int{http.StatusOK, http.StatusBadRequest}, status,
+		"could not clear a subscription left by an earlier run: %s", body)
+	frame := reload(t, page)
+
+	subscribe := frame.Locator(`[title="Subscribe by email"]`)
+	waitVisible(t, subscribe)
+	require.NoError(t, subscribe.Click())
+
+	email := frame.Locator(`input[placeholder="Email"]`)
+	waitVisible(t, email)
+	return frame, email
+}
+
+// submitEmail submits the email step and waits for the request it makes, so a submit going nowhere
+// fails as itself
+func submitEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocator) {
+	t.Helper()
+	resp, err := page.ExpectResponse("**/api/v1/email/subscribe**", func() error {
+		return frame.Locator(`button:text-is("Submit")`).Click()
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "the panel asked the server for nothing")
+	require.Equal(t, http.StatusOK, resp.Status(), "the server refused to send a verification")
 }

@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/release.yml"
+      - ".github/actions/setup-go/**"
       - ".goreleaser.yml"
       - "Makefile"
       - "scripts/**"
@@ -29,22 +30,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: read go version from backend/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: install go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
-        uses: pnpm/action-setup@v6.1.0
+        uses: pnpm/action-setup@v6.1.1
         with:
           version: 10.10.0
           run_install: false
@@ -57,6 +50,7 @@ jobs:
           cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
       - name: test and build backend
+        if: github.event_name == 'push'
         run: |
           go test -race -timeout=300s ./...
           go build -race ./...
@@ -65,6 +59,7 @@ jobs:
           TZ: "America/Chicago"
 
       - name: test examples
+        if: github.event_name == 'push'
         run: |
           go test -race ./...
           go build -race ./...
@@ -79,6 +74,7 @@ jobs:
           CI: "true"
 
       - name: check frontend
+        if: github.event_name == 'push'
         run: |
           pnpm lint
           pnpm type-check
@@ -113,22 +109,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: read go version from backend/go.mod
-        id: gomod
-        run: |
-          version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' backend/go.mod)
-          test -n "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
       - name: install go
-        uses: actions/setup-go@v7
+        uses: ./.github/actions/setup-go
         with:
-          go-version: ${{ steps.gomod.outputs.version }}
-          check-latest: true
+          go-mod: backend/go.mod
           cache-dependency-path: backend/go.sum
 
       - name: install pnpm
-        uses: pnpm/action-setup@v6.1.0
+        uses: pnpm/action-setup@v6.1.1
         with:
           version: 10.10.0
           run_install: false

@@ -13,6 +13,7 @@ const (
 	ErrInvalidConfiguration = errorsx.String("invalid configuration")
 	ErrMissingHeaders       = errorsx.String("missing headers")
 	ErrExpiredTimestamp     = errorsx.String("timestamp is too old")
+	ErrInvalidSignature     = errorsx.String("invalid signature")
 )
 
 // internal errors

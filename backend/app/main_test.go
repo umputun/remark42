@@ -20,34 +20,7 @@ import (
 )
 
 func Test_Main(t *testing.T) {
-	dir, err := os.MkdirTemp(os.TempDir(), "remark42")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-
-	port := chooseUnusedPort(t)
-	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
-		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
-
-	done := make(chan struct{})
-	go func() {
-		<-done
-		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, e)
-	}()
-
-	finished := make(chan struct{})
-	go func() {
-		main()
-		close(finished)
-	}()
-
-	// defer cleanup because require check below can fail
-	defer func() {
-		close(done)
-		<-finished
-	}()
-
-	waitForHTTPServerStart(t, port)
+	port := runMain(t, "--notify.type=none")
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/ping", port))
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -58,10 +31,6 @@ func Test_Main(t *testing.T) {
 }
 
 func TestMain_WithWebhook(t *testing.T) {
-	dir, err := os.MkdirTemp(os.TempDir(), "remark42")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-
 	var webhookSent atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		webhookSent.Store(1)
@@ -73,40 +42,12 @@ func TestMain_WithWebhook(t *testing.T) {
 		assert.Nil(t, e)
 		assert.Equal(t, "Comment: env test", string(b))
 	}))
-	defer ts.Close()
+	t.Cleanup(ts.Close) // registered before runMain, so it closes after main has stopped
 
-	port := chooseUnusedPort(t)
-	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=/tmp",
-		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg",
-		"--admin-passwd=password", "--site=remark", "--notify.admins=webhook"}
-
-	err = os.Setenv("NOTIFY_WEBHOOK_URL", ts.URL)
-	assert.NoError(t, err)
-	err = os.Setenv("NOTIFY_WEBHOOK_TEMPLATE", "Comment: {{.Orig}}")
-	assert.NoError(t, err)
-	err = os.Setenv("NOTIFY_WEBHOOK_HEADERS", "Content-Type:application/json")
-	assert.NoError(t, err)
-
-	done := make(chan struct{})
-	go func() {
-		<-done
-		e := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-		require.NoError(t, e)
-	}()
-
-	finished := make(chan struct{})
-	go func() {
-		main()
-		close(finished)
-	}()
-
-	// defer cleanup because require check below can fail
-	defer func() {
-		close(done)
-		<-finished
-	}()
-
-	waitForHTTPServerStart(t, port)
+	t.Setenv("NOTIFY_WEBHOOK_URL", ts.URL)
+	t.Setenv("NOTIFY_WEBHOOK_TEMPLATE", "Comment: {{.Orig}}")
+	t.Setenv("NOTIFY_WEBHOOK_HEADERS", "Content-Type:application/json")
+	port := runMain(t, "--admin-passwd=password", "--site=remark", "--notify.admins=webhook")
 
 	resp, err := http.Post(fmt.Sprintf("http://admin:password@localhost:%d/api/v1/comment", port), "",
 		strings.NewReader(`{"text": "env test", "locator":{"url": "https://radio-t.com", "site": "remark"}}`))
@@ -118,6 +59,33 @@ func TestMain_WithWebhook(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return webhookSent.Load() == int32(1)
 	}, 30*time.Second, 10*time.Millisecond, "webhook was not sent")
+}
+
+// runMain runs the server command through main with its storage in a temporary directory and on
+// a free port, which it returns once the server answers. main is stopped with SIGTERM, and waited
+// for, when the test ends
+func runMain(t *testing.T, args ...string) (port int) {
+	t.Helper()
+	dir, err := os.MkdirTemp(os.TempDir(), "remark42")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	port = chooseUnusedPort(t)
+	os.Args = append([]string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=" + dir,
+		"--avatar.fs.path=" + dir, "--image.fs.path=" + dir, "--port=" + strconv.Itoa(port),
+		"--url=https://demo.remark42.com", "--dbg"}, args...)
+
+	finished := make(chan struct{})
+	go func() {
+		main()
+		close(finished)
+	}()
+	t.Cleanup(func() {
+		assert.NoError(t, syscall.Kill(syscall.Getpid(), syscall.SIGTERM))
+		<-finished
+	})
+
+	waitForHTTPServerStart(t, port)
+	return port
 }
 
 func TestGetDump(t *testing.T) {
@@ -132,7 +100,10 @@ func TestGetDump(t *testing.T) {
 // collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
+	// probe on the loopback address the tests dial: on macOS a wildcard bind succeeds on a port
+	// another process holds on 127.0.0.1 only, and requests to that address then reach the other
+	// process instead of the server under test
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "no free port available")
 	port := ln.Addr().(*net.TCPAddr).Port
 	require.NoError(t, ln.Close())

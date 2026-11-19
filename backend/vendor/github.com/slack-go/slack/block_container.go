@@ -48,7 +48,8 @@ type ContainerBlock struct {
 	HasHeaderDivider bool `json:"has_header_divider,omitempty"`
 	// ChildBlocks are the blocks rendered inside the container. Slack requires 1
 	// to 10 blocks: actions, context, divider, file, header, image, input,
-	// rich_text, section, table, and video blocks are supported.
+	// rich_text, section, table, and video blocks are supported. Layout blocks
+	// can also be nested, subject to Slack's two-level layout/container limit.
 	ChildBlocks Blocks `json:"child_blocks"`
 }
 

@@ -17,13 +17,14 @@ aliases:
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
+- **`default_sort`**`: string` (optional, `'-active'` by default) – comment order for a reader who has not picked one in the sort picker: `'-score'` (best), `'+score'` (worst), `'-time'` (newest), `'+time'` (oldest), `'-active'` (recently updated), `'+active'` (least recently updated), `'-controversy'` (most controversial) or `'+controversy'` (least controversial). A reader's own choice in the sort picker is remembered and wins over this setting
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – enables email subscription feature in interface when enable it from backend side, if you set this param in `false` you will get notifications email notifications as admin but your users won't have interface for subscription
 - **`show_telegram_subscription`**`: boolean` (optional, `true` by default) – shows Telegram subscription controls when Telegram user notifications are enabled on the backend
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
-- **`simple_view`**`: boolean` (optional, `false` by default) – enables a minimal UI with basic information only; `false` does not disable `SIMPLE_VIEW` enabled on the backend
+- **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
 
 Configuration example:

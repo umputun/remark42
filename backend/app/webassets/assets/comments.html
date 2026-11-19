@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Remark42 demo</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+        font: 18px/24px Helvetica, Arial, sans-serif;
+        color: #333;
+      }
+
+      article {
+        display: block;
+        text-align: left;
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 50px;
+        margin-left: -0.05em;
+      }
+
+      ul {
+        color: rgb(23, 67, 78);
+      }
+
+      a {
+        color: rgb(79, 187, 214);
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: rgb(94, 167, 177);
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <article>
+      <h1><a href="https://remark42.com/">Remark42</a></h1>
+      <p id="title"></p>
+      <div id="remark42"></div>
+    </article>
+
+    <script>
+      var query = (function () {
+        if (window.location.search.length === 0) return {};
+        return window.location.search
+          .substring(1)
+          .split('&')
+          .map(function (item) {
+            return item.split('=');
+          })
+          .reduce(function (carry, item) {
+            carry[item[0]] = decodeURIComponent(item[1]);
+            return carry;
+          }, {});
+      })();
+      if (query.site_id && query.url) {
+        var titleElement = document.getElementById('title');
+        // built through the DOM rather than innerHTML: query.url is attacker-controlled and this
+        // page is a top-level document on the instance origin, so an injected script would run
+        // there rather than inside the sandboxed widget frame
+        var link = document.createElement('a');
+        link.textContent = query.url;
+        // and only http(s) reaches href, or a javascript: url survives the escaping
+        if (/^https?:\/\//i.test(query.url)) {
+          link.href = query.url;
+        }
+        titleElement.textContent = 'Comments for ';
+        titleElement.appendChild(link);
+        // the server fills in its own address when it serves this page. The frontend dev server
+        // serves the file as written, and there the page and the instance share an origin
+        var host = '{% REMARK_URL %}';
+        if (host.charAt(0) === '{') {
+          host = location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, '');
+        }
+        var remark_config = {
+          site_id: query.site_id,
+          host: host,
+          url: query.url,
+        };
+        (function (c, d) {
+          var r = d.head || d.body;
+          for (var i = 0; i < c.length; i++) {
+            var s = d.createElement('script');
+            s.type = 'module';
+            s.async = true;
+            s.defer = true;
+            s.src = remark_config.host + '/web/' + c[i] + '.mjs';
+            r.appendChild(s);
+          }
+        })(remark_config.components || ['embed'], document);
+      }
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

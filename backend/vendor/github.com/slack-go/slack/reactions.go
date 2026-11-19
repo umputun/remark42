@@ -33,6 +33,11 @@ func NewGetReactionsParameters() GetReactionsParameters {
 }
 
 type getReactionsResponseFull struct {
+	reactedItemResponse
+	SlackResponse
+}
+
+type reactedItemResponse struct {
 	Type    string
 	Channel string `json:"channel,omitempty"` // channel is at the root level for message types
 	M       struct {
@@ -46,10 +51,9 @@ type getReactionsResponseFull struct {
 		*Comment
 		Reactions []ItemReaction
 	} `json:"comment"`
-	SlackResponse
 }
 
-func (res getReactionsResponseFull) extractReactedItem() ReactedItem {
+func (res reactedItemResponse) extractReactedItem() ReactedItem {
 	item := ReactedItem{}
 	item.Type = res.Type
 
@@ -93,21 +97,7 @@ func NewListReactionsParameters() ListReactionsParameters {
 }
 
 type listReactionsResponseFull struct {
-	Items []struct {
-		Type    string
-		Channel string
-		M       struct {
-			*Message
-		} `json:"message"`
-		F struct {
-			*File
-			Reactions []ItemReaction
-		} `json:"file"`
-		FC struct {
-			*Comment
-			Reactions []ItemReaction
-		} `json:"comment"`
-	}
+	Items []reactedItemResponse
 	SlackResponse
 	ResponseMetadata `json:"response_metadata"`
 }
@@ -115,34 +105,22 @@ type listReactionsResponseFull struct {
 func (res listReactionsResponseFull) extractReactedItems() []ReactedItem {
 	items := make([]ReactedItem, len(res.Items))
 	for i, input := range res.Items {
-		item := ReactedItem{}
-		item.Type = input.Type
-		switch input.Type {
-		case "message":
-			item.Channel = input.Channel
-			item.Message = input.M.Message
-			item.Reactions = input.M.Reactions
-		case "file":
-			item.File = input.F.File
-			item.Reactions = input.F.Reactions
-		case "file_comment":
-			item.File = input.F.File
-			item.Comment = input.FC.Comment
-			item.Reactions = input.FC.Reactions
-		}
-		items[i] = item
+		items[i] = input.extractReactedItem()
 	}
 	return items
 }
 
-// AddReaction adds a reaction emoji to a message, file or file comment.
+// AddReaction adds a reaction emoji to a message.
 // For more details, see AddReactionContext documentation.
 func (api *Client) AddReaction(name string, item ItemRef) error {
 	return api.AddReactionContext(context.Background(), name, item)
 }
 
-// AddReactionContext adds a reaction emoji to a message, file or file comment with a custom context.
-// Slack API docs: https://api.slack.com/methods/reactions.add
+// AddReactionContext adds a reaction emoji to a message with a custom context.
+// Set item.Channel and item.Timestamp. Slack deprecated the file and file_comment
+// arguments; react to the file's channel message instead.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/reactions.add
 func (api *Client) AddReactionContext(ctx context.Context, name string, item ItemRef) error {
 	values := url.Values{
 		"token": {api.token},

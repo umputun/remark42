@@ -175,7 +175,7 @@ func (s *regexFcd) calculateFC(nt NodeType, node *RegexNode, CurIndex int) {
 			s.skipChild()
 		}
 
-	case NtEmpty:
+	case NtEmpty, NtResetCapture:
 		s.pushFC(regexFc{nullable: true})
 
 	case NtConcatenate | AfterChild:
@@ -359,7 +359,7 @@ func getPrefix(tree *RegexTree) *Prefix {
 			}
 
 		case NtBol, NtEol, NtBoundary, NtECMABoundary, NtBeginning, NtStart,
-			NtEndZ, NtEnd, NtEmpty, NtPosLook, NtNegLook:
+			NtEndZ, NtEnd, NtEmpty, NtResetCapture, NtPosLook, NtNegLook:
 
 		default:
 			return nil
@@ -659,9 +659,9 @@ func (b *BmPrefix) Scan(text []rune, index, beglimit, endlimit int) int {
 		}
 
 		if chTest != chMatch {
-			if chTest < 128 {
+			if uint32(chTest) < 128 {
 				advance = b.negativeASCII[chTest]
-			} else if chTest < 0xffff && len(b.negativeUnicode) > 0 {
+			} else if uint32(chTest) < 0xffff && len(b.negativeUnicode) > 0 {
 				unicodeLookup = b.negativeUnicode[chTest>>8]
 				if len(unicodeLookup) > 0 {
 					advance = unicodeLookup[chTest&0xFF]
@@ -697,9 +697,9 @@ func (b *BmPrefix) Scan(text []rune, index, beglimit, endlimit int) int {
 
 				if chTest != b.pattern[match] {
 					advance = b.positive[match]
-					if chTest < 128 {
+					if uint32(chTest) < 128 {
 						test2 = (match - startmatch) + b.negativeASCII[chTest]
-					} else if chTest < 0xffff && len(b.negativeUnicode) > 0 {
+					} else if uint32(chTest) < 0xffff && len(b.negativeUnicode) > 0 {
 						unicodeLookup = b.negativeUnicode[chTest>>8]
 						if len(unicodeLookup) > 0 {
 							test2 = (match - startmatch) + unicodeLookup[chTest&0xFF]
@@ -806,7 +806,7 @@ func getAnchors(tree *RegexTree) AnchorLoc {
 			NtStart, NtEndZ, NtEnd:
 			return result | anchorFromType(curNode.T)
 
-		case NtEmpty, NtPosLook, NtNegLook:
+		case NtEmpty, NtResetCapture, NtPosLook, NtNegLook:
 
 		default:
 			return result

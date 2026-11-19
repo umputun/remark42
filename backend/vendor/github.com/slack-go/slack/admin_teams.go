@@ -3,8 +3,82 @@ package slack
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"strings"
 )
+
+type adminTeamsListParams struct {
+	limit  int
+	cursor string
+}
+
+// AdminTeamsListOption is an option for AdminTeamsList.
+type AdminTeamsListOption func(*adminTeamsListParams)
+
+// AdminTeamsListOptionLimit sets the maximum number of workspaces to return.
+func AdminTeamsListOptionLimit(limit int) AdminTeamsListOption {
+	return func(params *adminTeamsListParams) {
+		params.limit = limit
+	}
+}
+
+// AdminTeamsListOptionCursor sets the cursor for pagination.
+func AdminTeamsListOptionCursor(cursor string) AdminTeamsListOption {
+	return func(params *adminTeamsListParams) {
+		params.cursor = cursor
+	}
+}
+
+// AdminTeamPrimaryOwner represents the primary owner of a workspace.
+type AdminTeamPrimaryOwner struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+}
+
+// AdminTeam represents a workspace in an Enterprise organization.
+type AdminTeam struct {
+	ID              string                `json:"id"`
+	Name            string                `json:"name"`
+	Discoverability TeamDiscoverability   `json:"discoverability"`
+	PrimaryOwner    AdminTeamPrimaryOwner `json:"primary_owner"`
+	TeamURL         string                `json:"team_url"`
+}
+
+// AdminTeamsListResponse represents the response from admin.teams.list.
+type AdminTeamsListResponse struct {
+	SlackResponse
+	Teams []AdminTeam `json:"teams"`
+}
+
+// AdminTeamsList lists all workspaces in an Enterprise organization.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/admin.teams.list
+func (api *Client) AdminTeamsList(ctx context.Context, options ...AdminTeamsListOption) (*AdminTeamsListResponse, error) {
+	params := adminTeamsListParams{}
+	for _, opt := range options {
+		opt(&params)
+	}
+
+	values := url.Values{
+		"token": {api.token},
+	}
+
+	if params.limit > 0 {
+		values.Add("limit", strconv.Itoa(params.limit))
+	}
+
+	if params.cursor != "" {
+		values.Add("cursor", params.cursor)
+	}
+
+	response := &AdminTeamsListResponse{}
+	err := api.postMethod(ctx, "admin.teams.list", values, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, response.Err()
+}
 
 // AdminTeamSettings contains workspace settings returned by admin.teams.settings.info.
 type AdminTeamSettings struct {

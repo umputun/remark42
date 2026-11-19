@@ -120,6 +120,16 @@ func TestFormatter_ShortenAutoLinks(t *testing.T) {
 			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,
 			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com...</a>`,
 		},
+		{ // 52 bytes, 36 runes: longer than the limit in bytes, shorter in runes
+			45,
+			`<a href="https://example.com/яяяяяяяяяяяяяяяя">https://example.com/яяяяяяяяяяяяяяяя</a>`,
+			`<a href="https://example.com/яяяяяяяяяяяяяяяя">https://example.com/яяяяяяяяяяяяяяяя</a>`,
+		},
+		{
+			25,
+			`<a href="https://example.com/яяяяяяяяяяяяяяяя">https://example.com/яяяяяяяяяяяяяяяя</a>`,
+			`<a href="https://example.com/яяяяяяяяяяяяяяяя">https://example.com/яя...</a>`,
+		},
 		{
 			-1,
 			`<a href="https://blah.com/a/b/c/d?g=123#anc">https://blah.com/a/b/c/d?g=123#anc</a>`,

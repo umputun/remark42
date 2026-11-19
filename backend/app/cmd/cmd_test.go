@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
+	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExport_ParseFileName(t *testing.T) {
@@ -36,4 +41,50 @@ func TestExport_ParseFileName(t *testing.T) {
 		}
 		assert.Equal(t, tt.res, r, "check #%d", i)
 	}
+}
+
+// TestAdminRequest_EscapesQuery runs each admin command for a site id carrying query and fragment
+// delimiters and checks the server receives the site, and the import provider, exactly as given
+func TestAdminRequest_EscapesQuery(t *testing.T) {
+	const site = "a&b#c"
+	tbl := []struct {
+		name  string
+		cmd   CommonOptionsCommander
+		args  []string
+		query url.Values
+	}{
+		{name: "backup", cmd: &BackupCommand{},
+			args:  []string{"--path=" + t.TempDir(), "--file=out.gz"},
+			query: url.Values{"mode": {"file"}, "site": {site}}},
+		{name: "import", cmd: &ImportCommand{},
+			args:  []string{"--file=testdata/import.txt", "--provider=wordpress"},
+			query: url.Values{"site": {site}, "provider": {"wordpress"}}},
+		{name: "remap", cmd: &RemapCommand{},
+			args:  []string{"--file=testdata/remap_urls.txt"},
+			query: url.Values{"site": {site}}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var got url.Values
+			ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				got = r.URL.Query()
+			}))
+			defer ts.Close()
+
+			parseCmd(t, tt.cmd, ts.URL, append([]string{"--site=" + site}, tt.args...)...)
+			require.NoError(t, tt.cmd.Execute(nil))
+			assert.Equal(t, tt.query, got, "query the server received")
+		})
+	}
+}
+
+// testSharedSecret is the shared secret parseCmd sets, which signRawToken signs with
+const testSharedSecret = "secret"
+
+// parseCmd sets the common options the way main does and parses args into cmd
+func parseCmd(t *testing.T, cmd interface{ SetCommon(CommonOpts) }, remarkURL string, args ...string) {
+	t.Helper()
+	cmd.SetCommon(CommonOpts{RemarkURL: remarkURL, SharedSecret: testSharedSecret})
+	_, err := flags.NewParser(cmd, flags.Default).ParseArgs(args)
+	require.NoError(t, err)
 }

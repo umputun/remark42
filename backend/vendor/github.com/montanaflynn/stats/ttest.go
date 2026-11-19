@@ -9,6 +9,12 @@ import "math"
 //
 // For a two-sample independent t-test (assuming equal variance), pass both
 // sample datasets. The populationMean parameter is ignored in this case.
+// Either sample may have a single element as long as there are at least
+// three values in total, matching scipy.stats.ttest_ind.
+//
+// When the data has zero variance the t statistic is undefined: if the
+// means being compared are equal TTest returns a t of 0 and a p-value of 1,
+// otherwise it returns ErrBounds.
 //
 // Returns the t statistic and the two-tailed p-value.
 //
@@ -31,11 +37,18 @@ func TTest(data1, data2 Float64Data, populationMean float64) (t float64, pvalue 
 		}
 
 		mean2, _ := Mean(data2)
-		var1, _ := SampleVariance(data1)
-		var2, _ := SampleVariance(data2)
 
+		// Pool the sums of squared deviations directly, since the sample
+		// variance of a single element is undefined but contributes zero
+		// to the pooled variance.
 		df := float64(n1 + n2 - 2)
-		pooledVar := (float64(n1-1)*var1 + float64(n2-1)*var2) / df
+		pooledVar := (sumOfSquaredDeviations(data1, mean1) + sumOfSquaredDeviations(data2, mean2)) / df
+		if pooledVar == 0 {
+			if mean1 == mean2 {
+				return 0, 1.0, nil
+			}
+			return math.NaN(), math.NaN(), ErrBounds
+		}
 		se := math.Sqrt(pooledVar * (1.0/float64(n1) + 1.0/float64(n2)))
 		t = (mean1 - mean2) / se
 		pvalue = 2 * tSf(math.Abs(t), df)
@@ -59,6 +72,15 @@ func TTest(data1, data2 Float64Data, populationMean float64) (t float64, pvalue 
 	}
 
 	return t, pvalue, nil
+}
+
+// sumOfSquaredDeviations returns the sum of (x - mean)^2 over the input.
+func sumOfSquaredDeviations(input Float64Data, mean float64) float64 {
+	var ss float64
+	for _, v := range input {
+		ss += (v - mean) * (v - mean)
+	}
+	return ss
 }
 
 // tSf is the survival function for Student's t-distribution.

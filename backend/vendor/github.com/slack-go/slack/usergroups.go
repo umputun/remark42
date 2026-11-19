@@ -26,6 +26,19 @@ type UserGroup struct {
 	Prefs       UserGroupPrefs `json:"prefs"`
 	UserCount   int            `json:"user_count"`
 	Users       []string       `json:"users"`
+
+	// Added later with omitempty, so a UserGroup that does not set them
+	// marshals to the same JSON as before.
+	AutoProvision       bool   `json:"auto_provision,omitempty"`
+	ChannelCount        int    `json:"channel_count,omitempty"`
+	EnterpriseSubteamID string `json:"enterprise_subteam_id,omitempty"`
+	IsEditingRestricted bool   `json:"is_editing_restricted,omitempty"`
+	IsIDPGroup          bool   `json:"is_idp_group,omitempty"`
+	IsMembershipLocked  bool   `json:"is_membership_locked,omitempty"`
+	IsOrgLevel          bool   `json:"is_org_level,omitempty"`
+	IsSection           bool   `json:"is_section,omitempty"`
+	IsSubteam           bool   `json:"is_subteam,omitempty"`
+	IsVisible           bool   `json:"is_visible,omitempty"`
 }
 
 // UserGroupPrefs contains default channels and groups (private channels)
@@ -53,8 +66,9 @@ func (api *Client) userGroupRequest(ctx context.Context, path string, values url
 
 // createUserGroupParams contains arguments for CreateUserGroup method call
 type createUserGroupParams struct {
-	enableSection bool
-	includeCount  bool
+	additionalChannels []string
+	enableSection      bool
+	includeCount       bool
 }
 
 // CreateUserGroupOption options for the CreateUserGroup method call.
@@ -71,6 +85,13 @@ func CreateUserGroupOptionEnableSection(enableSection bool) CreateUserGroupOptio
 func CreateUserGroupOptionIncludeCount(includeCount bool) CreateUserGroupOption {
 	return func(params *createUserGroupParams) {
 		params.includeCount = includeCount
+	}
+}
+
+// CreateUserGroupOptionAdditionalChannels sets channels where members can add the User Group.
+func CreateUserGroupOptionAdditionalChannels(channels []string) CreateUserGroupOption {
+	return func(params *createUserGroupParams) {
+		params.additionalChannels = channels
 	}
 }
 
@@ -100,6 +121,10 @@ func (api *Client) CreateUserGroupContext(ctx context.Context, userGroup UserGro
 
 	if params.includeCount {
 		values["include_count"] = []string{strconv.FormatBool(params.includeCount)}
+	}
+
+	if len(params.additionalChannels) > 0 {
+		values["additional_channels"] = []string{strings.Join(params.additionalChannels, ",")}
 	}
 
 	if userGroup.TeamID != "" {
@@ -353,6 +378,21 @@ func UpdateUserGroupsOptionChannels(channels []string) UpdateUserGroupsOption {
 	}
 }
 
+// UpdateUserGroupsOptionAdditionalChannels changes channels where members can add the User Group.
+// Unlike channels, Slack rejects an empty list, so an empty slice leaves the argument out.
+func UpdateUserGroupsOptionAdditionalChannels(channels []string) UpdateUserGroupsOption {
+	return func(params *UpdateUserGroupsParams) {
+		params.AdditionalChannels = channels
+	}
+}
+
+// UpdateUserGroupsOptionIncludeCount includes the number of users in the User Group.
+func UpdateUserGroupsOptionIncludeCount(includeCount bool) UpdateUserGroupsOption {
+	return func(params *UpdateUserGroupsParams) {
+		params.IncludeCount = includeCount
+	}
+}
+
 // UpdateUserGroupsOptionEnableSection enable the section for the user group (default: false)
 func UpdateUserGroupsOptionEnableSection(enableSection bool) UpdateUserGroupsOption {
 	return func(params *UpdateUserGroupsParams) {
@@ -369,12 +409,14 @@ func UpdateUserGroupsOptionTeamID(teamID string) UpdateUserGroupsOption {
 
 // UpdateUserGroupsParams contains arguments for UpdateUserGroup method call
 type UpdateUserGroupsParams struct {
-	Name          string
-	Handle        string
-	Description   *string
-	Channels      *[]string
-	EnableSection bool
-	TeamID        string
+	Name               string
+	Handle             string
+	Description        *string
+	Channels           *[]string
+	AdditionalChannels []string
+	IncludeCount       bool
+	EnableSection      bool
+	TeamID             string
 }
 
 // UpdateUserGroup will update an existing user group.
@@ -411,6 +453,14 @@ func (api *Client) UpdateUserGroupContext(ctx context.Context, userGroupID strin
 
 	if params.Channels != nil {
 		values["channels"] = []string{strings.Join(*params.Channels, ",")}
+	}
+
+	if len(params.AdditionalChannels) > 0 {
+		values["additional_channels"] = []string{strings.Join(params.AdditionalChannels, ",")}
+	}
+
+	if params.IncludeCount {
+		values["include_count"] = []string{strconv.FormatBool(params.IncludeCount)}
 	}
 
 	if params.EnableSection {
@@ -532,7 +582,7 @@ func (api *Client) UpdateUserGroupMembers(userGroup string, members string, opti
 }
 
 // UpdateUserGroupMembersContext will update the members of an existing user group with a custom context.
-// Slack API docs: https://api.slack.com/methods/usergroups.update
+// Slack API docs: https://docs.slack.dev/reference/methods/usergroups.users.update
 func (api *Client) UpdateUserGroupMembersContext(ctx context.Context, userGroup string, members string, options ...UpdateUserGroupMembersOption) (UserGroup, error) {
 	params := UpdateUserGroupMembersParams{}
 

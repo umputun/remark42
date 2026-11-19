@@ -1,5 +1,7 @@
 import { getInitialSort } from './utils';
-import { DEFAULT_SORT, LS_SORT_KEY } from 'common/constants';
+import { LS_SORT_KEY } from 'common/constants';
+
+jest.mock('common/settings', () => ({ defaultSort: '-time' }));
 
 describe('store comments utils', () => {
   beforeEach(() => {
@@ -7,8 +9,8 @@ describe('store comments utils', () => {
   });
 
   describe('getInitialSort', () => {
-    it('should return default sorting', () => {
-      expect(getInitialSort()).toBe(DEFAULT_SORT);
+    it('should return the configured default sorting', () => {
+      expect(getInitialSort()).toBe('-time');
     });
 
     it('should return value from local storage', () => {

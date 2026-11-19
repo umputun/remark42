@@ -70,9 +70,8 @@ func NewTableRawTextCell(text string) *TableRawTextCell {
 // TableRawNumberCell is a numeric cell in a TableBlock. Text, when set, overrides the
 // displayed value.
 //
-// raw_number cells are receive-only: Slack emits them for numeric columns in user-pasted
-// tables, but chat.postMessage rejects them. To post a number, use a TableRawTextCell. See
-// TableBlock for the full list of postable vs receive-only cell types.
+// Slack also emits these cells for numeric columns in user-pasted tables. See
+// TableBlock for documented input types and earlier raw_number validation behavior.
 type TableRawNumberCell struct {
 	Type  TableCellType `json:"type"`
 	Value float64       `json:"value"`
@@ -100,12 +99,10 @@ func (c *TableRawNumberCell) WithText(text string) *TableRawNumberCell {
 // Rows is an array of cell arrays. Each cell is a TableRichTextCell, TableRawTextCell,
 // or TableRawNumberCell; a nil cell represents an empty cell (Slack sends null).
 //
-// Not every cell type can be posted. chat.postMessage validates a table cell against two
-// schemas only: raw_text (TableRawTextCell, requires "text") and rich_text
-// (TableRichTextCell, requires "elements"). TableRawNumberCell and nil cells are produced
-// by Slack on output — numeric columns and empty cells in user-pasted tables — but the API
-// rejects them on input with invalid_blocks. So you may receive all cell types, but post
-// only raw_text and rich_text; render a number you want to send as a raw_text cell.
+// Slack's current reference documents raw_text, raw_number, and rich_text cells
+// for publishing tables. Earlier API behavior rejected raw_number cells with
+// invalid_blocks; use a TableRawTextCell to send a number if that rejection occurs.
+// Nil cells represent received empty cells and are not a documented input type.
 //
 // More Information: https://docs.slack.dev/reference/block-kit/blocks/table-block/
 type TableBlock struct {

@@ -36,30 +36,24 @@ type Image struct {
 	ImageService  *image.Service
 	// Transport, if non-nil, is used as-is for outbound image fetches and is the
 	// caller's responsibility to make SSRF-safe. When nil, safehttp.Transport()
-	// is installed, which blocks dialing any private/reserved IP and resolves
-	// hostnames to defeat DNS rebinding.
+	// is installed, which refuses any private/reserved target, also through an
+	// outbound proxy, and resolves hostnames to defeat DNS rebinding.
 	Transport http.RoundTripper
 }
 
 // Convert img src links to proxied links depends on enabled options
 func (p Image) Convert(commentHTML string) string {
-	if p.CacheExternal {
-		imgs, err := p.extract(commentHTML, func(img string) bool { return !strings.HasPrefix(img, p.RemarkURL) })
-		if err != nil {
-			return commentHTML
-		}
-		commentHTML = p.replace(commentHTML, imgs)
+	toHTTPS := p.HTTP2HTTPS && !strings.HasPrefix(p.RemarkURL, "http://")
+	if !p.CacheExternal && !toHTTPS {
+		return commentHTML
 	}
-
-	if p.HTTP2HTTPS && !strings.HasPrefix(p.RemarkURL, "http://") {
-		imgs, err := p.extract(commentHTML, func(img string) bool { return strings.HasPrefix(img, "http://") })
-		if err != nil {
-			return commentHTML
-		}
-		commentHTML = p.replace(commentHTML, imgs)
+	imgs, err := p.extract(commentHTML, func(img string) bool {
+		return (p.CacheExternal && !strings.HasPrefix(img, p.RemarkURL)) || (toHTTPS && strings.HasPrefix(img, "http://"))
+	})
+	if err != nil {
+		return commentHTML
 	}
-
-	return commentHTML
+	return p.replace(commentHTML, imgs)
 }
 
 // extract gets all images matching predicate and return list of src
@@ -186,7 +180,7 @@ func (p Image) Handler(w http.ResponseWriter, r *http.Request) {
 // Defense headers from SetImageDefenseHeaders at the top of the handler survive.
 func sendImageProxyError(w http.ResponseWriter, r *http.Request, status int, err error, details string, errCode int) {
 	w.Header().Set("Cache-Control", "no-store")
-	rest.SendErrorJSON(w, r, status, err, details, errCode)
+	rest.SendErrorJSONFromHelper(w, r, status, err, details, errCode)
 }
 
 // cache image from provided Reader using given ID
@@ -230,7 +224,7 @@ func (p Image) downloadImage(ctx context.Context, imgURL string) ([]byte, error)
 		}
 		resp, e = client.Do(req.WithContext(ctx)) //nolint:bodyclose,gosec // body closed in defer; transport contract above
 		return e
-	})
+	}, safehttp.ErrPrivateAddress) // a refused address stays refused, retrying only delays the failure
 	if err != nil {
 		return nil, fmt.Errorf("can't download image %s: %w", imgURL, err)
 	}

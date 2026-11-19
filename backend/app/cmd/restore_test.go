@@ -7,9 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRestore_Execute(t *testing.T) {
@@ -27,11 +25,7 @@ func TestRestore_Execute(t *testing.T) {
 	defer ts.Close()
 
 	cmd := RestoreCommand{}
-	cmd.SetCommon(CommonOpts{RemarkURL: ts.URL, SharedSecret: "123456"})
-
-	p := flags.NewParser(&cmd, flags.Default)
-	_, err := p.ParseArgs([]string{"--site=remark", "--path=testdata", "--file=import.txt", "--admin-passwd=secret"})
-	require.NoError(t, err)
-	err = cmd.Execute(nil)
+	parseCmd(t, &cmd, ts.URL, "--site=remark", "--path=testdata", "--file=import.txt", "--admin-passwd=secret")
+	err := cmd.Execute(nil)
 	assert.NoError(t, err)
 }

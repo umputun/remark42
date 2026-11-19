@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -31,37 +32,11 @@ func (ic *ImportCommand) Execute(_ []string) error {
 		return fmt.Errorf("can't open import file %s: %w", ic.InputFile, err)
 	}
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), ic.Timeout)
 	defer cancel()
-	importURL := fmt.Sprintf("%s/api/v1/admin/import?site=%s&provider=%s", ic.RemarkURL, ic.Site, ic.Provider)
-	req, err := http.NewRequest(http.MethodPost, importURL, reader)
-	if err != nil {
-		return fmt.Errorf("can't make import request for %s: %w", importURL, err)
-	}
-	req.SetBasicAuth("admin", ic.AdminPasswd)
-
-	resp, err := client.Do(req.WithContext(ctx)) //nolint:gosec // importURL built from operator CLI flags, not user input; closes request's reader
-	if err != nil {
-		return fmt.Errorf("request failed for %s: %w", importURL, err)
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Printf("[WARN] failed to close response, %s", err)
-		}
-	}()
-	if resp.StatusCode >= 300 {
-		return responseError(resp)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("can't get response from importer: %w", err)
-	}
-
-	log.Printf("[INFO] completed, status=%d, %s", resp.StatusCode, string(body))
-	return nil
+	query := url.Values{"site": {ic.Site}, "provider": {ic.Provider}}
+	endpoint := ic.RemarkURL + "/api/v1/admin/import"
+	return ic.adminRequest(ctx, http.MethodPost, endpoint, query, reader, logResponse)
 }
 
 // reader returns reader for file. For .gz file wraps with gunzip

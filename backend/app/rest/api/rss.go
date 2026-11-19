@@ -36,29 +36,14 @@ func (s *rss) postCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	log.Printf("[DEBUG] get rss for post %+v", locator)
 
-	key := cache.NewKey(locator.SiteID).ID(URLKey(r)).Scopes(locator.SiteID, locator.URL)
-	data, err := s.cache.Get(key, func() ([]byte, error) {
+	key := cache.NewKey(locator.SiteID).ID(urlKey(r, false)).Scopes(locator.SiteID, locator.URL)
+	s.cachedFeed(w, r, key, func() (string, error) {
 		comments, e := s.dataService.Find(locator, "-time", rest.GetUserOrEmpty(r))
 		if e != nil {
-			return nil, e
+			return "", e
 		}
-		feed, e := s.toRssFeed(locator.URL, comments, "post comments for "+r.URL.Query().Get("url"))
-		if e != nil {
-			return nil, e
-		}
-		return []byte(feed), e
-	})
-
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't find comments", rest.ErrPostNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(data); err != nil { //nolint:gosec // xml feed bytes from gorilla/feeds, not HTML
-		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
-	}
+		return s.toRssFeed(locator.URL, comments, "post comments for "+locator.URL)
+	}, "can't find comments", rest.ErrPostNotFound)
 }
 
 // GET /rss/site?site=siteID
@@ -66,30 +51,14 @@ func (s *rss) siteCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss for site %s", siteID)
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
-	data, err := s.cache.Get(key, func() ([]byte, error) {
+	key := cache.NewKey(siteID).ID(urlKey(r, false)).Scopes(siteID, lastCommentsScope)
+	s.cachedFeed(w, r, key, func() (string, error) {
 		comments, e := s.dataService.Last(siteID, maxRssItems, time.Time{}, rest.GetUserOrEmpty(r))
 		if e != nil {
-			return nil, e
+			return "", e
 		}
-
-		feed, e := s.toRssFeed(r.URL.Query().Get("site"), comments, "site comment for "+siteID)
-		if e != nil {
-			return nil, e
-		}
-		return []byte(feed), e
-	})
-
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get last comments", rest.ErrSiteNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(data); err != nil { //nolint:gosec // xml feed bytes from gorilla/feeds, not HTML
-		log.Printf("[WARN] failed to send response to %s, %s", r.RemoteAddr, err)
-	}
+		return s.toRssFeed(siteID, comments, "site comment for "+siteID)
+	}, "can't get last comments", rest.ErrSiteNotFound)
 }
 
 // GET /rss/reply?user=userID&site=siteID
@@ -98,22 +67,29 @@ func (s *rss) repliesCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[DEBUG] get rss replies to user %s for site %s", userID, siteID)
 
-	key := cache.NewKey(siteID).ID(URLKey(r)).Scopes(siteID, lastCommentsScope)
-	data, err := s.cache.Get(key, func() (res []byte, e error) {
+	key := cache.NewKey(siteID).ID(urlKey(r, false)).Scopes(siteID, lastCommentsScope)
+	s.cachedFeed(w, r, key, func() (string, error) {
 		replies, userName, e := s.dataService.UserReplies(siteID, userID, maxRssItems, maxReplyDuration)
 		if e != nil {
-			return nil, fmt.Errorf("can't get last comments: %w", e)
+			return "", fmt.Errorf("can't get last comments: %w", e)
 		}
+		return s.toRssFeed(siteID, replies, "replies to "+userName)
+	}, "can't get replies", rest.ErrSiteNotFound)
+}
 
-		feed, e := s.toRssFeed(siteID, replies, "replies to "+userName)
+// cachedFeed responds with the rss feed load returns, cached under key. A load error is not cached
+// and is sent as a 400 JSON error with errDetails and errCode
+func (s *rss) cachedFeed(w http.ResponseWriter, r *http.Request, key cache.Key, load func() (string, error),
+	errDetails string, errCode int) {
+	data, err := s.cache.Get(key, func() ([]byte, error) {
+		feed, e := load()
 		if e != nil {
 			return nil, e
 		}
-		return []byte(feed), e
+		return []byte(feed), nil
 	})
-
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't get replies", rest.ErrSiteNotFound)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, errDetails, errCode)
 		return
 	}
 
@@ -142,6 +118,9 @@ func (s *rss) toRssFeed(url string, comments []store.Comment, description string
 
 	feed.Items = []*feeds.Item{}
 	for i, c := range comments {
+		if i >= maxRssItems {
+			break
+		}
 		f := feeds.Item{
 			Title:       c.User.Name,
 			Link:        &feeds.Link{Href: c.Locator.URL + uiNav + c.ID},
@@ -165,9 +144,6 @@ func (s *rss) toRssFeed(url string, comments []store.Comment, description string
 		}
 
 		feed.Items = append(feed.Items, &f)
-		if i > maxRssItems {
-			break
-		}
 	}
 	return feed.ToRss()
 }

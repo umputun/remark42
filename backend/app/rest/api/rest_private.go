@@ -1,14 +1,13 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec //not used for security
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -29,7 +28,6 @@ import (
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
-	"github.com/umputun/remark42/backend/app/templates"
 )
 
 type private struct {
@@ -42,7 +40,6 @@ type private struct {
 	authenticator              *auth.Service
 	telegramService            telegramService
 	remarkURL                  string
-	anonVote                   bool
 	disableFancyTextFormatting bool // disables SmartyPants in the comment text rendering of the posted comments
 	premoderation              Premoderation
 }
@@ -294,10 +291,6 @@ func (s *private) userInfoCtrl(w http.ResponseWriter, r *http.Request) {
 // PUT /vote/{id}?site=siteID&url=post-url&vote=1 - vote for/against comment
 func (s *private) voteCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
-	if !s.anonVote && strings.HasPrefix(user.ID, "anonymous_") {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	id := r.PathValue("id")
 	log.Printf("[DEBUG] vote for comment %s", id)
@@ -375,6 +368,7 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
+	subscribe.Site = verifiedSite(r, subscribe.Site)
 	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
 	if getErr != nil {
 		log.Printf("[WARN] can't read email for %s, %v", user.ID, getErr)
@@ -399,12 +393,10 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 
 	claims := token.Claims{
 		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address},
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-			Issuer:    "remark42",
-		},
+		Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
 	}
 
 	tkn, err := s.authenticator.TokenService().Token(claims)
@@ -451,11 +443,9 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// generate and send token
-		tkn, err := randToken()
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to generate verification token", rest.ErrInternal)
-			return
-		}
+		rnd := make([]byte, 20)
+		_, _ = rand.Read(rnd) // never fails, crashes the program instead
+		tkn := hex.EncodeToString(rnd)
 		expires := time.Now().Add(10 * time.Minute)
 
 		s.telegramService.AddToken(tkn, user.ID, siteID, expires)
@@ -477,8 +467,7 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 
 	val, err := s.dataService.SetUserTelegram(siteID, user.ID, address)
 	if err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set telegram for user", rest.ErrInternal)
 		return
 	}
 
@@ -508,25 +497,57 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	confClaims, err := s.authenticator.TokenService().Parse(confirm.Token)
+	userID, address, herr := s.parseHandshake(confirm.Token)
+	if herr != nil {
+		rest.SendErrorJSON(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	if userID != user.ID {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("handshake for %s, request from %s", userID, user.ID),
+			"invalid handshake token", rest.ErrInternal)
+		return
+	}
+	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
+}
+
+// handshakeError is a failure to read the handshake from a confirmation token,
+// with the response status and details to report it with
+type handshakeError struct {
+	status  int
+	err     error
+	details string
+}
+
+// parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl or for the email unsubscribe link,
+// and returns the user ID and address from its handshake, which is user.ID + "::" + address.
+// A token without a handshake, such as a login token, is rejected as invalid.
+func (s *private) parseHandshake(tkn string) (userID, address string, herr *handshakeError) {
+	claims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
+		return "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
 	}
+	if s.authenticator.TokenService().IsExpired(claims) {
+		return "", "", &handshakeError{status: http.StatusForbidden, err: fmt.Errorf("expired"), details: "failed to verify confirmation token"}
+	}
+	if claims.Handshake == nil {
+		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("no handshake in token"), details: "invalid handshake token"}
+	}
+	elems := strings.Split(claims.Handshake.ID, "::")
+	if len(elems) != 2 || elems[0] == "" || elems[1] == "" {
+		// the handshake carries the address, so it is not echoed into the error
+		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
+	}
+	return elems[0], elems[1], nil
+}
 
-	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal)
-		return
+// verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
+// The site in the request body is used only when the query has none, which matchSiteID allows only for
+// the basic-auth admin.
+func verifiedSite(r *http.Request, bodySite string) string {
+	if site := r.URL.Query().Get("site"); site != "" {
+		return site
 	}
-
-	// handshake.ID is user.ID + "::" + address
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 || elems[0] != user.ID {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
-		return
-	}
-	address := elems[1]
-	s.setEmail(w, r, user.ID, confirm.Site, address)
+	return bodySite
 }
 
 func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteID, address string) {
@@ -534,8 +555,7 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 
 	val, err := s.dataService.SetUserEmail(siteID, userID, address)
 	if err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set email for user", rest.ErrInternal)
 		return
 	}
 
@@ -545,10 +565,13 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	claims.User.Email = address
-	if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
-		return
+	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
+	if claims.User != nil {
+		claims.User.Email = address
+		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
+			return
+		}
 	}
 	R.RenderJSON(w, R.JSON{"updated": true, "address": val})
 }
@@ -562,25 +585,11 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	siteID := r.URL.Query().Get("site")
 
-	confClaims, err := s.authenticator.TokenService().Parse(tkn)
-	if err != nil {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
+	userID, address, herr := s.parseHandshake(tkn)
+	if herr != nil {
+		rest.SendErrorHTML(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
 		return
 	}
-
-	if s.authenticator.TokenService().IsExpired(confClaims) {
-		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("expired"), "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-
-	// handshake.ID is user.ID + "::" + address
-	elems := strings.Split(confClaims.Handshake.ID, "::")
-	if len(elems) != 2 {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("%s", confClaims.Handshake.ID), "invalid handshake token", rest.ErrInternal)
-		return
-	}
-	userID := elems[0]
-	address := elems[1]
 
 	existingAddress, err := s.dataService.GetUserEmail(siteID, userID)
 	if err != nil {
@@ -600,8 +609,7 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] unsubscribe user %s", userID)
 
 	if err = s.dataService.DeleteUserDetail(siteID, userID, engine.UserEmail); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
 	// clean User.Email from the token, if user has the token
@@ -617,24 +625,13 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// MustExecute behaves like template.Execute, but panics if an error occurs.
-	MustExecute := func(tmpl *template.Template, wr io.Writer, data any) {
-		if err := tmpl.Execute(wr, data); err != nil {
-			panic(err)
-		}
+	page, err := rest.RenderTemplate("unsubscribe", "email_unsubscribe.html.tmpl", nil)
+	if err != nil {
+		log.Printf("[WARN] can't make unsubscribe page, %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	MustRead := func(path string) string {
-		file, err := templates.Read(path)
-		if err != nil {
-			panic(err)
-		}
-		return string(file)
-	}
-	tmplstr := MustRead("email_unsubscribe.html.tmpl")
-	tmpl := template.Must(template.New("unsubscribe").Parse(tmplstr))
-	msg := bytes.Buffer{}
-	MustExecute(tmpl, &msg, nil)
-	rest.HTMLResponse(w, http.StatusOK, msg.String())
+	rest.HTMLResponse(w, http.StatusOK, page)
 }
 
 // DELETE /email?site=siteID - removes user's email
@@ -644,8 +641,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] remove email for user %s", user.ID)
 
 	if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserEmail); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
 	// clean User.Email from the token
@@ -654,7 +650,7 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
 		return
 	}
-	if claims.User.Email != "" {
+	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
 		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
@@ -671,14 +667,22 @@ func (s *private) deleteTelegramCtrl(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[DEBUG] remove telegram for user %s", user.ID)
 
 	if err := s.dataService.DeleteUserDetail(siteID, user.ID, engine.UserTelegram); err != nil {
-		code := parseError(err, rest.ErrInternal)
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete telegram for user", code)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete telegram for user", rest.ErrInternal)
 		return
 	}
 	R.RenderJSON(w, R.JSON{"deleted": true})
 }
 
-// GET /userdata?site=siteID - exports all data about the user as a json with user info and list of all comments
+const (
+	// userDataPageSize is how many comments userAllDataCtrl requests from the store at a time
+	userDataPageSize = 100
+	// maxUserDataComments bounds the user data export, so a store that keeps returning full pages
+	// (one ignoring skip, say) cannot make the export run forever; reaching it is logged
+	maxUserDataComments = 10000
+)
+
+// GET /userdata?site=siteID - exports all data about the user as a json with user info, the stored
+// notification details (email and telegram, if any) and list of all comments
 func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	user := rest.MustGetUserInfo(r)
@@ -688,48 +692,103 @@ func (s *private) userAllDataCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// the first page is read before anything is written, so a store error still gets a normal JSON error
+	page, err := s.dataService.User(siteID, user.ID, userDataPageSize, 0, rest.GetUserOrEmpty(r))
+	if err != nil {
+		if !isNoUserComments(err) {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user comments", rest.ErrInternal)
+			return
+		}
+		page = nil // a user without comments still gets an export with their info
+	}
+
+	// details are read before anything is written as well, for the same reason
+	detailsB, err := s.userDetailsJSON(siteID, user.ID)
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get user details", rest.ErrInternal)
+		return
+	}
+
 	exportFile := fmt.Sprintf("%s-%s-%s.json.gz", siteID, user.ID, time.Now().Format("20060102"))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", "attachment;filename="+exportFile)
+
+	// stream page by page, so memory use stays at one page whatever the user's history.
+	// After the first byte an error can only be logged; the gzip stream is then left unterminated,
+	// so the client sees a broken download instead of a complete-looking but truncated export.
 	gzWriter := gzip.NewWriter(w)
-	defer func() {
-		if e := gzWriter.Close(); e != nil {
-			log.Printf("[WARN] can't close gzip writer, %s", e)
+	write := func(b []byte) bool {
+		if _, e := gzWriter.Write(b); e != nil {
+			log.Printf("[WARN] can't write user data export for %s, %v", user.ID, e)
+			return false
 		}
-	}()
-
-	write := func(val []byte) error {
-		_, e := gzWriter.Write(val)
-		return e
+		return true
 	}
-
-	// send user prefix, user info and comments prefix
-	errs := []error{write([]byte(`{"info": `)), write(userB), write([]byte(`, "comments":`))}
-
-	// get comments in 100 in each paginated request
-	for i := range 100 {
-		comments, errUser := s.dataService.User(siteID, user.ID, 100, i*100, rest.GetUserOrEmpty(r))
-		if errUser != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't get user comments", rest.ErrInternal)
-			return
-		}
-		b, errUser := json.Marshal(comments)
-		if errUser != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, errUser, "can't marshal user comments", rest.ErrInternal)
-			return
-		}
-
-		errs = append(errs, write(b))
-		if len(comments) != 100 {
-			break
-		}
-	}
-
-	errs = append(errs, write([]byte(`}`)))
-	if err := errors.Join(errs...); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't write user info", rest.ErrInternal)
+	if !write([]byte(`{"info": `)) || !write(userB) {
 		return
 	}
+	if detailsB != nil && (!write([]byte(`, "details": `)) || !write(detailsB)) {
+		return
+	}
+	if !write([]byte(`, "comments":[`)) {
+		return
+	}
+	for exported, skip := 0, 0; len(page) > 0; {
+		pageB, e := json.Marshal(page)
+		if e != nil {
+			log.Printf("[WARN] can't marshal user data export for %s, %v", user.ID, e)
+			return
+		}
+		pageB = pageB[1 : len(pageB)-1] // array elements only, the brackets are written once around all pages
+		if (exported > 0 && !write([]byte(","))) || !write(pageB) {
+			return
+		}
+		exported += len(page)
+		if len(page) < userDataPageSize {
+			break
+		}
+		if exported >= maxUserDataComments {
+			log.Printf("[WARN] user data export for %s stopped at %d comments", user.ID, exported)
+			break
+		}
+		skip += userDataPageSize
+		if page, e = s.dataService.User(siteID, user.ID, userDataPageSize, skip, rest.GetUserOrEmpty(r)); e != nil {
+			log.Printf("[WARN] can't get user comments for data export of %s, %v", user.ID, e)
+			return
+		}
+	}
+	if !write([]byte(`]}`)) {
+		return
+	}
+	if err = gzWriter.Close(); err != nil {
+		log.Printf("[WARN] can't close gzip writer, %v", err)
+	}
+}
+
+// userDetailsJSON returns the notification details stored for the user, email and telegram, as a json object.
+// The result is nil for a user with none of them, so such an export has no "details" key.
+func (s *private) userDetailsJSON(siteID, userID string) ([]byte, error) {
+	var details struct {
+		Email    string `json:"email,omitempty"`
+		Telegram string `json:"telegram,omitempty"`
+	}
+	var err error
+	if details.Email, err = s.dataService.GetUserEmail(siteID, userID); err != nil {
+		return nil, fmt.Errorf("can't read email: %w", err)
+	}
+	if details.Telegram, err = s.dataService.GetUserTelegram(siteID, userID); err != nil {
+		return nil, fmt.Errorf("can't read telegram: %w", err)
+	}
+	if details.Email == "" && details.Telegram == "" {
+		return nil, nil
+	}
+	return json.Marshal(details)
+}
+
+// isNoUserComments reports whether err means the user has no comments. The bolt store returns the
+// engine.ErrNoUserComments sentinel; the rpc store loses typed errors over jrpc, so its message is matched too.
+func isNoUserComments(err error) bool {
+	return errors.Is(err, engine.ErrNoUserComments) || strings.Contains(err.Error(), engine.ErrNoUserComments.Error())
 }
 
 // POST /deleteme?site_id=site - requesting delete of all user info
@@ -739,12 +798,10 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 
 	claims := token.Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{siteID},
-			Issuer:    "remark42",
-			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 3, 0)),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		},
+		Audience:  jwt.ClaimStrings{siteID},
+		Issuer:    "remark42",
+		ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 3, 0)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		User: &token.User{
 			ID:      user.ID,
 			Name:    user.Name,
@@ -803,18 +860,6 @@ func (s *private) isReadOnly(locator store.Locator) bool {
 		}
 	}
 	return s.dataService.IsReadOnly(locator) // ro manually
-}
-
-func randToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("can't get random: %w", err)
-	}
-	s := sha1.New() //nolint:gosec // not used for security
-	if _, err := s.Write(b); err != nil {
-		return "", fmt.Errorf("can't write randoms to sha1: %w", err)
-	}
-	return fmt.Sprintf("%x", s.Sum(nil)), nil
 }
 
 // extractIP returns the IP portion of the remote address, handling both IPv4 and IPv6 formats.

@@ -66,7 +66,7 @@ below to have your translation available to all remark42 users and included in t
 1.  Commit all changes above in your fork, including the generated `app/utils/loadLocale.ts`
 1.  Test your changes in the interface:
 
-    1.  Uncomment `locale: "ru"` line in [frontend/apps/remark42/templates/demo.ejs](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/templates/demo.ejs)
+    1.  Uncomment `locale: "ru"` line in [backend/app/webassets/assets/index.html](https://github.com/umputun/remark42/blob/master/backend/app/webassets/assets/index.html)
         and replace `ru` with your translation language code. That single change is enough for
         both the translated text and, if you added the code to `RTL_LOCALES` above, the mirrored
         layout — the widget determines left-to-right or right-to-left automatically from the

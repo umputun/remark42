@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -750,6 +750,77 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 	})
 }
 
+func TestService_VotePrunesExpiredIPs(t *testing.T) {
+	const secret = "secret 123"
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	vote := func(b *DataStore, userID, ip string) error {
+		_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: userID, UserIP: ip, Val: true})
+		return err
+	}
+	// the service hides VotedIPs from its callers, so the stored comment is read from the engine
+	storedIPs := func(t *testing.T, eng engine.Interface) map[string]store.VotedIPInfo {
+		c, err := eng.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		return c.VotedIPs
+	}
+	oldIP, freshIP, lastIP := store.HashValue("10.0.0.1", secret), store.HashValue("10.0.0.2", secret), store.HashValue("10.0.0.3", secret)
+
+	tbl := []struct {
+		name     string
+		enabled  bool
+		duration time.Duration
+		pruned   bool
+	}{
+		{name: "restriction off", enabled: false, duration: 5 * time.Minute, pruned: true},
+		{name: "restriction on", enabled: true, duration: 5 * time.Minute, pruned: true},
+		{name: "restriction off, unlimited window", enabled: false, duration: 0, pruned: false},
+		{name: "restriction on, unlimited window", enabled: true, duration: 0, pruned: false},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				eng, teardown := prepStoreEngine(t)
+				defer teardown()
+				b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore(secret), MaxVotes: -1}
+				b.RestrictSameIPVotes.Enabled = tt.enabled
+				b.RestrictSameIPVotes.Duration = tt.duration
+
+				require.NoError(t, vote(&b, "user2", "10.0.0.1"))
+				time.Sleep(3 * time.Minute)
+				require.NoError(t, vote(&b, "user3", "10.0.0.2"))
+				assert.Len(t, storedIPs(t, eng), 2, "both votes are inside the window, nothing to drop")
+
+				time.Sleep(3 * time.Minute) // the first vote is 6 minutes old now, the second one 3 minutes
+				require.NoError(t, vote(&b, "user4", "10.0.0.3"))
+
+				ips := storedIPs(t, eng)
+				assert.Contains(t, ips, freshIP, "ip of a vote inside the window stays")
+				assert.Contains(t, ips, lastIP, "ip of the vote just made is recorded")
+				if tt.pruned {
+					assert.NotContains(t, ips, oldIP, "ip of a vote older than the window is dropped by the next vote")
+				} else {
+					assert.Contains(t, ips, oldIP, "zero duration never expires, so nothing is dropped")
+				}
+
+				// the same-ip limit keeps working on what is left
+				err := vote(&b, "user5", "10.0.0.2")
+				if tt.enabled {
+					assert.EqualError(t, err, "the same ip "+freshIP+" already voted for id-2", "ip inside the window is still limited")
+				} else {
+					assert.NoError(t, err, "no limit with the restriction off")
+				}
+				err = vote(&b, "user6", "10.0.0.1")
+				if tt.enabled && !tt.pruned {
+					assert.EqualError(t, err, "the same ip "+oldIP+" already voted for id-2", "unlimited window still limits the old ip")
+				} else {
+					assert.NoError(t, err, "ip outside the window can vote again")
+				}
+			})
+		})
+	}
+}
+
 func TestService_Controversy(t *testing.T) {
 	tbl := []struct {
 		ups, downs int
@@ -1263,6 +1334,13 @@ func TestService_UserReplies(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(cc), "0 replies to uxxx")
 		assert.Equal(t, "", u)
+
+		// with u1's only comment deleted, the name comes from the replied-to comment, which keeps it
+		require.NoError(t, b.Delete(c1.Locator, c1.ID, store.SoftDelete))
+		cc, u, err = b.UserReplies("radio-t", "u1", 10, time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, 3, len(cc), "replies to a deleted comment are still listed")
+		assert.Equal(t, "developer one u1", u)
 	})
 }
 
@@ -1427,7 +1505,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 			Text:      `some text <img src="/images/dev/pic1.png"/> xx <img src="/images/dev/pic2.png"/>`,
 			Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
 			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-			User:      store.User{ID: "user1", Name: "user name"},
+			User:      store.User{ID: "dev", Name: "user name"}, // the author of the dev/ uploads
 		}
 		_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 		assert.NoError(t, err)
@@ -1438,7 +1516,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 			ParentID: "id-22",
 			Text:     `some text <img src="/images/dev/pic2.png"/> xx <img src="/images/dev/pic3.png"/>`,
 			Locator:  store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-			User:     store.User{ID: "user1", Name: "user name"},
+			User:     store.User{ID: "dev", Name: "user name"},
 		}
 		_, err = b.Engine.Create(c) // create directly with engine, doesn't call submitImages
 		assert.NoError(t, err)
@@ -1475,6 +1553,51 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 	})
 }
 
+// an admin deleting a comment removes only the pictures its author uploaded, and a user's own delete removes none
+func TestService_DeleteCommentPictures(t *testing.T) {
+	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		for _, c := range []store.Comment{
+			// user1 shows their own upload, user2's upload and a cached external image
+			{ID: "u1-a", Text: `<img src="/images/user1/own.png"/> <img src="/images/user2/up.png"/> ` + proxied,
+				Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user1"},
+				Timestamp: time.Now()},
+			{ID: "u2-b", Text: `<img src="/images/user2/up.png"/>`,
+				Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, User: store.User{ID: "user2"},
+				Timestamp: time.Now().Add(time.Second)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	for _, mode := range []store.DeleteMode{store.HardDelete, store.SoftDelete} {
+		t.Run(fmt.Sprintf("admin delete, mode %d", mode), func(t *testing.T) {
+			b, mockStore := prep(t)
+			require.NoError(t, b.Delete(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", mode))
+			// user2's upload and the cached external image stay although only the deleted comment shows them on page a
+			assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
+			c, err := b.Engine.Get(engine.GetRequest{Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, CommentID: "u2-b"})
+			require.NoError(t, err)
+			assert.Contains(t, c.Text, "/images/user2/up.png", "user2's comment untouched")
+		})
+	}
+
+	t.Run("user's own delete", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.Empty(t, deletedImages(mockStore), "a user's own delete removes no pictures")
+	})
+}
+
 // DeleteUser removes all comments from user
 func TestService_DeleteUser(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
@@ -1505,6 +1628,164 @@ func TestService_DeleteUser(t *testing.T) {
 	require.Equal(t, 1, len(res), "only one comment left for user2")
 	assert.NoError(t, err)
 	assert.Equal(t, "user2", res[0].User.ID)
+}
+
+func TestService_DeleteUserPictures(t *testing.T) {
+	for _, mode := range []store.DeleteMode{store.HardDelete, store.SoftDelete} {
+		t.Run(fmt.Sprintf("mode %d", mode), func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			ts := time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC)
+			for _, c := range []store.Comment{
+				{ID: "u1-a", Text: `<img src="/images/user1/own1.png"/> <img src="/images/user1/shared.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
+				{ID: "u1-b", Text: `<img src="/images/user1/own2.png"/> <img src="/images/user1/own1.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
+				{ID: "u2-a", Text: `<img src="/images/user2/other.png"/> <img src="/images/user1/shared.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
+				{ID: "u2-c", Text: `<img src="/images/user2/other2.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/c", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
+				// user1 shows user2's upload and a cached external image on a page where nobody else uses them
+				{ID: "u1-d", Text: `<img src="/images/user2/other2.png"/> <img src="/non_existent?src=` +
+					base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/d", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
+			} {
+				c.Timestamp = ts
+				ts = ts.Add(time.Minute)
+				_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, b.DeleteUser("radio-t", "user1", mode))
+
+			deleted := deletedImages(&mockStore)
+			// only user1's own uploads go: user1/shared.png stays as user2 reuses it on the same page,
+			// user2's upload and the cached external image stay although only user1 shows them on page d
+			assert.ElementsMatch(t, []string{"user1/own1.png", "user1/own2.png"}, deleted)
+
+			u2, err := b.User("radio-t", "user2", 0, 0, store.User{})
+			require.NoError(t, err)
+			require.Len(t, u2, 2)
+			for _, c := range u2 {
+				assert.Contains(t, c.Text, "/images/user2/", "user2's comments untouched")
+			}
+		})
+	}
+}
+
+func TestService_DeleteUserPicturesNoComments(t *testing.T) {
+	mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+	imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	defer imgSvc.Close(context.TODO())
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	require.NoError(t, b.DeleteUser("radio-t", "no-such-user", store.HardDelete))
+	assert.Empty(t, mockStore.DeleteCalls())
+}
+
+func TestService_DeleteUserPicturesEngine(t *testing.T) {
+	// the user's comments come in pages, each page asked for with a growing skip
+	pages := [][]store.Comment{
+		{{ID: "c1", Text: `<img src="/images/user1/p1.png"/>`, Locator: store.Locator{SiteID: "s", URL: "u1"}, User: store.User{ID: "user1"}}},
+		{{ID: "c2", Text: `<img src="/images/user1/p2.png"/>`, Locator: store.Locator{SiteID: "s", URL: "u2"}, User: store.User{ID: "user1"}}},
+	}
+	findFn := func(req engine.FindRequest) []store.Comment {
+		if req.UserID == "" { // page lookup
+			for _, p := range pages {
+				if p[0].Locator.URL == req.Locator.URL {
+					return p
+				}
+			}
+			return nil
+		}
+		if req.Skip < len(pages) {
+			return pages[req.Skip]
+		}
+		return []store.Comment{}
+	}
+
+	tbl := []struct {
+		name      string
+		findErr   error
+		deleteErr error
+		wantErr   bool
+		deleted   []string
+	}{
+		{name: "all pages", deleted: []string{"user1/p1.png", "user1/p2.png"}},
+		{name: "engine delete fails", deleteErr: errors.New("delete failed"), wantErr: true, deleted: []string{}},
+		{name: "find fails", findErr: errors.New("find failed"), deleted: []string{}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng := engine.InterfaceMock{
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if tt.findErr != nil {
+						return nil, tt.findErr
+					}
+					return findFn(req), nil
+				},
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, ImageService: imgSvc}
+
+			err := b.DeleteUser("s", "user1", store.HardDelete)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, eng.DeleteCalls(), 1, "comments deleted even when the picture lookup fails")
+			deleted := deletedImages(&mockStore)
+			assert.ElementsMatch(t, tt.deleted, deleted)
+		})
+	}
+
+	t.Run("engine ignores skip", func(t *testing.T) {
+		mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		defer imgSvc.Close(context.TODO())
+		userFinds := 0
+		eng := engine.InterfaceMock{
+			FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+				if req.UserID == "" {
+					return nil, nil
+				}
+				userFinds++
+				if userFinds > 5 {
+					return nil, errors.New("paging never stopped")
+				}
+				return []store.Comment{pages[0][0], pages[1][0]}, nil // every comment, whatever the skip
+			},
+			DeleteFunc: func(engine.DeleteRequest) error { return nil },
+		}
+		b := DataStore{Engine: &eng, ImageService: imgSvc}
+
+		require.NoError(t, b.DeleteUser("s", "user1", store.HardDelete))
+		assert.Equal(t, 2, userFinds, "second page brings nothing new and ends the paging")
+		deleted := deletedImages(&mockStore)
+		assert.ElementsMatch(t, []string{"user1/p1.png", "user1/p2.png"}, deleted)
+	})
+}
+
+// deletedImages lists the IDs of the pictures removed from the image store
+func deletedImages(m *image.StoreMock) []string {
+	res := make([]string, 0, len(m.DeleteCalls()))
+	for _, call := range m.DeleteCalls() {
+		res = append(res, call.ID)
+	}
+	return res
 }
 
 func TestService_List(t *testing.T) {
@@ -1952,8 +2233,7 @@ func TestService_alterCommentsFlagCaching(t *testing.T) {
 }
 
 func Benchmark_ServiceCreate(b *testing.B) {
-	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
-	defer func() { _ = os.Remove(dbFile) }()
+	dbFile := path.Join(b.TempDir(), "test-remark42.db")
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
 	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -1974,8 +2254,7 @@ func Benchmark_ServiceCreate(b *testing.B) {
 }
 
 func TestService_DoubleClose_Bolt(t *testing.T) {
-	dbFile := fmt.Sprintf("%s/test-remark42-%d.db", os.TempDir(), rand.Intn(9999999999))
-	defer func() { _ = os.Remove(dbFile) }()
+	dbFile := path.Join(t.TempDir(), "test-remark42.db")
 
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "radio-t"})
 	svc := DataStore{Engine: boltStore, EditDuration: 50 * time.Millisecond, AdminStore: admin.NewStaticKeyStore("secret 123")}
@@ -2047,10 +2326,7 @@ func TestService_ApproveComments(t *testing.T) {
 
 // makes new boltdb, put two records
 func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
-	testDBLoc, err := os.MkdirTemp("", "test_image_r42")
-	require.NoError(t, err)
-	testDB := path.Join(testDBLoc, "test.db")
-	_ = os.Remove(testDB)
+	testDB := path.Join(t.TempDir(), "test.db")
 
 	st := time.Now()
 	boltStore, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: testDB, SiteID: "radio-t"})
@@ -2078,7 +2354,6 @@ func prepStoreEngine(t *testing.T) (e engine.Interface, teardown func()) {
 	t.Logf("prepared store engine in %v", time.Since(st))
 	return boltStore, func() {
 		assert.NoError(t, boltStore.Close())
-		_ = os.Remove(testDB)
 	}
 }
 

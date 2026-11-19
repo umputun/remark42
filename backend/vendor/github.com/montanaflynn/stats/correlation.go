@@ -5,7 +5,9 @@ import (
 	"sort"
 )
 
-// Correlation describes the degree of relationship between two sets of data
+// Correlation describes the degree of relationship between two sets of data.
+// The correlation is undefined for a single pair or when either set is
+// constant, so it returns 0 with ErrTooFew or ErrZero respectively.
 func Correlation(data1, data2 Float64Data) (float64, error) {
 
 	l1 := data1.Len()
@@ -19,15 +21,35 @@ func Correlation(data1, data2 Float64Data) (float64, error) {
 		return math.NaN(), SizeErr
 	}
 
+	if l1 == 1 {
+		return 0, ErrTooFew
+	}
+
+	// Correlation is scale-invariant, so scale each input to unit magnitude
+	// first to keep the squared deviations from overflowing or underflowing.
+	data1, data2 = scaleToUnit(data1), scaleToUnit(data2)
+
 	sdev1, _ := StandardDeviationPopulation(data1)
 	sdev2, _ := StandardDeviationPopulation(data2)
 
 	if sdev1 == 0 || sdev2 == 0 {
-		return 0, nil
+		return 0, ErrZero
 	}
 
 	covp, _ := CovariancePopulation(data1, data2)
 	return covp / (sdev1 * sdev2), nil
+}
+
+// scaleToUnit returns a copy of input multiplied by a power of two so its
+// largest magnitude is in [0.5, 1). Scaling by a power of two is exact, so
+// scale-invariant statistics computed from the copy are unchanged.
+func scaleToUnit(input Float64Data) Float64Data {
+	exp := unitExponent(input)
+	scaled := make(Float64Data, len(input))
+	for i, v := range input {
+		scaled[i] = math.Ldexp(v, -exp)
+	}
+	return scaled
 }
 
 // Pearson calculates the Pearson product-moment correlation coefficient between two variables
@@ -38,6 +60,9 @@ func Pearson(data1, data2 Float64Data) (float64, error) {
 // Spearman calculates the Spearman rank correlation coefficient between two variables.
 // It works by ranking the data and then computing the Pearson correlation of the ranks.
 // This method handles tied values using fractional (average) ranking.
+// Like Correlation, it returns 0 with ErrTooFew for a single pair and 0 with
+// ErrZero when either set is constant. If either variable contains a NaN the
+// result is NaN.
 func Spearman(data1, data2 Float64Data) (float64, error) {
 
 	l1 := data1.Len()
@@ -49,6 +74,11 @@ func Spearman(data1, data2 Float64Data) (float64, error) {
 
 	if l1 != l2 {
 		return math.NaN(), SizeErr
+	}
+
+	// A NaN has no rank
+	if hasNaN(data1) || hasNaN(data2) {
+		return math.NaN(), nil
 	}
 
 	ranks1 := rankData(data1)
@@ -98,7 +128,8 @@ func rankData(data Float64Data) Float64Data {
 	return ranks
 }
 
-// AutoCorrelation is the correlation of a signal with a delayed copy of itself as a function of delay
+// AutoCorrelation is the correlation of a signal with a delayed copy of itself as a function of delay.
+// It returns 0 with ErrZero for constant data, where the correlation is undefined.
 func AutoCorrelation(data Float64Data, lags int) (float64, error) {
 	if len(data) < 1 {
 		return 0, EmptyInputErr
@@ -107,6 +138,10 @@ func AutoCorrelation(data Float64Data, lags int) (float64, error) {
 	if lags < 0 || lags >= len(data) {
 		return 0, BoundsErr
 	}
+
+	// Autocorrelation is scale-invariant, so scale to unit magnitude first
+	// to keep the squared deviations from overflowing or underflowing.
+	data = scaleToUnit(data)
 
 	mean, _ := Mean(data)
 
@@ -117,7 +152,7 @@ func AutoCorrelation(data Float64Data, lags int) (float64, error) {
 	}
 
 	if variance == 0 {
-		return 0, nil
+		return 0, ErrZero
 	}
 
 	var covariance float64

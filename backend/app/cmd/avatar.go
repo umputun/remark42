@@ -17,20 +17,8 @@ type AvatarCommand struct {
 	AvatarSrc AvatarGroup `group:"src" namespace:"src"`
 	AvatarDst AvatarGroup `group:"dst" namespace:"dst"`
 
-	migrator AvatarMigrator
+	migrate func(dst, src avatar.Store) (int, error) // avatar.Migrate unless a test sets it
 	CommonOpts
-}
-
-// AvatarMigrator defines interface for migration
-type AvatarMigrator interface {
-	Migrate(avatar.Store, avatar.Store) (int, error)
-}
-
-type avatarMigrator struct{}
-
-// Migrate from one avatar store to another. Can be used to convert between stores
-func (a avatarMigrator) Migrate(dst, src avatar.Store) (int, error) {
-	return avatar.Migrate(dst, src)
 }
 
 // Execute runs  with AvatarCommand parameters, entry point for "avatar" command
@@ -47,11 +35,11 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 		return fmt.Errorf("can't make avatart store for %s: %w", ac.AvatarDst.Type, err)
 	}
 
-	if ac.migrator == nil {
-		ac.migrator = avatarMigrator{}
+	if ac.migrate == nil {
+		ac.migrate = avatar.Migrate
 	}
 
-	count, err := ac.migrator.Migrate(dst, src)
+	count, err := ac.migrate(dst, src)
 	if err != nil {
 		return err
 	}
@@ -69,6 +57,11 @@ func (ac *AvatarCommand) Execute(_ []string) error {
 
 func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 	log.Printf("[DEBUG] make avatar store, type=%s", gr.Type)
+	return newAvatarStore(gr)
+}
+
+// newAvatarStore makes the avatar store of the configured type, shared by the server and the avatar command
+func newAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 	switch gr.Type {
 	case "fs":
 		if err := makeDirs(gr.FS.Path); err != nil {
@@ -80,6 +73,8 @@ func (ac *AvatarCommand) makeAvatarStore(gr AvatarGroup) (avatar.Store, error) {
 			return nil, fmt.Errorf("failed to create avatar store: %w", err)
 		}
 		return avatar.NewBoltDB(gr.Bolt.File, bolt.Options{})
+	case "uri":
+		return avatar.NewStore(gr.URI)
 	}
 	return nil, fmt.Errorf("unsupported avatar store type %s", gr.Type)
 }

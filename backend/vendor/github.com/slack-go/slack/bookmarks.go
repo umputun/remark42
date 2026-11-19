@@ -121,7 +121,7 @@ func (api *Client) ListBookmarks(channelID string) ([]Bookmark, error) {
 }
 
 // ListBookmarksContext returns all bookmarks for a channel with a custom context.
-// Slack API docs: https://api.slack.com/methods/bookmarks.edit
+// Slack API docs: https://docs.slack.dev/reference/methods/bookmarks.list
 func (api *Client) ListBookmarksContext(ctx context.Context, channelID string) ([]Bookmark, error) {
 	values := url.Values{
 		"channel_id": {channelID},

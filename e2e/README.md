@@ -189,7 +189,7 @@ That control has to read the cookie back through `document.cookie` in the same f
 
 None of that reaches the widget's own storage fallback, which the auth panel offers as `comments.html` when `IS_THIRD_PARTY && !IS_STORAGE_AVAILABLE`. `IS_STORAGE_AVAILABLE` stays true even with partitioning properly enforced, because Chromium partitions `localStorage` instead of denying it, so the probe behind that constant never throws and the condition cannot fire. That case needs WebKit, not a Chromium flag.
 
-Partitioned cookies do not make cross-domain OAuth work, whatever the plan once implied. The partition key is the top-level site at the moment the cookie is set, and `oauthSignin` opens a popup, which is its own top-level context: the callback cookie is keyed to the auth host while the frame is keyed to the embedder, and the two never match. The forms that do work embedded are the ones whose cookie is written inside the frame, which is anonymous, email and telegram. A case asserting OAuth works cross-domain would be asserting something untrue.
+Partitioned cookies do not make cross-domain OAuth work, whatever the plan once implied. The partition key is the top-level site at the moment the cookie is set, and `oauthSignin` opens a popup, which is its own top-level context: the callback cookie is keyed to the auth host while the frame is keyed to the embedder, and the two never match. The forms `Partitioned` does help are the ones whose cookie is written inside the frame, which is anonymous, email and telegram. OAuth on a cross-site embed works only where the browser still sends the popup's unpartitioned cookie from the frame, which the separate-domain manual measured only in Chrome's default policy with `AUTH_SAME_SITE=none`. A case asserting cross-site OAuth works under a blocking policy, or because of `Partitioned`, would be asserting something untrue.
 
 ## Isolation
 
@@ -207,7 +207,7 @@ Everything else runs in Chromium alone, for the same reason inverted: those test
 
 ## Selectors
 
-The production bundle strips `data-testid`, so tests use what ships: the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
+Tests use the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
 
 - `.auth` only exists while signed out, so waiting on it hangs after sign-in. `widget()` waits on the comment form, which is present either way.
 - The production build hashes every css-module class name to a short opaque id, so a component's own class is not something a test can hold. `role` is: the footer is `[role="contentinfo"]` and the edit countdown is `[role="timer"]`.

@@ -9,6 +9,65 @@
 
 
 
+
+
+
+
+
+<a name="v0.14.0"></a>
+## [v0.14.0] - 2026-10-25
+### Fix
+- Prevent overflow in RMS and MinkowskiDistance ([#158](https://github.com/montanaflynn/stats/issues/158))
+- Compute squared and higher-power statistics without overflow at extreme scales ([#156](https://github.com/montanaflynn/stats/issues/156))
+- Avoid overflow in Mean and midpoints near MaxFloat64 ([#155](https://github.com/montanaflynn/stats/issues/155))
+- Compute Correlation without overflow at extreme scales ([#152](https://github.com/montanaflynn/stats/issues/152))
+- Avoid range overflow in Histogram and Rescale ([#151](https://github.com/montanaflynn/stats/issues/151))
+- Return errors for statistics undefined on too few or constant values ([#150](https://github.com/montanaflynn/stats/issues/150))
+- Handle single-element and zero-variance samples in two-sample TTest ([#149](https://github.com/montanaflynn/stats/issues/149))
+- Propagate NaN through order statistics ([#148](https://github.com/montanaflynn/stats/issues/148))
+- Reject NaN and out-of-domain parameters ([#147](https://github.com/montanaflynn/stats/issues/147))
+- Preserve finite Euclidean distances across scales ([#145](https://github.com/montanaflynn/stats/issues/145))
+
+### CI
+- Run tests on arm64 ([#157](https://github.com/montanaflynn/stats/issues/157))
+
+### Chore
+- Group ci and chore commits in release notes ([#144](https://github.com/montanaflynn/stats/issues/144))
+
+
+<a name="v0.13.0"></a>
+## [v0.13.0] - 2026-10-06
+### Fix
+- Preserve finite interpolation in Percentile ([#139](https://github.com/montanaflynn/stats/issues/139))
+- Return 0 for invalid Ncr input and return math.MaxInt on overflow ([#140](https://github.com/montanaflynn/stats/issues/140))
+- Compute NormMoment with a float64 to avoid factorial overflow ([#141](https://github.com/montanaflynn/stats/issues/141))
+
+### CI
+- Pin actions to SHAs, restrict token, and test minimum Go version ([#143](https://github.com/montanaflynn/stats/issues/143))
+- Update checkout, setup-go, and codecov to current major versions ([#138](https://github.com/montanaflynn/stats/issues/138))
+
+### Chore
+- Bump minimum Go version to 1.17 ([#142](https://github.com/montanaflynn/stats/issues/142))
+
+
+<a name="v0.12.7"></a>
+## [v0.12.7] - 2026-09-19
+### Fix
+- Return ErrZero from PopulationSkewness for zero-variance input ([#137](https://github.com/montanaflynn/stats/issues/137))
+
+
+<a name="v0.12.6"></a>
+## [v0.12.6] - 2026-09-09
+### Fix
+- Return an error from Quartile and callers for single-element input ([#135](https://github.com/montanaflynn/stats/issues/135))
+
+
+<a name="v0.12.5"></a>
+## [v0.12.5] - 2026-08-28
+### Fix
+- Enforce percent bounds in Percentile for single-element input ([#133](https://github.com/montanaflynn/stats/issues/133))
+
+
 <a name="v0.12.4"></a>
 ## [v0.12.4] - 2026-08-17
 ### Fix
@@ -615,7 +674,12 @@
 - Merge pull request [#4](https://github.com/montanaflynn/stats/issues/4) from saromanov/sample
 
 
-[Unreleased]: https://github.com/montanaflynn/stats/compare/v0.12.4...HEAD
+[Unreleased]: https://github.com/montanaflynn/stats/compare/v0.14.0...HEAD
+[v0.14.0]: https://github.com/montanaflynn/stats/compare/v0.13.0...v0.14.0
+[v0.13.0]: https://github.com/montanaflynn/stats/compare/v0.12.7...v0.13.0
+[v0.12.7]: https://github.com/montanaflynn/stats/compare/v0.12.6...v0.12.7
+[v0.12.6]: https://github.com/montanaflynn/stats/compare/v0.12.5...v0.12.6
+[v0.12.5]: https://github.com/montanaflynn/stats/compare/v0.12.4...v0.12.5
 [v0.12.4]: https://github.com/montanaflynn/stats/compare/v0.12.3...v0.12.4
 [v0.12.3]: https://github.com/montanaflynn/stats/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/montanaflynn/stats/compare/v0.12.1...v0.12.2

@@ -1,18 +1,20 @@
 package stats
 
+import "math"
+
 // EWMA calculates the exponentially weighted moving average of the input
 // with smoothing factor alpha. The first output equals the first input and
 // each subsequent entry is alpha*input[i] + (1-alpha)*output[i-1], so the
 // result has the same length as the input. The alpha must satisfy
-// 0 < alpha <= 1 or ErrBounds is returned. An empty input returns
-// ErrEmptyInput.
+// 0 < alpha <= 1 or ErrBounds is returned, so a NaN alpha is rejected.
+// An empty input returns ErrEmptyInput.
 func EWMA(input Float64Data, alpha float64) ([]float64, error) {
 
 	if input.Len() == 0 {
 		return nil, ErrEmptyInput
 	}
 
-	if alpha <= 0 || alpha > 1 {
+	if math.IsNaN(alpha) || alpha <= 0 || alpha > 1 {
 		return nil, ErrBounds
 	}
 

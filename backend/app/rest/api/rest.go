@@ -139,74 +139,58 @@ func (s *Rest) Run(address string, port int) {
 		address = ""
 	}
 
+	// without SSL the http server on port serves the api; with SSL the https server does, and the
+	// http server only redirects to it (static) or answers the ACME challenge (auto)
+	var httpHandler http.Handler
+	var httpsServer *http.Server
+	var httpName, certFile, keyFile string
 	switch s.SSLConfig.SSLMode {
 	case None:
 		log.Printf("[INFO] activate http rest server on %s:%d", address, port)
-
-		s.lock.Lock()
-		s.httpServer = s.makeHTTPServer(address, port, s.routes())
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-		s.lock.Unlock()
-
-		err := s.httpServer.ListenAndServe()
-		log.Printf("[WARN] http server terminated, %s", err)
+		httpHandler = s.routes()
 	case Static:
 		log.Printf("[INFO] activate https server in 'static' mode on %s:%d", address, s.SSLConfig.Port)
-
-		s.lock.Lock()
-		s.httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes())
-		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-
-		s.httpServer = s.makeHTTPServer(address, port, s.httpToHTTPSRouter())
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-		s.lock.Unlock()
-
-		go func() {
-			log.Printf("[INFO] activate http redirect server on %s:%d", address, port)
-			err := s.httpServer.ListenAndServe()
-			log.Printf("[WARN] http redirect server terminated, %s", err)
-		}()
-
-		err := s.httpsServer.ListenAndServeTLS(s.SSLConfig.Cert, s.SSLConfig.Key)
-		log.Printf("[WARN] https server terminated, %s", err)
+		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes(), nil)
+		httpHandler, httpName = s.httpRouter(nil), "http redirect"
+		certFile, keyFile = s.SSLConfig.Cert, s.SSLConfig.Key
 	case Auto:
 		log.Printf("[INFO] activate https server in 'auto' mode on %s:%d", address, s.SSLConfig.Port)
-
 		m := s.makeAutocertManager()
-		s.lock.Lock()
-		s.httpsServer = s.makeHTTPSAutocertServer(address, s.SSLConfig.Port, s.routes(), m)
-		s.httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-
-		s.httpServer = s.makeHTTPServer(address, port, s.httpChallengeRouter(m))
-		s.httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
-		if s.shutdownRequested {
-			s.lock.Unlock()
-			log.Print("[WARN] rest server start canceled")
-			return
-		}
-
-		s.lock.Unlock()
-
-		go func() {
-			log.Printf("[INFO] activate http challenge server on port %d", port)
-
-			err := s.httpServer.ListenAndServe()
-			log.Printf("[WARN] http challenge server terminated, %s", err)
-		}()
-
-		err := s.httpsServer.ListenAndServeTLS("", "")
-		log.Printf("[WARN] https server terminated, %s", err)
+		httpsServer = s.makeHTTPSServer(address, s.SSLConfig.Port, s.routes(), m)
+		httpHandler, httpName = s.httpRouter(m), "http challenge"
+	default:
+		return
 	}
+
+	httpServer := s.makeHTTPServer(address, port, httpHandler)
+	httpServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+	if httpsServer != nil {
+		httpsServer.ErrorLog = log.ToStdLogger(log.Default(), "WARN")
+	}
+
+	s.lock.Lock()
+	if s.shutdownRequested {
+		s.lock.Unlock()
+		log.Print("[WARN] rest server start canceled")
+		return
+	}
+	s.httpServer, s.httpsServer = httpServer, httpsServer
+	s.lock.Unlock()
+
+	if httpsServer == nil {
+		err := httpServer.ListenAndServe()
+		log.Printf("[WARN] http server terminated, %s", err)
+		return
+	}
+
+	go func() {
+		log.Printf("[INFO] activate %s server on %s:%d", httpName, address, port)
+		err := httpServer.ListenAndServe()
+		log.Printf("[WARN] %s server terminated, %s", httpName, err)
+	}()
+
+	err := httpsServer.ListenAndServeTLS(certFile, keyFile)
+	log.Printf("[WARN] https server terminated, %s", err)
 }
 
 // Shutdown rest http server
@@ -265,7 +249,9 @@ func (s *Rest) routes() http.Handler {
 	}
 
 	ipFn := func(ip string) string { return store.HashValue(ip, s.SharedSecret)[:12] } // logger uses it for anonymization
-	logInfoWithBody := logger.New(logger.Log(log.Default()), logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
+	// request urls and bodies carry email addresses (email login, subscription) and tokens, the log hides both
+	reqLog := logger.Log(rest.MaskedLog{L: log.Default()})
+	logInfoWithBody := logger.New(reqLog, logger.WithBody, logger.IPfn(ipFn), logger.Prefix("[INFO]")).Handler
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
@@ -276,23 +262,21 @@ func (s *Rest) routes() http.Handler {
 		r.Handle("/auth/", authHandler)
 	})
 
-	router.Route(func(r *routegroup.Bundle) {
+	// avatars are served at the root, where pictures stored by older versions point, and under the api
+	avatarRoutes := func(r *routegroup.Bundle) {
 		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
 		r.Handle("/avatar/", avatarHandler)
-	})
+	}
+	router.Route(avatarRoutes)
 
 	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
 	rapi := router.Mount("/api/v1")
-	rapi.Use(apiCSPMiddleware)
+	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth)
 
-	rapi.Group().Route(func(rava *routegroup.Bundle) {
-		rava.Use(R.Timeout(5 * time.Second))
-		rava.Use(rateLimiter(100))
-		rava.Handle("/avatar/", avatarHandler)
-	})
+	rapi.Group().Route(avatarRoutes)
 
 	// open routes
 	rapi.Group().Route(func(ropen *routegroup.Bundle) {
@@ -390,7 +374,11 @@ func (s *Rest) routes() http.Handler {
 		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
 		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
-		rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		if s.AnonVote {
+			rauth.HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		} else {
+			rauth.With(rejectAnonUser).HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
+		}
 		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
@@ -405,7 +393,7 @@ func (s *Rest) routes() http.Handler {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
 		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
-		rauth.Use(logger.New(logger.Log(log.Default()), logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
+		rauth.Use(logger.New(reqLog, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
 	})
 
@@ -451,7 +439,6 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		notifyService:              s.NotifyService,
 		telegramService:            s.TelegramService,
 		remarkURL:                  s.RemarkURL,
-		anonVote:                   s.AnonVote,
 		disableFancyTextFormatting: s.DisableFancyTextFormatting,
 		premoderation:              s.Premoderation,
 	}
@@ -612,28 +599,20 @@ func filterComments(comments []store.Comment, funcs ...func(c store.Comment) boo
 	return filtered
 }
 
-// URLKey gets url from request to use it as cache key
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKey(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil && user.Admin {
-		key = adminPrefix + key // make separate cache key for admins
+// urlKey makes a cache key from the request url. Admins get keys of their own, so admin-only data never
+// reaches regular users, and with perUser so does every authenticated user, for responses carrying
+// per-user data. A request url starts with "/" or a scheme, so it can't pose as an admin key
+func urlKey(r *http.Request, perUser bool) string {
+	key := r.URL.String()
+	user, err := rest.GetUserInfo(r)
+	if err != nil {
+		return key
 	}
-	return key
-}
-
-// URLKeyWithUser gets url from request to use it as cache key and attaching user ID
-// admins will have different keys in order to prevent leak of admin-only data to regular users
-func URLKeyWithUser(r *http.Request) string {
-	adminPrefix := "admin!!"
-	key := strings.TrimPrefix(r.URL.String(), adminPrefix) // prevents attach with fake url to get admin view
-	if user, err := rest.GetUserInfo(r); err == nil {
-		if user.Admin {
-			key = adminPrefix + user.ID + "!!" + key // make separate cache key for admins
-		} else {
-			key = user.ID + "!!" + key // make separate cache key for authed users
-		}
+	if perUser {
+		key = user.ID + "!!" + key
+	}
+	if user.Admin {
+		key = "admin!!" + key
 	}
 	return key
 }

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Last comments</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      .container {
+        max-width: 400px;
+        margin: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="remark42__last-comments" data-max="50"></div>
+    </div>
+    <script>
+      var remark_config = {
+        // written exactly like this, with no space and in double quotes: the server replaces this
+        // text with the first site it is configured for
+        site_id:"remark",
+        host: location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, ''),
+        components: ['last-comments'],
+      };
+
+      (function (c, d) {
+        var r = d.head || d.body;
+        for (var i = 0; i < c.length; i++) {
+          var s = d.createElement('script');
+          s.type = 'module';
+          s.async = true;
+          s.defer = true;
+          s.src = remark_config.host + '/web/' + c[i] + '.mjs';
+          r.appendChild(s);
+        }
+      })(remark_config.components || ['embed'], document);
+    </script>
+    <noscript> Please enable JavaScript to view the comments powered by Remark. </noscript>
+  </body>
+</html>

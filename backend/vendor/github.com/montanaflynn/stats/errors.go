@@ -12,6 +12,17 @@ func (s statsError) String() string {
 	return s.err
 }
 
+// tooFewError is a statsError that also matches ErrEmptyInput with
+// errors.Is, since too few elements generalizes an empty input.
+type tooFewError struct {
+	statsError
+}
+
+// Is reports whether target is ErrEmptyInput.
+func (tooFewError) Is(target error) bool {
+	return target == ErrEmptyInput
+}
+
 // These are the package-wide error values.
 // All error identification should use these values.
 // https://github.com/golang/go/wiki/Errors#naming
@@ -32,4 +43,7 @@ var (
 	ErrInfValue = statsError{"Value is infinite."}
 	// ErrYCoord Y Value must be greater than zero
 	ErrYCoord = statsError{"Y Value must be greater than zero."}
+	// ErrTooFew Input has too few elements for the statistic. It matches
+	// ErrEmptyInput with errors.Is.
+	ErrTooFew = tooFewError{statsError{"Input has too few elements."}}
 )

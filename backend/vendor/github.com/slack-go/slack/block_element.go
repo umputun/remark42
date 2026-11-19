@@ -173,13 +173,17 @@ const (
 //
 // More Information: https://api.slack.com/reference/messaging/block-elements#button
 type ButtonBlockElement struct {
-	Type     MessageElementType       `json:"type,omitempty"`
-	Text     *TextBlockObject         `json:"text"`
-	ActionID string                   `json:"action_id,omitempty"`
-	URL      string                   `json:"url,omitempty"`
-	Value    string                   `json:"value,omitempty"`
-	Confirm  *ConfirmationBlockObject `json:"confirm,omitempty"`
-	Style    Style                    `json:"style,omitempty"`
+	Type               MessageElementType       `json:"type,omitempty"`
+	Text               *TextBlockObject         `json:"text"`
+	ActionID           string                   `json:"action_id,omitempty"`
+	URL                string                   `json:"url,omitempty"`
+	Value              string                   `json:"value,omitempty"`
+	Confirm            *ConfirmationBlockObject `json:"confirm,omitempty"`
+	Style              Style                    `json:"style,omitempty"`
+	AccessibilityLabel string                   `json:"accessibility_label,omitempty"`
+	AgentPrompt        string                   `json:"agent_prompt,omitempty"`
+	AgentPromptDisplay string                   `json:"agent_prompt_display,omitempty"`
+	VisibleToUserIDs   []string                 `json:"visible_to_user_ids,omitempty"`
 }
 
 // ElementType returns the type of the element
@@ -327,20 +331,21 @@ func NewOptionsGroupSelectBlockElement(
 //
 // More Information: https://api.slack.com/reference/messaging/block-elements#multi_select
 type MultiSelectBlockElement struct {
-	Type                 string                    `json:"type,omitempty"`
-	Placeholder          *TextBlockObject          `json:"placeholder,omitempty"`
-	ActionID             string                    `json:"action_id,omitempty"`
-	Options              []*OptionBlockObject      `json:"options,omitempty"`
-	OptionGroups         []*OptionGroupBlockObject `json:"option_groups,omitempty"`
-	InitialOptions       []*OptionBlockObject      `json:"initial_options,omitempty"`
-	InitialUsers         []string                  `json:"initial_users,omitempty"`
-	InitialConversations []string                  `json:"initial_conversations,omitempty"`
-	InitialChannels      []string                  `json:"initial_channels,omitempty"`
-	Filter               *SelectBlockElementFilter `json:"filter,omitempty"`
-	MinQueryLength       *int                      `json:"min_query_length,omitempty"`
-	MaxSelectedItems     *int                      `json:"max_selected_items,omitempty"`
-	Confirm              *ConfirmationBlockObject  `json:"confirm,omitempty"`
-	FocusOnLoad          bool                      `json:"focus_on_load,omitempty"`
+	Type                         string                    `json:"type,omitempty"`
+	Placeholder                  *TextBlockObject          `json:"placeholder,omitempty"`
+	ActionID                     string                    `json:"action_id,omitempty"`
+	Options                      []*OptionBlockObject      `json:"options,omitempty"`
+	OptionGroups                 []*OptionGroupBlockObject `json:"option_groups,omitempty"`
+	InitialOptions               []*OptionBlockObject      `json:"initial_options,omitempty"`
+	InitialUsers                 []string                  `json:"initial_users,omitempty"`
+	InitialConversations         []string                  `json:"initial_conversations,omitempty"`
+	InitialChannels              []string                  `json:"initial_channels,omitempty"`
+	DefaultToCurrentConversation bool                      `json:"default_to_current_conversation,omitempty"`
+	Filter                       *SelectBlockElementFilter `json:"filter,omitempty"`
+	MinQueryLength               *int                      `json:"min_query_length,omitempty"`
+	MaxSelectedItems             *int                      `json:"max_selected_items,omitempty"`
+	Confirm                      *ConfirmationBlockObject  `json:"confirm,omitempty"`
+	FocusOnLoad                  bool                      `json:"focus_on_load,omitempty"`
 }
 
 // ElementType returns the type of the Element
@@ -663,6 +668,8 @@ type RichTextInputBlockElement struct {
 	InitialValue         *RichTextBlock        `json:"initial_value,omitempty"`
 	DispatchActionConfig *DispatchActionConfig `json:"dispatch_action_config,omitempty"`
 	FocusOnLoad          bool                  `json:"focus_on_load,omitempty"`
+	MinLines             int                   `json:"min_lines,omitempty"`
+	MaxLines             int                   `json:"max_lines,omitempty"`
 }
 
 // ElementType returns the type of the Element
@@ -684,12 +691,13 @@ func NewRichTextInputBlockElement(placeholder *TextBlockObject, actionID string)
 //
 // More Information: https://api.slack.com/reference/block-kit/block-elements#checkboxes
 type CheckboxGroupsBlockElement struct {
-	Type           MessageElementType       `json:"type"`
-	ActionID       string                   `json:"action_id,omitempty"`
-	Options        []*OptionBlockObject     `json:"options"`
-	InitialOptions []*OptionBlockObject     `json:"initial_options,omitempty"`
-	Confirm        *ConfirmationBlockObject `json:"confirm,omitempty"`
-	FocusOnLoad    bool                     `json:"focus_on_load,omitempty"`
+	Type             MessageElementType       `json:"type"`
+	ActionID         string                   `json:"action_id,omitempty"`
+	Options          []*OptionBlockObject     `json:"options"`
+	InitialOptions   []*OptionBlockObject     `json:"initial_options,omitempty"`
+	Confirm          *ConfirmationBlockObject `json:"confirm,omitempty"`
+	FocusOnLoad      bool                     `json:"focus_on_load,omitempty"`
+	VisibleToUserIDs []string                 `json:"visible_to_user_ids,omitempty"`
 }
 
 // ElementType returns the type of the Element
@@ -961,7 +969,7 @@ type WorkflowButtonBlockElement struct {
 	Type               MessageElementType `json:"type"`
 	Text               *TextBlockObject   `json:"text"`
 	Workflow           *Workflow          `json:"workflow"`
-	ActionID           string             `json:"action_id"`
+	ActionID           string             `json:"action_id,omitempty"`
 	Style              Style              `json:"style,omitempty"`
 	AccessibilityLabel string             `json:"accessibility_label,omitempty"`
 }
@@ -971,7 +979,8 @@ func (s WorkflowButtonBlockElement) ElementType() MessageElementType {
 	return s.Type
 }
 
-// NewWorkflowButtonBlockElement returns a new instance of a workflow button element
+// NewWorkflowButtonBlockElement returns a new instance of a workflow button element.
+// Pass an empty actionID to omit the optional action_id field.
 func NewWorkflowButtonBlockElement(text *TextBlockObject, workflow *Workflow, actionID string) *WorkflowButtonBlockElement {
 	return &WorkflowButtonBlockElement{
 		Type:     METWorkflowButton,

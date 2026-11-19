@@ -10,6 +10,14 @@ Also, because the net/html parser requires UTF-8 encoding, so does goquery: it i
 
 Syntax-wise, it is as close as possible to jQuery, with the same function names when possible, and that warm and fuzzy chainable interface. jQuery being the ultra-popular library that it is, I felt that writing a similar HTML-manipulating library was better to follow its API than to start anew (in the same spirit as Go's `fmt` package), even though some of its methods are less than intuitive (looking at you, [index()][index]...).
 
+## Supporters
+
+<a href="https://serpapi.com/?utm_source=goquery">
+  <img src="misc/assets/serpapi.png" alt="SerpApi" width="600px">
+</a>
+
+[SerpApi](https://serpapi.com/?utm_source=goquery) is the world's leading provider of search data, pioneering APIs that turn search engine results into structured, developer-ready information.
+
 ## Table of Contents
 
 * [Installation](#installation)
@@ -24,6 +32,7 @@ Syntax-wise, it is as close as possible to jQuery, with the same function names 
 
 Required Go version:
 
+* Starting with version `v1.14.0` of goquery, Go 1.26+ is required due to its dependencies.
 * Starting with version `v1.12.0` of goquery, Go 1.25+ is required due to its dependencies.
 * Starting with version `v1.11.0` of goquery, Go 1.24+ is required due to its dependencies.
 * Starting with version `v1.10.0` of goquery, Go 1.23+ is required due to the use of function-based iterators.
@@ -48,6 +57,7 @@ Ongoing goquery development is tested on the latest 2 versions of Go.
 
 **Note that goquery's API is now stable, and will not break.**
 
+*    **2026-11-15 (v1.14.0)** : Bugfixes and a new top-level `NewDocumentFromReaderWithOptions` constructor to pass `html` parser options (thanks [@dualfroz][dualfroz]), update `go.mod` dependencies, **goquery now requires Go version 1.26+**.
 *    **2026-08-27 (v1.13.0)** : Performance improvements (thanks [@jvoisin][jvs]), add top-level `Text` function with options similar to BeautifulSoup's `get_text` (thanks [@ChrisJr404][chrisjr]), update `go.mod` dependencies, add go1.27 to the test matrix.
 *    **2026-03-15 (v1.12.0)** : Update `go.mod` dependencies, add go1.26 to the test matrix, **goquery now requires Go version 1.25+**.
 *    **2025-11-16 (v1.11.0)** : Update `go.mod` dependencies, add go1.25 to the test matrix, **goquery now requires Go version 1.24+**.
@@ -114,6 +124,15 @@ Please note that Cascadia's selectors do not necessarily match all supported sel
 * `ParentsFiltered("~")` returns an empty selection because the selector string doesn't match anything.
 * `ParentsUntil("~")` returns all parents of the selection because the selector string didn't match any element to stop before the top element.
 
+HTML is parsed with scripting enabled by default, so `<noscript>` content is treated as text. To query elements inside a `<noscript>` element in the document body, disable scripting when creating the document:
+
+```Go
+doc, err := goquery.NewDocumentFromReaderWithOptions(r,
+  html.ParseOptionEnableScripting(false))
+```
+
+Here, `html` is the `golang.org/x/net/html` package.
+
 ## Examples
 
 See some tips and tricks in the [wiki][].
@@ -177,7 +196,7 @@ func main() {
 - [goskyr](https://github.com/jakopako/goskyr), an easily configurable command-line scraper written in Go.
 - [goGetJS](https://github.com/davemolk/goGetJS), a tool for extracting, searching, and saving JavaScript files (with optional headless browser).
 - [fitter](https://github.com/PxyUp/fitter), a tool for selecting values from JSON, XML, HTML and XPath formatted pages.
-- [seltabl](github.com/conneroisu/seltabl), an orm-like package and supporting language server for extracting values from HTML
+- [seltabl](https://github.com/connerohnesorge/seltabl), an orm-like package and supporting language server for extracting values from HTML
 
 ## Support
 
@@ -219,3 +238,4 @@ The [BSD 3-Clause license][bsd], the same as the [Go language][golic]. Cascadia'
 [djw]: https://github.com/davidjwilkins
 [jvs]: https://github.com/jvoisin
 [chrisjr]: https://github.com/ChrisJr404
+[dualfroz]: https://github.com/dualfroz

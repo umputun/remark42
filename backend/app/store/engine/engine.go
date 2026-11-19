@@ -16,6 +16,10 @@ import (
 // Its message is "not found" so wrapping it as `site %q %w` reads "site \"x\" not found".
 var ErrSiteNotFound = errors.New("not found")
 
+// ErrNoUserComments is returned by engines when a user has no comments on the site.
+// Its message is "no comments for user", so wrapping it as `%w %s in store` keeps the established error text.
+var ErrNoUserComments = errors.New("no comments for user")
+
 // NOTE: matryer/moq should be installed globally and works with `go generate ./...`
 //go:generate moq --out engine_mock.go . Interface
 

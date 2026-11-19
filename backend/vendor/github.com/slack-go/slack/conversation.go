@@ -71,11 +71,13 @@ type Purpose struct {
 
 // Properties contains additional fields that appear based on the context of the conversation
 type Properties struct {
-	Canvas              Canvas        `json:"canvas"`
-	PostingRestrictedTo RestrictedTo  `json:"posting_restricted_to"`
-	Tabs                []Tab         `json:"tabs"`
-	ThreadsRestrictedTo RestrictedTo  `json:"threads_restricted_to"`
-	RecordChannel       RecordChannel `json:"record_channel"`
+	Canvas              Canvas                  `json:"canvas"`
+	PostingRestrictedTo RestrictedTo            `json:"posting_restricted_to"`
+	Tabs                []Tab                   `json:"tabs"`
+	ThreadsRestrictedTo RestrictedTo            `json:"threads_restricted_to"`
+	RecordChannel       RecordChannel           `json:"record_channel"`
+	AgentSession        *AgentSessionProperties `json:"agent_session,omitempty"`
+	CodeChannel         *AgentCodeChannelInfo   `json:"code_channel,omitempty"`
 }
 
 type RestrictedTo struct {
@@ -84,9 +86,16 @@ type RestrictedTo struct {
 }
 
 type Tab struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Type  string `json:"type"`
+	ID    string   `json:"id"`
+	Label string   `json:"label"`
+	Type  string   `json:"type"`
+	Data  *TabData `json:"data,omitempty"`
+}
+
+// TabData contains type-specific data for a channel tab. For a canvas tab,
+// FileID is the ID of the canvas the tab shows.
+type TabData struct {
+	FileID string `json:"file_id,omitempty"`
 }
 
 type Canvas struct {
@@ -763,12 +772,12 @@ func (t ConversationPagination) Next(ctx context.Context) (_ ConversationPaginat
 		return t, errPaginationComplete
 	}
 
-	t.previousResp = t.previousResp.initialize()
+	previousResp := t.previousResp.initialize()
 
 	values := url.Values{
 		"token":  {t.c.token},
 		"limit":  {strconv.Itoa(t.limit)},
-		"cursor": {t.previousResp.Cursor},
+		"cursor": {previousResp.Cursor},
 	}
 	if t.excludeArchived {
 		values.Add("exclude_archived", strconv.FormatBool(t.excludeArchived))
@@ -820,7 +829,7 @@ func (api *Client) GetAllConversationsContext(ctx context.Context, options ...Ge
 		p, err = p.Next(ctx)
 		if err == nil {
 			results = append(results, p.Conversations...)
-		} else if rateLimitedError, ok := err.(*RateLimitedError); ok {
+		} else if rateLimitedError, ok := errors.AsType[*RateLimitedError](err); ok {
 			select {
 			case <-ctx.Done():
 				err = ctx.Err()

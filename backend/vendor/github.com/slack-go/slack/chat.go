@@ -506,7 +506,7 @@ func MsgOptionPost() MsgOption {
 func MsgOptionPostEphemeral(userID string) MsgOption {
 	return func(config *sendConfig) error {
 		config.endpoint = config.apiurl + string(chatPostEphemeral)
-		MsgOptionUser(userID)(config)
+		_ = MsgOptionUser(userID)(config)
 		config.values.Del("ts")
 
 		return nil
@@ -680,7 +680,7 @@ func MsgOptionDeleteOriginal(responseURL string) MsgOption {
 // MsgOptionAsUser whether or not to send the message as the user.
 func MsgOptionAsUser(b bool) MsgOption {
 	return func(config *sendConfig) error {
-		//lint:ignore S1002 - we want to explicitly check against the constant
+		//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 		if b != DEFAULT_MESSAGE_ASUSER {
 			config.values.Set("as_user", "true")
 		}
@@ -707,10 +707,10 @@ func MsgOptionUsername(username string) MsgOption {
 // MsgOptionText provide the text for the message, optionally escape the provided
 // text.
 func MsgOptionText(text string, escape bool) MsgOption {
+	if escape {
+		text = slackutilsx.EscapeMessage(text)
+	}
 	return func(config *sendConfig) error {
-		if escape {
-			text = slackutilsx.EscapeMessage(text)
-		}
 		config.values.Add("text", text)
 		return nil
 	}
@@ -991,7 +991,7 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 		}
 
 		// never generates an error.
-		MsgOptionAsUser(params.AsUser)(config)
+		_ = MsgOptionAsUser(params.AsUser)(config)
 
 		if params.Parse != DEFAULT_MESSAGE_PARSE {
 			config.values.Set("parse", params.Parse)
@@ -1000,19 +1000,19 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 			config.values.Set("link_names", "1")
 		}
 
-		//lint:ignore S1002 - we want to explicitly check against the constant
+		//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 		if params.UnfurlLinks != DEFAULT_MESSAGE_UNFURL_LINKS {
 			config.values.Set("unfurl_links", "true")
 		}
 
 		// I want to send a message with explicit `as_user` `true` and `unfurl_links` `false` in request.
 		// Because setting `as_user` to `true` will change the default value for `unfurl_links` to `true` on Slack API side.
-		//lint:ignore S1002 - we want to explicitly check against the constants
+		//nolint:staticcheck // S1002: keep the explicit comparisons against the constants.
 		if params.AsUser != DEFAULT_MESSAGE_ASUSER && params.UnfurlLinks == DEFAULT_MESSAGE_UNFURL_LINKS {
 			config.values.Set("unfurl_links", "false")
 		}
 
-		//lint:ignore S1002 - we want to explicitly check against the constant
+		//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 		if params.UnfurlMedia != DEFAULT_MESSAGE_UNFURL_MEDIA {
 			config.values.Set("unfurl_media", "false")
 		}
@@ -1022,7 +1022,7 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 		if params.IconEmoji != DEFAULT_MESSAGE_ICON_EMOJI {
 			config.values.Set("icon_emoji", params.IconEmoji)
 		}
-		//lint:ignore S1002 - we want to explicitly check against the constant
+		//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 		if params.Markdown != DEFAULT_MESSAGE_MARKDOWN {
 			config.values.Set("mrkdwn", "false")
 		}
@@ -1030,7 +1030,7 @@ func MsgOptionPostMessageParameters(params PostMessageParameters) MsgOption {
 		if params.ThreadTimestamp != DEFAULT_MESSAGE_THREAD_TIMESTAMP {
 			config.values.Set("thread_ts", params.ThreadTimestamp)
 		}
-		//lint:ignore S1002 - we want to explicitly check against the constant
+		//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 		if params.ReplyBroadcast != DEFAULT_MESSAGE_REPLY_BROADCAST {
 			config.values.Set("reply_broadcast", "true")
 		}
@@ -1098,7 +1098,7 @@ func (api *Client) GetScheduledMessages(params *GetScheduledMessagesParameters) 
 }
 
 // GetScheduledMessagesContext returns the list of scheduled messages based on params with a custom context.
-// Slack API docs: https://api.slack.com/methods/chat.getScheduledMessages.list
+// Slack API docs: https://docs.slack.dev/reference/methods/chat.scheduledMessages.list
 func (api *Client) GetScheduledMessagesContext(ctx context.Context, params *GetScheduledMessagesParameters) (channels []ScheduledMessage, nextCursor string, err error) {
 	values := url.Values{
 		"token": {api.token},

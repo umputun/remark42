@@ -171,7 +171,7 @@ func TestThread_HideUserRemovesTheirCommentsOnly(t *testing.T) {
 	hiddenUsers := frame.Locator(`[role="region"][aria-label="Hidden users"]`)
 	waitVisible(t, hiddenUsers)
 	require.NoError(t, hiddenUsers.GetByText("show", playwright.LocatorGetByTextOptions{
-		Exact: playwright.Bool(true),
+		Exact: new(true),
 	}).Click())
 
 	frame = reload(t, reader)

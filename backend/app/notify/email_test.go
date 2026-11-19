@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"testing"
+	"testing/synctest"
 
 	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
@@ -99,8 +100,7 @@ func Test_initTemplatesErr(t *testing.T) {
 
 func TestEmailSendErrors(t *testing.T) {
 	var err error
-	e := Email{}
-	e.TokenGenFn = TokenGenFn
+	e := Email{TokenGenFn: TokenGenFn}
 
 	e.verifyTmpl, err = template.New("test").Parse("{{.Test}}")
 	assert.NoError(t, err)
@@ -145,25 +145,26 @@ func TestEmailSend_ExitConditions(t *testing.T) {
 }
 
 func TestEmail_Send(t *testing.T) {
-	email, err := NewEmail(EmailParams{
-		From:                     "from@example.org",
-		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, ntf.SMTPParams{})
-	assert.NoError(t, err)
-	assert.NotNil(t, email)
-	email.TokenGenFn = TokenGenFn
-	email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
-	req := Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
-		parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
-		Emails:  []string{"test@example.org"},
-	}
-	assert.Contains(t, email.Send(context.Background(), req).Error(), "problem sending user email notification to \"test@example.org\"")
-	// test buildMessageFromRequest separately for message text
-	msg, err := email.buildMessageFromRequest(req, req.Emails[0], false)
-	assert.NoError(t, err)
-	assert.Equal(t, `
+	synctest.Test(t, func(t *testing.T) {
+		email, err := NewEmail(EmailParams{
+			From:                     "from@example.org",
+			VerificationTemplatePath: "testdata/verification.html.tmpl",
+			MsgTemplatePath:          "testdata/msg.html.tmpl",
+		}, ntf.SMTPParams{Port: 99999}) // an invalid port fails the send before any dial, so the bubble has no real I/O
+		assert.NoError(t, err)
+		assert.NotNil(t, email)
+		email.TokenGenFn = TokenGenFn
+		email.UnsubscribeURL = "https://remark42.com/api/v1/email/unsubscribe"
+		req := Request{
+			Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, ParentID: "1", PostTitle: "test_title"},
+			parent:  store.Comment{ID: "1", User: store.User{ID: "999", Name: "parent_user"}},
+			Emails:  []string{"test@example.org"},
+		}
+		assert.Contains(t, email.Send(context.Background(), req).Error(), "problem sending user email notification to \"test@example.org\"")
+		// test buildMessageFromRequest separately for message text
+		msg, err := email.buildMessageFromRequest(req, req.Emails[0], false)
+		assert.NoError(t, err)
+		assert.Equal(t, `
 	New reply from test_user on your comment to «test_title»
 
 User: test_user
@@ -172,19 +173,19 @@ Comment:
 test@example.org  for parent_user
 Unsubscribe link: https://remark42.com/api/v1/email/unsubscribe?site=&amp;tkn=token
 `, msg.body)
-	assert.Equal(t, "https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token", msg.unsubscribeLink)
-	assert.Equal(t, `New reply to your comment for "test_title"`, msg.subject)
+		assert.Equal(t, "https://remark42.com/api/v1/email/unsubscribe?site=&tkn=token", msg.unsubscribeLink)
+		assert.Equal(t, `New reply to your comment for "test_title"`, msg.subject)
 
-	// send email to both user and admin, without parent set
-	email.AdminEmails = []string{"admin@example.org"}
-	req = Request{
-		Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
-		Emails:  []string{"test@example.org"},
-	}
-	assert.Error(t, email.Send(context.Background(), req))
-	msg, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
-	assert.NoError(t, err)
-	assert.Equal(t, `
+		// send email to both user and admin, without parent set
+		email.AdminEmails = []string{"admin@example.org"}
+		req = Request{
+			Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"},
+			Emails:  []string{"test@example.org"},
+		}
+		assert.Error(t, email.Send(context.Background(), req))
+		msg, err = email.buildMessageFromRequest(req, email.AdminEmails[0], true)
+		assert.NoError(t, err)
+		assert.Equal(t, `
 New comment from test_user on your site  to «test_title»
 
 User: test_user
@@ -192,8 +193,9 @@ User: test_user
 Comment: 
 admin@example.org 
 `, msg.body)
-	assert.Equal(t, `New comment to your site for "test_title"`, msg.subject)
-	assert.Empty(t, msg.unsubscribeLink)
+		assert.Equal(t, `New comment to your site for "test_title"`, msg.subject)
+		assert.Empty(t, msg.unsubscribeLink)
+	})
 }
 
 func TestEmail_CommentTextSanitizedForEmail(t *testing.T) {
@@ -241,50 +243,52 @@ func TestEmailSafeHTML(t *testing.T) {
 }
 
 func TestEmail_SendVerification(t *testing.T) {
-	email, err := NewEmail(EmailParams{
-		From:                     "from@example.org",
-		VerificationTemplatePath: "testdata/verification.html.tmpl",
-		MsgTemplatePath:          "testdata/msg.html.tmpl",
-	}, ntf.SMTPParams{})
-	assert.NoError(t, err)
-	assert.NotNil(t, email)
-	email.TokenGenFn = TokenGenFn
-	// proper VerificationRequest without email
-	req := VerificationRequest{
-		SiteID: "remark",
-		User:   "test_username",
-		Token:  "secret_",
-	}
-	assert.NoError(t, email.SendVerification(context.Background(), req))
+	synctest.Test(t, func(t *testing.T) {
+		email, err := NewEmail(EmailParams{
+			From:                     "from@example.org",
+			VerificationTemplatePath: "testdata/verification.html.tmpl",
+			MsgTemplatePath:          "testdata/msg.html.tmpl",
+		}, ntf.SMTPParams{Port: 99999}) // an invalid port fails the send before any dial, so the bubble has no real I/O
+		assert.NoError(t, err)
+		assert.NotNil(t, email)
+		email.TokenGenFn = TokenGenFn
+		// proper VerificationRequest without email
+		req := VerificationRequest{
+			SiteID: "remark",
+			User:   "test_username",
+			Token:  "secret_",
+		}
+		assert.NoError(t, email.SendVerification(context.Background(), req))
 
-	// proper VerificationRequest with email
-	req.Email = "test@example.org"
-	assert.Error(t, email.SendVerification(context.Background(), req), "failed to make smtp client")
+		// proper VerificationRequest with email
+		req.Email = "test@example.org"
+		assert.Error(t, email.SendVerification(context.Background(), req), "failed to make smtp client")
 
-	// VerificationRequest with canceled context
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
+		// VerificationRequest with canceled context
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		assert.EqualError(t, email.SendVerification(ctx, req), "sending message to \"test_username\" aborted due to canceled context")
 
-	// test buildVerificationMessage separately for message text
-	res, err := email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
-	assert.NoError(t, err)
-	assert.Equal(t, res, `Confirmation for test_username on site remark
+		// test buildVerificationMessage separately for message text
+		res, err := email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
+		assert.NoError(t, err)
+		assert.Equal(t, res, `Confirmation for test_username on site remark
 Token:secret_
 Sent to test@example.org
 
 `)
-	assert.Contains(t, res, `secret_`)
-	assert.NotContains(t, res, `https://example.org/`)
-	email.SubscribeURL = "https://example.org/subscribe.html?token="
-	res, err = email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
-	assert.NoError(t, err)
-	assert.Equal(t, res, `Confirmation for test_username on site remark
+		assert.Contains(t, res, `secret_`)
+		assert.NotContains(t, res, `https://example.org/`)
+		email.SubscribeURL = "https://example.org/subscribe.html?token="
+		res, err = email.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
+		assert.NoError(t, err)
+		assert.Equal(t, res, `Confirmation for test_username on site remark
 Subscribe url: https://example.org/subscribe.html?token=secret_
 Token:secret_
 Sent to test@example.org
 
 `)
+	})
 }
 
 func TokenGenFn(user, _, _ string) (string, error) {

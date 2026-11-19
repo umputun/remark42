@@ -243,6 +243,27 @@ func TestMemData_FindForUserPagination(t *testing.T) {
 	res, err = b.Find(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(res))
+
+	// deleted comments take no place in a page and are not counted by skip
+	for _, id := range []string{"idd-199", "idd-197", "idd-190"} {
+		require.NoError(t, b.Delete(engine.DeleteRequest{Locator: c.Locator, CommentID: id, DeleteMode: store.SoftDelete}))
+	}
+	req.Skip, req.Limit = 0, 5
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"idd-198", "idd-196", "idd-195", "idd-194", "idd-193"}, commentIDs(res))
+	req.Skip, req.Limit = 5, 3
+	res, err = b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"idd-192", "idd-191", "idd-189"}, commentIDs(res))
+}
+
+func commentIDs(comments []store.Comment) []string {
+	ids := make([]string, 0, len(comments))
+	for _, c := range comments {
+		ids = append(ids, c.ID)
+	}
+	return ids
 }
 
 func TestMemData_CountPost(t *testing.T) {
@@ -777,11 +798,7 @@ func TestMemAdmin_DeleteUserSoft(t *testing.T) {
 
 	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
 	assert.NoError(t, err, "no comments for user user1 in store")
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.True(t, comments[0].Deleted)
-	assert.True(t, comments[1].Deleted)
-	assert.Equal(t, "", comments[0].Text)
-	assert.Equal(t, "", comments[1].Text)
+	assert.Empty(t, comments, "deleted comments are not listed for the user")
 
 	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
 	assert.NoError(t, err)
@@ -819,4 +836,27 @@ func getReq(locator store.Locator, commentID string) engine.GetRequest {
 		Locator:   locator,
 		CommentID: commentID,
 	}
+}
+
+func TestMemData_FlagsKeepUserMeta(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+
+	_, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1", Update: "u1@example.com"})
+	require.NoError(t, err)
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+
+	verified, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, verified, "a blocked user with an email is not listed as verified")
+
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+	blocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1"})
+	require.NoError(t, err)
+	assert.True(t, blocked, "verifying a user keeps the block")
+	email, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1"})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, email, "flag changes keep the email")
 }

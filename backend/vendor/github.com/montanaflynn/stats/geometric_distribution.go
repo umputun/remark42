@@ -5,10 +5,15 @@ import (
 )
 
 // ProbGeom generates the probability for a geometric random variable
-// with parameter p to achieve success in the interval of [a, b] trials
+// with parameter p to achieve success in the interval of [a, b] trials.
+// A p outside [0, 1], or NaN, returns ErrBounds.
 // See https://en.wikipedia.org/wiki/Geometric_distribution for more information
 func ProbGeom(a int, b int, p float64) (prob float64, err error) {
 	if (a > b) || (a < 1) {
+		return math.NaN(), ErrBounds
+	}
+
+	if math.IsNaN(p) || p < 0 || p > 1 {
 		return math.NaN(), ErrBounds
 	}
 

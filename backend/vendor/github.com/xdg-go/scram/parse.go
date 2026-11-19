@@ -14,6 +14,13 @@ import (
 	"strings"
 )
 
+// Distinguish name-decoding failures so the server can return the matching
+// RFC 5802 error value.
+var (
+	errInvalidUsernameEncoding = errors.New("invalid username encoding ('=' not followed by '2C' or '3D')")
+	errInvalidAuthzIDEncoding  = errors.New("invalid authzid encoding ('=' not followed by '2C' or '3D')")
+)
+
 type c1Msg struct {
 	gs2Header      string
 	gs2BindFlag    string // "n", "y", or "p"
@@ -113,8 +120,14 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 
 	// authzID content is optional, but the field must be present.
 	if len(fields[1]) > 0 {
-		msg.authzID, err = parseField(fields[1], "a")
+		var rawAuthzID string
+		rawAuthzID, err = parseField(fields[1], "a")
 		if err != nil {
+			return
+		}
+		var ok bool
+		if msg.authzID, ok = decodeName(rawAuthzID); !ok {
+			err = fmt.Errorf("%w: %q", errInvalidAuthzIDEncoding, rawAuthzID)
 			return
 		}
 	}
@@ -125,8 +138,13 @@ func parseClientFirst(c1 string) (msg c1Msg, err error) {
 		return
 	}
 
-	msg.username, err = parseField(fields[2], "n")
+	rawUsername, err := parseField(fields[2], "n")
 	if err != nil {
+		return
+	}
+	var ok bool
+	if msg.username, ok = decodeName(rawUsername); !ok {
+		err = fmt.Errorf("%w: %q", errInvalidUsernameEncoding, rawUsername)
 		return
 	}
 

@@ -1,0 +1,2 @@
+This file keeps the directory in the repository. The server embeds the directory, which does not
+compile when it is empty, and the image and release builds copy the frontend build output here.

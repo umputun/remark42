@@ -78,10 +78,11 @@ func (emptyFS) Open(name string) (fs.File, error) {
 // serves the build embedded in itself and has nothing to rewrite, does it here.
 const remarkURLPlaceholder = "{% REMARK_URL %}"
 
-// demoSiteLiteral is how the built demo, counter and last-comments pages name their site. The
-// docker image replaces it with the first configured site at container start; the binary does it
-// here, since a site the instance does not serve makes those pages fail and, signed in or not, ask
-// the API about a site the reader's session does not belong to.
+// demoSiteLiteral is how the demo, counter and last-comments pages name their site. They are plain
+// files among the embedded assets and are written with this exact text, which is also what a page
+// built by an earlier release carries in a web root on disk. It is replaced with the first
+// configured site here, since a site the instance does not serve makes those pages fail and,
+// signed in or not, ask the API about a site the reader's session does not belong to.
 const demoSiteLiteral = `site_id:"remark"`
 
 // templatedFS fills the instance URL into the files carrying the placeholder. Without it the

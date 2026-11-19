@@ -51,7 +51,7 @@ type AdminConversationsEKMOriginalConnectedChannelInfo struct {
 	ID                         string   `json:"id"`
 	OriginalConnectedHostID    string   `json:"original_connected_host_id"`
 	OriginalConnectedChannelID string   `json:"original_connected_channel_id"`
-	InternalTeamIDs            []string `json:"internal_team_ids_count"`
+	InternalTeamIDs            []string `json:"internal_team_ids"`
 }
 
 // AdminConversationsEKMListOriginalConnectedChannelInfoResponse represents the response from
@@ -61,10 +61,10 @@ type AdminConversationsEKMListOriginalConnectedChannelInfoResponse struct {
 	Channels []AdminConversationsEKMOriginalConnectedChannelInfo `json:"channels"`
 }
 
-// AdminConversationsEKMListOriginalConnectedChannelInfo lists the original connected channel
-// information for Slack Connect channels.
-// For more information see the admin.conversations.ekm.listOriginalConnectedChannelInfo docs:
-// https://api.slack.com/methods/admin.conversations.ekm.listOriginalConnectedChannelInfo
+// AdminConversationsEKMListOriginalConnectedChannelInfo lists the original channel
+// information for disconnected Slack Connect channels.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/admin.conversations.ekm.listOriginalConnectedChannelInfo
 func (api *Client) AdminConversationsEKMListOriginalConnectedChannelInfo(ctx context.Context, options ...AdminConversationsEKMListOriginalConnectedChannelInfoOption) (*AdminConversationsEKMListOriginalConnectedChannelInfoResponse, error) {
 	params := adminConversationsEKMListOriginalConnectedChannelInfoParams{}
 	for _, opt := range options {

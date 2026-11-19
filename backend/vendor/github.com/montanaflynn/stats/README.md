@@ -61,6 +61,7 @@ var (
     ErrSize       = statsError{"Must be the same length."}
     ErrInfValue   = statsError{"Value is infinite."}
     ErrYCoord     = statsError{"Y Value must be greater than zero."}
+    ErrTooFew     = tooFewError{statsError{"Input has too few elements."}} // errors.Is(ErrTooFew, ErrEmptyInput)
 )
 
 func Round(input float64, places int) (rounded float64, err error) {}
@@ -209,7 +210,7 @@ Pull request are always welcome no matter how big or small. I've included a [Mak
 3. Make the desired changes
 4. Ensure tests pass (`go test -cover` or `make test`)
 5. Run lint and fix problems (`go vet .` or `make lint`)
-6. Commit changes (`git commit -am 'Did something'`)
+6. Commit changes using a conventional commit message (`git commit -am 'fix: reject NaN percent in Percentile'`)
 7. Push branch (`git push origin some-thing`)
 8. Submit pull request
 
@@ -219,6 +220,21 @@ To make things as seamless as possible please also consider the following steps:
 - Update `README.md` documentation section with any new exported API
 - Keep 100% code coverage (you can check with `make coverage`)
 - Squash commits into single units of work with `git rebase -i new-feature`
+
+### Commit messages and PR titles
+
+Commit messages and PR titles follow the [Conventional Commits](https://www.conventionalcommits.org/) format with an imperative subject that describes the change (not the bug):
+
+```
+fix: enforce percent bounds in Percentile for single-element input
+feat: add Histogram with equal-width bins
+docs: correct Percentile method attribution
+```
+
+- Use `feat` or `fix` for anything user-visible. Only those two types appear in `CHANGELOG.md`, which is generated from commit subjects at release time. Use `docs`, `test`, `refactor` or `chore` for everything else.
+- Keep the subject under 72 characters and name the function or type it touches.
+- The PR title becomes the commit message on `master` when the PR is squash-merged, so it follows the same rules.
+- Mark breaking changes with a `BREAKING CHANGE:` footer.
 
 ## Releasing
 

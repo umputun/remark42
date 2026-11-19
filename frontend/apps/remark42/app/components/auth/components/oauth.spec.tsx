@@ -13,6 +13,12 @@ describe('<OAuth />', () => {
     expect(container.querySelector('img')?.getAttribute('class')).toContain('oauth-icon');
   });
 
+  it('should load the icon from the server', () => {
+    const { container } = render(<OAuth providers={['google']} />);
+
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('http://test.com/web/google.svg');
+  });
+
   it('should have rigth `href`', () => {
     const { container } = render(<OAuth providers={['google']} />);
 

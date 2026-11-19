@@ -23,11 +23,12 @@ func (api *Client) RotateTokensContext(ctx context.Context, configToken string, 
 	}
 
 	values := url.Values{
+		"token":         {configToken},
 		"refresh_token": {refreshToken},
 	}
 
 	response := &TokenResponse{}
-	err := api.getMethod(ctx, "tooling.tokens.rotate", configToken, values, response)
+	err := api.postMethod(ctx, "tooling.tokens.rotate", values, response)
 	if err != nil {
 		return nil, err
 	}
