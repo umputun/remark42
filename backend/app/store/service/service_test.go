@@ -1584,6 +1584,159 @@ func TestService_DeleteUser(t *testing.T) {
 	assert.Equal(t, "user2", res[0].User.ID)
 }
 
+func TestService_DeleteUserPictures(t *testing.T) {
+	for _, mode := range []store.DeleteMode{store.HardDelete, store.SoftDelete} {
+		t.Run(fmt.Sprintf("mode %d", mode), func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			ts := time.Date(2018, 12, 20, 15, 18, 22, 0, time.UTC)
+			for _, c := range []store.Comment{
+				{ID: "u1-a", Text: `<img src="/images/user1/own1.png"/> <img src="/images/user1/shared.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
+				{ID: "u1-b", Text: `<img src="/images/user1/own2.png"/> <img src="/images/user1/own1.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
+				{ID: "u2-a", Text: `<img src="/images/user2/other.png"/> <img src="/images/user1/shared.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
+				{ID: "u2-c", Text: `<img src="/images/user2/other2.png"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/c", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
+			} {
+				c.Timestamp = ts
+				ts = ts.Add(time.Minute)
+				_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, b.DeleteUser("radio-t", "user1", mode))
+
+			deleted := deletedImages(&mockStore)
+			// user1/shared.png stays, user2 reuses it on the same page; user2's own pictures stay
+			assert.ElementsMatch(t, []string{"user1/own1.png", "user1/own2.png"}, deleted)
+
+			u2, err := b.User("radio-t", "user2", 0, 0, store.User{})
+			require.NoError(t, err)
+			require.Len(t, u2, 2)
+			for _, c := range u2 {
+				assert.Contains(t, c.Text, "/images/user2/", "user2's comments untouched")
+			}
+		})
+	}
+}
+
+func TestService_DeleteUserPicturesNoComments(t *testing.T) {
+	mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+	imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	defer imgSvc.Close(context.TODO())
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	require.NoError(t, b.DeleteUser("radio-t", "no-such-user", store.HardDelete))
+	assert.Empty(t, mockStore.DeleteCalls())
+}
+
+func TestService_DeleteUserPicturesEngine(t *testing.T) {
+	// the user's comments come in pages, each page asked for with a growing skip
+	pages := [][]store.Comment{
+		{{ID: "c1", Text: `<img src="/images/user1/p1.png"/>`, Locator: store.Locator{SiteID: "s", URL: "u1"}, User: store.User{ID: "user1"}}},
+		{{ID: "c2", Text: `<img src="/images/user1/p2.png"/>`, Locator: store.Locator{SiteID: "s", URL: "u2"}, User: store.User{ID: "user1"}}},
+	}
+	findFn := func(req engine.FindRequest) []store.Comment {
+		if req.UserID == "" { // page lookup
+			for _, p := range pages {
+				if p[0].Locator.URL == req.Locator.URL {
+					return p
+				}
+			}
+			return nil
+		}
+		if req.Skip < len(pages) {
+			return pages[req.Skip]
+		}
+		return []store.Comment{}
+	}
+
+	tbl := []struct {
+		name      string
+		findErr   error
+		deleteErr error
+		wantErr   bool
+		deleted   []string
+	}{
+		{name: "all pages", deleted: []string{"user1/p1.png", "user1/p2.png"}},
+		{name: "engine delete fails", deleteErr: errors.New("delete failed"), wantErr: true, deleted: []string{}},
+		{name: "find fails", findErr: errors.New("find failed"), deleted: []string{}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng := engine.InterfaceMock{
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if tt.findErr != nil {
+						return nil, tt.findErr
+					}
+					return findFn(req), nil
+				},
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, ImageService: imgSvc}
+
+			err := b.DeleteUser("s", "user1", store.HardDelete)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, eng.DeleteCalls(), 1, "comments deleted even when the picture lookup fails")
+			deleted := deletedImages(&mockStore)
+			assert.ElementsMatch(t, tt.deleted, deleted)
+		})
+	}
+
+	t.Run("engine ignores skip", func(t *testing.T) {
+		mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		defer imgSvc.Close(context.TODO())
+		userFinds := 0
+		eng := engine.InterfaceMock{
+			FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+				if req.UserID == "" {
+					return nil, nil
+				}
+				userFinds++
+				if userFinds > 5 {
+					return nil, errors.New("paging never stopped")
+				}
+				return []store.Comment{pages[0][0], pages[1][0]}, nil // every comment, whatever the skip
+			},
+			DeleteFunc: func(engine.DeleteRequest) error { return nil },
+		}
+		b := DataStore{Engine: &eng, ImageService: imgSvc}
+
+		require.NoError(t, b.DeleteUser("s", "user1", store.HardDelete))
+		assert.Equal(t, 2, userFinds, "second page brings nothing new and ends the paging")
+		deleted := deletedImages(&mockStore)
+		assert.ElementsMatch(t, []string{"user1/p1.png", "user1/p2.png"}, deleted)
+	})
+}
+
+// deletedImages lists the IDs of the pictures removed from the image store
+func deletedImages(m *image.StoreMock) []string {
+	res := make([]string, 0, len(m.DeleteCalls()))
+	for _, call := range m.DeleteCalls() {
+		res = append(res, call.ID)
+	}
+	return res
+}
+
 func TestService_List(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)

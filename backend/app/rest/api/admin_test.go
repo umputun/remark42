@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	adminstore "github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
+	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -215,6 +217,75 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	assert.Equal(t, "", cmntWithInfo.Comments[2].Orig)
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[2].User)
 	assert.True(t, cmntWithInfo.Comments[2].Deleted)
+}
+
+// every route that deletes a user's comments removes the pictures used in them and keeps those of other users
+func TestAdmin_DeleteUserPictures(t *testing.T) {
+	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) *http.Request {
+		claims := token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+			User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}}}
+		tkn, err := srv.Authenticator.TokenService().Token(claims)
+		require.NoError(t, err)
+		req, err := http.NewRequest(http.MethodGet, tsURL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
+		require.NoError(t, err)
+		return req
+	}
+	tbl := []struct {
+		name  string
+		reqFn func(t *testing.T, srv *Rest, tsURL string) *http.Request
+	}{
+		{name: "admin delete user", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
+			req, err := http.NewRequest(http.MethodDelete, tsURL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+			require.NoError(t, err)
+			return req
+		}},
+		{name: "delete me", reqFn: deleteMeReq},
+		{name: "permanent block", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
+			req, err := http.NewRequest(http.MethodPut, tsURL+"/api/v1/admin/user/user1?site=remark42&block=1", http.NoBody)
+			require.NoError(t, err)
+			return req
+		}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+			defer imgSvc.Close(context.Background())
+			srv.DataService.ImageService = imgSvc
+
+			for _, id := range []string{"user1/own.png", "user2/other.png"} {
+				require.NoError(t, fs.Save(id, []byte("image data")))
+				require.NoError(t, fs.Commit(id))
+			}
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			for _, c := range []store.Comment{
+				{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/>`, Locator: locator,
+					User: store.User{ID: "user1", Name: "user1"}, Timestamp: time.Now()},
+				{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator,
+					User: store.User{ID: "user2", Name: "user2"}, Timestamp: time.Now()},
+			} {
+				_, err := srv.DataService.Engine.Create(c) // directly to the engine, the picture is already committed
+				require.NoError(t, err)
+			}
+
+			req := tt.reqFn(t, srv, ts.URL)
+			req.SetBasicAuth("admin", "password")
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			_, err = fs.Load("user1/own.png")
+			assert.Error(t, err, "picture from the deleted user's comment removed")
+			data, err := fs.Load("user2/other.png")
+			require.NoError(t, err, "picture from another user's comment kept")
+			assert.Equal(t, "image data", string(data))
+		})
+	}
 }
 
 func TestAdmin_Pin(t *testing.T) {
