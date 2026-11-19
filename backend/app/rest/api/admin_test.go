@@ -288,6 +288,34 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 	}
 }
 
+func TestAdmin_DeleteUserAvatar(t *testing.T) {
+	for _, avatarExists := range []bool{true, false} {
+		t.Run(fmt.Sprintf("avatar exists %v", avatarExists), func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+			if avatarExists {
+				require.NoError(t, os.MkdirAll(filepath.Dir(avatarFile), 0o700))
+				require.NoError(t, os.WriteFile(avatarFile, []byte("some image data"), 0o600))
+			}
+			c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+				User: store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image"}}
+			_, err := srv.DataService.Create(c)
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+			require.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusOK, resp.StatusCode, "a missing avatar does not fail the deletion")
+			assert.NoFileExists(t, avatarFile, "user's avatar removed on admin user deletion")
+		})
+	}
+}
+
 func TestAdmin_Pin(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
