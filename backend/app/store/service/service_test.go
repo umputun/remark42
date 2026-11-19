@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -1605,6 +1606,10 @@ func TestService_DeleteUserPictures(t *testing.T) {
 					Locator: store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
 				{ID: "u2-c", Text: `<img src="/images/user2/other2.png"/>`,
 					Locator: store.Locator{URL: "https://radio-t.com/c", SiteID: "radio-t"}, User: store.User{ID: "user2"}},
+				// user1 shows user2's upload and a cached external image on a page where nobody else uses them
+				{ID: "u1-d", Text: `<img src="/images/user2/other2.png"/> <img src="/non_existent?src=` +
+					base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`,
+					Locator: store.Locator{URL: "https://radio-t.com/d", SiteID: "radio-t"}, User: store.User{ID: "user1"}},
 			} {
 				c.Timestamp = ts
 				ts = ts.Add(time.Minute)
@@ -1615,7 +1620,8 @@ func TestService_DeleteUserPictures(t *testing.T) {
 			require.NoError(t, b.DeleteUser("radio-t", "user1", mode))
 
 			deleted := deletedImages(&mockStore)
-			// user1/shared.png stays, user2 reuses it on the same page; user2's own pictures stay
+			// only user1's own uploads go: user1/shared.png stays as user2 reuses it on the same page,
+			// user2's upload and the cached external image stay although only user1 shows them on page d
 			assert.ElementsMatch(t, []string{"user1/own1.png", "user1/own2.png"}, deleted)
 
 			u2, err := b.User("radio-t", "user2", 0, 0, store.User{})

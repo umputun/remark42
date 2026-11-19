@@ -863,8 +863,8 @@ func (s *DataStore) DeleteUser(siteID, userID string, mode store.DeleteMode) err
 	return nil
 }
 
-// userPictures returns IDs of the pictures used in the user's comments and not used
-// by other users' comments to the same pages, the same check Delete makes for one comment
+// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
+// those other users' comments to the same pages also use, the same check Delete makes for one comment
 func (s *DataStore) userPictures(siteID, userID string) []string {
 	userImgIDs := []string{}
 	pages := map[string]bool{}
@@ -886,9 +886,13 @@ func (s *DataStore) userPictures(siteID, userID string) []string {
 			}
 			seen[key] = true
 			added++
-			if ids := s.ImageService.ExtractPictures(c.Text); len(ids) > 0 {
-				userImgIDs = append(userImgIDs, ids...)
-				pages[c.Locator.URL] = true
+			// only the user's own uploads, saved as userID/<guid>: a comment can show another user's
+			// upload or a cached external image, which other comments may use on pages not checked here
+			for _, id := range s.ImageService.ExtractPictures(c.Text) {
+				if strings.HasPrefix(id, userID+"/") {
+					userImgIDs = append(userImgIDs, id)
+					pages[c.Locator.URL] = true
+				}
 			}
 		}
 		if added == 0 {

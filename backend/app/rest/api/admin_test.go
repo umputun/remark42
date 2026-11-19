@@ -261,12 +261,19 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 				require.NoError(t, fs.Save(id, []byte("image data")))
 				require.NoError(t, fs.Commit(id))
 			}
-			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			// distinct timestamps: bolt keys a user's comment references by timestamp alone
+			now := time.Now()
+			locator := func(page string) store.Locator {
+				return store.Locator{SiteID: "remark42", URL: "https://radio-t.com/" + page}
+			}
 			for _, c := range []store.Comment{
-				{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/>`, Locator: locator,
-					User: store.User{ID: "user1", Name: "user1"}, Timestamp: time.Now()},
-				{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator,
-					User: store.User{ID: "user2", Name: "user2"}, Timestamp: time.Now()},
+				{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/>`, Locator: locator("blah"),
+					User: store.User{ID: "user1", Name: "user1"}, Timestamp: now},
+				{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator("blah2"),
+					User: store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+				// user1 shows user2's upload on a page user2 has not commented on
+				{ID: "c3", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator("blah3"),
+					User: store.User{ID: "user1", Name: "user1"}, Timestamp: now.Add(2 * time.Second)},
 			} {
 				_, err := srv.DataService.Engine.Create(c) // directly to the engine, the picture is already committed
 				require.NoError(t, err)
@@ -282,7 +289,7 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 			_, err = fs.Load("user1/own.png")
 			assert.Error(t, err, "picture from the deleted user's comment removed")
 			data, err := fs.Load("user2/other.png")
-			require.NoError(t, err, "picture from another user's comment kept")
+			require.NoError(t, err, "another user's upload kept, though the deleted user's comment showed it")
 			assert.Equal(t, "image data", string(data))
 		})
 	}
