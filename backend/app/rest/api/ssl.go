@@ -38,29 +38,18 @@ type SSLConfig struct {
 	ACMEEmail    string
 }
 
-// httpToHTTPSRouter creates new router which does redirect from http to https server
-// with default middlewares. Used in 'static' ssl mode.
-func (s *Rest) httpToHTTPSRouter() http.Handler {
-	log.Printf("[DEBUG] create http-to-https redirect routes")
+// httpRouter makes the router of the http port when https serves the api. In 'static' ssl mode it
+// redirects to the https server. In 'auto' mode m answers the ACME "http-01" challenge, which is
+// necessary to obtain a certificate from LE, and everything else is redirected.
+func (s *Rest) httpRouter(m *autocert.Manager) http.Handler {
 	router := routegroup.New(http.NewServeMux())
 	router.Use(R.Recoverer(log.Default()))
 	router.Use(R.Throttle(1000), R.Timeout(60*time.Second))
-
-	router.Handle("/", s.redirectHandler())
-	return router
-}
-
-// httpChallengeRouter creates new router which performs ACME "http-01" challenge response
-// with default middlewares. This part is necessary to obtain certificate from LE.
-// If it receives not a acme challenge it performs redirect to https server.
-// Used in 'auto' ssl mode.
-func (s *Rest) httpChallengeRouter(m *autocert.Manager) http.Handler {
-	log.Printf("[DEBUG] create http-challenge routes")
-	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Recoverer(log.Default()))
-	router.Use(R.Throttle(1000), R.Timeout(60*time.Second))
-
-	router.Handle("/", m.HTTPHandler(s.redirectHandler()))
+	handler := s.redirectHandler()
+	if m != nil {
+		handler = m.HTTPHandler(handler)
+	}
+	router.Handle("/", handler)
 	return router
 }
 
@@ -102,19 +91,13 @@ func (s *Rest) makeAutocertManager() *autocert.Manager {
 	}
 }
 
-// makeHTTPSAutoCertServer makes https server with autocert mode (LE support)
-func (s *Rest) makeHTTPSAutocertServer(address string, port int, router http.Handler, m *autocert.Manager) *http.Server {
-	server := s.makeHTTPServer(address, port, router)
-	cfg := s.makeTLSConfig()
-	cfg.GetCertificate = m.GetCertificate
-	server.TLSConfig = cfg
-	return server
-}
-
-// makeHTTPSServer makes https server for static mode
-func (s *Rest) makeHTTPSServer(address string, port int, router http.Handler) *http.Server {
+// makeHTTPSServer makes https server, with autocert (LE support) when m is given
+func (s *Rest) makeHTTPSServer(address string, port int, router http.Handler, m *autocert.Manager) *http.Server {
 	server := s.makeHTTPServer(address, port, router)
 	server.TLSConfig = s.makeTLSConfig()
+	if m != nil {
+		server.TLSConfig.GetCertificate = m.GetCertificate
+	}
 	return server
 }
 

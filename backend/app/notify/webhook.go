@@ -27,6 +27,7 @@ type WebhookParams struct {
 // Webhook implements notify.Destination for Webhook notifications
 type Webhook struct {
 	*ntf.Webhook
+	noVerification
 
 	url      string
 	template *template.Template
@@ -72,11 +73,6 @@ func (w *Webhook) Send(ctx context.Context, req Request) error {
 	}
 
 	return w.Webhook.Send(ctx, w.url, payload.String())
-}
-
-// SendVerification is not implemented for Webhook
-func (w *Webhook) SendVerification(_ context.Context, _ VerificationRequest) error {
-	return nil
 }
 
 // String describes the webhook instance

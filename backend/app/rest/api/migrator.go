@@ -40,84 +40,73 @@ type Migrator struct {
 // POST /import?secret=key&site=site-id&provider=disqus|remark|wordpress
 // imports comments from post body.
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
-
-	if !m.claim(w, r, siteID, "import rejected") {
-		return
-	}
-	handedOff := false
-	defer func() {
-		if !handedOff {
-			m.clearBusy(siteID)
+	m.startImport(w, r, func() string {
+		tmpfile, err := m.saveTemp(r.Body)
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+			return ""
 		}
-	}()
-
-	tmpfile, err := m.saveTemp(r.Body)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
-		return
-	}
-
-	handedOff = true
-	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile)
-
-	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
+		return tmpfile
+	})
 }
 
 // POST /import/form?secret=key&site=site-id&provider=disqus|remark|wordpress
 // imports comments from form body.
 func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
-	siteID := r.URL.Query().Get("site")
+	m.startImport(w, r, func() string {
+		r.Body = http.MaxBytesReader(w, r.Body, 256*1024*1024) // hard cap on upload to prevent memory exhaustion
+		reader, err := r.MultipartReader()
+		if err != nil {
+			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+			return ""
+		}
+		for {
+			part, err := reader.NextPart()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+				return ""
+			}
+			if part.FormName() != "file" {
+				_ = part.Close()
+				continue
+			}
 
+			tmpfile, err := m.saveTemp(part)
+			if closeErr := part.Close(); err == nil && closeErr != nil {
+				err = closeErr
+			}
+			if err != nil {
+				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+				return ""
+			}
+			return tmpfile
+		}
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("file field missing"),
+			"can't get import file from the request", rest.ErrInternal)
+		return ""
+	})
+}
+
+// startImport claims the site before the upload is read, so a competing request is refused at once,
+// then runs the import in the background. save stores the upload in a temp file and returns its name,
+// or answers the request with an error and returns "".
+func (m *Migrator) startImport(w http.ResponseWriter, r *http.Request, save func() string) {
+	siteID := r.URL.Query().Get("site")
 	if !m.claim(w, r, siteID, "import rejected") {
 		return
 	}
-	handedOff := false
+	tmpfile := ""
 	defer func() {
-		if !handedOff {
+		if tmpfile == "" { // not handed off to runImport, which frees the site when done
 			m.clearBusy(siteID)
 		}
 	}()
-
-	r.Body = http.MaxBytesReader(w, r.Body, 256*1024*1024) // hard cap on upload to prevent memory exhaustion
-	reader, err := r.MultipartReader()
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+	if tmpfile = save(); tmpfile == "" {
 		return
 	}
-
-	tmpfile := ""
-	for {
-		part, err := reader.NextPart()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
-			return
-		}
-		if part.FormName() != "file" {
-			_ = part.Close()
-			continue
-		}
-
-		tmpfile, err = m.saveTemp(part)
-		if closeErr := part.Close(); err == nil && closeErr != nil {
-			err = closeErr
-		}
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
-			return
-		}
-		break
-	}
-	if tmpfile == "" {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("file field missing"),
-			"can't get import file from the request", rest.ErrInternal)
-		return
-	}
-
-	handedOff = true
 	go m.runImport(siteID, r.URL.Query().Get("provider"), tmpfile)
 
 	_ = R.EncodeJSON(w, http.StatusAccepted, R.JSON{"status": "import request accepted"})
@@ -324,7 +313,7 @@ func (m *Migrator) claim(w http.ResponseWriter, r *http.Request, siteID, details
 	if m.setBusyIfFree(siteID) {
 		return true
 	}
-	rest.SendErrorJSON(w, r, http.StatusConflict, fmt.Errorf("already running"), details, rest.ErrActionRejected)
+	rest.SendErrorJSONFromHelper(w, r, http.StatusConflict, fmt.Errorf("already running"), details, rest.ErrActionRejected)
 	return false
 }
 

@@ -26,6 +26,7 @@ type TelegramParams struct {
 // Telegram implements notify.Destination for telegram
 type Telegram struct {
 	*ntf.Telegram
+	noVerification
 
 	AdminChannelID    string // unique identifier for the target chat or username of the target channel (in the format @channelusername)
 	UserNotifications bool   // flag which enables user notifications
@@ -101,11 +102,6 @@ func (t *Telegram) buildMessage(req Request) string {
 	}
 
 	return msg
-}
-
-// SendVerification is not needed for telegram
-func (t *Telegram) SendVerification(_ context.Context, _ VerificationRequest) error {
-	return nil
 }
 
 func (t *Telegram) String() string {

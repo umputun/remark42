@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -472,25 +473,25 @@ func TestIsReservedCustomProviderName(t *testing.T) {
 
 	for _, name := range reserved {
 		t.Run(name, func(t *testing.T) {
-			assert.True(t, isReservedCustomProviderName(name))
+			assert.True(t, slices.Contains(reservedCustomProviderNames, name))
 		})
 	}
 
-	assert.False(t, isReservedCustomProviderName("oidc"))
+	assert.False(t, slices.Contains(reservedCustomProviderNames, "oidc"))
 }
 
 func TestIsValidCustomProviderName(t *testing.T) {
 	valid := []string{"oidc", "codeberg", "provider_1", "provider-1", "a1"}
 	for _, name := range valid {
 		t.Run("valid_"+name, func(t *testing.T) {
-			assert.True(t, isValidCustomProviderName(name))
+			assert.True(t, validCustomProviderName.MatchString(name))
 		})
 	}
 
 	invalid := []string{"", " has-space", "has space", "Uppercase", "provider!", "-provider", "_provider"}
 	for _, name := range invalid {
 		t.Run("invalid_"+strings.ReplaceAll(name, " ", "_"), func(t *testing.T) {
-			assert.False(t, isValidCustomProviderName(name))
+			assert.False(t, validCustomProviderName.MatchString(name))
 		})
 	}
 }
@@ -782,6 +783,17 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 	assert.Equal(t, "test_password", s.SMTP.Password)
 	assert.Equal(t, 15*time.Second, s.SMTP.TimeOut)
 	assert.Equal(t, "http://example.org", s.Telegram.APIURL)
+}
+
+// findDeprecatedFlagsCollisions returns the entries of HandleDeprecatedFlags reported as collisions
+func (s *ServerCommand) findDeprecatedFlagsCollisions() []DeprecatedFlag {
+	var res []DeprecatedFlag
+	for _, f := range s.HandleDeprecatedFlags() {
+		if f.Collision {
+			res = append(res, f)
+		}
+	}
+	return res
 }
 
 func TestServerApp_DeprecatedArgsCollisions(t *testing.T) {
@@ -1509,6 +1521,39 @@ func TestServerCommand_servesAudience(t *testing.T) {
 
 	cmd.Store.Type = "rpc"
 	assert.True(t, cmd.servesAudience([]string{"Remark"}), "a remote store decides which sites exist")
+}
+
+func TestServerCommand_RPCClients(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, passwd, ok := r.BasicAuth()
+		assert.True(t, ok)
+		assert.Equal(t, "user:passwd", user+":"+passwd)
+		assert.Equal(t, "/rpc", r.URL.Path)
+		_, _ = w.Write([]byte(`{"error":"rpc called"}`))
+	}))
+	defer ts.Close()
+	defer http.DefaultClient.CloseIdleConnections()
+
+	rpc := RPCGroup{API: ts.URL + "/rpc", TimeOut: time.Second, AuthUser: "user", AuthPassword: "passwd"}
+	cmd := ServerCommand{}
+	cmd.Store.Type, cmd.Store.RPC = "rpc", rpc
+	cmd.Image.Type, cmd.Image.RPC = "rpc", rpc
+	cmd.Admin.Type, cmd.Admin.RPC.RPCGroup = "rpc", rpc
+
+	dataStore, err := cmd.makeDataStore()
+	require.NoError(t, err)
+	err = dataStore.Close()
+	assert.ErrorContains(t, err, "rpc called", "data store")
+
+	pictures, err := cmd.makePicturesStore()
+	require.NoError(t, err)
+	_, err = pictures.Info()
+	assert.ErrorContains(t, err, "rpc called", "pictures store")
+
+	admins, err := cmd.makeAdminStore()
+	require.NoError(t, err)
+	_, err = admins.Key("remark")
+	assert.ErrorContains(t, err, "rpc called", "admin store")
 }
 
 func TestServerCommand_demoSiteID(t *testing.T) {

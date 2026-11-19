@@ -16,7 +16,7 @@ import (
 func TestSSL_Redirect(t *testing.T) {
 	rest := Rest{RemarkURL: "https://localhost:443"}
 
-	ts := httptest.NewServer(rest.httpToHTTPSRouter())
+	ts := httptest.NewServer(rest.httpRouter(nil))
 	defer ts.Close()
 
 	client := http.Client{
@@ -60,7 +60,7 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 
 	m := rest.makeAutocertManager()
 
-	ts := httptest.NewServer(rest.httpChallengeRouter(m))
+	ts := httptest.NewServer(rest.httpRouter(m))
 	defer ts.Close()
 
 	client := http.Client{

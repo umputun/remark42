@@ -4,6 +4,7 @@ package notify
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,6 +35,12 @@ type Destination interface {
 	Send(context.Context, Request) error
 	SendVerification(context.Context, VerificationRequest) error
 }
+
+// noVerification is embedded by destinations which send no verification messages
+type noVerification struct{}
+
+// SendVerification does nothing
+func (noVerification) SendVerification(context.Context, VerificationRequest) error { return nil }
 
 // Store defines the minimal interface accessing stored comments used by notifier
 type Store interface {
@@ -123,7 +130,7 @@ func (s *Service) Submit(req Request) {
 // interested in notifications for provided comment.
 // Targets are not added to the returned list in case the original message
 // is from the same user as the notification receiver.
-// Results are deduplicated.
+// Results are sorted and deduplicated.
 func (s *Service) getNotificationTargets(
 	req Request,
 	notifyComment store.Comment,
@@ -144,7 +151,8 @@ func (s *Service) getNotificationTargets(
 			result = append(result, s.getNotificationTargets(req, p, getUserDetail)...)
 		}
 	}
-	return deduplicateStrings(result)
+	slices.Sort(result)
+	return slices.Compact(result)
 }
 
 // SubmitVerification to internal channel if not busy, drop if can't send
@@ -237,20 +245,3 @@ func (s *Service) deliver(send func(Destination) error) {
 
 // NopService is do-nothing notifier, without destinations
 var NopService = &Service{}
-
-// deduplicateStrings returns provided slice of strings will all duplicates removed.
-// Resulting slice is not sorted.
-func deduplicateStrings(source []string) []string {
-	set := make(map[string]struct{})
-
-	for _, k := range source {
-		set[k] = struct{}{}
-	}
-
-	result := make([]string, 0, len(set))
-	for k := range set {
-		result = append(result, k)
-	}
-
-	return result
-}

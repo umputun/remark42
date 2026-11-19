@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
@@ -308,6 +309,11 @@ type RPCGroup struct {
 	AuthPassword string        `long:"auth_passwd" env:"AUTH_PASSWD" description:"basic auth user password"`
 }
 
+// client makes the json-rpc client of a remote store
+func (g RPCGroup) client() jrpc.Client {
+	return jrpc.Client{API: g.API, Client: http.Client{Timeout: g.TimeOut}, AuthUser: g.AuthUser, AuthPasswd: g.AuthPassword}
+}
+
 // AdminRPCGroup defines options for remote admin store
 type AdminRPCGroup struct {
 	RPCGroup
@@ -350,19 +356,8 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"ADMIN_PASSWD",
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) // graceful termination
 	defer cancel()
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(stop)
-	go func() { // catch signal and invoke graceful termination
-		select {
-		case <-stop:
-			log.Printf("[WARN] interrupt signal")
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
 
 	app, err := s.newServerApp(ctx)
 	if err != nil {
@@ -377,68 +372,44 @@ func (s *ServerCommand) Execute(_ []string) error {
 	return nil
 }
 
-// HandleDeprecatedFlags sets new flags from deprecated returns their list.
-// Returned list has DeprecatedFlag.Old and DeprecatedFlag.Version set, and DeprecatedFlag.New is optional
-// (as some entries are removed without substitute).
-// Also it returns flags found by findDeprecatedFlagsCollisions, with DeprecatedFlag.Collision flag set.
+// HandleDeprecatedFlags sets new flags from deprecated ones and returns their list.
+// An entry has Old and Version set and New when there is a substitute. A flag set both the old and
+// the new way to different values comes back with Collision set instead: the new one is used.
 func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
-	if s.Auth.Email.Host != "" && s.SMTP.Host == "" {
-		s.SMTP.Host = s.Auth.Email.Host
-		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", Version: "1.5"})
-	}
-	if s.Auth.Email.Port != 0 && s.SMTP.Port == 0 {
-		s.SMTP.Port = s.Auth.Email.Port
-		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", Version: "1.5"})
-	}
-	if s.Auth.Email.TLS && !s.SMTP.TLS {
-		s.SMTP.TLS = s.Auth.Email.TLS
-		result = append(result, DeprecatedFlag{Old: "auth.email.tls", New: "smtp.tls", Version: "1.5"})
-	}
-	if s.Auth.Email.SMTPUserName != "" && s.SMTP.Username == "" {
-		s.SMTP.Username = s.Auth.Email.SMTPUserName
-		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", Version: "1.5"})
-	}
-	if s.Auth.Email.SMTPPassword != "" && s.SMTP.Password == "" {
-		s.SMTP.Password = s.Auth.Email.SMTPPassword
-		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", Version: "1.5"})
-	}
-	const emailDefaultTimout = 10 * time.Second
-	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut == emailDefaultTimout {
-		s.SMTP.TimeOut = s.Auth.Email.TimeOut
-		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Version: "1.5"})
-	}
+	result = moveDeprecated(result, s.Auth.Email.Host, &s.SMTP.Host, "", "auth.email.host", "smtp.host", "1.5")
+	result = moveDeprecated(result, s.Auth.Email.Port, &s.SMTP.Port, 0, "auth.email.port", "smtp.port", "1.5")
+	result = moveDeprecated(result, s.Auth.Email.TLS, &s.SMTP.TLS, false, "auth.email.tls", "smtp.tls", "1.5")
+	result = moveDeprecated(result, s.Auth.Email.SMTPUserName, &s.SMTP.Username, "", "auth.email.user", "smtp.username", "1.5")
+	result = moveDeprecated(result, s.Auth.Email.SMTPPassword, &s.SMTP.Password, "", "auth.email.passwd", "smtp.password", "1.5")
+	result = moveDeprecated(result, s.Auth.Email.TimeOut, &s.SMTP.TimeOut, 10*time.Second, "auth.email.timeout", "smtp.timeout", "1.5")
 	if s.Auth.Email.MsgTemplate != "email_confirmation_login.html.tmpl" {
 		result = append(result, DeprecatedFlag{Old: "auth.email.template", Version: "1.5"})
 	}
-	if s.LegacyImageProxy && !s.ImageProxy.HTTP2HTTPS {
-		s.ImageProxy.HTTP2HTTPS = s.LegacyImageProxy
-		result = append(result, DeprecatedFlag{Old: "img-proxy", New: "image-proxy.http2https", Version: "1.5"})
-	}
-	if !contains("none", s.Notify.Type) &&
-		contains("none", s.Notify.Users) &&
-		contains("none", s.Notify.Admins) { // if new notify param(s) are used, safe to ignore the old one
-		s.handleDeprecatedNotifications()
-		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Version: "1.9"})
+	result = moveDeprecated(result, s.LegacyImageProxy, &s.ImageProxy.HTTP2HTTPS, false, "img-proxy", "image-proxy.http2https", "1.5")
+	if !contains("none", s.Notify.Type) {
+		// if new notify param(s) are used, safe to ignore the old one
+		collision := !contains("none", s.Notify.Users) || !contains("none", s.Notify.Admins)
+		if !collision {
+			s.handleDeprecatedNotifications()
+		}
+		result = append(result, deprecated("notify.type", "notify.(users|admins)", "1.9", collision))
 	}
 	if s.Notify.Email.AdminNotifications && !contains("email", s.Notify.Admins) {
 		s.Notify.Admins = append(s.Notify.Admins, "email")
 		result = append(result, DeprecatedFlag{Old: "notify.email.notify_admin", New: "notify.admins=email", Version: "1.9"})
 	}
-	if s.Notify.Telegram.Token != "" && s.Telegram.Token == "" {
-		s.Telegram.Token = s.Notify.Telegram.Token
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"})
-	}
-	const telegramDefaultTimeout = time.Second * 5
-	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout == telegramDefaultTimeout {
-		s.Telegram.Timeout = s.Notify.Telegram.Timeout
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"})
-	}
-	if s.Notify.Telegram.API != "https://api.telegram.org/bot" && s.Telegram.APIURL == "" {
-		if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok {
+	result = moveDeprecated(result, s.Notify.Telegram.Token, &s.Telegram.Token, "", "notify.telegram.token", "telegram.token", "1.9")
+	result = moveDeprecated(result, s.Notify.Telegram.Timeout, &s.Telegram.Timeout, 5*time.Second, "notify.telegram.timeout", "telegram.timeout", "1.9")
+	if s.Notify.Telegram.API != "https://api.telegram.org/bot" {
+		base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API)
+		switch {
+		case !ok && s.Telegram.APIURL == "":
+			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+		case ok && s.Telegram.APIURL == "":
 			s.Telegram.APIURL = base
 			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"})
-		} else {
-			result = append(result, DeprecatedFlag{Old: "notify.telegram.api", Version: "1.9"})
+		case ok && base != "" && base != s.Telegram.APIURL:
+			result = append(result, deprecated("notify.telegram.api", "telegram.api-url", "1.9", true))
 		}
 	}
 	if s.Auth.Twitter.CID != "" {
@@ -447,46 +418,30 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 	if s.Auth.Twitter.CSEC != "" {
 		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
 	}
-	return append(result, s.findDeprecatedFlagsCollisions()...)
+	return result
 }
 
-// findDeprecatedFlagsCollisions returns flags which are set both old (deprecated) and new way,
-// which means new ones are used and old ones are ignored by deprecated flag handler.
-// It returns DeprecatedFlag list which always has only DeprecatedFlag.Old and DeprecatedFlag.New set,
-// and DeprecatedFlag.Collision set to true.
-func (s *ServerCommand) findDeprecatedFlagsCollisions() (result []DeprecatedFlag) {
-	if stringsSetAndDifferent(s.Auth.Email.Host, s.SMTP.Host) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.host", New: "smtp.host", Collision: true})
+// moveDeprecated carries the value of a deprecated flag over to its replacement when only the old one
+// is set, and reports a collision when both are set to different values. unset is the flags' default.
+func moveDeprecated[T comparable](res []DeprecatedFlag, old T, cur *T, unset T, oldName, newName, version string) []DeprecatedFlag {
+	switch {
+	case old == unset:
+		return res
+	case *cur == unset:
+		*cur = old
+		return append(res, deprecated(oldName, newName, version, false))
+	case *cur != old:
+		return append(res, deprecated(oldName, newName, version, true))
 	}
-	if s.Auth.Email.Port != 0 && s.SMTP.Port != 0 && s.Auth.Email.Port != s.SMTP.Port {
-		result = append(result, DeprecatedFlag{Old: "auth.email.port", New: "smtp.port", Collision: true})
+	return res
+}
+
+// deprecated makes the entry for a deprecated flag; a collision carries no version
+func deprecated(oldName, newName, version string, collision bool) DeprecatedFlag {
+	if collision {
+		return DeprecatedFlag{Old: oldName, New: newName, Collision: true}
 	}
-	if stringsSetAndDifferent(s.Auth.Email.SMTPUserName, s.SMTP.Username) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.user", New: "smtp.username", Collision: true})
-	}
-	if stringsSetAndDifferent(s.Auth.Email.SMTPPassword, s.SMTP.Password) {
-		result = append(result, DeprecatedFlag{Old: "auth.email.passwd", New: "smtp.password", Collision: true})
-	}
-	const emailDefaultTimout = 10 * time.Second
-	if s.Auth.Email.TimeOut != emailDefaultTimout && s.SMTP.TimeOut != emailDefaultTimout && s.Auth.Email.TimeOut != s.SMTP.TimeOut {
-		result = append(result, DeprecatedFlag{Old: "auth.email.timeout", New: "smtp.timeout", Collision: true})
-	}
-	if !contains("none", s.Notify.Type) &&
-		(!contains("none", s.Notify.Users) || !contains("none", s.Notify.Admins)) {
-		result = append(result, DeprecatedFlag{Old: "notify.type", New: "notify.(users|admins)", Collision: true})
-	}
-	if stringsSetAndDifferent(s.Notify.Telegram.Token, s.Telegram.Token) {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.token", New: "telegram.token", Collision: true})
-	}
-	const telegramDefaultTimeout = time.Second * 5
-	if s.Notify.Telegram.Timeout != telegramDefaultTimeout && s.Telegram.Timeout != telegramDefaultTimeout && s.Notify.Telegram.Timeout != s.Telegram.Timeout {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.timeout", New: "telegram.timeout", Collision: true})
-	}
-	if base, ok := telegramAPIBaseFromDeprecated(s.Notify.Telegram.API); ok &&
-		s.Notify.Telegram.API != "https://api.telegram.org/bot" && stringsSetAndDifferent(base, s.Telegram.APIURL) {
-		result = append(result, DeprecatedFlag{Old: "notify.telegram.api", New: "telegram.api-url", Collision: true})
-	}
-	return result
+	return DeprecatedFlag{Old: oldName, New: newName, Version: version}
 }
 
 func telegramAPIBaseFromDeprecated(prefix string) (string, bool) {
@@ -508,65 +463,27 @@ func (s *ServerCommand) handleDeprecatedNotifications() {
 	}
 }
 
-func stringsSetAndDifferent(s1, s2 string) bool {
-	if s1 != "" && s2 != "" && s1 != s2 {
-		return true
-	}
-	return false
-}
-
 func contains(s string, a []string) bool {
 	return slices.Contains(a, s)
 }
 
-var reservedCustomProviderNames = map[string]struct{}{
-	"email":     {},
-	"anonymous": {},
-	"google":    {},
-	"github":    {},
-	"facebook":  {},
-	"yandex":    {},
-	"twitter":   {},
-	"microsoft": {},
-	"patreon":   {},
-	"discord":   {},
-	"telegram":  {},
-	"dev":       {},
-	"apple":     {},
+var reservedCustomProviderNames = []string{
+	"email", "anonymous", "google", "github", "facebook", "yandex", "twitter",
+	"microsoft", "patreon", "discord", "telegram", "dev", "apple",
 }
 
 var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-func isReservedCustomProviderName(name string) bool {
-	_, ok := reservedCustomProviderNames[name]
-	return ok
-}
-
-func isValidCustomProviderName(name string) bool {
-	return validCustomProviderName.MatchString(name)
-}
-
 func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
-	sourceID := data.Value(cfg.IDField)
+	sourceID := cmp.Or(data.Value(cfg.IDField), data.Value(cfg.EmailField), data.Value(cfg.NameField), data.Value(cfg.PictureField))
 	if sourceID == "" {
-		sourceID = data.Value(cfg.EmailField)
-	}
-	if sourceID == "" {
-		sourceID = data.Value(cfg.NameField)
-	}
-	if sourceID == "" {
-		sourceID = data.Value(cfg.PictureField)
-	}
-	if sourceID == "" {
+		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
 		payload, err := json.Marshal(data)
 		if err != nil {
 			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
 		} else {
 			sourceID = string(payload)
 		}
-	}
-	if sourceID == "" || sourceID == "{}" {
-		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
 	}
 	return sourceID
 }
@@ -578,23 +495,13 @@ func (c CustomAuthGroup) isConfigured() bool {
 
 func (c CustomAuthGroup) missingRequired() []string {
 	missing := []string{}
-	if c.Name == "" {
-		missing = append(missing, "AUTH_CUSTOM_NAME")
-	}
-	if c.CID == "" {
-		missing = append(missing, "AUTH_CUSTOM_CID")
-	}
-	if c.CSEC == "" {
-		missing = append(missing, "AUTH_CUSTOM_CSEC")
-	}
-	if c.AuthURL == "" {
-		missing = append(missing, "AUTH_CUSTOM_AUTH_URL")
-	}
-	if c.TokenURL == "" {
-		missing = append(missing, "AUTH_CUSTOM_TOKEN_URL")
-	}
-	if c.InfoURL == "" {
-		missing = append(missing, "AUTH_CUSTOM_INFO_URL")
+	for _, f := range []struct{ value, env string }{
+		{c.Name, "AUTH_CUSTOM_NAME"}, {c.CID, "AUTH_CUSTOM_CID"}, {c.CSEC, "AUTH_CUSTOM_CSEC"},
+		{c.AuthURL, "AUTH_CUSTOM_AUTH_URL"}, {c.TokenURL, "AUTH_CUSTOM_TOKEN_URL"}, {c.InfoURL, "AUTH_CUSTOM_INFO_URL"},
+	} {
+		if f.value == "" {
+			missing = append(missing, f.env)
+		}
 	}
 	return missing
 }
@@ -976,13 +883,7 @@ func (s *ServerCommand) makeDataStore() (result engine.Interface, err error) {
 		}
 		result, err = engine.NewBoltDB(bolt.Options{Timeout: s.Store.Bolt.Timeout}, sites...)
 	case "rpc":
-		r := &engine.RPC{Client: jrpc.Client{
-			API:        s.Store.RPC.API,
-			Client:     http.Client{Timeout: s.Store.RPC.TimeOut},
-			AuthUser:   s.Store.RPC.AuthUser,
-			AuthPasswd: s.Store.RPC.AuthPassword,
-		}}
-		return r, nil
+		return &engine.RPC{Client: s.Store.RPC.client()}, nil
 	default:
 		return nil, fmt.Errorf("unsupported store type %s", s.Store.Type)
 	}
@@ -1023,13 +924,7 @@ func (s *ServerCommand) makePicturesStore() (*image.Service, error) {
 			Partitions: s.Image.FS.Partitions,
 		}, imageServiceParams), nil
 	case "rpc":
-		return image.NewService(&image.RPC{
-			Client: jrpc.Client{
-				API:        s.Image.RPC.API,
-				Client:     http.Client{Timeout: s.Image.RPC.TimeOut},
-				AuthUser:   s.Image.RPC.AuthUser,
-				AuthPasswd: s.Image.RPC.AuthPassword,
-			}}, imageServiceParams), nil
+		return image.NewService(&image.RPC{Client: s.Image.RPC.client()}, imageServiceParams), nil
 	}
 	return nil, fmt.Errorf("unsupported pictures store type %s", s.Image.Type)
 }
@@ -1049,13 +944,7 @@ func (s *ServerCommand) makeAdminStore() (admin.Store, error) {
 		}
 		return admin.NewStaticStore(s.SharedSecret, s.Sites, s.Admin.Shared.Admins, sharedAdminEmail), nil
 	case "rpc":
-		r := &admin.RPC{Client: jrpc.Client{
-			API:        s.Admin.RPC.API,
-			Client:     http.Client{Timeout: s.Admin.RPC.TimeOut},
-			AuthUser:   s.Admin.RPC.AuthUser,
-			AuthPasswd: s.Admin.RPC.AuthPassword,
-		}}
-		return r, nil
+		return &admin.RPC{Client: s.Admin.RPC.client()}, nil
 	default:
 		return nil, fmt.Errorf("unsupported admin store type %s", s.Admin.Type)
 	}
@@ -1138,10 +1027,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		}
 
 		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
-		if !isValidCustomProviderName(customName) {
+		if !validCustomProviderName.MatchString(customName) {
 			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
 		}
-		if isReservedCustomProviderName(customName) {
+		if slices.Contains(reservedCustomProviderNames, customName) {
 			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 

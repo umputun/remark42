@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec //not used for security
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -402,11 +403,9 @@ func (s *private) telegramSubscribeCtrl(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// generate and send token
-		tkn, err := randToken()
-		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to generate verification token", rest.ErrInternal)
-			return
-		}
+		rnd := make([]byte, 20)
+		_, _ = rand.Read(rnd) // never fails, crashes the program instead
+		tkn := hex.EncodeToString(rnd)
 		expires := time.Now().Add(10 * time.Minute)
 
 		s.telegramService.AddToken(tkn, user.ID, siteID, expires)
@@ -787,18 +786,6 @@ func (s *private) isReadOnly(locator store.Locator) bool {
 		}
 	}
 	return s.dataService.IsReadOnly(locator) // ro manually
-}
-
-func randToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("can't get random: %w", err)
-	}
-	s := sha1.New() //nolint:gosec // not used for security
-	if _, err := s.Write(b); err != nil {
-		return "", fmt.Errorf("can't write randoms to sha1: %w", err)
-	}
-	return fmt.Sprintf("%x", s.Sum(nil)), nil
 }
 
 // extractIP returns the IP portion of the remote address, handling both IPv4 and IPv6 formats.

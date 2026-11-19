@@ -299,7 +299,7 @@ func (s *public) cachedJSON(w http.ResponseWriter, r *http.Request, key cache.Ke
 		return encodeJSONWithHTML(v)
 	})
 	if err != nil {
-		rest.SendErrorJSON(w, r, errStatus, err, errDetails, errCode)
+		rest.SendErrorJSONFromHelper(w, r, errStatus, err, errDetails, errCode)
 		return
 	}
 	if err = R.RenderJSONFromBytes(w, r, data); err != nil {
@@ -312,7 +312,7 @@ func (s *public) cachedJSON(w http.ResponseWriter, r *http.Request, key cache.Ke
 // 7-day client cache of the success path.
 func sendPictureError(w http.ResponseWriter, r *http.Request, status int, err error, details string, code int) {
 	w.Header().Set("Cache-Control", "no-store")
-	rest.SendErrorJSON(w, r, status, err, details, code)
+	rest.SendErrorJSONFromHelper(w, r, status, err, details, code)
 }
 
 // GET /picture/{user}/{id} - get picture
