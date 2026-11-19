@@ -40,8 +40,8 @@ github.com/gavv/httpexpect v2.0.0+incompatible h1:1X9kcRshkSKEjNJJxX9Y9mQ5BRfbxU
 github.com/gavv/httpexpect v2.0.0+incompatible/go.mod h1:x+9tiU1YnrOvnB725RkpoLv1M62hOWzwo5OXotisrKc=
 github.com/go-oauth2/oauth2/v4 v4.6.0 h1:g1M92LQh9NbDmovPNG2iJ25rtbXPXBrRv+lorehLc44=
 github.com/go-oauth2/oauth2/v4 v4.6.0/go.mod h1:BXiOY+QZtZy2ewbsGk2B5P8TWmtz/Rf7ES5ZttQFxfQ=
-github.com/go-pkgz/auth/v2 v2.4.0 h1:XYNE5YjtnsW99GuwS7sNnc8I7ooM/UCFh0WkRM5Pods=
-github.com/go-pkgz/auth/v2 v2.4.0/go.mod h1:iZx2JiGZ8Aef+wM0BPLMQY8aur4fLE0uyPhFRO9dYQ4=
+github.com/go-pkgz/auth/v2 v2.5.0 h1:b0RsK0A7FbVb2G96oO05xZGhUZBNjQ+6cxctUtA7Y4s=
+github.com/go-pkgz/auth/v2 v2.5.0/go.mod h1:iZx2JiGZ8Aef+wM0BPLMQY8aur4fLE0uyPhFRO9dYQ4=
 github.com/go-pkgz/email v0.8.0 h1:6+Tgjfj7zFccFCPmURV2spKDXDb7aX/iWXBY2hBa9ww=
 github.com/go-pkgz/email v0.8.0/go.mod h1:+wgi4x7S33IuCzfcCM5euN0GwQG6XvO/PBLxrNffYLI=
 github.com/go-pkgz/expirable-cache/v3 v3.2.0 h1:F3gLZ7mRt0aAy2PLHFFhiQP9aHlCIV89gea5cTJ5JMg=

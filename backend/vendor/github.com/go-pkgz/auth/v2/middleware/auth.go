@@ -172,7 +172,7 @@ func (a *Authenticator) auth(reqAuth bool) func(http.Handler) http.Handler {
 // Such users made token before the provider was disabled and should not be allowed to login anymore.
 func (a *Authenticator) isProviderAllowed(claims *token.Claims) bool {
 	// TODO: remove this read when old tokens expire and all new tokens have a provider name in them
-	userIDProvider := strings.Split(claims.User.ID, "_")[0]
+	userIDProvider, _, _ := strings.Cut(claims.User.ID, "_")
 	for _, p := range a.Providers {
 		name := p.Name()
 		if claims.AuthProvider != nil && claims.AuthProvider.Name == name {

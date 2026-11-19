@@ -171,6 +171,18 @@ describe('<Comment />', () => {
     expect(screen.queryByTitle('Reply')).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['anonymous', 'anonymous_1', true],
+    ['signed in with a provider', 'github_1', false],
+  ])('pixelates the avatar of an author only when anonymous: %s', (_, id, pixelated) => {
+    props.data.user.id = id;
+    const { container } = render(<CommentWithIntl {...props} />);
+
+    const avatar = container.querySelector('img.avatar');
+    expect(avatar).toBeInTheDocument();
+    expect(avatar?.classList.contains('avatarIdenticon')).toBe(pixelated);
+  });
+
   it('toggles edit mode', async () => {
     props = getProps();
     props.repliesCount = 0;

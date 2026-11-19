@@ -6,6 +6,7 @@ import { FormattedMessage, useIntl } from 'common/intl';
 import type { User, Theme, PostInfo } from 'common/types';
 import { IS_STORAGE_AVAILABLE, IS_THIRD_PARTY } from 'common/constants';
 import { postMessageToParent } from 'utils/post-message';
+import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { getHandleClickProps } from 'common/accessibility';
 import type { StoreState } from 'store';
 import { useTheme } from 'hooks/useTheme';
@@ -67,7 +68,7 @@ class AuthPanelComponent extends Component<Props, State> {
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>
-            <Avatar url={user.picture} />
+            <Avatar url={user.picture} identicon={isUserAnonymous(user)} />
           </div>
           {user.name}
         </button>{' '}

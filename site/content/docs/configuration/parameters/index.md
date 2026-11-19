@@ -66,6 +66,7 @@ services:
 | avatar.bolt.file               | AVATAR_BOLT_FILE               | `./var/avatars.db`      | avatars `bolt` file location                             |
 | avatar.uri                     | AVATAR_URI                     | `./var/avatars`         | avatars store URI                                        |
 | avatar.rsz-lmt                 | AVATAR_RESIZE                  | `0` (disabled)          | max avatar width and height in pixels; larger avatars are scaled down on save, keeping the aspect ratio |
+| avatar.identicon-size          | AVATAR_IDENTICON_SIZE          | `48`                    | width and height in pixels of the avatar generated for users without a picture; 48 keeps the blocks of the 24px comment avatar sharp at device pixel ratios 1 and 2, and a smaller `avatar.rsz-lmt` scales it down |
 | image.type                     | IMAGE_TYPE                     | `fs`                    | type of image storage, `fs`, `bolt` or `rpc`             |
 | image.fs.path                  | IMAGE_FS_PATH                  | `./var/pictures`        | permanent location of images                             |
 | image.fs.staging               | IMAGE_FS_STAGING               | `./var/pictures.staging` | staging location of images                               |
