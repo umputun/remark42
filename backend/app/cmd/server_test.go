@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -627,17 +626,17 @@ func TestServerApp_ClaimsUpd(t *testing.T) {
 		assert.True(t, res.User.BoolAttr("blocked"))
 	})
 
-	// regression: the block was logged with the whole user, notification email included
+	// regression: the block was logged with the whole user, notification email included. The line is
+	// checked through impersonationLogLine and not by capturing the log: the app's backup goroutine
+	// logs on its own schedule, so replacing the global logger while the app runs is a data race.
 	t.Run("impersonation is logged without the email", func(t *testing.T) {
-		logs := &lockedBuffer{}
-		log.Setup(log.Out(logs), log.Err(io.Discard))
-		t.Cleanup(func() { log.Setup() })
 		_, err := app.restSrv.DataService.SetUserEmail("remark", "email_y", "secret.person@example.com")
 		require.NoError(t, err)
 		res := upd.Update(claimsFor("email_y", "bobuk"))
-		assert.True(t, res.User.BoolAttr("blocked"))
-		assert.Contains(t, logs.String(), "blocked email_y (bobuk), attempt to impersonate")
-		assert.NotContains(t, logs.String(), "secret.person")
+		require.True(t, res.User.BoolAttr("blocked"))
+		require.Equal(t, "secret.person@example.com", res.User.Email, "the blocked user carries the email")
+		assert.Equal(t, "[INFO] blocked email_y (bobuk), attempt to impersonate (restricted names)",
+			impersonationLogLine(res.User))
 	})
 
 	t.Run("regular user may carry a restricted name", func(t *testing.T) {
@@ -1590,22 +1589,4 @@ func TestServerCommand_ExecuteReturnsSetupError(t *testing.T) {
 	// a misconfiguration comes back as an error for main to report, without a stack dump and exit
 	err = s.Execute(args)
 	require.ErrorContains(t, err, "failed to setup application: failed to make data store engine")
-}
-
-// lockedBuffer is a log destination safe for the server's goroutines writing to it concurrently
-type lockedBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *lockedBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.Write(p)
-}
-
-func (b *lockedBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.String()
 }
