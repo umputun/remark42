@@ -19,7 +19,7 @@ We want to inform you that whenever you visit our Service, we collect informatio
 
 ### Cookies
 
-Cookies are files with small amount of data that is commonly used an anonymous unique identifier. These are sent to your browser from the website that you visit and are stored on your computer’s hard drive. Our website uses these “cookies” to confirm user identity. You have the option to either accept or refuse these cookies, and know when a cookie is being sent to your computer. If you choose to refuse our cookies, you may not be able to use some portions of our Service. The comment widget also keeps some data in your browser’s local storage: the email address you type to sign in, until sign-in completes, your unsent comment, and display settings such as sort order and hidden users.
+Cookies are files with small amount of data that is commonly used an anonymous unique identifier. These are sent to your browser from the website that you visit and are stored on your computer’s hard drive. Our website uses these “cookies” to confirm user identity. You have the option to either accept or refuse these cookies, and know when a cookie is being sent to your computer. If you choose to refuse our cookies, you may not be able to use some portions of our Service. The comment widget also keeps some data in your browser’s local storage: the email address you signed in with, until you sign out, your unsent comment, and display settings such as sort order and hidden users.
 
 ### Service Providers
 
@@ -29,7 +29,7 @@ We may employ third-party companies and individuals due to the following reasons
 - To provide the Service on our behalf
 - To perform Service-related services
 
-If you sign in by email, Remark42 sends the sign-in code through the mail server the site operator set up, and sends an MD5 hash of your address to Gravatar to look up your picture. If the operator turns on notifications, the commenter’s name, the text of the comment and of the comment it answers, and the page address are sent to the services the operator configured, such as a mail server, Telegram, Slack or a webhook; if you subscribed to replies, they are delivered to your email address or Telegram account. The login provider you choose knows that you signed in. Pictures that commenters embed from other sites are loaded by your browser from those sites unless the operator turned on the image proxy. On remark42.com, your browser asks GitHub for the latest release number.
+If you sign in by email, Remark42 sends the sign-in code through the mail server the site operator set up, and sends an MD5 hash of your address to Gravatar to look up your picture. If the operator turns on notifications, the commenter’s name, the text of the comment and of the comment it answers, and the page address are sent to the services the operator configured, such as a mail server, Telegram, Slack or a webhook; if you subscribed to replies, they are delivered to your email address or Telegram account. The login provider you choose knows that you signed in. Pictures that commenters embed from other sites are loaded by your browser from those sites, unless the operator set Remark42 to fetch and serve them itself. On remark42.com, your browser asks GitHub for the latest release number.
 
 ### Security
 
