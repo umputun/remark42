@@ -85,9 +85,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      node-emoji:
-        specifier: ^1.11.0
-        version: 1.11.0
       preact:
         specifier: 10.29.8
         version: 10.29.8
@@ -125,9 +122,6 @@ importers:
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
-      '@types/node-emoji':
-        specifier: ^1.8.2
-        version: 1.8.2
       '@types/redux-mock-store':
         specifier: ^1.5.0
         version: 1.5.0
@@ -1687,9 +1681,6 @@ packages:
 
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
-
-  '@types/node-emoji@1.8.2':
-    resolution: {integrity: sha512-PfF1qL/9veo8BSHLV84C9ORNr3lHSlnWJ6yU8OdNufoftajeWHTLVbGHvp2B7e7DPDS9gMs6cfeSsqo5rqSitg==}
 
   '@types/node@26.2.0':
     resolution: {integrity: sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg==}
@@ -4192,9 +4183,6 @@ packages:
 
   no-case@3.0.4:
     resolution: {integrity: sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==}
-
-  node-emoji@1.11.0:
-    resolution: {integrity: sha512-wo2DpQkQp7Sjm2A0cq+sN7EHKO6Sl0ctXeBdFZrL9T9+UywORbufTcTZxom8YqpLQt/FqNMUkOpkZrJVYSKD3A==}
 
   node-exports-info@1.6.2:
     resolution: {integrity: sha512-kXs9Go0cah0qHVV2v389IXQLdLCeE1xfFtjOAF+iobu0OIoG1pje8At2vMHyaPMiPMnG/LWP50twML21eMcAag==}
@@ -7552,8 +7540,6 @@ snapshots:
 
   '@types/mime@1.3.5': {}
 
-  '@types/node-emoji@1.8.2': {}
-
   '@types/node@26.2.0':
     dependencies:
       undici-types: 8.3.0
@@ -10420,10 +10406,6 @@ snapshots:
     dependencies:
       lower-case: 2.0.2
       tslib: 2.8.1
-
-  node-emoji@1.11.0:
-    dependencies:
-      lodash: 4.18.1
 
   node-exports-info@1.6.2:
     dependencies:
