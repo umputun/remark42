@@ -154,13 +154,14 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete user", rest.ErrNoAccess)
 		return
 	}
+	// flush before the avatar removal, which can fail after the comments are gone
+	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 
 	if err = a.removeAvatar(claims.User.Picture, claims.User.ID, audience); err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 
-	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"user_id": claims.User.ID, "site_id": claims.Audience})
 }
 

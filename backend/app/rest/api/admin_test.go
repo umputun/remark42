@@ -366,6 +366,48 @@ func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
 	assert.Empty(t, findText(), "cached comments flushed after the deletion")
 }
 
+// the comments are deleted before the avatar, so a failed avatar removal must not leave them in the cache
+func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1", ID: "user1"}}
+	_, err = srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	findText := func() string {
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+		require.Equal(t, http.StatusOK, code)
+		cmnts := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		require.Len(t, cmnts.Comments, 1)
+		return cmnts.Comments[0].Text
+	}
+	require.Contains(t, findText(), "test test #1") // cached from here on
+
+	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
+	avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
+	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
+			Attributes: map[string]any{"delete_me": true}}})
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := sendReq(req, "")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "avatar-store failure surfaces")
+	assert.Empty(t, findText(), "cached comments flushed after the deletion")
+}
+
 func TestAdmin_Pin(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
