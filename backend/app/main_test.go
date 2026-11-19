@@ -26,7 +26,7 @@ func Test_Main(t *testing.T) {
 
 	port := chooseUnusedPort(t)
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=" + dir,
-		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
+		"--avatar.fs.path=" + dir, "--image.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg", "--notify.type=none"}
 
 	done := make(chan struct{})
 	go func() {
@@ -77,7 +77,7 @@ func TestMain_WithWebhook(t *testing.T) {
 
 	port := chooseUnusedPort(t)
 	os.Args = []string{"test", "server", "--secret=123456", "--store.bolt.path=" + dir, "--backup=" + dir,
-		"--avatar.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg",
+		"--avatar.fs.path=" + dir, "--image.fs.path=" + dir, "--port=" + strconv.Itoa(port), "--url=https://demo.remark42.com", "--dbg",
 		"--admin-passwd=password", "--site=remark", "--notify.admins=webhook"}
 
 	err = os.Setenv("NOTIFY_WEBHOOK_URL", ts.URL)
@@ -132,7 +132,10 @@ func TestGetDump(t *testing.T) {
 // collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
+	// probe on the loopback address the tests dial: on macOS a wildcard bind succeeds on a port
+	// another process holds on 127.0.0.1 only, and requests to that address then reach the other
+	// process instead of the server under test
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "no free port available")
 	port := ln.Addr().(*net.TCPAddr).Port
 	require.NoError(t, ln.Close())

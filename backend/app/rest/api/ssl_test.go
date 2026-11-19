@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,12 +54,11 @@ func TestSSL_ACME_HTTPChallengeRouter(t *testing.T) {
 	rest := Rest{
 		RemarkURL: "https://localhost:443",
 		SSLConfig: SSLConfig{
-			ACMELocation: "acme",
+			ACMELocation: filepath.Join(t.TempDir(), "acme"),
 		},
 	}
 
 	m := rest.makeAutocertManager()
-	defer os.RemoveAll(rest.SSLConfig.ACMELocation)
 
 	ts := httptest.NewServer(rest.httpChallengeRouter(m))
 	defer ts.Close()

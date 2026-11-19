@@ -417,7 +417,8 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+		"--cache.type=redis_pub_sub", "--cache.redis_addr=wrong_address"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
@@ -430,7 +431,8 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--auth.apple.cid=123", "--auth.apple.tid=123",
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+		"--avatar.fs.path=" + tmp, "--auth.apple.cid=123", "--auth.apple.tid=123",
 		"--auth.apple.kid=123", "--auth.apple.private-key-filepath=testdata/apple-bad.p8"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
@@ -443,8 +445,8 @@ func TestServerApp_Failed(t *testing.T) {
 	opts = ServerCommand{}
 	opts.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
 	p = flags.NewParser(&opts, flags.Default)
-	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp, "--auth.custom.name=oidc",
-		"--auth.custom.cid=123"})
+	_, err = p.ParseArgs([]string{"--store.bolt.path=" + tmp, "--backup=" + tmp, "--image.fs.path=" + tmp,
+		"--avatar.fs.path=" + tmp, "--auth.custom.name=oidc", "--auth.custom.cid=123"})
 	assert.NoError(t, err)
 	_, err = opts.newServerApp(context.Background())
 	assert.EqualError(t, err,
@@ -501,6 +503,7 @@ func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
 		"--store.bolt.path=" + tmp,
 		"--backup=" + tmp,
 		"--image.fs.path=" + tmp,
+		"--avatar.fs.path=" + tmp,
 		"--auth.custom.cid=123",
 		"--auth.custom.csec=456",
 		"--auth.custom.auth-url=https://example.com/oauth2/authorize",
@@ -1248,7 +1251,10 @@ func Test_getAllowedRedirectHosts(t *testing.T) {
 // collision between concurrently running package test binaries very unlikely
 func chooseUnusedPort(t *testing.T) int {
 	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
+	// probe on the loopback address the tests dial: on macOS a wildcard bind succeeds on a port
+	// another process holds on 127.0.0.1 only, and requests to that address then reach the other
+	// process instead of the server under test
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "no free port available")
 	port := ln.Addr().(*net.TCPAddr).Port
 	require.NoError(t, ln.Close())
