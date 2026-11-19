@@ -11,6 +11,7 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -54,21 +55,12 @@ type stub struct {
 }
 
 func main() {
-	addr := os.Getenv("STUB_ADDR")
-	if addr == "" {
-		addr = ":8091"
-	}
-	botName := os.Getenv("STUB_BOT_USERNAME")
-	if botName == "" {
-		botName = "remark42_e2e_bot"
-	}
+	addr := cmp.Or(os.Getenv("STUB_ADDR"), ":8091")
+	botName := cmp.Or(os.Getenv("STUB_BOT_USERNAME"), "remark42_e2e_bot")
 	// the token the caller has to present. Checking it is what makes these tests witness the
 	// <base>/bot<token>/<method> construction: without it a build that dropped, truncated or
 	// double-escaped the token would be served exactly as a correct one and every case would pass
-	token := os.Getenv("STUB_BOT_TOKEN")
-	if token == "" {
-		token = "stub-token"
-	}
+	token := cmp.Or(os.Getenv("STUB_BOT_TOKEN"), "stub-token")
 
 	s := &stub{nextID: 1, botName: botName, token: token}
 

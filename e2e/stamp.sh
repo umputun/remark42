@@ -18,32 +18,28 @@ cd "$(dirname "$0")/.."
 
 sources="backend frontend Dockerfile docker-init.sh e2e/telegramstub"
 
-digest() {
-	if command -v sha256sum >/dev/null 2>&1; then
-		sha256sum
-	else
-		shasum -a 256
-	fi
-}
+if command -v sha256sum >/dev/null 2>&1; then
+	sha256=sha256sum
+else
+	sha256='shasum -a 256'
+fi
 
+# shellcheck disable=SC2086 # split the paths, and $sha256 into a command and its arguments
 {
 	# Hash the files on disk, not HEAD plus a diff: staging or committing the same
 	# content must not invalidate a running stack. Skip deleted files, including
 	# staged deletions, so committing their removal leaves the stamp unchanged too.
-	# shellcheck disable=SC2086,SC2016 # split paths; expand $file in the child shell
+	# shellcheck disable=SC2016 # expand $file in the child shell
 	git ls-files -z -- $sources | xargs -0 sh -c '
+		sha256=$1
+		shift
 		for file do
 			if [ -f "$file" ]; then
-				if command -v sha256sum >/dev/null 2>&1; then
-					sha256sum "$file"
-				else
-					shasum -a 256 "$file"
-				fi
+				$sha256 "$file"
 			fi
 		done
-	' sh
+	' sh "$sha256"
 	# Only untracked names belong here; porcelain also records index state.
-	# shellcheck disable=SC2086
 	git ls-files --others --exclude-standard -z -- $sources
 	# an instrumented build is a different binary from the same sources, so it has to be a
 	# different stamp: without this a coverage stack is accepted for a plain run, and a plain
@@ -54,4 +50,4 @@ digest() {
 	1) printf 'coverage=1\n' ;;
 	*) printf 'coverage=\n' ;;
 	esac
-} | digest | cut -c1-16
+} | $sha256 | cut -c1-16

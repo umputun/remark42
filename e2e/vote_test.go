@@ -55,18 +55,12 @@ func TestVote_UpvoteCountsOnce(t *testing.T) {
 
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
 
-	eventually(t, waitTimeout, "score did not reach 1", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "1"
-	})
+	waitText(t, score(voterFrame, text), "1", "score did not reach 1")
 	waitVisible(t, score(voterFrame, text))
 
 	// the vote is stored and not only reflected in local state
 	voterFrame = reload(t, voter)
-	eventually(t, waitTimeout, "score did not survive reload", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "1"
-	})
+	waitText(t, score(voterFrame, text), "1", "score did not survive reload")
 
 	// and the same voter cannot stack a second one. this has to come after the reload: for
 	// 200ms after a click the button is disabled by the in-flight loading state, so checking
@@ -99,32 +93,20 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 		// everything else to a generic "something went wrong", which is also what it shows when
 		// error handling fails altogether. asserting a distinct string is what makes this
 		// assertion mean anything
-		if err := route.Fulfill(playwright.RouteFulfillOptions{
-			Status:      new(409),
-			ContentType: new("application/json"),
-			Body:        `{"code":19,"details":"vote rejected","error":"failed"}`,
-		}); err != nil {
-			t.Errorf("fulfill refused vote response: %v", err)
-		}
+		fulfillJSON(t, route, http.StatusConflict, `{"code":19,"details":"vote rejected","error":"failed"}`)
 	}))
 
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
 
 	// while the request is in flight the widget shows the vote as though it had landed
-	eventually(t, waitTimeout, "the score was never incremented optimistically", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "1"
-	})
+	waitText(t, score(voterFrame, text), "1", "the score was never incremented optimistically")
 
 	unblock()
 
 	// the widget shows its own copy for the status, not the raw body
 	waitVisible(t, target.Locator("text=This action cannot be completed right now."))
 
-	eventually(t, waitTimeout, "the optimistic score was not rolled back", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "0"
-	})
+	waitText(t, score(voterFrame, text), "0", "the optimistic score was not rolled back")
 }
 
 // TestVote_AnonymousVoterCounts covers ANON_VOTE, which the default configuration refuses:
@@ -151,18 +133,12 @@ func TestVote_AnonymousVoterCounts(t *testing.T) {
 	waitVisible(t, target)
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
 
-	eventually(t, waitTimeout, "the anonymous vote did not register", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "1"
-	})
+	waitText(t, score(voterFrame, text), "1", "the anonymous vote did not register")
 
 	// stored, not merely reflected in the optimistic state the click set, which is the half a
 	// refused vote would still satisfy
 	voterFrame = reload(t, voter)
-	eventually(t, waitTimeout, "the anonymous vote did not survive a reload", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "1"
-	})
+	waitText(t, score(voterFrame, text), "1", "the anonymous vote did not survive a reload")
 }
 
 // TestVote_OwnCommentCannotBeVotedOn covers the rule every other vote case has to work around:
@@ -210,20 +186,14 @@ func TestVote_DownvoteAndCorrection(t *testing.T) {
 	// the in-flight guard disables the button anyway, and after the score settles. Nothing in the
 	// browser separates the two, so the assertion would pass against a widget that had lost the
 	// rule. comment-votes.spec.tsx keeps it.
-	eventually(t, waitTimeout, "the downvote did not register", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "-1"
-	})
+	waitText(t, score(voterFrame, text), "-1", "the downvote did not register")
 	// a negative score is styled differently from a positive one, so it is asserted visible on
 	// its own and not inferred from the positive case
 	waitVisible(t, score(voterFrame, text))
 
 	// and it is the server's, not the optimistic state the click set
 	voterFrame = reload(t, voter)
-	eventually(t, waitTimeout, "the downvote did not survive a reload", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "-1"
-	})
+	waitText(t, score(voterFrame, text), "-1", "the downvote did not survive a reload")
 
 	// then the reader changes their mind, which is what #728 asked for and #729 fixed: the
 	// opposite vote has to be accepted and not refused as a repeat. It takes the vote back
@@ -231,16 +201,10 @@ func TestVote_DownvoteAndCorrection(t *testing.T) {
 	// after a reload as well, since a correction the server never recorded leaves the reader
 	// looking at a number nobody else sees
 	require.NoError(t, comment(voterFrame, text).Locator(`button[title="Vote up"]`).Click())
-	eventually(t, waitTimeout, "the opposite vote did not take the downvote back", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "0"
-	})
+	waitText(t, score(voterFrame, text), "0", "the opposite vote did not take the downvote back")
 
 	voterFrame = reload(t, voter)
-	eventually(t, waitTimeout, "the correction did not survive a reload", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "0"
-	})
+	waitText(t, score(voterFrame, text), "0", "the correction did not survive a reload")
 }
 
 // TestVote_WithoutTheXSRFHeaderIsRefused pins the mechanism that decides how the widget can be
@@ -273,10 +237,7 @@ func TestVote_WithoutTheXSRFHeaderIsRefused(t *testing.T) {
 			"rendering is no longer there")
 
 	// and the reader is not left believing it landed
-	eventually(t, waitTimeout, "the optimistic score was not rolled back", func() bool {
-		v, err := pollText(score(voterFrame, text))
-		return err == nil && v == "0"
-	})
+	waitText(t, score(voterFrame, text), "0", "the optimistic score was not rolled back")
 }
 
 // TestVote_BothButtonsAreDisabledWhileTheVoteIsInFlight covers the window between the click and the

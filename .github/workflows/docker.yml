@@ -5,18 +5,57 @@ on:
     workflows: [backend, frontend]
     types: [completed]
 
+# the event is part of the key: a pull request from a fork whose branch is called master would
+# otherwise share the group of master pushes and cancel an image build in flight
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.event }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Docker image (${{ matrix.platform }})
+  # a push touching both backend and frontend completes two workflows, and each completion starts
+  # this one. Build only once the other workflow has finished green for the same commit, or never
+  # ran for it: when it is still running, its own completion starts the build again
+  gate:
+    name: Check the other workflow
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event != 'pull_request' &&
       (github.event.workflow_run.head_branch == 'master' ||
        startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      build: ${{ steps.sibling.outputs.build }}
+    steps:
+      - name: read the other workflow's run for this commit
+        id: sibling
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TRIGGER: ${{ github.event.workflow_run.name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          case "$TRIGGER" in
+            backend) sibling=ci-frontend.yml ;;
+            frontend) sibling=ci-backend.yml ;;
+            *) echo "unexpected triggering workflow: $TRIGGER" >&2; exit 1 ;;
+          esac
+          runs=$(gh api -X GET "repos/$REPO/actions/workflows/$sibling/runs" \
+            -f head_sha="$HEAD_SHA" -f branch="$HEAD_BRANCH" -f event="$EVENT" -f per_page=1)
+          state=$(jq -r '.workflow_runs[0] // {} | "\(.status // "none") \(.conclusion // "")"' <<< "$runs")
+          echo "$sibling for $HEAD_SHA on $HEAD_BRANCH: $state"
+          case "$state" in
+            "none "* | "completed success") echo "build=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "build=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    name: Build Docker image (${{ matrix.platform }})
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     permissions:
       contents: read
       packages: write
@@ -49,12 +88,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.PKG_TOKEN }}
 
-      - name: login to DockerHub
-        uses: docker/login-action@v4
-        with:
-          username: umputun
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
       - name: free disk space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -79,29 +112,12 @@ jobs:
             GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
           outputs: type=image,name=ghcr.io/umputun/remark42,push-by-digest=true,name-canonical=true,push=true
 
-      - name: build and push to DockerHub by digest
-        id: build-dockerhub
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          build-args: |
-            SKIP_BACKEND_TEST=true
-            SKIP_FRONTEND_TEST=true
-            CI=github
-            GITHUB_SHA=${{ github.event.workflow_run.head_sha }}
-            GIT_BRANCH=${{ github.event.workflow_run.head_branch }}
-            GITHUB_REF=refs/heads/${{ github.event.workflow_run.head_branch }}
-          outputs: type=image,name=umputun/remark42,push-by-digest=true,name-canonical=true,push=true
-
-      - name: export digests
+      - name: export digest
+        env:
+          DIGEST: ${{ steps.build-ghcr.outputs.digest }}
         run: |
-          mkdir -p /tmp/digests/ghcr /tmp/digests/dockerhub
-          digest_ghcr="${{ steps.build-ghcr.outputs.digest }}"
-          digest_dockerhub="${{ steps.build-dockerhub.outputs.digest }}"
-          touch "/tmp/digests/ghcr/${digest_ghcr#sha256:}"
-          touch "/tmp/digests/dockerhub/${digest_dockerhub#sha256:}"
+          mkdir -p /tmp/digests/ghcr
+          touch "/tmp/digests/ghcr/${DIGEST#sha256:}"
 
       - name: upload ghcr digest
         uses: actions/upload-artifact@v7
@@ -110,12 +126,6 @@ jobs:
           path: /tmp/digests/ghcr/*
           retention-days: 1
 
-      - name: upload dockerhub digest
-        uses: actions/upload-artifact@v7
-        with:
-          name: digests-dockerhub-${{ matrix.artifact }}
-          path: /tmp/digests/dockerhub/*
-          retention-days: 1
 
   merge:
     name: Create multi-arch manifest
@@ -133,25 +143,16 @@ jobs:
           pattern: digests-ghcr-*
           merge-multiple: true
 
-      - name: download dockerhub digests
-        uses: actions/download-artifact@v8
-        with:
-          path: /tmp/digests/dockerhub
-          pattern: digests-dockerhub-*
-          merge-multiple: true
-
       - name: verify all digests present
         run: |
           expected=2
-          for registry in ghcr dockerhub; do
-            actual=$(find /tmp/digests/$registry -maxdepth 1 -type f | wc -l)
-            if [ "$actual" -ne "$expected" ]; then
-              echo "Expected $expected digests for $registry, found $actual"
-              ls -la /tmp/digests/$registry
-              exit 1
-            fi
-          done
-          echo "All digests present for both registries"
+          actual=$(find /tmp/digests/ghcr -maxdepth 1 -type f | wc -l)
+          if [ "$actual" -ne "$expected" ]; then
+            echo "Expected $expected digests, found $actual"
+            ls -la /tmp/digests/ghcr
+            exit 1
+          fi
+          echo "All digests present"
 
       - name: set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -185,8 +186,9 @@ jobs:
               $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
           fi
 
+      # the per-platform images were pushed to ghcr only; imagetools copies them to DockerHub
       - name: create DockerHub manifest and push
-        working-directory: /tmp/digests/dockerhub
+        working-directory: /tmp/digests/ghcr
         env:
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
@@ -194,11 +196,11 @@ jobs:
             docker buildx imagetools create \
               -t umputun/remark42:${HEAD_BRANCH} \
               -t umputun/remark42:latest \
-              $(printf 'umputun/remark42@sha256:%s ' *)
+              $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
           else
             docker buildx imagetools create \
               -t umputun/remark42:${HEAD_BRANCH} \
-              $(printf 'umputun/remark42@sha256:%s ' *)
+              $(printf 'ghcr.io/umputun/remark42@sha256:%s ' *)
           fi
 
   deploy:

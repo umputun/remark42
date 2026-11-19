@@ -1,0 +1,30 @@
+name: set up go
+description: Install the Go release named by the go directive of a go.mod, at its latest patch
+inputs:
+  go-mod:
+    description: the go.mod whose go directive picks the release
+    required: true
+  cache-dependency-path:
+    description: passed to actions/setup-go
+    required: true
+runs:
+  using: composite
+  steps:
+    # major.minor only, not go-version-file: a patch-level directive, which Dependabot writes,
+    # would otherwise pin CI to that .0 release instead of the latest patch
+    - name: read go version from ${{ inputs.go-mod }}
+      id: gomod
+      shell: bash
+      env:
+        GO_MOD: ${{ inputs.go-mod }}
+      run: |
+        version=$(awk '/^go /{split($2, v, "."); print v[1] "." v[2]; exit}' "$GO_MOD")
+        test -n "$version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    - name: install go
+      uses: actions/setup-go@v7
+      with:
+        go-version: ${{ steps.gomod.outputs.version }}
+        check-latest: true
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
