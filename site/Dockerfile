@@ -1,4 +1,4 @@
-FROM alpine:3.24 AS build
+FROM alpine:3.24 AS hugo
 
 ARG HUGO_VERSION=0.165.0
 ARG TARGETARCH
@@ -23,6 +23,14 @@ RUN apk add --no-cache ca-certificates \
     && rm -f "/tmp/${HUGO_TAR}" /tmp/checksums.txt /tmp/expected.sha256 \
     && hugo version
 
+# docker-compose.yml runs this stage for local development; the default target skips it
+FROM hugo AS dev
+WORKDIR /site
+COPY ./ /site
+EXPOSE 1313
+CMD ["hugo", "server", "--bind", "0.0.0.0", "--port", "1313", "--baseURL", "http://127.0.0.1:1313/", "--appendPort=false"]
+
+FROM hugo AS build
 WORKDIR /site
 COPY ./ /site
 RUN hugo --minify --destination /site/build \

@@ -3,8 +3,8 @@ services:
   server:
     image: remark42-site:dev
     build:
-      dockerfile: Dockerfile.dev
       context: .
+      target: dev
 
     logging:
       driver: json-file
