@@ -95,7 +95,6 @@
     "stylelint-config-standard": "^40.0.0",
     "stylelint-declaration-strict-value": "^1.11.1",
     "stylelint-value-no-unknown-custom-properties": "^6.1.1",
-    "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^5.9.3",
     "webpack": "^5.109.2",
     "webpack-bundle-analyzer": "^5.3.1",
