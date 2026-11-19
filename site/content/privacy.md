@@ -15,7 +15,7 @@ To request deletion, click "Request deletion of my data" on your profile page an
 
 ### Log Data
 
-We want to inform you that whenever you visit our Service, we collect information that your browser sends to us that is called Log Data. Remark42 logs the API and sign-in requests it serves: the address requested with its parameters, the time, the response status, a shortened one-way hash of your IP address and the start of what you submitted, such as the text of a comment. When a request fails, the line can also carry your user name and user ID and, for sign-in errors, your IP address. It does not record your browser version or how long you stay on a page.
+We want to inform you that whenever you visit our Service, we collect information that your browser sends to us that is called Log Data. Remark42 logs the API and sign-in requests it serves: the address requested with its parameters, the time, the response status, a shortened one-way hash of your IP address and the start of what you submitted, such as the text of a comment. When a request fails, the line can also carry your user name and user ID. Some error lines, including sign-in, avatar and failed picture or RSS responses, can carry your IP address. It does not record your browser version or how long you stay on a page.
 
 ### Cookies
 
