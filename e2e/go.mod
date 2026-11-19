@@ -3,7 +3,7 @@ module github.com/umputun/remark42/e2e
 go 1.27
 
 require (
-	github.com/mxschmitt/playwright-go v0.6201.1
+	github.com/mxschmitt/playwright-go v0.6401.0
 	github.com/stretchr/testify v1.12.1
 )
 
