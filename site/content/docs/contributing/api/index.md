@@ -110,7 +110,7 @@ type PostInfo struct {
 
 - `GET /api/v1/user` - get user info, _auth required_
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment. `vote`=1 will increase score, -1 decrease, _auth required_
-- `GET /api/v1/userdata?site=site-id` - export all user data to gz stream, _auth required_
+- `GET /api/v1/userdata?site=site-id` - export all user data to gz stream: user info, notification email and Telegram if stored, and all comments, _auth required_
 - `POST /api/v1/deleteme?site=site-id` - request deletion of user data, _auth required_
 - `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site
 

@@ -393,11 +393,20 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		return comment, fmt.Errorf("minimal score reached for comment %s", req.CommentID)
 	}
 
+	// drop ip hashes outside the same-ip window, they can't restrict a vote anymore; done with the
+	// restriction off as well, so the hashes are not kept forever and turning it on later still works
+	now := time.Now()
+	for ipHash, ipVote := range comment.VotedIPs {
+		if s.sameIPVoteExpired(ipVote, now) {
+			delete(comment.VotedIPs, ipHash)
+		}
+	}
+
 	// add ip hash to voted ip map
 	if comment.VotedIPs == nil {
 		comment.VotedIPs = map[string]store.VotedIPInfo{}
 	}
-	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: time.Now(), Value: req.Val}
+	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: now, Value: req.Val}
 
 	// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 	if voted && v != req.Val {
@@ -444,11 +453,16 @@ func (s *DataStore) isSameIPVote(req VoteReq, userIPHash string, comment store.C
 		if v.Value != req.Val {
 			return false // opposite direction vote allowed
 		}
-		if s.RestrictSameIPVotes.Duration == 0 || v.Timestamp.Add(s.RestrictSameIPVotes.Duration).After(time.Now()) {
-			return true
-		}
+		return !s.sameIPVoteExpired(v, time.Now())
 	}
 	return false
+}
+
+// sameIPVoteExpired reports whether the vote recorded for an ip is outside the same-ip window at the given time.
+// Zero duration means the window never ends.
+func (s *DataStore) sameIPVoteExpired(v store.VotedIPInfo, now time.Time) bool {
+	d := s.RestrictSameIPVotes.Duration
+	return d != 0 && !v.Timestamp.Add(d).After(now)
 }
 
 // controversy calculates controversial index of votes
