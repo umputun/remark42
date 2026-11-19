@@ -63,7 +63,9 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 	log.Printf("[INFO] delete all user comments for %s, site %s", userID, siteID)
 
-	// the route carries only the user ID, so take the avatar from a comment before the hard delete clears it
+	// the route carries only the user ID, so take the avatar from a comment and remove it before the
+	// hard delete clears the comments: if the removal fails, nothing is deleted yet and a retry still
+	// finds the avatar, and a retry after a failed DeleteUser meets avatar.ErrNotFound, which is tolerated
 	picture := ""
 	comments, err := a.dataService.User(siteID, userID, 1, 0, store.User{})
 	switch {
@@ -72,14 +74,13 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	case err != nil && !errors.Is(err, engine.ErrNoUserComments):
 		log.Printf("[WARN] can't get comments of user %s on site %s to find the avatar, %v", userID, siteID, err)
 	}
-
-	if err = a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
+	if err = a.removeAvatar(picture, userID, siteID); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 
-	if err = a.removeAvatar(picture, userID, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+	if err = a.dataService.DeleteUser(siteID, userID, store.HardDelete); err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user", rest.ErrInternal)
 		return
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))

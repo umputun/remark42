@@ -316,6 +316,56 @@ func TestAdmin_DeleteUserAvatar(t *testing.T) {
 	}
 }
 
+// a failed avatar removal leaves the user in place, so a retry still finds the avatar in the comments,
+// and a successful deletion flushes the cached comments
+func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image"}}
+	_, err = srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	findText := func() string {
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+		require.Equal(t, http.StatusOK, code)
+		cmnts := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		require.Len(t, cmnts.Comments, 1)
+		return cmnts.Comments[0].Text
+	}
+	deleteUser := func() int {
+		req, e := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+		require.NoError(t, e)
+		req.SetBasicAuth("admin", "password")
+		resp, e := sendReq(req, "")
+		require.NoError(t, e)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+	require.Contains(t, findText(), "test test #1") // cached from here on
+
+	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
+	avatarFile := os.TempDir() + "/ava-remark42/42/pic.image"
+	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
+	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
+
+	assert.Equal(t, http.StatusInternalServerError, deleteUser(), "avatar-store failure surfaces")
+	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
+	require.NoError(t, err, "comments stay when the avatar removal fails")
+	require.Len(t, comments, 1)
+
+	// the store works again: the retry removes the avatar and the comments
+	require.NoError(t, os.RemoveAll(avatarFile))
+	require.NoError(t, os.WriteFile(avatarFile, []byte("some image data"), 0o600))
+	assert.Equal(t, http.StatusOK, deleteUser())
+	assert.NoFileExists(t, avatarFile, "avatar removed on retry")
+	assert.Empty(t, findText(), "cached comments flushed after the deletion")
+}
+
 func TestAdmin_Pin(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
