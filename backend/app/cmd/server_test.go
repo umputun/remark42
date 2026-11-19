@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/sha1" //nolint:gosec // reproduces the unsalted anonymous ID the server must no longer issue
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -247,6 +248,54 @@ func TestServerApp_AnonMode(t *testing.T) {
 
 	cancel()
 	app.Wait()
+}
+
+// TestServerCommand_AnonymousUserID signs in through the anonymous provider and reads the user ID out
+// of the issued token. The ID is shown with every comment, and so is the name, so the ID must not be
+// computable from the name and the client address without the shared secret.
+func TestServerCommand_AnonymousUserID(t *testing.T) {
+	login := func(t *testing.T, secret, name, addr string) string {
+		t.Helper()
+		s := ServerCommand{}
+		s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: secret})
+		_, err := flags.NewParser(&s, flags.Default).ParseArgs([]string{"--auth.anon"})
+		require.NoError(t, err)
+		authenticator := auth.NewService(auth.Opts{
+			URL:          "https://demo.remark42.com",
+			SecretReader: token.SecretFunc(func(string) (string, error) { return "jwt-secret", nil }),
+		})
+		require.NoError(t, s.addAuthProviders(authenticator))
+		authHandler, _ := authenticator.Handlers()
+
+		req := httptest.NewRequest(http.MethodGet, "/auth/anonymous/login?aud=remark&user="+url.QueryEscape(name), http.NoBody)
+		req.RemoteAddr = addr // as realIPMiddleware leaves it: the bare client IP
+		rr := httptest.NewRecorder()
+		authHandler.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+		for _, c := range rr.Result().Cookies() {
+			if c.Name == "JWT" {
+				claims, err := authenticator.TokenService().Parse(c.Value)
+				require.NoError(t, err)
+				require.NotNil(t, claims.User)
+				return claims.User.ID
+			}
+		}
+		t.Fatalf("no JWT cookie after anonymous login of %q from %s", name, addr)
+		return ""
+	}
+
+	id := login(t, "secret", "blah123", "203.0.113.5")
+	assert.Regexp(t, `^anonymous_[0-9a-f]{40}$`, id)
+
+	unsalted := "anonymous_" + fmt.Sprintf("%x", sha1.Sum([]byte("blah123203.0.113.5"))) //nolint:gosec // the old scheme
+	assert.NotEqual(t, unsalted, id, "ID must not be the plain SHA-1 of name and address")
+	assert.NotEqual(t, id, login(t, "another secret", "blah123", "203.0.113.5"),
+		"ID must depend on the shared secret")
+
+	assert.Equal(t, id, login(t, "secret", "blah123", "203.0.113.5"), "same name and address keep the ID")
+	assert.NotEqual(t, id, login(t, "secret", "blah123", "203.0.113.6"), "another address gets another ID")
+	assert.NotEqual(t, login(t, "secret", "abc1", "2.3.4.5"), login(t, "secret", "abc", "12.3.4.5"),
+		"name and address must not run together")
 }
 
 func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn string, claims token.Claims) {
