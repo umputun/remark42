@@ -16,6 +16,9 @@ import (
 // Disqus implements Importer from disqus xml
 type Disqus struct {
 	DataStore Store
+	Avatars   AvatarSaver // stores the avatars of disqus users; without it comments are imported without avatars
+
+	avatars *disqusAvatars // set up from Avatars on import, tests replace it
 }
 
 type disqusThread struct {
@@ -54,11 +57,47 @@ type uid struct {
 
 // Import from disqus and save to store
 func (d *Disqus) Import(r io.Reader, siteID string) (size int, err error) {
-	return importComments(d.DataStore, r, siteID, d.convert)
+	pictures := map[string]string{}
+	if d.Avatars != nil || d.avatars != nil {
+		// the export is read twice, avatars first, so the site keeps its comments while they are fetched
+		rs, start, cleanup, e := seekable(r)
+		if e != nil {
+			return 0, e
+		}
+		defer cleanup()
+		pictures = d.fetchAvatars(rs)
+		if _, e = rs.Seek(start, io.SeekStart); e != nil {
+			return 0, fmt.Errorf("can't rewind disqus export: %w", e)
+		}
+		r = rs
+	}
+	return importComments(d.DataStore, r, siteID, func(r io.Reader, siteID string, emit func(store.Comment) error) error {
+		return d.convertWithAvatars(r, siteID, pictures, emit)
+	})
+}
+
+// fetchAvatars stores the avatars of the commenters in the export and returns their URLs by username.
+// An export that can't be read gets no avatars, and the import itself reports what is wrong with it.
+func (d *Disqus) fetchAvatars(r io.Reader) map[string]string {
+	usernames, err := disqusUsernames(r)
+	if err != nil {
+		log.Printf("[WARN] can't read disqus export for avatars, %v", err)
+		return map[string]string{}
+	}
+	avatars := d.avatars
+	if avatars == nil {
+		avatars = newDisqusAvatars(d.Avatars)
+	}
+	return avatars.fetch(usernames)
 }
 
 // convert reads disqus export (xml) from r and passes each comment to emit
 func (d *Disqus) convert(r io.Reader, siteID string, emit func(store.Comment) error) error {
+	return d.convertWithAvatars(r, siteID, nil, emit)
+}
+
+// convertWithAvatars is convert that sets the avatar URLs of disqus users from pictures, by username
+func (d *Disqus) convertWithAvatars(r io.Reader, siteID string, pictures map[string]string, emit func(store.Comment) error) error {
 	postsMap := map[string]string{} // tid:url
 	decoder := xml.NewDecoder(r)
 
@@ -129,7 +168,7 @@ func (d *Disqus) convert(r io.Reader, siteID string, emit func(store.Comment) er
 					ID:      comment.UID,
 					Locator: store.Locator{URL: url, SiteID: siteID},
 					User: store.User{
-						ID:   "disqus_" + store.EncodeID(comment.AuthorUserName),
+						ID:   disqusUserID(comment.AuthorUserName),
 						Name: comment.AuthorName,
 						IP:   comment.IP,
 					},
@@ -140,6 +179,10 @@ func (d *Disqus) convert(r io.Reader, siteID string, emit func(store.Comment) er
 				}
 				if comment.AuthorUserName == "" { // empty comment.AuthorUserName from disqus
 					c.User.ID = "disqus_" + store.EncodeID(c.User.Name)
+				} else {
+					// a guest without a disqus account may share the user id of an account named like them,
+					// so the avatar goes by username
+					c.User.Picture = pictures[comment.AuthorUserName]
 				}
 				if c.ID == "" { // no comment.UID
 					c.ID = comment.ID

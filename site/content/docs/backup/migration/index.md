@@ -10,6 +10,8 @@ Remark42 supports importing comments from Disqus, WordPress, Commento, or native
 2. Move this file to your Remark42 host within `./var` and extract, i.e., `gunzip <disqus-export-name>.xml.gz`
 3. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 import -p disqus -f /srv/var/{disqus-export-name}.xml -s {your site ID}`
 
+The import also fetches each commenter's avatar from Disqus and stores it with the other avatars, so Remark42 serves it without linking to Disqus. Avatars are fetched before the existing comments are replaced, at about ten users a second; a commenter without a Disqus avatar, or whose avatar Disqus fails to return, is imported without one. The server needs outbound HTTPS access to `disqus.com` and `disquscdn.com` for this, and imports the comments without avatars when Disqus can't be reached.
+
 ### Initial import from WordPress
 
 1. Use [that instruction](https://wordpress.com/support/export/) to export comments to file using standard WordPress functionality
