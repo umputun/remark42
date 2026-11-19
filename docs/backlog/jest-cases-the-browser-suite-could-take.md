@@ -15,9 +15,9 @@ worth more than the list itself.
 
 ## Selectors the browser cannot reach
 
-`tasks/babel-plugin-remove-test-id.js` removes `data-testid` from anything but a test build, so a
-browser case cannot select by it. Only one of the elements these jest cases assert through is
-actually stuck behind that:
+When this list was made, a local babel plugin removed `data-testid` from anything but a test
+build, so a browser case could not select by it. The attribute ships as written now. Only one of
+the elements these jest cases assert through was actually stuck behind that:
 
 - **done.** `comments-counter` in `profile.spec.tsx` is
   `<div className={styles.container} data-testid="comments-counter">`. Its only class is hashed by
@@ -91,9 +91,12 @@ jest or go away on their own when the code changes.
 
 ## What the static build would settle on its own
 
-Thirty-four of the cases still in jest exist because of the build rather than because of the
-behaviour: eighteen assert a hashed css-module class and sixteen select by a `data-testid` the
-production bundle strips. With static css there is no hash to pin and the class in the source is
-the class in the browser, so those assertions have nothing left to say and the browser can select
-what ships. Covering them now would mean writing browser cases whose purpose disappears with the
-build, which is why they are left here rather than done.
+Eighteen of the cases still in jest exist because of the build rather than because of the
+behaviour: they assert a hashed css-module class. With static css there is no hash to pin and the
+class in the source is the class in the browser, so those assertions have nothing left to say.
+Covering them now would mean writing browser cases whose purpose disappears with the build, which
+is why they are left here rather than done.
+
+Sixteen more select by a `data-testid`. The production bundle stripped that attribute when this
+list was made and ships it now, so a browser case can select by it and these no longer wait on
+the build.

@@ -502,7 +502,6 @@ func TestComment_AdminActionsKeepTheirOrder(t *testing.T) {
 	signInDev(t, admin, adminFrame)
 
 	// the class is kept outside the css modules for this: the production bundle hashes the rest
-	// and strips the data-testid the unit suite selects by
 	additional := comment(adminFrame, text).Locator(".comment-actions-additional").First()
 	waitVisible(t, additional)
 

@@ -49,11 +49,9 @@ is a file-relative config and would not reach `node_modules`, so the ESM-only pa
 
 Babel merges an `env` block over the root rather than replacing it, so anything the test run must
 not see has to be decided before the object is built rather than put in an `env`. `jest.config.mjs`
-sets `BABEL_ENV` itself and `.babelrc.js` reads it for two things: the compile targets, and the
-`data-testid` stripper, which the suites query by and the bundle must not carry. Verify with
-`grep -c data-testid public/*.mjs` after a production build; it must be 0. The plugin matches a
-literal `JSXAttribute`, which is every use in the tree; a spread such as
-`{...{'data-testid': x}}` would reach production, and that grep is what would catch it.
+sets `BABEL_ENV` itself and `.babelrc.js` reads it for two things: the compile targets, and
+keeping the e2e coverage instrumentation out of the suites. The `data-testid` attributes the
+suites query by ship in the bundle as written; nothing strips them.
 
 `tsconfig.json` types but never emits, so its `target` has no effect on output; browserslist in
 `.babelrc.js` decides that. Type checking runs out of band through

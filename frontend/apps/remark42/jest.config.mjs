@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 // babel reads this to pick the test branch of .babelrc.js; setting it here rather than relying on
-// NODE_ENV means running the suite under any other NODE_ENV still keeps data-testid attributes
+// NODE_ENV means running the suite under any other NODE_ENV still compiles for the current node
 process.env.BABEL_ENV = 'test';
 
 /**

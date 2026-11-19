@@ -7,11 +7,10 @@ const preactPreset = [
 ];
 
 const presets = ['@babel/preset-env', preactPreset, '@babel/preset-typescript'];
-const removeTestId = './tasks/babel-plugin-remove-test-id.js';
 
 // jest reads this same config and sets BABEL_ENV itself, and babel merges an `env` block over
 // the root rather than replacing it, so the test branch is decided here rather than as an `env`:
-// the suites query by data-testid and the stripper must not reach them.
+// the suites compile for the node running them, and are never instrumented for e2e coverage.
 const isTest = process.env.BABEL_ENV === 'test';
 
 // the e2e suite reports what it reaches in the widget the same way it does in the backend: the
@@ -29,5 +28,5 @@ const istanbul = ['istanbul', { coverageGlobalScope: 'window', coverageGlobalSco
 module.exports = {
   targets: isTest ? { node: 'current' } : 'defaults, not IE 11, not samsung 12',
   presets,
-  plugins: isTest ? [] : [removeTestId, ...(isCoverage ? [istanbul] : [])],
+  plugins: !isTest && isCoverage ? [istanbul] : [],
 };
