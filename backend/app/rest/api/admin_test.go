@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	adminstore "github.com/umputun/remark42/backend/app/store/admin"
 	"github.com/umputun/remark42/backend/app/store/engine"
+	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
 
@@ -215,6 +217,244 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	assert.Equal(t, "", cmntWithInfo.Comments[2].Orig)
 	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, cmntWithInfo.Comments[2].User)
 	assert.True(t, cmntWithInfo.Comments[2].Deleted)
+}
+
+// an admin deleting a comment removes the author's own upload and keeps another user's upload the comment showed
+func TestAdmin_DeleteCommentPictures(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+	imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+	defer imgSvc.Close(context.Background())
+	srv.DataService.ImageService = imgSvc
+
+	for _, id := range []string{"user1/own.png", "user2/other.png"} {
+		require.NoError(t, fs.Save(id, []byte("image data")))
+		require.NoError(t, fs.Commit(id))
+	}
+	now := time.Now()
+	for _, c := range []store.Comment{
+		{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/> <img src="` + srv.RemarkURL +
+			`/api/v1/picture/user2/other.png"/>`, Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+			User: store.User{ID: "user1", Name: "user1"}, Timestamp: now},
+		{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`,
+			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"},
+			User:    store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+	} {
+		_, err := srv.DataService.Engine.Create(c) // directly to the engine, the pictures are already committed
+		require.NoError(t, err)
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/comment/c1?site=remark42&url=https://radio-t.com/blah", http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := sendReq(req, "")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	_, err = fs.Load("user1/own.png")
+	assert.Error(t, err, "the author's own upload removed")
+	data, err := fs.Load("user2/other.png")
+	require.NoError(t, err, "another user's upload kept, though the deleted comment showed it")
+	assert.Equal(t, "image data", string(data))
+}
+
+// every route that deletes a user's comments removes the pictures used in them and keeps those of other users
+func TestAdmin_DeleteUserPictures(t *testing.T) {
+	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) *http.Request {
+		claims := token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+			User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}}}
+		tkn, err := srv.Authenticator.TokenService().Token(claims)
+		require.NoError(t, err)
+		req, err := http.NewRequest(http.MethodGet, tsURL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
+		require.NoError(t, err)
+		return req
+	}
+	tbl := []struct {
+		name  string
+		reqFn func(t *testing.T, srv *Rest, tsURL string) *http.Request
+	}{
+		{name: "admin delete user", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
+			req, err := http.NewRequest(http.MethodDelete, tsURL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+			require.NoError(t, err)
+			return req
+		}},
+		{name: "delete me", reqFn: deleteMeReq},
+		{name: "permanent block", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
+			req, err := http.NewRequest(http.MethodPut, tsURL+"/api/v1/admin/user/user1?site=remark42&block=1", http.NoBody)
+			require.NoError(t, err)
+			return req
+		}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+			defer imgSvc.Close(context.Background())
+			srv.DataService.ImageService = imgSvc
+
+			for _, id := range []string{"user1/own.png", "user2/other.png"} {
+				require.NoError(t, fs.Save(id, []byte("image data")))
+				require.NoError(t, fs.Commit(id))
+			}
+			// distinct timestamps: bolt keys a user's comment references by timestamp alone
+			now := time.Now()
+			locator := func(page string) store.Locator {
+				return store.Locator{SiteID: "remark42", URL: "https://radio-t.com/" + page}
+			}
+			for _, c := range []store.Comment{
+				{ID: "c1", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user1/own.png"/>`, Locator: locator("blah"),
+					User: store.User{ID: "user1", Name: "user1"}, Timestamp: now},
+				{ID: "c2", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator("blah2"),
+					User: store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+				// user1 shows user2's upload on a page user2 has not commented on
+				{ID: "c3", Text: `<img src="` + srv.RemarkURL + `/api/v1/picture/user2/other.png"/>`, Locator: locator("blah3"),
+					User: store.User{ID: "user1", Name: "user1"}, Timestamp: now.Add(2 * time.Second)},
+			} {
+				_, err := srv.DataService.Engine.Create(c) // directly to the engine, the picture is already committed
+				require.NoError(t, err)
+			}
+
+			req := tt.reqFn(t, srv, ts.URL)
+			req.SetBasicAuth("admin", "password")
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			_, err = fs.Load("user1/own.png")
+			assert.Error(t, err, "picture from the deleted user's comment removed")
+			data, err := fs.Load("user2/other.png")
+			require.NoError(t, err, "another user's upload kept, though the deleted user's comment showed it")
+			assert.Equal(t, "image data", string(data))
+		})
+	}
+}
+
+func TestAdmin_DeleteUserAvatar(t *testing.T) {
+	for _, avatarExists := range []bool{true, false} {
+		t.Run(fmt.Sprintf("avatar exists %v", avatarExists), func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			avatarFile := testAvatarDir(srv) + "/42/pic.image"
+			if avatarExists {
+				require.NoError(t, os.MkdirAll(filepath.Dir(avatarFile), 0o700))
+				require.NoError(t, os.WriteFile(avatarFile, []byte("some image data"), 0o600))
+			}
+			c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+				User: store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image"}}
+			_, err := srv.DataService.Create(c)
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+			require.NoError(t, err)
+			req.SetBasicAuth("admin", "password")
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusOK, resp.StatusCode, "a missing avatar does not fail the deletion")
+			assert.NoFileExists(t, avatarFile, "user's avatar removed on admin user deletion")
+		})
+	}
+}
+
+// a failed avatar removal leaves the user in place, so a retry still finds the avatar in the comments,
+// and a successful deletion flushes the cached comments
+func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image"}}
+	_, err = srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	findText := func() string {
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+		require.Equal(t, http.StatusOK, code)
+		cmnts := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		require.Len(t, cmnts.Comments, 1)
+		return cmnts.Comments[0].Text
+	}
+	deleteUser := func() int {
+		req, e := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
+		require.NoError(t, e)
+		req.SetBasicAuth("admin", "password")
+		resp, e := sendReq(req, "")
+		require.NoError(t, e)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+	require.Contains(t, findText(), "test test #1") // cached from here on
+
+	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
+	avatarFile := testAvatarDir(srv) + "/42/pic.image"
+	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
+	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
+
+	assert.Equal(t, http.StatusInternalServerError, deleteUser(), "avatar-store failure surfaces")
+	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
+	require.NoError(t, err, "comments stay when the avatar removal fails")
+	require.Len(t, comments, 1)
+
+	// the store works again: the retry removes the avatar and the comments
+	require.NoError(t, os.RemoveAll(avatarFile))
+	require.NoError(t, os.WriteFile(avatarFile, []byte("some image data"), 0o600))
+	assert.Equal(t, http.StatusOK, deleteUser())
+	assert.NoFileExists(t, avatarFile, "avatar removed on retry")
+	assert.Empty(t, findText(), "cached comments flushed after the deletion")
+}
+
+// the comments are deleted before the avatar, so a failed avatar removal must not leave them in the cache
+func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
+	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+	require.NoError(t, err)
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1", ID: "user1"}}
+	_, err = srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	findText := func() string {
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
+		require.Equal(t, http.StatusOK, code)
+		cmnts := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		require.Len(t, cmnts.Comments, 1)
+		return cmnts.Comments[0].Text
+	}
+	require.Contains(t, findText(), "test test #1") // cached from here on
+
+	// a non-empty directory where the avatar file is expected makes Store.Remove fail with a real error
+	avatarFile := testAvatarDir(srv) + "/42/pic.image"
+	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
+	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
+			Attributes: map[string]any{"delete_me": true}}})
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := sendReq(req, "")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "avatar-store failure surfaces")
+	assert.Empty(t, findText(), "cached comments flushed after the deletion")
 }
 
 func TestAdmin_Pin(t *testing.T) {

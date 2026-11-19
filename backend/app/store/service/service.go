@@ -816,7 +816,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		s.repliesCache.Delete(comment.ParentID)
 	}
 
-	// delete images from the comment if they are not reused elsewhere in comments to the same page
+	// delete the author's own images from the comment if they are not reused elsewhere in comments to the same page
 	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
 		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
 		if e != nil {
@@ -832,7 +832,7 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 		}
 		return imgIDs
 	}
-	commentImgIDs := s.ImageService.ExtractPictures(comment.Text)
+	commentImgIDs := s.ownPictures(comment.User.ID, comment.Text)
 	pageImgIDs := idsFn()
 	for _, id := range commentImgIDs {
 		if !slices.Contains(pageImgIDs, id) {
@@ -847,10 +847,96 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	return s.Engine.Delete(req)
 }
 
-// DeleteUser removes all comments from user
+// DeleteUser removes all comments from user, along with the pictures used in them
 func (s *DataStore) DeleteUser(siteID, userID string, mode store.DeleteMode) error {
+	// collect the pictures before the comments are blanked, delete them only once the comments are gone
+	imgIDs := s.userPictures(siteID, userID)
 	req := engine.DeleteRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, DeleteMode: mode}
-	return s.Engine.Delete(req)
+	if err := s.Engine.Delete(req); err != nil {
+		return err
+	}
+	for _, id := range imgIDs {
+		if err := s.ImageService.Delete(id); err != nil {
+			log.Printf("[WARN] failed to delete image %s on user %s deletion, %v", id, userID, err)
+		}
+	}
+	return nil
+}
+
+// ownPictures returns the IDs of the pictures in commentHTML that userID uploaded, saved as userID/<guid>.
+// A comment can also show another user's upload or a cached external image, which other comments may
+// use on any page, so deleting the comment or its author must leave those alone
+func (s *DataStore) ownPictures(userID, commentHTML string) []string {
+	res := []string{}
+	for _, id := range s.ImageService.ExtractPictures(commentHTML) {
+		if strings.HasPrefix(id, userID+"/") {
+			res = append(res, id)
+		}
+	}
+	return res
+}
+
+// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
+// those other users' comments to the same pages also use, the same check Delete makes for one comment
+func (s *DataStore) userPictures(siteID, userID string) []string {
+	userImgIDs := []string{}
+	pages := map[string]bool{}
+	seen := map[string]bool{}
+	// read the user's comments page by page; stop on a page with nothing new, as an engine may ignore Skip
+	for skip := 0; ; {
+		comments, err := s.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Skip: skip})
+		if err != nil {
+			if !errors.Is(err, engine.ErrNoUserComments) {
+				log.Printf("[WARN] can't get comments of user %s for image cleanup, %v", userID, err)
+			}
+			return nil
+		}
+		added := 0
+		for _, c := range comments {
+			key := c.Locator.URL + "|" + c.ID
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			added++
+			if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
+				userImgIDs = append(userImgIDs, ids...)
+				pages[c.Locator.URL] = true
+			}
+		}
+		if added == 0 {
+			break
+		}
+		skip += len(comments)
+	}
+	if len(userImgIDs) == 0 {
+		return nil
+	}
+
+	skipIDs := map[string]bool{} // pictures other users use, then also the ones already listed
+	for url := range pages {
+		comments, err := s.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: siteID, URL: url}})
+		if err != nil {
+			log.Printf("[WARN] can't get comments of %s for image cleanup of user %s, %v", url, userID, err)
+			return nil
+		}
+		for _, c := range comments {
+			if c.User.ID != userID {
+				for _, id := range s.ImageService.ExtractPictures(c.Text) {
+					skipIDs[id] = true
+				}
+			}
+		}
+	}
+
+	res := []string{}
+	for _, id := range userImgIDs {
+		if !skipIDs[id] {
+			skipIDs[id] = true
+			res = append(res, id)
+		}
+	}
+	return res
 }
 
 // List of commented posts
