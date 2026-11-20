@@ -290,6 +290,43 @@ func TestNative_ImportRestoresMetasWhenCommentRejected(t *testing.T) {
 	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}), "read-only post restored")
 }
 
+func TestNative_ImportKeepsCommentsOfReadOnlyPost(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	closed := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	require.NoError(t, b.SetReadOnly(closed, true))
+
+	// a restore into the same store, as the remap does: the site is cleared and the post stays read-only
+	buf := &bytes.Buffer{}
+	_, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+	size, err := (&Native{DataStore: b}).Import(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	comments, err := b.Engine.Find(engine.FindRequest{Locator: closed})
+	require.NoError(t, err)
+	require.Len(t, comments, 1, "the comment of the read-only post is back")
+	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)
+	assert.True(t, b.IsReadOnly(closed), "the post is still read-only")
+}
+
+func TestNative_ImportKeepsCommentsWithRestrictedWords(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	buf := &bytes.Buffer{}
+	_, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+
+	// both stored comments hold a word restricted after they were written
+	b.RestrictedWordsMatcher = service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"text*"}})
+	size, err := (&Native{DataStore: b}).Import(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+}
+
 func TestNative_ImportSkipsRecordWithWrongValue(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()

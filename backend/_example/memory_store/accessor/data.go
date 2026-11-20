@@ -55,7 +55,8 @@ func NewMemData() *MemData {
 // Create new comment
 func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 
-	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro {
+	// an imported comment is written whatever the post's state, as in the bolt engine
+	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro && !comment.Imported {
 		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 

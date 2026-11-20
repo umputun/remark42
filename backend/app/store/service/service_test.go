@@ -604,6 +604,12 @@ func TestService_RestrictedWords(t *testing.T) {
 	id, err := b.Create(reply)
 	assert.EqualError(t, err, ErrRestrictedWordsFound.Error(), "should fail with RestrictedWordError")
 	assert.Empty(t, id)
+
+	// an import brings back comments the site already had, whatever words are restricted now
+	reply.Imported = true
+	id, err = b.Create(reply)
+	require.NoError(t, err)
+	assert.Equal(t, "c-1", id)
 }
 
 func TestDataStore_AdminStoreErrors(t *testing.T) {

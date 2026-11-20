@@ -88,7 +88,9 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 		return "", err
 	}
 
-	if b.checkFlag(FlagRequest{Locator: comment.Locator, Flag: ReadOnly}) {
+	// an imported comment is written whatever the post's state: a restore, an import or a remap has to
+	// bring back the comments of a post closed for new ones
+	if !comment.Imported && b.checkFlag(FlagRequest{Locator: comment.Locator, Flag: ReadOnly}) {
 		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 

@@ -62,6 +62,11 @@ func TestMemData_CreateFailedReadOnly(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
 
+	imported := comment
+	imported.ID, imported.Imported = "id-imported", true
+	_, err = b.Create(imported)
+	require.NoError(t, err, "an import writes to a read-only post")
+
 	flagReq = engine.FlagRequest{Locator: comment.Locator, Flag: engine.ReadOnly, Update: engine.FlagFalse}
 	v, err = b.Flag(flagReq)
 	require.NoError(t, err)

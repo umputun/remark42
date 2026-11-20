@@ -88,7 +88,8 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", fmt.Errorf("failed to prepare comment: %w", err)
 	}
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+	// restricted words are checked on new comments only, an import brings back what the site already had
+	if !comment.Imported && s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
 		return "", ErrRestrictedWordsFound
 	}
 
