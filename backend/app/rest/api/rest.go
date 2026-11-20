@@ -206,7 +206,7 @@ func (s *Rest) routes() http.Handler {
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), recoverer(log.Default()))
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
