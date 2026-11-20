@@ -905,7 +905,7 @@ func TestServerAuthHooks(t *testing.T) {
 	}
 
 	// block user github_dev as admin
-	status, body = do(http.MethodPut, "/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", "", "admin")
+	status, body = do(http.MethodPut, "/api/v1/admin/user/github_dev?site=remark&block=1&ttl=240h", "", "admin")
 	assert.Equal(t, http.StatusOK, status, "user github_dev blocked, %s", body)
 
 	// try add a comment with blocked user
