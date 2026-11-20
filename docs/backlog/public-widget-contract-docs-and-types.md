@@ -29,7 +29,7 @@ Three behaviours are documented nowhere and will bite anyone building against it
 
 Also undocumented: the embed script creates an instance *before* dispatching `REMARK42::ready`, so the
 event means the global is safe to touch rather than that nothing is mounted; and `__colors__` reaches
-the iframe through `window.name` (`templates/iframe.ejs:42-44`) rather than the URL, so it is read once
+the iframe through `window.name` (the inline script in `backend/app/webassets/assets/iframe.html`) rather than the URL, so it is read once
 at boot and is not a runtime API.
 
 ## The types half, and the open decision

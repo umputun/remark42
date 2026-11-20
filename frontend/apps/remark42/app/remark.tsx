@@ -57,7 +57,7 @@ async function init(): Promise<void> {
     }
   });
 
-  // the inline listener in iframe.ejs keeps the latest theme the parent posted before this bundle
+  // the inline listener in iframe.html keeps the latest theme the parent posted before this bundle
   // ran; the URL only has the one the iframe was built with
   const current = window.remark_config?.theme;
   applyTheme(current && THEMES.includes(current) ? current : theme);

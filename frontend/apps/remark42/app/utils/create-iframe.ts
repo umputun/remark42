@@ -37,7 +37,7 @@ export function createIframe({ __colors__, custom_properties, styles, onReveal, 
 
   setAttributes(iframe, {
     src: `${BASE_URL}/web/iframe.html?${query}`,
-    // wire format stays __colors__ - only iframe.ejs reads this, and it never sees the
+    // wire format stays __colors__ - only iframe.html reads this, and it never sees the
     // public config names above. custom_properties wins on a key both set.
     name: JSON.stringify({ __colors__: { ...__colors__, ...custom_properties } }),
     tabindex: '0',

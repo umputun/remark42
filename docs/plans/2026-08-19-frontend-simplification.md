@@ -105,8 +105,8 @@ The list any no-bundler proposal has to answer for.
 - code-splits the locale catalogues
 - runs an autoprefixer pass against a browserslist query. Without a transpiler that query becomes the
   literal browser floor and source syntax ships as written
-- builds the widget's own document, `iframe.html`. The other pages are plain files among the
-  embedded assets, including the fallback page a reader is offered when the widget detects a
+- no longer builds any HTML page: all of them are plain files among the embedded assets, including
+  the widget's own document and the fallback page a reader is offered when the widget detects a
   third-party context with storage unavailable. This is the one point where multi-domain hosting
   constrains this work: that page went unbuilt from the January 2021 rewrite until #2197 restored
   it, so it returned 404 for four years in exactly the configuration that needs it

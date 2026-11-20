@@ -31,8 +31,8 @@ describe('remark', () => {
     document.documentElement.style.colorScheme = '';
   });
 
-  it('takes the theme iframe.ejs kept over the one in the URL', async () => {
-    // what the inline listener in iframe.ejs leaves for a theme posted before the bundle ran
+  it('takes the theme iframe.html kept over the one in the URL', async () => {
+    // what the inline listener in iframe.html leaves for a theme posted before the bundle ran
     window.remark_config.theme = 'dark';
 
     const store = await start();
