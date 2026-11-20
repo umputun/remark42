@@ -76,7 +76,8 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't get comments of user %s on site %s to find the avatar, %v", userID, siteID, err)
 	}
 	if err = a.removeAvatar(picture, userID, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("avatar store error"),
+			"can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 
@@ -160,7 +161,8 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 
 	if err = a.removeAvatar(claims.User.Picture, claims.User.ID, audience); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("avatar store error"),
+			"can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 

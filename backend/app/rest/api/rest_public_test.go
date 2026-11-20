@@ -84,15 +84,7 @@ func TestRest_Preview(t *testing.T) {
 	b, err = io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t,
-		string(b),
-		`{"code":20,"details":"can't load picture from the comment",`+
-			`"error":"can't get image stats for dev_user/bad_picture: stat`,
-	)
-	assert.Contains(t,
-		string(b),
-		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
-	)
+	assert.Equal(t, `{"code":20,"details":"can't load picture from the comment","error":"image not found"}`+"\n", string(b))
 
 	// test quotes with and without smartypants
 	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -116,22 +108,17 @@ func TestRest_Preview(t *testing.T) {
 func TestRest_PreviewWithWrongImage(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
+	logs := captureLog(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	body, e := readErrorResponse(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t,
-		string(b),
-		`{"code":20,"details":"can't load picture from the comment",`+
-			`"error":"can't get image stats for dev_user/bad_picture: stat `,
-	)
-	assert.Contains(t,
-		string(b),
-		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
-	)
+	assert.Equal(t, errorResponse{Error: "image not found", Details: "can't load picture from the comment", Code: 20}, e,
+		"the store error is replaced in the body")
+	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
+	assert.Contains(t, logs.String(), serverDir(srv)+"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory",
+		"the store error, with the path, is still logged")
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {

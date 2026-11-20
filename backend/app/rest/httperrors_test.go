@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-pkgz/auth/v2/token"
+	"github.com/go-pkgz/lgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,6 +35,23 @@ func TestSendErrorJSON(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"error 500"}`+"\n", string(body))
+}
+
+func TestSendErrorJSONAs(t *testing.T) {
+	logs := &bytes.Buffer{}
+	lgr.Setup(lgr.Out(logs), lgr.Err(logs))
+	t.Cleanup(func() { lgr.Setup() })
+
+	req := httptest.NewRequest(http.MethodGet, "/error", http.NoBody)
+	rec := httptest.NewRecorder()
+	SendErrorJSONAs(rec, req, http.StatusBadRequest, fmt.Errorf("open /srv/data/file: denied"), fmt.Errorf("store error"),
+		"error details 123456", 123)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, `{"code":123,"details":"error details 123456","error":"store error"}`+"\n", rec.Body.String())
+	assert.Contains(t, logs.String(), "error details 123456 - open /srv/data/file: denied - 400 (123)", "full error logged")
+	assert.Contains(t, logs.String(), " rest.TestSendErrorJSONAs]", "the caller's line logged")
+	assert.NotContains(t, logs.String(), "store error")
 }
 
 func TestSendErrorHTML(t *testing.T) {

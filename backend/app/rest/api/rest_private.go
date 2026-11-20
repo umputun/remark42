@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -92,7 +93,7 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		err := s.imageService.ResetCleanupTimer(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("image not found"), "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
@@ -130,7 +131,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		_, err := s.imageService.Load(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("image not found"), "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
@@ -792,20 +793,23 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	// so ParseMultipartForm cannot read more than that regardless of the in-memory threshold.
 	// The 5 MB argument is the soft threshold above which the form is spilled to disk.
 	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { //nolint:gosec // bounded by MaxBytesReader above
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("upload storage error")),
+			"can't parse multipart form", rest.ErrDecode)
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
+		// a part over the in-memory limit is read back from a temp file, whose error names its path
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("upload storage error")),
+			"can't get image file from the request", rest.ErrInternal)
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	id, err := s.imageService.Save(user.ID, file)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, imageRejection(err), "can't save image", rest.ErrInternal)
 		return
 	}
 
@@ -830,4 +834,25 @@ func extractIP(remoteAddr string) string {
 		return remoteAddr // already a bare IP (no port)
 	}
 	return ip
+}
+
+// imageRejection returns err when the image service rejected the upload itself, as too large, not an image or
+// malformed, since API users tell those cases apart by the text. Any other error comes from the image store and
+// can name a file on the server, so a fixed error is returned in its place
+func imageRejection(err error) error {
+	for _, prefix := range []string{"can't load image: file is too large", "can't load image: file format not allowed",
+		"image rejected: "} {
+		if strings.HasPrefix(err.Error(), prefix) {
+			return err
+		}
+	}
+	return fmt.Errorf("image store error")
+}
+
+// withoutPath returns err, or replacement when err carries a file system path, as the errors of temp files do
+func withoutPath(err, replacement error) error {
+	if _, ok := errors.AsType[*fs.PathError](err); ok {
+		return replacement
+	}
+	return err
 }
