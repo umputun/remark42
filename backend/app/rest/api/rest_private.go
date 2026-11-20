@@ -543,7 +543,7 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
 	if claims.User != nil {
 		claims.User.Email = address
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		if err = s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
@@ -627,12 +627,25 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	if claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		if err = s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
 	}
 	R.RenderJSON(w, R.JSON{"deleted": true})
+}
+
+// setTokenClaims writes changed claims back to the client, for a handler behind the auth middleware.
+// The claims are read off the request, and the token there may be an expired one the middleware renewed
+// a moment ago. Set keeps an ExpiresAt it is given, so writing such claims as they are would replace the
+// renewed token, in the cookie and in the X-JWT header, with one that has expired already. An expired
+// token therefore gets a new lifetime here, as the middleware gave it; one still valid keeps its own.
+func (s *private) setTokenClaims(w http.ResponseWriter, claims token.Claims) error {
+	if s.authenticator.TokenService().IsExpired(claims) {
+		claims.ExpiresAt = nil
+	}
+	_, err := s.authenticator.TokenService().Set(w, claims)
+	return err
 }
 
 // DELETE /telegram?site=siteID - removes user's telegram
