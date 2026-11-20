@@ -116,6 +116,8 @@
   "errors.to-many-request": "Zbyt wiele żądań. Poczekaj chwilę i spróbuj ponownie.",
   "errors.unexpected-error": "Coś poszło nie tak.",
   "profile.close": "Zamknij profil",
+  "profile.edit-avatar": "Zmień awatar",
+  "profile.edit-avatar-hint": "Awatar pochodzi z Gravatara dla adresu email, którym się logujesz. Po zmianie wyloguj się i zaloguj ponownie; przeglądarka może jeszcze do tygodnia pokazywać stary.",
   "profile.request-to-delete-data": "Poproś o usunięcie moich danych",
   "retry": "Ponów",
   "root.pinned-comments": "Przypięte komentarze",

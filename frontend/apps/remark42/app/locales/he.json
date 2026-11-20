@@ -116,6 +116,8 @@
   "errors.to-many-request": "יותר מדי בקשות. יש להמתין רגע ולנסות שוב.",
   "errors.unexpected-error": "משהו השתבש.",
   "profile.close": "סגירת פרופיל",
+  "profile.edit-avatar": "עריכת תמונת הפרופיל",
+  "profile.edit-avatar-hint": "תמונת הפרופיל מגיעה מ-Gravatar לפי כתובת האימייל שאיתה מתחברים. אחרי שמשנים אותה שם, יש להתנתק ולהתחבר מחדש; הדפדפן עשוי להמשיך להציג את התמונה הישנה עד שבוע.",
   "profile.request-to-delete-data": "בקשה למחיקת הנתונים שלי",
   "retry": "ניסיון חוזר",
   "root.pinned-comments": "תגובות מוצמדות",

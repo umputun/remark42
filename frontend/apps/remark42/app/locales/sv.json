@@ -116,6 +116,8 @@
   "errors.to-many-request": "För många förfrågningar. Vänta en stund och försök igen.",
   "errors.unexpected-error": "Något gick fel.",
   "profile.close": "Stäng profil",
+  "profile.edit-avatar": "Ändra avatar",
+  "profile.edit-avatar-hint": "Avataren hämtas från Gravatar för den e-postadress du loggar in med. När du har ändrat den där loggar du ut och in igen; en webbläsare kan visa den gamla i upp till en vecka.",
   "profile.request-to-delete-data": "Begär borttagning av mina uppgifter",
   "retry": "Försök igen",
   "root.pinned-comments": "Fästa kommentarer",

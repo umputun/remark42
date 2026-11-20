@@ -116,6 +116,8 @@
   "errors.to-many-request": "Příliš mnoho požadavků. Chvíli prosím počkejte a zkuste to znovu.",
   "errors.unexpected-error": "Něco se pokazilo.",
   "profile.close": "Zavřít profil",
+  "profile.edit-avatar": "Upravit avatar",
+  "profile.edit-avatar-hint": "Avatar se načítá z Gravataru pro e-mail, kterým se přihlašujete. Po změně se odhlaste a znovu přihlaste; prohlížeč může ještě až týden zobrazovat ten starý.",
   "profile.request-to-delete-data": "Žádost o odstranění mých údajů",
   "retry": "Zkusit znovu",
   "root.pinned-comments": "Připnuté komentáře",

@@ -180,6 +180,48 @@ describe('<Profile />', () => {
     expect(screen.queryByText(/request deletion of my data/i)).not.toBeInTheDocument();
   });
 
+  describe('edit avatar link', () => {
+    beforeEach(() => {
+      jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [], count: 0 }));
+    });
+
+    it('offers the reader who signed in with email a link to the Gravatar avatar page', async () => {
+      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, id: 'email_1', current: '1' }));
+
+      render(<Profile />);
+
+      const link = await screen.findByRole('link', { name: 'Edit avatar' });
+
+      expect(link).toHaveAttribute('href', 'https://gravatar.com/profile/avatars');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(screen.getByText(/sign out and sign in again/i)).toBeInTheDocument();
+    });
+
+    it('does not offer it on the profile of another reader who signed in with email', async () => {
+      jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, id: 'email_1' }));
+
+      render(<Profile />);
+
+      expect(await screen.findByText('No comments yet.')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Edit avatar' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/gravatar/i)).not.toBeInTheDocument();
+    });
+
+    it.each(['github_1', 'anonymous_1', 'telegram_1'])(
+      'does not offer it to the reader signed in as %s, whose avatar is not from Gravatar',
+      async (id) => {
+        jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, id, current: '1' }));
+
+        render(<Profile />);
+
+        expect(await screen.findByText('No comments yet.')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Edit avatar' })).not.toBeInTheDocument();
+        expect(screen.queryByText(/gravatar/i)).not.toBeInTheDocument();
+      }
+    );
+  });
+
   it('sets dir on the root element from the active locale (direction mapping itself is covered by common/direction.test.ts)', () => {
     jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub }));
 

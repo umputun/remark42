@@ -116,6 +116,8 @@
   "errors.to-many-request": "リクエストが多すぎます。少し待ってからもう一度お試しください。",
   "errors.unexpected-error": "不明なエラーが発生しました.",
   "profile.close": "プロファイルを閉じる",
+  "profile.edit-avatar": "アバターを編集",
+  "profile.edit-avatar-hint": "アバターは、サインインに使うメールアドレスに対して Gravatar で設定されたものです。Gravatar で変更したあと、いったんログアウトしてサインインし直してください。ブラウザーには最長 1 週間、古い画像が表示されることがあります。",
   "profile.request-to-delete-data": "自分のデータの削除を依頼",
   "retry": "再試行",
   "root.pinned-comments": "ピン留めしたコメント",

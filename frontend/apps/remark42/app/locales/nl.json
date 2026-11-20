@@ -116,6 +116,8 @@
   "errors.to-many-request": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
   "errors.unexpected-error": "Er is iets misgegaan.",
   "profile.close": "Profiel sluiten",
+  "profile.edit-avatar": "Avatar wijzigen",
+  "profile.edit-avatar-hint": "De avatar komt van Gravatar voor het e-mailadres waarmee je inlogt. Log na het wijzigen daar uit en weer in; een browser kan de oude nog tot een week tonen.",
   "profile.request-to-delete-data": "Verwijdering van mijn gegevens aanvragen",
   "retry": "Opnieuw proberen",
   "root.pinned-comments": "Vastgezette reacties",

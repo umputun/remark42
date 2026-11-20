@@ -116,6 +116,8 @@
   "errors.to-many-request": "Too many requests. Please wait a moment and try again.",
   "errors.unexpected-error": "Something went wrong.",
   "profile.close": "Close profile",
+  "profile.edit-avatar": "Edit avatar",
+  "profile.edit-avatar-hint": "The avatar comes from Gravatar for the email you sign in with. After changing it there, sign out and sign in again; a browser may still show the old one for up to a week.",
   "profile.request-to-delete-data": "Request deletion of my data",
   "retry": "Retry",
   "root.pinned-comments": "Pinned comments",

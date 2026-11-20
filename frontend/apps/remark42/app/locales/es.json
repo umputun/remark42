@@ -116,6 +116,8 @@
   "errors.to-many-request": "Demasiadas peticiones. Por favor espera un momento y vuelve a intentar.",
   "errors.unexpected-error": "Algo salió mal.",
   "profile.close": "Cerrar perfil",
+  "profile.edit-avatar": "Editar avatar",
+  "profile.edit-avatar-hint": "El avatar procede de Gravatar para el correo electrónico con el que inicias sesión. Después de cambiarlo allí, cierra sesión y vuelve a iniciarla; el navegador puede seguir mostrando el anterior hasta una semana.",
   "profile.request-to-delete-data": "Solicitar la eliminación de mis datos",
   "retry": "Intentar de nuevo",
   "root.pinned-comments": "Comentarios anclados",

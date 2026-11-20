@@ -116,6 +116,8 @@
   "errors.to-many-request": "Trop de requêtes. Patientez un instant et réessayez.",
   "errors.unexpected-error": "Un problème est survenu.",
   "profile.close": "Fermer le profil",
+  "profile.edit-avatar": "Modifier l'avatar",
+  "profile.edit-avatar-hint": "L'avatar provient de Gravatar pour l'adresse e-mail avec laquelle vous vous connectez. Après l'avoir modifié là-bas, déconnectez-vous puis reconnectez-vous ; un navigateur peut encore afficher l'ancien pendant une semaine au maximum.",
   "profile.request-to-delete-data": "Demander la suppression de mes données",
   "retry": "Réessayer",
   "root.pinned-comments": "Commentaires épinglés",
