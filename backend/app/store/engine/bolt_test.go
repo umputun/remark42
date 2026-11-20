@@ -61,6 +61,15 @@ func TestBoltDB_CreateFailedReadOnly(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
 
+	imported := comment
+	imported.ID, imported.Imported = "id-imported", true
+	_, err = b.Create(imported)
+	require.NoError(t, err, "an import writes to a read-only post")
+	res, err := b.Find(FindRequest{Locator: comment.Locator})
+	require.NoError(t, err)
+	require.Len(t, res, 1)
+	assert.Equal(t, "id-imported", res[0].ID)
+
 	flagReq = FlagRequest{Locator: comment.Locator, Flag: ReadOnly, Update: FlagFalse}
 	v, err = b.Flag(flagReq)
 	require.NoError(t, err)
