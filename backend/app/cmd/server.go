@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -827,7 +828,7 @@ func (a *serverApp) run(ctx context.Context) error {
 		a.restSrv.Shutdown()
 	}()
 
-	a.activateBackup(ctx) // runs in goroutine for each site
+	stopBackups := a.activateBackup(ctx)
 	if a.Auth.Dev {
 		go a.devAuth.Run(ctx) // dev oauth2 server on :8084
 	}
@@ -842,6 +843,7 @@ func (a *serverApp) run(ctx context.Context) error {
 	a.restSrv.Run(a.Address, a.Port)
 
 	// shutdown procedures after HTTP server is stopped
+	stopBackups() // before the data store closes under an export in progress
 	if a.devAuth != nil {
 		a.devAuth.Shutdown()
 	}
@@ -872,8 +874,11 @@ func (a *serverApp) Wait() {
 	<-a.terminated
 }
 
-// activateBackup runs background backups for each site
-func (a *serverApp) activateBackup(ctx context.Context) {
+// activateBackup runs background backups for each site. The returned function stops them and waits,
+// for up to backupStopWait, for an export in progress to end
+func (a *serverApp) activateBackup(ctx context.Context) (stop func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
 	for _, siteID := range a.Sites {
 		backup := migrator.AutoBackup{
 			Exporter:       a.exporter,
@@ -882,7 +887,32 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 			KeepMax:        a.MaxBackupFiles,
 			Duration:       24 * time.Hour,
 		}
-		go backup.Do(ctx)
+		wg.Go(func() { backup.Do(ctx) })
+	}
+	return func() {
+		cancel()
+		if !waitGroupTimeout(&wg, backupStopWait) {
+			log.Printf("[WARN] a backup did not stop in %s, shutdown goes on without it", backupStopWait)
+		}
+	}
+}
+
+// backupStopWait is how long shutdown waits for a backup in progress. An export stops at its next write,
+// but with a remote store that has stopped answering it sits in a read for the rpc timeout of each call
+const backupStopWait = 10 * time.Second
+
+// waitGroupTimeout waits for wg for up to d and reports whether it finished in that time
+func waitGroupTimeout(wg *sync.WaitGroup, d time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(d):
+		return false
 	}
 }
 

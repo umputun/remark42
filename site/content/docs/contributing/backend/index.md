@@ -64,7 +64,7 @@ Data stored in [boltdb](https://github.com/etcd-io/bbolt) (embedded key/value da
 
 To migrate/move Remark42 to another host, these boltdb files must be transferred. Additionally, the avatars directory `AVATAR_FS_PATH` (default `./var/avatars`) and images directory `IMAGE_FS_PATH` (default `./var/pictures`) must be transferred. As an alternative to storing avatars and images in the file system, boltdb can be used by setting `AVATAR_TYPE` or `IMAGE_TYPE` to `bolt`. Files in the `IMAGE_FS_STAGING` directory can be safely ignored because they are moved to the image store between app restarts.
 
-The automatic backup process runs every 24h and exports all content in JSON-like format to `backup-remark-YYYYMMDD.gz`.
+The automatic backup process runs at start for a site with no backup of the current day, then every 24h, and exports all content in JSON-like format to `backup-{site ID}-{YYYYMMDD}.gz`.
 
 Authentication implemented with [go-pkgz/auth](https://github.com/go-pkgz/auth) stored in a cookie. It uses HttpOnly, secure cookies.
 

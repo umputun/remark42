@@ -20,8 +20,11 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
@@ -516,6 +519,58 @@ func TestServerApp_Shutdown(t *testing.T) {
 		t.Fatal("server app did not stop after context cancel")
 	}
 	app.Wait()
+}
+
+func TestServerApp_ActivateBackupStopWaitsForExport(t *testing.T) {
+	loc := t.TempDir()
+	exp := &endlessExporter{started: make(chan struct{})}
+	app := &serverApp{ServerCommand: &ServerCommand{Sites: []string{"site1"}, BackupLocation: loc, MaxBackupFiles: 3},
+		exporter: exp}
+	stop := app.activateBackup(t.Context())
+	defer stop()
+
+	select {
+	case <-exp.started: // the backup at start is running
+	case <-time.After(serverStartTimeout):
+		t.Fatal("the backup at start did not begin")
+	}
+	stop()
+	assert.True(t, exp.stopped.Load(), "stop returns only after the export in progress has ended")
+	ff, err := os.ReadDir(loc)
+	require.NoError(t, err)
+	assert.Empty(t, ff, "the stopped export leaves no file behind")
+}
+
+func TestWaitGroupTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var wg sync.WaitGroup
+		release := make(chan struct{})
+		wg.Go(func() { <-release })
+
+		start := time.Now()
+		assert.False(t, waitGroupTimeout(&wg, backupStopWait), "gives up on a group that does not finish")
+		assert.Equal(t, backupStopWait, time.Since(start), "after the whole wait")
+
+		close(release)
+		assert.True(t, waitGroupTimeout(&wg, backupStopWait), "a finished group is reported at once")
+	})
+}
+
+// endlessExporter writes until a write fails, the way an export of a large site outlasts a shutdown
+type endlessExporter struct {
+	started chan struct{}
+	stopped atomic.Bool
+}
+
+func (e *endlessExporter) Export(w io.Writer, _ string) (int, error) {
+	close(e.started)
+	for {
+		if _, err := w.Write([]byte("comment\n")); err != nil {
+			e.stopped.Store(true)
+			return 0, err
+		}
+		time.Sleep(time.Millisecond) // keeps the gzip stream small while the test stops the backup
+	}
 }
 
 // TestServerApp_ClaimsUpd covers the hook the authenticator runs on every token mint, refresh
