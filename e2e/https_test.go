@@ -21,15 +21,14 @@ import (
 
 // Everything else in this suite speaks http, which hides an entire class of defect: the browser
 // gates Secure cookies, SameSite=None, Partitioned and anything reading location.protocol on the
-// page protocol, so code taking those paths is never executed. setAuthCookie decorating its
-// cookies with __Host- on https pages survived for exactly that reason.
+// page protocol, so code taking those paths is never executed. The widget once decorated the
+// cookies it wrote with __Host- on https pages, and that survived for exactly this reason.
 //
 // These run against the TLS pair in compose-e2e-test.yml, which carries a self-signed certificate
 // every context here accepts. That instance also runs with AUTH_SEND_JWT_HEADER, which is what
 // gives a widget framed by another site cookies it can keep: the backend repeats its own pair in
-// the partitioned form for it, and the widget writes the XSRF value through setAuthCookie as well.
-// Without the setting neither happens on any https page in the stack, and every assertion about
-// those cookies is vacuous.
+// the partitioned form for it. Without the setting that does not happen on any https page in the
+// stack, and every assertion about those cookies is vacuous.
 
 // An unpartitioned third-party cookie is refused only when storage partitioning is enforced, and
 // playwright's own default arguments disable it. Dropping that default and re-supplying it without
@@ -200,10 +199,8 @@ func TestHTTPS_AuthCookiesCarryTheThirdPartyForm(t *testing.T) {
 
 	// no name the server does not read. A __Host- prefixed cookie is a perfectly valid cookie the
 	// browser stores happily, which is why writing one is a defect nothing rejects: the backend
-	// looks for JWT and the fetcher reads XSRF-TOKEN, and neither finds a decorated name.
-	//
-	// this can only fail because the instance runs with AUTH_SEND_JWT_HEADER, which is what makes
-	// the widget write a cookie of its own instead of leaving the server's alone.
+	// looks for JWT and the fetcher reads XSRF-TOKEN, and neither finds a decorated name. The
+	// widget writes no auth cookie any more, so this holds a later change to that
 	for _, c := range cookies {
 		assert.NotContains(t, c.Name, "__Host-",
 			"a __Host- prefixed cookie was stored, and nothing on either side reads that name")

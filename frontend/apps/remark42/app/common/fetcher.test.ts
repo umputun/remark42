@@ -12,7 +12,6 @@ import {
   JWT_COOKIE_NAME,
   XSRF_COOKIE,
   XSRF_HEADER,
-  AUTH_COOKIE_TTL_SECONDS,
   JWT_HEADER_MARGIN_MS,
 } from './fetcher';
 import * as cookies from './cookies';
@@ -166,85 +165,33 @@ describe('fetcher', () => {
       expect(window.fetch).toHaveBeenCalledWith(apiUrl, { method: 'get', headers });
     });
 
-    it('should store JWT token in a cookie when received in header', async () => {
-      // Mock the auth cookie helper - use mockReturnValueOnce for cleaner tests
-      jest.spyOn(cookies, 'setAuthCookie').mockReturnValueOnce(undefined);
-
-      // Create test JWT token - we'll mock the parsing
-      const jwtToken = 'test.jwt.token';
-
-      // Mock parseJwtPayload implementation since it's not directly accessible
-      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
-
-      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
-      await apiFetcher.get(apiUri);
-
-      // Check that setAuthCookie was called for both JWT and XSRF tokens
-      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
-        JWT_COOKIE_NAME,
-        jwtToken,
-        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
-      );
-
-      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
-        XSRF_COOKIE,
-        'test-jti-id',
-        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
-      );
-    });
-
-    it('should call setAuthCookie with proper parameters when receiving JWT token', async () => {
-      // Spy on setAuthCookie calls with mockImplementationOnce and jest.fn()
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementationOnce(jest.fn());
-
-      // Create test JWT token
-      const jwtToken = 'test.jwt.token';
-
-      // Mock parseJwtPayload implementation since it's not directly accessible
-      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
-
-      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
-      await apiFetcher.get(apiUri);
-
-      // Verify setAuthCookie was called with expected parameters
-      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
-        JWT_COOKIE_NAME,
-        jwtToken,
-        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
-      );
-
-      expect(cookies.setAuthCookie).toHaveBeenCalledWith(
-        XSRF_COOKIE,
-        'test-jti-id',
-        expect.objectContaining({ expires: AUTH_COOKIE_TTL_SECONDS })
-      );
-    });
-
-    it('should handle errors when setting cookies', async () => {
-      // Mock console.error using jest.spyOn
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      // Make setAuthCookie throw an error
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementationOnce(() => {
-        throw new Error('Cookie access denied');
+    it('writes no cookie of its own when a token arrives in the header', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      const written: string[] = [];
+      const original = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => '',
+        set: (v: string) => {
+          written.push(v);
+        },
       });
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
 
-      // Create test JWT token
-      const jwtToken = 'test.jwt.token';
-
-      // Mock parseJwtPayload implementation since it's not directly accessible
-      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', sub: '1234567890' }));
-
-      mockFetch({ headers: { [JWT_HEADER]: jwtToken, ...headers } });
-
-      // This should not throw despite cookie setting failing
+      // the session's cookies are the backend's, set with this same response. A copy written from
+      // script is readable by anything running in the frame, and WebKit refuses to store one
+      // beside an HttpOnly cookie of the same name
+      mockFetch({ headers: { [JWT_HEADER]: 'test.jwt.token', ...headers } });
       await apiFetcher.get(apiUri);
 
-      // Error should be logged
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      delete (document as unknown as Record<string, unknown>).cookie;
+      if (original) Object.defineProperty(Document.prototype, 'cookie', original);
+      expect(written).toEqual([]);
 
-      // Restore console.error
-      consoleErrorSpy.mockRestore();
+      // the token lives at module level, so drop it the way the fetcher does before the next test
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
     });
 
     it('should reset activeJwtToken and clear cookies on 401 responses', async () => {
@@ -308,7 +255,6 @@ describe('fetcher', () => {
 
     it('stops sending the token in memory shortly before it expires, when a cookie can carry the request', async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
       // the xsrf cookie is how the fetcher knows a cookie session exists
       jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
       // five minutes, the backend's default: only the distance between the two claims counts
@@ -351,7 +297,6 @@ describe('fetcher', () => {
 
     it("counts the token's lifetime from when its request was sent, not from when the answer arrived", async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
       jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
       jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
       const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
@@ -379,7 +324,6 @@ describe('fetcher', () => {
 
     it('never sends beside a cookie a token that had expired when it was issued', async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
       jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
       // what the backend writes when it sets new claims on an expired token: the old expiry and a
       // new issue time
@@ -401,7 +345,6 @@ describe('fetcher', () => {
 
     it('keeps sending the token in memory to its end when there is no cookie session', async () => {
       const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
-      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
       // a browser that stores no cookie: the token in memory is the whole session, and leaving it
       // out early would end that session before the token does
       jest.spyOn(cookies, 'getCookie').mockImplementation(() => undefined);

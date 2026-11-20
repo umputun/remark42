@@ -335,9 +335,8 @@ services:
       # third-party frame; this is the setting that decides whether they do
       - AUTH_SAME_SITE=none
       # and this is what gives the framed widget cookies it can keep: the backend repeats its
-      # pair in the partitioned form for it, and the widget writes the XSRF value itself through
-      # setAuthCookie. Without it neither happens on any https page in the stack, and every
-      # assertion about those cookies is vacuous
+      # pair in the partitioned form for it. Without it that does not happen on any https page in
+      # the stack, and every assertion about those cookies is vacuous
       - AUTH_SEND_JWT_HEADER=true
       # email as well as anonymous, so the flow most operators run off-domain is measured here
       # and not inferred from the anonymous one. the partitioned pair is added to whichever

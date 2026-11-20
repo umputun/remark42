@@ -7,7 +7,8 @@
  * The naming bug this guards against only appeared on https, because the prefix was applied from
  * `window.location.protocol`. Every other suite here runs on the jsdom default of http, so the
  * decoration never showed up and the defect reached production untouched. This file exists to run
- * the same code on an https page, which is the only condition that reveals it.
+ * the same code on an https page, which is the only condition that reveals it. The widget no longer
+ * writes auth cookies, so what is left to get wrong is the name and form it clears them under.
  */
 
 function captureRaw() {
@@ -43,44 +44,34 @@ afterEach(() => {
 });
 
 describe('auth cookies on an https page', () => {
-  it('writes the undecorated name the backend and the fetcher read', async () => {
+  it('clears the undecorated names the backend sets', async () => {
     const raw = captureRaw();
-    const { setAuthCookie } = await loadCookies(false);
+    const { clearAuthCookie } = await loadCookies(false);
 
-    setAuthCookie('JWT', 'token');
-    setAuthCookie('XSRF-TOKEN', 'jti');
+    clearAuthCookie('JWT');
+    clearAuthCookie('XSRF-TOKEN');
 
-    // the backend looks for JWT and `fetcher` reads XSRF-TOKEN. A __Host- prefix stores both
-    // under names neither of them asks for, and only here, on https
-    expect(raw.written[0]).toMatch(/^JWT=token/);
-    expect(raw.written[1]).toMatch(/^XSRF-TOKEN=jti/);
+    // the backend sets JWT and XSRF-TOKEN. A __Host- prefix would address two cookies nobody set
+    // and leave the real ones in place, and only here, on https
+    expect(raw.written[0]).toMatch(/^JWT=;/);
+    expect(raw.written[1]).toMatch(/^XSRF-TOKEN=;/);
     expect(raw.written.join('\n')).not.toContain('__Host-');
 
     raw.restore();
   });
 
-  it('marks the cookie for third-party delivery when the page is on another origin', async () => {
-    const raw = captureRaw();
-    const { setAuthCookie } = await loadCookies(true);
-
-    setAuthCookie('JWT', 'token');
-
-    expect(raw.written[0]).toContain('sameSite=None');
-    expect(raw.written[0]).toContain('secure');
-    expect(raw.written[0]).toContain('partitioned');
-
-    raw.restore();
-  });
-
-  it('clears under the same attributes, so the browser matches the cookie it set', async () => {
+  it('clears the partitioned cookie when the page is on another origin', async () => {
     const raw = captureRaw();
     const { clearAuthCookie } = await loadCookies(true);
 
     clearAuthCookie('JWT');
 
+    // the cookie a frame on another site holds is the partitioned one, and an expiry without
+    // Partitioned addresses a different cookie
     expect(raw.written[0]).toMatch(/^JWT=;/);
     expect(raw.written[0]).not.toContain('__Host-');
     expect(raw.written[0]).toContain('sameSite=None');
+    expect(raw.written[0]).toContain('secure');
     expect(raw.written[0]).toContain('partitioned');
 
     raw.restore();

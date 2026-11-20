@@ -1,7 +1,7 @@
 import { errorMessages, RequestError } from 'utils/errorUtils';
 
 import { siteId } from './settings';
-import { getCookie, setAuthCookie, clearAuthCookie } from './cookies';
+import { getCookie, clearAuthCookie } from './cookies';
 import { StaticStore } from './static-store';
 import { BASE_URL, API_BASE, IS_THIRD_PARTY, MAX_CLOCK_SKEW_MS } from './constants';
 import {
@@ -21,16 +21,13 @@ import {
 
 export { JWT_HEADER, XSRF_HEADER };
 
-/** Cookie name for JWT token when using AUTH_SEND_JWT_HEADER */
+/**
+ * Cookie the backend keeps the JWT in. It is HttpOnly, so the widget never reads or writes it; the
+ * name is here to clear what script can reach, which is the copy older versions of the widget wrote
+ */
 export const JWT_COOKIE_NAME = 'JWT';
 /** Cookie field with XSRF token */
 export const XSRF_COOKIE = 'XSRF-TOKEN';
-/**
- * Cookie TTL in seconds - matches backend's auth.ttl.cookie default of 200 hours
- * The JWT token itself expires in 5 minutes, but the cookie persists longer
- * to match server-side behavior when not using AUTH_SEND_JWT_HEADER
- */
-export const AUTH_COOKIE_TTL_SECONDS = 200 * 60 * 60;
 
 type BodylessMethod = <T>(url: string, query?: QueryParams) => Promise<T>;
 type BodyMethod = <T>(url: string, query?: QueryParams, body?: Payload) => Promise<T>;
@@ -65,8 +62,8 @@ const createFetcher = (baseUrl: string = ''): Methods => {
   const request = async (method: string, uri: string, query: QueryParams = {}, body?: Payload) => {
     const url = requestURL(baseUrl, uri, query, siteId);
     const sending = requestBody(body, siteId);
-    // the jwt is kept in memory as well as in a cookie, so a request still carries it where
-    // storing cookies is disabled. Only the cookie can be renewed, so the copy in memory steps
+    // the jwt is kept in memory as well as in the backend's cookie, so a request still carries it
+    // where storing cookies is disabled. Only the cookie can be renewed, so the copy in memory steps
     // aside before it expires and the request reaches the backend on the cookie alone. The xsrf
     // cookie is the sign that there is a cookie session to step aside for: without one the copy
     // in memory is all the request has, and it is sent for as long as it lasts
@@ -98,25 +95,11 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       if (res.headers.has(JWT_HEADER)) {
         activeJwtToken = res.headers.get(JWT_HEADER) as string;
 
-        // Store the JWT token in cookies for persistence across page reloads
-        try {
-          const payload = jwtPayload(activeJwtToken);
-          const lifetime = jwtLifetimeMs(payload);
-          activeJwtStaleAt = lifetime === null ? Infinity : sentAt + lifetime - JWT_HEADER_MARGIN_MS;
-          if (payload && payload.jti) {
-            // Set XSRF cookie with the JWT ID using enhanced security
-            setAuthCookie(XSRF_COOKIE, payload.jti as string, {
-              expires: AUTH_COOKIE_TTL_SECONDS,
-            });
-
-            // Store the JWT in cookie for persistence with enhanced security
-            setAuthCookie(JWT_COOKIE_NAME, activeJwtToken, {
-              expires: AUTH_COOKIE_TTL_SECONDS,
-            });
-          }
-        } catch (e) {
-          console.error('Failed to process JWT token', e);
-        }
+        // nothing is written to a cookie here: the cookies that carry the session across a reload
+        // are the backend's own, set with this same response, partitioned as well for a frame
+        // that asked. The copy kept here only serves a browser that stores no cookie
+        const lifetime = jwtLifetimeMs(jwtPayload(activeJwtToken));
+        activeJwtStaleAt = lifetime === null ? Infinity : sentAt + lifetime - JWT_HEADER_MARGIN_MS;
       }
 
       // only 401 says the session itself is gone. A 403 comes with a valid session that may not do
