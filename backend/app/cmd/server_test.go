@@ -1550,11 +1550,105 @@ func TestServerApp_WebhookUsesConfiguredTimeout(t *testing.T) {
 	assert.Equal(t, 17*time.Second, wh.Timeout, "NOTIFY_WEBHOOK_TIMEOUT reaches the webhook")
 }
 
+// TestServerCommand_makeNotifyDestinationsBrokenWebhookKeepsOthers covers a webhook that cannot be built:
+// it is reported, and Slack and email, including users' reply notifications, are still set up
+func TestServerCommand_makeNotifyDestinationsBrokenWebhookKeepsOthers(t *testing.T) {
+	tbl := []struct {
+		name, url, template, wantErr string
+	}{
+		{name: "no url", wantErr: "webhook URL is required"},
+		{name: "bad template", url: "http://127.0.0.1/hook", template: "{{.Text", wantErr: "unable to parse webhook template"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{}
+			cmd.Notify.Admins = []string{"webhook", "slack", "email"}
+			cmd.Notify.Users = []string{"email"}
+			cmd.Admin.Shared.Email = []string{"admin@example.com"}
+			cmd.Notify.Webhook.URL = tt.url
+			cmd.Notify.Webhook.Template = tt.template
+
+			destinations, err := cmd.makeNotifyDestinations(nil)
+			require.ErrorContains(t, err, tt.wantErr)
+			var slack, email int
+			for _, d := range destinations {
+				switch d.(type) {
+				case *notify.Slack:
+					slack++
+				case *notify.Email:
+					email++
+				default:
+					t.Errorf("unexpected destination %T", d)
+				}
+			}
+			assert.Equal(t, 1, slack, "slack is set up despite the webhook error")
+			assert.Equal(t, 1, email, "email is set up despite the webhook error")
+		})
+	}
+}
+
+// TestServerCommand_makeNotifyDestinationsAdminEmailMissing covers NOTIFY_ADMINS=email with no address to
+// send to: the default admin@ address of ADMIN_SHARED_EMAIL is not used for notifications, so the start-up
+// reports it, and the email destination is still built for users' reply notifications
+func TestServerCommand_makeNotifyDestinationsAdminEmailMissing(t *testing.T) {
+	tbl := []struct {
+		name       string
+		emails     []string
+		wantAdmins []string
+		wantErr    bool
+	}{
+		{name: "not set", emails: nil, wantErr: true},
+		{name: "empty env value", emails: []string{""}, wantErr: true},
+		{name: "blank values", emails: []string{" ", ""}, wantErr: true},
+		{name: "set", emails: []string{"a@example.com", "b@example.com"}, wantAdmins: []string{"a@example.com", "b@example.com"}},
+		{name: "set with a blank", emails: []string{"a@example.com", " "}, wantAdmins: []string{"a@example.com"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{
+				RemarkURL: "https://remark42.example.com"}
+			cmd.Notify.Admins = []string{"email"}
+			cmd.Admin.Shared.Email = tt.emails
+
+			destinations, err := cmd.makeNotifyDestinations(nil)
+			if tt.wantErr {
+				require.EqualError(t, err, "admin email notifications are on, but --admin.shared.email (ADMIN_SHARED_EMAIL) "+
+					"has no address, so no admin is notified by email")
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, destinations, 1)
+			e, ok := destinations[0].(*notify.Email)
+			require.True(t, ok, "email destination, got %T", destinations[0])
+			assert.Equal(t, tt.wantAdmins, e.AdminEmails, "admin copies go to the configured addresses only")
+		})
+	}
+
+	t.Run("user notifications only", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Notify.Users = []string{"email"}
+		_, err := cmd.makeNotifyDestinations(nil)
+		require.NoError(t, err, "no admin address is needed without admin email notifications")
+	})
+}
+
+func TestServerCommand_makeTelegramNotifyNoChannel(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Notify.Admins = []string{"telegram"}
+	cmd.Telegram.Token = "token"
+	_, err := cmd.makeTelegramNotify()
+	require.EqualError(t, err, "--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work",
+		"the error names a flag that exists")
+}
+
 // TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.
 func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
-	app := startServerApp(t, nil)
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Admin.Shared.Email = []string{"admin@example.org"} // admin email notifications are on in the shared setup
+		return o
+	})
 	port := app.Port
 
 	destinations, err := app.makeNotifyDestinations(app.authenticator)

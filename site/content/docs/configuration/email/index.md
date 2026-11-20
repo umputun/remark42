@@ -68,6 +68,8 @@ NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ADMIN_SHARED_EMAIL=admin@example.com
 ```
 
+`ADMIN_SHARED_EMAIL` is required here: its default `admin@` address is not used for notifications. Without it, the server logs `notifications are not fully set up` at start and sends no admin email.
+
 ### Mailgun
 
 Here is an example of a configuration using the [Mailgun](https://www.mailgun.com/) email service:

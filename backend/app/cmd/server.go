@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -287,7 +288,7 @@ type NotifyGroup struct {
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
 		Template string        `long:"template" env:"TEMPLATE" description:"webhook payload template (Go text/template); falls back to {\"text\": {{.Text | escapeJSONString}}} when empty"`
-		Headers  []string      `long:"headers" description:"webhook headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
+		Headers  []string      `long:"headers" description:"webhook header in format Header:Value, repeat the flag for each header; the env var takes Header1:Value1,Header2:Value2 [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
@@ -650,7 +651,9 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 
 	notifyDestinations, err := s.makeNotifyDestinations(authenticator)
 	if err != nil {
-		log.Printf("[WARN] failed to prepare notify destinations, %s", err)
+		// each error leaves out one destination or the admin part of one; the rest are set up and work.
+		// errors.Join puts each error on its own line, kept on this one so every part carries the level
+		log.Printf("[ERROR] notifications are not fully set up, %s", strings.ReplaceAll(err.Error(), "\n", "; "))
 	}
 
 	notifyService := s.makeNotifyService(dataService, notifyDestinations, telegramService)
@@ -1216,9 +1219,11 @@ func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinat
 	return notify.NopService
 }
 
-// constructs list of notify destinations except for telegram, returns empty list in case of error
+// constructs list of notify destinations except for telegram. A destination that cannot be built is
+// left out and its error returned, joined with the others, while the remaining destinations are still built
 func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]notify.Destination, error) {
 	destinations := make([]notify.Destination, 0)
+	var errs []error
 
 	if contains("webhook", s.Notify.Admins) {
 		whParams := notify.WebhookParams{
@@ -1227,11 +1232,11 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			Headers:  s.Notify.Webhook.Headers,
 			Timeout:  s.Notify.Webhook.Timeout,
 		}
-		webhook, err := notify.NewWebhook(whParams)
-		if err != nil {
-			return destinations, fmt.Errorf("failed to create webhook notification destination: %w", err)
+		if webhook, err := notify.NewWebhook(whParams); err != nil {
+			errs = append(errs, fmt.Errorf("failed to create webhook notification destination: %w", err))
+		} else {
+			destinations = append(destinations, webhook)
 		}
-		destinations = append(destinations, webhook)
 	}
 
 	if contains("slack", s.Notify.Admins) {
@@ -1265,7 +1270,17 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			},
 		}
 		if contains("email", s.Notify.Admins) {
-			emailParams.AdminEmails = s.Admin.Shared.Email
+			// the admin@ default of makeAdminStore is not used here: it is a guess, and notifications
+			// carry comment text, so they go only to addresses the operator has set
+			for _, email := range s.Admin.Shared.Email {
+				if strings.TrimSpace(email) != "" {
+					emailParams.AdminEmails = append(emailParams.AdminEmails, email)
+				}
+			}
+			if len(emailParams.AdminEmails) == 0 {
+				errs = append(errs, errors.New("admin email notifications are on, but --admin.shared.email (ADMIN_SHARED_EMAIL) "+
+					"has no address, so no admin is notified by email"))
+			}
 		}
 		smtpParams := ntf.SMTPParams{
 			Host:               s.SMTP.Host,
@@ -1281,20 +1296,20 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			ContentType:        "text/html",
 			Charset:            "UTF-8",
 		}
-		emailService, err := notify.NewEmail(emailParams, smtpParams)
-		if err != nil {
-			return destinations, fmt.Errorf("failed to create email notification destination: %w", err)
+		if emailService, err := notify.NewEmail(emailParams, smtpParams); err != nil {
+			errs = append(errs, fmt.Errorf("failed to create email notification destination: %w", err))
+		} else {
+			destinations = append(destinations, emailService)
 		}
-		destinations = append(destinations, emailService)
 	}
 
-	return destinations, nil
+	return destinations, errors.Join(errs...)
 }
 
 // constructs Telegram notify service
 func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 	if contains("telegram", s.Notify.Admins) && s.Notify.Telegram.Channel == "" {
-		return nil, fmt.Errorf("--notify.telegram.channel must be set for admin notifications to work")
+		return nil, errors.New("--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work")
 	}
 	telegramParams := notify.TelegramParams{
 		AdminChannelID:    s.Notify.Telegram.Channel,
