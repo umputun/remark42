@@ -161,6 +161,13 @@ func responseError(resp *http.Response) error {
 	if resp.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("error response %q, ensure you have set ADMIN_PASSWD and provided it to the command you're running: %s", resp.Status, body)
 	}
+	// the http client follows a redirect itself unless it can't replay the request body, which is the case for
+	// the file import and remap stream when the answer is 307 or 308. Such a redirect means the server, or
+	// a proxy in front of it, moves REMARK_URL elsewhere, for example from http:// to https://
+	if loc, err := resp.Location(); err == nil && resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return fmt.Errorf("error response %q, the server redirected the request to %q; set REMARK_URL or --url to the address Remark42 is served on",
+			resp.Status, loc)
+	}
 	return fmt.Errorf("error response %q, %s", resp.Status, body)
 }
 
