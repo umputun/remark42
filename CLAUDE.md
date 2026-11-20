@@ -103,5 +103,5 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
   (`frontend/apps/remark42/public`, embedded at `backend/app/cmd/web` or read from `--web-root`),
   then `backend/app/webassets/assets`, embedded in the binary. A plain page or image the bundler
   does not process belongs in `webassets`, the demo, counter, last-comments, deleteme and comments
-  pages included; the widget's own document (`templates/iframe.ejs`) and its CSS and JS go through
-  webpack. A name present in both is served from the frontend build.
+  pages included, and so is `counter.mjs`, the comment counter, written by hand; the widget's own
+  document (`templates/iframe.ejs`) and its other CSS and JS go through webpack. A name present in both is served from the frontend build.

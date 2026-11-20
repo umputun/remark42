@@ -106,7 +106,10 @@ provider icons and the pages that host the widget (`index.html`, `counter.html`,
 are embedded in the Go binary. Those pages are plain files: the bundler builds only `iframe.html`,
 from `templates/iframe.ejs`. The three that name a site spell it `site_id:"remark"`, exactly,
 because the server replaces that text with the first configured site, and `comments.html` carries
-`{% REMARK_URL %}`, which the server fills in too. The widget
+`{% REMARK_URL %}`, which the server fills in too. `counter.mjs`, the comment counter for host
+pages, is a script written by hand in the same directory: no type checking, no lint, no transpiling.
+It has to stay a classic script with no module syntax, since the server answers `counter.js` with
+its bytes, and `TestFS_CounterIsAClassicScript` checks that. The widget
 addresses the images by name through `webAssetUrl` in `app/common/web-asset.ts`; the bundle resolves
 no image files. The frontend build wins for any name present in both, which is what
 lets an operator override one by dropping a file next to the frontend files in `--web-root`. That

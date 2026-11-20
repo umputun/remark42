@@ -23,9 +23,10 @@ func TestFS_Contents(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "comments.html", "counter.html",
-		"custom.svg", "deleteme.html", "dev.svg", "discord.svg", "facebook.svg", "ghost.svg", "github-dark.svg",
-		"github-light.svg", "google.svg", "index.html", "last-comments.html", "markdown-help.html", "microsoft.svg",
-		"patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg", "yandex.svg"}, names)
+		"counter.mjs", "custom.svg", "deleteme.html", "dev.svg", "discord.svg", "facebook.svg", "ghost.svg",
+		"github-dark.svg", "github-light.svg", "google.svg", "index.html", "last-comments.html", "markdown-help.html",
+		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
+		"yandex.svg"}, names)
 }
 
 // TestFS_ContentShape catches an asset that has been truncated or replaced by something of the
@@ -78,6 +79,21 @@ func TestFS_SVGShape(t *testing.T) {
 			assert.True(t, strings.HasSuffix(s, "</svg>"), "the document is truncated")
 		})
 	}
+}
+
+// TestFS_CounterIsAClassicScript keeps counter.mjs loadable under its legacy name: the server answers
+// counter.js with the same bytes, and an integration that loads that name with a plain script tag
+// gets a syntax error from any import, export or import.meta. It also checks the file carries the
+// placeholder the server fills in, which is its address when a page sets no remark_config.host.
+func TestFS_CounterIsAClassicScript(t *testing.T) {
+	b, err := fs.ReadFile(FS, "counter.mjs")
+	require.NoError(t, err)
+	src := string(b)
+
+	moduleSyntax := regexp.MustCompile(`(?m)^\s*(import|export)\b|\bimport\.meta\b|\bimport\s*\(`)
+	assert.Empty(t, moduleSyntax.FindAllString(src, -1), "module syntax in counter.mjs")
+	assert.Contains(t, src, "{% REMARK_URL %}")
+	assert.Contains(t, src, "remark42__counter")
 }
 
 // TestFS_RelativeReferencesResolve keeps the two standalone pages self-contained: every relative

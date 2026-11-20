@@ -60,7 +60,6 @@ module.exports = (_, { mode, analyze }) => {
 
   const entry = {
     embed: './app/embed.ts',
-    counter: './app/counter.ts',
     deleteme: './app/deleteme.ts',
     'last-comments': [...preactDebug, CUSTOM_PROPERTIES_PATH, './app/last-comments.tsx'],
     remark: [...preactDebug, CUSTOM_PROPERTIES_PATH, './app/remark.tsx'],
