@@ -44,7 +44,7 @@ If all goes fine, you should be able to see the following message on your Slack 
 
 ## WebHook admin notifications
 
-You need to set `NOTIFY_ADMINS=webhook` to enable WebHook notifications on all new comments and set at least `NOTIFY_WEBHOOK_URL` for them to start working.
+You need to set `NOTIFY_ADMINS=webhook` to enable WebHook notifications on all new comments and set at least `NOTIFY_WEBHOOK_URL` for them to start working. Without the URL, or with a template that does not parse, the webhook is not created and the server logs `notifications are not fully set up` at start; the other notification types keep working.
 
 Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": {{.Text | escapeJSONString}}}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`.
 

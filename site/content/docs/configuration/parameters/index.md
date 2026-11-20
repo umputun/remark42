@@ -53,7 +53,7 @@ services:
 | admin.rpc.auth_passwd          | ADMIN_RPC_AUTH_PASSWD          |                         | basic auth user password                                 |
 | admin.rpc.secret_per_site      | ADMIN_RPC_SECRET_PER_SITE      |                         | enable JWT secret retrieval per aud, which is site_id in this case |
 | admin.shared.id                | ADMIN_SHARED_ID                |                         | admin IDs (list of user IDs), _multi_                    |
-| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@` + host of `REMARK_URL` | admin emails, _multi_                            |
+| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@` + host of `REMARK_URL`, port included | admin emails, _multi_. The first one is public (`admin_email` in `/api/v1/config`) and receives data deletion requests. All of them receive admin email notifications; the default is not used for those |
 | backup                         | BACKUP_PATH                    | `./var/backup`          | backups location                                         |
 | max-back                       | MAX_BACKUP_FILES               | `10`                    | max backup files to keep                                 |
 | cache.type                     | CACHE_TYPE                     | `mem`                   | type of cache, `redis_pub_sub` or `mem` or `none`        |
