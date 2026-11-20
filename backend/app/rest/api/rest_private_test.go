@@ -455,13 +455,75 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, "my edit", c2.Edit.Summary)
 	assert.WithinRange(t, c2.Edit.Timestamp, beforeUpdate, time.Now(), "edit stamped during the update")
 
-	// read updated comment
-	res, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
+	// read updated comment as its author
+	res, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
 	assert.Equal(t, http.StatusOK, code)
 	c3 := store.Comment{}
 	err = json.Unmarshal([]byte(res), &c3)
 	assert.NoError(t, err)
 	assert.Equal(t, c2, c3, "same as response from update")
+}
+
+func TestRest_UpdateHidesVoters(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+
+	// another user votes for the comment
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah1&vote=1", ts.URL, id), http.NoBody)
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", dev2Token)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// the author edits it
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"updated text", "summary":"my edit"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	c2 := store.Comment{}
+	require.NoError(t, json.Unmarshal(body, &c2))
+	assert.Equal(t, "<p>updated text</p>\n", c2.Text)
+	assert.Equal(t, 1, c2.Score)
+	assert.Nil(t, c2.Votes, "voters are hidden, as on every read")
+	assert.Nil(t, c2.VotedIPs, "voters' ip hashes are hidden, as on every read")
+	assert.NotContains(t, string(body), `"votes"`)
+	assert.NotContains(t, string(body), `"voted_ips"`)
+
+	// the author deletes it through the same endpoint
+	req, err = http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"delete": true, "summary":"removed"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	c3 := store.Comment{}
+	require.NoError(t, json.Unmarshal(body, &c3))
+	assert.True(t, c3.Deleted)
+	assert.Empty(t, c3.Text, "the answer to a delete is the deleted comment, not the one before it")
+	assert.NotContains(t, string(body), `"votes"`)
+	assert.NotContains(t, string(body), `"voted_ips"`)
+	assert.NotContains(t, string(body), "updated text")
 }
 
 func TestRest_UpdateDelete(t *testing.T) {
