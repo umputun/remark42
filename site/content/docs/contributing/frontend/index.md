@@ -28,7 +28,7 @@ You must have at least 2GB RAM or swap enabled for building.
 The repository installs no git hooks. A clone where an earlier `pnpm i` set them up still has `core.hooksPath` pointing at `frontend/.husky`, where nothing runs any more; `git config --unset core.hooksPath` removes the setting, and the leftover `frontend/.husky` directory can be deleted.
 
 {{< note "🚨" >}}
-Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. You could alter the address for dev auth with the `REMARK_URL` environment variable.
+Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. The address dev auth uses is the backend's `REMARK_URL`, set in the compose file you start the backend from.
 {{< /note >}}
 
 ## Development
@@ -65,6 +65,8 @@ cp compose-dev-frontend.yml compose-private.yml
 docker compose -f compose-private.yml up --build
 ```
 
+It starts Remark42 backend on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". Sign in with the Dev provider: its form offers `dev_user`, which the compose file makes an admin. You can tweak any of the [supported parameters](https://remark42.com/docs/configuration/parameters/) in the corresponding yml file.
+
 Then in the new terminal tab or window, run the following to start the frontend with Hot Reloading:
 
 ```shell
@@ -72,16 +74,14 @@ cd frontend/apps/remark42
 pnpm dev
 ```
 
-Developer build running by `webpack-dev-server` supports devtools for [React](https://reactjs.org/blog/2019/08/15/new-react-devtools.html#how-do-i-get-the-new-devtools) and [Redux](https://github.com/reduxjs/redux-devtools).
-
-It starts Remark42 backend on `127.0.0.1:8080` and adds local OAuth2 provider "Dev". To access the frontend running by Node, go to <http://127.0.0.1:9000/web/>. By default, you would be logged in as `dev_user`, defined as admin. You can tweak any of the [supported parameters](https://remark42.com/docs/configuration/parameters/) in corresponded yml file.
+To access the frontend running by Node, go to <http://127.0.0.1:9000/web/>. The development build includes `preact/debug`, so the [Preact DevTools](https://preactjs.github.io/preact-devtools/) browser extension can inspect the widget. Redux DevTools are not connected; the store is available as `window.ReduxStore` inside the widget's iframe.
 
 ### Manual testing after changes
 
-Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests.
+Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests and the frontend build.
 
 {{< note "🚨" >}}
-Before submitting your changes as a Pull Request, run the backend using the `docker compose -f compose-dev-frontend.yml build --build-arg SKIP_FRONTEND_BUILD=""; docker compose -f compose-private.yml up` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
+Before submitting your changes as a Pull Request, run the backend using the `docker compose -f compose-private.yml build --build-arg SKIP_FRONTEND_BUILD="" && docker compose -f compose-private.yml up` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
 {{< /note >}}
 
 ## Static build
@@ -113,14 +113,14 @@ so prettier, stylelint and `pnpm lint` do not see them.
 ## Imports
 
 - Imports for TypeScript, JavaScript files should be without extension: `./index`, not `./index.ts`
-- Both of the two rules above are reversed inside the dependency-free test layer described under
+- If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
+- Otherwise, it should be imported by absolute path relative to the `app` folder like `common/types` which maps to `./app/common/types.ts` in webpack, tsconfig, and Jest
+- The extension rule and the alias rule above are reversed inside the dependency-free test layer described under
   Testing, and in any module it imports: node's ESM resolver refuses an extensionless specifier and
   knows nothing of the alias, so those files write `./types.ts` in full and never `common/…`.
   Webpack, Jest and `tsc` all resolve the explicit relative form too, which is why the exception
   costs nothing outside those files. It applies to value imports only; a type-only import erases
   before either runtime sees it, and keeps the ordinary style
-- If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
-- Otherwise, it should be imported by absolute path relative to the `app` folder like `common/types` which maps to `./app/common/types.ts` in webpack, tsconfig, and Jest
 
 ## Testing
 
@@ -130,8 +130,8 @@ Tests come in two layers, and which one a test belongs in is decided by what it 
 
 - Project uses [Jest](https://jestjs.io) as test framework
 - [Testing Library](https://testing-library.com) is used for UI tests
-- Jest checks files that match regex `\.(test|spec)\.ts(x?)$`, i.e., `comment.test.tsx`, `comment.spec.ts`, and skips `*.unit.test.ts`
-- Tests are running on push attempt
+- Jest runs the `*.test.ts(x)` and `*.spec.ts(x)` files, for example `comment.test.tsx` and `comment.spec.ts`, and skips `*.unit.test.ts`
+- Nothing runs the tests on commit or push; CI runs them on pull requests and on pushes to master that change code under `frontend/`
 - Example tests can be found in `./app/components/auth/auth.spec.tsx`
 
 ### Dependency-free tests, `*.unit.test.ts`
@@ -168,7 +168,7 @@ pure halves of `intl.tsx` and `useSessionState.ts`, kept apart for exactly this 
 
 ## Notes
 
-Frontend part being bundled on docker env gets placed on `/src/web` and is available via `http://{host}/web`. For example, `embed.mjs` entry point will be available at `http://{host}/web/embed.mjs`
+Frontend part being bundled on docker env gets placed in `/srv/web` and is available via `http://{host}/web`. For example, `embed.mjs` entry point will be available at `http://{host}/web/embed.mjs`
 
 ## Learn More
 

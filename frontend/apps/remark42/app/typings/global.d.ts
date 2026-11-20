@@ -58,7 +58,6 @@ type RemarkConfig = {
 
 declare global {
   interface Window {
-    __REDUX_DEVTOOLS_EXTENSION_COMPOSE__?: typeof compose;
     /** only for dev env */
     ReduxStore: typeof store;
     remark_config: RemarkConfig;

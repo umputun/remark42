@@ -18,7 +18,7 @@
     "type-check": "tsc -p tsconfig.json --noEmit",
     "translation-check": "pnpm translation:extract && pnpm translation:check",
     "translation:extract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ./tasks/extract-messages.ts",
-    "translation:generate": "node ./tasks/generateDictionary.js",
+    "translation:generate": "node ./tasks/generateDictionary.js && prettier --write app/utils/loadLocale.ts",
     "translation:check": "node ./tasks/checkTranslation.js"
   },
   "engines": {

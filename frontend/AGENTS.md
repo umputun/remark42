@@ -4,18 +4,20 @@ Non-obvious constraints in the frontend toolchain and widget. Read before bumpin
 
 ## The node/pnpm version is pinned in many places, not one
 
-CI staying green does **not** mean every pin is consistent — `.nvmrc` in particular is never read by CI, so it can silently drift. After changing the node or pnpm version, grep the whole repo and update every one of these, not just the ones CI exercises:
+CI staying green does **not** mean every pin is consistent: CI compares only `.nvmrc` and the installation page against `package.json` (`scripts/check-documented-versions.sh`, run by `ci-docs-versions.yml`), and the other places below can silently drift. After changing the node or pnpm version, grep the whole repo and update every one of these, not just the ones CI exercises:
 
 - `Dockerfile` (production image) — `FROM node:X-alpine` and `npm i -g pnpm@X.Y.Z`
-- `frontend/.nvmrc` — not read by CI at all; only matters to a human running `nvm use` locally. This is the one that drifted unnoticed: it sat at `16` through the whole node-20 migration because nothing red ever pointed at it.
+- `frontend/.nvmrc` — what a human running `nvm use` gets. It sat at `16` through the whole node-20 migration because nothing red pointed at it; `check-documented-versions.sh` now fails when it differs from `engines.node`.
 - `frontend/apps/remark42/package.json`, both its `packageManager` field and its `engines` block
-- `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
+- every `pnpm/action-setup@vN` block in `.github/workflows/ci-frontend.yml` and `release.yml` — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
+- `.oss-scanner/Dockerfile` — `FROM node:X-bookworm` and `npm i -g pnpm@X.Y.Z`
+- the versions stated in `site/content/docs/getting-started/installation/index.md` (checked by CI), `site/content/docs/contributing/frontend/index.md` and the release procedure in the root `AGENTS.md`
 - the dependency-free commands live in `package.json` as `test:unit`, `translation:extract` and `translation:check`, and are **repeated inline** in the `unit` and `translations-check` jobs of `ci-frontend.yml`, which carry no pnpm by design. Change a script and that job keeps running the old one, green
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
-`engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
+`engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`@babel/core` 8 needs 24.11 or later); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
 
 ## One manifest, at `frontend/apps/remark42`
 
@@ -96,7 +98,6 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
 - `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, and `postcss-preset-env` 11 with `cssnano` 8, which change generated CSS
-- `redux` 4
 
 ## `/web` has a second source
 
@@ -168,8 +169,8 @@ destructuring default by prettier's spacing, which `pnpm lint` enforces, and it 
 code, so a commented-out message keeps its key. A text given by a variable is not seen at all.
 
 It fails instead of writing in these cases, because `tasks/generateDictionary.js` calls
-`removeAbandonedKeys` and `translation:generate` would otherwise delete the lost keys from all 24
-catalogues in `app/locales/`:
+`removeAbandonedKeys` and `translation:generate` would otherwise delete the lost keys from every
+catalogue in `app/locales/`:
 
 - a `defaultMessage` given as a string that it cannot pair with a plain-string `id` (an `id` after
   its text or held in a variable), or a string that goes on into a concatenation or a call

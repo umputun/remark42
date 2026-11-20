@@ -9,9 +9,9 @@ directory with `.json` extension and content like following:
 
 ```json
 {
-  "anonymousLoginForm.length-limit": "Username must be at least 3 characters long",
-  "anonymousLoginForm.log-in": "Log in",
-  "anonymousLoginForm.symbol-limit": "Username must start from the letter and contain only Latin letters, numbers, underscores, and spaces",
+  "auth.back": "Back",
+  "auth.email-address": "Email address",
+  "auth.loading": "Loading...",
   <...>
 }
 ```
@@ -47,7 +47,7 @@ below to have your translation available to all remark42 users and included in t
     git push
     ```
 
-1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
+1.  Add the code of the language you want to translate into, normally its [two-letter ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes), to the list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
 
     {{< note "↔️" >}}
     If the language is written right-to-left (e.g. Arabic, Hebrew, Persian), also add its code to
@@ -87,4 +87,4 @@ below to have your translation available to all remark42 users and included in t
     4.  Open <http://127.0.0.1:9000/web/>, log in, make a comment, make a reply to a comment, and check your translation
     5.  Take a screenshot of that page with your translation in place
 
-1.  after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it
+1.  After all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it
