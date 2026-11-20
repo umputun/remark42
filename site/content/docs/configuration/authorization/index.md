@@ -88,6 +88,15 @@ By default, Remark42 authenticates against the `common` endpoint, which requires
 
 To use a different endpoint, set `AUTH_MICROSOFT_TENANT` to your tenant ID or domain name for a single-tenant Entra ID application (`AzureADMyOrg`), to `organizations` for a multi-tenant application accepting work or school accounts only (`AzureADMultipleOrgs`), or to `consumers` for an application limited to personal Microsoft accounts (`PersonalMicrosoftAccount`).
 
+### X (Twitter)
+
+1. Create a new app in the [X Developer Console](https://console.x.com)
+2. On the app page, under **"User authentication settings"**, press **"Set up"** and choose **"Read"** in **"App permissions"**
+3. In **"Callback URI / redirect URL"** enter your `REMARK_URL` with `/auth/twitter/callback` appended, e.g., `https://remark42.mysite.com/auth/twitter/callback`. Set the required **"Website URL"** to the URL of your site and save the settings
+4. Under **"Keys & Tokens"**, in **"OAuth 1.0a keys"**, copy the **Consumer Key** and the **Consumer Key Secret** into `AUTH_TWITTER_CID` and `AUTH_TWITTER_CSEC`. If the console no longer shows them in full, **"Regenerate"** issues a new pair
+
+Remark42 signs users in to X with OAuth 1.0a. The **Client ID** and **Client Secret** under **"OAuth 2.0 keys"** are a different pair and do not work here.
+
 ### Yandex
 
 1. Create a new **"OAuth App"**: https://oauth.yandex.com/client/new
@@ -142,6 +151,7 @@ Notes:
 - `AUTH_CUSTOM_NAME` must match `^[a-z0-9][a-z0-9_-]*$` and should not conflict with built-in providers: `email`, `anonymous`, `google`, `github`, `facebook`, `yandex`, `twitter`, `microsoft`, `patreon`, `discord`, `telegram`, `dev`, `apple`.
 - If any required custom variable is missing, Remark42 will fail to start.
 - Remark42 currently supports only one custom OAuth2 provider at a time.
+- Remark42 sends a PKCE (S256) challenge with every authorization request; providers without PKCE support ignore it.
 
 ### Telegram
 
