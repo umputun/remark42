@@ -116,6 +116,8 @@
   "errors.to-many-request": "请求过多，请稍等片刻后重试。",
   "errors.unexpected-error": "出了些问题。",
   "profile.close": "关闭个人资料页面",
+  "profile.edit-avatar": "编辑头像",
+  "profile.edit-avatar-hint": "头像来自 Gravatar，对应登录时使用的电子邮件地址。在 Gravatar 更改后，请登出并重新登录；浏览器最长可能在一周内仍显示旧头像。",
   "profile.request-to-delete-data": "请求删除我的数据",
   "retry": "重试",
   "root.pinned-comments": "置顶的评论",

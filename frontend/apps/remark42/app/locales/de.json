@@ -116,6 +116,8 @@
   "errors.to-many-request": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
   "errors.unexpected-error": "Leider ist etwas schiefgegangen.",
   "profile.close": "Profil schließen",
+  "profile.edit-avatar": "Avatar ändern",
+  "profile.edit-avatar-hint": "Der Avatar stammt von Gravatar für die E-Mail-Adresse, mit der Sie sich anmelden. Melden Sie sich nach einer Änderung dort ab und wieder an; ein Browser kann den alten noch bis zu einer Woche anzeigen.",
   "profile.request-to-delete-data": "Löschung meiner Daten anfordern",
   "retry": "Erneut versuchen",
   "root.pinned-comments": "Angeheftete Kommentare",

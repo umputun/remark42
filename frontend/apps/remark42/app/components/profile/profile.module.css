@@ -73,6 +73,22 @@
   align-items: center;
 }
 
+/* sits under the name and id, which start past the 16px header padding, the 32px avatar and
+   its 8px margin; the negative margin takes back half of the header's bottom padding so the
+   line reads as part of the header */
+.editAvatar {
+  flex-shrink: 0;
+  margin: -8px 0 16px;
+  padding-inline: 56px 16px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.editAvatarHint {
+  display: block;
+  color: var(--color13);
+}
+
 .content {
   display: flex;
   flex-direction: column;

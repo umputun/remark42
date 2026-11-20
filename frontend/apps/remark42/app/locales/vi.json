@@ -116,6 +116,8 @@
   "errors.to-many-request": "Có quá nhiều yêu cầu. Vui lòng đợi một lát rồi thử lại.",
   "errors.unexpected-error": "Có gì đó sai sai.",
   "profile.close": "Đóng hồ sơ",
+  "profile.edit-avatar": "Sửa ảnh đại diện",
+  "profile.edit-avatar-hint": "Ảnh đại diện được lấy từ Gravatar theo email bạn dùng để đăng nhập. Sau khi đổi ảnh ở đó, hãy thoát rồi đăng nhập lại; trình duyệt có thể vẫn hiển thị ảnh cũ trong tối đa một tuần.",
   "profile.request-to-delete-data": "Yêu cầu xóa thông tin của tôi",
   "retry": "Thử lại",
   "root.pinned-comments": "Bình buận đã ghim",

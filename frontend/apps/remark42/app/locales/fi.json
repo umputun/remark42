@@ -116,6 +116,8 @@
   "errors.to-many-request": "Liian monta pyyntöä. Odota hetki ja yritä uudelleen.",
   "errors.unexpected-error": "Jotain meni pieleen.",
   "profile.close": "Sulje profiili",
+  "profile.edit-avatar": "Muokkaa avataria",
+  "profile.edit-avatar-hint": "Avatar haetaan Gravatarista sen sähköpostiosoitteen perusteella, jolla kirjaudut sisään. Kun olet vaihtanut sen siellä, kirjaudu ulos ja uudelleen sisään; selain voi näyttää vanhaa kuvaa vielä jopa viikon.",
   "profile.request-to-delete-data": "Pyydä tietojeni poistamista",
   "retry": "Yritä uudelleen",
   "root.pinned-comments": "Kiinnitetyt kommentit",

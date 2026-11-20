@@ -116,6 +116,8 @@
   "errors.to-many-request": "Túl sok kérés. Kérjük, várjon egy kicsit, és próbálja újra.",
   "errors.unexpected-error": "Valami hiba történt.",
   "profile.close": "Profil bezárása",
+  "profile.edit-avatar": "Avatar szerkesztése",
+  "profile.edit-avatar-hint": "Az avatar a Gravatarról származik, ahhoz az e-mail-címhez tartozik, amellyel bejelentkezik. Miután ott módosította, jelentkezzen ki, majd be újra; a böngésző akár egy hétig is a régit mutathatja.",
   "profile.request-to-delete-data": "Adataim törlésének kérése",
   "retry": "Újrapróbálkozás",
   "root.pinned-comments": "Kitűzött hozzászólások",

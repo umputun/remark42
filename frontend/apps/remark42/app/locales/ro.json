@@ -116,6 +116,8 @@
   "errors.to-many-request": "Prea multe cereri. Așteaptă puțin și încearcă din nou.",
   "errors.unexpected-error": "Ceva nu a mers bine.",
   "profile.close": "Închide profilul",
+  "profile.edit-avatar": "Editează avatarul",
+  "profile.edit-avatar-hint": "Avatarul provine de la Gravatar pentru adresa de email cu care te autentifici. După ce îl schimbi acolo, deconectează-te și autentifică-te din nou; browserul poate afișa în continuare avatarul vechi până la o săptămână.",
   "profile.request-to-delete-data": "Solicită ștergerea datelor mele",
   "retry": "Reîncearcă",
   "root.pinned-comments": "Comentarii fixate",

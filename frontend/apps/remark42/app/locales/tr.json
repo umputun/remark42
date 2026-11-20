@@ -116,6 +116,8 @@
   "errors.to-many-request": "Çok fazla istek gönderildi. Lütfen biraz bekleyip tekrar deneyin.",
   "errors.unexpected-error": "Bir hata oluştu.",
   "profile.close": "Profili kapat",
+  "profile.edit-avatar": "Avatarı düzenle",
+  "profile.edit-avatar-hint": "Avatar, giriş yaptığınız e-posta adresi için Gravatar'dan alınır. Orada değiştirdikten sonra çıkış yapıp yeniden giriş yapın; tarayıcı eski avatarı bir haftaya kadar göstermeye devam edebilir.",
   "profile.request-to-delete-data": "Bilgilerimin silinmesini iste",
   "retry": "Tekrar dene",
   "root.pinned-comments": "Sabitlenmiş yorumlar",

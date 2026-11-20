@@ -116,6 +116,8 @@
   "errors.to-many-request": "Muitas solicitações. Aguarde um momento e tente novamente.",
   "errors.unexpected-error": "Algo deu errado.",
   "profile.close": "Fechar perfil",
+  "profile.edit-avatar": "Editar avatar",
+  "profile.edit-avatar-hint": "O avatar vem do Gravatar para o email com que você entra. Depois de alterá-lo lá, saia e entre novamente; o navegador ainda pode mostrar o antigo por até uma semana.",
   "profile.request-to-delete-data": "Solicitar remoção dos meus dados",
   "retry": "Tentar novamente",
   "root.pinned-comments": "Comentários afixados",

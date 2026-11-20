@@ -27,6 +27,14 @@ import { Counter } from './components/counter';
 import styles from './profile.module.css';
 
 const COMMENTS_LIMIT = 10;
+// the page Gravatar's own documentation names for uploading and choosing an avatar; a signed-out
+// visitor is taken through the Gravatar login and returned to it
+const GRAVATAR_AVATARS_URL = 'https://gravatar.com/profile/avatars';
+
+/** Email sign-in is the only provider whose avatar is taken from Gravatar */
+function isEmailUser(id: string) {
+  return id.startsWith('email_');
+}
 
 async function signout() {
   postMessageToParent({ profile: null, signout: true });
@@ -208,6 +216,19 @@ export function Profile() {
             </button>
           )}
         </header>
+        {isCurrent && isEmailUser(user.id) && (
+          <p className={clsx('profile-edit-avatar', styles.editAvatar)}>
+            <a href={GRAVATAR_AVATARS_URL} target="_blank" rel="noopener noreferrer">
+              <FormattedMessage id="profile.edit-avatar" defaultMessage="Edit avatar" />
+            </a>
+            <span className={styles.editAvatarHint}>
+              <FormattedMessage
+                id="profile.edit-avatar-hint"
+                defaultMessage="The avatar comes from Gravatar for the email you sign in with. After changing it there, sign out and sign in again; a browser may still show the old one for up to a week."
+              />
+            </span>
+          </p>
+        )}
         <section className={clsx('profile-content', styles.content)}>
           {error && (
             <div className={styles.errorContent}>
