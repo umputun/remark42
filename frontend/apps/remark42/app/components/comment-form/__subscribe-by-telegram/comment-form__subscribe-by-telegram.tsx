@@ -96,7 +96,7 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
         setStep('subscribed');
         return false;
       }
-      if ((e as RequestError).code === 409) {
+      if ((e as RequestError).status === 409) {
         setStep('subscribed');
         return false;
       }

@@ -1,4 +1,5 @@
 import type * as Api from 'common/api';
+import { RequestError } from 'utils/errorUtils';
 
 jest.mock('common/api', () => ({
   getUser: jest.fn(),
@@ -44,6 +45,31 @@ describe('deleteme page', () => {
 
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelector('pre')?.textContent).toBe(`site "${payload}" not found`);
+  });
+
+  // the fetcher turns a body carrying one of the backend's codes into a request error, whose message
+  // is the one picked for a reader. the admin opening the link is shown the backend's own reason
+  it('shows the reason the server gave when the error carries one', async () => {
+    mockedApi().approveDeleteMe.mockRejectedValue(
+      new RequestError('Action rejected. Please try again a bit later.', 17, 400, {
+        code: 17,
+        details: "can't process token",
+        error: `token for site "${payload}" is expired`,
+      })
+    );
+
+    const root = await runPage();
+
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('pre')?.textContent).toBe(`token for site "${payload}" is expired`);
+  });
+
+  it('shows the message of an error that carries no reason from the server', async () => {
+    mockedApi().approveDeleteMe.mockRejectedValue(new RequestError('Please sign in to do this.', 401, 401));
+
+    const root = await runPage();
+
+    expect(root.querySelector('pre')?.textContent).toBe('Please sign in to do this.');
   });
 
   it('asks a signed-out admin to sign in to the site the request came from', async () => {

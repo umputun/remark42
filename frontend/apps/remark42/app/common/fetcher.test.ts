@@ -213,7 +213,7 @@ describe('fetcher', () => {
       mockFetch({ status: 401 });
 
       // Use await expect().rejects for async errors instead of try/catch
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401, 401));
 
       // Verify cookies were cleared
       // in the one form this document addresses: a 401 is not a sign-out, and the cookie a
@@ -238,7 +238,7 @@ describe('fetcher', () => {
       // a session for another site asking about this one, or an anonymous user, is refused, not signed out
       mockFetch({ status: 403 });
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(
-        new RequestError("You don't have permission to do this.", 403)
+        new RequestError("You don't have permission to do this.", 403, 403)
       );
 
       expect(clear).not.toHaveBeenCalled();
@@ -251,7 +251,7 @@ describe('fetcher', () => {
 
       // the token lives at module level, so drop it the way the fetcher does before the next test
       mockFetch({ status: 401 });
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401, 401));
       clear.mockRestore();
     });
 
@@ -406,15 +406,75 @@ describe('fetcher', () => {
     it('should throw json on api json response with >= 400 status code', async () => {
       expect.assertions(1);
 
+      // what the auth endpoints send: an error with no code of remark42's own
       const data = {
-        code: 2,
         error: 'you just cant',
-        details: 'you just cant at all',
       };
 
       mockFetch({ status: 400, data });
 
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(data);
+    });
+
+    it('should throw json with code 0 on a status without a message of its own', async () => {
+      expect.assertions(1);
+
+      const data = { code: 0, error: 'you just cant', details: 'you just cant at all' };
+
+      mockFetch({ status: 400, data });
+
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(data);
+    });
+
+    it("should reject with the backend's error code when the catalogue has a message for it", async () => {
+      expect.assertions(1);
+
+      const data = { code: 13, error: 'rejected', details: "can't vote for own comment" };
+
+      mockFetch({ status: 400, data });
+
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError('You cannot vote for your own comment.', 13, 400, data)
+      );
+    });
+
+    // a blocked user, a read-only thread and a refused token are all 403, and only the code in the
+    // body tells them apart
+    it("should prefer the backend's error code to a status with a message of its own", async () => {
+      expect.assertions(2);
+
+      const blocked = { code: 7, error: 'rejected', details: 'user blocked' };
+      mockFetch({ status: 403, data: blocked });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('User has been blocked.', 7, 403, blocked));
+
+      const readOnly = { code: 8, error: 'rejected', details: 'old post, read-only' };
+      mockFetch({ status: 403, data: readOnly });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError('Comments on this page are read-only.', 8, 403, readOnly)
+      );
+    });
+
+    // code 0 is ErrInternal, which the backend sends for many unrelated failures, and a code the
+    // catalogue does not carry says nothing a reader can use: both leave the status to pick
+    it('should keep the message of the status for code 0 or an unknown code', async () => {
+      expect.assertions(2);
+
+      const verified = { code: 0, error: 'already verified', details: 'already verified' };
+      mockFetch({ status: 409, data: verified });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError(
+          'This action cannot be completed right now. Please refresh the page and try again.',
+          409,
+          409,
+          verified
+        )
+      );
+
+      const unknown = { code: 9999, error: 'rejected' };
+      mockFetch({ status: 403, data: unknown });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(
+        new RequestError("You don't have permission to do this.", 403, 403, unknown)
+      );
     });
 
     it('should throw error on api json response with >= 400 status code and bad json from server', async () => {
@@ -442,7 +502,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401, 401));
     });
     it('should throw "Something went wrong." object on unknown status', async () => {
       expect.assertions(1);
@@ -457,7 +517,7 @@ describe('fetcher', () => {
         },
       });
 
-      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Something went wrong.', 0));
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Something went wrong.', 0, 400));
     });
   });
 });

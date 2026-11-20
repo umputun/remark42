@@ -2,6 +2,7 @@ import { NODE_ID } from 'common/constants';
 import { approveDeleteMe, getUser } from 'common/api';
 import { siteId, token } from 'common/settings';
 import type { ApiError } from 'common/types';
+import type { RequestError } from 'utils/errorUtils';
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
@@ -30,8 +31,15 @@ async function init(): Promise<void> {
         render(node, 'User deleted successfully', JSON.stringify(data, null, 4));
       },
       (err: Error | ApiError | string) => {
+        // the backend's own text says what is wrong with the link, which is what an admin opening
+        // it needs. a request error carries the message picked for a reader, and the body beside it
+        const reason = (err instanceof Error && (err as RequestError).body) || err;
         const message =
-          err instanceof Error ? err.message : typeof err === 'object' && err !== null && err.error ? err.error : err;
+          reason instanceof Error
+            ? reason.message
+            : typeof reason === 'object' && reason !== null && reason.error
+              ? reason.error
+              : reason;
         console.error(err);
         render(node, 'Something went wrong', String(message));
       }

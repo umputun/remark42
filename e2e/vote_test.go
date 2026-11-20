@@ -136,8 +136,9 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 		// 409 and not 500: the widget maps a handful of statuses to copy of their own and
 		// everything else to a generic "something went wrong", which is also what it shows when
 		// error handling fails altogether. asserting a distinct string is what makes this
-		// assertion mean anything
-		fulfillJSON(t, route, http.StatusConflict, `{"code":19,"details":"vote rejected","error":"failed"}`)
+		// assertion mean anything. code 0 is the backend's ErrInternal, which leaves the status
+		// to pick the copy; TestVote_RejectionShowsTheBackendsReason covers a code that does not
+		fulfillJSON(t, route, http.StatusConflict, `{"code":0,"details":"vote rejected","error":"failed"}`)
 	}))
 
 	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
@@ -150,6 +151,28 @@ func TestVote_FailureShowsAnErrorAndRestoresTheScore(t *testing.T) {
 	// the widget shows its own copy for the status, not the raw body
 	waitVisible(t, target.Locator("text=This action cannot be completed right now."))
 
+	waitText(t, score(voterFrame, text), "0", "the optimistic score was not rolled back")
+}
+
+// TestVote_RejectionShowsTheBackendsReason covers the code the backend puts in an error body. A
+// reader who has voted in another tab still has the buttons enabled in this one, and the backend
+// answers the second vote with 400 and ErrVoteDbl, which the widget used to show as the generic
+// "something went wrong". The response is the backend's own for that case; a real second vote
+// needs a second signed-in tab of the same reader, which is a sign-in flow and not what this covers
+func TestVote_RejectionShowsTheBackendsReason(t *testing.T) {
+	t.Parallel()
+
+	text := "vote rejected " + runID
+	voter, voterFrame, target := voteScenario(t, "voterejectauthor", text)
+
+	require.NoError(t, voter.Route("**/api/v1/vote/**", func(route playwright.Route) {
+		fulfillJSON(t, route, http.StatusBadRequest,
+			`{"code":14,"details":"can't vote for comment","error":"user dev_user already voted"}`)
+	}))
+
+	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
+
+	waitVisible(t, target.Locator("text=You have already voted for the comment."))
 	waitText(t, score(voterFrame, text), "0", "the optimistic score was not rolled back")
 }
 
