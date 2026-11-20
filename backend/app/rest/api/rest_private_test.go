@@ -2020,6 +2020,86 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 	assert.Empty(t, email, "email not set on the site named only in the body")
 }
 
+// A request that arrives with an expired token in the cookie is renewed by the auth middleware. Setting or
+// removing the email then writes the token a second time, to carry the new address, and used to write it
+// with the expiry of the token the request came with: the response replaced the renewed token, in the
+// cookie and in the X-JWT header, with one that had expired already.
+func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	userToken := func(email string, expires time.Time) string {
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
+				Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(expires)},
+			User: &token.User{ID: "provider1_dev", Name: "developer one", Email: email},
+		})
+		require.NoError(t, err)
+		return tkn
+	}
+	expired := func(email string) string { return userToken(email, time.Now().Add(-time.Minute)) }
+	confirmation, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Handshake: &token.Handshake{ID: "provider1_dev::new@example.com"},
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:    "remark42",
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	// the token the client is left with: of the JWT cookies in the answer, the last one set
+	send := func(method, url, body, tkn string) (status int, left token.Claims) {
+		var reqBody io.Reader = http.NoBody
+		if body != "" {
+			reqBody = strings.NewReader(body)
+		}
+		req, reqErr := http.NewRequest(method, ts.URL+url, reqBody)
+		require.NoError(t, reqErr)
+		req.AddCookie(&http.Cookie{Name: "JWT", Value: tkn})
+		req.Header.Set("X-XSRF-TOKEN", "xsrf-id")
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		require.NoError(t, resp.Body.Close())
+
+		var last string
+		for _, c := range resp.Cookies() {
+			if c.Name == "JWT" {
+				last = c.Value
+			}
+		}
+		require.NotEmpty(t, last, "the answer set no JWT cookie")
+		left, reqErr = srv.Authenticator.TokenService().Parse(last)
+		require.NoError(t, reqErr)
+		return resp.StatusCode, left
+	}
+
+	status, left := send(http.MethodPost, "/api/v1/email/confirm?site=remark42",
+		fmt.Sprintf(`{"site":"remark42","token":%q}`, confirmation), expired(""))
+	require.Equal(t, http.StatusOK, status)
+	require.NotNil(t, left.User)
+	assert.Equal(t, "new@example.com", left.User.Email, "the token carries the confirmed address")
+	assert.False(t, srv.Authenticator.TokenService().IsExpired(left),
+		"confirming the email left the client with a token that has expired already")
+
+	status, left = send(http.MethodDelete, "/api/v1/email?site=remark42", "", expired("new@example.com"))
+	require.Equal(t, http.StatusOK, status)
+	require.NotNil(t, left.User)
+	assert.Empty(t, left.User.Email, "the token no longer carries the address")
+	assert.False(t, srv.Authenticator.TokenService().IsExpired(left),
+		"removing the email left the client with a token that has expired already")
+
+	// a token that is still valid is not renewed on the way: it keeps the expiry it came with. a day
+	// ahead, so no stall of the test process can turn it into an expired one before it is sent
+	expires := time.Now().Add(24 * time.Hour).Truncate(time.Second)
+	status, left = send(http.MethodDelete, "/api/v1/email?site=remark42", "", userToken("new@example.com", expires))
+	require.Equal(t, http.StatusOK, status)
+	require.NotNil(t, left.ExpiresAt)
+	assert.True(t, expires.Equal(left.ExpiresAt.Time),
+		"a valid token's expiry moved from %s to %s", expires, left.ExpiresAt.Time)
+}
+
 // the admin password sent along with a token that has no user, such as a confirmation token, passes
 // authentication; setting and deleting the email then has no token user to update, which is not a panic
 func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
