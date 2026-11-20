@@ -2290,6 +2290,76 @@ func TestService_alterCommentsFlagCaching(t *testing.T) {
 	})
 }
 
+// a token's admin flag is set for the site it was issued for, and the open routes accept the token
+// for every site of the instance, so on another site the viewer counts as admin only if the admin
+// store says so for that site
+func TestService_alterCommentAdminPerSite(t *testing.T) {
+	engineMock := &engine.InterfaceMock{FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil }}
+	comments := func() []store.Comment {
+		return []store.Comment{
+			{ID: "a1", User: store.User{ID: "u1", IP: "ip-a1"}, Locator: store.Locator{SiteID: "site-a"}},
+			{ID: "b1", User: store.User{ID: "u1", IP: "ip-b1"}, Locator: store.Locator{SiteID: "site-b"}},
+			{ID: "b2", User: store.User{ID: "u2", IP: "ip-b2"}, Locator: store.Locator{SiteID: "site-b"}},
+		}
+	}
+	ips := func(cc []store.Comment) []string {
+		res := make([]string, len(cc))
+		for i, c := range cc {
+			res[i] = c.User.IP
+		}
+		return res
+	}
+	adminOfA := store.User{ID: "adm", Name: "adm", Admin: true, SiteID: "site-a"}
+
+	t.Run("admin of one site only", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(siteID string) ([]string, error) {
+			if siteID == "site-a" {
+				return []string{"adm"}, nil
+			}
+			return []string{"other"}, nil
+		}}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "", ""}, ips(res), "ip kept on the token's site only")
+		require.Len(t, as.AdminsCalls(), 1, "other site's admins read once per listing")
+		assert.Equal(t, "site-b", as.AdminsCalls()[0].SiteID)
+
+		c := svc.alterComment(comments()[1], adminOfA)
+		assert.Empty(t, c.User.IP, "single comment of the other site")
+	})
+
+	t.Run("shared admins see every site as today", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"adm"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "ip-b1", "ip-b2"}, ips(res))
+	})
+
+	t.Run("admin store error hides ip", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return nil, errors.New("rpc failed") }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "", ""}, ips(res))
+	})
+
+	t.Run("basic-auth admin sees every site", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"other"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), store.User{ID: "admin", Name: "admin", Admin: true})
+		assert.Equal(t, []string{"ip-a1", "ip-b1", "ip-b2"}, ips(res))
+		assert.Empty(t, as.AdminsCalls(), "no lookup for a user without a site")
+	})
+
+	t.Run("non-admin sees no ip anywhere", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"adm"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), store.User{ID: "adm", SiteID: "site-a"})
+		assert.Equal(t, []string{"", "", ""}, ips(res))
+		assert.Empty(t, as.AdminsCalls(), "the token's flag is not widened by the store")
+	})
+}
+
 func Benchmark_ServiceCreate(b *testing.B) {
 	dbFile := path.Join(b.TempDir(), "test-remark42.db")
 
