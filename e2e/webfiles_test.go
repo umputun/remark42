@@ -102,6 +102,25 @@ func TestWeb_UnknownNameIs404(t *testing.T) {
 		"above cannot tell a served file from a fallback")
 }
 
+// TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded pins the robots rule of the widget document.
+// Every embed loads the same /web/iframe.html, which before its bundle runs is an empty page, so
+// a crawler indexing it on its own finds one empty page under many query strings and reports
+// them as duplicate content, as #1683 described. noindex keeps it out of the index as a page of
+// its own, and indexifembedded keeps the comments indexed as part of the page that embeds them,
+// which a bare noindex would stop as well
+func TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded(t *testing.T) {
+	t.Parallel()
+
+	resp := getWeb(t, "/web/iframe.html?site_id=remark&url=https%3A%2F%2Fexample.com%2Fpost")
+	require.Equal(t, http.StatusOK, resp.status)
+	// the build minifies the template and reorders attributes, so the tag is found by its name
+	// and its content is read separately
+	robots := regexp.MustCompile(`<meta[^>]*\bname="robots"[^>]*>`).FindString(resp.body)
+	require.NotEmpty(t, robots, "the widget document carries no robots meta tag")
+	assert.Contains(t, robots, `content="noindex, indexifembedded"`,
+		"the widget document has to tell crawlers to index it only inside the page embedding it")
+}
+
 // TestWeb_EveryBundleServesUnderBothSuffixes covers the names the list above does not, and takes
 // its input from the build and not from a list somebody maintains, so a locale joining or
 // leaving needs no edit here. Whatever the bundler emitted has to answer under its legacy .js name
