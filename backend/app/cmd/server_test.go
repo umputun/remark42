@@ -736,8 +736,6 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
 			{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"},
-			{Old: "auth.twitter.cid", Version: "1.14"},
-			{Old: "auth.twitter.csec", Version: "1.14"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)

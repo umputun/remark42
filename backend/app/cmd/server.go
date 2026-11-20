@@ -114,7 +114,7 @@ type ServerCommand struct {
 		Facebook  AuthGroup          `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft MicrosoftAuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup          `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
+		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"X (Twitter) OAuth"`
 		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Custom    CustomAuthGroup    `group:"custom" namespace:"custom" env-namespace:"CUSTOM" description:"Custom OAuth2 provider"`
@@ -430,12 +430,6 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 		case ok && base != "" && base != s.Telegram.APIURL:
 			result = append(result, deprecated("notify.telegram.api", "telegram.api-url", "1.9", true))
 		}
-	}
-	if s.Auth.Twitter.CID != "" {
-		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
-	}
-	if s.Auth.Twitter.CSEC != "" {
-		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
 	}
 	return result
 }

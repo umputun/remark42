@@ -96,6 +96,8 @@ services:
 | auth.microsoft.tenant          | AUTH_MICROSOFT_TENANT          | `common`                | Azure AD tenant ID, domain, or "common"                  |
 | auth.github.cid                | AUTH_GITHUB_CID                |                         | GitHub OAuth client ID                                   |
 | auth.github.csec               | AUTH_GITHUB_CSEC               |                         | GitHub OAuth client secret                               |
+| auth.twitter.cid               | AUTH_TWITTER_CID               |                         | X (Twitter) Consumer Key                                 |
+| auth.twitter.csec              | AUTH_TWITTER_CSEC              |                         | X (Twitter) Consumer Key Secret                          |
 | auth.patreon.cid               | AUTH_PATREON_CID               |                         | Patreon OAuth Client ID                                  |
 | auth.patreon.csec              | AUTH_PATREON_CSEC              |                         | Patreon OAuth Client Secret                              |
 | auth.discord.cid               | AUTH_DISCORD_CID               |                         | Discord OAuth Client ID                                  |
@@ -280,8 +282,6 @@ The following list of command-line options is deprecated and might be removed in
 | notify.telegram.token | telegram.token | NOTIFY_TELEGRAM_TOKEN | TELEGRAM_TOKEN | | Telegram token | 1.9.0               |
 | notify.telegram.timeout | telegram.timeout | NOTIFY_TELEGRAM_TIMEOUT | TELEGRAM_TIMEOUT | | Telegram timeout | 1.9.0     |
 | notify.telegram.api | telegram.api-url | NOTIFY_TELEGRAM_API | TELEGRAM_API_URL | `https://api.telegram.org/bot` | Telegram API prefix | 1.9.0 |
-| auth.twitter.cid    | none        | AUTH_TWITTER_CID      | none         |        | Twitter Consumer API Key | 1.14.0     |                                  |
-| auth.twitter.csec   | none        | AUTH_TWITTER_CSEC     | none         |     | Twitter Consumer API Secret key | 1.14.0 |                           |
 
 </details>
 
