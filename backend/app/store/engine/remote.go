@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/go-pkgz/jrpc"
 
@@ -20,7 +21,11 @@ func (r *RPC) Create(comment store.Comment) (commentID string, err error) {
 		return "", err
 	}
 
-	err = json.Unmarshal(*resp.Result, &commentID)
+	res, err := rawResult(resp)
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(res, &commentID)
 	return commentID, err
 }
 
@@ -31,7 +36,11 @@ func (r *RPC) Get(req GetRequest) (comment store.Comment, err error) {
 		return store.Comment{}, err
 	}
 
-	err = json.Unmarshal(*resp.Result, &comment)
+	res, err := rawResult(resp)
+	if err != nil {
+		return store.Comment{}, err
+	}
+	err = json.Unmarshal(res, &comment)
 	return comment, err
 }
 
@@ -47,7 +56,7 @@ func (r *RPC) Find(req FindRequest) (comments []store.Comment, err error) {
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &comments)
+	err = json.Unmarshal(listResult(resp), &comments)
 	return comments, err
 }
 
@@ -57,7 +66,7 @@ func (r *RPC) Info(req InfoRequest) (info []store.PostInfo, err error) {
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &info)
+	err = json.Unmarshal(listResult(resp), &info)
 	return info, err
 }
 
@@ -67,7 +76,11 @@ func (r *RPC) Flag(req FlagRequest) (status bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	err = json.Unmarshal(*resp.Result, &status)
+	res, err := rawResult(resp)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(res, &status)
 	return status, err
 }
 
@@ -102,13 +115,13 @@ func (r *RPC) ListFlags(req FlagRequest) ([]any, error) {
 		return nil, err
 	}
 	// try []store.BlockedUser
-	list, err := unmarshalBlockedUser(*resp.Result)
+	list, err := unmarshalBlockedUser(listResult(resp))
 	if err == nil {
 		return list, nil
 	}
 
 	// try []strings
-	return unmarshalString(*resp.Result)
+	return unmarshalString(listResult(resp))
 }
 
 // UserDetail sets or gets single detail value, or gets all details for requested site.
@@ -119,7 +132,7 @@ func (r *RPC) UserDetail(req UserDetailRequest) (result []UserDetailEntry, err e
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(*resp.Result, &result)
+	err = json.Unmarshal(listResult(resp), &result)
 	return result, err
 }
 
@@ -129,7 +142,11 @@ func (r *RPC) Count(req FindRequest) (count int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	err = json.Unmarshal(*resp.Result, &count)
+	res, err := rawResult(resp)
+	if err != nil {
+		return 0, err
+	}
+	err = json.Unmarshal(res, &count)
 	return count, err
 }
 
@@ -144,4 +161,24 @@ func (r *RPC) Close() error {
 	_, err := r.Call("store.close")
 	r.Client.Client.CloseIdleConnections()
 	return err
+}
+
+// errNoResult is the error of a call that has to return a value and got null or no result from the remote
+var errNoResult = errors.New("remote store returned no result")
+
+// rawResult returns the json of a call's result, errNoResult when the remote sent null or none
+func rawResult(resp *jrpc.Response) ([]byte, error) {
+	if resp == nil || resp.Result == nil {
+		return nil, errNoResult
+	}
+	return *resp.Result, nil
+}
+
+// listResult returns the json of a call that returns a list. A remote written in Go answers with null for a
+// nil slice, which leaves Result unset; it is read as null here and unmarshals to an empty list
+func listResult(resp *jrpc.Response) []byte {
+	if res, err := rawResult(resp); err == nil {
+		return res
+	}
+	return []byte("null")
 }
