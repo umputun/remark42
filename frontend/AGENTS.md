@@ -95,16 +95,17 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
-- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, and `postcss-preset-env` 11 with `cssnano` 8 and `postcss-html` 2, which change generated CSS
+- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, and `postcss-preset-env` 11 with `cssnano` 8, which change generated CSS
 - `redux` 4
 
 ## `/web` has a second source
 
 `privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar `ghost.svg`, the sign-in
-provider icons, the emoji table `emoji.json` and the pages that host the widget (`index.html`,
-`counter.html`, `last-comments.html`, `deleteme.html`, `comments.html`) live in
-`backend/app/webassets/assets` and are embedded in the Go binary. Those pages are plain files: the
-bundler builds only `iframe.html`, from `templates/iframe.ejs`. The three that name a site spell it
+provider icons, the emoji table `emoji.json`, the widget's own document `iframe.html` and the pages
+that host the widget (`index.html`, `counter.html`, `last-comments.html`, `deleteme.html`,
+`comments.html`) live in `backend/app/webassets/assets` and are embedded in the Go binary. They are
+plain files: the bundler builds no HTML. `iframe.html` links `remark.css` itself, so the dev server
+extracts CSS to files as the production build does. The three pages that name a site spell it
 `site_id:"remark"`, exactly, because the server replaces that text with the first configured site,
 and `comments.html` carries `{% REMARK_URL %}`, which the server fills in too. `counter.mjs`, the
 comment counter for host pages, is a script written by hand in the same directory: no type checking,

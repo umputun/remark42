@@ -58,23 +58,12 @@
         }
       })();
     </script>
-    <% if (htmlWebpackPlugin.options.env === 'production') { %>
     <link rel="stylesheet" href="remark.css" />
-    <% } %>
   </head>
   <body>
     <div id="remark42">
       <div class="preloader preloader_view_iframe"></div>
     </div>
-    <% if (htmlWebpackPlugin.options.env === 'development') { %>
-    <script>
-      if (window.parent !== window) {
-        try {
-          window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.parent.__REACT_DEVTOOLS_GLOBAL_HOOK__;
-        } catch (e) {}
-      }
-    </script>
-    <% } %>
     <script>
       window.addEventListener('message', function receiveMessages(event) {
         try {

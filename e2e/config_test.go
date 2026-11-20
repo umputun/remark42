@@ -20,7 +20,7 @@ import (
 
 // TestConfig_ColorsReachTheWidget covers __colors__, the only setting that does not travel in the
 // iframe's query string: the parent puts it in window.name and an inline script in the widget
-// document, in templates/iframe.ejs, reads it back before the bundle runs. Nothing else opens
+// document, iframe.html, reads it back before the bundle runs. Nothing else opens
 // window.name, so the whole path could be removed unnoticed
 func TestConfig_ColorsReachTheWidget(t *testing.T) {
 	t.Parallel()
@@ -265,7 +265,7 @@ func TestConfig_PageTitleReachesTheStoredComment(t *testing.T) {
 }
 
 // TestConfig_StandaloneWidgetSendsNoPlaceholderTitle covers the widget document opened on its own,
-// with no host page to post a title into it. Its own title is the placeholder in iframe.ejs, and
+// with no host page to post a title into it. Its own title is the placeholder in iframe.html, and
 // sent with a comment it was stored as the thread's title "Comments", because the backend reads
 // the page's title only when the widget sends none. Spam gets posted this way, from the widget's
 // own address

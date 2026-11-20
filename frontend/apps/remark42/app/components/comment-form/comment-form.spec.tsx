@@ -100,7 +100,7 @@ describe('<CommentForm />', () => {
       expect(await submit()).toHaveBeenCalledWith('hello', 'A post on the host page');
     });
 
-    // a widget opened on its own has only the placeholder from iframe.ejs, which names no page.
+    // a widget opened on its own has only the placeholder from iframe.html, which names no page.
     // an empty title is what makes the backend read the real one from the page
     it("sends no title when no host page posted one, not the widget's own", async () => {
       document.title = 'Comments';

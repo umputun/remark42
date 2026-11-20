@@ -257,7 +257,7 @@ func TestRest_FileServerDemoPageFromAssets(t *testing.T) {
 
 			body, code := get(t, ts.URL+"/web/iframe.html")
 			assert.Equal(t, http.StatusOK, code)
-			assert.Equal(t, "widget document", body, "the build's own files still come first")
+			assert.Equal(t, "widget document", body, "a frontend file of an embedded name still comes first")
 		})
 	}
 }
@@ -334,7 +334,8 @@ func TestRest_FileServerFrontendSourceRefused(t *testing.T) {
 	})
 
 	t.Run("a frontend name is missing rather than fatal", func(t *testing.T) {
-		_, code := get(t, ts.URL+"/web/iframe.html")
+		// a bundle: only the frontend build supplies it, so with that source refused nothing answers
+		_, code := get(t, ts.URL+"/web/remark.mjs")
 		assert.Equal(t, http.StatusNotFound, code)
 	})
 }

@@ -113,8 +113,8 @@ func TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded(t *testing.T) {
 
 	resp := getWeb(t, "/web/iframe.html?site_id=remark&url=https%3A%2F%2Fexample.com%2Fpost")
 	require.Equal(t, http.StatusOK, resp.status)
-	// the build minifies the template and reorders attributes, so the tag is found by its name
-	// and its content is read separately
+	// the tag is found by its name and its content read separately, so attribute order and
+	// spacing do not matter
 	robots := regexp.MustCompile(`<meta[^>]*\bname="robots"[^>]*>`).FindString(resp.body)
 	require.NotEmpty(t, robots, "the widget document carries no robots meta tag")
 	assert.Contains(t, robots, `content="noindex, indexifembedded"`,

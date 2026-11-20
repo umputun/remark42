@@ -1,6 +1,5 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const incstr = require('incstr');
 
@@ -43,18 +42,6 @@ function getLocalIdent(loaderContext, _, localName, options) {
 
   return `${m.id}_${m.classNames[localName]}`;
 }
-
-const htmlMinifyOptions = {
-  minifyCSS: true,
-  minifyJS: true,
-  removeComments: true,
-  removeRedundantAttributes: true,
-  removeScriptTypeAttributes: true,
-  removeStyleLinkTypeAttributes: true,
-  sortAttributes: true,
-  sortClassName: true,
-  useShortDoctype: true,
-};
 
 module.exports = (_, { mode }) => {
   const isDev = mode === 'development';
@@ -103,7 +90,7 @@ module.exports = (_, { mode }) => {
     test: /\.css$/,
     exclude: [/\.module\.css$/, /node_modules/],
     use: [
-      isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
+      MiniCssExtractPlugin.loader,
       'css-loader',
       {
         loader: 'postcss-loader',
@@ -140,7 +127,7 @@ module.exports = (_, { mode }) => {
     test: /\.module\.css$/,
     exclude: /node_modules/,
     use: [
-      isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
+      MiniCssExtractPlugin.loader,
       {
         loader: 'css-loader',
         options: {
@@ -238,16 +225,7 @@ module.exports = (_, { mode }) => {
     module: {
       rules: [getTsRule(), ...rules],
     },
-    plugins: [
-      ...plugins,
-      new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'templates/iframe.ejs'),
-        filename: 'iframe.html',
-        inject: false,
-        env: mode,
-        minify: htmlMinifyOptions,
-      }),
-    ],
+    plugins,
     devServer,
   };
 

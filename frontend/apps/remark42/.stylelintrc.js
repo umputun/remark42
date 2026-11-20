@@ -98,21 +98,4 @@ module.exports = {
       },
     ],
   },
-  overrides: [
-    {
-      files: ['*.ejs', '**/*.ejs'],
-      customSyntax: 'postcss-html',
-      // standalone pages rather than the themeable widget surface, so literal colours are fine
-      rules: {
-        'scale-unlimited/declaration-strict-value': null,
-        // these files are copied to production unprocessed, unlike the module CSS that
-        // postcss-preset-env downlevels, so their media queries stay in the prefix form
-        'media-feature-range-notation': 'prefix',
-        // standalone dev/demo pages, deliberately left LTR-only regardless of widget locale — see
-        // scale-unlimited/declaration-strict-value above for the same reasoning
-        'property-layout-mappings': null,
-        'value-keyword-layout-mappings': null,
-      },
-    },
-  ],
 };

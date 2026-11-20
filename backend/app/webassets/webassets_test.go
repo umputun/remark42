@@ -25,7 +25,7 @@ func TestFS_Contents(t *testing.T) {
 	}
 	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "comments.html", "counter.html",
 		"counter.mjs", "custom.svg", "deleteme.html", "dev.svg", "discord.svg", "emoji.json", "facebook.svg", "ghost.svg",
-		"github-dark.svg", "github-light.svg", "google.svg", "index.html", "last-comments.html", "markdown-help.html",
+		"github-dark.svg", "github-light.svg", "google.svg", "iframe.html", "index.html", "last-comments.html", "markdown-help.html",
 		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
 		"yandex.svg"}, names)
 }
@@ -42,6 +42,7 @@ func TestFS_ContentShape(t *testing.T) {
 		{name: "comments.html", want: "<!DOCTYPE html>"},
 		{name: "counter.html", want: "<!DOCTYPE html>"},
 		{name: "deleteme.html", want: "<!DOCTYPE html>"},
+		{name: "iframe.html", want: "<!DOCTYPE html>"},
 		{name: "index.html", want: "<!DOCTYPE html>"},
 		{name: "last-comments.html", want: "<!DOCTYPE html>"},
 		{name: "markdown-help.html", want: "<!DOCTYPE html>"},
@@ -116,8 +117,8 @@ func TestFS_EmojiTable(t *testing.T) {
 
 // TestFS_RelativeReferencesResolve keeps the two standalone pages self-contained: every relative
 // src and href they use has to name a sibling that ships alongside them, since nothing else supplies
-// one. The demo, counter, last-comments, deleteme and comments pages are left out on purpose: they
-// load the widget's scripts, which the frontend build supplies.
+// one. The widget document and the demo, counter, last-comments, deleteme and comments pages are left
+// out on purpose: they load the widget's scripts and styles, which the frontend build supplies.
 func TestFS_RelativeReferencesResolve(t *testing.T) {
 	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
 	external := regexp.MustCompile(`^(?:[a-z]+:|//|#|mailto:)`)
