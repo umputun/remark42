@@ -84,15 +84,16 @@ hashed names stay. Settling the class-name direction first is what stops that wo
 | type checking | undecided | open |
 | lint and style lint | undecided, and an accepted loss is a real option | open |
 | size budgets | a Go test over the embedded filesystem | designed |
-| translation completeness | only message extraction is bound to npm; everything downstream of it is already node built-ins | narrowed |
+| translation completeness | node scripts with no dependencies, extraction included | in place |
 
 Type checking is the hard one, and the only gate with no route. Dropping the bundler without
 answering it means either shipping untyped source or finding a checker that is not npm, and there is
 no third option that keeps the current guarantee.
 
-The translation failure mode is worth carrying forward because it is silent. Extraction matches the
-identifiers the widget calls, not an import source, so moving strings into Go templates would
-extract nothing with a zero exit code, after which generation deletes them from every catalogue.
+The translation failure mode is worth carrying forward because it was silent. Moving strings into Go
+templates takes their keys out of the extraction, after which generation deletes them from every
+catalogue. Extraction now stops when a key of the English catalogue disappears, until the removal is
+confirmed with `--allow-removal`.
 
 ## What the bundler still does
 

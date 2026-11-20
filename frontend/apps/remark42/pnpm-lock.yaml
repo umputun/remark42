@@ -110,9 +110,6 @@ importers:
       '@babel/preset-typescript':
         specifier: ^8.0.1
         version: 8.0.1(@babel/core@8.0.1)
-      '@formatjs/cli':
-        specifier: ^5.0.2
-        version: 5.1.13
       '@size-limit/file':
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
@@ -1221,16 +1218,6 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@formatjs/cli@5.1.13':
-    resolution: {integrity: sha512-9rFWFCHEFeIUDqgMy4szoHXK7Iz29sNhY3n+N44m9VNPxjy2uWYqBEijk8bsBYhu4OLaDhHpwVbcHVJi848dHg==}
-    engines: {node: '>= 16.5.0'}
-    hasBin: true
-    peerDependencies:
-      '@vue/compiler-sfc': ^3.2.34
-    peerDependenciesMeta:
-      '@vue/compiler-sfc':
-        optional: true
 
   '@github/combobox-nav@2.3.1':
     resolution: {integrity: sha512-gwxPzLw8XKecy1nP63i9lOBritS3bWmxl02UX6G0TwMQZbMem1BCS1tEZgYd3mkrkiDrUMWaX+DbFCuDFo3K+A==}
@@ -7224,8 +7211,6 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
-
-  '@formatjs/cli@5.1.13': {}
 
   '@github/combobox-nav@2.3.1': {}
 

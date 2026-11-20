@@ -11,7 +11,7 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 - `frontend/apps/remark42/package.json`, both its `packageManager` field and its `engines` block
 - `pnpm/action-setup@vN` blocks in `.github/workflows/ci-frontend.yml` (5) and `release.yml` (2) — pin `version:` to the **exact** patch (e.g. `10.10.0`), matching `packageManager`, not just the major. A floating major here is silent in CI (it just resolves to whatever the latest patch is at run time) but breaks the "Dockerfile and CI use the same pnpm" guarantee.
 - `node:` matrices in `.github/workflows/ci-frontend.yml` (every entry, not just the first) and the `node-version:` values in `release.yml`
-- the two dependency-free test commands live in `package.json` as `test:unit` and `test:unit:node`, are called by name from `release.yml`, and are **repeated inline** in the `unit` job of `ci-frontend.yml`, which carries no pnpm by design. Change either script and that job keeps running the old one, green
+- the dependency-free commands live in `package.json` as `test:unit`, `translation:extract` and `translation:check`, and are **repeated inline** in the `unit` and `translations-check` jobs of `ci-frontend.yml`, which carry no pnpm by design. Change a script and that job keeps running the old one, green
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
@@ -95,7 +95,7 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
-- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, `node-emoji` 2 (renames the field `search()` returns), `@formatjs/cli` 6 (the translation extraction pipeline), and `postcss-preset-env` 11 with `cssnano` 8 and `postcss-html` 2, which change generated CSS
+- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, `node-emoji` 2 (renames the field `search()` returns), and `postcss-preset-env` 11 with `cssnano` 8 and `postcss-html` 2, which change generated CSS
 - `redux` 4
 
 ## `/web` has a second source
@@ -148,32 +148,34 @@ It installs hooks on preact's shared `options` that remap `onFocus`/`onBlur` to
 `TextareaAutosize` is the pattern. For a component type annotation use `FunctionComponent`
 from `preact`, not `React.FC`.
 
-## i18n is a hand-written binding whose export names are fixed by the extractor
+## i18n is a hand-written binding, and extraction reads `id` and `defaultMessage` pairs
 
 `app/common/intl.tsx` provides `IntlProvider`, `useIntl`, `createIntl`, `defineMessages`,
 `FormattedMessage` and `IntlShape`. The formatting itself lives in `app/common/intl-message.ts`,
 whose only preact reference is a type-only import that erases at build time, so it pulls in nothing at runtime, and which is where every rule below is implemented; `intl.tsx` is the
 binding over it and re-exports `createIntl` and `defineMessages` unchanged, so no call site can tell
-the two apart. `formatjs extract` (`translation:extract`) finds messages
-by recognising the identifiers `defineMessages`, `FormattedMessage` and `intl.formatMessage`
-in the AST, not by import source, so those three names are fixed. Rename any of them and
-extraction returns nothing, with no error and a zero exit code.
+the two apart. `translation:extract` is `tasks/extract-messages.ts`, a node script with no
+dependencies. It reads every `id` written just before its `defaultMessage`, both as plain strings,
+in an object literal or as JSX attributes, whatever function or component they are passed to, so
+renaming a helper loses nothing. It has no parser: it tells a key from a ternary, an assignment or a
+destructuring default by prettier's spacing, which `pnpm lint` enforces, and it reads comments like
+code, so a commented-out message keeps its key. A text given by a variable is not seen at all.
 
-The damage lands on the next step. `translation:check` compares locale keys against extracted
-keys and fails loudly, but `tasks/generateDictionary.js` calls `removeAbandonedKeys`, so
-`translation:generate` after a rename deletes the now-unextracted keys from all 24 files in
-`app/locales/` and writes them back, after which the check passes. Extract-then-generate is
-the documented translator workflow, so the destructive order is the normal one.
+It fails instead of writing in these cases, because `tasks/generateDictionary.js` calls
+`removeAbandonedKeys` and `translation:generate` would otherwise delete the lost keys from all 24
+catalogues in `app/locales/`:
 
-After any rename or refactor touching those identifiers, verify the count rather than the exit
-code:
+- a `defaultMessage` given as a string that it cannot pair with a plain-string `id` (an `id` after
+  its text or held in a variable), or a string that goes on into a concatenation or a call
+- a template literal with an expression, or a JSX attribute with a backslash, an entity or a line
+  break
+- one `id` is defined twice with different text
+- a key in `app/locales/en.json` is no longer in the source. When the message was removed on
+  purpose, `pnpm translation:extract --allow-removal` writes the file and `translation:generate`
+  then drops the key from the catalogues
 
-```sh
-pnpm translation:extract
-node -e "console.log(Object.keys(require('./extracted-messages/messages')).length)"
-```
-
-It must match the key count in `app/locales/en.json`, not drop to 0.
+`tasks/extract-messages.unit.test.ts` covers each case, and checks that the whole widget source
+yields exactly the keys and texts of `en.json`.
 
 The binding implements `{name}` interpolation and paired `<tag>text</tag>` rich text, and
 nothing else of ICU: no plural, select or selectordinal, no typed arguments such as
@@ -195,8 +197,8 @@ the interface.
 ## `*.unit.test.ts` runs with no toolchain, and that is what it is for
 
 Two test layers, split by what they need to run. Jest owns anything with a DOM in it; `*.unit.test.ts`
-files import nothing but the module under test, its fixtures and `node:test`, and run under plain
-node straight from source:
+files, in `app/` and in `tasks/`, import nothing but the module under test, its fixtures and node's
+own modules, and run under plain node straight from source:
 
 ```sh
 pnpm test:unit

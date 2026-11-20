@@ -27,7 +27,7 @@ keys.forEach((key) => {
     errors.push(
       `"${key}" was extracted from the source but is missing from the "en" locale dict. ` +
         `If it is a new message, run "translation:generate" and commit the catalogues. ` +
-        `If it comes from a test or a fixture, exclude that file from "translation:extract".`
+        `If it comes from a test or a fixture, add the file to SKIP in tasks/extract-messages.ts.`
     );
   }
 });

@@ -57,7 +57,7 @@ below to have your translation available to all remark42 users and included in t
     {{< /note >}}
 
 1.  Run `pnpm i` in the `frontend/apps/remark42` folder
-1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder
+1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder. It stops when a message in `app/locales/en.json` is no longer in the code; if you removed that message on purpose, run `pnpm translation:extract --allow-removal` instead
 1.  Run `pnpm translation:generate` in the `frontend/apps/remark42` folder
 1.  Translate all values in the newly created JSON file in
     [frontend/apps/remark42/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
