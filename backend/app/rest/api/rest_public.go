@@ -443,7 +443,7 @@ func (s *public) parseSince(r *http.Request) (time.Time, error) {
 // limitComments returns limited list of comments and count of comments left after limit.
 // If offsetID is provided, the list will be sliced starting from the comment with this ID.
 // If offsetID is not found, the full list will be returned.
-// It's used for only "
+// It's used only for the plain format of GET /find; service.MakeTree limits the tree format.
 func limitComments(c []store.Comment, limit int, offsetID string) (comments []store.Comment, countLeft int) {
 	if offsetID != "" {
 		for i, comment := range c {

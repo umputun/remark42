@@ -140,7 +140,7 @@ type ServerCommand struct {
 
 // ImageProxyGroup defines options group for image proxy
 type ImageProxyGroup struct {
-	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
+	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy, no effect when remark url is http"`
 	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
 }
 
@@ -624,9 +624,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		return nil, err
 	}
 
-	err = s.addAuthProviders(authenticator)
+	providersCount, err := s.addAuthProviders(authenticator)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make authenticator: %w", err)
+	}
+	if providersCount == 0 {
+		log.Printf("[WARN] no auth providers defined")
 	}
 
 	exporter := &migrator.Native{DataStore: dataService}
@@ -996,12 +999,10 @@ func (s *ServerCommand) makeCache() (api.LoadingCache, error) {
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
-	providersCount := 0
-	if s.Auth.Telegram {
-		providersCount++
-	}
-
+// addAuthProviders registers the configured sign-in providers and returns how many the authenticator
+// has in total, the Telegram one registered earlier by makeTelegramAuth included. The count is taken
+// from the authenticator, so email and anonymous sign-in, which need no OAuth2 provider, count as well.
+func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, error) {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
@@ -1012,9 +1013,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		providersCount++
 	}
 	// registration order is the order of providers in /api/v1/config
 	for _, p := range []struct{ name, cid, csec string }{
@@ -1035,21 +1035,20 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		} else {
 			authenticator.AddProvider(p.name, p.cid, p.csec)
 		}
-		providersCount++
 	}
 
 	if s.Auth.Custom.isConfigured() {
 		missing := s.Auth.Custom.missingRequired()
 		if len(missing) > 0 {
-			return fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
+			return 0, fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
 		}
 
 		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
 		if !validCustomProviderName.MatchString(customName) {
-			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
+			return 0, fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
 		}
 		if slices.Contains(reservedCustomProviderNames, customName) {
-			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
+			return 0, fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 
 		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
@@ -1074,17 +1073,15 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 				return user
 			},
 		})
-		providersCount++
 	}
 
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		u, errURL := url.Parse(s.RemarkURL)
 		if errURL != nil {
-			return fmt.Errorf("can't parse Remark42 URL: %w", errURL)
+			return 0, fmt.Errorf("can't parse Remark42 URL: %w", errURL)
 		}
 		authenticator.AddDevProvider(u.Hostname(), 8084)
-		providersCount++
 	}
 
 	if s.Auth.Email.Enable {
@@ -1107,7 +1104,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		sndr := newEmailSender(params, log.Default())
 		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		authenticator.AddVerifProvider("email", string(tmpl), sndr)
 	}
@@ -1118,11 +1115,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			anonymousUserID(s.SharedSecret))
 	}
 
-	if providersCount == 0 {
-		log.Printf("[WARN] no auth providers defined")
-	}
-
-	return nil
+	return len(authenticator.Providers()), nil
 }
 
 // impersonationLogLine makes the log line for a user blocked for taking a restricted name. It names

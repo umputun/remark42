@@ -336,7 +336,8 @@ func (s *Rest) routes() http.Handler {
 		radmin.HandleFunc("GET /wait", s.adminRest.migrator.waitCtrl)
 	})
 
-	// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
+	// protected routes, throttled per client address to UpdateLimiter requests a second, 10 if it is not set;
+	// the server sets it from --update-limit, 0.5 by default
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))

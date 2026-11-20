@@ -57,7 +57,8 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
-// DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
+// DELETE /user/{userid}?site=siteID - removes the user's avatar, hard-deletes all their comments and the
+// pictures they uploaded that no other user's comment on those pages uses, and drops their stored details
 func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
@@ -87,7 +88,8 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID})
 }
 
-// GET /user/{userid}?site=side-id - get user info for requested userid
+// GET /user/{userid}?site=siteID - returns the user from their latest comment that is not deleted, with the
+// blocked and verified flags as the data service sets them on a read, 400 if there is none
 func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
