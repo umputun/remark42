@@ -34,7 +34,7 @@ COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
 
 RUN \
   if [ -z "$SKIP_FRONTEND_TEST" ]; then \
-    pnpm lint type-check translation-check test; \
+    pnpm lint && pnpm type-check && pnpm translation-check && pnpm test; \
   else \
     echo 'Skip frontend test'; \
   fi

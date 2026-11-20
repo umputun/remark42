@@ -43,8 +43,10 @@ function getLocalIdent(loaderContext, _, localName, options) {
   return `${m.id}_${m.classNames[localName]}`;
 }
 
-module.exports = (_, { mode }) => {
+module.exports = (env, { mode }) => {
   const isDev = mode === 'development';
+  // `webpack serve --env apiBase=<url>` points the dev server's proxy at another backend
+  const apiBase = env.apiBase || REMARK_API_BASE_URL;
   // Add debug lib only for development throw webpack chunks and keep code clear
   const preactDebug = isDev ? ['preact/debug'] : [];
 
@@ -189,8 +191,8 @@ module.exports = (_, { mode }) => {
     allowedHosts: 'all',
     hot: true,
     proxy: [
-      { path: '/api', target: REMARK_API_BASE_URL, changeOrigin: true },
-      { path: '/auth', target: REMARK_API_BASE_URL, changeOrigin: true },
+      { path: '/api', target: apiBase, changeOrigin: true },
+      { path: '/auth', target: apiBase, changeOrigin: true },
     ],
     client: {
       overlay: false,

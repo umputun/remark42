@@ -39,11 +39,13 @@ You can run frontend against demo instance of Remark42. This method of running R
 
 For local development mode with Hot Reloading, use `pnpm dev:demo`. In this case, `webpack` will serve files using `webpack-dev-server` on `127.0.0.1:9000`. By visiting <http://127.0.0.1:9000/web/>, you will get a page with the main comments' widget communicating with a demo server backend running on `https://demo.remark42.com`. But you will not be able to log in with any OAuth providers due to security reasons.
 
-You can attach the frontend to the locally running backend from `frontend/apps/remark42` folder and providing the `REMARK_API_BASE_URL` environment variable.
+`pnpm dev`, run from the `frontend/apps/remark42` folder, attaches the frontend to a backend running locally on `http://127.0.0.1:8080`. To use another backend, pass its address:
 
 ```shell
-pnpm exec cross-env REMARK_API_BASE_URL=http://127.0.0.1:8080 pnpm dev:custom
+pnpm dev --env apiBase=http://127.0.0.1:8081
 ```
+
+The `REMARK_API_BASE_URL` environment variable sets the same address.
 
 {{< note "ℹ️" >}}
 If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. A variable already set in the environment takes precedence over the file.
