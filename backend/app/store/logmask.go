@@ -11,7 +11,13 @@ const logMask = "********"
 // left alone. Both classes accept "*" on purpose: MaskForLog runs the JWT pass first, and a JWT-like run inside an
 // address ("RileyJane.Doe@gmail.com" holds "eyJane.Doe") turns into a mask the email pass has to match across, or
 // the rest of the address stays in the log.
-var reLogEmail = regexp.MustCompile(`[^\s\p{Z}"<>()\[\]{},;:/?&=#@\\]+(?:(?:@|%40)+[^\s\p{Z}"'<>()\[\]{},;:/?&=#@\\]+)+`)
+//
+// The first alternative is a quoted local part, as in "john"@example.com, also with the closing quote escaped the
+// way a JSON body carries it. It takes no space, colon, comma, equals sign or bracket, so the quote that closes one
+// item or phrase and the quote that opens the next, before a mention, are not read as one. The price is that a
+// quoted local part with a space in it is not matched.
+var reLogEmail = regexp.MustCompile(`(?:"[^"\\:,={}\[\]<>\s\p{Z}]+\\?"|[^\s\p{Z}"<>()\[\]{},;:/?&=#@\\]+)` +
+	`(?:(?:@|%40)+[^\s\p{Z}"'<>()\[\]{},;:/?&=#@\\]+)+`)
 
 // reLogJWT matches a JWT, including one cut short by body truncation. Every JWT starts with "eyJ", the encoded
 // `{"` of its header, and its payload may carry an email address, readable by anyone who decodes it.
