@@ -11,9 +11,9 @@ For a better experience while using our Service, we may require you to provide u
 
 ### How users may request deletion of that data
 
-Comments, your avatar and notification address are kept until they are deleted at your request. By default, the sign-in cookie lasts 200 hours after your last visit.
+Comments and the pictures in them, your avatar and notification address are kept until they are deleted at your request. By default, the sign-in cookie lasts 200 hours after your last visit.
 
-To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. When the administrator opens the link in that email, your comments, your name on them, your notification addresses and your avatar are removed. Backups made before then keep this data until they are replaced; by default the ten most recent daily backups are kept.
+To request deletion, click "Request deletion of my data" on your profile page and send the email it prepares to the site administrator. When the administrator opens the link in that email, your comments, your name on them, the pictures you uploaded that those comments still show, your notification addresses and your avatar are removed. A picture that another commenter’s comment on the same page also shows is kept. Backups made before then keep your comments and notification addresses until they are replaced; by default the ten most recent daily backups are kept.
 
 ### Log Data
 
