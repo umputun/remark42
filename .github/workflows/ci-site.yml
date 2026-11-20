@@ -9,13 +9,11 @@ on:
     paths:
       - ".github/workflows/ci-site.yml"
       - "site/**"
-      - "!**/CLAUDE.md"
       - "!site/README.md"
   pull_request:
     paths:
       - ".github/workflows/ci-site.yml"
       - "site/**"
-      - "!**/CLAUDE.md"
       - "!site/README.md"
 
 concurrency:
