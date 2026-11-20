@@ -238,7 +238,8 @@ func TestServerCommand_AnonymousUserID(t *testing.T) {
 			URL:          "https://demo.remark42.com",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "jwt-secret", nil }),
 		})
-		require.NoError(t, s.addAuthProviders(authenticator))
+		_, err = s.addAuthProviders(authenticator)
+		require.NoError(t, err)
 		authHandler, _ := authenticator.Handlers()
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/anonymous/login?aud=remark&user="+url.QueryEscape(name), http.NoBody)
@@ -270,6 +271,40 @@ func TestServerCommand_AnonymousUserID(t *testing.T) {
 	assert.NotEqual(t, id, login(t, "secret", "blah123", "203.0.113.6"), "another address gets another ID")
 	assert.NotEqual(t, login(t, "secret", "abc1", "2.3.4.5"), login(t, "secret", "abc", "12.3.4.5"),
 		"name and address must not run together")
+}
+
+// TestServerCommand_AddAuthProvidersCount checks the count that decides the "no auth providers defined"
+// warning. Email and anonymous sign-in need no OAuth2 provider, so a setup with only them must not warn.
+func TestServerCommand_AddAuthProvidersCount(t *testing.T) {
+	tbl := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{name: "nothing enabled", args: nil, want: 0},
+		{name: "email only", args: []string{"--auth.email.enable"}, want: 1},
+		{name: "anonymous only", args: []string{"--auth.anon"}, want: 1},
+		{name: "email and anonymous", args: []string{"--auth.email.enable", "--auth.anon"}, want: 2},
+		{name: "oauth2 and anonymous", args: []string{"--auth.github.cid=cid", "--auth.github.csec=csec", "--auth.anon"}, want: 2},
+		{name: "telegram only", args: []string{"--auth.telegram", "--telegram.token=token"}, want: 1},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			s := ServerCommand{}
+			s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
+			_, err := flags.NewParser(&s, flags.Default).ParseArgs(tt.args)
+			require.NoError(t, err)
+			authenticator := auth.NewService(auth.Opts{
+				URL:          "https://demo.remark42.com",
+				SecretReader: token.SecretFunc(func(string) (string, error) { return "jwt-secret", nil }),
+			})
+			_, err = s.makeTelegramAuth(authenticator) // registered before the others, as newServerApp does
+			require.NoError(t, err)
+			got, err := s.addAuthProviders(authenticator)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got, "providers counted for %v", tt.args)
+		})
+	}
 }
 
 func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn string, claims token.Claims) {
