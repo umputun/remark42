@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { waitFor } from '@testing-library/preact';
+import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';

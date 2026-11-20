@@ -19,7 +19,8 @@ type RemarkConfig = {
   // The element with the id 'remark42' is used when it is not set. It is read by the embed script only
   // and never passed on to the widget.
   node?: HTMLElement;
-  // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
+  // Optional. Initial number of top-level comments shown on any device; each "show more" adds 10 more.
+  // When unset, mobile shows 10 at first and desktop shows every comment.
   max_shown_comments?: number;
   // Optional, '100' by default. How many comments the widget loads at a time; a top-level comment always comes
   // with all its replies, and "Show more" loads the next ones. '0' loads the whole thread at once.
