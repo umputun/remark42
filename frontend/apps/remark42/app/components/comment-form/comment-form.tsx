@@ -144,7 +144,13 @@ export class CommentForm extends Component<Props, State> {
     });
   };
 
+  /** whether images can be attached: the parent provides an uploader and the server hasn't turned images off */
+  get canUploadImages() {
+    return Boolean(this.props.uploadImage) && !StaticStore.config.image_disabled;
+  }
+
   onPaste = async (e: ClipboardEvent) => {
+    if (StaticStore.config.image_disabled) return;
     if (!(e.clipboardData && e.clipboardData.files.length > 0)) {
       return;
     }
@@ -212,17 +218,26 @@ export class CommentForm extends Component<Props, State> {
 
   onDragOver = (e: DragEvent) => {
     if (!this.props.user) e.preventDefault();
-    if (!this.props.uploadImage) return;
-    if (StaticStore.config.max_image_size === 0) return;
+    const { image_disabled: imagesOff, max_image_size: maxImageSize } = StaticStore.config;
+    if (!imagesOff && (!this.props.uploadImage || maxImageSize === 0)) return;
     if (!this.textareaRef.current) return;
     if (!e.dataTransfer) return;
     const items = Array.from(e.dataTransfer.items);
     if (Array.from(items).filter((i) => i.kind === 'file' && ImageMimeRegex.test(i.type)).length === 0) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    // with images off the drag is cancelled with no drop effect: the cursor shows "not allowed" and
+    // no drop follows, so the browser does not navigate the frame to the dragged file
+    e.dataTransfer.dropEffect = imagesOff ? 'none' : 'copy';
   };
 
   onDrop = (e: DragEvent) => {
+    if (StaticStore.config.image_disabled) {
+      // nothing to attach and nothing to explain, but a dropped image must not reach the browser's default
+      if (e.dataTransfer && Array.from(e.dataTransfer.files).some((f) => ImageMimeRegex.test(f.type))) {
+        e.preventDefault();
+      }
+      return;
+    }
     const isAnonymous = this.props.user && isUserAnonymous(this.props.user);
     if (!this.props.user || isAnonymous) {
       const message = isAnonymous ? messages.anonymousUploadingDisabled : messages.unauthorizedUploadingDisabled;
@@ -285,7 +300,7 @@ export class CommentForm extends Component<Props, State> {
   /** performs upload process */
   uploadImages = async (files: File[]) => {
     const intl = this.props.intl;
-    if (!this.props.uploadImage) return;
+    if (!this.canUploadImages) return;
     if (!this.textareaRef.current) return;
 
     /** Human readable image size limit, i.e 5MB */
@@ -418,7 +433,7 @@ export class CommentForm extends Component<Props, State> {
   };
 
   render() {
-    const { theme, mode, mix, uploadImage, autofocus, user, intl, isReply } = this.props;
+    const { theme, mode, mix, autofocus, user, intl, isReply } = this.props;
     const { isDisabled, isErrorShown, preview, text, buttonText } = this.state;
     const charactersLeft = StaticStore.config.max_comment_size - text.length;
     const errorMessage = this.props.errorMessage || this.state.errorMessage;
@@ -455,7 +470,7 @@ export class CommentForm extends Component<Props, State> {
           <div className={styles.controlPanel} data-testid="markdown-toolbar">
             <MarkdownToolbar
               intl={intl}
-              allowUpload={Boolean(uploadImage)}
+              allowUpload={this.canUploadImages}
               uploadImages={this.uploadImages}
               textareaId={this.textareaId}
             />

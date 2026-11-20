@@ -54,6 +54,12 @@ services:
     volumes:
       - ./e2e/coverage/remark42-anonvote:/coverage
 
+  remark42-noimages:
+    environment:
+      - GOCOVERDIR=/coverage
+    volumes:
+      - ./e2e/coverage/remark42-noimages:/coverage
+
   remark42-https:
     environment:
       - GOCOVERDIR=/coverage

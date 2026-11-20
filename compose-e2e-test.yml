@@ -287,6 +287,47 @@ services:
       timeout: 3s
       retries: 30
 
+  # image uploads switched off, which is an instance-wide server option: it refuses POST /picture,
+  # strips images from new and edited comments, and tells the widget through /config to drop its
+  # image controls. a separate instance because the main one has to keep the upload path
+  # TestComment_ImageUploadRendersAndRecovers covers.
+  #
+  # email sign-in is here on purpose and not only anonymous: the widget never hands an anonymous
+  # reader an image uploader at all (root.tsx, comment.tsx), so on an anonymous-only instance
+  # every "the image controls are gone" assertion would hold with the option off. the dev provider
+  # is not an alternative, its port is fixed at 8084 and cannot be published twice. anonymous stays
+  # for the one case about what an anonymous reader is told
+  remark42-noimages:
+    image: ghcr.io/umputun/remark42:dev
+    container_name: "remark42-e2e-noimages"
+    pull_policy: never
+    depends_on:
+      remark42:
+        condition: service_started
+      mailpit:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8088:8080"
+
+    environment:
+      - REMARK_URL=http://remark42-noimages:8088
+      - SECRET=12345
+      - AUTH_ANON=true
+      - AUTH_EMAIL_ENABLE=true
+      - AUTH_EMAIL_FROM=remark42@example.com
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - IMAGE_DISABLE=true
+      - UPDATE_LIMIT=100
+    volumes:
+      - remark42-e2e-noimages-var:/srv/var
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   # a page on an origin the widget is not served from, which is the separate-domain setup the
   # manuals describe and the one readers actually hit problems with. every other host page in the
   # suite is served by remark42 itself, so nothing else exercises a cross-origin embed
@@ -392,4 +433,5 @@ volumes:
   remark42-e2e-jwtheader-var:
   remark42-e2e-noauth-var:
   remark42-e2e-anonvote-var:
+  remark42-e2e-noimages-var:
   remark42-e2e-https-var:

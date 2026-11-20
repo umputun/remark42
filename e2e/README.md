@@ -140,7 +140,7 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 
 ## The stack
 
-`compose-e2e-test.yml` at the repository root runs twelve services, each bound to the loopback interface since it holds a known secret and an admin shared id:
+`compose-e2e-test.yml` at the repository root runs thirteen services, each bound to the loopback interface since it holds a known secret and an admin shared id:
 
 - **remark42** on `:8080`, with the dev oauth2 provider on `:8084`, anonymous and email sign-in
 - **remark42-shortedit** on `:8081`, with `EDIT_TIME=15s` and anonymous sign-in only, since the dev oauth2 provider's port is fixed at 8084 and cannot be published twice. It exists so the expired-edit path is observable without holding a test open for the default five minutes
@@ -148,6 +148,7 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 - **remark42-jwtheader** on `:8083`, with `AUTH_SEND_JWT_HEADER=true`, where the token arrives in a header instead of a cookie and the frontend has to keep it itself
 - **remark42-noauth** on `:8085`, with no auth provider at all, which the widget has to say something about, and with `ALLOWED_HOSTS` set to its own address so it doubles as the instance that refuses to be framed elsewhere
 - **remark42-anonvote** on `:8086`, with `ANON_VOTE` and the `VOTES_IP` it depends on, since the default configuration turns an anonymous vote down
+- **remark42-noimages** on `:8088`, with `IMAGE_DISABLE`, which refuses uploads, strips images from new and edited comments and takes the image controls out of the widget. A server option, so it cannot share an instance with the upload case on the main one. It offers email sign-in next to anonymous, because the widget never gives an anonymous reader an image uploader and the absence of the controls would prove nothing for one
 - **host-site** on `:8090`, an nginx serving `e2e/hostsite/`, which is a page on an origin the widget is not served from. Every other host page here is served by remark42 itself, so without it the separate-domain setup the manuals describe is never exercised. `post.html` embeds the main instance; `restricted.html` embeds the one whose `ALLOWED_HOSTS` names only itself, which is the refusal case
 - **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the widget write its own cookies through `setAuthCookie`, so the attributes it chooses are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the writer keys off the `X-JWT` header rather than off the provider, and that is an assumption worth measuring rather than asserting
 - **host-site-https** on `:8444`, an nginx serving the same `e2e/hostsite/` over TLS, so the embed is cross-site *and* secure. `post-https.html` is its page
