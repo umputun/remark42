@@ -92,6 +92,7 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
 - PR auto-labels (applied by Dependabot/Actions, not manual PRs): `dependencies`, `go`, `javascript`, `github_actions`
 
 ## Code Style
+- **API**: No futureproofing: every endpoint and API field must be in use. Do not add one for a future client.
 - **Backend**: Formatting with golangci-lint, strict error handling
 - **Frontend**: TypeScript with ESLint, Stylelint and Prettier
 - **Imports**: Group stdlib, external packages, then internal packages
