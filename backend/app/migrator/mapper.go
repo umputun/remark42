@@ -52,22 +52,22 @@ func (u *URLMapper) loadRules(reader io.Reader) error {
 }
 
 // URL maps given url to another url according loaded url-rules.
+// An exact rule wins, then the prefix rule with the longest prefix.
 // If not matched returns given url.
 func (u *URLMapper) URL(url string) string {
 	if newURL, ok := u.rules[url]; ok {
 		return newURL
 	}
 	// try to match by prefix
+	matched, matchedPrefix, mappedURL := false, "", url
 	for oldURL, newURL := range u.rules {
-		if !strings.HasSuffix(oldURL, "*") {
+		prefix, ok := strings.CutSuffix(oldURL, "*")
+		if !ok || (matched && len(prefix) <= len(matchedPrefix)) {
 			continue
 		}
-		oldURL = strings.TrimSuffix(oldURL, "*")
-		newURL = strings.TrimSuffix(newURL, "*")
-		if after, ok := strings.CutPrefix(url, oldURL); ok {
-			return newURL + after
+		if after, ok := strings.CutPrefix(url, prefix); ok {
+			matched, matchedPrefix, mappedURL = true, prefix, strings.TrimSuffix(newURL, "*")+after
 		}
 	}
-	// search failed, return given url
-	return url
+	return mappedURL
 }

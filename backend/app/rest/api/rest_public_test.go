@@ -249,6 +249,34 @@ func TestRest_Find(t *testing.T) {
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 }
 
+func TestRest_FindFlushedForURLWithKeySeparator(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		backend, err := cache.NewLruCache[[]byte]()
+		require.NoError(t, err)
+		lc := cache.NewScache[[]byte](backend)
+		t.Cleanup(func() { assert.NoError(t, lc.Close()) })
+		srv.Cache = lc
+	})
+	defer teardown()
+
+	// "@@" separates the parts of a cache key, so the page URL has to be escaped inside the key
+	// for a new comment to flush the cached /find response
+	const post = "https://radio-t.com/blah@@1"
+	findURL := ts.URL + "/api/v1/find?site=remark42&format=plain&url=" + post
+	count := func() int {
+		res, code := get(t, findURL)
+		require.Equal(t, http.StatusOK, code)
+		comments := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &comments))
+		return len(comments.Comments)
+	}
+
+	addComment(t, store.Comment{Text: "first", Locator: store.Locator{SiteID: "remark42", URL: post}}, ts)
+	require.Equal(t, 1, count())
+	addComment(t, store.Comment{Text: "second", Locator: store.Locator{SiteID: "remark42", URL: post}}, ts)
+	assert.Equal(t, 2, count(), "the new comment shows up, the cached response is gone")
+}
+
 func TestRest_FindAge(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()

@@ -1118,6 +1118,26 @@ func TestService_SetMetas(t *testing.T) {
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user1", Email: "test@example.org"}}, val)
 }
 
+func TestService_SetMetasExpiredBlock(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	expired := UserMetaData{ID: "user1"}
+	expired.Blocked.Status = true
+	expired.Blocked.Until = time.Now().Add(-time.Hour)
+	permanent := UserMetaData{ID: "user2"} // no end time, as an export without one carries it
+	permanent.Blocked.Status = true
+
+	require.NoError(t, b.SetMetas("radio-t", []UserMetaData{expired, permanent}, nil))
+	assert.False(t, b.IsBlocked("radio-t", "user1"), "a block that ran out before the restore stays out")
+	assert.True(t, b.IsBlocked("radio-t", "user2"), "a block without an end time stays permanent")
+	blocked, err := b.BlockedUsers("radio-t")
+	require.NoError(t, err)
+	require.Len(t, blocked, 1)
+	assert.Equal(t, "user2", blocked[0].ID)
+}
+
 func TestService_UserDetailsOperations(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()

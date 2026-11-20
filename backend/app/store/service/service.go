@@ -1036,7 +1036,9 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 
 	// save users metas
 	for _, um := range umetas {
-		if um.Blocked.Status {
+		// a block that ran out before the restore is skipped: a negative TTL would make it permanent.
+		// a block without an end time stays permanent
+		if um.Blocked.Status && (um.Blocked.Until.IsZero() || um.Blocked.Until.After(time.Now())) {
 			errs = append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
 		}
 		if um.Verified {

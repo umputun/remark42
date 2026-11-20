@@ -1,3 +1,3 @@
 #!/bin/sh
 set -e
-/srv/remark42 import $@
+/srv/remark42 import "$@"

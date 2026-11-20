@@ -337,9 +337,13 @@ type serverApp struct {
 	authRefreshCache *authRefreshCache // stored only to close it properly on shutdown
 }
 
-// Execute is the entry point for "server" command, called by flag parser
-func (s *ServerCommand) Execute(_ []string) error {
-	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
+// clearSecretEnv removes secrets from the environment once the flags are parsed. The webhook headers,
+// which may carry an Authorization value, are read from the environment here, because the flag parser
+// can't split them, and kept in the options
+func (s *ServerCommand) clearSecretEnv() {
+	if len(s.Notify.Webhook.Headers) == 0 {
+		s.Notify.Webhook.Headers = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside ""
+	}
 	resetEnv(
 		"SECRET",
 		"AUTH_APPLE_KID",
@@ -352,10 +356,23 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_PATREON_CSEC",
 		"AUTH_DISCORD_CSEC",
 		"AUTH_CUSTOM_CSEC",
+		"AUTH_EMAIL_PASSWD",
 		"TELEGRAM_TOKEN",
+		"NOTIFY_TELEGRAM_TOKEN",
+		"NOTIFY_SLACK_TOKEN",
+		"NOTIFY_WEBHOOK_HEADERS",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
+		"STORE_RPC_AUTH_PASSWD",
+		"IMAGE_RPC_AUTH_PASSWD",
+		"ADMIN_RPC_AUTH_PASSWD",
 	)
+}
+
+// Execute is the entry point for "server" command, called by flag parser
+func (s *ServerCommand) Execute(_ []string) error {
+	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
+	s.clearSecretEnv()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) // graceful termination
 	defer cancel()
@@ -1206,15 +1223,10 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 	destinations := make([]notify.Destination, 0)
 
 	if contains("webhook", s.Notify.Admins) {
-		webhookHeaders := s.Notify.Webhook.Headers
-		if len(webhookHeaders) == 0 {
-			webhookHeaders = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside "", parsed separately
-		}
-
 		whParams := notify.WebhookParams{
 			URL:      s.Notify.Webhook.URL,
 			Template: s.Notify.Webhook.Template,
-			Headers:  webhookHeaders,
+			Headers:  s.Notify.Webhook.Headers,
 			Timeout:  s.Notify.Webhook.Timeout,
 		}
 		webhook, err := notify.NewWebhook(whParams)
@@ -1515,10 +1527,10 @@ func (s *ServerCommand) startTelegramAuthAndNotify(
 // based on https://stackoverflow.com/a/59318708
 func splitAtCommas(s string) []string {
 	cleanup := func(s string) string {
-		if s == "" {
-			return s
-		}
 		res := strings.TrimSpace(s)
+		if res == "" {
+			return res
+		}
 		if res[0] == '"' && res[len(res)-1] == '"' {
 			res = strings.TrimPrefix(res, `"`)
 			res = strings.TrimSuffix(res, `"`)

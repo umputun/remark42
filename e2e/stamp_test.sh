@@ -16,6 +16,9 @@ printf 'frontend\n' > 'frontend/file with spaces'
 printf 'stub\n' > e2e/telegramstub/source
 printf 'image\n' > Dockerfile
 printf 'init\n' > docker-init.sh
+printf '*\n' > .dockerignore
+printf 'services: {}\n' > compose-e2e-test.yml
+printf 'services: {}\n' > compose-e2e-coverage.yml
 git add .
 git commit -qm initial
 
@@ -78,3 +81,8 @@ different "$spaced" "$(stamp)" 'the telegram image sources are included'
 plain=$(stamp)
 same "$plain" "$(E2E_COVERAGE=0 sh e2e/stamp.sh)" 'coverage=0 is a plain build'
 different "$plain" "$(E2E_COVERAGE=1 sh e2e/stamp.sh)" 'coverage=1 is a separate build'
+for file in .dockerignore compose-e2e-test.yml compose-e2e-coverage.yml; do
+	printf '# edited\n' >> "$file"
+	different "$plain" "$(stamp)" "$file is included"
+	git checkout -q -- "$file"
+done
