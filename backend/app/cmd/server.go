@@ -288,7 +288,7 @@ type NotifyGroup struct {
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
 		Template string        `long:"template" env:"TEMPLATE" description:"webhook payload template (Go text/template); falls back to {\"text\": {{.Text | escapeJSONString}}} when empty"`
-		Headers  []string      `long:"headers" description:"webhook headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
+		Headers  []string      `long:"headers" description:"webhook header in format Header:Value, repeat the flag for each header; the env var takes Header1:Value1,Header2:Value2 [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
@@ -1316,7 +1316,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 // constructs Telegram notify service
 func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 	if contains("telegram", s.Notify.Admins) && s.Notify.Telegram.Channel == "" {
-		return nil, fmt.Errorf("--notify.telegram.channel must be set for admin notifications to work")
+		return nil, errors.New("--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work")
 	}
 	telegramParams := notify.TelegramParams{
 		AdminChannelID:    s.Notify.Telegram.Channel,

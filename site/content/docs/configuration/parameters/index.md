@@ -53,7 +53,7 @@ services:
 | admin.rpc.auth_passwd          | ADMIN_RPC_AUTH_PASSWD          |                         | basic auth user password                                 |
 | admin.rpc.secret_per_site      | ADMIN_RPC_SECRET_PER_SITE      |                         | enable JWT secret retrieval per aud, which is site_id in this case |
 | admin.shared.id                | ADMIN_SHARED_ID                |                         | admin IDs (list of user IDs), _multi_                    |
-| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@` + host of `REMARK_URL`, port included | admin emails, _multi_. The first one is public (`admin_email` in `/api/v1/config`) and receives data deletion requests. All of them receive admin email notifications; the default is not used for those |
+| admin.shared.email             | ADMIN_SHARED_EMAIL             | `admin@` + host of `REMARK_URL`, port included | admin emails, _multi_. The first one is public (`admin_email` in `/api/v1/config`) and receives data deletion requests. With `NOTIFY_ADMINS=email`, all configured addresses receive admin notifications; the default is not used for those |
 | backup                         | BACKUP_PATH                    | `./var/backup`          | backups location                                         |
 | max-back                       | MAX_BACKUP_FILES               | `10`                    | max backup files to keep                                 |
 | cache.type                     | CACHE_TYPE                     | `mem`                   | type of cache, `redis_pub_sub` or `mem` or `none`        |
@@ -128,7 +128,7 @@ services:
 | notify.slack.chan              | NOTIFY_SLACK_CHAN              | `general`               | Slack channel for admin notifications                    |
 | notify.webhook.url             | NOTIFY_WEBHOOK_URL             |                         | Webhook notification URL for admin notifications         |
 | notify.webhook.template        | NOTIFY_WEBHOOK_TEMPLATE        | `{"text": {{.Text \| escapeJSONString}}}` | Webhook payload template (Go text/template) |
-| notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                         | HTTP header in format Header1:Value1,Header2:Value2,...  |
+| notify.webhook.headers         | NOTIFY_WEBHOOK_HEADERS         |                         | HTTP headers in format `Header1:Value1,Header2:Value2`; the flag takes one `Header:Value` per use, _multi_ |
 | notify.webhook.timeout         | NOTIFY_WEBHOOK_TIMEOUT         | `5s`                    | Webhook connection timeout                               |
 | notify.email.from_address      | NOTIFY_EMAIL_FROM              |                         | from email address (e.g. `john.doe@example.com` or `"John Doe"<john.doe@example.com>`) |
 | notify.email.verification_subj | NOTIFY_EMAIL_VERIFICATION_SUBJ | `Email verification`    | verification message subject                             |

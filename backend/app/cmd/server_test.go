@@ -1597,6 +1597,15 @@ func TestServerCommand_makeNotifyDestinationsAdminEmailMissing(t *testing.T) {
 	})
 }
 
+func TestServerCommand_makeTelegramNotifyNoChannel(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Notify.Admins = []string{"telegram"}
+	cmd.Telegram.Token = "token"
+	_, err := cmd.makeTelegramNotify()
+	require.EqualError(t, err, "--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work",
+		"the error names a flag that exists")
+}
+
 // TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.
