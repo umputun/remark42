@@ -24,8 +24,8 @@ lives in `frontend/apps/remark42`: the dependencies, `packageManager`, `engines`
 `pnpm.overrides` block. Install and run from there, not from `frontend/`.
 
 The directory nesting is kept because every path in the repository points at it, from the Dockerfile
-and the workflows to the published contributing docs. `frontend/` still carries `.nvmrc`, `.husky`
-and this file, none of which pnpm reads.
+and the workflows to the published contributing docs. `frontend/` still carries `.nvmrc` and this
+file, neither of which pnpm reads.
 
 ## pnpm 10's stricter `node-linker` layout needs explicit pins
 
@@ -122,8 +122,8 @@ directory second, matching the backend's order, so links to them resolve on the 
 
 `eslint.config.mjs` lives in `apps/remark42`, and eslint loads the config next to the directory it
 is *run from* rather than the one nearest the file being linted. Anything that invokes eslint has
-to have `apps/remark42` as its working directory: it is where every script runs, `.husky/pre-commit`
-cd's into it, and an IDE integration needs
+to have `apps/remark42` as its working directory: it is where every script runs, and an IDE
+integration needs
 `"eslint.workingDirectories": ["frontend/apps/remark42"]`.
 
 Rules that only exist under a plugin's flat-config export are spread in explicitly; the block that

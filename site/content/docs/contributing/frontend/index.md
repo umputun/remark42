@@ -25,7 +25,7 @@ You must have at least 2GB RAM or swap enabled for building.
 - install [PNPM 10](https://pnpm.io/installation)
 - run `pnpm i` inside `./frontend/apps/remark42`
 
-Running `pnpm i` will set up pre-commit hooks into your git repository. They are used to reformat your frontend code using `prettier` and lint with `eslint` and `stylelint` before every commit.
+The repository installs no git hooks. A clone where an earlier `pnpm i` set them up still has `core.hooksPath` pointing at `frontend/.husky`, where nothing runs any more; `git config --unset core.hooksPath` removes the setting, and the leftover `frontend/.husky` directory can be deleted.
 
 {{< note "🚨" >}}
 Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. You could alter the address for dev auth with the `REMARK_URL` environment variable.
@@ -99,7 +99,7 @@ so prettier, stylelint and `pnpm lint` do not see them.
 
 - The project uses TypeScript to analyze code statically
 - The project uses Eslint and Stylelint to check the frontend code. You can manually run via `pnpm lint`
-- Git Hooks (via husky) installed automatically on `pnpm i`. They check and try to fix code style if possible, otherwise commit will be rejected
+- `pnpm format` reformats the code with prettier, and `pnpm lint` runs in CI on every pull request
 - If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Eslint reads `eslint.config.mjs` from the directory it is run in, so point your editor at the app directory: for VSCode, `"eslint.workingDirectories": ["frontend/apps/remark42"]`
 
 ## CSS Styles

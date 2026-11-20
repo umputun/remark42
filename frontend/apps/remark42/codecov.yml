@@ -8,7 +8,6 @@ ignore:
   - app/__mocks__
   - .editorconfig
   - .eslitnrc.js
-  - .lintstagedrc.cjs
   - .prettierignore
   - .prettierrc.js
   - .size-limit.js

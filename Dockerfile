@@ -2,8 +2,7 @@ FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
-# the manifest's prepare script installs husky hooks, which needs a git repository the build
-# context does not have. husky itself skips on CI, and this is the same flag the build stage sets
+# pnpm installs exactly what the lockfile holds when CI is set, and the build stage sets it too
 ENV CI=true
 
 WORKDIR /srv/frontend/apps/remark42/
@@ -12,7 +11,6 @@ COPY ./frontend/apps/remark42/package.json ./frontend/apps/remark42/pnpm-lock.ya
 
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
-    apk add --no-cache --update git && \
     npm i -g pnpm@10.10.0; \
   fi
 

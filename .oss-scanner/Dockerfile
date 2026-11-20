@@ -8,7 +8,7 @@ FROM golang:1.27.2-bookworm AS go-toolchain
 FROM node:24-bookworm
 COPY --from=go-toolchain /usr/local/go /usr/local/go
 
-# CI=true skips the husky hook install in the widget's prepare script, which needs a .git
+# CI=true puts jest and the e2e suite in the mode they run in on GitHub Actions
 ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}" \
     DEBIAN_FRONTEND=noninteractive \
     CI=true \
