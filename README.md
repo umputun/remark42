@@ -39,6 +39,8 @@ All remark42 documentation is available [by the link](https://remark42.com/docs/
 
 ## Contribution
 
+Use [Discussions](https://github.com/umputun/remark42/discussions) for questions, setup help and ideas that still need discussion. Bug, documentation and translation fixes can go straight to a pull request; other changes need a maintainer's agreement first. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 In order to start and work on the project locally in development mode check our contribution documentation for [backend](https://remark42.com/docs/contributing/backend/) and [frontend](https://remark42.com/docs/contributing/frontend/).
 
 If you are interested in adding a new localization please check [these docs](https://remark42.com/docs/contributing/translations/).
