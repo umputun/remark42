@@ -13,7 +13,9 @@ Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./
 ## Manual
 
 You can make a backup manually whenever you want. Run the command (`ADMIN_PASSWD` must be enabled on the server for it to work):
-`docker exec -it remark42 backup -s {your site ID}`
+`docker exec -it remark42 remark42 backup -s {your site ID}`
+
+In `docker exec -it remark42 remark42 ...`, the first `remark42` is the container name and the second is the Remark42 binary inside it.
 
 This command creates `userbackup-{site ID}-{timestamp}.gz` file by default.
 

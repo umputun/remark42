@@ -4,9 +4,11 @@ title: Restore Backup
 
 Restore removes all existing comments before importing the contents of the supplied file.
 
-For safety and security reasons, restore functionality is not exposed outside your server by default. The recommended way to restore from the backup is to use the provided [`backend/scripts/restore.sh`](https://github.com/umputun/remark42/blob/master/backend/scripts/restore.sh). It can run inside the container (`ADMIN_PASSWD` must be enabled on the server for it to work):
+For safety and security reasons, restore functionality is not exposed outside your server by default. The recommended way to restore from the backup is to run the `restore` command inside the container (`ADMIN_PASSWD` must be enabled on the server for it to work):
 
-`docker exec -it remark42 restore -f {backup-filename.gz} -s {your site ID}`
+`docker exec -it remark42 remark42 restore -f {backup-filename.gz} -s {your site ID}`
+
+In `docker exec -it remark42 remark42 ...`, the first `remark42` is the container name and the second is the Remark42 binary inside it.
 
 ### Import/restore without removing existing comments
 
@@ -14,5 +16,5 @@ The `restore` command nukes the existing comments on the site. You should make t
 
 ```shell
 cat wp-export.json | grep -v '{"version":1' >> combined-export.json
-docker exec -it remark42 restore -f combined-export.json -s {your site ID}
+docker exec -it remark42 remark42 restore -f combined-export.json -s {your site ID}
 ```
