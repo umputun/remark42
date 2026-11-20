@@ -1963,7 +1963,7 @@ func TestRest_DeleteMe(t *testing.T) {
 }
 
 func TestRest_SavePictureCtrl(t *testing.T) {
-	ts, _, teardown := startupT(t)
+	ts, srv, teardown := startupT(t)
 	defer teardown()
 
 	// save picture
@@ -1993,7 +1993,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 		m := map[string]string{}
 		err = json.Unmarshal(body, &m)
 		assert.NoError(t, err)
-		assert.True(t, m["id"] != "")
+		assert.Regexp(t, `^provider1_dev/[0-9a-f]{32}$`, m["id"], "the uploader's id and 128 random bits")
 		return m["id"]
 	}
 
@@ -2032,6 +2032,13 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// a picture saved under the 20-character id of earlier versions is still served
+	require.NoError(t, srv.ImageService.SaveWithID("provider1_dev/dc0ctt0j3vck07oc07s0", gopherPNG()))
+	resp, err = http.Get(fmt.Sprintf("%s/api/v1/picture/provider1_dev/dc0ctt0j3vck07oc07s0", ts.URL))
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {

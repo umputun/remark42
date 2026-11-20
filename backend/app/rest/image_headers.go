@@ -56,7 +56,7 @@ func SetImageDefenseHeaders(w http.ResponseWriter) {
 // Handles the * wildcard, comma-separated etag lists with the W/ weak-validator prefix.
 // NOTE: This is intentionally a simple splitter — it does not handle opaque-tags that
 // contain commas (allowed by RFC 7232 but never emitted by this codebase, whose etag
-// format is `"v2:<base64-url>"` or `"<user>/<xid>"`). If the etag format ever changes
+// format is `"v2:<base64-url>"` or `"<user>/<guid>"`). If the etag format ever changes
 // to include comma-bearing values, revisit this parser.
 // Replaces a substring search that could match unrelated entries (e.g. an etag that
 // happens to be a prefix of another).

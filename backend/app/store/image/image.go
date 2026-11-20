@@ -9,8 +9,10 @@ package image
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha1" //nolint:gosec // not used for cryptography
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"image"
@@ -28,7 +30,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/go-pkgz/lgr"
-	"github.com/rs/xid"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // register webp decoder so DecodeConfig accepts what readAndValidateImage allows
 )
@@ -418,9 +419,14 @@ func readAndValidateImage(r io.Reader, maxSize int) ([]byte, error) {
 	return data, nil
 }
 
-// guid makes a globally unique id
+// guid makes a picture id from 128 random bits, hex-encoded. The id is all that protects a picture
+// uploaded but not yet posted, since GET /picture serves it to anyone, so it must reveal nothing about
+// other uploads. Nothing parses the id beyond SafeIDSegment, so pictures saved under the 20-character
+// ids of earlier versions keep loading
 func guid() string {
-	return xid.New().String()
+	b := make([]byte, 16)
+	_, _ = rand.Read(b) // crypto/rand.Read never returns an error, it crashes the program instead
+	return hex.EncodeToString(b)
 }
 
 // Sha1Str converts provided string to sha1
