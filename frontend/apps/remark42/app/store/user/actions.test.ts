@@ -1,7 +1,10 @@
+import { waitFor } from '@testing-library/preact';
+
 import { mockStore } from '__stubs__/store';
+import * as api from 'common/api';
 import type { User } from 'common/types';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
-import { COMMENTS_PATCH } from 'store/comments/types';
+import { COMMENTS_PATCH, COMMENTS_REQUEST_FAILURE, COMMENTS_REQUEST_FETCHING } from 'store/comments/types';
 
 import INITIAL_STORE from './__stubs__/comments-store.json';
 import {
@@ -11,6 +14,7 @@ import {
   unblockUser,
   fetchBlockedUsers,
   fetchHiddenUsers,
+  signin,
   signout,
 } from './actions';
 import { USER_UNHIDE, USER_HIDE, USER_UNBAN, USER_BANLIST_SET, USER_HIDELIST_SET, USER_SET } from './types';
@@ -114,5 +118,26 @@ describe('store user actions', () => {
     await store.dispatch(signout());
 
     expect(store.getActions()).toContainEqual({ type: USER_SET, user: null });
+  });
+
+  test('signin keeps the reader signed in when the comments fail to reload', async () => {
+    const store = mockStore({ ...INITIAL_STORE, hiddenUsers: {} });
+    const failure = new Error('no answer');
+    jest.spyOn(api, 'getPostComments').mockRejectedValueOnce(failure);
+    const logged = jest.spyOn(console, 'error').mockImplementationOnce(() => undefined);
+
+    await store.dispatch(signin({ id: '1' } as User));
+
+    // the reload is not awaited by signin, so its failure has to be handled there and not left
+    // as an unhandled rejection
+    await waitFor(() => expect(logged).toHaveBeenCalledWith('Remark42: failed to reload comments', failure));
+    // read once the failure has been handled, so a handler that cleared the user would show.
+    // The list is a preloader for as long as a request is marked as running, so the failed one
+    // has to be marked as over for the comments loaded before it to come back
+    expect(store.getActions()).toEqual([
+      { type: USER_SET, user: { id: '1' } },
+      { type: COMMENTS_REQUEST_FETCHING },
+      { type: COMMENTS_REQUEST_FAILURE },
+    ]);
   });
 });
