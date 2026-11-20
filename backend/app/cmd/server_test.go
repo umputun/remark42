@@ -27,6 +27,7 @@ import (
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/provider/sender"
 	"github.com/go-pkgz/auth/v2/token"
 	log "github.com/go-pkgz/lgr"
 	"github.com/golang-jwt/jwt/v5"
@@ -1369,6 +1370,22 @@ func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 		assert.Len(t, data, len(val))
 	}
 	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
+}
+
+func TestNewEmailSender_MasksRecipientInLog(t *testing.T) {
+	var lines []string
+	l := log.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+	sndr := newEmailSender(sender.EmailParams{Host: "127.0.0.1", Port: 1, TimeOut: time.Second}, l)
+
+	// the debug line is written before the connection is tried, so the send itself may fail
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	require.Error(t, sndr.SendContext(ctx, "user@example.com", "sign-in link"))
+
+	require.NotEmpty(t, lines, "the sender logs the send")
+	logged := strings.Join(lines, "\n")
+	assert.NotContains(t, logged, "user@example.com", "the recipient's address stays out of the log")
+	assert.Contains(t, logged, "message to ********", "the send is still logged, with the address masked")
 }
 
 func TestServerCommand_identiconSize(t *testing.T) {
