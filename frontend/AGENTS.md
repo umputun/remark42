@@ -15,7 +15,7 @@ CI staying green does **not** mean every pin is consistent — `.nvmrc` in parti
 
 When bumping pnpm/node, also re-check `frontend/apps/remark42/package.json`'s `engines` field — it's separate from `packageManager` and won't update itself.
 
-`engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11` and `size-limit` 13 wants `^22.18 || ^24 || >=26`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
+`engines.node` states the major we support, currently `>=24`, which is the active LTS; 22 has dropped to maintenance. `@babel/core` 8 wants `^22.18 || >=24.11`, so 22 was the floor rather than the target. Individual dev dependencies can be stricter within that major (`undici` wants `>=20.18.1`); do not chase those patch floors into `engines` or the docs, or every lockfile refresh becomes a documentation change.
 
 ## One manifest, at `frontend/apps/remark42`
 

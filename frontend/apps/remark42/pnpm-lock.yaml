@@ -107,9 +107,6 @@ importers:
       '@babel/preset-typescript':
         specifier: ^8.0.1
         version: 8.0.1(@babel/core@8.0.1)
-      '@size-limit/file':
-        specifier: ^13.0.3
-        version: 13.0.3(size-limit@13.0.3)
       '@testing-library/jest-dom':
         specifier: ^7.0.1
         version: 7.0.1(@testing-library/dom@8.20.1)
@@ -221,9 +218,6 @@ importers:
       redux-mock-store:
         specifier: ^1.5.5
         version: 1.5.5(redux@4.2.1)
-      size-limit:
-        specifier: ^13.0.3
-        version: 13.0.3
       style-loader:
         specifier: ^4.0.0
         version: 4.0.0(webpack@5.109.2)
@@ -1578,12 +1572,6 @@ packages:
   '@sinonjs/fake-timers@15.4.0':
     resolution: {integrity: sha512-DsG+8/LscQIQg68J6Ef3dv10u6nVyetYn923s3/sus5eaGfTo1of5WMZSLf0UJc9KDuKPilPH0UDJCjvNbDNCA==}
 
-  '@size-limit/file@13.0.3':
-    resolution: {integrity: sha512-PWTITIXH5p9aGIf6qq2Fruihn/b9nBQyfkyoAyb6DzFJgS1Ek9MSPJYKxKFLO8jdo0aqSgBPd3sevbS6PyBiJw==}
-    engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
-    peerDependencies:
-      size-limit: 13.0.3
-
   '@testing-library/dom@8.20.1':
     resolution: {integrity: sha512-/DiOQ5xBxgdYRC8LNk7U+RWat0S3qRLeIw3ZIkMQ9kkVlRmwD/Eg8k8CqIpD6GW7u20JIUOfMKbxtiLutpjQ4g==}
     engines: {node: '>=12'}
@@ -2224,10 +2212,6 @@ packages:
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
     engines: {node: '>=18'}
-
-  bytes-iec@3.1.1:
-    resolution: {integrity: sha512-fey6+4jDK7TFtFg/klGSvNKJctyU7n2aQdnM+CO0ruLPbqqMOM8Tio0Pc+deqUeVKX1tL5DQep1zQ7+37aTAsA==}
-    engines: {node: '>= 0.8'}
 
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
@@ -4159,9 +4143,6 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanospinner@1.2.2:
-    resolution: {integrity: sha512-Zt/AmG6qRU3e+WnzGGLuMCEAO/dAu45stNbHY223tUxldaDAeE+FxSPsd9Q+j+paejmm0ZbrNVs5Sraqy3dRxA==}
-
   napi-postinstall@0.3.4:
     resolution: {integrity: sha512-PHI5f1O0EP5xJ9gQmFGMS6IZcrVvTjpXjz7Na41gTE7eE2hK11lg04CECCYEEjdc17EV4DO+fkGEtt7TpTaTiQ==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
@@ -5177,11 +5158,6 @@ packages:
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
-
-  size-limit@13.0.3:
-    resolution: {integrity: sha512-KVb2aNEU49BwTR21SVjD+2QHP9gBV/nWsTHzNB/heRwXtHyA7lLQiDZDQ1TiNh/B/TZXKAZrHYyTt+cvBUrzYw==}
-    engines: {node: ^22.18.0 || ^24.0.0 || >=26.0.0}
-    hasBin: true
 
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
@@ -7409,10 +7385,6 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
-  '@size-limit/file@13.0.3(size-limit@13.0.3)':
-    dependencies:
-      size-limit: 13.0.3
-
   '@testing-library/dom@8.20.1':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -8153,8 +8125,6 @@ snapshots:
   bundle-name@4.1.0:
     dependencies:
       run-applescript: 7.1.0
-
-  bytes-iec@3.1.1: {}
 
   bytes@3.1.2: {}
 
@@ -10388,10 +10358,6 @@ snapshots:
 
   nanoid@3.3.18: {}
 
-  nanospinner@1.2.2:
-    dependencies:
-      picocolors: 1.1.1
-
   napi-postinstall@0.3.4: {}
 
   natural-compare@1.4.0: {}
@@ -11493,12 +11459,6 @@ snapshots:
   signal-exit@3.0.7: {}
 
   signal-exit@4.1.0: {}
-
-  size-limit@13.0.3:
-    dependencies:
-      bytes-iec: 3.1.1
-      lilconfig: 3.1.3
-      nanospinner: 1.2.2
 
   slash@3.0.0: {}
 
