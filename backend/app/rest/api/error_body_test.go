@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -143,6 +144,37 @@ func uploadPicture(t *testing.T, url string, img io.Reader) *http.Response {
 	resp, err := sendReq(req, devToken)
 	require.NoError(t, err)
 	return resp
+}
+
+func TestRest_VoteSameIP(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.DataService.RestrictSameIPVotes.Enabled = true })
+	defer teardown()
+
+	id := addComment(t, store.Comment{Text: "test test #1",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+
+	vote := func(tkn string) *http.Response {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=1", ts.URL, id), http.NoBody)
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		return resp
+	}
+
+	resp := vote(dev2Token)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, "first vote from the address accepted")
+
+	// another user from the same address
+	resp = vote(emailUserToken)
+	body, e := readErrorResponse(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, errorResponse{Error: "the same ip already voted for " + id, Details: "can't vote for comment",
+		Code: 14}, e, "rejected as a repeated vote, with no address hash")
+	secret, err := srv.DataService.AdminStore.Key("remark42")
+	require.NoError(t, err)
+	assert.NotContains(t, body, store.HashValue("127.0.0.1", secret), "no address hash in the body")
 }
 
 func TestAdmin_DeleteUserAvatarErrorBody(t *testing.T) {

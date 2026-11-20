@@ -378,7 +378,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	}
 	userIPHash := store.HashValue(req.UserIP, secret)
 	if s.isSameIPVote(req, userIPHash, comment) {
-		return comment, fmt.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
+		return comment, fmt.Errorf("the same ip already voted for %s", req.CommentID)
 	}
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no votes allowed"

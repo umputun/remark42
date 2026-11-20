@@ -709,7 +709,7 @@ func TestService_VoteSameIP(t *testing.T) {
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
-	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
+	assert.EqualError(t, err, "the same ip already voted for id-2")
 	assert.Equal(t, 1, c.Score, "still have 1 score, rejected")
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -739,7 +739,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 
 		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 			UserID: "user3", UserIP: "123", Val: true})
-		assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
+		assert.EqualError(t, err, "the same ip already voted for id-2")
 		assert.Equal(t, 1, c.Score, "still have 1 score")
 
 		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -812,13 +812,13 @@ func TestService_VotePrunesExpiredIPs(t *testing.T) {
 				// the same-ip limit keeps working on what is left
 				err := vote(&b, "user5", "10.0.0.2")
 				if tt.enabled {
-					assert.EqualError(t, err, "the same ip "+freshIP+" already voted for id-2", "ip inside the window is still limited")
+					assert.EqualError(t, err, "the same ip already voted for id-2", "ip inside the window is still limited")
 				} else {
 					assert.NoError(t, err, "no limit with the restriction off")
 				}
 				err = vote(&b, "user6", "10.0.0.1")
 				if tt.enabled && !tt.pruned {
-					assert.EqualError(t, err, "the same ip "+oldIP+" already voted for id-2", "unlimited window still limits the old ip")
+					assert.EqualError(t, err, "the same ip already voted for id-2", "unlimited window still limits the old ip")
 				} else {
 					assert.NoError(t, err, "ip outside the window can vote again")
 				}
