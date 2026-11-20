@@ -140,7 +140,7 @@ type ServerCommand struct {
 
 // ImageProxyGroup defines options group for image proxy
 type ImageProxyGroup struct {
-	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
+	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy, no effect when remark url is http"`
 	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
 }
 

@@ -249,7 +249,7 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore 
 		return false, 0
 	}
 
-	score += 50 * badWord(comment.Text) // up to 50, 4 bad words will reach max
+	score += 50 * badWord(comment.Text) // 12.5 for each listed word found, up to 50 for four or more
 
 	if hasBadUser(comment.User.ID) { // predefined list of bad user substrings
 		score += 10
@@ -272,5 +272,7 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore 
 	score = math.Max(score, 0)
 	score = math.Min(score, 100)
 
+	// spam is a score above 50. The other signs add up to 50 at most, so a comment needs at least one
+	// listed word, and four or more of them, which give the 50 maximum, still need one more sign
 	return score > 50, score
 }
