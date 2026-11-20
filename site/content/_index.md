@@ -31,16 +31,17 @@ Remark42 allows you to have a self-hosted, lightweight, and simple (yet function
 
 ## Privacy
 
-- Remark42 is trying to be very sensitive to any private or semi-private information.
-- Authentication is requesting the minimal possible scope from authentication providers and all extra information returned by them is immediately dropped and not stored in any form.
-- Generally, Remark42 keeps user ID, username and avatar link only. None of these fields exposed directly - ID and name hashed, avatar proxied.
-- There is no tracking of any sort.
-- Login mechanic uses JWT stored in a cookie (HttpOnly, secured). The second cookie (XSRF_TOKEN) is a random ID preventing CSRF.
-- There is no cross-site login, i.e., user's behavior can't be analyzed across independent sites running Remark42.
-- There are no third-party analytic services involved.
-- Users can request all information Remark42 knows about them and receive the export in the gz file.
-- Supports complete cleanup of all information related to user's activity by user's "deleteme" request.
-- Cookie lifespan can be restricted to session-only.
-- All potentially sensitive data stored by Remark42 hashed and encrypted.
+Remark42 is designed to store as little personal information as it can:
+
+- From a sign-in provider, Remark42 keeps a user ID, the display name and the avatar, and for Patreon whether the user is a paid subscriber. The built-in providers are asked for the minimal scope, and nothing else they return is stored.
+- The user ID is a hash, not the provider's own identifier or the email address. The avatar is stored and served by Remark42 itself.
+- With each comment and vote, Remark42 keeps a keyed hash of the IP address, never the address itself. An email address or Telegram account is stored on the server only when the user subscribes to notifications.
+- Remark42 includes no analytics or tracking services.
+- Login uses an HttpOnly JWT cookie, marked Secure when Remark42 runs on HTTPS, and an XSRF-TOKEN cookie, a random ID that protects against CSRF.
+- There is no cross-site login: every Remark42 instance has its own sign-in and its own data, and instances exchange nothing. The same account gets the same public user ID on each, so public comments can be matched across sites.
+- A signed-in user can download their comments as a gz file through the API.
+- A user can request deletion of their data. Once the site administrator confirms the request, their comments, notification addresses and avatar are removed.
+
+What a site running Remark42 does with this data is up to its operator: the [privacy section of the installation guide](/docs/getting-started/installation/#privacy) lists the settings that matter. The [privacy policy](/privacy/) describes remark42.com itself.
 
 <div class="home__signature">— The Remark42 Team</div>
