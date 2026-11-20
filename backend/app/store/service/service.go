@@ -1154,7 +1154,7 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	}
 
 	// hide info from non-admins
-	if !user.Admin {
+	if !flags.admin(c.Locator.SiteID, user) {
 		c.User.IP = ""
 	}
 
@@ -1166,10 +1166,12 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 
 // userFlagCache memoises engine block/verified flag lookups by site and user within
 // a single listing, avoiding two engine.Flag calls per comment for repeated users.
+// It also keeps the viewer's admin status per site, see admin.
 type userFlagCache struct {
 	s         *DataStore
 	blockedM  map[flagKey]bool
 	verifiedM map[flagKey]bool
+	adminM    map[string]bool // viewer's admin status by site, for sites other than user.SiteID
 }
 
 type flagKey struct {
@@ -1178,7 +1180,27 @@ type flagKey struct {
 }
 
 func (s *DataStore) newUserFlagCache() *userFlagCache {
-	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}}
+	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}, adminM: map[string]bool{}}
+}
+
+// admin reports whether the viewer counts as an admin for a comment on siteID. The admin flag of a
+// signed-in user was set for the site the token was issued for, user.SiteID, while the open routes
+// accept that token for any site the instance serves. On another site the flag holds only if the
+// admin store lists the user for that site as well, which with the shared store is always the case.
+// A user with no site is the basic-auth admin, who is admin of every site
+func (f *userFlagCache) admin(siteID string, user store.User) bool {
+	if !user.Admin {
+		return false
+	}
+	if user.SiteID == "" || user.SiteID == siteID {
+		return true
+	}
+	if v, ok := f.adminM[siteID]; ok {
+		return v
+	}
+	v := f.s.IsAdmin(siteID, user.ID)
+	f.adminM[siteID] = v
+	return v
 }
 
 func (f *userFlagCache) blocked(siteID, userID string) bool {

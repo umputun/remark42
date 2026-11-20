@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,14 +18,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/store"
+	adminstore "github.com/umputun/remark42/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
@@ -1481,4 +1487,121 @@ func TestRest_CacheKeys(t *testing.T) {
 		}
 	}
 	assert.Equal(t, want, got)
+}
+
+// with an admin store that lists admins per site, a user can be admin of one site of the instance and
+// not of another. The open routes accept the token issued for the first site on every site, and the
+// token's admin flag must not reveal the other site's commenters' ip hashes
+func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		tmp := t.TempDir()
+		require.NoError(t, srv.DataService.Engine.Close())
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(tmp, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(tmp, "site2.db"), SiteID: "site2"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+		srv.DataService.AdminStore = &adminstore.StoreMock{
+			KeyFunc:     func(string) (string, error) { return "123456", nil },
+			EnabledFunc: func(string) (bool, error) { return true, nil },
+			OnEventFunc: func(string, adminstore.EventType) error { return nil },
+			EmailFunc:   func(string) (string, error) { return "", nil },
+			AdminsFunc: func(siteID string) ([]string, error) {
+				return map[string][]string{"remark42": {"github_one", "github_both"}, "site2": {"github_two", "github_both"}}[siteID], nil
+			},
+		}
+	})
+	defer teardown()
+
+	siteToken := func(site, userID string) string {
+		u := token.User{ID: userID, Name: userID}
+		u.SetAdmin(true) // as the server's ClaimsUpd sets it for the token's site
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{site},
+			Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), User: &u})
+		require.NoError(t, err)
+		return tkn
+	}
+
+	postURL := "https://site2.example.com/post"
+	id, err := srv.DataService.Create(store.Comment{Text: "on site2", User: store.User{ID: "u1", Name: "u1", IP: "10.0.0.1"},
+		Locator: store.Locator{SiteID: "site2", URL: postURL}})
+	require.NoError(t, err)
+
+	// fetch reads every open route that returns comments of site2 and collects the ip of each
+	fetch := func(t *testing.T, setAuth func(r *http.Request)) map[string]string {
+		t.Helper()
+		res := map[string]string{}
+		routes := map[string]string{
+			"find":     "/api/v1/find?site=site2&format=plain&url=" + postURL,
+			"id":       "/api/v1/id/" + id + "?site=site2&url=" + postURL,
+			"last":     "/api/v1/last/10?site=site2",
+			"comments": "/api/v1/comments?site=site2&user=u1",
+		}
+		for name, path := range routes {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
+			require.NoError(t, err)
+			setAuth(req)
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode, "%s: %s", name, body)
+
+			var cc []store.Comment
+			switch name {
+			case "find", "comments":
+				var wrapped struct{ Comments []store.Comment }
+				require.NoError(t, json.Unmarshal(body, &wrapped), name)
+				cc = wrapped.Comments
+			case "id":
+				var c store.Comment
+				require.NoError(t, json.Unmarshal(body, &c), name)
+				cc = []store.Comment{c}
+			case "last":
+				require.NoError(t, json.Unmarshal(body, &cc), name)
+			}
+			require.Len(t, cc, 1, name)
+			require.Equal(t, id, cc[0].ID, name)
+			res[name] = cc[0].User.IP
+		}
+		return res
+	}
+	allRoutes := func(ip string) map[string]string {
+		return map[string]string{"find": ip, "id": ip, "last": ip, "comments": ip}
+	}
+	ipHash := store.HashValue("10.0.0.1", "123456")
+
+	t.Run("admin of the other site", func(t *testing.T) {
+		tkn := siteToken("remark42", "github_one")
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", http.NoBody)
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		var u store.User
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&u))
+		require.NoError(t, resp.Body.Close())
+		require.True(t, u.Admin, "the token is accepted and carries the admin flag")
+
+		assert.Equal(t, allRoutes(""), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+	})
+
+	t.Run("admin of the site", func(t *testing.T) {
+		tkn := siteToken("site2", "github_two")
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+	})
+
+	t.Run("admin of both sites, signed in to the other", func(t *testing.T) {
+		tkn := siteToken("remark42", "github_both")
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }),
+			"admin of site2 by the store, though the token is for remark42")
+	})
+
+	t.Run("basic-auth admin", func(t *testing.T) {
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.SetBasicAuth("admin", "password") }))
+	})
+
+	t.Run("anonymous reader", func(t *testing.T) {
+		assert.Equal(t, allRoutes(""), fetch(t, func(*http.Request) {}))
+	})
 }
