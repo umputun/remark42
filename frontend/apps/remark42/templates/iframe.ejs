@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <link rel="modulepreload" href="remark.mjs" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!-- every embed loads this same document, so crawlers must not index it as a page of its own;
+         indexifembedded keeps the comments indexed as part of the page that embeds them -->
+    <meta name="robots" content="noindex, indexifembedded" />
     <title>Comments</title>
     <base target="_blank" />
     <script>
