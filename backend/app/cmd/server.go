@@ -1104,7 +1104,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			Subject:            s.Auth.Email.Subject,
 			ContentType:        s.Auth.Email.ContentType,
 		}
-		sndr := sender.NewEmailClient(params, log.Default())
+		sndr := newEmailSender(params, log.Default())
 		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
 		if err != nil {
 			return err
@@ -1170,6 +1170,11 @@ func checkAnonymousName(user, _ string) (ok bool, err error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// newEmailSender makes the sender of sign-in emails. Its debug line names the recipient, so the address is masked
+func newEmailSender(params sender.EmailParams, l log.L) *sender.Email {
+	return sender.NewEmailClient(params, rest.MaskedLog{L: l})
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
