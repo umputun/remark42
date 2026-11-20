@@ -29,6 +29,8 @@ If running in a docker container, the command becomes (`ADMIN_PASSWD` will be ta
 docker exec -it remark42 remark42 remap -s <your site ID> -f var/rules
 ```
 
+In `docker exec -it remark42 remark42 ...`, the first `remark42` is the container name and the second is the Remark42 binary inside it.
+
 The command above sends a _request_ to start the remap job. You can see the job execution logs by running:
 
 ```shell
