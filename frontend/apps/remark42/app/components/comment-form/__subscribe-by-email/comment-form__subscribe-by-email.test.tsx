@@ -122,7 +122,7 @@ describe('<SubscribeByEmailForm/>', () => {
   });
 
   it('should handle http error 409: already subscribed', async () => {
-    emailVerificationForSubscribeMock.mockImplementationOnce(() => Promise.reject(new RequestError('', 409)));
+    emailVerificationForSubscribeMock.mockImplementationOnce(() => Promise.reject(new RequestError('', 409, 409)));
 
     const { container } = createWrapper();
     const form = container.querySelector('form') as HTMLFormElement;
