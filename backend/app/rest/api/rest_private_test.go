@@ -591,6 +591,47 @@ func TestRest_UpdateDeletedByAdmin(t *testing.T) {
 	assert.Empty(t, cd.Text)
 }
 
+func TestRest_UpdateBlockedUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}
+	id := addComment(t, c1, ts)
+
+	// a temporary block keeps the comments, and the token issued before the block is still valid
+	require.NoError(t, srv.DataService.SetBlock("remark42", "provider1_dev", true, time.Hour))
+
+	put := func(body string) (code int, respBody string) {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, postURL), strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		rb, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(rb)
+	}
+	locator := store.Locator{SiteID: "remark42", URL: postURL}
+
+	code, body := put(`{"text":"updated text", "summary":"my edit"}`)
+	assert.Equal(t, http.StatusForbidden, code, body)
+	assert.Equal(t, `{"code":7,"details":"user blocked","error":"rejected"}`+"\n", body)
+
+	cr, err := srv.DataService.Get(locator, id, store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, "<p>test test #1</p>\n", cr.Text, "comment of a blocked user is not edited")
+	assert.Nil(t, cr.Edit)
+
+	// the blocked user can still delete their own comment
+	code, body = put(`{"delete": true}`)
+	assert.Equal(t, http.StatusOK, code, body)
+	cr, err = srv.DataService.Get(locator, id, store.User{})
+	require.NoError(t, err)
+	assert.True(t, cr.Deleted)
+}
+
 func TestRest_DeleteChildThenParent(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
