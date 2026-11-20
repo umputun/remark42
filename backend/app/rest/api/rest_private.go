@@ -222,7 +222,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		Admin:   user.Admin,
 	}
 
-	res, err := s.dataService.EditComment(locator, id, editReq)
+	_, err = s.dataService.EditComment(locator, id, editReq)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
 		return
@@ -235,6 +235,13 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
+
+	// answer with what a read returns: the record EditComment hands back is the stored one
+	res, err := s.dataService.Get(locator, id, rest.GetUserOrEmpty(r))
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load updated comment", rest.ErrInternal)
+		return
+	}
 	R.RenderJSON(w, res)
 }
 
