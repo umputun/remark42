@@ -185,7 +185,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		grp.Go(func(context.Context) {
 			if _, e := n.DataStore.Create(comment); e != nil {
 				atomic.AddInt64(&failed, 1)
-				log.Printf("[WARN] can't write %+v to store, %s", comment, e)
+				log.Printf("[WARN] can't write comment %s on %s to store, %s", comment.ID, comment.Locator.URL, e)
 				return
 			}
 			num := atomic.AddInt64(&comments, 1)
