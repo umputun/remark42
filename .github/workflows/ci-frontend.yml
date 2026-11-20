@@ -122,9 +122,6 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      pull-requests: write
-    env:
-      CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -137,12 +134,23 @@ jobs:
           version: 10.10.0
           run_install: false
 
-      - name: Check bundle size
-        uses: andresz1/size-limit-action@94bc357df29c36c8f8d50ea497c3e225c3c95d1d
+      # no matrix here, so the check keeps the name "Size limit"
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./frontend/apps/remark42
-          package_manager: pnpm
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
+
+      # the budgets live in tasks/check-size.ts; the check prints each file's gzipped size against
+      # its budget and fails when one is over or missing
+      - name: Check bundle size
+        run: pnpm size-check
+        working-directory: ./frontend/apps/remark42
 
   unit:
     name: Dependency-free unit tests

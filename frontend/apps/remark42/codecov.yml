@@ -10,7 +10,6 @@ ignore:
   - .eslitnrc.js
   - .prettierignore
   - .prettierrc.js
-  - .size-limit.js
   - README.md
 
 comment: false
