@@ -81,7 +81,7 @@ services:
 | image.resize-height            | IMAGE_RESIZE_HEIGHT            | `900`                   | height of a resized image                                |
 | auth.ttl.jwt                   | AUTH_TTL_JWT                   | `5m`                    | JWT TTL                                                  |
 | auth.ttl.cookie                | AUTH_TTL_COOKIE                | `200h`                  | TTL of the server-set auth cookie. Note it does not govern the cookie the frontend writes under `auth.send-jwt-header`, which is fixed at 200h |
-| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; the server-set cookies are still sent. [See security considerations](#security-considerations-for-authsend-jwt-header). |
+| auth.send-jwt-header           | AUTH_SEND_JWT_HEADER           | `false`                 | also send JWT as a header and, for a widget embedded on another host, set the auth cookies a second time as `Partitioned`, so its session survives third-party cookie blocking; the server-set cookies are still sent. [See security considerations](#security-considerations-for-authsend-jwt-header). |
 | auth.same-site                 | AUTH_SAME_SITE                 | `default`               | SameSite attribute for the server-set auth cookies (`default`, `none`, `lax` or `strict`). `default` emits no attribute at all and leaves the choice to the browser, which is not the same as `lax` |
 | auth.apple.cid                 | AUTH_APPLE_CID                 |                         | Apple client ID (App ID or Services ID)                  |
 | auth.apple.tid                 | AUTH_APPLE_TID                 |                         | Apple Team ID                                            |
@@ -197,16 +197,21 @@ Custom OAuth2 integration currently supports only one custom provider at a time,
 
 When `auth.send-jwt-header=true` is enabled:
 
-- **Security Impact**: JWT tokens are stored in client-accessible cookies that can be accessed by JavaScript
-- **Vulnerability**: This increases vulnerability to XSS attacks compared to server-set HttpOnly cookies
+- **Security Impact**: the JWT is sent to the widget in a response header, where JavaScript can read it. The widget keeps it in memory and also writes it to a cookie of its own, which the browser stores only where it holds no `HttpOnly` cookie of that name for the same context
+- **Vulnerability**: This increases vulnerability to XSS attacks compared to a session kept only in server-set HttpOnly cookies
 - **Implementation Mitigations**:
+  - For a widget embedded on another host the server sets its own `HttpOnly` cookie a second time
+    as `SameSite=None; Secure; Partitioned`, and the browser then refuses the script-written cookie
+    of the same name. The attributes below are the ones the widget gives the cookie it writes
   - `SameSite=Strict` when the widget and the page share an origin, which is what prevents the
     cookie being sent from another site
-  - `SameSite=None; Secure; Partitioned` when the widget is embedded on another domain, where
+  - `SameSite=None; Secure; Partitioned` when the widget is served over https and the page
+    embedding it is on another origin, a subdomain of the same site included. From another site
     `Strict` would never be sent at all. `Partitioned` keys the cookie to the embedding top-level
     site, so a different site gets a separate cookie and cannot reach this one. Pages and
     subdomains under that same site do share it, since the partition key is the site rather than
-    the page
+    the page. Over http the cookie stays `SameSite=Strict`, because a partitioned cookie has to
+    be `Secure`
   - Secure flag automatically added on HTTPS connections
   - Double Submit Cookie pattern with XSRF token matching the JWT ID
 

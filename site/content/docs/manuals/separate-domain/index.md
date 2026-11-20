@@ -14,7 +14,7 @@ OAuth works in every browser measured when Remark42 and the page share a registr
 
 Set `ALLOWED_HOSTS="'self',https://example1.org,https://example2.org"` with your domain names, and `AUTH_SEND_JWT_HEADER=true`. If you enable OAuth providers, set `AUTH_SAME_SITE=none` as well; the reasons follow.
 
-`AUTH_SEND_JWT_HEADER` is what keeps a reader who signed in by Email, Telegram or anonymously signed in across a page reload on Safari, in Chrome Incognito, and in Chrome configured to block third-party cookies. The one setting it does not survive is Firefox's "block all third-party cookies", which discards partitioned cookies as well, and which no configuration survives. Read [its security considerations](../../configuration/parameters/#security-considerations-for-authsend-jwt-header) before enabling it: it puts the token in a cookie JavaScript can read, which costs XSS exposure that a server-set `HttpOnly` cookie does not.
+`AUTH_SEND_JWT_HEADER` is what keeps a reader who signed in by Email, Telegram or anonymously signed in across a page reload on Safari, in Chrome Incognito, and in Chrome configured to block third-party cookies. The one setting it does not survive is Firefox's "block all third-party cookies", which discards partitioned cookies as well, and which no configuration survives. Read [its security considerations](../../configuration/parameters/#security-considerations-for-authsend-jwt-header) before enabling it: it hands the token to the widget's script in a response header, which costs XSS exposure that a session kept only in a server-set `HttpOnly` cookie does not.
 
 **For Email, Telegram and anonymous authorisation, `AUTH_SAME_SITE=none` is not needed alongside it**, which reverses what this page recommended for years, so it is worth showing the measurement instead of asserting it. Signing in anonymously from an embedded widget over https on Chromium with its default third-party cookie policy, and dumping the browser's cookie jar, gives with the setting:
 
@@ -22,12 +22,12 @@ Set `ALLOWED_HOSTS="'self',https://example1.org,https://example2.org"` with your
 | --- | --- | --- | --- |
 | `JWT` | yes | none | the server |
 | `XSRF-TOKEN` | no | none | the server |
-| `JWT` | no | the embedding site | the widget |
-| `XSRF-TOKEN` | no | the embedding site | the widget |
+| `JWT` | yes | the embedding site | the server, for the embedded widget |
+| `XSRF-TOKEN` | no | the embedding site | the server, for the embedded widget, and the widget |
 
-and without it, only the widget's own partitioned pair. Sign-in, posting and the reload all work either way, in a permissive browser and in one blocking third-party cookies. What the setting adds is the unpartitioned `HttpOnly` `JWT` in the first row, delivered as a third-party cookie to every listed domain wherever the browser still permits that. Email, Telegram and anonymous authorisation do not need it, so with only those enabled, leaving it at the default is the smaller exposure.
+and without it, only the partitioned pair. Sign-in, posting and the reload all work either way, in a permissive browser and in one blocking third-party cookies. What the setting adds is the unpartitioned `HttpOnly` `JWT` in the first row, delivered as a third-party cookie to every listed domain wherever the browser still permits that. Email, Telegram and anonymous authorisation do not need it, so with only those enabled, leaving it at the default is the smaller exposure.
 
-**OAuth does need it.** OAuth completes in a popup, so the `X-JWT` header goes to the popup, which closes, and the widget never gets to write a cookie of its own. The frame can then be signed in only by the server's `JWT` cookie from the first row. With `AUTH_SAME_SITE` left at `default` that cookie carries no `SameSite` attribute, Chrome treats it as `Lax` and does not send it from a frame on another site, so `AUTH_SEND_JWT_HEADER=true` on its own leaves cross-site OAuth failing in every browser measured. If you enable OAuth providers, keep `AUTH_SAME_SITE=none` next to `AUTH_SEND_JWT_HEADER=true`, at the cost described above. That makes cross-site OAuth work in Chrome with its default settings and in no other browser or mode measured; the OAuth table below has the rest.
+**OAuth does need it.** OAuth completes in a popup, which is a top-level page of its own, so the response that sets the session does not answer the embedded widget and carries no partitioned pair. The frame can then be signed in only by the server's `JWT` cookie from the first row. With `AUTH_SAME_SITE` left at `default` that cookie carries no `SameSite` attribute, Chrome treats it as `Lax` and does not send it from a frame on another site, so `AUTH_SEND_JWT_HEADER=true` on its own leaves cross-site OAuth failing in every browser measured. If you enable OAuth providers, keep `AUTH_SAME_SITE=none` next to `AUTH_SEND_JWT_HEADER=true`, at the cost described above. That makes cross-site OAuth work in Chrome with its default settings and in no other browser or mode measured; the OAuth table below has the rest.
 
 Also keep `AUTH_SAME_SITE=none` if you are *not* setting `AUTH_SEND_JWT_HEADER`. Then the server's cookies are the only ones there are, and this is what allows them to be set off-domain at all, for as long as the reader's browser still accepts unpartitioned third-party cookies.
 
@@ -41,7 +41,7 @@ The `'self'` in `ALLOWED_HOSTS` value means "domain where Remark42 is installed 
 
 The `default` setting does not mean `Lax`. It means Remark42 emits no `SameSite` attribute at all and leaves the choice to the browser, and browsers differ: Chromium treats a missing attribute as `Lax` and so refuses the cookie cross-site, while Firefox accepts it. That difference is not a detail, because it decides which of the two cookie pairs below a reader actually ends up with.
 
-`SameSite=None` is not sufficient on its own, and for Email, Telegram and anonymous authorisation with `AUTH_SEND_JWT_HEADER` it is not necessary either. A browser that blocks third-party cookies drops a cookie set by Remark42 for a reader on another domain no matter what its `SameSite` value is, unless the cookie is explicitly marked [`Partitioned`](https://developer.mozilla.org/en-US/docs/Web/Privacy/Privacy_sandbox/Partitioned_cookies), and the server-set cookies are not. `AUTH_SEND_JWT_HEADER=true` is what closes that: the token comes back in an `X-JWT` response header and the widget stores it in its own cookie, written from inside the embedded frame and marked `SameSite=None; Secure; Partitioned`, so the browser keeps it for that embedding site and sends it back after a reload. That cookie is the widget's own doing and owes nothing to `AUTH_SAME_SITE`, which reaches only the pair the server sets. The exception is Firefox's "block all third-party cookies", which discards partitioned cookies too, so the flag closes nothing there and no configuration does.
+`SameSite=None` is not sufficient on its own, and for Email, Telegram and anonymous authorisation with `AUTH_SEND_JWT_HEADER` it is not necessary either. A browser that blocks third-party cookies drops a cookie set by Remark42 for a reader on another domain no matter what its `SameSite` value is, unless the cookie is explicitly marked [`Partitioned`](https://developer.mozilla.org/en-US/docs/Web/Privacy/Privacy_sandbox/Partitioned_cookies), and the server-set cookies are not. `AUTH_SEND_JWT_HEADER=true` is what closes that: the widget tells the server that it is embedded on another host, and the server then sets its two cookies a second time, marked `SameSite=None; Secure; Partitioned`, in every response that sets them, so the browser keeps that pair for the embedding site and sends it back after a reload. The partitioned pair carries `SameSite=None` whatever `AUTH_SAME_SITE` says, which reaches only the ordinary pair. The token also comes back in an `X-JWT` response header, which the widget keeps in memory for as long as the page stays open. The widget also still writes both values into cookies of its own from that header, as it always has; where the browser holds the server's partitioned `HttpOnly` `JWT`, it refuses the script-written cookie of the same name. Up to v1.18.0 (released 11 October 2026) that script-written pair was the only partitioned one. Safari refuses a script-written `JWT` cookie once an `HttpOnly` cookie of that name exists for the Remark42 site, which an OAuth sign-in leaves and so does a sign-in on any page under Remark42's own registrable domain, and the reader was then signed out by the next reload. The exception is Firefox's "block all third-party cookies", which discards partitioned cookies too, so the flag closes nothing there and no configuration does.
 
 A browser that refuses a cross-site `Set-Cookie` lacking `SameSite=None` refuses it outright, so with the setting left at its default the server's pair is absent from the jar, not present with a stricter attribute.
 
@@ -70,15 +70,12 @@ Four things in that table are worth spelling out.
 **Safari needs no configuring to break the old recipe.** It blocks third-party cookies out of the
 box while still honouring `Partitioned`, so `AUTH_SAME_SITE=none` on its own has already stopped
 working there for every reader. This is not a future deprecation to plan for. With the header flag
-the widget's own partitioned cookie is readable in the frame and the session survives the reload.
+the partitioned pair is kept for the frame and the session survives the reload.
 
-**Firefox reaches "works" by a different route, and a weaker one.** Chrome and Safari refuse the
-server's cookie when it carries no `SameSite` attribute, which leaves the field clear for the
-widget to write its own partitioned pair. Firefox accepts that cookie, and because the server's
-`JWT` is `HttpOnly`, the browser then refuses to let the widget's script overwrite it: a cookie set
-by JavaScript may not replace an `HttpOnly` one of the same name. So on Firefox the session rides
-on an ordinary unpartitioned third-party cookie even with the header flag on, and it disappears the
-moment the reader blocks those.
+**Firefox reaches "works" with both pairs.** Chrome and Safari refuse the server's ordinary cookie
+when it carries no `SameSite` attribute, so there the session rests on the partitioned pair alone.
+Firefox accepts the ordinary cookie as well and files it under the embedding site, so with the
+header flag on a Firefox reader holds both pairs and sends both from the frame.
 
 **No configuration survives Firefox's "block all third-party cookies" setting.** That mode discards
 partitioned cookies too, so the `Partitioned` escape hatch does not apply. A reader who has turned
@@ -97,9 +94,9 @@ The two cells that work are Chrome with its default settings and `AUTH_SAME_SITE
 
 With Remark42 and the host page on two subdomains of one registrable domain, OAuth worked in every cell measured: all four configurations in each Chrome and Firefox mode above, and Safari with neither variable set. The same run repeated the first table with anonymous sign-in, and every cell agreed with it.
 
-Here are all possible combinations of these two:
+Here is what the common combinations of `ALLOWED_HOSTS`, `AUTH_SAME_SITE` and `AUTH_SEND_JWT_HEADER` give:
 
-- Default setup with unaltered variables: comments are shown on any domain, and the authorisation wouldn't work anywhere, except on the same domain Remark42 is installed on and other hosts under the same registrable domain, where it works, OAuth included, and on Firefox with its default settings, for Email, Telegram and anonymous authorisation only. Firefox stores the server's attribute-less cookie in a per-site partition instead of refusing it, so Email, Telegram and anonymous authorisation survive a reload cross-domain there with neither variable set. Every other browser measured below refuses that cookie cross-site.
+- Default setup with unaltered variables: comments are shown on any domain, and the authorisation wouldn't work anywhere, except on the same domain Remark42 is installed on and other hosts under the same registrable domain, where it works, OAuth included, and on Firefox with its default settings, for Email, Telegram and anonymous authorisation only. Firefox stores the server's attribute-less cookie in a per-site partition instead of refusing it, so Email, Telegram and anonymous authorisation survive a reload cross-domain there with neither variable set. Every other browser measured above refuses that cookie cross-site.
 - `ALLOWED_HOSTS` set to a set of domains: comments are shown only on listed domains, and authorisation wouldn't work anywhere, with the same two exceptions as above.
 - `AUTH_SAME_SITE` set to `None`: comments are shown on any domain. Authorisation works on browsers that still permit third-party cookies, and stops working on the ones that block them. OAuth across registrable domains is narrower: of the browsers measured it works only in Chrome with its default settings, and not in Firefox, where the other methods do work.
 - `ALLOWED_HOSTS` set to a set of domains and `AUTH_SAME_SITE` set to `None`: comments are shown on listed domains, with the same authorisation caveat.

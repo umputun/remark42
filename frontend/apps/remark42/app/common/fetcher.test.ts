@@ -13,6 +13,7 @@ import {
   XSRF_COOKIE,
   XSRF_HEADER,
   AUTH_COOKIE_TTL_SECONDS,
+  JWT_HEADER_MARGIN_MS,
 } from './fetcher';
 import * as cookies from './cookies';
 
@@ -300,6 +301,122 @@ describe('fetcher', () => {
       expect(init.headers[JWT_HEADER]).toBe('kept.jwt.token');
 
       // the token lives at module level, so drop it the way the fetcher does before the next test
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
+    });
+
+    it('stops sending the token in memory shortly before it expires, when a cookie can carry the request', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
+      // the xsrf cookie is how the fetcher knows a cookie session exists
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      // five minutes, the backend's default: only the distance between the two claims counts
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
+      const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
+      const lastHeaders = () => {
+        const { calls } = (window.fetch as jest.Mock).mock;
+        return calls[calls.length - 1][1].headers;
+      };
+
+      mockFetch({ headers: { [JWT_HEADER]: 'fresh.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+
+      now.mockReturnValue(50_000_000 + 300_000 - JWT_HEADER_MARGIN_MS - 1);
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      expect(lastHeaders()[JWT_HEADER]).toBe('fresh.jwt.token');
+
+      // the backend refuses an expired token in a header without looking at the cookie, and only the
+      // cookie is renewed, so from here the request has to go on the cookie alone
+      now.mockReturnValue(50_000_000 + 300_000 - JWT_HEADER_MARGIN_MS);
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      expect(lastHeaders()).not.toHaveProperty(JWT_HEADER);
+      expect(lastHeaders()[XSRF_HEADER]).toBe('test-jti-id');
+
+      // the renewed token the backend then sends is used again
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1300, exp: 1600 }));
+      mockFetch({ headers: { [JWT_HEADER]: 'renewed.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      expect(lastHeaders()[JWT_HEADER]).toBe('renewed.jwt.token');
+
+      // the token lives at module level, so drop it the way the fetcher does before the next test
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
+    });
+
+    it("counts the token's lifetime from when its request was sent, not from when the answer arrived", async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
+      const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
+
+      // the answer takes 20 seconds to arrive, twice the margin: a slow connection, or a page
+      // suspended in between. the token was issued somewhere in those 20 seconds
+      window.fetch = jest.fn().mockImplementation(() => {
+        now.mockReturnValue(50_000_000 + 20_000);
+        return { status: 200, headers: new Headers({ [JWT_HEADER]: 'slow.jwt.token' }), text: async () => '' };
+      });
+      await apiFetcher.get(apiUri);
+
+      // counted from the arrival this would still be inside the token's life, and the backend
+      // would be sent a token that may have expired
+      now.mockReturnValue(50_000_000 + 300_000 - JWT_HEADER_MARGIN_MS);
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      const { calls } = (window.fetch as jest.Mock).mock;
+      expect(calls[calls.length - 1][1].headers).not.toHaveProperty(JWT_HEADER);
+
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
+    });
+
+    it('never sends beside a cookie a token that had expired when it was issued', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => 'test-jti-id');
+      // what the backend writes when it sets new claims on an expired token: the old expiry and a
+      // new issue time
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1300, exp: 1000 }));
+      jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
+
+      mockFetch({ headers: { [JWT_HEADER]: 'expired.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      const { calls } = (window.fetch as jest.Mock).mock;
+      expect(calls[calls.length - 1][1].headers).not.toHaveProperty(JWT_HEADER);
+
+      mockFetch({ status: 401 });
+      await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
+      clear.mockRestore();
+    });
+
+    it('keeps sending the token in memory to its end when there is no cookie session', async () => {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      jest.spyOn(cookies, 'setAuthCookie').mockImplementation(jest.fn());
+      // a browser that stores no cookie: the token in memory is the whole session, and leaving it
+      // out early would end that session before the token does
+      jest.spyOn(cookies, 'getCookie').mockImplementation(() => undefined);
+      jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'test-jti-id', iat: 1000, exp: 1300 }));
+      const now = jest.spyOn(Date, 'now').mockReturnValue(50_000_000);
+
+      mockFetch({ headers: { [JWT_HEADER]: 'only.jwt.token', ...headers } });
+      await apiFetcher.get(apiUri);
+
+      now.mockReturnValue(50_000_000 + 300_000 - 1);
+      mockFetch({ headers });
+      await apiFetcher.get(apiUri);
+      const { calls } = (window.fetch as jest.Mock).mock;
+      expect(calls[calls.length - 1][1].headers[JWT_HEADER]).toBe('only.jwt.token');
+
       mockFetch({ status: 401 });
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
       clear.mockRestore();

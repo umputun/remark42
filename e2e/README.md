@@ -145,11 +145,11 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 - **remark42** on `:8080`, with the dev oauth2 provider on `:8084`, anonymous and email sign-in
 - **remark42-shortedit** on `:8081`, with `EDIT_TIME=15s` and anonymous sign-in only, since the dev oauth2 provider's port is fixed at 8084 and cannot be published twice. It exists so the expired-edit path is observable without holding a test open for the default five minutes
 - **remark42-adminedit** on `:8082`, with `ADMIN_EDIT=true` and the same short window, for the unlimited window an admin is supposed to get
-- **remark42-jwtheader** on `:8083`, with `AUTH_SEND_JWT_HEADER=true`, where the token arrives in a header instead of a cookie and the frontend has to keep it itself
+- **remark42-jwtheader** on `:8083`, with `AUTH_SEND_JWT_HEADER=true`, where the token arrives in a header as well as in a cookie and the frontend keeps a copy itself, and with `AUTH_TTL_JWT=15s`, so a case can outlive that copy without waiting out the default five minutes
 - **remark42-noauth** on `:8085`, with no auth provider at all, which the widget has to say something about, and with `ALLOWED_HOSTS` set to its own address so it doubles as the instance that refuses to be framed elsewhere
 - **remark42-anonvote** on `:8086`, with `ANON_VOTE` and the `VOTES_IP` it depends on, since the default configuration turns an anonymous vote down
 - **host-site** on `:8090`, an nginx serving `e2e/hostsite/`, which is a page on an origin the widget is not served from. Every other host page here is served by remark42 itself, so without it the separate-domain setup the manuals describe is never exercised. `post.html` embeds the main instance; `restricted.html` embeds the one whose `ALLOWED_HOSTS` names only itself, which is the refusal case
-- **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the widget write its own cookies through `setAuthCookie`, so the attributes it chooses are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the writer keys off the `X-JWT` header rather than off the provider, and that is an assumption worth measuring rather than asserting
+- **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the backend repeat its cookies in the partitioned form for a widget framed by another host, and the widget write the XSRF value itself through `setAuthCookie`, so those cookies are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the partitioned pair is added to whichever response sets the cookies, whatever the provider, and that is an assumption worth measuring rather than asserting
 - **host-site-https** on `:8444`, an nginx serving the same `e2e/hostsite/` over TLS, so the embed is cross-site *and* secure. `post-https.html` is its page
 - **remark42-telegram** on `:8087`, telegram auth pointed at the stub below through `TELEGRAM_API_URL`. It has its own instance because telegram is an auth provider, and adding it to the main one would change the provider list every other case reads out of the auth panel
 - **telegram-stub** on `:8091`, which answers as the Telegram bot API for the four calls the auth flow makes, takes an injected update through `/control/send`, and exposes the bot's replies through `/control/sent`. Those endpoints represent the exchange inside Telegram that a browser cannot perform. Its source is `e2e/telegramstub`, the one file in this module without the `e2e` build tag, and compose builds it as its own image from a throwaway module so the suite's browser tooling stays out of it
@@ -172,7 +172,9 @@ Four settings exist for the tests and not for realism, and each is there for a r
 
 ## What this suite cannot reach
 
-The stack carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. What is still out of reach is a browser engine other than Chromium for them, since the resolver rules the hostnames need are a Chromium flag.
+The stack carries TLS on two services, so behaviour the browser gates on the page protocol is reachable: `Secure` cookies, `SameSite=None`, `Partitioned`, and anything keyed on `window.location.protocol`. `https_test.go` is where those cases live. All but one run in Chromium, since the resolver rules the hostnames need are a Chromium flag. `TestHTTPS_WebKitFrameSessionSurvivesAFirstPartyCookie` runs in WebKit, which reaches the same names through a proxy the test starts, `loopbackProxy`.
+
+That WebKit case runs on macOS only. The WebKit build Playwright ships for Linux keeps no cookie at all in a third-party frame, `Partitioned` included, so a session there ends at the reload whatever the server sends; the case probes for that and skips. CI runs on Linux, so it is not part of what CI proves, and it has to be run on a Mac after a change to how the widget's session is kept.
 
 The Telegram fixture reaches both authentication and subscription. The stub answers `getMe`, `getUpdates`, `sendMessage` and `getUserProfilePhotos`, so it does not hold the widget against the public bot API's semantics, and the reader's handoff into the Telegram client is injected from the test process. The suite exercises both consumers of `TELEGRAM_API_URL`: auth signs a reader in through the bot, while notifications confirm, persist, remove and repeat a subscription through the same update poll.
 
@@ -203,7 +205,7 @@ The `iframe_test.go` group runs in Chromium, Firefox and WebKit. It is about ren
 
 Those tests address the server as `127.0.0.1` and not by name, since `--host-resolver-rules` is a Chromium flag and they need no dev oauth2, which is the only reason the hostname exists.
 
-Everything else runs in Chromium alone, for the same reason inverted: those tests sign in, sign-in needs the dev oauth2 provider, and reaching it by name from the host is Chromium-only. Running them in the other engines would mean putting the suite back inside the compose network.
+Everything else runs in Chromium alone, for the same reason inverted: those tests sign in, sign-in needs the dev oauth2 provider, and reaching it by name from the host is Chromium-only. Running them in the other engines would mean putting the suite back inside the compose network. The one exception is the WebKit case in `https_test.go`, which signs in anonymously and reaches the TLS pair through a proxy.
 
 ## Selectors
 
