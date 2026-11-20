@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	log "github.com/go-pkgz/lgr"
@@ -63,6 +64,52 @@ func TestImport_ExecuteNoPassword(t *testing.T) {
 	parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt.gz")
 	err = cmd.Execute(nil)
 	assert.EqualError(t, err, "error response \"401 Unauthorized\", ensure you have set ADMIN_PASSWD and provided it to the command you're running: Unauthorized")
+}
+
+func TestImport_ExecuteRedirected(t *testing.T) {
+	tbl := []struct {
+		name     string
+		location string // value of the Location header, none when empty
+		target   string // address the error names, a path is on the test server
+	}{
+		{
+			name:     "to another scheme and host",
+			location: "https://remark42.example.com/api/v1/admin/import?provider=disqus&site=remark",
+			target:   "https://remark42.example.com/api/v1/admin/import?provider=disqus&site=remark",
+		},
+		{name: "to a path on the same host", location: "/comments/api/v1/admin/import", target: "/comments/api/v1/admin/import"},
+		{name: "without location"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/v1/admin/import", r.URL.Path)
+				assert.Equal(t, "provider=disqus&site=remark", r.URL.RawQuery)
+				if tt.location != "" {
+					w.Header().Set("Location", tt.location)
+				}
+				w.WriteHeader(http.StatusTemporaryRedirect)
+				fmt.Fprint(w, "moved")
+			}))
+			defer ts.Close()
+
+			cmd := ImportCommand{}
+			parseCmd(t, &cmd, ts.URL, "--site=remark", "--file=testdata/import.txt", "--admin-passwd=secret")
+			err := cmd.Execute(nil)
+
+			if tt.target == "" {
+				assert.EqualError(t, err, `error response "307 Temporary Redirect", moved`)
+				return
+			}
+			target := tt.target
+			if strings.HasPrefix(target, "/") {
+				target = ts.URL + target
+			}
+			assert.EqualError(t, err, `error response "307 Temporary Redirect", the server redirected the request to "`+target+
+				`"; set REMARK_URL or --url to the address Remark42 is served on`)
+		})
+	}
 }
 
 func TestImport_ExecuteFailed(t *testing.T) {
