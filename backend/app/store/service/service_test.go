@@ -992,6 +992,38 @@ func TestService_EditCommentAdmin(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestService_EditCommentDeleted(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), AdminEdits: true}
+	defer b.Close()
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	id := res[0].ID
+	require.NoError(t, b.Delete(locator, id, store.SoftDelete))
+
+	// admin edits skip the edit window and the replies check, but not this one
+	for _, isAdmin := range []bool{false, true} {
+		_, err = b.EditComment(locator, id, EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit", Admin: isAdmin})
+		assert.EqualError(t, err, "deleted comment can't be edited, "+id, "admin %v", isAdmin)
+	}
+
+	c, err := b.Engine.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted)
+	assert.Empty(t, c.Text, "stored text stays empty")
+	assert.Empty(t, c.Orig, "stored original text stays empty")
+	assert.Nil(t, c.Edit, "no edit record stored")
+
+	c, err = b.EditComment(locator, id, EditRequest{Delete: true})
+	require.NoError(t, err, "a repeated delete is accepted")
+	assert.True(t, c.Deleted)
+	assert.Empty(t, c.Text)
+}
+
 func TestService_ValidateComment(t *testing.T) {
 	b := DataStore{MinCommentSize: 6, MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")

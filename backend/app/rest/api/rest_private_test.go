@@ -28,6 +28,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/rest/proxy"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -528,6 +529,66 @@ func TestRest_UpdateDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 0},
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
+}
+
+func TestRest_UpdateDeletedByAdmin(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}
+	id := addComment(t, c1, ts)
+
+	req, err := http.NewRequest(http.MethodDelete,
+		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=%s", ts.URL, id, postURL), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, "admin deletes the comment")
+
+	put := func(body string) (code int, respBody string) {
+		r, e := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, postURL), strings.NewReader(body))
+		require.NoError(t, e)
+		b, e := sendReq(r, devToken)
+		require.NoError(t, e)
+		rb, e := io.ReadAll(b.Body)
+		require.NoError(t, e)
+		require.NoError(t, b.Body.Close())
+		return b.StatusCode, string(rb)
+	}
+
+	// the author edits the deleted comment inside the edit window
+	code, body := put(`{"text":"back again", "summary":"my edit"}`)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	errResp := R.JSON{}
+	require.NoError(t, json.Unmarshal([]byte(body), &errResp))
+	assert.InDelta(t, float64(rest.ErrCommentRejected), errResp["code"], 0, body)
+	assert.Equal(t, "can't update comment", errResp["details"], body)
+
+	// readers still get the comment without text
+	res, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s", ts.URL, id, postURL))
+	require.Equal(t, http.StatusOK, code, res)
+	cr := store.Comment{}
+	require.NoError(t, json.Unmarshal([]byte(res), &cr))
+	assert.True(t, cr.Deleted)
+	assert.Empty(t, cr.Text, "text of a deleted comment stays empty")
+	assert.Empty(t, cr.Orig, "original text of a deleted comment stays empty")
+	assert.Nil(t, cr.Edit, "deleted comment has no edit record")
+
+	res, code = get(t, fmt.Sprintf("%s/api/v1/rss/post?site=remark42&url=%s", ts.URL, postURL))
+	require.Equal(t, http.StatusOK, code, res)
+	assert.NotContains(t, res, "back again", "post feed carries no text for the deleted comment")
+
+	// a repeated delete request is answered as before
+	code, body = put(`{"delete": true}`)
+	assert.Equal(t, http.StatusOK, code, body)
+	cd := store.Comment{}
+	require.NoError(t, json.Unmarshal([]byte(body), &cd))
+	assert.Equal(t, id, cd.ID)
+	assert.True(t, cd.Deleted)
+	assert.Empty(t, cd.Text)
 }
 
 func TestRest_DeleteChildThenParent(t *testing.T) {

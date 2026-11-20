@@ -517,6 +517,12 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, err
 	}
 
+	// a soft-deleted comment keeps its author, who must not be able to write text back into it,
+	// admin edits included; a repeated delete request is still accepted
+	if comment.Deleted && !req.Delete {
+		return comment, fmt.Errorf("deleted comment can't be edited, %s", commentID)
+	}
+
 	if req.Delete { // delete request
 		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
 			log.Printf("[WARN] failed to send delete event, %s", e)
