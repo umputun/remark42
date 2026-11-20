@@ -50,7 +50,7 @@ find ./backend/app/cmd/web -regex '.*\.\(html\|js\|mjs\)$' -print -exec sed -i "
 ```
 
 The assets under `/web` the frontend does not build (`privacy.html`, `markdown-help.html`,
-`400x400.jpeg`, the ghost avatar, the sign-in provider icons and the demo, counter, last-comments, deleteme and comments pages) come from `backend/app/webassets/assets` and are embedded in the binary, so the copy
+`400x400.jpeg`, the ghost avatar, the sign-in provider icons, the demo, counter, last-comments, deleteme and comments pages and the `counter.mjs` script) come from `backend/app/webassets/assets` and are embedded in the binary, so the copy
 above neither covers them nor needs to. At runtime a file of the same name under `web-root` /
 `REMARK_WEB_ROOT` is served in preference to the embedded one.
 

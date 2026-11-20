@@ -29,9 +29,4 @@ module.exports = [
     limit: '9.5 KB',
     gzip: true,
   },
-  {
-    path: 'public/counter.mjs',
-    limit: '0.8 KB',
-    gzip: true,
-  },
 ];
