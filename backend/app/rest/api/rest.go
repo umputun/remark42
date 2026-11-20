@@ -546,6 +546,10 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 			http.NotFound(w, r)
 			return
 		}
+		// the file server keeps a type that is already set, so this one wins over the operating system's table
+		if ct := webContentType(r.URL.Path); ct != "" {
+			w.Header().Set("Content-Type", ct)
+		}
 		webFS.ServeHTTP(w, r)
 	})
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"io"
 	"io/fs"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -441,4 +442,56 @@ func TestRest_FileServerEtagVariesWithTheDemoSite(t *testing.T) {
 	first := etagFor("old")
 	require.NotEmpty(t, first)
 	assert.NotEqual(t, first, etagFor("new"), "a different demo site has to change the validator")
+}
+
+// TestRest_FileServerContentTypeIgnoresTheOSTable covers an operating system whose table maps the
+// served extensions to text/plain, as a Windows registry entry or a line in /etc/mime.types can. The
+// file server asks that table, and a widget bundle served as text/plain does not run. The table is
+// process-global, so it is poisoned for this test only and restored after; nothing in this package
+// runs in parallel.
+func TestRest_FileServerContentTypeIgnoresTheOSTable(t *testing.T) {
+	for _, ext := range []string{".html", ".js", ".mjs", ".css", ".svg"} {
+		orig := mime.TypeByExtension(ext)
+		require.NotEmpty(t, orig, "go's own table has %s, so there is a type to restore", ext)
+		require.NoError(t, mime.AddExtensionType(ext, "text/plain"))
+		t.Cleanup(func() { require.NoError(t, mime.AddExtensionType(ext, orig)) })
+		require.Equal(t, "text/plain; charset=utf-8", mime.TypeByExtension(ext), "the table has to be poisoned for %s, or the test proves nothing", ext)
+	}
+
+	frontend := fstest.MapFS{
+		"remark.mjs":  {Data: []byte("export {}")},
+		"embed.mjs":   {Data: []byte("(function(){})()")},
+		"remark.css":  {Data: []byte("body{}")},
+		"iframe.html": {Data: []byte("<!doctype html>")},
+	}
+	router := routegroup.New(http.NewServeMux())
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com", "")
+
+	tbl := []struct {
+		name, path, want string
+	}{
+		{name: "module bundle from the frontend build", path: "/web/remark.mjs", want: "text/javascript; charset=utf-8"},
+		{name: "legacy js name served from the mjs file", path: "/web/embed.js", want: "text/javascript; charset=utf-8"},
+		{name: "hand-written script from the embedded assets", path: "/web/counter.mjs", want: "text/javascript; charset=utf-8"},
+		{name: "stylesheet", path: "/web/remark.css", want: "text/css; charset=utf-8"},
+		{name: "widget document", path: "/web/iframe.html", want: "text/html; charset=utf-8"},
+		{name: "embedded page", path: "/web/privacy.html", want: "text/html; charset=utf-8"},
+		{name: "demo page at the root", path: "/web/", want: "text/html; charset=utf-8"},
+		{name: "embedded svg icon", path: "/web/github-dark.svg", want: "image/svg+xml"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, tt.path, http.NoBody))
+			require.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, tt.want, w.Header().Get("Content-Type"))
+		})
+	}
+
+	t.Run("a missing script is answered as a plain error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/web/absent.mjs", http.NoBody))
+		require.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
+	})
 }
