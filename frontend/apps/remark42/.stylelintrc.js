@@ -4,7 +4,7 @@ module.exports = {
   extends: ['stylelint-config-standard'],
   plugins: ['stylelint-value-no-unknown-custom-properties', 'stylelint-declaration-strict-value'],
   // lets property-layout-mappings/value-keyword-layout-mappings autofix a physical property to
-  // the correct logical one (stylelint --fix, already run on commit by lint-staged): every logical
+  // the correct logical one (stylelint --fix): every logical
   // property in this codebase is authored as if ltr were the base direction, and ships to the
   // browser as written — postcss-preset-env's logical-properties-and-values transform is disabled
   // (see webpack.config.js) so the browser's own bidi/dir handling resolves it per element, rather
