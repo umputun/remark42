@@ -204,7 +204,7 @@ _returned ID should be appended to load image URL on the caller side_
 ## Admin
 
 - `DELETE /api/v1/admin/comment/{id}?site=site-id&url=post-url` - delete comment by `id`
-- `PUT /api/v1/admin/user/{userid}?site=site-id&block=1&ttl=7d` - block or unblock user with optional TTL (default=permanent)
+- `PUT /api/v1/admin/user/{userid}?site=site-id&block=1&ttl=168h` - block (`block=1`) or unblock (any other value) a user. `ttl` is optional and uses Go duration syntax with units up to hours (`30m`, `24h`, `168h` for a week); there is no day unit. Without `ttl`, or with `ttl=0`, the block is permanent, and a permanent block also deletes all comments of the user. A `ttl` that does not parse, such as `7d`, or is negative is rejected with status 400 and changes nothing. Returns `{"user_id": "...", "site_id": "...", "block": true}`.
 - `GET api/v1/admin/blocked&site=site-id` - list of blocked user IDs
 
 ```go

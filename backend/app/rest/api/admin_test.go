@@ -624,6 +624,108 @@ func TestAdmin_Block(t *testing.T) {
 	assert.False(t, srv.DataService.IsBlocked("remark42", "user2"))
 }
 
+// putBlockUser sends PUT /admin/user/{userID} with the given query and returns the status and body.
+// Each case below blocks a user of its own, so every request has its own path and its own bucket
+// in the 10 req/s limiter of the admin routes.
+func putBlockUser(t *testing.T, tsURL, userID, query string) (code int, body string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&%s", tsURL, userID, query), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	return resp.StatusCode, string(b)
+}
+
+func TestAdmin_BlockRejectsBadTTL(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, userID, query string
+		blockedBefore       bool
+	}{
+		{"day unit", "bad-day", "block=1&ttl=7d", false},
+		{"not a duration", "bad-word", "block=1&ttl=week", false},
+		{"negative", "bad-negative", "block=1&ttl=-1h", false},
+		{"unblock with bad ttl", "bad-unblock", "block=0&ttl=7d", true},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			id, err := srv.DataService.Create(store.Comment{Text: "kept text", Locator: locator,
+				User: store.User{Name: tt.userID, ID: tt.userID}})
+			require.NoError(t, err)
+			if tt.blockedBefore {
+				require.NoError(t, srv.DataService.SetBlock("remark42", tt.userID, true, time.Hour))
+			}
+
+			code, body := putBlockUser(t, ts.URL, tt.userID, tt.query)
+			assert.Equal(t, http.StatusBadRequest, code, "a bad ttl is rejected, %s", body)
+			assert.Contains(t, body, "invalid ttl")
+			assert.Equal(t, tt.blockedBefore, srv.DataService.IsBlocked("remark42", tt.userID), "block status unchanged")
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "kept text", c.Text, "comment text kept")
+			assert.False(t, c.Deleted, "comment not deleted")
+		})
+	}
+}
+
+func TestAdmin_BlockAcceptedTTL(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, userID, query string
+		ttl                 time.Duration // 0 for a permanent block
+	}{
+		{"widget, a month", "ttl-month", "block=1&ttl=43200m", 30 * 24 * time.Hour},
+		{"widget, a week", "ttl-week", "block=1&ttl=10080m", 7 * 24 * time.Hour},
+		{"widget, a day", "ttl-day", "block=1&ttl=1440m", 24 * time.Hour},
+		{"hours", "ttl-hours", "block=1&ttl=168h", 7 * 24 * time.Hour},
+		{"widget, permanently", "ttl-absent", "block=1", 0},
+		{"widget before v1.17, permanently", "ttl-undefined", "block=1&ttl=undefined", 0},
+		{"zero", "ttl-zero", "block=1&ttl=0", 0},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			id, err := srv.DataService.Create(store.Comment{Text: "some text", Locator: locator,
+				User: store.User{Name: tt.userID, ID: tt.userID}})
+			require.NoError(t, err)
+
+			before := time.Now()
+			code, body := putBlockUser(t, ts.URL, tt.userID, tt.query)
+			after := time.Now()
+			require.Equal(t, http.StatusOK, code, body)
+			assert.True(t, srv.DataService.IsBlocked("remark42", tt.userID))
+
+			blocked, err := srv.DataService.BlockedUsers("remark42")
+			require.NoError(t, err)
+			var until time.Time
+			for _, u := range blocked {
+				if u.ID == tt.userID {
+					until = u.Until
+				}
+			}
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			if tt.ttl == 0 {
+				assert.True(t, until.After(after.AddDate(99, 0, 0)), "permanent block, until %v", until)
+				assert.True(t, c.Deleted, "a permanent block deletes the user's comments")
+				return
+			}
+			assert.False(t, until.Before(before.Add(tt.ttl)), "block until %v, not before %v", until, before.Add(tt.ttl))
+			assert.False(t, until.After(after.Add(tt.ttl)), "block until %v, not after %v", until, after.Add(tt.ttl))
+			assert.Equal(t, "some text", c.Text, "a block with ttl keeps the user's comments")
+			assert.False(t, c.Deleted)
+		})
+	}
+}
+
 func TestAdmin_BlockedList(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
