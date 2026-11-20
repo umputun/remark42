@@ -751,8 +751,8 @@ func isNoUserComments(err error) bool {
 	return errors.Is(err, engine.ErrNoUserComments) || strings.Contains(err.Error(), engine.ErrNoUserComments.Error())
 }
 
-// POST /deleteme?site_id=site - requesting delete of all user info
-// makes jwt with user info and sends it back as a part of json response
+// POST /deleteme?site=siteID - deletes nothing itself: makes a deletion request token for the user, valid for
+// three months and not usable for login, and returns it with the link to the page where an admin carries it out
 func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
@@ -783,7 +783,7 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
-// POST /image - save image with form request
+// POST /picture - saves the image from the "file" field of a multipart form and returns its id
 func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
