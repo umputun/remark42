@@ -14,7 +14,8 @@ type RemarkConfig = {
   // doesn't contain query params and hash. For example, default URL for 'https://example/com/example-post?id=1#hash'
   // would be 'https://example/com/example-post'
   url?: string;
-  // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
+  // Optional. Initial number of top-level comments shown on any device; each "show more" adds 10 more.
+  // When unset, mobile shows 10 at first and desktop shows every comment.
   max_shown_comments?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.
   max_last_comments?: number;

@@ -7,7 +7,7 @@ import { useIntl, FormattedMessage, defineMessages } from 'common/intl';
 import { getDirection } from 'common/direction';
 import 'styles/global.css';
 import type { StoreState } from 'store';
-import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS, IS_MOBILE } from 'common/constants';
+import { COMMENT_NODE_CLASSNAME_PREFIX, MAX_SHOWN_ROOT_COMMENTS } from 'common/constants';
 import { maxShownComments, noFooter, url } from 'common/settings';
 
 import {
@@ -317,9 +317,8 @@ interface CommentsProps {
   showMore(): void;
 }
 function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsProps) {
-  const renderComments =
-    IS_MOBILE && commentsShown < topComments.length ? topComments.slice(0, commentsShown) : topComments;
-  const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
+  const isShowMoreButtonVisible = commentsShown < topComments.length;
+  const renderComments = isShowMoreButtonVisible ? topComments.slice(0, commentsShown) : topComments;
 
   return (
     <div className={styles.threads} role="list">
