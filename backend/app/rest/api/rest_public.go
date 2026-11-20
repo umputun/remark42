@@ -346,7 +346,7 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	// limits ARE preserved verbatim by resize, so the browser defense relies on the
 	// response headers (validated Content-Type + nosniff + strict CSP +
 	// Content-Disposition: inline), not on byte normalization. Picture IDs are limited
-	// to image.SafeIDSegment (alphanumeric xid-generated guids), so the comma split
+	// to image.SafeIDSegment (alphanumeric generated guids), so the comma split
 	// inside rest.EtagMatches cannot collide; if the ID format ever changes, revisit.
 	etag := `"` + id + `"`
 	w.Header().Set("Etag", etag)

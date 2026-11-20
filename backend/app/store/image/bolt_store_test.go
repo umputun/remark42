@@ -61,6 +61,30 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// pictures saved under the 20-character ids of earlier versions load, commit and delete like new ones
+func TestBoltStore_OldAndNewIDs(t *testing.T) {
+	for _, id := range []string{"user1/dc0ctt0j3vck07oc07s0", "user1/" + guid()} {
+		t.Run(id, func(t *testing.T) {
+			svc, teardown := prepareBoltImageStorageTest(t)
+			defer teardown()
+
+			require.NoError(t, svc.Save(id, gopherPNGBytes()))
+			data, err := svc.Load(id)
+			require.NoError(t, err, "staged")
+			assert.Equal(t, gopherPNGBytes(), data)
+
+			require.NoError(t, svc.Commit(id))
+			data, err = svc.Load(id)
+			require.NoError(t, err, "committed")
+			assert.Equal(t, gopherPNGBytes(), data)
+
+			require.NoError(t, svc.Delete(id))
+			_, err = svc.Load(id)
+			assert.Error(t, err, "deleted")
+		})
+	}
+}
+
 func TestBoltStore_LoadedDataSurvivesLaterWrites(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()

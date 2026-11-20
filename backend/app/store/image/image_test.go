@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -176,6 +177,47 @@ func TestSafeIDSegment(t *testing.T) {
 		t.Run(strconv.Quote(tt.seg), func(t *testing.T) {
 			assert.Equal(t, tt.safe, SafeIDSegment(tt.seg))
 		})
+	}
+}
+
+// a picture id must not let anyone work out the id of another upload: each is 128 random bits in hex,
+// with no timestamp, per-process constant or counter in it
+func TestService_SaveMakesRandomID(t *testing.T) {
+	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
+	svc := NewService(&store, ServiceParams{MaxSize: 1500})
+
+	const n = 64
+	ids := make([]string, n)
+	for i := range ids {
+		id, err := svc.Save("user1", gopherPNG())
+		require.NoError(t, err)
+		require.Regexp(t, `^user1/[0-9a-f]{32}$`, id)
+		assert.Equal(t, id, store.SaveCalls()[i].ID)
+		ids[i] = strings.TrimPrefix(id, "user1/")
+	}
+
+	// a counter shows as consecutive ids a small step apart; two random ones come within 2^64 of each
+	// other with a chance of about 2^-63
+	near := new(big.Int).Lsh(big.NewInt(1), 64)
+	for i := 1; i < n; i++ {
+		prev, ok := new(big.Int).SetString(ids[i-1], 16)
+		require.True(t, ok)
+		curr, ok := new(big.Int).SetString(ids[i], 16)
+		require.True(t, ok)
+		assert.Positive(t, new(big.Int).Sub(curr, prev).CmpAbs(near),
+			"consecutive ids %s and %s are less than 2^64 apart", ids[i-1], ids[i])
+	}
+
+	// a byte fixed per process or per second would show as a position that never changes
+	for pos := range len(ids[0]) {
+		fixed := true
+		for _, id := range ids[1:] {
+			if id[pos] != ids[0][pos] {
+				fixed = false
+				break
+			}
+		}
+		assert.False(t, fixed, "position %d holds %q in all %d ids", pos, ids[0][pos], n)
 	}
 }
 
