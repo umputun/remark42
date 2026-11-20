@@ -43,7 +43,7 @@ type SSLConfig struct {
 // necessary to obtain a certificate from LE, and everything else is redirected.
 func (s *Rest) httpRouter(m *autocert.Manager) http.Handler {
 	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Recoverer(log.Default()))
+	router.Use(recoverer(log.Default()))
 	router.Use(R.Throttle(1000), R.Timeout(60*time.Second))
 	handler := s.redirectHandler()
 	if m != nil {

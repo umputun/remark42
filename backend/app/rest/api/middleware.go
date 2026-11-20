@@ -390,3 +390,24 @@ func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 	})
 	return tollbooth.HTTPMiddleware(lmt)
 }
+
+// recoverer is the panic recovery middleware. Its first line carries the request URL, which holds the address
+// during email sign-in, so that line is masked
+func recoverer(l log.L) func(http.Handler) http.Handler {
+	return R.Recoverer(panicLog{l: l})
+}
+
+// panicLog masks the recovery line and leaves the stack trace, logged as a bare string, as it is:
+// operators paste it into bug reports, and module paths in it can look like addresses
+type panicLog struct {
+	l log.L
+}
+
+// Logf writes the line to l, masked when it is formatted from arguments
+func (p panicLog) Logf(format string, args ...any) {
+	if len(args) == 0 {
+		p.l.Logf("%s", format)
+		return
+	}
+	rest.MaskedLog{L: p.l}.Logf(format, args...)
+}

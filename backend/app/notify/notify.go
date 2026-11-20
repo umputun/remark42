@@ -122,7 +122,7 @@ func (s *Service) Submit(req Request) {
 	select {
 	case s.queue <- req:
 	default:
-		log.Printf("[WARN] can't send notification to queue, %+v", req.Comment)
+		log.Printf("[WARN] can't send notification to queue, comment %s on %s", req.Comment.ID, req.Comment.Locator.URL)
 	}
 }
 

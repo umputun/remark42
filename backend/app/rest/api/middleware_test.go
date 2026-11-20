@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -510,4 +511,30 @@ func TestCorsMiddleware(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
 		assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
 	})
+}
+
+func TestRecoverer_MasksAddressInURL(t *testing.T) {
+	var lines []string
+	l := lgr.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+	h := recoverer(l)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("oops") }))
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/auth/email/login?address=user@example.com&site=remark42", http.NoBody))
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	require.Len(t, lines, 2, "the recovery line and the stack trace")
+	assert.Contains(t, lines[0], "request panic for /auth/email/login?address=********&site=remark42")
+	assert.Contains(t, lines[0], "oops")
+	assert.NotContains(t, strings.Join(lines, "\n"), "user@example.com", "the address stays out of the log")
+	assert.Contains(t, lines[1], "TestRecoverer_MasksAddressInURL", "the stack trace names the panicking code")
+}
+
+func TestPanicLog_LeavesStackTraceAlone(t *testing.T) {
+	var lines []string
+	l := lgr.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+
+	// a module path holds a run the mask would take for an address
+	const stack = "goroutine 1 [running]:\n/go/pkg/mod/github.com/foo/bar@v1.2.3/x.go:12 +0x1d"
+	panicLog{l: l}.Logf(stack)
+	assert.Equal(t, []string{stack}, lines)
 }
