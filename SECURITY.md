@@ -2,13 +2,12 @@
 
 ## Supported Versions
 
-We release patches for security vulnerabilities.
+Only the latest release gets security fixes. Older releases do not; upgrade to the latest release to receive a fix.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| current | :white_check_mark: |
-| >=1.6.x | :white_check_mark: |
-| <1.5.x  | :x:                |
+| Version        | Supported          |
+| -------------- | ------------------ |
+| latest release | :white_check_mark: |
+| older releases | :x:                |
 
 ## Reporting a Vulnerability
 
