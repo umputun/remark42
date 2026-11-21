@@ -83,9 +83,6 @@ github.com/go-pkgz/rest/realip
 # github.com/go-pkgz/routegroup v1.6.2
 ## explicit; go 1.23
 github.com/go-pkgz/routegroup
-# github.com/go-pkgz/syncs v1.3.4
-## explicit; go 1.22
-github.com/go-pkgz/syncs
 # github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
