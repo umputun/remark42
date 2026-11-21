@@ -18,7 +18,7 @@ import {
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
 } from './types';
-import { fetchComments, unsetCommentMode } from '../comments/actions';
+import { reloadComments, unsetCommentMode } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 import { resetPersistedEmail } from 'components/auth/auth.utils';
 
@@ -29,6 +29,17 @@ export function setUser(user: User | null = null): USER_SET_ACTION {
   };
 }
 
+/**
+ * Loads the comments again for a reader who has just signed in or out, since votes and the
+ * actions offered on a comment depend on who reads it. Nothing waits for it: the reader has
+ * changed either way, and a failed request leaves the comments loaded before it on screen
+ */
+const reloadCommentsForReader = (): StoreAction => (dispatch) => {
+  dispatch(reloadComments()).catch((e: unknown) => {
+    console.error('Remark42: failed to reload comments', e);
+  });
+};
+
 export function signout(cleanSession = true): StoreAction<Promise<void>> {
   return async (dispatch) => {
     if (cleanSession) {
@@ -37,7 +48,7 @@ export function signout(cleanSession = true): StoreAction<Promise<void>> {
     resetPersistedEmail();
     dispatch(setUser());
     dispatch(unsetCommentMode());
-    dispatch(fetchComments());
+    dispatch(reloadCommentsForReader());
   };
 }
 
@@ -51,7 +62,7 @@ export const signin =
   (user: User): StoreAction<Promise<void>> =>
   async (dispatch) => {
     dispatch(setUser(user));
-    dispatch(fetchComments());
+    dispatch(reloadCommentsForReader());
   };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async (dispatch) => {

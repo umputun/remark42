@@ -83,15 +83,15 @@ export const removeComment =
     dispatch(editComments(comment));
   };
 
-/** fetches comments from server */
-export const fetchComments =
-  (sort?: Sorting): StoreAction<Promise<Tree>> =>
+/** requests the comments and puts them into the store, with or without the loading state */
+const requestComments =
+  (sort: Sorting | undefined, withPreloader: boolean): StoreAction<Promise<Tree>> =>
   async (dispatch, getState) => {
     const { hiddenUsers, comments } = getState();
     const hiddenUsersIds = Object.keys(hiddenUsers);
-    dispatch({ type: COMMENTS_REQUEST_FETCHING });
+    if (withPreloader) dispatch({ type: COMMENTS_REQUEST_FETCHING });
     const data = await api.getPostComments(sort || comments.sort);
-    dispatch({ type: COMMENTS_REQUEST_SUCCESS });
+    if (withPreloader) dispatch({ type: COMMENTS_REQUEST_SUCCESS });
     if (hiddenUsersIds.length > 0) {
       data.comments = filterTree(data.comments, (node) => hiddenUsersIds.indexOf(node.comment.user.id) === -1);
     }
@@ -101,6 +101,16 @@ export const fetchComments =
 
     return data;
   };
+
+/** fetches comments from server; a preloader takes the place of the list until they arrive */
+export const fetchComments = (sort?: Sorting): StoreAction<Promise<Tree>> => requestComments(sort, true);
+
+/**
+ * fetches comments again and keeps the loaded ones on screen until the new tree replaces them.
+ * With a preloader in their place the widget shrinks for the length of the request, and a reader
+ * far down a long thread is left at another place on the host page when the list comes back
+ */
+export const reloadComments = (): StoreAction<Promise<Tree>> => requestComments(undefined, false);
 
 /** sets mode for comment, either reply or edit */
 export const setCommentMode =
