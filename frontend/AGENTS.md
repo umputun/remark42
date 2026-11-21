@@ -29,12 +29,11 @@ The directory nesting is kept because every path in the repository points at it,
 and the workflows to the published contributing docs. `frontend/` still carries `.nvmrc` and this
 file, neither of which pnpm reads.
 
-## pnpm 10's stricter `node-linker` layout needs explicit pins
+## pnpm's `overrides` pin vulnerable transitive versions
 
-One dep is pinned specifically because of pnpm 10's hoisting changes, not because of the dep itself:
-- `@types/minimatch` 5.1.2 — 6.x is an empty stub that the hoisted layout picks up instead of the real types
+Most entries in `pnpm.overrides` raise a transitive dependency past a security fix. An entry for a package nothing installs any more does nothing, so drop it in the change that removes the last package pulling it in; the lockfile's `packages:` section shows what is installed.
 
-If a dependency bump mysteriously breaks types or module resolution only after a pnpm major bump, suspect the layout change before suspecting the dependency.
+If a dependency bump breaks types or module resolution only after a pnpm major bump, suspect pnpm's hoisting layout before the dependency: pnpm 10 changed it.
 
 ## node's native fetch requires absolute URLs in tests
 
