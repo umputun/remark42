@@ -10,7 +10,7 @@ title: Using Remark42 in Astro
 - **Easy to use:** You don't need to be an expert to build something with Astro.
 - **Fully-featured, but flexible:** Over 100+ Astro integrations to choose from.
 
-While Astro supports numerous front-end framework [integrations](https://docs.astro.build/en/guides/integrations-guide/#official-integrations) (e.g. React, Vue, SolidJS, etc.)
+Astro supports numerous front-end framework [integrations](https://docs.astro.build/en/guides/integrations-guide/#official-integrations), such as React, Vue and SolidJS. The examples below use Svelte and React/Preact.
 
 ## w/ Svelte Components
 
@@ -25,7 +25,7 @@ While Astro supports numerous front-end framework [integrations](https://docs.as
       host: "https://your.website.here",
       site_id: "yourwebsite",
       components: ["embed"],
-      show_rss_subsription: false,
+      show_rss_subscription: false,
       theme: localStorage.getItem("color-theme") ?? "light",
     };
     !(function (e, n) {
@@ -87,7 +87,7 @@ Note the use of the `client:visible` directive which will hydrate the component 
       host: "https://your.website.here",
       site_id: "yourwebsite",
       components: ["counter"],
-      show_rss_subsription: false,
+      show_rss_subscription: false,
       theme: localStorage.getItem("color-theme") ?? "light",
     };
     !(function (e, n) {
@@ -115,7 +115,7 @@ Note the use of the `client:visible` directive which will hydrate the component 
 ---
 const { post } = Astro.props;
 
-import Remark42Count from "../components/remark42-count.svelte";
+import Remark42Count from "../components/remark42-counter.svelte";
 ...
 ---
 <div>
@@ -241,7 +241,7 @@ export function Comments() {
 }
 ```
 
-#### Here how to use it in your Astro component.
+#### Using it in an Astro component
 
 ```js
 ---

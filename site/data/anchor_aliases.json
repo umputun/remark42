@@ -19,11 +19,14 @@
     "blogcardastro-partial-astro-component": "blogcard.astro-(partial-astro-component)",
     "blogpagelayoutastro-partial-astro-layout": "blogpagelayout.astro-(partial-astro-layout)",
     "commenttsx": "comment.tsx",
-    "here-how-to-use-it-in-your-astro-component": "here-how-to-use-it-in-your-astro-component.",
     "remark42-countersvelte": "remark42-counter.svelte",
     "remark42-embedsvelte": "remark42-embed.svelte",
     "svelte-component-counter": "svelte-component-(counter)",
     "svelte-component-embedded-frame": "svelte-component-(embedded-frame)",
+    "using-it-in-an-astro-component": [
+      "here-how-to-use-it-in-your-astro-component",
+      "here-how-to-use-it-in-your-astro-component."
+    ],
     "w-reactpreact-components": "w/-react/preact-components",
     "w-svelte-components": "w/-svelte-components"
   },
