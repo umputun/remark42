@@ -8,7 +8,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -1880,7 +1882,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 	})
 }
 
-// an admin deleting a comment removes only the pictures its author uploaded, and a user's own delete removes none
+// deleting a comment, by an admin or by its author, removes only the pictures its author uploaded
 func TestService_DeleteCommentPictures(t *testing.T) {
 	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
 	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
@@ -1921,8 +1923,136 @@ func TestService_DeleteCommentPictures(t *testing.T) {
 		b, mockStore := prep(t)
 		_, err := b.EditComment(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", EditRequest{Delete: true})
 		require.NoError(t, err)
-		assert.Empty(t, deletedImages(mockStore), "a user's own delete removes no pictures")
+		// user2's upload and the cached external image stay, as on an admin delete
+		assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
 	})
+}
+
+// editing a picture out of a comment removes it only when its author uploaded it and no other comment on the page shows it
+func TestService_EditCommentPictures(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
+	allPics := pic("user1/own.png") + pic("user1/kept.png") + pic("user1/reused.png") + pic("user2/up.png") + proxied
+	locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		now := time.Now()
+		for _, c := range []store.Comment{
+			{ID: "u1-a", Text: allPics, Locator: locator, User: store.User{ID: "user1"}, Timestamp: now},
+			// user2 shows user1's upload on the same page
+			{ID: "u2-a", Text: pic("user1/reused.png"), Locator: locator, User: store.User{ID: "user2"}, Timestamp: now.Add(time.Second)},
+			// past the edit window
+			{ID: "u1-old", Text: pic("user1/old.png"), Locator: locator, User: store.User{ID: "user1"}, Timestamp: now.Add(-2 * time.Hour)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	t.Run("pictures edited out", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-a", EditRequest{Text: pic("user1/kept.png")})
+		require.NoError(t, err)
+		// user1/reused.png stays as user2 shows it on the page, user2's upload and the cached external image are not user1's
+		assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
+	})
+
+	t.Run("edit keeps every picture", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-a", EditRequest{Text: allPics + " more text"})
+		require.NoError(t, err)
+		assert.Empty(t, deletedImages(mockStore))
+	})
+
+	t.Run("rejected edit", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-old", EditRequest{Text: "no picture"})
+		require.EqualError(t, err, "too late to edit u1-old")
+		_, err = b.EditComment(locator, "u1-old", EditRequest{Delete: true})
+		require.EqualError(t, err, "too late to edit u1-old")
+		assert.Empty(t, deletedImages(mockStore))
+	})
+}
+
+// a picture is removed only once the engine has stored the edit or the delete, and only when the page could be read
+func TestService_EditCommentPicturesEngineError(t *testing.T) {
+	tbl := []struct {
+		name                          string
+		req                           EditRequest
+		updateErr, deleteErr, findErr error
+		found                         []store.Comment
+		wantErr                       bool
+		deleted                       []string
+	}{
+		{name: "edit stored", req: EditRequest{Text: "no picture"}, deleted: []string{"user1/own.png"}},
+		{name: "delete stored", req: EditRequest{Delete: true}, deleted: []string{"user1/own.png"}},
+		{name: "update fails", req: EditRequest{Text: "no picture"}, updateErr: errors.New("update failed"), wantErr: true},
+		{name: "delete fails", req: EditRequest{Delete: true}, deleteErr: errors.New("delete failed"), wantErr: true},
+		{name: "page lookup fails", req: EditRequest{Text: "no picture"}, findErr: errors.New("find failed")},
+		{name: "stored text shows the picture again", req: EditRequest{Text: "no picture"},
+			found: []store.Comment{{ID: "c1", Text: `<img src="/images/user1/own.png"/>`}}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+			eng := engine.InterfaceMock{
+				GetFunc: func(engine.GetRequest) (store.Comment, error) {
+					return store.Comment{ID: "c1", Text: `<img src="/images/user1/own.png"/>`, Locator: locator,
+						User: store.User{ID: "user1"}, Timestamp: time.Now()}, nil
+				},
+				FindFunc:   func(engine.FindRequest) ([]store.Comment, error) { return tt.found, tt.findErr },
+				UpdateFunc: func(store.Comment) error { return tt.updateErr },
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			_, err := b.EditComment(locator, "c1", tt.req)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.ElementsMatch(t, tt.deleted, deletedImages(&mockStore))
+		})
+	}
+}
+
+// a picture edited out of a comment before the delayed commit is removed from staging at once, and the
+// commit, which reads the comment's current text, moves only the pictures the comment still shows
+func TestService_EditCommentPicturesStaged(t *testing.T) {
+	fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+	imgSvc := image.NewService(fs, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	for _, id := range []string{"user1/gone.png", "user1/kept.png"} {
+		require.NoError(t, fs.Save(id, []byte("image data"))) // uploaded, in staging
+	}
+	locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	id, err := b.Create(store.Comment{Text: `<img src="/images/user1/gone.png"/> <img src="/images/user1/kept.png"/>`,
+		Locator: locator, User: store.User{ID: "user1", Name: "user1"}}) // queues the commit for EditDuration
+	require.NoError(t, err)
+
+	_, err = b.EditComment(locator, id, EditRequest{Text: `<img src="/images/user1/kept.png"/>`})
+	require.NoError(t, err)
+	_, err = fs.Load("user1/gone.png")
+	require.Error(t, err, "the picture edited out is removed from staging")
+
+	imgSvc.Close(context.Background()) // commits the queued pictures without waiting out EditDuration
+	_, err = os.Stat(filepath.Join(fs.Location, "user1", "kept.png"))
+	require.NoError(t, err, "the picture the comment still shows is committed")
+	_, err = fs.Load("user1/gone.png")
+	assert.Error(t, err, "the picture edited out is not committed")
 }
 
 // DeleteUser removes all comments from user

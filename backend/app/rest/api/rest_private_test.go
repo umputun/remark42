@@ -758,6 +758,74 @@ func TestRest_UpdateDelete(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
+// a user deleting their own comment, or editing a picture out of it, removes the pictures they uploaded
+// that no other comment on the page shows, and keeps another user's upload the comment showed
+func TestRest_UpdatePictures(t *testing.T) {
+	tbl := []struct {
+		name    string
+		body    string
+		removed []string
+		kept    []string
+	}{
+		{name: "delete", body: `{"delete": true}`, removed: []string{"provider1_dev/own.png", "provider1_dev/kept.png"},
+			kept: []string{"provider1_dev/reused.png", "user2/other.png"}},
+		{name: "picture edited out", body: `{"text": "![](https://demo.remark42.com/api/v1/picture/provider1_dev/kept.png)"}`,
+			removed: []string{"provider1_dev/own.png"},
+			kept:    []string{"provider1_dev/kept.png", "provider1_dev/reused.png", "user2/other.png"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+			defer imgSvc.Close(context.Background())
+			srv.DataService.ImageService = imgSvc
+
+			pic := func(id string) string { return `<img src="` + srv.RemarkURL + `/api/v1/picture/` + id + `"/>` }
+			for _, id := range []string{"provider1_dev/own.png", "provider1_dev/kept.png", "provider1_dev/reused.png", "user2/other.png"} {
+				require.NoError(t, fs.Save(id, []byte("image data")))
+				require.NoError(t, fs.Commit(id))
+			}
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			now := time.Now()
+			for _, c := range []store.Comment{
+				{ID: "c1", Text: pic("provider1_dev/own.png") + pic("provider1_dev/kept.png") + pic("provider1_dev/reused.png") +
+					pic("user2/other.png"), Locator: locator, User: store.User{ID: "provider1_dev", Name: "developer one"}, Timestamp: now},
+				// another user shows the author's upload on the same page
+				{ID: "c2", Text: pic("provider1_dev/reused.png"), Locator: locator,
+					User: store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+			} {
+				_, err := srv.DataService.Engine.Create(c) // directly to the engine, the pictures are already committed
+				require.NoError(t, err)
+			}
+
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/c1?site=remark42&url=https://radio-t.com/blah",
+				strings.NewReader(tt.body))
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+			for _, id := range tt.removed {
+				_, err = fs.Load(id)
+				assert.Error(t, err, "picture %s removed", id)
+			}
+			for _, id := range tt.kept {
+				_, err = fs.Load(id)
+				assert.NoError(t, err, "picture %s kept", id)
+			}
+		})
+	}
+}
+
 func TestRest_UpdateDeletedByAdmin(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

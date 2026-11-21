@@ -496,13 +496,18 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
-		return comment, s.Engine.Delete(delReq)
+		if e := s.Engine.Delete(delReq); e != nil {
+			return comment, e
+		}
+		s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
+		return comment, nil
 	}
 
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
 		return comment, ErrRestrictedWordsFound
 	}
 
+	oldText := comment.Text
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
@@ -513,8 +518,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		log.Printf("[WARN] failed to send update event, %s", e)
 	}
 
-	err = s.Engine.Update(comment)
-	return comment, err
+	if e := s.Engine.Update(comment); e != nil {
+		return comment, e
+	}
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, oldText, comment.Text)
+	return comment, nil
 }
 
 // HasReplies checks if there is any reply to the comment among the comments of its post
@@ -835,6 +843,44 @@ func (s *DataStore) ownPictures(userID, commentHTML string) []string {
 		}
 	}
 	return res
+}
+
+// deleteRemovedPictures deletes the pictures authorID uploaded that oldHTML shows and newHTML does not, once the
+// edit or delete of comment commentID is stored. It applies the rule Delete does: a picture another comment on the
+// same page shows stays, as do other users' uploads and cached external images. A picture still waiting in staging
+// is deleted there, and the delayed commit, which reads the comment's stored text, no longer looks for it
+func (s *DataStore) deleteRemovedPictures(locator store.Locator, commentID, authorID, oldHTML, newHTML string) {
+	if s.ImageService == nil {
+		return
+	}
+	keep := s.ImageService.ExtractPictures(newHTML)
+	removed := []string{}
+	for _, id := range s.ownPictures(authorID, oldHTML) {
+		if !slices.Contains(keep, id) && !slices.Contains(removed, id) {
+			removed = append(removed, id)
+		}
+	}
+	if len(removed) == 0 {
+		return
+	}
+
+	comments, err := s.Engine.Find(engine.FindRequest{Locator: locator})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of %s for image cleanup of comment %s, %v", locator.URL, commentID, err)
+		return
+	}
+	// the comment's stored text counts as well: another edit of it may have been stored in the meantime
+	for _, c := range comments {
+		keep = append(keep, s.ImageService.ExtractPictures(c.Text)...)
+	}
+	for _, id := range removed {
+		if slices.Contains(keep, id) {
+			continue
+		}
+		if err := s.ImageService.Delete(id); err != nil {
+			log.Printf("[WARN] failed to delete image %s removed from comment %s, %v", id, commentID, err)
+		}
+	}
 }
 
 // userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
