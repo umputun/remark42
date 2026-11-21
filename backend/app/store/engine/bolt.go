@@ -461,13 +461,11 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 // and do not count towards limit or skip.
 func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDeleted bool) (comments []store.Comment, err error) {
 	comments = []store.Comment{}
-	commentRefs := []string{}
 
 	if limit == 0 || limit > userLimit {
 		limit = userLimit
 	}
 
-	// get list of references to comments
 	err = b.view(siteID, func(tx *bolt.Tx) error {
 		usersBkt := tx.Bucket([]byte(userBucketName))
 		userIDBkt := usersBkt.Bucket([]byte(userID))
@@ -477,9 +475,9 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDelete
 
 		postsBkt := tx.Bucket([]byte(postsBucketName))
 		c := userIDBkt.Cursor()
-		skipComments := 0
+		skipComments, refs := 0, 0
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
-			if len(commentRefs) >= limit {
+			if refs >= limit {
 				break
 			}
 			if !withDeleted {
@@ -495,26 +493,19 @@ func (b *BoltDB) userComments(siteID, userID string, limit, skip int, withDelete
 				skipComments++
 				continue
 			}
-			commentRefs = append(commentRefs, string(v))
+			// a reference counts towards limit even if its comment can't be loaded
+			refs++
+			url, commentID, e := b.parseRef(v)
+			if e != nil {
+				return fmt.Errorf("can't parse reference %s: %w", v, e)
+			}
+			comment := store.Comment{}
+			if postBkt, e := b.getPostBucket(tx, url); e == nil && b.load(postBkt, commentID, &comment) == nil {
+				comments = append(comments, comment)
+			}
 		}
 		return nil
 	})
-
-	if err != nil {
-		return comments, err
-	}
-
-	// retrieve comments for refs
-	for _, v := range commentRefs {
-		url, commentID, errParse := b.parseRef([]byte(v))
-		if errParse != nil {
-			return comments, fmt.Errorf("can't parse reference %s: %w", v, errParse)
-		}
-		getReq := GetRequest{Locator: store.Locator{SiteID: siteID, URL: url}, CommentID: commentID}
-		if c, errRef := b.Get(getReq); errRef == nil {
-			comments = append(comments, c)
-		}
-	}
 
 	return comments, err
 }
