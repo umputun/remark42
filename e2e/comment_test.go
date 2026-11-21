@@ -438,6 +438,77 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 	waitVisible(t, authorFrame.Locator("text=blocked").First())
 }
 
+// TestComment_BlockAfterUnblockReachesTheSameUser covers changing the length of a block, which a
+// moderator does by taking the block back and blocking again from the same comment. Unblock
+// rewrites the author on that user's comments in the page, and the next block is sent for
+// whoever that author is by then. Only a thread whose first comment belongs to somebody else
+// tells the right author from the wrong one
+func TestComment_BlockAfterUnblockReachesTheSameUser(t *testing.T) {
+	t.Parallel()
+
+	moderatedName, bystanderName := anonName("reblocked"), anonName("bystander")
+	moderatedText := "to be moderated " + runID
+	bystanderText := "nothing to moderate here " + runID
+
+	moderated := newPage(t)
+	moderatedFrame := openThread(t, moderated)
+	signInAnon(t, moderated, moderatedFrame, moderatedName)
+	postComment(t, moderatedFrame, moderatedText)
+
+	bystander := newPage(t)
+	bystanderFrame := openURL(t, bystander, threadURL(t))
+	signInAnon(t, bystander, bystanderFrame, bystanderName)
+	postComment(t, bystanderFrame, bystanderText)
+
+	admin := newPage(t)
+	adminFrame := openURL(t, admin, threadURL(t))
+	signInDev(t, admin, adminFrame)
+
+	// the newest thread comes first under the default sort. With the moderated comment on top
+	// the case would pass whichever comment the author is taken from
+	first, err := adminFrame.Locator("article").First().InnerText()
+	require.NoError(t, err)
+	require.Contains(t, first, bystanderText, "the bystander's comment is not the first on the page")
+
+	var mu sync.Mutex
+	var blockedUsers []string
+	admin.OnRequest(func(r playwright.Request) {
+		u, perr := neturl.Parse(r.URL())
+		if perr != nil || r.Method() != http.MethodPut || !strings.HasPrefix(u.Path, "/api/v1/admin/user/") {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		blockedUsers = append(blockedUsers, strings.TrimPrefix(u.Path, "/api/v1/admin/user/"))
+	})
+	admin.OnDialog(func(d playwright.Dialog) { _ = d.Accept() })
+
+	moderation := actions(adminFrame, moderatedText)
+	blockForADay := func() {
+		t.Helper()
+		_, serr := moderation.Locator("select").SelectOption(playwright.SelectOptionValues{Values: &[]string{"1440m"}})
+		require.NoError(t, serr)
+		waitVisible(t, moderation.Locator(`button:has-text("Unblock")`))
+	}
+
+	blockForADay()
+	require.NoError(t, moderation.Locator(`button:has-text("Unblock")`).Click())
+	waitVisible(t, moderation.Locator("select"))
+
+	shown, err := comment(adminFrame, moderatedText).InnerText()
+	require.NoError(t, err)
+	assert.Contains(t, shown, moderatedName, "the unblocked user's comment no longer shows its author")
+	assert.NotContains(t, shown, bystanderName, "the unblocked user's comment shows the author of the first comment")
+
+	blockForADay()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, blockedUsers, 3, "expected a block, an unblock and a block, got requests for %v", blockedUsers)
+	assert.Equal(t, blockedUsers[0], blockedUsers[1], "the unblock went to another user than the block")
+	assert.Equal(t, blockedUsers[0], blockedUsers[2], "the block after an unblock went to another user")
+}
+
 // TestComment_ReadOnlyThreadTakesTheFormAway covers the admin switch that closes a thread. A
 // reader arriving afterwards has to find no way to post, and the state has to come from the
 // server and not from the admin's own page
