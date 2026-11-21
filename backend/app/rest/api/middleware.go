@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -410,4 +411,77 @@ func (p panicLog) Logf(format string, args ...any) {
 		return
 	}
 	rest.MaskedLog{L: p.l}.Logf(format, args...)
+}
+
+// partitionedCookieHeader is what a client sends, with the value "1", to be given its auth cookies
+// in the partitioned form as well. The widget sends it when the page framing it is on another host
+const partitionedCookieHeader = "X-Remark42-Partitioned-Cookie"
+
+// partitionedAuthCookies gives a widget framed by another host a session it can keep. For a request
+// carrying partitionedCookieHeader, every Set-Cookie for one of the named cookies is repeated in its
+// third-party form: Partitioned, Secure and SameSite=None. A browser that blocks third-party cookies
+// drops the original and keeps the copy, keyed to the embedding site.
+//
+// The copy goes before the original, so a browser that does not know Partitioned reads both lines
+// as one cookie and ends up with the original and its configured SameSite.
+//
+// An expiry is repeated whoever asks. A partitioned cookie is also sent to a top-level page of the
+// site it is keyed to, so signing out on remark42's own page has to clear the pair a widget framed
+// by another host of that site was given, and that request does not carry the header.
+// Nothing else changes in a response to a request without it.
+func partitionedAuthCookies(names ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			asked := r.Header.Get(partitionedCookieHeader) == "1"
+			next.ServeHTTP(&partitioningWriter{ResponseWriter: w, names: names, asked: asked}, r)
+		})
+	}
+}
+
+// partitioningWriter adds the partitioned copies just before the headers are sent
+type partitioningWriter struct {
+	http.ResponseWriter
+	names []string
+	asked bool // the request carried partitionedCookieHeader
+	done  bool
+}
+
+func (p *partitioningWriter) WriteHeader(code int) {
+	p.addCopies()
+	p.ResponseWriter.WriteHeader(code)
+}
+
+func (p *partitioningWriter) Write(b []byte) (int, error) {
+	p.addCopies()
+	return p.ResponseWriter.Write(b)
+}
+
+// Flush sends the headers when nothing was written before it, so the copies have to be in by then
+func (p *partitioningWriter) Flush() {
+	p.addCopies()
+	_ = http.NewResponseController(p.ResponseWriter).Flush()
+}
+
+// Unwrap lets http.ResponseController reach the writer below
+func (p *partitioningWriter) Unwrap() http.ResponseWriter { return p.ResponseWriter }
+
+func (p *partitioningWriter) addCopies() {
+	if p.done {
+		return
+	}
+	p.done = true
+
+	lines := p.Header().Values("Set-Cookie")
+	out := make([]string, 0, len(lines)*2)
+	for _, line := range lines {
+		c, err := http.ParseSetCookie(line)
+		if err == nil && slices.Contains(p.names, c.Name) && !c.Partitioned && (p.asked || c.MaxAge < 0) {
+			c.Partitioned, c.Secure, c.SameSite = true, true, http.SameSiteNoneMode
+			out = append(out, c.String())
+		}
+		out = append(out, line)
+	}
+	if len(out) > len(lines) {
+		p.Header()["Set-Cookie"] = out
+	}
 }

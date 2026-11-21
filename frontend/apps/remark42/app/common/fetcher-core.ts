@@ -16,6 +16,8 @@ export type Payload = BodyInit | Record<string, unknown> | null;
 export const JWT_HEADER = 'X-JWT';
 /** Header name for XSRF token */
 export const XSRF_HEADER = 'X-XSRF-TOKEN';
+/** Header asking the backend to set its auth cookies in the partitioned form as well */
+export const PARTITIONED_COOKIE_HEADER = 'X-Remark42-Partitioned-Cookie';
 
 /**
  * Decodes a JWT payload, or returns null when it cannot.
@@ -37,6 +39,56 @@ export function jwtPayload(token: string): Record<string, unknown> | null {
     console.error('Failed to parse JWT payload', e);
     return null;
   }
+}
+
+/**
+ * How long a JWT was issued for, in milliseconds, or null when the token does not say.
+ *
+ * The difference of two claims the server wrote with one clock, so it holds whatever the client
+ * clock reads. Comparing `exp` with the client clock instead would end a session early, or never,
+ * on a machine whose clock is off.
+ *
+ * Zero or less is an answer and not a missing one: the backend can hand over a token that had
+ * already expired when it was written, by setting new claims on an expired token, and such a token
+ * has to count as expired from the start instead of as one that never expires.
+ */
+export function jwtLifetimeMs(payload: Record<string, unknown> | null): number | null {
+  const { exp, iat } = payload ?? {};
+
+  if (typeof exp !== 'number' || typeof iat !== 'number') {
+    return null;
+  }
+
+  return (exp - iat) * 1000;
+}
+
+/**
+ * Whether a url is on the given origin. A url that cannot be parsed is on no origin.
+ */
+export function sameOrigin(url: string, origin: string): boolean {
+  try {
+    return new URL(url).origin === origin;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * The header the widget's frame sends with every request when another host frames it, and nothing
+ * otherwise.
+ *
+ * The backend answers it by setting its auth cookies a second time in the partitioned form, the
+ * only one a browser blocking third-party cookies keeps. Script cannot be relied on to write that
+ * cookie itself: WebKit refuses a partitioned `JWT` from script while an HttpOnly cookie of that
+ * name exists for the same host outside the frame. Over http there is nothing to ask for, since a
+ * partitioned cookie has to be Secure.
+ *
+ * Only a document on the api's own origin asks. The fetcher also runs on a host page, in the
+ * last-comments widget, where the request is cross-origin: a header outside the backend's CORS
+ * list would cost that request a preflight it fails, for cookies the page has no use for.
+ */
+export function frameHeaders(isThirdParty: boolean, isSecure: boolean, isOwnOrigin: boolean): Record<string, string> {
+  return isThirdParty && isSecure && isOwnOrigin ? { [PARTITIONED_COOKIE_HEADER]: '1' } : {};
 }
 
 /**

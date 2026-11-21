@@ -15,6 +15,7 @@ import (
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -537,4 +538,243 @@ func TestPanicLog_LeavesStackTraceAlone(t *testing.T) {
 	const stack = "goroutine 1 [running]:\n/go/pkg/mod/github.com/foo/bar@v1.2.3/x.go:12 +0x1d"
 	panicLog{l: l}.Logf(stack)
 	assert.Equal(t, []string{stack}, lines)
+}
+
+// TestPartitionedAuthCookies covers the middleware on its own: which Set-Cookie lines gain a
+// partitioned copy, where the copy goes, and that a request without the header is answered as before.
+func TestPartitionedAuthCookies(t *testing.T) {
+	const (
+		jwtLine      = "JWT=tkn; Path=/; Max-Age=720000; HttpOnly; Secure; SameSite=Lax"
+		jwtCopy      = "JWT=tkn; Path=/; Max-Age=720000; HttpOnly; Secure; SameSite=None; Partitioned"
+		xsrfLine     = "XSRF-TOKEN=id; Path=/; Max-Age=720000; Secure; SameSite=Lax"
+		xsrfCopy     = "XSRF-TOKEN=id; Path=/; Max-Age=720000; Secure; SameSite=None; Partitioned"
+		otherLine    = "other=v; Path=/"
+		expiredLine  = "JWT=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly"
+		expiredCopy  = "JWT=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; Secure; SameSite=None; Partitioned"
+		partitionedL = "JWT=tkn; Path=/; HttpOnly; Secure; SameSite=None; Partitioned"
+	)
+	signIn := func(w http.ResponseWriter, _ *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "JWT", Value: "tkn", Path: "/", MaxAge: 720000, HttpOnly: true,
+			Secure: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: "XSRF-TOKEN", Value: "id", Path: "/", MaxAge: 720000,
+			Secure: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: "other", Value: "v", Path: "/"})
+	}
+	expire := func(w http.ResponseWriter, _ *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "JWT", Path: "/", MaxAge: -1, Expires: time.Unix(0, 0), HttpOnly: true})
+	}
+
+	tbl := []struct {
+		name    string
+		header  string
+		handler http.HandlerFunc
+		want    []string
+	}{
+		{name: "header and a body written without a status", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				_, _ = w.Write([]byte("ok"))
+			},
+			// each copy goes before its original, so a browser that reads both lines as one cookie
+			// keeps the original
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and an explicit status", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusUnauthorized)
+			},
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and a flush before anything is written", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				assert.NoError(t, http.NewResponseController(w).Flush())
+			},
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and a handler that writes nothing", header: "1", handler: signIn,
+			// net/http sends the headers itself here and never calls the writer, so there is no
+			// moment to add the copies at. no handler setting an auth cookie ends this way
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied as an expiry", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
+		{name: "a cookie that is partitioned already is left alone", header: "1",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				http.SetCookie(w, &http.Cookie{Name: "JWT", Value: "tkn", Path: "/", HttpOnly: true, Secure: true,
+					SameSite: http.SameSiteNoneMode, Partitioned: true})
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{partitionedL}},
+		{name: "no header", header: "",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "a header with another value is not the request", header: "true",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied without the header too", header: "",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+			if tt.header != "" {
+				req.Header.Set(partitionedCookieHeader, tt.header)
+			}
+			rec := httptest.NewRecorder()
+			partitionedAuthCookies("JWT", "XSRF-TOKEN")(tt.handler).ServeHTTP(rec, req)
+			assert.Equal(t, tt.want, rec.Result().Header.Values("Set-Cookie"))
+		})
+	}
+}
+
+// TestRest_ThirdPartyFrameCookies drives the real routes, since the middleware is only worth
+// anything where the auth library writes its cookies: at sign-in, when the auth middleware renews an
+// expired token on an api route, and at sign-out. A widget framed by another host has to be handed a
+// partitioned pair at each of them, and nobody else's response may change.
+func TestRest_ThirdPartyFrameCookies(t *testing.T) {
+	// what a case reads of an answer; the body is closed where the request is made
+	type response struct {
+		status int
+		header http.Header
+	}
+	headerMode := func(srv *Rest) { srv.SendJWTHeader = true }
+	// the lines for one cookie name, in the order they were sent
+	lines := func(resp response, name string) (res []string) {
+		for _, line := range resp.header.Values("Set-Cookie") {
+			if strings.HasPrefix(line, name+"=") {
+				res = append(res, line)
+			}
+		}
+		return res
+	}
+	get := func(t *testing.T, url string, headers map[string]string) response {
+		req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+		require.NoError(t, err)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return response{status: resp.StatusCode, header: resp.Header}
+	}
+	assertBothForms := func(t *testing.T, resp response) {
+		for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+			got := lines(resp, name)
+			require.Len(t, got, 2, "%s has to be set twice, partitioned and as before: %v", name, got)
+			assert.Contains(t, got[0], "; Partitioned", "the partitioned %s comes first", name)
+			assert.Contains(t, got[0], "; SameSite=None")
+			assert.Contains(t, got[0], "; Secure")
+			assert.NotContains(t, got[1], "Partitioned", "the %s set as before stays as it was", name)
+		}
+	}
+	assertOneForm := func(t *testing.T, resp response) {
+		for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+			got := lines(resp, name)
+			require.Len(t, got, 1, "%s is set once: %v", name, got)
+			assert.NotContains(t, got[0], "Partitioned")
+		}
+	}
+	const login = "/auth/anonymous/login?user=reader&passwd=x&aud=remark42"
+	frame := map[string]string{partitionedCookieHeader: "1"}
+
+	t.Run("sign-in from a third-party frame", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("renewal on an api route from a third-party frame", func(t *testing.T) {
+		ts, srv, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		// expired but validly signed, which is what the auth middleware renews for a cookie
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
+				Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute))},
+			User: &token.User{ID: "anonymous_reader", Name: "reader"},
+		})
+		require.NoError(t, err)
+
+		resp := get(t, ts.URL+"/api/v1/user?site=remark42", map[string]string{
+			partitionedCookieHeader: "1", "Cookie": "JWT=" + tkn, "X-XSRF-TOKEN": "xsrf-id"})
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("sign-out from a third-party frame", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+"/auth/logout", frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+		for _, line := range lines(resp, "JWT") {
+			assert.Contains(t, line, "Max-Age=0", "both forms have to be expired, or one outlives the sign-out")
+		}
+	})
+
+	t.Run("sign-in without the header", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, nil)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
+
+	t.Run("sign-out without the header", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		// remark42's own page signing out a reader whose widget, framed by another host of the
+		// same site, was given the partitioned pair: that pair is sent here as well
+		resp := get(t, ts.URL+"/auth/logout", nil)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("sign-out with header mode off", func(t *testing.T) {
+		ts, _, teardown := startupT(t)
+		defer teardown()
+
+		resp := get(t, ts.URL+"/auth/logout", frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
+
+	t.Run("header mode off", func(t *testing.T) {
+		ts, _, teardown := startupT(t)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
+
+	t.Run("served over http", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode, func(srv *Rest) { srv.RemarkURL = "http://demo.remark42.com" })
+		defer teardown()
+
+		// a partitioned cookie has to be Secure, and a browser refuses a Secure cookie over http
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
 }

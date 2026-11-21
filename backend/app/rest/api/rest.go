@@ -228,7 +228,17 @@ func (s *Rest) routes() http.Handler {
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
+	// on the two groups where the auth library writes its cookies: sign-in and sign-out under
+	// /auth, renewal and reset by the auth middleware under /api/v1
+	authCookies := func(next http.Handler) http.Handler { return next }
+	if s.SendJWTHeader && strings.HasPrefix(s.RemarkURL, "https://") {
+		// a partitioned cookie has to be Secure, so there is nothing to add over http. the names
+		// are the auth library's defaults, which the server does not override
+		authCookies = partitionedAuthCookies("JWT", "XSRF-TOKEN")
+	}
+
 	router.Route(func(r *routegroup.Bundle) {
+		r.Use(authCookies)
 		r.Use(R.Timeout(5 * time.Second))
 		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
@@ -247,7 +257,7 @@ func (s *Rest) routes() http.Handler {
 
 	// api routes
 	rapi := router.Mount("/api/v1")
-	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth)
+	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth, authCookies)
 
 	rapi.Group().Route(avatarRoutes)
 

@@ -73,6 +73,8 @@ const (
 	// the host page over TLS, which is the only way to reach what the browser gates on the page
 	// protocol. the certificate is self-signed, so every context passes IgnoreHTTPSErrors
 	httpsHostSiteURL = "https://host-site-https:8444"
+	// the instance that page embeds, for the cases that also visit it as a site of its own
+	httpsURL = "https://remark42-https:8443"
 
 	// what this process asks for, since it is not the browser and has no resolver rules
 	probeURL          = "http://127.0.0.1:8080"

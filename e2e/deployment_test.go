@@ -3,6 +3,12 @@
 package e2e
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -92,6 +98,102 @@ func TestAuth_HeaderJWTSurvivesReload(t *testing.T) {
 	waitVisible(t, frame.Locator(".auth-button"))
 	waitHidden(t, frame.Locator(`[title="Sign out"]`),
 		"the header-borne session came back after signing out")
+}
+
+// TestAuth_HeaderSessionOutlivesItsToken is the half of header mode a reload cannot show. The
+// widget keeps the token from every X-JWT response in memory and used to send it back on each
+// request for as long as the page stayed open. The backend reads that header before the cookie,
+// refuses a token that has expired there, and renews only a token that arrived in the cookie. So the
+// first authorized request made after AUTH_TTL_JWT got a 401, the widget dropped the session, and a
+// reader who had left the page open for five minutes was signed out by posting a comment.
+//
+// The instance's token lives for 15 seconds, see compose-e2e-test.yml, and the wait is counted from
+// the token the widget was actually handed.
+func TestAuth_HeaderSessionOutlivesItsToken(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+
+	// the newest token the instance handed over, and when it arrived
+	var mu sync.Mutex
+	var issued string
+	var issuedAt time.Time
+	page.OnResponse(func(r playwright.Response) {
+		if tkn, err := r.HeaderValue("x-jwt"); err == nil && tkn != "" {
+			mu.Lock()
+			issued, issuedAt = tkn, time.Now()
+			mu.Unlock()
+		}
+	})
+
+	frame := openURL(t, page, threadURLOn(t, jwtHeaderURL))
+	signInAnon(t, page, frame, anonName("headerexpiry"))
+
+	mu.Lock()
+	tkn, receivedAt := issued, issuedAt
+	mu.Unlock()
+	require.NotEmpty(t, tkn, "sign-in answered without an X-JWT header, so remark42-jwtheader is no longer in "+
+		"header mode and nothing below is about it")
+
+	// both claims come from one clock, the server's, so their distance holds whatever this
+	// machine's clock reads. counting it from the arrival of the response can only overshoot
+	waitUntil(receivedAt.Add(tokenLifetime(t, tkn) + time.Second))
+
+	text := "posted after the token expired " + runID
+	req, err := page.ExpectRequest(regexp.MustCompile(`/api/v1/comment\?`), func() error {
+		submitForm(t, frame.Locator(commentFormSel).First(), text)
+		return nil
+	}, playwright.PageExpectRequestOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err)
+	require.Equal(t, http.MethodPost, req.Method())
+
+	sent, err := req.HeaderValue("x-jwt")
+	require.NoError(t, err)
+	assert.Empty(t, sent, "the request made after the token expired still carried it in X-JWT. The backend "+
+		"refuses an expired token in that header without looking at the cookie, so it has to be left out")
+
+	resp, err := req.Response()
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.Status(),
+		"posting after the token expired was refused, so the session ended with the token")
+	renewed, err := resp.HeaderValue("x-jwt")
+	require.NoError(t, err)
+	assert.NotEmpty(t, renewed, "the comment was accepted without the token being renewed, so it had not "+
+		"expired and the wait above was too short to test anything")
+
+	waitVisible(t, comment(frame, text))
+	assertSignedIn(t, page, frame)
+
+	// and the renewed token reached the cookie, or the session would end at the reload instead
+	frame = reload(t, page)
+	assertSignedIn(t, page, frame)
+	waitVisible(t, comment(frame, text))
+}
+
+// tokenLifetime reads how long a JWT was issued for out of its own claims
+func tokenLifetime(t *testing.T, tkn string) time.Duration {
+	t.Helper()
+
+	parts := strings.Split(tkn, ".")
+	require.Len(t, parts, 3, "not a JWT: %q", tkn)
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	require.NoError(t, err)
+
+	var claims struct {
+		Exp int64 `json:"exp"`
+		Iat int64 `json:"iat"`
+	}
+	require.NoError(t, json.Unmarshal(payload, &claims))
+	require.Greater(t, claims.Exp, claims.Iat, "the token carries no usable exp and iat: %s", payload)
+	return time.Duration(claims.Exp-claims.Iat) * time.Second
+}
+
+// waitUntil sleeps until a deadline computed from something known, which is not the same as
+// sleeping for a guess: there is nothing in the page to poll for while a token runs out
+func waitUntil(deadline time.Time) {
+	if wait := time.Until(deadline); wait > 0 {
+		time.Sleep(wait)
+	}
 }
 
 // TestAuth_NoProvidersSaysSo covers #1456, where an instance with no auth provider rendered a
