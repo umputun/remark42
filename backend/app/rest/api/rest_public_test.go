@@ -480,9 +480,9 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "[]\n", res, "empty last should return empty list")
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	// add 3 comments, with the clock pushed past a millisecond boundary in between so the two
@@ -551,9 +551,9 @@ func TestRest_FindUserComments(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
-	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+	c3 := store.Comment{Text: "test test #3",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah3"}}
 
 	// add 3 comments
@@ -931,7 +931,7 @@ func TestRest_Count(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -963,7 +963,7 @@ func TestRest_Counts(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -998,7 +998,7 @@ func TestRest_List(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -1027,9 +1027,9 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
-	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+	c3 := store.Comment{Text: "test test #3",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah3"}}
 
 	addComment(t, c1, ts)

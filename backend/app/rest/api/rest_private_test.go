@@ -33,6 +33,7 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
+	"github.com/umputun/remark42/backend/app/store/service"
 )
 
 // gopher png for test, from https://golang.org/src/image/png/example_test.go
@@ -369,6 +370,97 @@ func TestRest_CreateAndGet(t *testing.T) {
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false, IP: ""}, comment.User, "no ip")
 }
 
+func TestRest_CreateReplyWithoutParentRefused(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	top := addComment(t, store.Comment{Text: "top-level",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}, ts)
+	otherPost := addComment(t, store.Comment{Text: "on another post",
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}, ts)
+
+	tbl := []struct {
+		name, pid string
+	}{
+		{name: "unknown id", pid: "no-such-comment"},
+		{name: "comment on another post", pid: otherPost},
+		{name: "markup", pid: `<img src=x onerror=alert(1)>`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(store.Comment{Text: "reply", ParentID: tt.pid,
+				Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}})
+			require.NoError(t, err)
+			resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", string(body))
+			require.NoError(t, err)
+			b, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+			assert.JSONEq(t, `{"code":1,"details":"can't find parent comment","error":"parent comment not found"}`, string(b))
+		})
+	}
+
+	// none of the replies was stored on the post they were sent to
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &comments))
+	require.Len(t, comments.Comments, 1)
+	assert.Equal(t, top, comments.Comments[0].ID)
+	assert.Equal(t, 1, comments.Info.Count)
+}
+
+func TestRest_CreateReplyToExistingParent(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	loc := store.Locator{SiteID: "remark42", URL: postURL}
+	client := http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+
+	top := addComment(t, store.Comment{Text: "top-level", Locator: loc}, ts)
+	reply := addComment(t, store.Comment{Text: "reply", ParentID: top, Locator: loc}, ts)
+
+	// a comment deleted by its author can still be answered
+	deletedByUser := addComment(t, store.Comment{Text: "deleted by user", Locator: loc}, ts)
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+deletedByUser+"?site=remark42&url="+postURL,
+		strings.NewReader(`{"delete": true}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	replyToUserDeleted := addComment(t, store.Comment{Text: "reply to deleted", ParentID: deletedByUser, Locator: loc}, ts)
+
+	// and so can a comment deleted by an admin
+	deletedByAdmin := addComment(t, store.Comment{Text: "deleted by admin", Locator: loc}, ts)
+	req, err = http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/comment/"+deletedByAdmin+"?site=remark42&url="+postURL,
+		http.NoBody)
+	require.NoError(t, err)
+	resp, err = sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	replyToAdminDeleted := addComment(t, store.Comment{Text: "reply to deleted", ParentID: deletedByAdmin, Locator: loc}, ts)
+
+	// every reply is in the tree under its parent
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url="+postURL)
+	require.Equal(t, http.StatusOK, code)
+	tree := service.Tree{}
+	require.NoError(t, json.Unmarshal([]byte(res), &tree))
+	replies := map[string][]string{}
+	for _, n := range tree.Nodes {
+		for _, r := range n.Replies {
+			replies[n.Comment.ID] = append(replies[n.Comment.ID], r.Comment.ID)
+		}
+	}
+	assert.Equal(t, map[string][]string{top: {reply}, deletedByUser: {replyToUserDeleted},
+		deletedByAdmin: {replyToAdminDeleted}}, replies)
+}
+
 func TestRest_CreateWithQuotes(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -423,7 +515,7 @@ func TestRest_Update(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
@@ -604,7 +696,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
@@ -907,7 +999,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
@@ -927,7 +1019,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
-	c1 := store.Comment{Text: "What the quack is that?", ParentID: "p1",
+	c1 := store.Comment{Text: "What the quack is that?",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
 
@@ -956,7 +1048,7 @@ func TestRest_Vote(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
@@ -1048,7 +1140,7 @@ func TestRest_AnonVote(t *testing.T) {
 
 		c1 := store.Comment{Text: "test test #1",
 			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-		c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+		c2 := store.Comment{Text: "test test #2",
 			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 		id1 = addComment(t, c1, ts)

@@ -36,7 +36,7 @@ func TestAdmin_Delete(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
@@ -143,7 +143,7 @@ func TestAdmin_Title(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post1"}}
-	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post2"}}
 
 	id1 := addComment(t, c1, ts)
@@ -463,7 +463,7 @@ func TestAdmin_Pin(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
@@ -862,7 +862,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.False(t, info.ReadOnly)
 
 	// try to write comment
-	c = store.Comment{Text: "test test #2", ParentID: "p1",
+	c = store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
@@ -1013,7 +1013,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -1032,7 +1032,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
