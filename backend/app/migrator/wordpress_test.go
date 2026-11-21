@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"bytes"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -453,3 +454,108 @@ Row3 markdown` +
 </channel>
 </rss>
 `
+
+// WordPress dates have one-second resolution; comments posted in the same second keep their place in the
+// site's last comments and in their author's list and count
+func TestWordPress_ImportSameSecondComments(t *testing.T) {
+	dbFile := filepath.Join(t.TempDir(), "remark-test.db")
+	dataStore := sameSecondStore(t, dbFile)
+	size, err := (&WordPress{DataStore: dataStore}).Import(strings.NewReader(wpSameSecondExport), "testWP")
+	require.NoError(t, err)
+	assert.Equal(t, 3, size)
+	checkSameSecondComments(t, dataStore, []string{"1", "2", "3"}, 2)
+	require.NoError(t, dataStore.Close())
+}
+
+// a site imported by an earlier version, which kept one index entry per timestamp, gets the lost entries
+// back from a backup restored by this version: the backup holds every comment, the restore indexes each
+func TestWordPress_SameSecondCommentsBackAfterRestore(t *testing.T) {
+	dbFile := filepath.Join(t.TempDir(), "remark-test.db")
+	dataStore := sameSecondStore(t, dbFile)
+	_, err := (&WordPress{DataStore: dataStore}).Import(strings.NewReader(wpSameSecondExport), "testWP")
+	require.NoError(t, err)
+	require.NoError(t, dataStore.Close())
+
+	// rewrite the "last" and user indexes as an earlier version leaves them: each entry under the timestamp
+	// itself, so the comment saved later in a second overwrites the entry of the one saved earlier
+	db, err := bolt.Open(dbFile, 0o600, nil)
+	require.NoError(t, err)
+	oldForm := func(bkt *bolt.Bucket) error {
+		type entry struct{ k, v []byte }
+		entries := []entry{}
+		if e := bkt.ForEach(func(k, v []byte) error {
+			if v != nil {
+				entries = append(entries, entry{k: append([]byte{}, k...), v: append([]byte{}, v...)})
+			}
+			return nil
+		}); e != nil {
+			return e
+		}
+		for _, e := range entries {
+			ts, perr := time.Parse("2006-01-02T15:04:05.000000000Z07:00", string(e.k))
+			require.NoError(t, perr)
+			require.NoError(t, bkt.Delete(e.k))
+			require.NoError(t, bkt.Put([]byte(ts.Truncate(time.Second).Format("2006-01-02T15:04:05.000000000Z07:00")), e.v))
+		}
+		return nil
+	}
+	require.NoError(t, db.Update(func(tx *bolt.Tx) error {
+		require.NoError(t, oldForm(tx.Bucket([]byte("last"))))
+		users := tx.Bucket([]byte("users"))
+		return users.ForEachBucket(func(k []byte) error { return oldForm(users.Bucket(k)) })
+	}))
+	require.NoError(t, db.Close())
+
+	dataStore = sameSecondStore(t, dbFile)
+	defer dataStore.Close()
+	checkSameSecondComments(t, dataStore, []string{"3"}, 1) // what the earlier version shows
+
+	backup := bytes.Buffer{}
+	size, err := (&Native{DataStore: dataStore}).Export(&backup, "testWP")
+	require.NoError(t, err)
+	assert.Equal(t, 3, size, "the backup holds every comment")
+	_, err = (&Native{DataStore: dataStore}).Import(&backup, "testWP")
+	require.NoError(t, err)
+	checkSameSecondComments(t, dataStore, []string{"1", "2", "3"}, 2)
+}
+
+// three comments posted in one second: alice's 1 and bob's 2 on post 1, alice's 3 on post 2
+var wpSameSecondExport = func() string {
+	wpComment := func(id, author string) string {
+		return `<wp:comment><wp:comment_id>` + id + `</wp:comment_id><wp:comment_author>` + author +
+			`</wp:comment_author><wp:comment_date_gmt>2010-08-18 15:19:14</wp:comment_date_gmt>` +
+			`<wp:comment_content>comment ` + id + `</wp:comment_content><wp:comment_approved>1</wp:comment_approved>` +
+			`<wp:comment_parent>0</wp:comment_parent><wp:comment_type></wp:comment_type></wp:comment>`
+	}
+	return `<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:wp="http://wordpress.org/export/1.2/"><channel>
+<wp:wxr_version>1.2</wp:wxr_version>
+<item><title>post 1</title><link>https://example.com/1/</link>` + wpComment("1", "alice") + wpComment("2", "bob") + `</item>
+<item><title>post 2</title><link>https://example.com/2/</link>` + wpComment("3", "alice") + `</item>
+</channel></rss>`
+}()
+
+func sameSecondStore(t *testing.T, dbFile string) *service.DataStore {
+	b, err := engine.NewBoltDB(bolt.Options{}, engine.BoltSite{FileName: dbFile, SiteID: "testWP"})
+	require.NoError(t, err)
+	return &service.DataStore{Engine: b, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+}
+
+// checkSameSecondComments checks the site's last comments and alice's comments and count
+func checkSameSecondComments(t *testing.T, dataStore *service.DataStore, lastIDs []string, aliceCount int) {
+	t.Helper()
+	last, err := dataStore.Last("testWP", 10, time.Time{}, adminUser)
+	require.NoError(t, err)
+	ids := make([]string, 0, len(last))
+	for _, c := range last {
+		ids = append(ids, c.ID)
+	}
+	assert.ElementsMatch(t, lastIDs, ids, "last comments")
+
+	alice := "wordpress_" + store.EncodeID("alice")
+	comments, err := dataStore.User("testWP", alice, 10, 0, adminUser)
+	require.NoError(t, err)
+	assert.Len(t, comments, aliceCount, "alice's comments")
+	count, err := dataStore.UserCount("testWP", alice)
+	require.NoError(t, err)
+	assert.Equal(t, aliceCount, count, "alice's count")
+}

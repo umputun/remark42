@@ -114,8 +114,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 
 		// add reference to comment to "last" bucket
 		lastBkt = tx.Bucket([]byte(lastBucketName))
-		commentTS := []byte(comment.Timestamp.Format(tsNano))
-		if err = lastBkt.Put(commentTS, ref); err != nil {
+		if err = b.putRef(lastBkt, comment.Timestamp, ref); err != nil {
 			return fmt.Errorf("can't put reference %s to %s: %w", ref, lastBucketName, err)
 		}
 
@@ -124,7 +123,7 @@ func (b *BoltDB) Create(comment store.Comment) (commentID string, err error) {
 			return fmt.Errorf("can't get bucket %s: %w", comment.User.ID, err)
 		}
 		// put into individual user's bucket with ts as a key
-		if err = userBkt.Put(commentTS, ref); err != nil {
+		if err = b.putRef(userBkt, comment.Timestamp, ref); err != nil {
 			return fmt.Errorf("failed to put user comment %s for %s: %w", comment.ID, comment.User.ID, err)
 		}
 
@@ -441,7 +440,8 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 				log.Printf("[WARN] can't load comment for %s from store %s", commentID, url)
 				continue
 			}
-			if comment.Deleted {
+			// a key moved forward by putRef can sort after since while its comment is not newer
+			if comment.Deleted || (!since.IsZero() && !comment.Timestamp.After(since)) {
 				continue
 			}
 			comments = append(comments, comment)
@@ -962,6 +962,19 @@ func (b *BoltDB) update(siteID string, fn func(tx *bolt.Tx) error) error {
 		return err
 	}
 	return bdb.Update(fn)
+}
+
+// putRef stores ref in an index bucket, "last" or a user's, under the comment's timestamp. Comments sharing a
+// timestamp, as imported ones with one-second resolution do, would overwrite each other's entry, so a key already
+// taken moves forward a nanosecond at a time until it is free. The key stays a timestamp in
+// the format every version writes and reads, and the entries keep their order by time.
+func (b *BoltDB) putRef(bkt *bolt.Bucket, ts time.Time, ref []byte) error {
+	key := []byte(ts.Format(tsNano))
+	for bkt.Get(key) != nil {
+		ts = ts.Add(time.Nanosecond)
+		key = []byte(ts.Format(tsNano))
+	}
+	return bkt.Put(key, ref)
 }
 
 // makeRef creates reference combining url and comment id
