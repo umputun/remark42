@@ -322,13 +322,19 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
   const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
 
   return (
-    <div className={styles.threads} role="list">
+    <div className={styles.threads}>
       {isLoading ? (
         <Preloader className={styles.preloader} />
       ) : (
         <>
-          {topComments.length > 0 &&
-            renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
+          {renderComments.length > 0 && (
+            // the list holds the threads only: the preloader and the button below are not its items
+            <div role="list">
+              {renderComments.map((id) => (
+                <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />
+              ))}
+            </div>
+          )}
           {isShowMoreButtonVisible && (
             <Button className={styles.moreComments} onClick={showMore}>
               <span data-nosnippet>

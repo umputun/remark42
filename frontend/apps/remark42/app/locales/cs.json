@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Přihlásit se k odběru přes Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Odhlásit se",
+  "thread.toggle": "Sbalit nebo rozbalit vlákno",
   "token": "Vložte token z e-mailu",
   "token.expired": "Token expiroval",
   "token.invalid": "Token je neplatný",

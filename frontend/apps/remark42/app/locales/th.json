@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "ติดตามผ่าน Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "เลิกติดตาม",
+  "thread.toggle": "ยุบหรือขยายเธรด",
   "token": "วางโทเค็นจากอีเมล",
   "token.expired": "โทเค็นหมดอายุ",
   "token.invalid": "โทเค็นไม่ถูกต้อง",

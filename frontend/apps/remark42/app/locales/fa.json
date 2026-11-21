@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "مشترک شدن از طریق تلگرام",
   "subscribeByTelegram.telegram": "تلگرام",
   "subscribeByTelegram.unsubscribe": "حذف اشتراک",
+  "thread.toggle": "جمع یا باز کردن رشته گفتگو",
   "token": "توکن موجود در ایمیل را پیست کنید",
   "token.expired": "توکن منقضی شده است",
   "token.invalid": "توکن نامعتبر است",

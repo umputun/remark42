@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Telegram ile abone ol",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Aboneliği kaldır",
+  "thread.toggle": "Konuyu daralt veya genişlet",
   "token": "E-postadaki belirteci (TOKEN) yapıştırın",
   "token.expired": "Belirtecin süresi doldu",
   "token.invalid": "Belirteç geçersiz",

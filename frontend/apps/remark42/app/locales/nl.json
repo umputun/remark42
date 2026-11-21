@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Abonneren via Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Afmelden",
+  "thread.toggle": "Discussie in- of uitklappen",
   "token": "Plak de code uit de e-mail hier",
   "token.expired": "De code is verlopen",
   "token.invalid": "De code is ongeldig",

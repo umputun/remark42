@@ -663,8 +663,12 @@ func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	require.NoError(t, err)
 
 	frame := widget(t, page)
-	// the response has arrived; give preact the frame it needs to swap the preloader out
-	waitHidden(t, frame.Locator(`[role="list"] .preloader`))
+	// the response has arrived; give preact the frame it needs to swap out every preloader: the one
+	// iframe.html starts with, the one shown while the user loads and the one in place of the threads
+	eventually(t, waitTimeout, "the widget still shows a preloader", func() bool {
+		n, cerr := frame.Locator(".preloader").Count()
+		return cerr == nil && n == 0
+	})
 	return frame
 }
 

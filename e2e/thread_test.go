@@ -90,22 +90,22 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 	waitVisible(t, comment(frame, reply))
 
 	// anchor on the comment's own id, not its text: collapsing hides the text, which
-	// would make a hasText filter stop matching the element under test. the id also excludes
-	// the RSS dropdown, the other thing on the page carrying aria-expanded
+	// would make a hasText filter stop matching the element under test. the control that
+	// collapses the thread is a direct child of its list item and carries aria-expanded
 	id, err := comment(frame, parent).GetAttribute("id")
 	require.NoError(t, err)
 	require.NotEmpty(t, id)
-	threadSel := fmt.Sprintf("[aria-expanded]:has(article#%s)", id)
+	controlSel := fmt.Sprintf(`[role="listitem"]:has(> article#%s) > [role="button"]`, id)
 
-	thread := frame.Locator(threadSel)
-	expanded, err := pollAttr(thread, "aria-expanded")
+	control := frame.Locator(controlSel)
+	expanded, err := pollAttr(control, "aria-expanded")
 	require.NoError(t, err)
 	require.Equal(t, "true", expanded)
 
-	require.NoError(t, thread.Locator(`:scope > [role="button"]`).Click())
+	require.NoError(t, control.Click())
 
 	eventually(t, waitTimeout, "thread did not collapse", func() bool {
-		v, aerr := pollAttr(thread, "aria-expanded")
+		v, aerr := pollAttr(control, "aria-expanded")
 		return aerr == nil && v == "false"
 	})
 	// counting instead of filtering on the reply's text, which an off-screen comment would
@@ -117,9 +117,9 @@ func TestThread_CollapsePersistsAcrossReload(t *testing.T) {
 
 	// collapse is client-only state, kept in localStorage and not on the server
 	frame = reload(t, page)
-	thread = frame.Locator(threadSel)
+	control = frame.Locator(controlSel)
 	eventually(t, waitTimeout, "collapse did not survive reload", func() bool {
-		v, aerr := pollAttr(thread, "aria-expanded")
+		v, aerr := pollAttr(control, "aria-expanded")
 		return aerr == nil && v == "false"
 	})
 

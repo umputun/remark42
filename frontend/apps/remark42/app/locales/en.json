@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Subscribe by Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Unsubscribe",
+  "thread.toggle": "Collapse or expand thread",
   "token": "Paste the token from the email",
   "token.expired": "Token is expired",
   "token.invalid": "Token is invalid",

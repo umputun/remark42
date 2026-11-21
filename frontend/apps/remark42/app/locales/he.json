@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "הרשמה באמצעות טלגרם",
   "subscribeByTelegram.telegram": "טלגרם",
   "subscribeByTelegram.unsubscribe": "ביטול מנוי",
+  "thread.toggle": "כיווץ או הרחבה של השרשור",
   "token": "יש להדביק את האסימון (TOKEN) מהאימייל",
   "token.expired": "האסימון פג תוקף",
   "token.invalid": "האסימון לא תקין",

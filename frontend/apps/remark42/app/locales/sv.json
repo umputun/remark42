@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Prenumerera via Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Avsluta prenumeration",
+  "thread.toggle": "Fäll ihop eller expandera tråden",
   "token": "Klistra in token från e-postmeddelandet",
   "token.expired": "Token har gått ut",
   "token.invalid": "Token är ogiltig",

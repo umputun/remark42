@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Inscrever-se pelo Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Cancelar inscrição",
+  "thread.toggle": "Recolher ou expandir a conversa",
   "token": "Cole o token do e-mail",
   "token.expired": "O token expirou",
   "token.invalid": "Token inválido",

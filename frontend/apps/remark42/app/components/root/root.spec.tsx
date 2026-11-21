@@ -17,6 +17,16 @@ jest.mock('common/constants', () => ({
     return mockMobile;
   },
 }));
+let mockMaxShown: number | undefined;
+jest.mock('common/settings', () => {
+  const actual = jest.requireActual('common/settings');
+  return {
+    ...actual,
+    get maxShownComments() {
+      return mockMaxShown ?? actual.maxShownComments;
+    },
+  };
+});
 
 const stateStub: Partial<StoreState> = {
   comments: {
@@ -101,7 +111,7 @@ describe('<ConnectedRoot />', () => {
   };
 
   /** renders a thread with a reply, a deleted comment and `more` further comments, all in view */
-  async function renderThreads(user: User | null, { more = 0 } = {}) {
+  async function renderThreads(user: User | null, { more = 0, hideReply = false } = {}) {
     jest.spyOn(api, 'getUser').mockResolvedValue(user);
     jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
     // every comment is in view, as on the tall page a crawler renders; off screen one is a placeholder
@@ -132,7 +142,7 @@ describe('<ConnectedRoot />', () => {
     const extra = Array.from({ length: more }, (_, i) => comment(`m${i}`, '', `<p>more ${i}</p>`));
     const comments = {
       c1: comment('c1', '', '<p>first comment with <a href="https://example.com/">a link</a></p>'),
-      c2: comment('c2', 'c1', '<p>a reply</p>'),
+      c2: comment('c2', 'c1', '<p>a reply</p>', { hidden: hideReply }),
       c3: comment('c3', '', '', { delete: true }),
       ...Object.fromEntries(extra.map((c) => [c.id, c])),
     };
@@ -151,7 +161,7 @@ describe('<ConnectedRoot />', () => {
     // a comment out of view renders as an empty placeholder article
     await waitFor(() => {
       const articles = Array.from(container.querySelectorAll('article'));
-      expect(articles.length).toBeGreaterThanOrEqual(3);
+      expect(articles.length).toBeGreaterThanOrEqual(hideReply ? 2 : 3);
       expect(articles.filter((article) => !article.querySelector('.raw-content'))).toEqual([]);
     });
 
@@ -206,5 +216,60 @@ describe('<ConnectedRoot />', () => {
     } finally {
       mockMobile = false;
     }
+  });
+
+  it('leaves no empty list behind a thread whose only reply is hidden', async () => {
+    const container = await renderThreads(null, { hideReply: true });
+
+    expect(container.querySelectorAll('article')).toHaveLength(2);
+    for (const list of Array.from(container.querySelectorAll('[role="list"]'))) {
+      expect(list.children.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('shows no empty list on a phone set to show no comments until asked', async () => {
+    jest.spyOn(api, 'getUser').mockResolvedValue(null);
+    jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
+    mockMobile = true;
+    mockMaxShown = 0;
+    try {
+      const { container } = render(<ConnectedRoot />, {
+        ...stateStub,
+        comments: { ...stateStub.comments!, topComments: ['c1'], allComments: {} },
+      });
+
+      await waitFor(() => expect(container).toHaveTextContent('Show more'));
+      expect(container.querySelector('[role="list"]')).toBeNull();
+    } finally {
+      mockMobile = false;
+      mockMaxShown = undefined;
+    }
+  });
+
+  it('nests every thread as an item of a list, with a named control that expands it', async () => {
+    const container = await renderThreads(null);
+
+    const items = container.querySelectorAll('[role="listitem"]');
+    expect(items).toHaveLength(3);
+    for (const item of Array.from(items)) {
+      expect(item.parentElement).toHaveAttribute('role', 'list');
+      // the comment and the control that collapses it, and its replies when it has some
+      for (const child of Array.from(item.children)) {
+        expect(child.getAttribute('role') ?? child.tagName).toMatch(/^(ARTICLE|list|button)$/);
+      }
+    }
+    for (const list of Array.from(container.querySelectorAll('[role="list"]'))) {
+      for (const child of Array.from(list.children)) {
+        expect(child).toHaveAttribute('role', 'listitem');
+      }
+    }
+
+    const controls = container.querySelectorAll('[role="listitem"] > [role="button"]');
+    expect(controls).toHaveLength(3);
+    for (const control of Array.from(controls)) {
+      expect(control).toHaveAttribute('aria-label', 'Collapse or expand thread');
+      expect(control).toHaveAttribute('aria-expanded', 'true');
+    }
+    expect(container.querySelector('[role="listitem"][aria-expanded]')).toBeNull();
   });
 });
