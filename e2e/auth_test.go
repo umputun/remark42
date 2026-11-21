@@ -190,6 +190,33 @@ func TestAuth_SignOutEndsTheSession(t *testing.T) {
 		"the panel signed out but the session survived the reload, so the cookie was never cleared")
 }
 
+// TestAuth_SignOutTakesTheEditControlsAway covers the reader changing under a mounted thread.
+// Signing out loads the comments again in place, so the comment the reader has just posted is the
+// same component before and after, and it has to stop offering an edit it would be refused. No
+// reload in between: a reload renders the comment anew and shows nothing of this
+func TestAuth_SignOutTakesTheEditControlsAway(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInAnon(t, page, frame, "editthensignout")
+
+	text := "mine until I sign out " + runID
+	postComment(t, frame, text)
+	edit := actions(frame, text).Locator(`button:has-text("Edit")`)
+	waitVisible(t, edit)
+
+	pauseForAuthLimit()
+	require.NoError(t, frame.Locator(`[title="Sign out"]`).Click())
+	waitVisible(t, frame.Locator(".auth-button"))
+
+	waitHidden(t, edit, "the comment still offers Edit to a reader who has signed out")
+	waitHidden(t, actions(frame, text).Locator(`[role="timer"]`),
+		"the comment still counts an edit window down for a reader who has signed out")
+	// the comment itself is still there, so the controls are gone and not the thread
+	waitVisible(t, comment(frame, text))
+}
+
 // TestAuth_HostPageMessageDoesNotCloseTheDropdown covers #2139. Every message reaching the widget
 // closed the sign-in dropdown, because the handler returned early only for a clickOutside payload
 // and fell through to closing in every other case. embed.ts watches the host page's title element
