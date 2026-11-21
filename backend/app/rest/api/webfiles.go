@@ -2,10 +2,13 @@ package api
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
+	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
@@ -63,6 +66,38 @@ func (w webFiles) open(name string) (fs.File, error) {
 		return nil, err
 	}
 	return w.embedded.Open(name)
+}
+
+// webFingerprint returns the digest of the file a /web request is answered with, read from the
+// sources before substitution, so the validator changes whenever the bytes do: a file edited in the
+// web root, or a frontend embedded by another build under the same version. Neither has anything
+// else to tell it by, since embedded files carry no modification time and two builds of one commit
+// have equal sizes. A request no file answers gets an empty fingerprint.
+func webFingerprint(files fs.FS) func(*http.Request) string {
+	return func(r *http.Request) string {
+		if strings.HasSuffix(r.URL.Path, "/") && r.URL.Path != "/web/" {
+			// the handler answers these with 404, and cleaning the path would find a file for them
+			return ""
+		}
+		name := strings.TrimPrefix(path.Clean("/"+strings.TrimPrefix(r.URL.Path, "/web")), "/")
+		if name == "" {
+			// the file server answers the directory itself with its index page
+			name = "index.html"
+		}
+		f, err := files.Open(name)
+		if err != nil {
+			return ""
+		}
+		defer f.Close()
+		if info, err := f.Stat(); err != nil || info.IsDir() {
+			return ""
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return ""
+		}
+		return hex.EncodeToString(h.Sum(nil))
+	}
 }
 
 // webContentTypes fixes the type of the files under /web that a browser refuses or mishandles when
