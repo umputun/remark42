@@ -3,6 +3,7 @@ package migrator
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,4 +63,31 @@ func TestCommento_Import(t *testing.T) {
 	count, err = dataStore.Count(store.Locator{SiteID: "test", URL: "https://example.com/blog/post/2"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+// a value that does not parse in a field the import doesn't read keeps no comment out of the import
+func TestCommento_ConvertWithUnreadFields(t *testing.T) {
+	tbl := []struct{ name, comment, commenter string }{
+		{name: "join date in another format", commenter: `, "joinDate": "2020-01-30 10:00:00"`},
+		{name: "moderator mark not a boolean", commenter: `, "isModerator": "no"`},
+		{name: "score not an integer", comment: `, "score": 1.5`},
+		{name: "direction not an integer", comment: `, "direction": "up"`},
+		{name: "html not a string", comment: `, "html": 1`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			export := `{"version": 1, "comments": [{"commentHex": "c1", "domain": "example.com", "url": "/post",
+				"commenterHex": "u1", "markdown": "text", "parentHex": "root", "creationDate": "2020-01-30T10:00:00Z"` +
+				tt.comment + `}], "commenters": [{"commenterHex": "u1", "name": "user"` + tt.commenter + `}]}`
+			var res []store.Comment
+			err := (&Commento{}).convert(strings.NewReader(export), "test", func(c store.Comment) error {
+				res = append(res, c)
+				return nil
+			})
+			require.NoError(t, err)
+			require.Len(t, res, 1, "the comment is imported")
+			assert.Equal(t, "c1", res[0].ID)
+			assert.Equal(t, "user", res[0].User.Name)
+		})
+	}
 }

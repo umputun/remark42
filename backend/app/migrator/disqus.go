@@ -21,19 +21,13 @@ type Disqus struct {
 	avatars *disqusAvatars // set up from Avatars on import, tests replace it
 }
 
+// disqusThread holds the fields of a disqus thread the import reads, and the author email
 type disqusThread struct {
-	UID         string    `xml:"id,attr"`
-	Forum       string    `xml:"forum"`
-	Link        string    `xml:"link"`
-	Title       string    `xml:"title"`
-	Message     string    `xml:"message"`
-	CreateAt    time.Time `xml:"createdAt"`
-	AuthorName  string    `xml:"author>name"`
-	AuthorEmail string    `xml:"author>email"`
-	IP          string    `xml:"ipAddress"`
-	Anonymous   bool      `xml:"author>isAnonymous"`
-	Closed      bool      `xml:"isClosed"`
-	Deleted     bool      `xml:"isDeleted"`
+	UID         string `xml:"id,attr"`
+	Link        string `xml:"link"`
+	Title       string `xml:"title"`
+	AuthorEmail string `xml:"author>email"`
+	Deleted     bool   `xml:"isDeleted"`
 }
 
 type disqusComment struct {
