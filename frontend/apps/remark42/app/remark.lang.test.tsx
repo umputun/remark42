@@ -1,6 +1,3 @@
-// webpack defines it in the bundle; init assigns it before anything else
-globalThis.__webpack_public_path__ = '';
-
 let mockCatalogue: Record<string, string> = {};
 jest.mock('utils/loadLocale', () => ({ loadLocale: () => Promise.resolve(mockCatalogue) }));
 // init sets the language before it waits for the server's config, and stops there

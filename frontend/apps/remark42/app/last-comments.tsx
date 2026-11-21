@@ -17,8 +17,6 @@ if (document.readyState === 'loading') {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = `${BASE_URL}/web/`;
-
   const nodes = document.getElementsByClassName(LAST_COMMENTS_NODE_CLASSNAME);
 
   if (!nodes) {

@@ -7,11 +7,15 @@ on:
     paths:
       - ".github/workflows/ci-frontend.yml"
       - "frontend/**"
+      # the message catalogs, which the translation check and the tests read
+      - "backend/app/webassets/assets/*.json"
       - "!**.md"
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
       - "frontend/**"
+      # the message catalogs, which the translation check and the tests read
+      - "backend/app/webassets/assets/*.json"
       - "!**.md"
 
 jobs:

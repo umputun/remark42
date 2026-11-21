@@ -160,7 +160,9 @@ function main(): void {
 
   // translation:generate deletes from every catalogue whatever is missing here, so a key that goes missing
   // is stopped until the removal is confirmed rather than taken as one
-  const english = JSON.parse(readFileSync(join(app, 'app', 'locales', 'en.json'), 'utf8'));
+  const english = JSON.parse(
+    readFileSync(join(app, '..', '..', '..', 'backend', 'app', 'webassets', 'assets', 'en.json'), 'utf8')
+  );
   const dropped = droppedKeys(messages, english);
 
   if (dropped.length && !process.argv.includes('--allow-removal')) {

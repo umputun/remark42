@@ -182,7 +182,9 @@ describe('the widget source', () => {
   // reader loses a message, the English catalogue says so
   it('yields exactly the messages of the English catalogue, with no errors', () => {
     const { messages, errors } = extractMessages(sourcesIn(new URL('../app', import.meta.url).pathname));
-    const english = JSON.parse(readFileSync(new URL('../app/locales/en.json', import.meta.url), 'utf8'));
+    const english = JSON.parse(
+      readFileSync(new URL('../../../../backend/app/webassets/assets/en.json', import.meta.url), 'utf8')
+    );
 
     assert.deepEqual(errors, []);
     assert.deepEqual(Object.keys(messages), Object.keys(english).sort());

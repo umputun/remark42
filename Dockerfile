@@ -31,6 +31,9 @@ ENV CI=true
 WORKDIR /srv/frontend/apps/remark42/
 
 COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
+# the message catalogs live with the assets embedded in the backend; the translation check and the
+# tests below read them from there
+COPY ./backend/app/webassets/assets/*.json /srv/backend/app/webassets/assets/
 
 RUN \
   if [ -z "$SKIP_FRONTEND_TEST" ]; then \
