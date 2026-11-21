@@ -204,6 +204,35 @@ func TestBolt_Info(t *testing.T) {
 	assert.False(t, info.FirstStagingImageTS.IsZero())
 }
 
+// TestBoltStore_InsertTimeBytes pins the stored insertion time to the bytes earlier versions wrote, so a
+// database made by one of them keeps the age of its staged images
+func TestBoltStore_InsertTimeBytes(t *testing.T) {
+	svc, teardown := prepareBoltImageStorageTest(t)
+	defer teardown()
+
+	ts := time.Date(2026, 11, 21, 10, 30, 15, 123456789, time.UTC)
+	// what binary.Write(buf, binary.LittleEndian, ts.UnixNano()) wrote for ts before putTS existed
+	stored := []byte{0x15, 0x33, 0xf6, 0x5a, 0xbe, 0x08, 0xea, 0x18}
+
+	require.NoError(t, svc.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte(insertTimeBktName)).Put([]byte("old"), stored)
+	}))
+	info, err := svc.Info()
+	require.NoError(t, err)
+	assert.Equal(t, ts, info.FirstStagingImageTS.UTC(), "Info reads the stored time")
+
+	require.NoError(t, svc.Cleanup(context.Background(), time.Since(ts)+time.Hour))
+	assertBoltImgNotNil(t, svc.db, insertTimeBktName, "old")
+	require.NoError(t, svc.Cleanup(context.Background(), time.Since(ts)-time.Hour))
+	assertBoltImgNil(t, svc.db, insertTimeBktName, "old")
+
+	require.NoError(t, svc.db.Update(func(tx *bolt.Tx) error { return putTS(tx, "new", ts) }))
+	checkBoltImgData(t, svc.db, insertTimeBktName, "new", func(data []byte) error {
+		assert.Equal(t, stored, data, "putTS writes the bytes earlier versions wrote")
+		return nil
+	})
+}
+
 func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket, id string) {
 	checkBoltImgData(t, db, bucket, id, func(data []byte) error {
 		assert.Nil(t, data, id)

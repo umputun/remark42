@@ -133,6 +133,60 @@ func TestFsStore_LoadAfterCommit(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// an image being committed is in staging or in the permanent location at every moment, so a load running
+// at the same time finds it
+func TestFsStore_LoadDuringCommit(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	for i := range 200 {
+		id := "user1/img" + strconv.Itoa(i)
+		require.NoError(t, svc.Save(id, gopherPNGBytes()))
+		committed := make(chan error, 1)
+		go func() { committed <- svc.Commit(id) }()
+		for done := false; !done; {
+			select {
+			case err := <-committed:
+				require.NoError(t, err)
+				done = true
+			default:
+			}
+			data, err := svc.Load(id)
+			require.NoError(t, err, "load of %s while it is committed", id)
+			require.Equal(t, gopherPNGBytes(), data)
+		}
+	}
+}
+
+// a committed image loads when the staging location can't be read
+func TestFsStore_LoadCommittedWithBrokenStaging(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	require.NoError(t, svc.Save("user1/test_img", gopherPNGBytes()))
+	require.NoError(t, svc.Commit("user1/test_img"))
+	// a file where the staging directory belongs
+	require.NoError(t, os.RemoveAll(svc.Staging))
+	require.NoError(t, os.WriteFile(svc.Staging, []byte("x"), 0o600))
+
+	data, err := svc.Load("user1/test_img")
+	require.NoError(t, err)
+	assert.Equal(t, gopherPNGBytes(), data)
+}
+
+// a staged image that can't be read is reported with its own error, not as a file missing from the permanent location
+func TestFsStore_LoadReportsStagingError(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	// a directory where the staged file belongs
+	require.NoError(t, os.MkdirAll(svc.location(svc.Staging, "user1/test_img"), 0o700))
+
+	_, err := svc.Load("user1/test_img")
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, os.ErrNotExist)
+}
+
 // pictures saved under the 20-character ids of earlier versions load, commit and delete like new ones
 func TestFsStore_OldAndNewIDs(t *testing.T) {
 	for _, id := range []string{"user1/dc0ctt0j3vck07oc07s0", "user1/" + guid()} {

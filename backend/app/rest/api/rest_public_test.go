@@ -127,6 +127,22 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 		"the store error, with the path, is still logged")
 }
 
+func TestRest_LoadMissingPicture(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	logs := captureLog(t)
+
+	resp, err := http.Get(ts.URL + "/api/v1/picture/dev_user/missing_picture")
+	require.NoError(t, err)
+	body, _ := readErrorResponse(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
+	assert.Equal(t, `{"code":18,"details":"can't get image","error":"image not found"}`+"\n", body)
+	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
+	assert.Contains(t, logs.String(), serverDir(srv)+"/pics-remark42/staging/dev_user/07/missing_picture: no such file or directory",
+		"the store error, with the path, is logged")
+}
+
 func TestRest_PreviewWithMD(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
