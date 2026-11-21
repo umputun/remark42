@@ -18,8 +18,8 @@ import {
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
 } from './types';
-import { fetchComments, unsetCommentMode } from '../comments/actions';
-import { COMMENTS_PATCH, COMMENTS_REQUEST_FAILURE } from '../comments/types';
+import { reloadComments, unsetCommentMode } from '../comments/actions';
+import { COMMENTS_PATCH } from '../comments/types';
 import { resetPersistedEmail } from 'components/auth/auth.utils';
 
 export function setUser(user: User | null = null): USER_SET_ACTION {
@@ -34,11 +34,8 @@ export function setUser(user: User | null = null): USER_SET_ACTION {
  * actions offered on a comment depend on who reads it. Nothing waits for it: the reader has
  * changed either way, and a failed request leaves the comments loaded before it on screen
  */
-const reloadComments = (): StoreAction => (dispatch) => {
-  dispatch(fetchComments()).catch((e: unknown) => {
-    // the list gives way to a preloader while a request runs, and fetchComments does not end
-    // that state when the request fails, so it is ended here to show the comments again
-    dispatch({ type: COMMENTS_REQUEST_FAILURE });
+const reloadCommentsForReader = (): StoreAction => (dispatch) => {
+  dispatch(reloadComments()).catch((e: unknown) => {
     console.error('Remark42: failed to reload comments', e);
   });
 };
@@ -51,7 +48,7 @@ export function signout(cleanSession = true): StoreAction<Promise<void>> {
     resetPersistedEmail();
     dispatch(setUser());
     dispatch(unsetCommentMode());
-    dispatch(reloadComments());
+    dispatch(reloadCommentsForReader());
   };
 }
 
@@ -65,7 +62,7 @@ export const signin =
   (user: User): StoreAction<Promise<void>> =>
   async (dispatch) => {
     dispatch(setUser(user));
-    dispatch(reloadComments());
+    dispatch(reloadCommentsForReader());
   };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async (dispatch) => {

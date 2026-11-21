@@ -26,10 +26,10 @@ describe('<Auth/>', () => {
 
   // the comments a reader sees carry per-reader state such as their own vote, so every way of
   // signing in has to load them again; the request itself is not under test here
-  function spyOnFetchComments() {
+  function spyOnReloadComments() {
     // the file never restores its spies, so a second spyOn returns the first one with its calls
     return jest
-      .spyOn(commentsActions, 'fetchComments')
+      .spyOn(commentsActions, 'reloadComments')
       .mockClear()
       .mockImplementation(() => async () => ({}) as Tree);
   }
@@ -205,7 +205,7 @@ describe('<Auth/>', () => {
     jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({}) as User);
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
     jest.spyOn(utils, 'persistEmail').mockImplementationOnce(jest.fn());
-    const fetchComments = spyOnFetchComments();
+    const reloadComments = spyOnReloadComments();
 
     render(<Auth />);
 
@@ -233,7 +233,7 @@ describe('<Auth/>', () => {
     await waitFor(() => expect(api.verifyEmailSignin).toHaveBeenCalled());
     expect(api.verifyEmailSignin).toHaveBeenCalledWith('token');
     expect(utils.persistEmail).toHaveBeenCalledWith('email@email.com');
-    await waitFor(() => expect(fetchComments).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
   });
 
   it('should show validation error for token', async () => {
@@ -267,7 +267,7 @@ describe('<Auth/>', () => {
   it('should send anonym form', async () => {
     StaticStore.config.auth_providers = ['anonymous'];
     jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({}) as User);
-    const fetchComments = spyOnFetchComments();
+    const reloadComments = spyOnReloadComments();
 
     render(<Auth />);
 
@@ -277,7 +277,7 @@ describe('<Auth/>', () => {
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
     expect(screen.getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
     await waitFor(() => expect(api.anonymousSignin).toHaveBeenCalled());
-    await waitFor(() => expect(fetchComments).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
   });
 
   it.each`
@@ -344,7 +344,7 @@ describe('<Auth/>', () => {
       StaticStore.config.auth_providers = ['google'];
 
       const signin = spyOnSignin();
-      const fetchComments = spyOnFetchComments();
+      const reloadComments = spyOnReloadComments();
       const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
 
       render(<Auth />);
@@ -356,7 +356,7 @@ describe('<Auth/>', () => {
         )
       );
       expect(signin).toHaveBeenCalledTimes(0);
-      expect(fetchComments).toHaveBeenCalledTimes(0);
+      expect(reloadComments).toHaveBeenCalledTimes(0);
       expect(screen.getByText('Sign in')).toBeInTheDocument();
     });
 
@@ -365,7 +365,7 @@ describe('<Auth/>', () => {
 
       const user = { name: 'UserName1' } as User;
       const signin = spyOnSignin();
-      const fetchComments = spyOnFetchComments();
+      const reloadComments = spyOnReloadComments();
       const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => user);
 
       render(<Auth />);
@@ -379,7 +379,7 @@ describe('<Auth/>', () => {
         )
       );
       expect(signin).toHaveBeenCalledWith(user);
-      await waitFor(() => expect(fetchComments).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
     });
 
     it('should use custom provider route', async () => {
@@ -410,7 +410,7 @@ describe('<Auth/>', () => {
         .mockImplementationOnce(async () => ({ bot: 'botid', token: 'tokentokentoken' }));
       const verifyTelegramSignin = jest.spyOn(api, 'verifyTelegramSignin').mockImplementationOnce(async () => user);
       const signin = spyOnSignin();
-      const fetchComments = spyOnFetchComments();
+      const reloadComments = spyOnReloadComments();
       render(<Auth />);
 
       fireEvent.click(screen.getByText('Sign in'));
@@ -425,7 +425,7 @@ describe('<Auth/>', () => {
       fireEvent.click(screen.getByText('Check'));
       await waitFor(() => expect(verifyTelegramSignin).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(signin).toHaveBeenCalledWith(user));
-      await waitFor(() => expect(fetchComments).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
     });
   });
 });
