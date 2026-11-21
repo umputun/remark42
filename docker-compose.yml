@@ -26,7 +26,8 @@ services:
     environment:
       - REMARK_URL
       - SECRET
-      - DEBUG=true
+      # debug logging records whole comments with their authors' names and user IDs
+      # - DEBUG=true
       - AUTH_GOOGLE_CID
       - AUTH_GOOGLE_CSEC
       - AUTH_GITHUB_CID
