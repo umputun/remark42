@@ -32,16 +32,16 @@ fi
 	# Hash the files on disk, not HEAD plus a diff: staging or committing the same
 	# content must not invalidate a running stack. Skip deleted files, including
 	# staged deletions, so committing their removal leaves the stamp unchanged too.
+	# One process hashes each batch xargs hands over, so a busy machine still computes the
+	# stamp well inside the time the suite allows it (dockerTimeout in e2e/webfiles_test.go).
 	# shellcheck disable=SC2016 # expand $file in the child shell
 	git ls-files -z -- $sources | xargs -0 sh -c '
-		sha256=$1
-		shift
 		for file do
 			if [ -f "$file" ]; then
-				$sha256 "$file"
+				printf "%s\0" "$file"
 			fi
 		done
-	' sh "$sha256"
+	' sh | xargs -0 -r $sha256
 	# Only untracked names belong here; porcelain also records index state.
 	git ls-files --others --exclude-standard -z -- $sources
 	# an instrumented build is a different binary from the same sources, so it has to be a
