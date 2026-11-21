@@ -2,7 +2,7 @@
 
 ## What this project does and where untrusted input enters
 
-Remark42 is a self-hosted comment engine. A Go server (`backend/`) stores comments in BoltDB and serves a REST API; a Preact widget (`frontend/apps/remark42/`) is embedded into third-party sites through an iframe and renders comments in the Remark42 origin. One server can host several sites (`--site`), each with its own comments and admins.
+Remark42 is a self-hosted comment engine. A Go server (`backend/`) stores comments in BoltDB and serves a REST API; a Preact widget (`frontend/apps/remark42/`) is embedded into third-party sites through an iframe and renders comments in the Remark42 origin. The pages that host the widget and the comment counter script `counter.mjs` are plain files in `backend/app/webassets/assets/`, embedded in the binary outside the widget build. One server can host several sites (`--site`), each with its own comments and admins.
 
 Untrusted input comes from:
 
@@ -21,6 +21,7 @@ Site admins are trusted for their own site but not for other sites on the same s
 - Authentication and authorization: JWT cookies and the XSRF header (go-pkgz/auth), `--secret` and per-site secrets from the RPC admin store (`--admin.rpc.secret_per_site`), the anonymous and email providers, admin checks on `/api/v1/admin`, and isolation between sites (a user or admin of one site affecting another).
 - Client IP handling: rate limits, vote de-duplication and anonymous identities depend on the client IP, so check how forwarded headers are trusted.
 - Widget: iframe messaging origin checks, URL and locator handling, raw HTML insertion, clipboard and other DOM sinks.
+- Embedded web assets: `counter.mjs` runs in the host page's origin and builds its API request from `remark_config` and the page address, and the file server (`rest/api/webfiles.go`) writes `REMARK_URL` and the first site ID into the HTML and scripts it serves.
 
 Lower priority: admin import, export and remap parsers (`rest/api/migrator.go`, `migrator/`), which only admins reach, and the RPC store and admin backends, which talk to operator-configured servers.
 

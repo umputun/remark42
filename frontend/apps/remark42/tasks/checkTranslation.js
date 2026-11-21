@@ -19,8 +19,8 @@ locales.forEach((locale) => {
 });
 // the loop above catches a locale key absent from the source. this catches the
 // other direction, which nothing else can see: a key extracted from somewhere it should not
-// be, such as a test fixture, is absent from en.json but would be written into all 24
-// catalogues by the next translation:generate, and translators would be asked to translate it
+// be, such as a test fixture, is absent from en.json but would be written into every
+// catalogue by the next translation:generate, and translators would be asked to translate it
 const en = require(getLocalePath({ locale: 'en' }));
 keys.forEach((key) => {
   if (!Object.keys(en).includes(key)) {

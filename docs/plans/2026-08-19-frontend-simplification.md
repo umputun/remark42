@@ -130,13 +130,16 @@ Worth stating because the widget build is now the last npm consumer in the repos
   proof that the no-build serving path carries real files
 - since #2197 there is one manifest and one lockfile. The release pipeline still runs pnpm to build
   the widget, and that step goes when the widget build does
+- the widget's images are served from the embedded assets since #2309, and the comment counter is a
+  script written by hand among them since #2341, so neither passes through the bundler
+- the git hooks went with #2343; nothing runs on commit or push, and CI is the only gate
 
 ## Still open
 
 Each of these can move the answer.
 
 - **A definition of done.** Which files and jobs actually go: the node stages in the image build, the
-  remaining npm CI jobs, the pnpm steps in the release pipeline, and the git hooks. For each, the
+  remaining npm CI jobs and the pnpm steps in the release pipeline. For each, the
   replacement or the accepted loss
 - **Type checking**, the one gate with no route yet
 - **A runtime-dependency inventory.** For every package the widget actually ships with: whether a

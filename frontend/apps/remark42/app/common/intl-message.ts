@@ -9,7 +9,7 @@
  * `ComponentChildren` is imported as a type alone. It erases at build time, so this module pulls in
  * nothing at runtime and a test runner needs no packages installed to load it.
  *
- * What this deliberately does not implement, none of which any of the 24 catalogues uses: ICU
+ * What this deliberately does not implement, none of which any catalogue uses: ICU
  * plural, select and selectordinal; typed arguments such as `{n, number}` or `{d, date}`; and ICU
  * apostrophe quoting. A plural or select form carries braces the placeholder rule rejects, so it
  * falls back wherever values are passed and renders raw where they are not. Quoting is not
