@@ -578,7 +578,7 @@ func TestMemData_FlagListBlocked(t *testing.T) {
 		for i, x := range blockedList {
 			blockedIDs[i] = x.ID
 		}
-		require.Equal(t, 2, len(blockedList), b.metaUsers)
+		require.Equal(t, 2, len(blockedList), b.blocked)
 		assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIDs)
 		t.Logf("%+v", blockedList)
 
@@ -718,9 +718,9 @@ func TestMemData_DeleteUserDetail(t *testing.T) {
 		createTelegramUser = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserTelegram, Update: "value1"}
 		readTelegramUser   = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserTelegram}
 		emailSet           = []engine.UserDetailEntry{{UserID: "user1", Email: "value1"}}
-		emailUnset         = []engine.UserDetailEntry{{UserID: "user1", Email: ""}}
+		emailUnset         []engine.UserDetailEntry // a deleted detail leaves no entry
 		telegramSet        = []engine.UserDetailEntry{{UserID: "user1", Telegram: "value1"}}
-		telegramUnset      = []engine.UserDetailEntry{{UserID: "user1", Telegram: ""}}
+		telegramUnset      []engine.UserDetailEntry
 	)
 
 	b := prepMem(t)
@@ -760,7 +760,12 @@ func TestMemData_DeleteUserDetail(t *testing.T) {
 
 func TestMemAdmin_DeleteUserHard(t *testing.T) {
 	b := prepMem(t)
-	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
+	// soft delete one comment first, a hard user delete must clear it as well
+	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		CommentID: "id-1", DeleteMode: store.SoftDelete})
+	require.NoError(t, err)
+
+	err = b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
 		DeleteMode: store.HardDelete})
 	require.NoError(t, err)
 
@@ -864,4 +869,179 @@ func TestMemData_FlagsKeepUserMeta(t *testing.T) {
 	email, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1"})
 	require.NoError(t, err)
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, email, "flag changes keep the email")
+}
+
+func TestMemData_UpdateKeepsFields(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	orig, err := b.Get(getReq(loc, "id-1"))
+	require.NoError(t, err)
+
+	upd := orig
+	upd.Text = "edited"
+	upd.Edit = &store.Edit{Timestamp: time.Date(2017, 12, 21, 15, 18, 22, 0, time.UTC), Summary: "typo"}
+	upd.Controversy = 1.5
+	upd.VotedIPs = map[string]store.VotedIPInfo{"ip-hash": {Timestamp: time.Date(2017, 12, 21, 15, 18, 22, 0, time.UTC), Value: true}}
+	upd.PostTitle = "new title"
+	upd.ParentID = "other-parent"
+	upd.Timestamp = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	upd.User = store.User{ID: "other-user", Name: "other"}
+	require.NoError(t, b.Update(upd))
+
+	res, err := b.Get(getReq(loc, "id-1"))
+	require.NoError(t, err)
+	assert.Equal(t, "edited", res.Text)
+	assert.Equal(t, upd.Edit, res.Edit, "edit mark is stored")
+	assert.InDelta(t, 1.5, res.Controversy, 0.001, "controversy is stored")
+	assert.Equal(t, upd.VotedIPs, res.VotedIPs, "voted IPs are stored")
+	assert.Equal(t, "new title", res.PostTitle, "post title is stored")
+	assert.Equal(t, orig.ParentID, res.ParentID, "parent id is immutable")
+	assert.Equal(t, orig.Timestamp, res.Timestamp, "timestamp is immutable")
+	assert.Equal(t, orig.User, res.User, "user is immutable")
+}
+
+func TestMemData_UserMetaPerSite(t *testing.T) {
+	b := prepMem(t)
+	siteA, siteB := store.Locator{SiteID: "site-a"}, store.Locator{SiteID: "site-b"}
+
+	_, err := b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: siteA, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+	_, err = b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: siteA, UserID: "u1", Update: "u1@example.com"})
+	require.NoError(t, err)
+
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: siteB, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+
+	verified, err := b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: siteA, UserID: "u1"})
+	require.NoError(t, err)
+	assert.True(t, verified, "a flag on site b keeps the verified mark on site a")
+	email, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: siteA, UserID: "u1"})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, email, "a flag on site b keeps the email on site a")
+
+	_, err = b.UserDetail(engine.UserDetailRequest{Detail: engine.UserTelegram, Locator: siteA, UserID: "u1", Update: "u1_tg"})
+	require.NoError(t, err)
+	tg, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserTelegram, Locator: siteA, UserID: "u1"})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Telegram: "u1_tg"}}, tg, "a set on site a after a flag on site b stores the value")
+	blocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: siteB, UserID: "u1"})
+	require.NoError(t, err)
+	assert.True(t, blocked, "a detail on site a keeps the block on site b")
+}
+
+func TestMemData_InfoPostCreatedOutOfOrder(t *testing.T) {
+	// imports and backup restores create comments in any time order, deleted ones included
+	b := NewMemData()
+
+	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, minute, 0, 0, time.UTC) }
+	mk := func(id, url string, minute int, deleted bool) {
+		c := store.Comment{ID: id, Text: "text", Timestamp: ts(minute), Locator: store.Locator{URL: url, SiteID: "radio-t"},
+			User: store.User{ID: "user1", Name: "user name"}}
+		if deleted {
+			c.SetDeleted(store.SoftDelete)
+		}
+		_, e := b.Create(c)
+		require.NoError(t, e)
+	}
+	mk("c1", "https://radio-t.com/1", 20, false)
+	mk("c2", "https://radio-t.com/1", 5, true)
+	mk("c3", "https://radio-t.com/1", 10, false)
+	mk("c4", "https://radio-t.com/1", 50, true)
+	mk("c5", "https://radio-t.com/1", 30, false)
+	mk("c6", "https://radio-t.com/2", 40, true)
+
+	r, err := b.Info(engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/1", SiteID: "radio-t"}})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/1", Count: 3, FirstTS: ts(5), LastTS: ts(50)}}, r,
+		"deleted comments are not counted, first and last are the earliest and latest comments")
+
+	r, err = b.Info(engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 0, FirstTS: ts(40), LastTS: ts(40), ReadOnly: true}}, r,
+		"a post with only a deleted comment has no comments and keeps its age")
+
+	r, err = b.Info(engine.InfoRequest{Locator: store.Locator{SiteID: "radio-t"}})
+	require.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 0, FirstTS: ts(40), LastTS: ts(40)},
+		{URL: "https://radio-t.com/1", Count: 3, FirstTS: ts(5), LastTS: ts(50)}}, r, "the site list counts the same way")
+}
+
+func TestMemData_UserDetailsListOnlyStored(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+
+	_, err := b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+	_, err = b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u2", Update: "u2@example.com"})
+	require.NoError(t, err)
+	require.NoError(t, b.Delete(engine.DeleteRequest{Locator: loc, UserID: "u2", UserDetail: engine.UserEmail}))
+
+	res, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.AllUserDetails, Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, res, "a user with only a flag, or with every detail deleted, has no details entry")
+	res, err = b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u2"})
+	require.NoError(t, err)
+	assert.Empty(t, res, "a deleted detail leaves no entry")
+}
+
+func TestMemData_SetUserDetailReturnsEntry(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+	_, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1", Update: "u1@example.com"})
+	require.NoError(t, err)
+	res, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserTelegram, Locator: loc, UserID: "u1", Update: "u1_tg"})
+	require.NoError(t, err)
+	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com", Telegram: "u1_tg"}}, res,
+		"a set returns the complete entry")
+}
+
+func TestMemData_FlagListsSortedWithNames(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+	ids := []string{"u5", "u3", "u9", "u1", "u7", "u2", "u8", "u4", "u6", "user1"}
+	for _, id := range ids {
+		_, err := b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: loc, UserID: id, Update: engine.FlagTrue})
+		require.NoError(t, err)
+		_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: id, Update: engine.FlagTrue})
+		require.NoError(t, err)
+	}
+	sorted := []string{"u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9", "user1"}
+
+	verified, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: loc})
+	require.NoError(t, err)
+	gotVerified := make([]string, 0, len(verified))
+	for _, v := range verified {
+		gotVerified = append(gotVerified, v.(string))
+	}
+	assert.Equal(t, sorted, gotVerified, "verified users are listed by id")
+
+	blocked, err := b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: loc})
+	require.NoError(t, err)
+	gotBlocked, names := make([]string, 0, len(blocked)), map[string]string{}
+	for _, v := range blocked {
+		u := v.(store.BlockedUser)
+		gotBlocked = append(gotBlocked, u.ID)
+		names[u.ID] = u.Name
+	}
+	assert.Equal(t, sorted, gotBlocked, "blocked users are listed by id")
+	assert.Equal(t, "user name", names["user1"], "a blocked user's name comes from the user's comments")
+	assert.Empty(t, names["u1"], "a blocked user without comments has no name")
+}
+
+func TestMemData_DeleteAllDropsUserDetails(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{SiteID: "radio-t"}
+	_, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "user1", Update: "u1@example.com"})
+	require.NoError(t, err)
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "user1", Update: engine.FlagTrue})
+	require.NoError(t, err)
+
+	require.NoError(t, b.Delete(engine.DeleteRequest{Locator: loc}))
+
+	res, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.AllUserDetails, Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, res, "deleting a site removes its user details")
+	blocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "user1"})
+	require.NoError(t, err)
+	assert.True(t, blocked, "deleting a site keeps the blocks")
 }
