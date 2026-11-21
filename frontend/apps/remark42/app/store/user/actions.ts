@@ -96,7 +96,7 @@ export const unblockUser =
     const userComments = comments.filter((comment) => comment.user.id === id);
 
     if (!userComments.length) return;
-    const user = comments[0].user;
+    const user = userComments[0].user;
 
     dispatch({
       type: COMMENTS_PATCH,

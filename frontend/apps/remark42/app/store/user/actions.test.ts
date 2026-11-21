@@ -78,6 +78,17 @@ describe('store user actions', () => {
     expect(actions[1]).toEqual({ type: COMMENTS_PATCH, ids: ['1', '3'], patch: { user: { id: '1', block: false } } });
   });
 
+  test('unblockUser keeps the author on the comments of a user who did not write the first comment', async () => {
+    const store = mockStore(INITIAL_STORE);
+
+    await store.dispatch(unblockUser('2'));
+
+    const actions = store.getActions();
+
+    expect(actions[0]).toEqual({ type: USER_UNBAN, id: '2' });
+    expect(actions[1]).toEqual({ type: COMMENTS_PATCH, ids: ['2'], patch: { user: { id: '2', block: false } } });
+  });
+
   describe('hide/unhide comments of user', () => {
     beforeEach(() => {
       localStorage.clear();
