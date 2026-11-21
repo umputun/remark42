@@ -417,10 +417,10 @@ func (p panicLog) Logf(format string, args ...any) {
 // in the partitioned form as well. The widget sends it when the page framing it is on another host
 const partitionedCookieHeader = "X-Remark42-Partitioned-Cookie"
 
-// partitionedAuthCookies gives a widget framed by another host a session it can keep. For a request
-// carrying partitionedCookieHeader, every Set-Cookie for one of the named cookies is repeated in its
-// third-party form: Partitioned, Secure and SameSite=None. A browser that blocks third-party cookies
-// drops the original and keeps the copy, keyed to the embedding site.
+// partitionedAuthCookies gives a widget framed by another host a session it can keep. With issue
+// set, for a request carrying partitionedCookieHeader, every Set-Cookie for one of the named cookies
+// is repeated in its third-party form: Partitioned, Secure and SameSite=None. A browser that blocks
+// third-party cookies drops the original and keeps the copy, keyed to the embedding site.
 //
 // The copy goes before the original, so a browser that does not know Partitioned reads both lines
 // as one cookie and ends up with the original and its configured SameSite.
@@ -429,10 +429,15 @@ const partitionedCookieHeader = "X-Remark42-Partitioned-Cookie"
 // site it is keyed to, so signing out on remark42's own page has to clear the pair a widget framed
 // by another host of that site was given, and that request does not carry the header.
 // Nothing else changes in a response to a request without it.
-func partitionedAuthCookies(names ...string) func(http.Handler) http.Handler {
+//
+// An expiry is repeated without issue as well. A reader may still hold a pair issued before the
+// server stopped issuing them, and its JWT is HttpOnly, so only the server can clear it. Left
+// behind by a sign-out, it is sent ahead of the cookie of the next session and that session is
+// refused for as long as the stale one lasts.
+func partitionedAuthCookies(issue bool, names ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			asked := r.Header.Get(partitionedCookieHeader) == "1"
+			asked := issue && r.Header.Get(partitionedCookieHeader) == "1"
 			next.ServeHTTP(&partitioningWriter{ResponseWriter: w, names: names, asked: asked}, r)
 		})
 	}

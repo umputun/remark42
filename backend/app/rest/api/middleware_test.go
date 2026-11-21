@@ -567,6 +567,7 @@ func TestPartitionedAuthCookies(t *testing.T) {
 	tbl := []struct {
 		name    string
 		header  string
+		noIssue bool // the server issues no partitioned pair, which is header mode switched off
 		handler http.HandlerFunc
 		want    []string
 	}{
@@ -625,6 +626,18 @@ func TestPartitionedAuthCookies(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			},
 			want: []string{expiredCopy, expiredLine}},
+		{name: "no pair is issued where the server issues none, header or not", header: "1", noIssue: true,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied where the server issues no pair", header: "", noIssue: true,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
 	}
 
 	for _, tt := range tbl {
@@ -634,7 +647,7 @@ func TestPartitionedAuthCookies(t *testing.T) {
 				req.Header.Set(partitionedCookieHeader, tt.header)
 			}
 			rec := httptest.NewRecorder()
-			partitionedAuthCookies("JWT", "XSRF-TOKEN")(tt.handler).ServeHTTP(rec, req)
+			partitionedAuthCookies(!tt.noIssue, "JWT", "XSRF-TOKEN")(tt.handler).ServeHTTP(rec, req)
 			assert.Equal(t, tt.want, rec.Result().Header.Values("Set-Cookie"))
 		})
 	}
@@ -754,12 +767,22 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 		ts, _, teardown := startupT(t)
 		defer teardown()
 
-		resp := get(t, ts.URL+"/auth/logout", frame)
-		require.Equal(t, http.StatusOK, resp.status)
-		assertOneForm(t, resp)
+		// a reader given the partitioned pair while header mode was on still holds it. its JWT is
+		// HttpOnly, so unless this response expires it, it outlives the sign-out and is sent ahead
+		// of the next session's cookie
+		for _, headers := range []map[string]string{frame, nil} {
+			resp := get(t, ts.URL+"/auth/logout", headers)
+			require.Equal(t, http.StatusOK, resp.status)
+			assertBothForms(t, resp)
+			for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+				for _, line := range lines(resp, name) {
+					assert.Contains(t, line, "Max-Age=0", "both forms of %s have to be expired", name)
+				}
+			}
+		}
 	})
 
-	t.Run("header mode off", func(t *testing.T) {
+	t.Run("sign-in with header mode off", func(t *testing.T) {
 		ts, _, teardown := startupT(t)
 		defer teardown()
 
@@ -774,6 +797,10 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 
 		// a partitioned cookie has to be Secure, and a browser refuses a Secure cookie over http
 		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+
+		resp = get(t, ts.URL+"/auth/logout", frame)
 		require.Equal(t, http.StatusOK, resp.status)
 		assertOneForm(t, resp)
 	})
