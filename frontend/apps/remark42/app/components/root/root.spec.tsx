@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { waitFor } from '@testing-library/preact';
+import { fireEvent, screen, waitFor } from '@testing-library/preact';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -8,6 +8,14 @@ import type { User } from 'common/types';
 import type { StoreState } from 'store';
 
 import { ConnectedRoot } from './root';
+
+// a site that sets max_shown_comments, which settings.ts resolves without regard to the device.
+// jsdom's user agent names no mobile platform, so this renders the desktop widget
+jest.mock('common/settings', () => ({ ...jest.requireActual('common/settings'), maxShownComments: 2 }));
+// what a thread renders is covered by its own tests; here only which threads the root renders matters
+jest.mock('components/thread', () => ({
+  Thread: ({ id }: { id: string }) => <div data-testid="thread">{id}</div>,
+}));
 
 const stateStub: Partial<StoreState> = {
   comments: {
@@ -79,5 +87,23 @@ describe('<ConnectedRoot />', () => {
     const { container } = render(<ConnectedRoot />, stateStub, 'he');
 
     expect(container.firstElementChild).toHaveAttribute('dir', 'rtl');
+  });
+
+  it('limits the top-level comments to max_shown_comments on desktop and shows ten more on demand', async () => {
+    jest.spyOn(api, 'getUser').mockResolvedValue(null);
+    jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
+    const topComments = Array.from({ length: 15 }, (_, i) => `comment-${i}`);
+
+    render(<ConnectedRoot />, { ...stateStub, comments: { ...stateStub.comments!, topComments } });
+
+    await waitFor(() => expect(screen.getAllByTestId('thread')).toHaveLength(2));
+    expect(screen.getAllByTestId('thread').map((thread) => thread.textContent)).toEqual(['comment-0', 'comment-1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getAllByTestId('thread')).toHaveLength(12);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getAllByTestId('thread')).toHaveLength(15);
+    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument();
   });
 });

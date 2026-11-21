@@ -308,3 +308,36 @@ func TestConfig_StandaloneWidgetSendsNoPlaceholderTitle(t *testing.T) {
 	require.NotNil(t, sent.Title, "the request carried no title field: %s", raw)
 	assert.Empty(t, *sent.Title, "the widget sent its own placeholder title instead of leaving it to the backend")
 }
+
+// TestConfig_MaxShownCommentsLimitsTheThread covers max_shown_comments, which used to take effect
+// on mobile only, so a desktop reader saw every comment whatever the site set (#812). The thread
+// gets four top-level comments; with the setting at two a desktop reader sees two and a Show more
+// button that reveals the rest. The page that posted them carries no setting and is the control:
+// it shows all four, which is what a desktop reader keeps getting from a site that never set it
+func TestConfig_MaxShownCommentsLimitsTheThread(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	embedConfig(t, page, map[string]any{})
+	frame := widget(t, page)
+	signInAnon(t, page, frame, anonName("maxshown"))
+	for i := range 4 {
+		postComment(t, frame, fmt.Sprintf("shown %d %s", i, runID))
+	}
+	assert.Equal(t, 4, articleCount(t, frame), "a desktop thread with no max_shown_comments was cut short")
+
+	limited := newPage(t)
+	stubSignedOut(t, limited)
+	embedConfig(t, limited, map[string]any{"max_shown_comments": 2})
+	limitedFrame := widget(t, limited)
+	more := limitedFrame.GetByRole(*playwright.AriaRoleButton, playwright.FrameLocatorGetByRoleOptions{Name: "Show more"})
+	waitVisible(t, more)
+	assert.Equal(t, 2, articleCount(t, limitedFrame), "max_shown_comments=2 did not limit the desktop thread")
+
+	require.NoError(t, more.Click())
+	eventually(t, waitTimeout, "Show more did not reveal the rest of the thread", func() bool {
+		n, err := limitedFrame.Locator("article").Count()
+		return err == nil && n == 4
+	})
+	waitHidden(t, more, "Show more stayed with every comment already shown")
+}
