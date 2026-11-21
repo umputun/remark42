@@ -38,7 +38,7 @@ In `docker exec -it remark42 remark42 ...`, the first `remark42` is the containe
 
 The dates are days in the local time of the machine that runs the command. A post is checked if its first comment is not earlier than the `--from` day and its last comment is not later than the `--to` day. The command reads at most 10,000 posts of the site.
 
-Run the command with `--dry` first. It writes a `[SPAM]` line with the comment and its score for every comment it would remove, and ends with the number of comments checked and the number found to be spam. Run it again without `--dry` to remove them.
+Run the command with `--dry` first. It writes a `[SPAM]` line with the comment and its score for every comment it would remove, and ends with the number of comments checked and the number found to be spam. Run it again without `--dry` to remove them. If the server refuses to remove a comment, for example because the admin password is wrong, the command writes a warning, goes on with the other comments and ends with an error.
 
 A comment scoring more than 50 is considered spam, and here are the scores:
 
@@ -51,4 +51,4 @@ The signs other than bad words add up to 50 at most, so a comment without any of
 
 ## Refreshing page titles with `cleanup --title`
 
-Comments can store the title of their page, which RSS feeds and notifications show when it is there. With `--title`, the `cleanup` command removes nothing: for every comment on the posts selected by `--from` and `--to`, it asks the server to fetch the page title and store it on the comment. The server keeps a fetched title, and a failed fetch, in a cache for 15 minutes. After a page title has changed, run the command once that time has passed. If a page cannot be read, the run can leave its comments without a title. Set an admin password on the server and give the same one to `cleanup` through `ADMIN_PASSWD` or `--admin-passwd`. With `--dry`, titles stay as they are.
+Comments can store the title of their page, which RSS feeds and notifications show when it is there. With `--title`, the `cleanup` command removes nothing: for every comment on the posts selected by `--from` and `--to`, it asks the server to fetch the page title and store it on the comment. The server keeps a fetched title, and a failed fetch, in a cache for 15 minutes. After a page title has changed, run the command once that time has passed. If a page cannot be read, the run can leave its comments without a title. Set an admin password on the server and give the same one to `cleanup` through `ADMIN_PASSWD` or `--admin-passwd`. With `--dry`, titles stay as they are. If a title update fails, for example because the admin password is wrong, the command logs a warning, continues with the remaining comments and ends with an error.

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 type CleanupCommand struct {
 	Dry      bool     `long:"dry" description:"dry mode, will not remove comments"`
 	From     string   `long:"from" description:"from yyyymmdd"`
-	To       string   `long:"to" description:"from yyyymmdd"`
+	To       string   `long:"to" description:"to yyyymmdd"`
 	BadWords []string `short:"w" long:"bword" description:"bad word(s)"`
 	BadUsers []string `short:"u" long:"buser" description:"bad user(s)"`
 	SetTitle bool     `long:"title" description:"title mode, will not remove comments, but reset titles to page's title'"`
@@ -48,7 +49,7 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 	}
 	log.Printf("[DEBUG] got %d posts", len(posts))
 
-	totalComments, spamComments, failedPosts := 0, 0, 0
+	totalComments, spamComments, failedPosts, failedComments := 0, 0, 0, 0
 	for _, post := range posts {
 		comments, e := cc.listComments(ctx, post.URL)
 		if e != nil {
@@ -62,9 +63,11 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 		totalComments += len(comments)
 
 		if cc.SetTitle {
-			cc.procTitles(ctx, comments)
+			failedComments += cc.procTitles(ctx, comments)
 		} else {
-			spamComments += cc.procSpam(ctx, comments)
+			spam, failed := cc.procSpam(ctx, comments)
+			spamComments += spam
+			failedComments += failed
 		}
 	}
 
@@ -77,14 +80,25 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 		return fmt.Errorf("cleanup interrupted, %s: %w", msg, err)
 	}
 	log.Printf("[INFO] completed, %s", msg)
+	var failures []string
 	if failedPosts > 0 {
-		return fmt.Errorf("can't get comments for %d of %d posts", failedPosts, len(posts))
+		failures = append(failures, fmt.Sprintf("can't get comments for %d of %d posts", failedPosts, len(posts)))
+	}
+	if failedComments > 0 && cc.SetTitle {
+		failures = append(failures, fmt.Sprintf("can't set title for %d of %d comments", failedComments, totalComments))
+	}
+	if failedComments > 0 && !cc.SetTitle {
+		failures = append(failures, fmt.Sprintf("can't remove %d of %d spam comments", failedComments, spamComments))
+	}
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, ", "))
 	}
 	return nil
 }
 
-func (cc *CleanupCommand) procSpam(ctx context.Context, comments []store.Comment) int {
-	spamComments := 0
+// procSpam removes the spam comments unless the run is dry, and returns how many comments were spam
+// and how many of them could not be removed
+func (cc *CleanupCommand) procSpam(ctx context.Context, comments []store.Comment) (spamComments, failed int) {
 	for _, comment := range comments {
 		spam, score := cc.isSpam(comment)
 		if spam {
@@ -92,23 +106,27 @@ func (cc *CleanupCommand) procSpam(ctx context.Context, comments []store.Comment
 			if !cc.Dry {
 				if err := cc.deleteComment(ctx, comment); err != nil {
 					log.Printf("[WARN] can't remove comment, %v", err)
+					failed++
 				}
 			}
 			comment.Text = strings.ReplaceAll(comment.Text, "\n", " ")
 			log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
 		}
 	}
-	return spamComments
+	return spamComments, failed
 }
 
-func (cc *CleanupCommand) procTitles(ctx context.Context, comments []store.Comment) {
+// procTitles sets the title of every comment unless the run is dry, and returns how many titles could not be set
+func (cc *CleanupCommand) procTitles(ctx context.Context, comments []store.Comment) (failed int) {
 	for _, comment := range comments {
 		if !cc.Dry {
 			if err := cc.setTitle(ctx, comment); err != nil {
 				log.Printf("[WARN] can't set title for comment, %v", err)
+				failed++
 			}
 		}
 	}
+	return failed
 }
 
 // get list of posts in from/to represented as yyyymmdd. this is [from-to] inclusive
