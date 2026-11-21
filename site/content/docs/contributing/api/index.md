@@ -21,7 +21,7 @@ type User struct {
 
 ## Commenting
 
-- `POST /api/v1/comment` - add a comment, _auth required_
+- `POST /api/v1/comment` - add a comment, _auth required_. A reply sets `pid` to the ID of the comment it answers, which must be a comment on the same post; otherwise the request is rejected with status 400
 
 ```go
 type Comment struct {

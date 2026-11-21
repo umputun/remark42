@@ -152,6 +152,41 @@ func TestMigrator_Import(t *testing.T) {
 	require.Equal(t, 1, len(comments.Comments))
 }
 
+// a new comment must answer a comment on its post, an import keeps the parent ids it brings
+func TestMigrator_ImportKeepsParentIDs(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	rec := `{"id":%q,"pid":%q,"text":"<p>text</p>","user":{"name":"developer one","id":"dev"},` +
+		`"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"time":"2018-04-30T01:37:00-05:00"}` + "\n"
+	pids := map[string]string{"c1": "", "c2": "c1", "c3": "missing-parent", "c4": "wp:13/a b"}
+	backup := `{"version":1}` + "\n"
+	for _, id := range []string{"c1", "c2", "c3", "c4"} {
+		backup += fmt.Sprintf(rec, id, pids[id])
+	}
+
+	client := &http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=native", strings.NewReader(backup))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusAccepted, resp.StatusCode)
+	waitForMigrationCompletion(t, ts)
+
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code)
+	comments := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &comments))
+	got := map[string]string{}
+	for _, c := range comments.Comments {
+		got[c.ID] = c.ParentID
+	}
+	assert.Equal(t, pids, got)
+}
+
 func TestMigrator_ImportForm(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

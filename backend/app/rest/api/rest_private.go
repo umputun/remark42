@@ -147,6 +147,17 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// a reply must answer a comment on the same post: the comments tree is built by following parents
+	// from the top-level comments, so a reply to anything else would be stored and counted but never shown.
+	// A deleted parent stays in the store and can still be answered.
+	if comment.ParentID != "" {
+		if _, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{}); err != nil {
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("parent comment not found"),
+				"can't find parent comment", rest.ErrCommentNotFound)
+			return
+		}
+	}
+
 	id, err := s.dataService.Create(comment)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
