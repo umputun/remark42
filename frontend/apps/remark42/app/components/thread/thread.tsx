@@ -1,7 +1,7 @@
 import type { FunctionComponent } from 'preact';
 import { h } from 'preact';
 import { shallowEqual } from 'store/context';
-import { useCallback } from 'preact/hooks';
+import { useCallback, useContext } from 'preact/hooks';
 import clsx from 'clsx';
 
 import { defineMessages, useIntl } from 'common/intl';
@@ -11,7 +11,7 @@ import type { StoreState } from 'store';
 import { useAppDispatch, useAppSelector } from 'store';
 import { setCollapse } from 'store/thread/actions';
 import { getThreadIsCollapsed } from 'store/thread/getters';
-import { InView } from 'components/root/in-view/in-view';
+import { InView, RevealedComments } from 'components/root/in-view/in-view';
 import { ConnectedComment as Comment } from 'components/comment/connected-comment';
 import { CommentForm } from 'components/comment-form';
 
@@ -41,6 +41,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, getPreview }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
   const { collapsed, comment, childs, theme, hasVisibleReplies } = useAppSelector(commentSelector(id), shallowEqual);
+  const revealed = useContext(RevealedComments).has(id);
   const collapse = useCallback(() => {
     dispatch(setCollapse(id, !collapsed));
   }, [id, collapsed, dispatch]);
@@ -71,7 +72,7 @@ export const Thread: FunctionComponent<Props> = ({ id, level, getPreview }) => {
             data={comment}
             repliesCount={repliesCount}
             level={level}
-            inView={inviewProps.inView}
+            inView={inviewProps.inView || revealed}
           />
         )}
       </InView>

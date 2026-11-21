@@ -272,4 +272,88 @@ describe('<ConnectedRoot />', () => {
     }
     expect(container.querySelector('[role="listitem"][aria-expanded]')).toBeNull();
   });
+
+  describe('opening a link to a comment', () => {
+    const ids = ['first', 'second', 'third'];
+    const comment = (id: string): Comment => ({
+      id,
+      pid: '',
+      text: `text of ${id}`,
+      time: new Date().toString(),
+      score: 0,
+      vote: 0,
+      voted_ips: [],
+      locator: { url: 'test-url', site: 'remark' },
+      user: { id: 'someone', name: 'someone', picture: '', ip: '', admin: false, block: false, verified: false },
+    });
+    const state: Partial<StoreState> = {
+      ...stateStub,
+      comments: {
+        ...stateStub.comments!,
+        topComments: ids,
+        allComments: Object.fromEntries(ids.map((id) => [id, comment(id)])),
+      },
+      info: { url: 'test-url', count: ids.length, read_only: false },
+    };
+    const { IntersectionObserver } = window;
+
+    beforeEach(() => {
+      // the widget is off screen, as it is below a post, so no comment is ever reported in view
+      window.IntersectionObserver = class {
+        observe() {
+          // never in view
+        }
+        unobserve() {
+          // never in view
+        }
+        disconnect() {
+          // never in view
+        }
+      } as unknown as typeof window.IntersectionObserver;
+      // replaceState fires no hashchange, which would reach the listeners of earlier tests' widgets
+      window.history.replaceState(null, '', '#remark42__comment-third');
+    });
+
+    afterEach(() => {
+      window.IntersectionObserver = IntersectionObserver;
+      window.history.replaceState(null, '', window.location.pathname);
+    });
+
+    it('renders the linked comment and reports the height before asking the page to scroll to it', async () => {
+      jest.spyOn(api, 'getUser').mockResolvedValue(null);
+      jest.spyOn(api, 'getPostComments').mockResolvedValue({ comments: [], info: state.info! });
+      // a screen of two placeholders' worth, so the comments around the linked one cover the thread
+      jest.spyOn(window.screen, 'height', 'get').mockReturnValue(100);
+      // a comment out of view is an empty placeholder of a guessed size
+      const isRendered = (id: string) => !!document.getElementById(`remark42__comment-${id}`)?.childElementCount;
+      const rendered = () => ids.filter(isRendered).join(', ');
+      // jsdom lays nothing out, so the linked comment's offset is made to depend on the comments
+      // above it: 100 px for a placeholder, 200 px for a rendered comment
+      const { getBoundingClientRect } = Element.prototype;
+      jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        if (this.id !== 'remark42__comment-third') {
+          return getBoundingClientRect.call(this);
+        }
+        return { top: ['first', 'second'].reduce((top, id) => top + (isRendered(id) ? 200 : 100), 0) } as DOMRect;
+      });
+      const sent: string[] = [];
+      jest.spyOn(postMessage, 'updateIframeHeight').mockImplementation(() => {
+        sent.push(`height with ${rendered()}`);
+      });
+      jest.spyOn(postMessage, 'postMessageToParent').mockImplementation((data) => {
+        if (typeof data.scrollTo === 'number') {
+          sent.push(`scrollTo ${data.scrollTo} with ${rendered()}`);
+        }
+        return true;
+      });
+
+      render(<ConnectedRoot />, state);
+
+      await waitFor(() => expect(sent.some((message) => message.startsWith('scrollTo'))).toBe(true));
+      // the frame reports its height only while on screen, so the one sent here is the one the
+      // page has when it scrolls. The comments above count too: the nearest touches the top of the
+      // screen once the page has scrolled, so as a placeholder it would grow and push this one down
+      expect(sent.slice(-2)).toEqual(['height with first, second, third', 'scrollTo 400 with first, second, third']);
+    });
+  });
 });
