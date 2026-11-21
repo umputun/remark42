@@ -293,7 +293,7 @@ export class Root extends Component<Props, State> {
                   ))}
                 </div>
               )}
-              <div className={styles.sortPicker}>
+              <div className={styles.sortPicker} data-nosnippet>
                 <SortPicker />
               </div>
               <Comments
@@ -331,7 +331,9 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
             renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
           {isShowMoreButtonVisible && (
             <Button className={styles.moreComments} onClick={showMore}>
-              <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+              <span data-nosnippet>
+                <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+              </span>
             </Button>
           )}
         </>
@@ -360,11 +362,13 @@ export function ConnectedRoot() {
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
         <p className={styles.copyright} role="contentinfo">
-          <FormattedMessage
-            id="root.powered-by"
-            defaultMessage="Powered by <a>Remark42</a>"
-            values={{ a: CopyrightLink }}
-          />
+          <span data-nosnippet>
+            <FormattedMessage
+              id="root.powered-by"
+              defaultMessage="Powered by <a>Remark42</a>"
+              values={{ a: CopyrightLink }}
+            />
+          </span>
         </p>
       )}
     </div>

@@ -100,7 +100,7 @@ class SettingsComponent extends Component<Props, State> {
     const hiddenUsersList = Object.values(this.state.hiddenUsers);
     const intl = this.props.intl;
     return (
-      <div className={clsx(styles.root, theme === 'dark' ? styles.themeDark : styles.themeLight)}>
+      <div className={clsx(styles.root, theme === 'dark' ? styles.themeDark : styles.themeLight)} data-nosnippet>
         <div className={styles.section} role="region" aria-label={intl.formatMessage(messages.hiddenUsers)}>
           <h3>
             <FormattedMessage id="settings.hidden-user-header" defaultMessage="Hidden users:" />

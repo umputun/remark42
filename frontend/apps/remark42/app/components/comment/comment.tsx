@@ -354,7 +354,7 @@ export class Comment extends Component<CommentProps, State> {
                 </a>
               </div>
             )}
-            <div className={styles.info}>
+            <div className={styles.info} data-nosnippet>
               {!!o.title && o.user.name}
 
               {!o.title && (
@@ -399,7 +399,7 @@ export class Comment extends Component<CommentProps, State> {
             </a>
           </div>
         )}
-        <div className={styles.info}>
+        <div className={styles.info} data-nosnippet>
           {props.view !== 'user' && !props.collapsed && (
             <div className={styles.avatar}>
               <Avatar url={o.user.picture} identicon={isUserAnonymous(o.user)} />
@@ -486,6 +486,8 @@ export class Comment extends Component<CommentProps, State> {
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
               dir="auto"
+              // a deleted comment shows the widget's own sentence in place of its text
+              data-nosnippet={props.data.delete || undefined}
             />
           )}
 
