@@ -18,3 +18,7 @@ During the `cleanup` command run, spam comments are detected and removed (if `--
 - 20 points if comment score is 0 (e.g. nobody voted for it)
 
 The signs other than bad words add up to 50 at most, so a comment without any of the bad words is never spam, and bad words alone never pass the threshold either. One bad word needs the zero score and two of the 10-point signs; two need the zero score and one 10-point sign, or all three 10-point signs; three need the zero score or two 10-point signs; four or more need any one other sign.
+
+## Refreshing page titles with `cleanup --title`
+
+Comments can store the title of their page, which RSS feeds and notifications show when it is there. With `--title`, the `cleanup` command removes nothing: for every comment on the posts selected by `--from` and `--to`, it asks the server to fetch the page title and store it on the comment. The server keeps a fetched title, and a failed fetch, in a cache for 15 minutes. After a page title has changed, run the command once that time has passed. If a page cannot be read, the run can leave its comments without a title. Set an admin password on the server and give the same one to `cleanup` through `ADMIN_PASSWD` or `--admin-passwd`. With `--dry`, titles stay as they are.
