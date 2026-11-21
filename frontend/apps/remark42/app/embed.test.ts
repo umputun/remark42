@@ -119,6 +119,59 @@ describe('embed', () => {
     expect(iframe.style.height).toBe('500px');
   });
 
+  it('scrolls to a comment only after a frame is drawn at the height sent with it', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    jest.spyOn(iframe, 'getBoundingClientRect').mockReturnValue({ top: 150 } as DOMRect);
+
+    // scrolling in the frame that applies the height counts the page footer as shifted when the
+    // scroll brings it into view, which it does for a comment near the end of the thread
+    window.dispatchEvent(new MessageEvent('message', { data: { height: 5000 }, source: iframe.contentWindow }));
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+
+    expect(iframe.style.height).toBe('5000px');
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    jest.advanceTimersToNextFrame();
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    jest.advanceTimersToNextFrame();
+    // the position is within the iframe, so the page adds where the iframe is
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(0, 850);
+
+    scrollTo.mockRestore();
+  });
+
+  it('drops a scroll still waiting for its frames when the widget is destroyed', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+    window.REMARK42.destroy!();
+    jest.advanceTimersByTime(100);
+
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    scrollTo.mockRestore();
+  });
+
+  it('scrolls to a comment at once in a hidden tab, which draws no frames', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    const visibility = jest.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+
+    visibility.mockRestore();
+    scrollTo.mockRestore();
+  });
+
   it('ignores a message from a frame it does not own', async () => {
     const root = await mount();
     const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
@@ -136,6 +189,9 @@ describe('embed', () => {
         source: foreign.contentWindow,
       })
     );
+
+    // the page scrolls a couple of frames after the message, so let those pass before looking
+    jest.advanceTimersByTime(100);
 
     expect(iframe.style.height).toBe('100px');
     expect(scrollTo).not.toHaveBeenCalled();

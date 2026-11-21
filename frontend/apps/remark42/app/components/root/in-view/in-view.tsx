@@ -1,6 +1,14 @@
 import type { Component, VNode } from 'preact';
+import { createContext } from 'preact';
 import type { PropRef } from 'preact/hooks';
 import { useState, useEffect, useRef } from 'preact/hooks';
+
+/**
+ * Ids of comments to render in full whether or not they are in view. A comment out of view is an
+ * empty placeholder of a guessed size, so whatever is measured against placeholders moves once they
+ * turn into comments.
+ */
+export const RevealedComments = createContext<ReadonlySet<string>>(new Set());
 
 let instanceMap: WeakMap<Element, (inView: boolean) => void>;
 let observer: IntersectionObserver;

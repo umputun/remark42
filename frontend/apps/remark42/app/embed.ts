@@ -90,7 +90,23 @@ function createInstance(config: typeof window.remark_config) {
     }
 
     if (typeof data.scrollTo === 'number') {
-      window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
+      const { scrollTo } = data;
+      const scroll = () => {
+        // destroy() may have removed the iframe in the frames this waits for
+        if (iframe.isConnected) {
+          window.scrollTo(window.pageXOffset, scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
+        }
+      };
+
+      // the frame posts its new height just before this. Scrolling in the frame that applies it
+      // counts everything below the iframe as shifted once the scroll brings it into view, the
+      // page footer when the comment is near the end, so one frame is drawn at the new height
+      // first. A hidden tab draws no frames, and a link opened in the background scrolls at once
+      if (document.visibilityState === 'hidden') {
+        scroll();
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(scroll));
+      }
     }
 
     if (typeof data.profile === 'object') {
