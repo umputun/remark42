@@ -74,7 +74,7 @@
       <div class="widgets">
         <div class="widget widgets__widget widgets__comments-widget">
           <a class="widget__link widget__link_page_last-comments" href="./last-comments.html">Last comments widget page</a><br />
-          <iframe class="widget__frame widget__comments-frame"></iframe>
+          <iframe class="widget__frame widget__comments-frame" title="Last comments"></iframe>
         </div>
         <div class="widget widgets__widget widgets__counter-widget">
           <a class="widget__link widget__link_page_counter" href="./counter.html">Counter widget page</a><br />
@@ -102,7 +102,7 @@
 
         theme = getTheme();
 
-        mq.addListener(function () {
+        mq.addEventListener('change', function () {
           REMARK42.changeTheme(getTheme());
         });
       }
