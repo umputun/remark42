@@ -525,8 +525,9 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 
 	// wrapped rather than substituted once at startup: the disk root can change under a running
 	// server, and the docker image has already substituted its copy, where this is a no-op
+	files := webFiles{frontend: frontendFS, embedded: webassets.FS}
 	sources := templatedFS{
-		fs:        webFiles{frontend: frontendFS, embedded: webassets.FS},
+		fs:        files,
 		remarkURL: remarkURL,
 		siteID:    siteID,
 	}
@@ -535,11 +536,12 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 
 	r.With(rateLimiter(20),
 		R.Timeout(10*time.Second),
-		// the served body now depends on remarkURL and the demo site, so both have to be part of the
-		// validator. Without them an operator who corrects REMARK_URL or SITE and restarts the same
-		// binary keeps getting 304 on revalidation, and the client keeps the old page for good,
-		// since no-cache means it revalidates rather than aging out
-		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID),
+		// the validator covers everything the served body depends on: the file's bytes, and remarkURL
+		// and the demo site substituted into them. Without any one of them an operator who edits a file
+		// in the web root, or corrects REMARK_URL or SITE, and restarts the same binary keeps getting
+		// 304 on revalidation, and the client keeps the old page for good, since no-cache means it
+		// revalidates rather than aging out
+		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID, webFingerprint(files)),
 	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {

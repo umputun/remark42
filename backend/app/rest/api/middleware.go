@@ -238,18 +238,21 @@ func (s *Rest) rejectCrossSiteBasicAuth(next http.Handler) http.Handler {
 	})
 }
 
-// cacheControl is a middleware setting cache expiration. Using url+version as etag
-func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
-	etag := func(r *http.Request, version string) string {
-		s := version + ":" + r.URL.String()
-		return store.EncodeID(s)
-	}
-
+// cacheControl is a middleware setting cache expiration and a validator. The etag is built from the
+// version, the url and the fingerprint of what the request is answered with, and a request whose
+// fingerprint is empty gets no etag, since there is nothing to validate it against
+func cacheControl(expiration time.Duration, version string, fingerprint func(*http.Request) string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			e := `"` + etag(r, version) + `"`
-			w.Header().Set("Etag", e)
 			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d, no-cache", int(expiration.Seconds())))
+
+			content := fingerprint(r)
+			if content == "" {
+				h.ServeHTTP(w, r)
+				return
+			}
+			e := `"` + store.EncodeID(version+":"+r.URL.String()+":"+content) + `"`
+			w.Header().Set("Etag", e)
 
 			if match := r.Header.Get("If-None-Match"); match != "" {
 				if strings.Contains(match, e) {

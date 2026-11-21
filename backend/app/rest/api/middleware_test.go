@@ -197,34 +197,58 @@ func TestRest_rejectAnonUser(t *testing.T) {
 }
 
 func TestRest_cacheControl(t *testing.T) {
-	tbl := []struct {
-		url     string
-		version string
-		exp     time.Duration
-		etag    string
-		maxAge  int
-	}{
-		{"http://example.com/foo", "v1", time.Hour, "b433be1ea19edaee9dc92ca4b895b6bdf3c058cb", 3600},
-		{"http://example.com/foo2", "v1", 10 * time.Hour, "6d8466aef3246c1057452561acddf7ad9d0d99e0", 36000},
-		{"http://example.com/foo", "v2", time.Hour, "481700c52aab0dfbca99f3ffc2a4fbb27884c114", 3600},
-		{"https://example.com/foo", "v2", time.Hour, "bebd4f1b87f474792c4e75e5affe31fbf67f5778", 3600},
+	serve := func(exp time.Duration, version, url, content, ifNoneMatch string) (int, http.Header) {
+		req := httptest.NewRequest("GET", url, http.NoBody)
+		if ifNoneMatch != "" {
+			req.Header.Set("If-None-Match", ifNoneMatch)
+		}
+		w := httptest.NewRecorder()
+		fingerprint := func(*http.Request) string { return content }
+		cacheControl(exp, version, fingerprint)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+		resp := w.Result()
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header
+	}
+	etagOf := func(version, url, content string) string {
+		_, h := serve(time.Hour, version, url, content, "")
+		return h.Get("Etag")
 	}
 
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", tt.url, http.NoBody)
-			w := httptest.NewRecorder()
+	t.Run("cache-control carries the expiration", func(t *testing.T) {
+		for _, exp := range []time.Duration{time.Hour, 10 * time.Hour} {
+			_, h := serve(exp, "v1", "http://example.com/foo", "a", "")
+			assert.Equal(t, "max-age="+strconv.Itoa(int(exp.Seconds()))+", no-cache", h.Get("Cache-Control"))
+		}
+	})
 
-			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-			h.ServeHTTP(w, req)
-			resp := w.Result()
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.NoError(t, resp.Body.Close())
-			t.Logf("%+v", resp.Header)
-			assert.Equal(t, `"`+tt.etag+`"`, resp.Header.Get("Etag"))
-			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds()))+", no-cache", resp.Header.Get("Cache-Control"))
-		})
-	}
+	t.Run("each input changes the etag", func(t *testing.T) {
+		base := etagOf("v1", "http://example.com/foo", "a")
+		require.NotEmpty(t, base)
+		for name, other := range map[string]string{
+			"version": etagOf("v2", "http://example.com/foo", "a"),
+			"url":     etagOf("v1", "http://example.com/foo2", "a"),
+			"scheme":  etagOf("v1", "https://example.com/foo", "a"),
+			"content": etagOf("v1", "http://example.com/foo", "b"),
+		} {
+			assert.NotEqual(t, base, other, name)
+		}
+		assert.Equal(t, base, etagOf("v1", "http://example.com/foo", "a"), "same inputs, same etag")
+	})
+
+	t.Run("a matching etag answers 304, a stale one passes through", func(t *testing.T) {
+		etag := etagOf("v1", "http://example.com/foo", "a")
+		code, _ := serve(time.Hour, "v1", "http://example.com/foo", "a", etag)
+		assert.Equal(t, http.StatusNotModified, code)
+		code, _ = serve(time.Hour, "v1", "http://example.com/foo", "b", etag)
+		assert.Equal(t, http.StatusOK, code)
+	})
+
+	t.Run("nothing to fingerprint, no etag and no 304", func(t *testing.T) {
+		code, h := serve(time.Hour, "v1", "http://example.com/foo", "", `"anything"`)
+		assert.Equal(t, http.StatusOK, code)
+		assert.Empty(t, h.Get("Etag"))
+		assert.Equal(t, "max-age=3600, no-cache", h.Get("Cache-Control"))
+	})
 }
 
 // TestRest_apiCSP locks in that /api/v1/* responses get a strict default-src 'none'
@@ -709,8 +733,8 @@ func TestRest_ThirdPartyFrameCookies(t *testing.T) {
 
 		// expired but validly signed, which is what the auth middleware renews for a cookie
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-			RegisteredClaims: jwt.RegisteredClaims{ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
-				Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute))},
+			ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
+			Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
 			User: &token.User{ID: "anonymous_reader", Name: "reader"},
 		})
 		require.NoError(t, err)
