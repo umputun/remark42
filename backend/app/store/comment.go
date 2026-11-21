@@ -139,6 +139,18 @@ func (c *Comment) Sanitize() {
 	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
 	c.PostTitle = c.SanitizeText(c.PostTitle)
+	c.SanitizeEditSummary()
+}
+
+// SanitizeEditSummary cleans the edit summary as plain text. It replaces the Edit record instead of
+// changing it in place, as a comment handed out by an engine can share that record with the stored one.
+func (c *Comment) SanitizeEditSummary() {
+	if c.Edit == nil || c.Edit.Summary == "" {
+		return
+	}
+	edit := *c.Edit
+	edit.Summary = c.SanitizeText(edit.Summary)
+	c.Edit = &edit
 }
 
 // Snippet from comment's text

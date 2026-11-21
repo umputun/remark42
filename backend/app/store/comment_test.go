@@ -110,6 +110,39 @@ func TestComment_Sanitize(t *testing.T) {
 	}
 }
 
+func TestComment_SanitizeEditSummary(t *testing.T) {
+	ts := time.Date(2026, 11, 21, 9, 30, 0, 0, time.UTC)
+	tbl := []struct {
+		inp, out string
+	}{
+		{inp: "", out: ""},
+		{inp: "fixed a typo", out: "fixed a typo"},
+		{inp: `fixed typo & added "quote", it's done`, out: `fixed typo &amp; added "quote", it's done`},
+		{inp: "<script>alert(1)</script><b>why</b>", out: "why"},
+		{inp: `x <img src=x onerror="alert(1)"> y`, out: "x  y"},
+		{inp: "5 > 3 && 2 < 4", out: "5 &gt; 3 &amp;&amp; 2 &lt; 4"},
+		{inp: "already &amp; escaped &lt;b&gt;", out: "already &amp; escaped &lt;b&gt;"},
+		{inp: "  padded  ", out: "padded"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.inp, func(t *testing.T) {
+			stored := &Edit{Timestamp: ts, Summary: tt.inp}
+			c := Comment{Text: "blah", Edit: stored}
+			c.Sanitize()
+			assert.Equal(t, &Edit{Timestamp: ts, Summary: tt.out}, c.Edit)
+			assert.Equal(t, tt.inp, stored.Summary, "the record the comment shared is left as it was")
+
+			c.SanitizeEditSummary()
+			assert.Equal(t, tt.out, c.Edit.Summary, "cleaning a clean summary again keeps it")
+		})
+	}
+
+	c := Comment{Text: "blah"}
+	c.Sanitize()
+	assert.Nil(t, c.Edit, "a comment without an edit keeps none")
+}
+
 func TestComment_PrepareUntrusted(t *testing.T) {
 	comment := Comment{
 		Text:        `blah`,

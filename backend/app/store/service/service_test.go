@@ -905,6 +905,82 @@ func TestService_EditComment(t *testing.T) {
 	assert.NoError(t, err, "allow second edit")
 }
 
+func TestService_EditCommentSanitizesSummary(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	comment, err := b.EditComment(locator, "id-1",
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: `<script>alert(1)</script><b>why</b> & "how"`})
+	require.NoError(t, err)
+	require.NotNil(t, comment.Edit)
+	assert.Equal(t, `why &amp; "how"`, comment.Edit.Summary, "returned by the edit")
+
+	c, err := b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	require.NotNil(t, c.Edit)
+	assert.Equal(t, `why &amp; "how"`, c.Edit.Summary, "stored by the edit")
+
+	// a delete sent through an edit keeps no summary
+	_, err = b.EditComment(locator, "id-2", EditRequest{Delete: true, Summary: "<b>gone</b>"})
+	require.NoError(t, err)
+	c, err = b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted)
+	assert.Nil(t, c.Edit, "no edit record stored on delete")
+}
+
+func TestService_ReadSanitizesStoredSummary(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
+
+	// a summary stored before edits cleaned it
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	const raw = `<script>alert(1)</script><b>why</b> & "how"`
+	const clean = `why &amp; "how"`
+	c, err := b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	c.Edit = &store.Edit{Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), Summary: raw}
+	require.NoError(t, b.Engine.Update(c))
+
+	summaryOf := func(t *testing.T, cc []store.Comment) string {
+		t.Helper()
+		for _, c := range cc {
+			if c.ID == "id-1" {
+				require.NotNil(t, c.Edit)
+				return c.Edit.Summary
+			}
+		}
+		require.FailNow(t, "id-1 not in the result")
+		return ""
+	}
+
+	got, err := b.Get(locator, "id-1", store.User{})
+	require.NoError(t, err)
+	require.NotNil(t, got.Edit)
+	assert.Equal(t, clean, got.Edit.Summary, "Get")
+
+	cc, err := b.Find(locator, "time", store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "Find")
+
+	cc, err = b.Last("radio-t", 0, time.Time{}, store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "Last")
+
+	cc, err = b.User("radio-t", "user1", 0, 0, store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "User")
+
+	c, err = b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	assert.Equal(t, raw, c.Edit.Summary, "reading does not rewrite the stored record")
+}
+
 func TestService_DeleteComment(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
