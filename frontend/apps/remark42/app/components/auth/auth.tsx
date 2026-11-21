@@ -330,7 +330,7 @@ export function Auth() {
                         required
                         name="username"
                         minLength={3}
-                        pattern="[\p{L}\d\s_]+"
+                        pattern="[\p{L}\d _]+"
                         title={intl.formatMessage(messages.usernameRestriction)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
