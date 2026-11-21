@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -151,7 +152,7 @@ func newCommentPolicy() *bluemonday.Policy {
 // Comment.Orig which is used to store the original comment text is not sanitized
 // as we expect to never render it as HTML and render Comment.Text instead
 func (c *Comment) Sanitize() {
-	c.Text = commentPolicy.Sanitize(c.Text)
+	c.Text = sanitizeBalanced(c.Text)
 	c.MarkLinksUGC()
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.SanitizeText(c.User.Name)
@@ -159,6 +160,78 @@ func (c *Comment) Sanitize() {
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
 	c.PostTitle = c.SanitizeText(c.PostTitle)
 	c.SanitizeEditSummary()
+}
+
+// sanitizeBalanced sanitizes comment HTML and makes its tags pair up. The sanitizer filters tags one at a
+// time and does not match them, so its result can hold an end tag without its start tag, which closes an
+// element of whatever the text is placed into. Text whose tags already pair up is kept byte for byte.
+// Text that had to be balanced goes through the sanitizer once more, so the sanitizer has the last word
+// on what is stored. Text that does not settle, or is nested deeper than the parser accepts, keeps only
+// its words.
+func sanitizeBalanced(text string) string {
+	clean := commentPolicy.Sanitize(text)
+	balanced, err := BalanceHTML(clean)
+	if err == nil && sameTags(clean, balanced) {
+		return clean
+	}
+	if err == nil {
+		clean = commentPolicy.Sanitize(balanced)
+		if balanced, err = BalanceHTML(clean); err == nil && sameTags(clean, balanced) {
+			return clean
+		}
+	}
+	return bluemonday.StrictPolicy().Sanitize(clean)
+}
+
+// sameTags reports whether two HTML texts hold the same start and end tags in the same order. Rendering
+// parsed HTML can reorder attributes and rewrite <br> as <br/> with nothing added, dropped or moved, and
+// then the text it was parsed from was balanced already.
+func sameTags(a, b string) bool {
+	tags := func(text string) (res []string, ok bool) {
+		z := nethtml.NewTokenizer(strings.NewReader(text))
+		for {
+			switch z.Next() {
+			case nethtml.ErrorToken:
+				return res, errors.Is(z.Err(), io.EOF)
+			case nethtml.StartTagToken, nethtml.SelfClosingTagToken:
+				name, _ := z.TagName()
+				res = append(res, string(name))
+			case nethtml.EndTagToken:
+				name, _ := z.TagName()
+				res = append(res, "/"+string(name))
+			}
+		}
+	}
+	tagsA, okA := tags(a)
+	tagsB, okB := tags(b)
+	return okA && okB && slices.Equal(tagsA, tagsB)
+}
+
+// BalanceHTML parses an HTML fragment the way it will be parsed inside a <div> and renders it back,
+// so end tags without a matching start tag are dropped and unclosed elements are closed.
+// A tree built from misnested tags can be rendered to HTML which is parsed into another tree,
+// e.g. <h1><div><h2><b><h3></b> gives <h3> inside <h2> and the next parser closes <h1> and <div> early.
+// Because of this the result is returned only when parsing it again doesn't change it.
+func BalanceHTML(fragment string) (string, error) {
+	const maxPasses = 4 // two passes are enough for any well-formed input
+	for range maxPasses {
+		nodes, err := nethtml.ParseFragment(strings.NewReader(fragment),
+			&nethtml.Node{Type: nethtml.ElementNode, Data: "div", DataAtom: atom.Div})
+		if err != nil {
+			return "", fmt.Errorf("can't parse html fragment: %w", err)
+		}
+		res := strings.Builder{}
+		for _, n := range nodes {
+			if err = nethtml.Render(&res, n); err != nil {
+				return "", fmt.Errorf("can't render html fragment: %w", err)
+			}
+		}
+		if res.String() == fragment {
+			return fragment, nil
+		}
+		fragment = res.String()
+	}
+	return "", errors.New("html fragment is not stable")
 }
 
 // MarkLinksUGC makes the rel attribute of every <a> and <area> in the text hold both nofollow and ugc,

@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -107,6 +108,38 @@ func TestComment_Sanitize(t *testing.T) {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			tt.inp.Sanitize()
 			assert.Equal(t, tt.out, tt.inp, "check #%d", n)
+		})
+	}
+}
+
+// TestComment_SanitizeBalancesTags checks that the tags of a stored comment pair up. The sanitizer keeps
+// or drops each tag on its own, and an end tag without its start tag would close an element of whatever
+// the text is put into.
+func TestComment_SanitizeBalancesTags(t *testing.T) {
+	tbl := []struct{ name, inp, out string }{
+		{name: "end tags left by dropped elements",
+			inp: `<p>ok <svg><title><xmp></title></div></div><h1>Notice</h1><div><div></xmp></title></svg></p>`,
+			out: `<p>ok </p><h1>Notice</h1><div><div><p></p></div></div>`},
+		{name: "stray end tags", inp: `<p>ok </div></div><h1>Notice</h1><div><div></p>`,
+			out: `<p>ok </p><h1>Notice</h1><div><div><p></p></div></div>`},
+		{name: "unclosed tags", inp: `<div><h1><s>x`, out: `<div><h1><s>x</s></h1></div>`},
+		{name: "misnested tags", inp: `<h1><div><h2><b><h3>x</b></div></div>`,
+			out: `<h1><div><h2><b></b></h2><h3><b>x</b></h3></div></h1>`},
+		{name: "nested too deep keeps the words only", inp: `</div><h1>h</h1>` + strings.Repeat("<b>", 600) + `x &amp; y`,
+			out: `hx &amp; y`},
+		{name: "table without tbody gets the one a browser adds", inp: `<table><tr><td>a</td></tr></table>`,
+			out: `<table><tbody><tr><td>a</td></tr></tbody></table>`},
+		{name: "balanced text is kept byte for byte",
+			inp: `<p>plain <b>bold</b> <a id="z" href="https://example.com">l</a><br><img src="https://example.com/i.png"></p>`,
+			out: `<p>plain <b>bold</b> <a id="z" href="https://example.com" rel="nofollow ugc">l</a><br><img src="https://example.com/i.png"></p>`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			c := Comment{Text: tt.inp}
+			c.Sanitize()
+			assert.Equal(t, tt.out, c.Text)
+			c.Sanitize()
+			assert.Equal(t, tt.out, c.Text, "a second pass changes nothing")
 		})
 	}
 }
