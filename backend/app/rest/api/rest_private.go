@@ -214,6 +214,17 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// the new text is held to the rules of a new comment; a delete carries no text and is not checked
+	if !edit.Delete {
+		edited := currComment
+		edited.Orig = edit.Text
+		edited.User = user // the stored name was sanitized and can be empty where the signed-in one is not
+		if err = s.dataService.ValidateComment(&edited); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+			return
+		}
+	}
+
 	editReq := service.EditRequest{
 		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
 		Orig:    edit.Text,

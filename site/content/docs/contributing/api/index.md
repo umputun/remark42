@@ -71,7 +71,7 @@ type Node struct {
 
 Sort can be `time`, `active`, or `score`. Supported sort order with prefix -/+, i.e., `-time`. For `tree` mode, the sort will be applied to top-level comments only, and all replies are always sorted by time.
 
-- `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation. Body is `EditRequest` JSON
+- `PUT /api/v1/comment/{id}?site=site-id&url=post-url` - edit comment, allowed once in `EDIT_TIME` minutes since creation. Body is `EditRequest` JSON. The new text is checked as a new comment's is: it must not be empty, must fit `MIN_COMMENT_SIZE` and `MAX_COMMENT_SIZE`, and the destinations of its Markdown links and images must start with `http://`, `https://` or `mailto:`. A request with `delete` set skips this check, even when it carries text.
 
 ```go
 type EditRequest struct {

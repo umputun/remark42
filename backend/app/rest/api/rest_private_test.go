@@ -950,6 +950,132 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	assert.Equal(t, "invalid comment", c["details"])
 }
 
+func TestRest_UpdateValidation(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.DataService.MinCommentSize = 5
+		srv.UpdateLimiter = 1000 // every subtest posts and edits on the protected routes
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	locator := store.Locator{SiteID: "remark42", URL: postURL}
+
+	send := func(method, path, tkn string, body any) (code int, respBody string) {
+		b, err := json.Marshal(body)
+		require.NoError(t, err)
+		req, err := http.NewRequest(method, ts.URL+path, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		rb, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(rb)
+	}
+	create := func(tkn, text string) (code int, respBody string) {
+		return send(http.MethodPost, "/api/v1/comment?site=remark42", tkn,
+			map[string]any{"text": text, "locator": map[string]string{"site": "remark42", "url": postURL}})
+	}
+	edit := func(tkn, id string, body map[string]any) (code int, respBody string) {
+		return send(http.MethodPut, "/api/v1/comment/"+id+"?site=remark42&url="+postURL, tkn, body)
+	}
+	newComment := func(tkn, text string) string {
+		code, body := create(tkn, text)
+		require.Equal(t, http.StatusCreated, code, body)
+		c := store.Comment{}
+		require.NoError(t, json.Unmarshal([]byte(body), &c))
+		return c.ID
+	}
+
+	atLimit := strings.Repeat("Щ", 4000)
+	refused := []struct {
+		name, tkn, text, errText string
+	}{
+		{"longer than max", devToken, atLimit + "Щ", "comment text exceeded max allowed size 4000 (4001)"},
+		{"empty", devToken, "", "empty comment text"},
+		{"shorter than min", devToken, "abcd", "comment text is smaller than min allowed size 5 (4)"},
+		{"relative link", devToken, "a link [here](url)", "links should start with mailto:, http:// or https://"},
+		{"javascript link", devToken, "a link [here](javascript:alert(1))", "links should start with mailto:, http:// or https://"},
+		{"admin, longer than max", adminUmputunToken, atLimit + "Щ", "comment text exceeded max allowed size 4000 (4001)"},
+	}
+	for _, tt := range refused {
+		t.Run("refused, "+tt.name, func(t *testing.T) {
+			id := newComment(tt.tkn, "original text")
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			require.Equal(t, tt.tkn == adminUmputunToken, c.User.Admin, "author is an admin only with the admin token")
+
+			code, body := edit(tt.tkn, id, map[string]any{"text": tt.text, "summary": "my edit"})
+			assert.Equal(t, http.StatusBadRequest, code, "edit answered %.200s", body)
+			want := fmt.Sprintf(`{"code":%d,"details":"invalid comment","error":%q}`, rest.ErrCommentValidation, tt.errText)
+			assert.JSONEq(t, want, body, "edit answered %.200s", body)
+
+			// a new comment with the same text gets the same answer
+			createCode, createBody := create(tt.tkn, tt.text)
+			assert.Equal(t, http.StatusBadRequest, createCode, "create answered %.200s", createBody)
+			assert.JSONEq(t, want, createBody)
+
+			c, err = srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "original text", c.Orig, "stored text unchanged")
+			assert.Nil(t, c.Edit, "no edit recorded")
+		})
+	}
+
+	// a request refused today for another reason keeps its answer
+	t.Run("refused, another user's comment", func(t *testing.T) {
+		id := newComment(dev2Token, "original text")
+		code, body := edit(devToken, id, map[string]any{"text": ""})
+		assert.Equal(t, http.StatusForbidden, code, body)
+		assert.JSONEq(t, fmt.Sprintf(`{"code":%d,"details":"can not edit comments for other users","error":"rejected"}`,
+			rest.ErrNoAccess), body)
+	})
+
+	accepted := []struct {
+		name, orig, text string
+	}{
+		{"ordinary edit", "original text", "updated text"},
+		{"exactly at max", "original text", atLimit},
+		{"exactly at min", "original text", "abcde"},
+		{"unchanged text", "original text", "original text"},
+		{"whitespace only change", "original text", "original  text\n"},
+		{"absolute and mailto links", "original text", "[a](https://example.com) and [b](mailto:me@example.com)"},
+	}
+	for _, tt := range accepted {
+		t.Run("accepted, "+tt.name, func(t *testing.T) {
+			id := newComment(devToken, tt.orig)
+			code, body := edit(devToken, id, map[string]any{"text": tt.text, "summary": "my edit"})
+			require.Equal(t, http.StatusOK, code, body)
+			c := store.Comment{}
+			require.NoError(t, json.Unmarshal([]byte(body), &c))
+			assert.Equal(t, tt.text, c.Orig)
+			require.NotNil(t, c.Edit)
+			assert.Equal(t, "my edit", c.Edit.Summary)
+		})
+	}
+
+	// a delete goes through the edit request with no text and is not validated as an empty one
+	deletes := []struct {
+		name string
+		body map[string]any
+	}{
+		{"no text", map[string]any{"delete": true}},
+		{"empty text", map[string]any{"delete": true, "text": ""}},
+		{"text longer than max", map[string]any{"delete": true, "text": atLimit + "Щ"}},
+	}
+	for _, tt := range deletes {
+		t.Run("delete through edit, "+tt.name, func(t *testing.T) {
+			id := newComment(devToken, "original text")
+			code, respBody := edit(devToken, id, tt.body)
+			require.Equal(t, http.StatusOK, code, respBody)
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			assert.True(t, c.Deleted)
+			assert.Empty(t, c.Orig)
+		})
+	}
+}
+
 func TestRest_Vote(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
