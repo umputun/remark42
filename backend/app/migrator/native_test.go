@@ -63,7 +63,7 @@ func TestNative_Export(t *testing.T) {
 	assert.NoError(t, dec.Decode(&comments[1]), "decode comment 0")
 	assert.Error(t, dec.Decode(&comments[2]), "EOF")
 
-	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", comments[0].Text)
+	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow ugc\">link</a>", comments[0].Text)
 }
 
 func TestNative_Import(t *testing.T) {

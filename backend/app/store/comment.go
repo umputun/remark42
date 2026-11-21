@@ -1,15 +1,19 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	nethtml "golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // Comment represents a single comment with optional reference to its parent
@@ -134,12 +138,73 @@ func (c *Comment) Sanitize() {
 	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
 	p.AllowAttrs("loading").Matching(regexp.MustCompile("^(lazy|eager)$")).OnElements("img")
 	c.Text = p.Sanitize(c.Text)
+	c.MarkLinksUGC()
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.SanitizeText(c.User.Name)
 	c.User.Picture = c.SanitizeAsURL(c.User.Picture)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL)
 	c.PostTitle = c.SanitizeText(c.PostTitle)
 	c.SanitizeEditSummary()
+}
+
+// MarkLinksUGC makes the rel attribute of every <a> and <area> in the text hold both nofollow and ugc,
+// telling search engines the link was written by a commenter and passes no ranking. bluemonday writes
+// rel on every such link with an address and keeps the rel a commenter wrote on an <area>, appending
+// nofollow only when the value does not already contain those letters, so rel="nofollowed" would stay
+// followed. The text is tokenized because an attribute value such as id="item rel=" can look like the
+// start of a rel attribute. Only the tags whose rel changes are written again, the same way bluemonday
+// writes them, and every other token is copied as it is. Text stored by earlier releases came out of the
+// same sanitizer, so the read path applies this too.
+func (c *Comment) MarkLinksUGC() {
+	if !strings.Contains(c.Text, "rel=") {
+		return
+	}
+	z := nethtml.NewTokenizer(strings.NewReader(c.Text))
+	var b strings.Builder
+	for {
+		tt := z.Next()
+		if tt == nethtml.ErrorToken {
+			if !errors.Is(z.Err(), io.EOF) {
+				return // keep the text as it is rather than write out part of it
+			}
+			break
+		}
+		if tt != nethtml.StartTagToken && tt != nethtml.SelfClosingTagToken {
+			b.Write(z.Raw())
+			continue
+		}
+		raw := string(z.Raw())
+		tok := z.Token()
+		if !markRelUGC(&tok) {
+			b.WriteString(raw)
+			continue
+		}
+		b.WriteString(tok.String())
+	}
+	c.Text = b.String()
+}
+
+// markRelUGC adds nofollow and ugc to the rel attribute of an <a> or <area> token, reporting whether
+// the token changed
+func markRelUGC(tok *nethtml.Token) bool {
+	if tok.DataAtom != atom.A && tok.DataAtom != atom.Area {
+		return false
+	}
+	changed := false
+	for i, attr := range tok.Attr {
+		if attr.Key != "rel" {
+			continue
+		}
+		tokens := strings.Fields(attr.Val)
+		for _, want := range []string{"nofollow", "ugc"} {
+			if !slices.Contains(tokens, want) {
+				tokens = append(tokens, want)
+				changed = true
+			}
+		}
+		tok.Attr[i].Val = strings.Join(tokens, " ")
+	}
+	return changed
 }
 
 // SanitizeEditSummary cleans the edit summary as plain text. It replaces the Edit record instead of

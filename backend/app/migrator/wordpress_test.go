@@ -187,14 +187,14 @@ func TestWordPress_CommentText(t *testing.T) {
 		{name: "smilies", in: "after :) :-) ;) :D :mrgreen: 8) :x smilies:) (:)",
 			fancy: "<p>after 🙂 🙂 😉 😀 :mrgreen: 8) 😡 smilies:) (:)</p>\n"},
 		{name: "links", in: "see http://example.com/a?b=1&c=2. and www.example.org, mail me@example.com", // rel is the sanitizer's
-			fancy: `<p>see <a href="http://example.com/a?b=1&amp;c=2" rel="nofollow">http://example.com/a?b=1&amp;c=2</a>.` +
-				` and <a href="http://www.example.org" rel="nofollow">http://www.example.org</a>,` +
-				` mail <a href="mailto:me@example.com" rel="nofollow">me@example.com</a></p>` + "\n"},
+			fancy: `<p>see <a href="http://example.com/a?b=1&amp;c=2" rel="nofollow ugc">http://example.com/a?b=1&amp;c=2</a>.` +
+				` and <a href="http://www.example.org" rel="nofollow ugc">http://www.example.org</a>,` +
+				` mail <a href="mailto:me@example.com" rel="nofollow ugc">me@example.com</a></p>` + "\n"},
 		{name: "paired parentheses", in: "(see https://en.wikipedia.org/wiki/Foo_(bar)) end",
-			fancy: `<p>(see <a href="https://en.wikipedia.org/wiki/Foo_(bar)" rel="nofollow">` +
+			fancy: `<p>(see <a href="https://en.wikipedia.org/wiki/Foo_(bar)" rel="nofollow ugc">` +
 				`https://en.wikipedia.org/wiki/Foo_(bar)</a>) end</p>` + "\n"},
 		{name: "no links in links and code", in: `<a href="http://x.com">http://y.com</a> and <code>http://z.com 'q'</code>`,
-			fancy: `<p><a href="http://x.com" rel="nofollow">http://y.com</a> and <code>http://z.com &#39;q&#39;</code></p>` + "\n"},
+			fancy: `<p><a href="http://x.com" rel="nofollow ugc">http://y.com</a> and <code>http://z.com &#39;q&#39;</code></p>` + "\n"},
 		{name: "blockquote", in: "<blockquote>quoted ¯\\_(ツ)_/¯</blockquote>\n\nafter it",
 			fancy: "<blockquote><p>quoted ¯\\_(ツ)_/¯</p></blockquote>\n<p>after it</p>\n"},
 		{name: "several pre blocks", in: "<pre>one :)</pre>\n\nbetween :)\n\n<pre>two -- 2</pre>",
