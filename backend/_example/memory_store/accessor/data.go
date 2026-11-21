@@ -311,9 +311,7 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 		return nil
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
-		if _, ok := m.posts[req.Locator.SiteID]; !ok {
-			return fmt.Errorf("not found")
-		}
+		// a site with no comments is cleared as well: a backup restore starts with this, also into an empty engine
 		m.posts[req.Locator.SiteID] = []store.Comment{}
 		// user details go with the site, flags stay, as in the bolt engine
 		for k := range m.details {

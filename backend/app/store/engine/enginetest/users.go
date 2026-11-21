@@ -215,6 +215,9 @@ func (s suite) deleteAll(t *testing.T) {
 	comments, err := e.Find(engine.FindRequest{Locator: site, Limit: 10})
 	require.NoError(t, err)
 	assert.Empty(t, comments, "nothing left")
+
+	// a backup restore clears the site first, also when nothing was ever written to it
+	assert.NoError(t, e.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: OtherSiteID}}), "a site with no comments")
 }
 
 func (s suite) deleteAllDropsUserDetails(t *testing.T) {

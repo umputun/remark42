@@ -90,7 +90,6 @@ func TestMemData_UnknownSite(t *testing.T) {
 	err = b.Delete(engine.DeleteRequest{Locator: bad, CommentID: "id-1", DeleteMode: store.SoftDelete})
 	assert.EqualError(t, err, `not found`)
 
-	assert.EqualError(t, b.Delete(engine.DeleteRequest{Locator: badSite}), `not found`, "delete site")
 }
 
 func TestMemData_UnknownUser(t *testing.T) {
