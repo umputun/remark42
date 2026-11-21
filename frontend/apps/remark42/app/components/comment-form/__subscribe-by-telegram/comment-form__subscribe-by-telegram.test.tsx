@@ -157,7 +157,7 @@ describe('<SubscribeByTelegram />', () => {
   it('should resubscribe after loading an existing subscription', async () => {
     jest
       .spyOn(api, 'telegramSubscribe')
-      .mockRejectedValueOnce(new RequestError('Conflict.', 409))
+      .mockRejectedValueOnce(new RequestError('Action rejected. Please try again a bit later.', 17, 409))
       .mockResolvedValueOnce({ bot: 'foo_bot', token: 'fresh_token' });
 
     createWrapper();
@@ -175,7 +175,7 @@ describe('<SubscribeByTelegram />', () => {
   });
 
   it('should show an error when starting the subscription fails', async () => {
-    jest.spyOn(api, 'telegramSubscribe').mockRejectedValueOnce(new RequestError('not enabled', 17));
+    jest.spyOn(api, 'telegramSubscribe').mockRejectedValueOnce(new RequestError('not enabled', 17, 400));
 
     createWrapper();
     fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
@@ -201,10 +201,12 @@ describe('<SubscribeByTelegram />', () => {
     expect(screen.getByText(/You have subscribed/)).toBeInTheDocument();
   });
 
+  // what the fetcher rejects with for the backend's answer to an existing subscription: 409, with
+  // its code 17 picking the message. the status is what says the reader is already subscribed
   it('should show subscribed interface if user is already subscribed with 409 status code', async () => {
     jest.spyOn(api, 'telegramSubscribe').mockImplementation(async () => {
       await sleep(10);
-      const e = new RequestError('Conflict.', 409);
+      const e = new RequestError('Action rejected. Please try again a bit later.', 17, 409);
       throw e;
     });
 

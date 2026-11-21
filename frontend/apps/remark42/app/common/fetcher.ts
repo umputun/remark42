@@ -1,4 +1,4 @@
-import { errorMessages, RequestError } from 'utils/errorUtils';
+import { asApiError, backendErrorCode, errorMessages, RequestError } from 'utils/errorUtils';
 
 import { siteId } from './settings';
 import { getCookie, clearAuthCookie } from './cookies';
@@ -110,21 +110,7 @@ const createFetcher = (baseUrl: string = ''): Methods => {
       }
 
       if (res.status >= 400) {
-        const descriptor = errorMessages[res.status];
-
-        if (descriptor) {
-          throw new RequestError(descriptor.defaultMessage as string, res.status);
-        }
-
-        return res.text().then((text) => {
-          let err;
-          try {
-            err = JSON.parse(text);
-          } catch (e) {
-            throw new RequestError(errorMessages[500].defaultMessage as string, 0);
-          }
-          throw err;
-        });
+        throw await responseError(res);
       }
 
       if (res.headers.get('Content-Type')?.indexOf('application/json') === 0) {
@@ -148,6 +134,46 @@ const createFetcher = (baseUrl: string = ''): Methods => {
     delete: (uri: string, query: QueryParams, body: Payload) => request('delete', uri, query, body),
   } as Methods;
 };
+
+/**
+ * What a failed request rejects with.
+ *
+ * The body is read first, since the backend explains most failures with a code of its own, and a
+ * code the catalogue has a message for wins over the HTTP status: a blocked user, a read-only
+ * thread and a refused token all arrive as 403, and only the code tells them apart. Without one,
+ * a status the catalogue knows picks the message, and any other status rejects with the parsed
+ * body, which is how the auth endpoints, which send no code, get their own text shown.
+ */
+async function responseError(res: Response): Promise<unknown> {
+  let body: unknown;
+  let isJSON = false;
+
+  try {
+    body = JSON.parse(await res.text());
+    isJSON = true;
+  } catch (e) {
+    // not JSON, or the body could not be read: the status is all there is to go on
+  }
+
+  const code = backendErrorCode(body);
+  const apiError = asApiError(body);
+
+  if (code !== undefined) {
+    return new RequestError(errorMessages[code].defaultMessage as string, code, res.status, apiError);
+  }
+
+  const descriptor = errorMessages[res.status];
+
+  if (descriptor) {
+    return new RequestError(descriptor.defaultMessage as string, res.status, res.status, apiError);
+  }
+
+  if (!isJSON) {
+    return new RequestError(errorMessages[500].defaultMessage as string, 0, res.status);
+  }
+
+  return body;
+}
 
 /** Forgets the session this document holds: the in-memory JWT and the auth cookies it can reach */
 export function dropSession(): void {
