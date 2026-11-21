@@ -283,6 +283,30 @@ func TestServer_RssReplies(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, code)
 }
 
+func TestServer_RssRepliesWithOrphanReply(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	base, _ := rssPubTime()
+	loc := store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"}
+	for _, c := range []store.Comment{
+		{ID: "comment-1", Text: "c1", Timestamp: base, Locator: loc, User: store.User{ID: "user1", Name: "user1"}},
+		{ID: "comment-2", Text: "reply to c1 from user2", ParentID: "comment-1", Timestamp: base.Add(time.Millisecond),
+			Locator: loc, User: store.User{ID: "user2", Name: "user2"}},
+		// a reply to a comment that is not in the store, as one stored before parents were checked
+		{ID: "comment-3", Text: "reply to a missing comment", ParentID: "missing", Timestamp: base.Add(2 * time.Millisecond),
+			Locator: loc, User: store.User{ID: "user3", Name: "user3"}},
+	} {
+		_, err := srv.DataService.Create(c)
+		require.NoError(t, err)
+	}
+
+	res, code := get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42")
+	require.Equal(t, http.StatusOK, code, "a reply to a missing comment does not fail the feed of another user")
+	assert.Contains(t, res, "<guid>comment-2</guid>")
+	assert.NotContains(t, res, "comment-3")
+}
+
 // clean formatting, i.e. multiple spaces, \t, \n
 func cleanRssFormatting(expected, actual string) (cleanExp, cleanAct string) {
 	reSpaces := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
