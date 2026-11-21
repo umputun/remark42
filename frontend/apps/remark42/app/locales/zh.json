@@ -87,6 +87,8 @@
   "commentsSort.oldest": "最旧",
   "commentsSort.recently-updated": "最近更新",
   "commentsSort.worst": "最差",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "还没有评论",
   "errors.0": "出了些问题，请稍后重试。",
   "errors.1": "找不到评论，请刷新页面并重试。",

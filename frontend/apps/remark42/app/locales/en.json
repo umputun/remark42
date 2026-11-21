@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Oldest",
   "commentsSort.recently-updated": "Recently updated",
   "commentsSort.worst": "Worst",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "No comments yet.",
   "errors.0": "Something went wrong. Please try again a bit later.",
   "errors.1": "Comment cannot be found. Please refresh the page and try again.",

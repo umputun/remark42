@@ -87,6 +87,8 @@
   "commentsSort.oldest": "قدیمی‌ترین",
   "commentsSort.recently-updated": "به تازگی به‌روز شده",
   "commentsSort.worst": "بدترین",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "هنوز نظری وجود ندارد",
   "errors.0": "مشکلی پیش آمده است. لطفاً کمی بعد دوباره تلاش کنید.",
   "errors.1": "نظر پیدا نشد. لطفاً صفحه را تازه‌سازی کنید و دوباره تلاش کنید.",

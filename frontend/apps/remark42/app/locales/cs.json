@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Nejstarší",
   "commentsSort.recently-updated": "Nedávno aktualizované",
   "commentsSort.worst": "Nejhorší",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Zatím zde nejsou žádné komentáře.",
   "errors.0": "Něco se pokazilo. Zkuste provést akci později",
   "errors.1": "Komentář nelze nalézt. Obnovte prosím stránku a zkuste to znovu.",

@@ -87,6 +87,8 @@
   "commentsSort.oldest": "古い順",
   "commentsSort.recently-updated": "更新が最も新しい順",
   "commentsSort.worst": "最悪",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "コメントはまだありません",
   "errors.0": "不明なエラーが発生しました。しばらくしてからもう一度お試しください。",
   "errors.1": "コメントが見つかりません。ページを再読み込みしてからもう一度お試しください。",

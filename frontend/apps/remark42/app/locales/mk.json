@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Најстари",
   "commentsSort.recently-updated": "Најскоро променети",
   "commentsSort.worst": "Најлоши",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Сè уште нема коментари",
   "errors.0": "Се случи грешка. Ве молиме обидете се повторно подоцна.",
   "errors.1": "Коментарот не е пронајден. Ве молиме освежете ја страната и обидете се повторно.",

@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Älteste",
   "commentsSort.recently-updated": "Kürzlich aktualisierte",
   "commentsSort.worst": "Schlechteste",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Noch keine Kommentare",
   "errors.0": "Leider ist etwas schiefgegangen. Bitte versuchen Sie es später erneut.",
   "errors.1": "Kommentar nicht gefunden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",

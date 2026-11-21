@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Elst",
   "commentsSort.recently-updated": "Nýlega uppfært",
   "commentsSort.worst": "Verst",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Engar athugasemdir ennþá",
   "errors.0": "Eitthvað fór úrskeiðis. Reyndu aftur síðar.",
   "errors.1": "Athugasemd fannst ekki. Prófaðu að endurhlaða síðuna og reyndu aftur.",

@@ -87,6 +87,8 @@
   "commentsSort.oldest": "Самые старые",
   "commentsSort.recently-updated": "Обновленные недавно",
   "commentsSort.worst": "Худшие",
+  "confirm-dialog.cancel": "Cancel",
+  "confirm-dialog.confirm": "Confirm",
   "empty-state": "Пока нет комментариев",
   "errors.0": "Что-то пошло не так. Попробуйте еще раз позже.",
   "errors.1": "Комментарий не найден. Обновите страницу и попробуйте еще раз.",
