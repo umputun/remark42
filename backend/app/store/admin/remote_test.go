@@ -99,3 +99,37 @@ func testServer(t *testing.T, req, resp string) *httptest.Server {
 		_, _ = fmt.Fprint(w, resp)
 	}))
 }
+
+// a remote admin store written in Go answers with null for a nil slice: the admins list reads that as
+// empty, a call that has to return a value fails
+func TestRemote_NullResult(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"result":null,"id":1}`)
+	}))
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	admins, err := c.Admins("site")
+	require.NoError(t, err)
+	assert.Empty(t, admins)
+
+	_, err = c.Key("site")
+	require.ErrorIs(t, err, errNoResult, "no key must not become an empty signing key")
+
+	_, err = c.Email("site")
+	require.ErrorIs(t, err, errNoResult)
+
+	_, err = c.Enabled("site")
+	require.ErrorIs(t, err, errNoResult)
+}
+
+func TestRemote_KeyRejectsEmpty(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"result":"","id":1}`)
+	}))
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+
+	_, err := c.Key("site")
+	require.EqualError(t, err, "remote admin store returned an empty key")
+}

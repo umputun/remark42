@@ -6,7 +6,7 @@ aliases:
 
 ## Automatic
 
-Remark42 by default makes daily backup files under `${BACKUP_PATH}` (default `./var/backup`). Backups kept up to `${MAX_BACKUP_FILES}` (default 10). Each backup file contains exported and gzipped content, i.e., all comments. At any point, the user can restore such backup and revert all comments to the desired state.
+Remark42 backs up every site automatically to `${BACKUP_PATH}` (default `./var/backup`), as `backup-{site ID}-{YYYYMMDD}.gz` with the server's local date. When the server starts, it writes a backup of each site that has none for the current day, so a restart on a day that already has one writes no other, and a backup with no comments in it is not written at start when it would push an existing backup out; after that, it writes one every 24 hours while it runs. A failed backup leaves the earlier files in place; another attempt runs at the next scheduled time or the next start. The newest `${MAX_BACKUP_FILES}` (default 10) automatic backups of each site are kept. Manual backups under their default `userbackup-…` name are not counted and are never removed. Each backup file contains exported and gzipped content, i.e., all comments. At any point, the user can restore such backup and revert all comments to the desired state.
 
 **Note:** The [restore procedure](https://remark42.com/docs/backup/restore/) cleans the current data store and replaces all comments from the backup file.
 

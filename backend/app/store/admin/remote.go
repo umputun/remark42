@@ -8,6 +8,7 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/go-pkgz/jrpc"
 )
@@ -24,8 +25,18 @@ func (r *RPC) Key(siteID string) (key string, err error) {
 		return "", err
 	}
 
-	err = json.Unmarshal(*resp.Result, &key)
-	return key, err
+	res, err := rawResult(resp)
+	if err != nil {
+		return "", err
+	}
+	if err := json.Unmarshal(res, &key); err != nil {
+		return "", err
+	}
+	// the key signs tokens, and an empty one would let anyone forge them
+	if key == "" {
+		return "", errors.New("remote admin store returned an empty key")
+	}
+	return key, nil
 }
 
 // Admins returns list of admin's ids for given site
@@ -35,6 +46,10 @@ func (r *RPC) Admins(siteID string) (ids []string, err error) {
 		return []string{}, err
 	}
 
+	// a remote written in Go answers with null for a nil slice, which is no admins
+	if resp.Result == nil {
+		return []string{}, nil
+	}
 	if err := json.Unmarshal(*resp.Result, &ids); err != nil {
 		return []string{}, err
 	}
@@ -48,7 +63,11 @@ func (r *RPC) Email(siteID string) (email string, err error) {
 		return "", err
 	}
 
-	if err := json.Unmarshal(*resp.Result, &email); err != nil {
+	res, err := rawResult(resp)
+	if err != nil {
+		return "", err
+	}
+	if err := json.Unmarshal(res, &email); err != nil {
 		return "", err
 	}
 	return email, nil
@@ -61,7 +80,11 @@ func (r *RPC) Enabled(siteID string) (ok bool, err error) {
 		return false, err
 	}
 
-	if err := json.Unmarshal(*resp.Result, &ok); err != nil {
+	res, err := rawResult(resp)
+	if err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal(res, &ok); err != nil {
 		return false, err
 	}
 	return ok, nil
@@ -74,4 +97,15 @@ func (r *RPC) OnEvent(siteID string, et EventType) error {
 		return err
 	}
 	return nil
+}
+
+// errNoResult is the error of a call that has to return a value and got null or no result from the remote
+var errNoResult = errors.New("remote admin store returned no result")
+
+// rawResult returns the json of a call's result, errNoResult when the remote sent null or none
+func rawResult(resp *jrpc.Response) ([]byte, error) {
+	if resp == nil || resp.Result == nil {
+		return nil, errNoResult
+	}
+	return *resp.Result, nil
 }
