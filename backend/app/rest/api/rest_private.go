@@ -246,7 +246,7 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.dataService.EditComment(locator, id, editReq)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
 	}
 

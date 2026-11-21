@@ -253,6 +253,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
+	assert.EqualValues(t, rest.ErrCommentRestrictWords, c["code"], "the restricted-words code, the same for a new and an edited comment")
 }
 
 func TestRest_CreateRelativeURL(t *testing.T) {
@@ -1108,6 +1109,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body))
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
+	assert.EqualValues(t, rest.ErrCommentRestrictWords, c["code"], "the restricted-words code, the same for a new and an edited comment")
 }
 
 func TestRest_UpdateValidation(t *testing.T) {
