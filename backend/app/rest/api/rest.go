@@ -231,10 +231,12 @@ func (s *Rest) routes() http.Handler {
 	// on the two groups where the auth library writes its cookies: sign-in and sign-out under
 	// /auth, renewal and reset by the auth middleware under /api/v1
 	authCookies := func(next http.Handler) http.Handler { return next }
-	if s.SendJWTHeader && strings.HasPrefix(s.RemarkURL, "https://") {
+	if strings.HasPrefix(s.RemarkURL, "https://") {
 		// a partitioned cookie has to be Secure, so there is nothing to add over http. the names
-		// are the auth library's defaults, which the server does not override
-		authCookies = partitionedAuthCookies("JWT", "XSRF-TOKEN")
+		// are the auth library's defaults, which the server does not override. the partitioned
+		// pair is issued in header mode only, and expired at sign-out in either mode, for a reader
+		// who was given one before the mode was switched off
+		authCookies = partitionedAuthCookies(s.SendJWTHeader, "JWT", "XSRF-TOKEN")
 	}
 
 	router.Route(func(r *routegroup.Bundle) {
