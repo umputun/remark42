@@ -74,7 +74,8 @@ const recreateRemark42Instance = () => {
 	}
 	const remark42 = window.REMARK42
 	if (remark42) {
-		remark42.destroy()
+		// destroy exists only while an instance does
+		remark42.destroy?.()
 		remark42.createInstance(window.remark_config)
 	}
 }
@@ -178,7 +179,8 @@ const recreateRemark42Instance = () => {
 	}
 	const remark42 = window.REMARK42
 	if (remark42) {
-		remark42.destroy()
+		// destroy exists only while an instance does
+		remark42.destroy?.()
 		remark42.createInstance(window.remark_config)
 	}
 }
