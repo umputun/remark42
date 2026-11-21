@@ -68,7 +68,7 @@ class AuthPanelComponent extends Component<Props, State> {
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>
-            <Avatar url={user.picture} identicon={isUserAnonymous(user)} />
+            <Avatar url={user.picture} size={20} identicon={isUserAnonymous(user)} />
           </div>
           {user.name}
         </button>{' '}

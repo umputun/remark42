@@ -81,6 +81,15 @@ describe('<Comment />', () => {
     expect(patreonSubscriberIcon.tagName).toBe('IMG');
   });
 
+  it('should give the time of the comment in a machine-readable form', () => {
+    const props = getProps();
+    props.data.time = '2026-11-21T18:05:00+03:00';
+
+    const { container } = render(<CommentWithIntl {...props} />);
+
+    expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-11-21T15:05:00.000Z');
+  });
+
   describe('voting', () => {
     let props = getProps();
 
