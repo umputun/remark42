@@ -7,3 +7,20 @@ coverage:
     project:
       default:
         threshold: 0.5%
+
+# Post the first comment only when project coverage drops or changed lines are left uncovered;
+# anything else is on the codecov/project and codecov/patch checks, and a comment already posted
+# keeps being updated. coverage_drop is documented to apply the threshold above, but codecov looks
+# for it directly under project, where its validator rejects it, so any drop of more than 0.01%
+# posts. Every commit gets two uploads, jest and the dependency-free unit run, and codecov reports
+# after each; waiting for both keeps a half-merged report from posting.
+comment:
+  require_changes: "coverage_drop OR uncovered_patch"
+  after_n_builds: 2
+
+# codecov reads its settings from this file only, so paths here are as the frontend uploads
+# report them, relative to frontend/apps/remark42. jest leaves these out of collectCoverageFrom;
+# the dependency-free run reports the ones its tests import.
+ignore:
+  - app/__stubs__
+  - app/__mocks__

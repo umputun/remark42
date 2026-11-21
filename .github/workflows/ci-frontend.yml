@@ -199,10 +199,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          # both paths are resolved from working-directory above, so they must be relative to it:
+          # the path is resolved from working-directory above, so it must be relative to it:
           # repeating the prefix doubles it, the file is never found, and the upload survives only
           # on codecov's own search
-          codecov_yml_path: ./codecov.yml
           files: ./coverage/lcov.info
           flags: unit
 
@@ -247,4 +246,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          codecov_yml_path: ./codecov.yml
