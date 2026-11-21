@@ -168,11 +168,11 @@
 
           <h2 id="Headers-Quotes">Headers & Quotes</h2>
           <p>
-            Sometimes it's useful to have different levels of headings to structure your comments. Start lines with a
-            `#` to create headings.
+            Sometimes it's useful to have different levels of headings to structure your comments. Start a line with a
+            <code>#</code> and a space to create a heading, such as <code>## Details</code>.
           </p>
 
-          <p>You can use one `#` all the way up to `######` six for different heading sizes.</p>
+          <p>You can use one <code>#</code> all the way up to <code>######</code> six for different heading sizes.</p>
 
           <p>If you’d like to quote someone, use the > character before the line</p>
 
@@ -186,26 +186,27 @@
             You can even <a href="https://google.com" target="_blank">link to Google!</a> using this syntax:<br />
             [link to Google!](https://google.com)
           </p>
+          <p>A web address starting with https:// or http://, such as https://remark42.com, becomes a link by itself.</p>
+          <p>To strike words through, surround them with two tildes: ~~like this~~.</p>
+          <p>A line break within a paragraph stays a line break; an empty line starts a new paragraph.</p>
 
           <h2 id="Lists">Lists</h2>
 
           <p>If you want numbered lists:</p>
-          <p>
-            1. One<br />
-            2. Two<br />
-            3. Three<br />
-            3.1. Item 3.1<br />
-            3.2. Item 3.2<br />
-          </p>
+          <pre>
+1. One
+2. Two
+3. Three
+   1. Item 3.1
+   2. Item 3.2</pre>
 
           <p>If you want bullet point</p>
 
-          <p>
-            * Item 1<br />
-            * Item 2<br />
-            * Item 2a<br />
-            * Item 2b<br />
-          </p>
+          <pre>
+* Item 1
+* Item 2
+  * Item 2a
+  * Item 2b</pre>
 
           <h2 id="Images">Images</h2>
 
@@ -218,6 +219,14 @@
           <h2 id="Code">Code</h2>
 
           <p>You can create code span by wrapping text in backtick quotes: <strong>`your code`</strong></p>
+          <p>
+            For a block of code, put it between two lines of three backticks. Name the language after the first three
+            to highlight its syntax:
+          </p>
+          <pre>
+```go
+func main() {}
+```</pre>
 
           <h2 id="Tables">Tables</h2>
 
