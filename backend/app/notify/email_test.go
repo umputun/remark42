@@ -198,6 +198,51 @@ admin@example.org
 	})
 }
 
+// a reply notifies the authors of every comment above it by email; the unsubscribe link in each message
+// must name the user the address belongs to, not the author of the comment replied to
+func TestEmail_UnsubscribeLinkPerRecipient(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// thread p0 <- p1 <- p2 <- p3 <- p4 <- c, c by u5 who also wrote p0
+		dataStore := &mockStore{data: map[string]store.Comment{}, userDetails: map[string]string{
+			"u1": "pair@example.org", "u2": "pair@example.org", // one address for two users
+			"u3": "u3@example.org", "u4": "u4@example.org", "u5": "u5@example.org",
+		}}
+		dataStore.data["p0"] = store.Comment{ID: "p0", User: store.User{ID: "u5"}}
+		dataStore.data["p1"] = store.Comment{ID: "p1", ParentID: "p0", User: store.User{ID: "u1"}}
+		dataStore.data["p2"] = store.Comment{ID: "p2", ParentID: "p1", User: store.User{ID: "u2"}}
+		dataStore.data["p3"] = store.Comment{ID: "p3", ParentID: "p2", User: store.User{ID: "u3"}}
+		dataStore.data["p4"] = store.Comment{ID: "p4", ParentID: "p3", User: store.User{ID: "u4"}}
+		dest := &MockDest{id: 1}
+		s := NewService(dataStore, 1, dest)
+		s.Submit(Request{Comment: store.Comment{ID: "c", ParentID: "p4", User: store.User{ID: "u5"},
+			Locator: store.Locator{SiteID: "remark"}}})
+		synctest.Wait()
+		s.Close()
+		require.Len(t, dest.Get(), 1)
+		req := dest.Get()[0]
+		assert.Equal(t, []string{"pair@example.org", "u3@example.org", "u4@example.org"}, req.Emails,
+			"one message per address, none to u5 who wrote the reply")
+
+		email, err := NewEmail(EmailParams{MsgTemplatePath: "testdata/msg.html.tmpl",
+			UnsubscribeURL: "https://example.org/email/unsubscribe.html"}, ntf.SMTPParams{})
+		require.NoError(t, err)
+		email.TokenGenFn = func(userID, address, _ string) (string, error) { return userID + "::" + address, nil }
+
+		for address, user := range map[string]string{
+			"u4@example.org":   "u4", // the author of the comment replied to
+			"u3@example.org":   "u3",
+			"pair@example.org": "u2", // the user nearest to the reply of the two with this address
+		} {
+			msg, err := email.buildMessageFromRequest(req, address, false)
+			require.NoError(t, err)
+			link := "https://example.org/email/unsubscribe.html?site=remark&tkn=" + user + "::" + address
+			assert.Equal(t, link, msg.unsubscribeLink, "link in the header of the message to %s", address)
+			assert.Contains(t, msg.body, "Unsubscribe link: "+template.HTMLEscapeString(link),
+				"link in the text of the message to %s", address)
+		}
+	})
+}
+
 func TestEmail_CommentTextSanitizedForEmail(t *testing.T) {
 	// comment HTML reaching the email path is sanitized by the store-level UGC policy,
 	// which permits <a> and <img>. The email must drop both so a comment can't inject

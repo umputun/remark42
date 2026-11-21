@@ -268,7 +268,14 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 		subject += fmt.Sprintf(" for %q", req.Comment.PostTitle)
 	}
 
-	token, err := e.TokenGenFn(req.parent.User.ID, email, req.Comment.Locator.SiteID)
+	// a reply notifies the authors of every comment above it, so the link names the user the address
+	// belongs to; the unsubscribe handler accepts a link only with the address stored for the user in it.
+	// A request not made by Service.Submit has no such users and names the author of the parent comment
+	userID := req.parent.User.ID
+	if id, ok := req.emailUsers[email]; ok {
+		userID = id
+	}
+	token, err := e.TokenGenFn(userID, email, req.Comment.Locator.SiteID)
 	if err != nil {
 		return commentMessage{}, fmt.Errorf("error creating token for unsubscribe link: %w", err)
 	}

@@ -8,11 +8,15 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"html"
 	"image/png"
 	"io"
+	"mime/quotedprintable"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
+	"net/textproto"
 	"net/url"
 	"os"
 	"path"
@@ -42,6 +46,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 const (
@@ -1492,12 +1497,12 @@ func TestServerCommand_identiconSize(t *testing.T) {
 			_, err := flags.NewParser(&cmd, flags.Default).ParseArgs(append([]string{"--admin-passwd=password", "--site=remark"}, tt.args...))
 			require.NoError(t, err)
 
-			store := avatar.NewLocalFS(t.TempDir())
-			authenticator := cmd.getAuthenticator(nil, store, nil, nil)
+			avatars := avatar.NewLocalFS(t.TempDir())
+			authenticator := cmd.getAuthenticator(nil, avatars, nil, nil)
 			avatarURL, err := authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
 			require.NoError(t, err)
 
-			r, _, err := store.Get(path.Base(avatarURL))
+			r, _, err := avatars.Get(path.Base(avatarURL))
 			require.NoError(t, err)
 			defer r.Close()
 			cfg, err := png.DecodeConfig(r)
@@ -1724,6 +1729,211 @@ func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "an unsubscribe token is not a login, %s", body)
 	for _, c := range resp.Cookies() {
 		assert.NotEqual(t, "JWT", c.Name, "no session from an unsubscribe token")
+	}
+}
+
+// TestServerApp_UnsubscribeLinkPerRecipient follows a reply notification from the notifier through the
+// mail sent to every subscriber up the thread to the unsubscribe link in it. A reply reaches the authors
+// of all the comments above it, so each mail's link must name its own recipient, or the handler finds
+// another user's address in it and refuses to unsubscribe anyone.
+func TestServerApp_UnsubscribeLinkPerRecipient(t *testing.T) {
+	smtpSrv := startSMTPCapture(t) // before the app, so it is closed after the app stops
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.SMTP.Host, o.SMTP.Port = "127.0.0.1", smtpSrv.port()
+		o.SMTP.Username, o.SMTP.Password = "", "" // the capture server offers no AUTH
+		o.Admin.Shared.Email = []string{"admin@example.org"}
+		return o
+	})
+
+	// thread a <- b <- c, the authors of a and b subscribed, c's reply is the one notified about
+	locator := store.Locator{SiteID: "remark", URL: "https://example.org/post"}
+	create := func(userID, parentID string) store.Comment {
+		id, err := app.dataService.Create(store.Comment{Locator: locator, ParentID: parentID, PostTitle: "post",
+			Text: "comment of " + userID, User: store.User{ID: userID, Name: userID}})
+		require.NoError(t, err)
+		c, err := app.dataService.Get(locator, id, store.User{})
+		require.NoError(t, err)
+		return c
+	}
+	a := create("email_a", "")
+	b := create("email_b", a.ID)
+	c := create("email_c", b.ID)
+	for user, address := range map[string]string{"email_a": "a@example.org", "email_b": "b@example.org"} {
+		_, err := app.dataService.SetUserEmail("remark", user, address)
+		require.NoError(t, err)
+	}
+
+	app.notifyService.Submit(notify.Request{Comment: c})
+	require.Eventually(t, func() bool { return len(smtpSrv.messages()) == 3 }, serverStartTimeout, serverStartPoll,
+		"mail to a, b and the admin")
+
+	links := map[string]string{}
+	for _, m := range smtpSrv.messages() {
+		require.Len(t, m.to, 1, "one recipient per mail")
+		header, body := readMail(t, m.data)
+		if m.to[0] == "admin@example.org" {
+			assert.Empty(t, header.Get("List-Unsubscribe"), "no unsubscribe header in the admin's mail")
+			assert.NotContains(t, body, "unsubscribe.html", "no unsubscribe link in the admin's mail")
+			continue
+		}
+		link := strings.TrimSuffix(strings.TrimPrefix(header.Get("List-Unsubscribe"), "<"), ">")
+		require.NotEmpty(t, link, "unsubscribe header in the mail to %s", m.to[0])
+		assert.Contains(t, body, `href="`+link+`"`, "the link in the text of the mail to %s is the one in its header", m.to[0])
+		links[m.to[0]] = link
+	}
+	require.Len(t, links, 2, "mail to a and b, none to c, who wrote the reply")
+
+	// each link names its own recipient
+	handshake := func(link string) string {
+		u, err := url.Parse(link)
+		require.NoError(t, err)
+		claims, err := app.authenticator.TokenService().Parse(u.Query().Get("tkn"))
+		require.NoError(t, err)
+		require.NotNil(t, claims.Handshake)
+		return claims.Handshake.ID
+	}
+	assert.Equal(t, "email_a::a@example.org", handshake(links["a@example.org"]), "a's link names a")
+	assert.Equal(t, "email_b::b@example.org", handshake(links["b@example.org"]), "b's link names b")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	local := func(link string) string { // the links point at the configured remark URL, the test server is local
+		u, err := url.Parse(link)
+		require.NoError(t, err)
+		return fmt.Sprintf("http://localhost:%d%s", app.Port, u.RequestURI())
+	}
+	email := func(user string) string {
+		address, err := app.dataService.GetUserEmail("remark", user)
+		require.NoError(t, err)
+		return address
+	}
+
+	// a, who wrote the root comment, follows the link from the mail and is unsubscribed, b is not
+	resp, err := client.Get(local(links["a@example.org"]))
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "a's link unsubscribes a: %s", body)
+	assert.Empty(t, email("email_a"), "a unsubscribed")
+	assert.Equal(t, "b@example.org", email("email_b"), "b still subscribed")
+
+	// b, the direct parent, unsubscribes the way a mail client does it from the header, with a one-click POST
+	resp, err = client.Post(local(links["b@example.org"]), "application/x-www-form-urlencoded",
+		strings.NewReader("List-Unsubscribe=One-Click"))
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "b's link unsubscribes b: %s", body)
+	assert.Empty(t, email("email_b"), "b unsubscribed")
+}
+
+// readMail returns the headers of a mail as sent and its text, decoded from quoted-printable and HTML
+func readMail(t *testing.T, data []byte) (header mail.Header, text string) {
+	t.Helper()
+	m, err := mail.ReadMessage(bytes.NewReader(data))
+	require.NoError(t, err)
+	body, err := io.ReadAll(quotedprintable.NewReader(m.Body))
+	require.NoError(t, err)
+	return m.Header, html.UnescapeString(string(body))
+}
+
+// smtpCapture is an SMTP server on a loopback port which accepts every mail and keeps it
+type smtpCapture struct {
+	ln    net.Listener
+	wg    sync.WaitGroup
+	mu    sync.Mutex
+	conns map[net.Conn]struct{}
+	mails []capturedMail
+}
+
+type capturedMail struct {
+	to   []string
+	data []byte
+}
+
+// startSMTPCapture starts an smtpCapture, stopped when the test ends
+func startSMTPCapture(t *testing.T) *smtpCapture {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	s := &smtpCapture{ln: ln, conns: map[net.Conn]struct{}{}}
+	s.wg.Go(func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			s.mu.Lock()
+			s.conns[conn] = struct{}{}
+			s.mu.Unlock()
+			s.wg.Go(func() { s.serve(conn) })
+		}
+	})
+	t.Cleanup(func() {
+		_ = ln.Close()
+		s.mu.Lock()
+		for conn := range s.conns {
+			_ = conn.Close()
+		}
+		s.mu.Unlock()
+		s.wg.Wait()
+	})
+	return s
+}
+
+func (s *smtpCapture) port() int { return s.ln.Addr().(*net.TCPAddr).Port }
+
+func (s *smtpCapture) messages() []capturedMail {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.mails)
+}
+
+// serve answers one SMTP session with the replies net/smtp needs to deliver a mail without AUTH or TLS
+func (s *smtpCapture) serve(conn net.Conn) {
+	defer func() {
+		s.mu.Lock()
+		delete(s.conns, conn)
+		s.mu.Unlock()
+		_ = conn.Close()
+	}()
+	tp := textproto.NewConn(conn)
+	if tp.PrintfLine("220 localhost ESMTP") != nil {
+		return
+	}
+	var m capturedMail
+	for {
+		line, err := tp.ReadLine()
+		if err != nil {
+			return
+		}
+		verb, arg, _ := strings.Cut(line, " ")
+		reply := "250 ok"
+		switch strings.ToUpper(verb) {
+		case "MAIL":
+			m = capturedMail{}
+		case "RCPT":
+			_, addr, _ := strings.Cut(arg, ":")
+			m.to = append(m.to, strings.Trim(addr, "<> "))
+		case "DATA":
+			if tp.PrintfLine("354 go ahead") != nil {
+				return
+			}
+			if m.data, err = tp.ReadDotBytes(); err != nil {
+				return
+			}
+			s.mu.Lock()
+			s.mails = append(s.mails, m)
+			s.mu.Unlock()
+		case "QUIT":
+			_ = tp.PrintfLine("221 bye")
+			return
+		}
+		if tp.PrintfLine("%s", reply) != nil {
+			return
+		}
 	}
 }
 
