@@ -354,7 +354,6 @@ export function Auth() {
                         />
                       </div>
                     )}
-                    <input className={styles.honeypot} type="checkbox" tabIndex={-1} autoComplete="off" />
                     {formFooterJSX}
                   </>
                 )}
