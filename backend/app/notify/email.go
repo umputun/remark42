@@ -18,6 +18,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/net/idna"
 
+	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/templates"
 )
 
@@ -83,8 +84,16 @@ var emailCommentPolicy = func() *bluemonday.Policy {
 
 // emailSafeHTML strips links and images from pre-rendered comment HTML and returns
 // it as template.HTML so html/template renders the remaining safe formatting as-is.
+// The sanitizer filters tags one by one and doesn't match them, so the result is balanced
+// to keep a stray end tag from closing elements of the message template around the comment.
 func emailSafeHTML(commentHTML string) template.HTML {
-	return template.HTML(emailCommentPolicy.Sanitize(commentHTML)) //nolint:gosec // sanitized above: <a>/<img> dropped, only formatting tags survive
+	clean := emailCommentPolicy.Sanitize(commentHTML)
+	balanced, err := store.BalanceHTML(clean)
+	if err != nil {
+		// nested too deep or misnested beyond repair: keep the text only
+		balanced = bluemonday.StrictPolicy().Sanitize(clean)
+	}
+	return template.HTML(balanced) //nolint:gosec // sanitized above: <a>/<img> dropped, only balanced formatting tags survive
 }
 
 // verifyTmplData store data for verification message template execution

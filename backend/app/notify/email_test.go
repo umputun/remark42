@@ -438,12 +438,46 @@ func TestEmailSafeHTML(t *testing.T) {
 		{"keeps bold/italic/code", `<b>b</b><i>i</i><code>c</code>`, `<b>b</b><i>i</i><code>c</code>`},
 		{"keeps blockquote and lists", `<blockquote>q</blockquote><ul><li>x</li></ul>`, `<blockquote>q</blockquote><ul><li>x</li></ul>`},
 		{"drops onclick handlers", `<span onclick="alert(1)">s</span>`, `<span>s</span>`},
+		{"drops stray end tags", `<p>ok </div></div><h1>h</h1></p>`, `<p>ok </p><h1>h</h1><p></p>`},
+		{"drops stray end tags left by removed elements", `<p>ok <svg><title><xmp></title></div></div><h1>h</h1></xmp></title></svg></p>`,
+			`<p>ok </p><h1>h</h1><p></p>`},
+		{"closes unclosed tags", `<div><h1><s>x`, `<div><h1><s>x</s></h1></div>`},
+		{"keeps misnested tags from closing each other", `<h1><div><h2><b><h3>x</b></div></div>`,
+			`<h1><div><h2><b></b></h2><h3><b>x</b></h3></div></h1>`},
+		{"keeps text only if nested too deep", `</div><h1>h</h1>` + strings.Repeat("<b>", 600) + `x &amp; y`, `hx &amp; y`},
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, string(emailSafeHTML(tt.in)))
+			assert.Equal(t, tt.want, string(emailSafeHTML(tt.want)), "parsed to the same html again")
 		})
 	}
+}
+
+// comment text with end tags of its own must not close the blocks of the message template it is placed in
+func TestEmail_BuildMessageKeepsCommentInsideItsBlock(t *testing.T) {
+	email, err := NewEmail(EmailParams{
+		TokenGenFn: func(_, _, _ string) (string, error) { return "token", nil },
+	}, ntf.SMTPParams{})
+	require.NoError(t, err)
+
+	build := func(text string) string {
+		req := Request{
+			Comment: store.Comment{ID: "1", ParentID: "2", Text: text, User: store.User{ID: "u1", Name: "attacker"},
+				Locator: store.Locator{SiteID: "remark", URL: "https://example.org/post"}},
+			parent: store.Comment{ID: "2", Text: text, User: store.User{ID: "u2", Name: "victim"}},
+			Emails: []string{"victim@example.org"},
+		}
+		msg, e := email.buildMessageFromRequest(req, req.Emails[0], false)
+		require.NoError(t, e)
+		return msg.body
+	}
+
+	plain := build("<p>text</p>")
+	body := build("<p>text </div></div></div></div><h1>Your account is suspended</h1></p>")
+	assert.Contains(t, body, "<h1>Your account is suspended</h1>", "formatting is preserved")
+	assert.Equal(t, strings.Count(plain, "<div"), strings.Count(body, "<div"), "no block opened by the comment")
+	assert.Equal(t, strings.Count(plain, "</div>"), strings.Count(body, "</div>"), "no block closed by the comment")
 }
 
 func TestEmail_SendVerification(t *testing.T) {
