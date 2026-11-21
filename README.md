@@ -6,7 +6,7 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 * Login via email
 * Optional anonymous access
 * Multi-level nested comments with both tree and plain presentations
-* Import from Disqus and WordPress
+* Import from Disqus, WordPress and Commento
 * Markdown support with friendly formatter toolbar
 * Moderator can remove comments and block users
 * Voting, pinning and verification system
@@ -19,10 +19,10 @@ Remark42 is a self-hosted, lightweight and simple (yet functional) comment engin
 * Export data to JSON with automatic backups
 * No external databases, everything embedded in a single data file
 * Fully dockerized and can be deployed in a single command
-* Self-contained executable can be deployed directly to Linux, Windows and macOS
-* Clean, lightweight and customizable UI with white and dark themes
+* Self-contained executable can be deployed directly to Linux, Windows, macOS and FreeBSD
+* Clean, lightweight and customizable UI with light and dark themes
 * Multi-site mode from a single instance
-* Integration with automatic SSL (direct and via [nginx-le](https://github.com/nginx-le/nginx-le))
+* Integration with automatic SSL (direct or via [Reproxy](https://remark42.com/docs/manuals/reproxy/))
 * [Privacy focused](https://remark42.com/#privacy)
 
 [Demo site](https://remark42.com/demo/) available with all authentication methods, including email auth and anonymous access.
@@ -48,4 +48,4 @@ If you are interested in adding a new localization please check [these docs](htt
 ## Related projects
 
 * [A Helm chart for Remark42 on Kubernetes](https://github.com/groundhog2k/helm-charts/tree/master/charts/remark42)
-* [django-remark42](https://github.com/andrewp-as-is/django-remark42.py)
+* [django-remark42](https://github.com/petrochenkov-ak/django-remark42.py)
