@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -164,6 +165,54 @@ func TestAdmin_Title(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", cr.PostTitle)
+}
+
+// TestAdmin_TitleKeptWhenPageFails runs the title update the way cleanup --title does, one request per
+// comment of a post, against a page that can no longer be read: every comment keeps the title it has
+func TestAdmin_TitleKeptWhenPageFails(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	var pageDown atomic.Bool
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if pageDown.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, err := w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer tss.Close()
+
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
+	ids := make([]string, 3)
+	for i := range ids {
+		ids[i] = addComment(t, store.Comment{Text: fmt.Sprintf("test test #%d", i), User: store.User{ID: "id", Name: "name"},
+			Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post1"}}, ts)
+	}
+
+	// the page stops answering, and the title cache no longer holds its title
+	pageDown.Store(true)
+	require.NoError(t, srv.DataService.TitleExtractor.Close())
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
+
+	for _, id := range ids {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL), http.NoBody)
+		require.NoError(t, err)
+		resp, err := sendReq(req, adminUmputunToken)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "title of comment %s not updated", id)
+	}
+
+	for _, id := range ids {
+		body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL))
+		require.Equal(t, http.StatusOK, code)
+		cr := store.Comment{}
+		require.NoError(t, json.Unmarshal([]byte(body), &cr))
+		assert.Equal(t, "post1 blah 123", cr.PostTitle, "title of comment %s kept", id)
+	}
 }
 
 func TestAdmin_DeleteUser(t *testing.T) {

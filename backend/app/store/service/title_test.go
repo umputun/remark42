@@ -129,10 +129,29 @@ func TestTitle_GetFailed(t *testing.T) {
 
 	for range 100 {
 		r, err := ex.Get(ts.URL + "/bad")
-		require.NoError(t, err)
+		require.Error(t, err, "a cached failure is still a failure")
 		assert.Equal(t, "", r)
 	}
 	assert.Equal(t, int32(1), hits.Load(), "hit once, errors cached")
+}
+
+func TestTitle_GetBlankTitle(t *testing.T) {
+	ex := NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
+	defer ex.Close()
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, err := w.Write([]byte("<html><title> \n </title><body> 2222</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	for range 10 {
+		r, err := ex.Get(ts.URL + "/blank")
+		require.Error(t, err, "a blank title is no title")
+		assert.Equal(t, "", r)
+	}
+	assert.Equal(t, int32(1), hits.Load(), "hit once, blank title cached")
 }
 
 func TestTitle_DoubleClosed(t *testing.T) {

@@ -84,10 +84,14 @@ func (t *TitleExtractor) Get(pageURL string) (string, error) {
 		return title, nil
 	})
 
-	// on error save result (empty string) to cache too and return "" title
+	// on error save result (empty string) to cache too, so the page is not requested again until it expires
 	if err != nil {
 		_, _ = t.cache.Get(pageURL, func() (string, error) { return "", nil })
 		return "", err
+	}
+	// an empty title is a failure cached by an earlier call or a blank <title>, never a title to store
+	if b == "" {
+		return "", fmt.Errorf("no title for %s, the page failed to load or has a blank title", pageURL)
 	}
 
 	return b, nil
