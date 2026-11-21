@@ -1167,6 +1167,7 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
+	c.SanitizeEditSummary() // summaries stored before edits cleaned them
 	return c
 }
 

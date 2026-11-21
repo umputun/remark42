@@ -460,6 +460,84 @@ func TestRest_Update(t *testing.T) {
 	assert.Equal(t, c2, c3, "same as response from update")
 }
 
+func TestRest_UpdateSanitizesSummary(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/"+id+"?site=remark42&url=https://radio-t.com/blah1",
+		strings.NewReader(`{"text":"updated text", "summary":"<script>alert(1)</script><b>why</b> & \"how\""}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+	const want = `why &amp; "how"`
+	updated := store.Comment{}
+	require.NoError(t, json.Unmarshal(body, &updated))
+	require.NotNil(t, updated.Edit)
+	assert.Equal(t, want, updated.Edit.Summary, "update response")
+
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}
+	stored, err := srv.DataService.Engine.Get(engine.GetRequest{Locator: locator, CommentID: id})
+	require.NoError(t, err)
+	require.NotNil(t, stored.Edit)
+	assert.Equal(t, want, stored.Edit.Summary, "stored record")
+
+	res, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
+	require.Equal(t, http.StatusOK, code, res)
+	byID := store.Comment{}
+	require.NoError(t, json.Unmarshal([]byte(res), &byID))
+	require.NotNil(t, byID.Edit)
+	assert.Equal(t, want, byID.Edit.Summary, "GET /id")
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code, res)
+	found := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &found))
+	require.Len(t, found.Comments, 1)
+	require.NotNil(t, found.Comments[0].Edit)
+	assert.Equal(t, want, found.Comments[0].Edit.Summary, "GET /find")
+}
+
+func TestRest_ReadSanitizesStoredSummary(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
+	id := addComment(t, c1, ts)
+
+	// a summary stored before edits cleaned it
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}
+	c, err := srv.DataService.Engine.Get(engine.GetRequest{Locator: locator, CommentID: id})
+	require.NoError(t, err)
+	c.Edit = &store.Edit{Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), Summary: "<script>alert(1)</script><b>why</b>"}
+	require.NoError(t, srv.DataService.Engine.Update(c))
+
+	res, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah1", ts.URL, id))
+	require.Equal(t, http.StatusOK, code, res)
+	byID := store.Comment{}
+	require.NoError(t, json.Unmarshal([]byte(res), &byID))
+	require.NotNil(t, byID.Edit)
+	assert.Equal(t, "why", byID.Edit.Summary, "GET /id")
+
+	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
+	require.Equal(t, http.StatusOK, code, res)
+	found := commentsWithInfo{}
+	require.NoError(t, json.Unmarshal([]byte(res), &found))
+	require.Len(t, found.Comments, 1)
+	require.NotNil(t, found.Comments[0].Edit)
+	assert.Equal(t, "why", found.Comments[0].Edit.Summary, "GET /find")
+}
+
 func TestRest_UpdateHidesVoters(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
