@@ -14,6 +14,10 @@ type RemarkConfig = {
   // doesn't contain query params and hash. For example, default URL for 'https://example/com/example-post?id=1#hash'
   // would be 'https://example/com/example-post'
   url?: string;
+  // Optional, the DOM element to mount the widget into, e.g. a ref of a single-page application component.
+  // The element with the id 'remark42' is used when it is not set. It is read by the embed script only
+  // and never passed on to the widget.
+  node?: HTMLElement;
   // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
   max_shown_comments?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.

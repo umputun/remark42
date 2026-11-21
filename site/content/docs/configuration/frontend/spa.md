@@ -22,6 +22,8 @@ Add the following JavaScript to your `index.html`, which in this case, it is ide
 
 Created `remark42Instance` when the `div` containing remark42 has appeared, usually at `mounted` or `componentDidMount` of the SPA lifecycle. Destroy the previous instance first, if necessary.
 
+The widget is mounted into the element passed as `node`. Without it, the element with the id `remark42` is used, so `node` can be left out when your page has one.
+
 ```ts
   initRemark42() {
     if (window.REMARK42) {
@@ -65,3 +67,12 @@ Created `remark42Instance` when the `div` containing remark42 has appeared, usua
     }
   }
 ```
+
+## Things to know about `createInstance`
+
+- `createInstance` returns `{ changeTheme, destroy }` and throws an `Error` instead of returning a failure, in three cases:
+  - there is no element to mount into: neither `node` nor an element with the id `remark42`
+  - `window.remark_config` is not defined
+  - `site_id` is not set in `window.remark_config`
+- `node`, when given, must be a DOM element, otherwise `createInstance` throws as well.
+- The checks above and the server address (`host`) are read from the **global** `window.remark_config`, while the other options come from the object passed to `createInstance`. Passing a configuration does not remove the need to define a valid global one with at least `host` and `site_id`.
