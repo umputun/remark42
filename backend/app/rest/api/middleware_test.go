@@ -347,6 +347,9 @@ func Test_validEmailAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&address=umputun+example.com&user=someone", http.StatusForbidden},
 		{"/auth/email/login?site=bad!site&address=umputun%example.com&user=someone", http.StatusForbidden},
 		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%example.com&user=someone", http.StatusForbidden},
+		// three characters is the shortest name the widget's sign-in form accepts
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=abc", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Ева", http.StatusOK},
 	}
 
 	for i, tt := range tbl {

@@ -548,10 +548,10 @@ func threadURLOn(t *testing.T, base string) string {
 // stack repeats it, which is exactly what `make e2e-up` invites. The pid distinguishes those
 // while leaving CI, where every job is one process, with the run id it wants in the name.
 //
-// Everything outside [\p{L}\d\s_] is dropped, because the form validates its input against that
-// pattern (auth.tsx:332) and the browser refuses to submit anything else: no request is made, and
-// the test waits out its timeout on a panel that was never going to change. E2E_RUN_ID is
-// "<run id>-<attempt>" on CI, whose hyphen is exactly such a character
+// Everything outside [\p{L}\d _] is dropped, because the form validates its input against that
+// pattern (the username input in auth.tsx) and the browser refuses to submit anything else: no
+// request is made, and the test waits out its timeout on a panel that was never going to change.
+// E2E_RUN_ID is "<run id>-<attempt>" on CI, whose hyphen is exactly such a character
 func anonName(prefix string) string {
 	var b strings.Builder
 	b.WriteString(prefix)

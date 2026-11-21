@@ -337,7 +337,8 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {
 
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
+	// at least 3 characters, as the widget's sign-in form and anonymous login require, and at most 64
+	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{3,64}$`)
 	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_.-]{1,64}$`)
 
 	return func(h http.Handler) http.Handler {

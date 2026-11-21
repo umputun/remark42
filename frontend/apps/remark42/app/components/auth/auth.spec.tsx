@@ -217,6 +217,44 @@ describe('<Auth/>', () => {
     expect(utils.persistEmail).toHaveBeenCalledWith('email@email.com');
   });
 
+  // server-side sign-in allows no space but the ordinary one, so the form refuses the others itself
+  // instead of sending a name the server answers with 403
+  it.each`
+    name                | space
+    ${'Ева\u00a0Ли'}    | ${'a no-break space'}
+    ${'山田\u3000太郎'} | ${'an ideographic space'}
+  `('should refuse a name with $space', ({ name }) => {
+    StaticStore.config.auth_providers = ['email'];
+    // earlier tests leave calls on the same spy
+    const emailSignin = jest.spyOn(api, 'emailSignin');
+    emailSignin.mockClear();
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.change(screen.getByPlaceholderText('Email address'), {
+      target: { value: 'email@email.com' },
+    });
+    fireEvent.click(screen.getByText('Confirm'));
+
+    expect(input.validity.patternMismatch).toBe(true);
+    expect(emailSignin).not.toHaveBeenCalled();
+  });
+
+  it.each(['abc', 'Ева Ли', 'user_1'])('should accept the name %s', (name) => {
+    StaticStore.config.auth_providers = ['email'];
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: name } });
+
+    expect(input.validity.valid).toBe(true);
+  });
+
   it('should show validation error for token', async () => {
     StaticStore.config.auth_providers = ['email'];
     const emailSignin = jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);

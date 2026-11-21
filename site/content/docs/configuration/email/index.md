@@ -220,6 +220,8 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 - AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
 ```
 
+A user signs in with a name and an email address. The name must contain 3 to 64 characters: letters, ASCII digits, underscores or ordinary spaces. The token sent to the email address expires after 30 minutes.
+
 ## HTML templates for emails and error messages
 
 Remark42 uses golang templates for email templating. Templates are located in `backend/app/templates/static` and embedded into binary by `go:embed` [directive](https://pkg.go.dev/embed).
