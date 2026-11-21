@@ -207,6 +207,13 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// a token issued before the block is still accepted until it is refreshed, so check the block here,
+	// as creating a comment and voting do. Deleting one's own comment stays allowed.
+	if !edit.Delete && s.dataService.IsBlocked(locator.SiteID, user.ID) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "user blocked", rest.ErrUserBlocked)
+		return
+	}
+
 	editReq := service.EditRequest{
 		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
 		Orig:    edit.Text,
