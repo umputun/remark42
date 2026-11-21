@@ -652,6 +652,16 @@ func waitPastMillisecond(ts time.Time) {
 	time.Sleep(time.Until(next) + time.Microsecond) // a non-positive duration returns at once
 }
 
+// sinceAfter returns a value for the millisecond-precision "since" filter that falls between
+// something created at ts and whatever is created after the call: the millisecond following
+// ts's, which it waits out, so nothing is created in it. "since" keeps only what is strictly
+// after it, so the value separates the two even when a stored time sits exactly on a millisecond
+func sinceAfter(ts time.Time) string {
+	empty := ts.Truncate(time.Millisecond).Add(time.Millisecond)
+	waitPastMillisecond(empty)
+	return strconv.FormatInt(empty.UnixMilli(), 10)
+}
+
 func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	// test that comment counting is consistent between tree and plain formats
 	// the open-route limit is lifted so the subtests below can run back to back
@@ -681,55 +691,59 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	}
 
 	// adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
-	// each comment waits for the clock to pass the previous one's millisecond so the "since"
-	// filter, which has millisecond precision, can tell them apart
+	// sinceTS[i] is the "since" value that keeps comment i and drops every comment before it:
+	// the empty millisecond sinceAfter leaves between two comments. comment i's own millisecond
+	// would not do, since "since" is exclusive and drops comment i whenever its time sits exactly
+	// on that millisecond
 	ids := make([]string, 9)
 	timestamps := make([]time.Time, 9)
+	sinceTS := make([]string, 8)
 	c1 := store.Comment{Text: "top-level comment 1", Locator: commentLocator}
 	ids[0], timestamps[0] = addCommentGetCreatedTime(t, c1, ts)
+	sinceTS[0] = strconv.FormatInt(timestamps[0].Truncate(time.Millisecond).Add(-time.Millisecond).UnixMilli(), 10)
 	// #3 by score
 	setScore(commentLocator, ids[0], 1)
-	waitPastMillisecond(timestamps[0])
+	sinceTS[1] = sinceAfter(timestamps[0])
 
 	c2 := store.Comment{Text: "top-level comment 2", Locator: commentLocator}
 	ids[1], timestamps[1] = addCommentGetCreatedTime(t, c2, ts)
 	// #2 by score
 	setScore(commentLocator, ids[1], 2)
-	waitPastMillisecond(timestamps[1])
+	sinceTS[2] = sinceAfter(timestamps[1])
 
 	c3 := store.Comment{Text: "second-level comment 1", ParentID: ids[0], Locator: commentLocator}
 	ids[2], timestamps[2] = addCommentGetCreatedTime(t, c3, ts)
 	// #1 by score
 	setScore(commentLocator, ids[2], 10)
-	waitPastMillisecond(timestamps[2])
+	sinceTS[3] = sinceAfter(timestamps[2])
 
 	c4 := store.Comment{Text: "third-level comment 1", ParentID: ids[2], Locator: commentLocator}
 	ids[3], timestamps[3] = addCommentGetCreatedTime(t, c4, ts)
 	// #5 by score, #1 by controversy
 	setScore(commentLocator, ids[3], 4)
 	setScore(commentLocator, ids[3], -4)
-	waitPastMillisecond(timestamps[3])
+	sinceTS[4] = sinceAfter(timestamps[3])
 
 	c5 := store.Comment{Text: "second-level comment 2", ParentID: ids[1], Locator: commentLocator}
 	ids[4], timestamps[4] = addCommentGetCreatedTime(t, c5, ts)
 	// #5 by score, #2 by controversy
 	setScore(commentLocator, ids[4], 2)
 	setScore(commentLocator, ids[4], -3)
-	waitPastMillisecond(timestamps[4])
+	sinceTS[5] = sinceAfter(timestamps[4])
 
 	c6 := store.Comment{Text: "deleted third-level comment 2", ParentID: ids[4], Locator: commentLocator}
 	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
 	// deleted later so not visible in site-wide requests
 	setScore(commentLocator, ids[5], 10)
 	setScore(commentLocator, ids[5], -10)
-	waitPastMillisecond(timestamps[5])
+	sinceTS[6] = sinceAfter(timestamps[5])
 
 	c7 := store.Comment{Text: "top-level comment 3", Locator: commentLocator}
 	ids[6], timestamps[6] = addCommentGetCreatedTime(t, c7, ts)
 	// #6 by score, #4 by controversy
 	setScore(commentLocator, ids[6], -3)
 	setScore(commentLocator, ids[6], 1)
-	waitPastMillisecond(timestamps[6])
+	sinceTS[7] = sinceAfter(timestamps[6])
 
 	c8 := store.Comment{Text: "deleted second-level comment 3", ParentID: ids[6], Locator: commentLocator}
 	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
@@ -753,10 +767,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	assert.NoError(t, srv.DataService.SetReadOnly(commentLocator, true))
 
 	sinceTenSecondsAgo := strconv.FormatInt(time.Now().Add(-time.Second*10).UnixNano()/1000000, 10)
-	sinceTS := make([]string, 9)
 	formattedTS := make([]string, 9)
 	for i, created := range timestamps {
-		sinceTS[i] = strconv.FormatInt(created.UnixNano()/1000000, 10)
 		formattedTS[i] = created.Format(time.RFC3339Nano)
 	}
 	t.Logf("last timestamp: %v", timestamps[7])
