@@ -591,7 +591,8 @@ func (s *DataStore) HasReplies(comment store.Comment) bool {
 	return false
 }
 
-// UserReplies returns list of all comments replied to given user
+// UserReplies returns list of all comments replied to given user. It looks for them among the site's
+// last maxLastCommentsReply comments, a number the engine caps (bolt returns at most 1000)
 func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error) {
 	comments, e := s.Last(siteID, maxLastCommentsReply, time.Time{}, nonAdminUser)
 	if e != nil {
@@ -606,15 +607,20 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 	}
 
 	// collect replies
+	postIDs := map[string]map[string]bool{} // comment IDs of the posts read by parentMissing, by post URL
 	for _, c := range comments {
-		if len(replies) > limit || time.Since(c.Timestamp) > duration {
+		if len(replies) >= limit || time.Since(c.Timestamp) > duration {
 			break
 		}
 
 		if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 			var pc store.Comment
 			if pc, e = s.Get(c.Locator, c.ParentID, nonAdminUser); e != nil {
-				return nil, "", fmt.Errorf("can't get parent comment: %w", e)
+				if !s.parentMissing(c, postIDs) {
+					return nil, "", fmt.Errorf("can't get parent comment: %w", e)
+				}
+				log.Printf("[DEBUG] skip reply %s to missing comment %s", c.ID, c.ParentID)
+				continue
 			}
 			if pc.User.ID == userID {
 				if userName == "" { // the user's own comments may all be deleted; a deleted one keeps the name
@@ -626,6 +632,25 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 	}
 
 	return replies, userName, nil
+}
+
+// parentMissing reports whether the post of the reply was read and has no comment with the reply's ParentID,
+// as for a reply stored before parents were checked. Get doesn't tell a missing comment from a failed read.
+// A post is read once per postIDs, which keeps the comment IDs of the posts read so far by post URL
+func (s *DataStore) parentMissing(reply store.Comment, postIDs map[string]map[string]bool) bool {
+	ids, ok := postIDs[reply.Locator.URL]
+	if !ok {
+		comments, err := s.Engine.Find(engine.FindRequest{Locator: reply.Locator})
+		if err != nil {
+			return false
+		}
+		ids = make(map[string]bool, len(comments))
+		for _, c := range comments {
+			ids[c.ID] = true
+		}
+		postIDs[reply.Locator.URL] = ids
+	}
+	return !ids[reply.ParentID]
 }
 
 // SetTitle puts title from the locator.URL page and overwrites any existing title

@@ -1478,6 +1478,101 @@ func TestService_UserReplies(t *testing.T) {
 	})
 }
 
+func TestService_UserRepliesLimit(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	loc := store.Locator{URL: "https://radio-t.com/limit", SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: loc, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	for i := 1; i <= 3; i++ {
+		_, err = eng.Create(store.Comment{ID: fmt.Sprintf("reply-%d", i), ParentID: "parent", Locator: loc,
+			Timestamp: base.Add(time.Duration(i) * time.Second), User: store.User{ID: "u2", Name: "user two"}})
+		require.NoError(t, err)
+	}
+
+	cc, _, err := b.UserReplies("radio-t", "u1", 2, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 2, "no more replies than the limit")
+	assert.Equal(t, "reply-3", cc[0].ID, "newest first")
+	assert.Equal(t, "reply-2", cc[1].ID)
+}
+
+func TestService_UserRepliesSkipsOrphanReply(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	loc := store.Locator{URL: "https://radio-t.com/orphan", SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: loc, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply", ParentID: "parent", Locator: loc, Timestamp: base.Add(time.Second),
+		User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+	// a later reply by another user to a comment that is not in the store
+	_, err = eng.Create(store.Comment{ID: "orphan", ParentID: "missing", Locator: loc, Timestamp: base.Add(2 * time.Second),
+		User: store.User{ID: "u3", Name: "user three"}})
+	require.NoError(t, err)
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err, "a reply to a missing comment does not fail the replies of another user")
+	assert.Equal(t, "user one", u)
+	require.Len(t, cc, 1)
+	assert.Equal(t, "reply", cc[0].ID)
+
+	// more replies to missing comments on the same post cost one read of the post, not one each
+	for i := range 3 {
+		_, err = eng.Create(store.Comment{ID: "orphan" + strconv.Itoa(i), ParentID: "missing" + strconv.Itoa(i), Locator: loc,
+			Timestamp: base.Add(time.Duration(3+i) * time.Second), User: store.User{ID: "u3", Name: "user three"}})
+		require.NoError(t, err)
+	}
+	counted := &failingReads{Interface: eng}
+	b.Engine = counted
+	cc, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 1)
+	assert.Equal(t, 1, counted.postReads, "the post is read once for all its replies to missing comments")
+
+	// a parent that can't be told missing because the post can't be read still fails the call
+	b.Engine = &failingReads{Interface: eng, post: true}
+	_, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.Error(t, err, "a store error while checking the parent is returned")
+	assert.Contains(t, err.Error(), "can't get parent comment")
+
+	// a parent that is in the post but can't be read fails the call too
+	b.Engine = &failingReads{Interface: eng, get: true}
+	_, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.Error(t, err, "a store error while reading an existing parent is returned")
+	assert.Contains(t, err.Error(), "can't get parent comment")
+}
+
+// failingReads fails reads of single comments (get) or of a post's comments (post), and counts the latter
+type failingReads struct {
+	engine.Interface
+	get, post bool
+	postReads int // reads of a post's comments
+}
+
+func (f *failingReads) Get(req engine.GetRequest) (store.Comment, error) {
+	if f.get {
+		return store.Comment{}, errors.New("read failed")
+	}
+	return f.Interface.Get(req)
+}
+
+func (f *failingReads) Find(req engine.FindRequest) ([]store.Comment, error) {
+	if req.Locator.URL != "" {
+		f.postReads++
+		if f.post {
+			return nil, errors.New("read failed")
+		}
+	}
+	return f.Interface.Find(req)
+}
+
 func TestService_Find(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
