@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	bf "github.com/russross/blackfriday/v2"
@@ -46,11 +45,6 @@ type DataStore struct {
 		sync.Mutex
 		sync.Once
 		locks map[string]sync.Locker
-	}
-
-	repliesCache struct {
-		lcw.LoadingCache[struct{}]
-		once sync.Once
 	}
 }
 
@@ -527,12 +521,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
 			log.Printf("[WARN] failed to send delete event, %s", e)
 		}
-		// clean up the comment and its parent from cache, so that
-		// after cleaning up the child, parent won't be stuck non-deletable till cache expires
-		if s.repliesCache.LoadingCache != nil {
-			s.repliesCache.Delete(commentID)
-			s.repliesCache.Delete(comment.ParentID)
-		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
 		return comment, s.Engine.Delete(delReq)
@@ -556,39 +544,14 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	return comment, err
 }
 
-// HasReplies checks if there is any reply to the comments
-// Loads last maxLastCommentsReply comments and compare parent id to the comment's id
-// Comments with replies cached for 5 minutes
+// HasReplies checks if there is any reply to the comment among the comments of its post
 func (s *DataStore) HasReplies(comment store.Comment) bool {
-	s.repliesCache.once.Do(func() {
-		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
-		o := lcw.NewOpts[struct{}]()
-		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache[struct{}](o.TTL(5 * time.Minute))
-	})
-
-	if _, found := s.repliesCache.Peek(comment.ID); found {
-		return true
-	}
-
-	req := engine.FindRequest{Locator: store.Locator{SiteID: comment.Locator.SiteID}, Limit: maxLastCommentsReply}
-	comments, err := s.Engine.Find(req)
+	comments, err := s.Engine.Find(engine.FindRequest{Locator: comment.Locator})
 	if err != nil {
-		log.Printf("[WARN] can't get last comments for reply check, %v", err)
+		log.Printf("[WARN] can't get comments for reply check, %v", err)
 		return false
 	}
-
-	for _, c := range comments {
-		if c.ParentID != "" && !c.Deleted {
-			if c.ParentID == comment.ID {
-				// when this code is reached, key "comment.ID" is not in cache.
-				// calling cache.Get on it will put it in cache with 5 minutes TTL.
-				// we call it with empty struct as value as we care about keys and not values.
-				_, _ = s.repliesCache.Get(comment.ID, func() (struct{}, error) { return struct{}{}, nil })
-				return true
-			}
-		}
-	}
-	return false
+	return slices.ContainsFunc(comments, func(c store.Comment) bool { return c.ParentID == comment.ID && !c.Deleted })
 }
 
 // UserReplies returns list of all comments replied to given user
@@ -811,18 +774,11 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
 		log.Printf("[WARN] failed to send delete event, %s", e)
 	}
-	// get comment to learn its parent ID
+	// get the comment to learn its author and pictures
 	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
 	}
-	// clean up the comment and its parent from cache, so that
-	// after cleaning up the child, parent won't be stuck non-deletable till cache expires
-	if s.repliesCache.LoadingCache != nil {
-		s.repliesCache.Delete(commentID)
-		s.repliesCache.Delete(comment.ParentID)
-	}
-
 	// delete the author's own images from the comment if they are not reused elsewhere in comments to the same page
 	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
 		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
@@ -1097,9 +1053,6 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 // Close store service
 func (s *DataStore) Close() error {
 	var errs []error
-	if s.repliesCache.LoadingCache != nil {
-		errs = append(errs, s.repliesCache.Close())
-	}
 	if s.TitleExtractor != nil {
 		errs = append(errs, s.TitleExtractor.Close())
 	}

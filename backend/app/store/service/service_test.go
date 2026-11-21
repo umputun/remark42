@@ -1344,45 +1344,94 @@ func TestService_HasReplies(t *testing.T) {
 	}
 	_, err := b.Create(reply)
 	assert.NoError(t, err)
-	_, found := b.repliesCache.Peek(comment.ID)
-	assert.False(t, found, "not yet checked")
 	assert.True(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies")
 
 	// deletion of the parent comment shouldn't work as the comment has replies
 	_, err = b.EditComment(reply.Locator, comment.ID, EditRequest{Orig: comment.ID, Delete: true, Summary: "user deletes the comment"})
 	assert.EqualError(t, err, "parent comment with reply can't be edited, "+comment.ID)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies")
 
 	// should not report replies after deletion of the child
 	err = b.Delete(reply.Locator, reply.ID, store.HardDelete)
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "cleaned up from cache by Delete call")
 	assert.False(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "checked and has no replies")
 
 	// recreate reply with the new ID
 	reply.ID = "c-2"
 	_, err = b.Create(reply)
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "not yet checked")
 	assert.True(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies again")
 
 	// should not report replies after deletion of the child using Edit mechanism
 	_, err = b.EditComment(reply.Locator, reply.ID, EditRequest{Orig: reply.ID, Delete: true, Summary: "user deletes the comment"})
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "cleaned up from cache by EditComment call")
 	assert.False(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "checked and has no replies")
+}
+
+func TestService_HasRepliesAfterManyLaterComments(t *testing.T) {
+	// the reply check must see a reply however many comments the site got after it on other posts
+	eng, err := engine.NewBoltDB(bolt.Options{NoSync: true}, engine.BoltSite{FileName: path.Join(t.TempDir(), "test.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	b := DataStore{Engine: eng,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+	defer func() { assert.NoError(t, b.Close()) }()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
+	post := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	_, err = eng.Create(store.Comment{ID: "id-1", Text: `some text, <a href="http://radio-t.com">link</a>`, Timestamp: ts,
+		Locator: post, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply-1", ParentID: "id-1", Text: "reply", Timestamp: ts.Add(time.Minute),
+		Locator: post, User: store.User{ID: "user2", Name: "user name 2"}})
+	require.NoError(t, err)
+
+	// more later comments on another post than the engine returns as the site's last comments
+	other := store.Locator{URL: "https://radio-t.com/other", SiteID: "radio-t"}
+	for i := range 1001 {
+		c := store.Comment{ID: fmt.Sprintf("other-%d", i), Text: "text", Timestamp: ts.Add(time.Hour + time.Duration(i)*time.Second),
+			Locator: other, User: store.User{ID: "user3", Name: "user name 3"}}
+		_, err = eng.Create(c)
+		require.NoError(t, err)
+	}
+
+	parent, err := eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+	require.NoError(t, err)
+	assert.True(t, b.HasReplies(parent), "the reply to id-1 is on its post")
+
+	// the author of id-1 can neither delete nor edit it while it has a reply
+	_, err = b.EditComment(post, "id-1", EditRequest{Delete: true})
+	require.EqualError(t, err, "parent comment with reply can't be edited, id-1")
+	_, err = b.EditComment(post, "id-1", EditRequest{Text: "new text", Orig: "new text"})
+	require.EqualError(t, err, "parent comment with reply can't be edited, id-1")
+	parent, err = eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+	require.NoError(t, err)
+	assert.False(t, parent.Deleted)
+	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, parent.Text)
+}
+
+func TestService_HasRepliesAfterUserDelete(t *testing.T) {
+	// deleting the author of the only reply leaves the parent without replies straight away
+	for name, mode := range map[string]store.DeleteMode{"soft": store.SoftDelete, "hard": store.HardDelete} {
+		t.Run(name, func(t *testing.T) {
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := DataStore{Engine: eng,
+				AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+			defer b.Close()
+
+			post := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+			_, err := b.Create(store.Comment{ID: "reply-1", ParentID: "id-1", Text: "reply", Locator: post,
+				User: store.User{ID: "user2", Name: "user name 2"}})
+			require.NoError(t, err)
+			parent, err := eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+			require.NoError(t, err)
+			require.True(t, b.HasReplies(parent))
+
+			require.NoError(t, b.DeleteUser("radio-t", "user2", mode))
+			assert.False(t, b.HasReplies(parent), "the only reply is deleted with its author")
+			_, err = b.EditComment(post, "id-1", EditRequest{Delete: true})
+			require.NoError(t, err, "the author can delete a comment that has no replies left")
+		})
+	}
 }
 
 func TestService_UserReplies(t *testing.T) {
