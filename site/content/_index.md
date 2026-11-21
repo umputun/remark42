@@ -35,7 +35,7 @@ Remark42 is designed to store as little personal information as it can:
 
 - From a sign-in provider, Remark42 keeps a user ID, the display name and the avatar, and for Patreon whether the user is a paid subscriber. The built-in providers are asked for the minimal scope, and nothing else they return is stored.
 - The user ID is a hash, not the provider's own identifier or the email address. The avatar is stored and served by Remark42 itself.
-- With each comment and vote, Remark42 keeps a keyed hash of the IP address, never the address itself. An email address or Telegram account is stored on the server only when the user subscribes to notifications.
+- With each comment and vote, Remark42 keeps a keyed hash of the IP address, never the address itself. An email address or Telegram account is kept in the database only when the user subscribes to notifications.
 - Remark42 includes no analytics or tracking services.
 - Login uses an HttpOnly JWT cookie, marked Secure when Remark42 runs on HTTPS, and an XSRF-TOKEN cookie, a random ID that protects against CSRF.
 - There is no cross-site login: every Remark42 instance has its own sign-in and its own data, and instances exchange nothing. The same account gets the same public user ID on each, so public comments can be matched across sites.
