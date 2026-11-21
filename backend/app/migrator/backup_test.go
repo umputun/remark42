@@ -201,6 +201,47 @@ func TestBackup_DoPrunesAfterStartBackup(t *testing.T) {
 	})
 }
 
+func TestBackup_DoKeepsBackupsWhenStartExportIsEmpty(t *testing.T) {
+	// a server started on an empty store, as before a restore, must not push its recovery points out
+	tbl := []struct {
+		name     string
+		keepMax  int
+		exporter Exporter
+		today    bool // whether the backup of today is expected
+	}{
+		{"empty export, the only backup would be replaced", 1, &emptyExporter{}, false},
+		{"empty export, room for one more", 2, &emptyExporter{}, true},
+		{"export with comments replaces the oldest", 1, &mockExporter{}, true},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			loc := t.TempDir()
+			synctest.Test(t, func(t *testing.T) {
+				now := time.Now()
+				yesterday := "backup-site1-" + now.AddDate(0, 0, -1).Format("20060102") + ".gz"
+				today := "backup-site1-" + now.Format("20060102") + ".gz"
+				require.NoError(t, os.WriteFile(filepath.Join(loc, yesterday), []byte("recovery point"), 0o600))
+				bk := AutoBackup{BackupLocation: loc, SiteID: "site1", KeepMax: tt.keepMax, Exporter: tt.exporter, Duration: 24 * time.Hour}
+				stop := runDo(t, bk)
+
+				synctest.Wait()
+				switch {
+				case !tt.today:
+					assert.Equal(t, []string{yesterday}, dirNames(t, loc), "the empty export is dropped, no temporary file is left")
+					data, err := os.ReadFile(filepath.Join(loc, yesterday)) //nolint:gosec // test file
+					require.NoError(t, err)
+					assert.Equal(t, "recovery point", string(data))
+				case tt.keepMax == 1:
+					assert.Equal(t, []string{today}, dirNames(t, loc))
+				default:
+					assert.Equal(t, []string{yesterday, today}, dirNames(t, loc))
+				}
+				stop()
+			})
+		})
+	}
+}
+
 func TestBackup_DoRetriesFailedStartBackupOnSchedule(t *testing.T) {
 	loc := t.TempDir()
 	synctest.Test(t, func(t *testing.T) {
@@ -271,6 +312,14 @@ func (mock *mockExporter) Export(w io.Writer, _ string) (int, error) {
 	mock.calls.Add(1)
 	_, err := w.Write([]byte(exportedPayload))
 	return 1000, err
+}
+
+// emptyExporter exports a site with no comments
+type emptyExporter struct{}
+
+func (*emptyExporter) Export(w io.Writer, _ string) (int, error) {
+	_, err := w.Write([]byte(`{"version":1,"users":[],"posts":[]}`))
+	return 0, err
 }
 
 // failOnceExporter fails the first export and writes the payload on the later ones
