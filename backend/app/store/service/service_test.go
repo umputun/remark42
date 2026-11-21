@@ -274,6 +274,32 @@ func TestService_SetTitle(t *testing.T) {
 	require.EqualError(t, err, "no title extractor")
 }
 
+func TestService_CreateOnUnreadablePage(t *testing.T) {
+	var hits atomic.Int32
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer tss.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+
+	locator := store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}
+	for i := range 3 {
+		id, err := b.Create(store.Comment{Text: fmt.Sprintf("text %d", i), Locator: locator,
+			User: store.User{IP: "192.168.1.1", ID: "user", Name: "name"}})
+		require.NoError(t, err, "comment %d stored although the page can't be read", i)
+		res, err := b.Engine.Get(getReq(locator, id))
+		require.NoError(t, err)
+		assert.Empty(t, res.PostTitle)
+	}
+	assert.Equal(t, int32(1), hits.Load(), "page requested once, the failure is cached")
+}
+
 func TestService_Vote(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
