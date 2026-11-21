@@ -20,16 +20,7 @@ type RPC struct {
 
 // Key returns the key, same for all sites
 func (r *RPC) Key(siteID string) (key string, err error) {
-	resp, err := r.Call("admin.key", siteID)
-	if err != nil {
-		return "", err
-	}
-
-	res, err := rawResult(resp)
-	if err != nil {
-		return "", err
-	}
-	if err := json.Unmarshal(res, &key); err != nil {
+	if key, err = call[string](r, "admin.key", siteID); err != nil {
 		return "", err
 	}
 	// the key signs tokens, and an empty one would let anyone forge them
@@ -58,36 +49,12 @@ func (r *RPC) Admins(siteID string) (ids []string, err error) {
 
 // Email gets email address for given site
 func (r *RPC) Email(siteID string) (email string, err error) {
-	resp, err := r.Call("admin.email", siteID)
-	if err != nil {
-		return "", err
-	}
-
-	res, err := rawResult(resp)
-	if err != nil {
-		return "", err
-	}
-	if err := json.Unmarshal(res, &email); err != nil {
-		return "", err
-	}
-	return email, nil
+	return call[string](r, "admin.email", siteID)
 }
 
 // Enabled returns true if allowed
 func (r *RPC) Enabled(siteID string) (ok bool, err error) {
-	resp, err := r.Call("admin.enabled", siteID)
-	if err != nil {
-		return false, err
-	}
-
-	res, err := rawResult(resp)
-	if err != nil {
-		return false, err
-	}
-	if err := json.Unmarshal(res, &ok); err != nil {
-		return false, err
-	}
-	return ok, nil
+	return call[bool](r, "admin.enabled", siteID)
 }
 
 // OnEvent reacts (register) events about data modification
@@ -108,4 +75,19 @@ func rawResult(resp *jrpc.Response) ([]byte, error) {
 		return nil, errNoResult
 	}
 	return *resp.Result, nil
+}
+
+// call makes a remote call that has to return a value and decodes its result into T.
+// T is a scalar here, so an unmarshal error leaves res at its zero value
+func call[T any](r *RPC, method string, args ...any) (res T, err error) {
+	resp, err := r.Call(method, args...)
+	if err != nil {
+		return res, err
+	}
+	raw, err := rawResult(resp)
+	if err != nil {
+		return res, err
+	}
+	err = json.Unmarshal(raw, &res)
+	return res, err
 }
