@@ -44,7 +44,8 @@ func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	m.startImport(w, r, func() string {
 		tmpfile, err := m.saveTemp(r.Body)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+			rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("temp file error")),
+				"can't save request to temp file", rest.ErrInternal)
 			return ""
 		}
 		return tmpfile
@@ -80,7 +81,8 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 				err = closeErr
 			}
 			if err != nil {
-				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+				rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("temp file error")),
+					"can't save request to temp file", rest.ErrInternal)
 				return ""
 			}
 			return tmpfile
