@@ -12,7 +12,7 @@ In `docker exec -it remark42 remark42 ...`, the first `remark42` is the containe
 
 A file name without `/` is looked up in `${BACKUP_PATH}`, `/srv/var/backup` in the container. A name ending in `.gz` is unpacked on the fly.
 
-`-s` must be the site the backup was made from. Restore first deletes all comments of the site given with `-s`, then writes each comment from the file to the site recorded in it. Restoring a backup of another site therefore deletes the comments of the site given with `-s` and does not bring back any comment that is still stored.
+`-s` must be the site the backup was made from. Restore first deletes all comments of the site given with `-s`, then writes the comments of that site from the file and skips the others, which the server log reports. Restoring a backup of another site therefore deletes the comments of the site given with `-s` and writes none from the file.
 
 The command only submits the job: it prints `completed, status=202` and exits while the server imports the file in the background. The result is in the server's log (`docker logs remark42`): `import request completed` with the number of comments, or a line with `import failed`. A second restore, import or URL migration for the same site is refused with 409 while one is running.
 
