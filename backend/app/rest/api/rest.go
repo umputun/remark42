@@ -349,6 +349,7 @@ func (s *Rest) routes() http.Handler {
 			r.With(rejectHead("GET")).HandleFunc("GET /deleteme", s.adminRest.deleteMeRequestCtrl)
 			r.HandleFunc("PUT /verify/{userid}", s.adminRest.setVerifyCtrl)
 			r.HandleFunc("PUT /pin/{id}", s.adminRest.setPinCtrl)
+			r.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 			r.HandleFunc("GET /blocked", s.adminRest.blockedUsersCtrl)
 			r.HandleFunc("PUT /readonly", s.adminRest.setReadOnlyCtrl)
 			r.HandleFunc("PUT /title/{id}", s.adminRest.setTitleCtrl)
@@ -373,7 +374,6 @@ func (s *Rest) routes() http.Handler {
 		rauth.Use(authMiddleware.Auth, matchSiteID, subscribersOnly(s.SubscribersOnly))
 		rauth.Use(R.NoCache, logInfoWithBody)
 
-		rauth.HandleFunc("PUT /comment/{id}", s.privRest.updateCommentCtrl)
 		rauth.HandleFunc("POST /preview", s.privRest.previewCommentCtrl)
 		rauth.HandleFunc("POST /comment", s.privRest.createCommentCtrl)
 		if s.AnonVote {
