@@ -1,6 +1,7 @@
 import { parseQuery } from 'utils/parse-query';
-import { THEMES, MAX_SHOWN_ROOT_COMMENTS, DEFAULT_SORT } from './constants';
+import { THEME_SETTINGS, MAX_SHOWN_ROOT_COMMENTS, DEFAULT_SORT } from './constants';
 import { parseSorting } from './sorting';
+import type { ThemeSetting } from './types';
 
 function parseNumber(value: unknown) {
   if (typeof value !== 'string') {
@@ -23,7 +24,7 @@ export const isEmailSubscription = rawParams.show_email_subscription !== 'false'
 export const isTelegramSubscription = rawParams.show_telegram_subscription !== 'false';
 export const isRssSubscription =
   rawParams.show_rss_subscription === undefined || rawParams.show_rss_subscription !== 'false';
-export const theme = (rawParams.theme = includes(THEMES, rawParams.theme) ? rawParams.theme : THEMES[0]);
+export const theme = (rawParams.theme = includes(THEME_SETTINGS, rawParams.theme) ? rawParams.theme : THEME_SETTINGS[0]);
 export const siteId = rawParams.site_id || 'remark';
 export const pageTitle = rawParams.page_title;
 export const url = rawParams.url;

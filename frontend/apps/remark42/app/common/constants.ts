@@ -1,4 +1,4 @@
-import type { Sorting, Theme } from './types';
+import type { Sorting, Theme, ThemeSetting } from './types';
 
 export { BASE_URL, API_BASE, NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from './constants.config';
 export const MAX_SHOWN_ROOT_COMMENTS = 10;
@@ -21,6 +21,8 @@ export const LS_SORT_KEY = '__remarkSort';
 export const LS_EMAIL_KEY = '__remarkEmail';
 
 export const THEMES: Theme[] = ['light', 'dark'];
+/** every value the `theme` config accepts: a fixed theme, or 'auto' to follow the OS */
+export const THEME_SETTINGS: ThemeSetting[] = ['light', 'dark', 'auto'];
 export const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|Opera Mini|Windows Phone/i.test(navigator.userAgent);
 
 /**

@@ -18,7 +18,7 @@ aliases:
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`default_sort`**`: string` (optional, `'-active'` by default) – comment order for a reader who has not picked one in the sort picker: `'-score'` (best), `'+score'` (worst), `'-time'` (newest), `'+time'` (oldest), `'-active'` (recently updated), `'+active'` (least recently updated), `'-controversy'` (most controversial) or `'+controversy'` (least controversial). A reader's own choice in the sort picker is remembered and wins over this setting
-- **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme
+- **`theme`**`: 'light' | 'dark' | 'auto'` (optional, `'light'` by default) – changes UI theme. `'auto'` follows the OS color scheme (`prefers-color-scheme`) and switches between light and dark without a reload
 - **`page_title`**`: string` (optional, `document.title` by default) – title for current comments page
 - **`locale`**`: enum` (optional, `'en'` by default) – interface localization, [check possible localizations](#locales)
 - **`show_email_subscription`**`: boolean` (optional, `true` by default) – shows the email subscription control when email notifications for users are enabled on the backend; `false` hides it from readers and does not affect admin notifications
@@ -83,7 +83,7 @@ If you want to set this up on a Single Page App, see the [appropriate doc page](
 
 #### Themes
 
-Remark42 has two themes: light and dark. You can pick one using a configuration object, but there is also a possibility to switch between themes in runtime. For this purpose, Remark42 adds an object named `REMARK42` to `window`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
+Remark42 has two themes: light and dark. You can pick one using a configuration object, or set `theme: 'auto'` to follow the operating system's color scheme (`prefers-color-scheme`); in that mode the widget switches between light and dark on its own whenever the OS theme changes, without a page reload. There is also a possibility to switch between themes in runtime. For this purpose, Remark42 adds an object named `REMARK42` to `window`, which contains a function `changeTheme`. Just call this function and pass a name of the theme that you want to turn on:
 
 ```js
 window.REMARK42.changeTheme("light")

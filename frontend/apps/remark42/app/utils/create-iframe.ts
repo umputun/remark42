@@ -1,5 +1,7 @@
 import { BASE_URL } from 'common/constants.config';
 import { parseMessage } from 'utils/post-message';
+import type { ThemeSetting } from 'common/types';
+import { colorSchemeFor } from 'utils/theme';
 import type { StylesDeclaration } from 'utils/set-dom-props';
 import { setStyles, setAttributes } from 'utils/set-dom-props';
 
@@ -50,7 +52,9 @@ export function createIframe({ __colors__, custom_properties, styles, onReveal, 
     padding: 0,
     margin: 0,
     overflow: 'hidden',
-    colorScheme: params.theme === 'dark' ? 'dark' : 'light',
+    // 'auto' resolves to `light dark` so the browser picks a scheme from the OS preference and
+    // keeps the outer iframe following it without any JS; a fixed theme pins the scheme to itself
+    colorScheme: colorSchemeFor((params.theme as ThemeSetting) ?? 'light'),
     // an iframe whose color-scheme differs from its document's gets an opaque canvas
     // painted in the document's scheme, and browsers paint a default surface before
     // the document is parsed at all, which shows as a white flash on dark host pages.

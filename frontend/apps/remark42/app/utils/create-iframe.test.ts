@@ -122,4 +122,17 @@ describe('createIframe', () => {
     expect(iframe.getAttribute('src')).not.toContain('color');
     expect(iframe.getAttribute('src')).not.toContain('font');
   });
+
+  it('pins color-scheme to the fixed theme', () => {
+    expect(createIframe({ site_id: 'remark', theme: 'dark' }).style.colorScheme).toBe('dark');
+    expect(createIframe({ site_id: 'remark', theme: 'light' }).style.colorScheme).toBe('light');
+  });
+
+  it('lets the browser pick color-scheme for the auto theme', () => {
+    expect(createIframe({ site_id: 'remark', theme: 'auto' }).style.colorScheme).toBe('light dark');
+  });
+
+  it('defaults color-scheme to light when no theme is given', () => {
+    expect(createIframe({ site_id: 'remark' }).style.colorScheme).toBe('light');
+  });
 });

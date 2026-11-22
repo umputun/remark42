@@ -1,5 +1,5 @@
 import 'jest-fetch-mock';
-import type { Sorting, Theme } from 'common/types';
+import type { Sorting, Theme, ThemeSetting } from 'common/types';
 
 type RemarkConfig = {
   // URL of Remark42 server including the scheme, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
@@ -21,8 +21,9 @@ type RemarkConfig = {
   max_last_comments?: number;
   // Optional, '-active' by default. Comment order for a reader who has not picked one in the sort picker.
   default_sort?: Sorting;
-  // Optional, 'dark' or 'light', 'light' by default. Changes UI theme.
-  theme?: Theme;
+  // Optional, 'dark', 'light' or 'auto', 'light' by default. Changes UI theme.
+  // 'auto' follows the OS color scheme (prefers-color-scheme) and switches without a reload.
+  theme?: ThemeSetting;
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
   // Not for the host page to set. The host page's title as the embed script last posted it,

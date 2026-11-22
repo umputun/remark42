@@ -17,7 +17,8 @@ import { getConfig } from 'common/api';
 import { fetchHiddenUsers } from 'store/user/actions';
 import { restoreCollapsedThreads } from 'store/thread/actions';
 import { setTheme } from 'store/theme/actions';
-import { locale, theme, rawParams } from 'common/settings';
+import { locale, theme as themeSetting, rawParams } from 'common/settings';
+import { resolveTheme } from 'utils/theme';
 
 // above the call below: init can run right away, and a const declared after it is not yet initialized
 const boundActions = bindActionCreators({ fetchHiddenUsers, restoreCollapsedThreads, setTheme }, store.dispatch);
@@ -61,7 +62,20 @@ async function init(): Promise<void> {
   // the inline listener in iframe.html keeps the latest theme the parent posted before this bundle
   // ran; the URL only has the one the iframe was built with
   const current = window.remark_config?.theme;
-  applyTheme(current && THEMES.includes(current) ? current : theme);
+  applyTheme(current && THEMES.includes(current as Theme) ? (current as Theme) : resolveTheme(themeSetting));
+
+  // 'auto' follows the OS: re-resolve and re-apply whenever prefers-color-scheme flips, so the
+  // widget switches with the system without a reload. A fixed theme never subscribes
+  if (themeSetting === 'auto' && typeof window.matchMedia === 'function') {
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSchemeChange = (evt: MediaQueryListEvent) => applyTheme(evt.matches ? 'dark' : 'light');
+    if (typeof scheme.addEventListener === 'function') {
+      scheme.addEventListener('change', onSchemeChange);
+    } else if (typeof scheme.addListener === 'function') {
+      // Safari < 14 only has the deprecated listener API
+      scheme.addListener(onSchemeChange);
+    }
+  }
 
   const messages = await loadLocale(locale).catch(() => ({}));
 

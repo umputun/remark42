@@ -30,7 +30,9 @@
             }
           }
 
-          document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+          // 'auto' -> `light dark` so the browser picks a scheme from the OS preference, matching
+          // the outer iframe's color-scheme; a fixed theme pins the scheme to itself
+          document.documentElement.style.colorScheme = theme === 'auto' ? 'light dark' : theme === 'dark' ? 'dark' : 'light';
           // remark.css keys the colors of the light theme on this class, the preloader's included
           document.documentElement.classList.toggle('light', theme !== 'dark');
         } catch (e) {}

@@ -1,7 +1,8 @@
 import { NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config';
 import { parseMessage, postMessageToIframe } from 'utils/post-message';
 import { createIframe } from 'utils/create-iframe';
-import type { Theme } from 'common/types';
+import type { Theme, ThemeSetting } from 'common/types';
+import { colorSchemeFor, resolveTheme } from 'utils/theme';
 import { closeProfile, openProfile, ownsWindow, removeProfile } from 'profile';
 
 // marks the iframe this module owns, so a second createInstance reuses it instead of adopting
@@ -158,7 +159,10 @@ function createInstance(config: typeof window.remark_config) {
 
   function postThemeToIframe() {
     if (config.theme) {
-      postMessageToIframe(iframe, { theme: config.theme });
+      // 'auto' is resolved to the concrete theme the widget should render, since the inner document
+      // only knows light/dark; the outer iframe's own color-scheme already follows the OS via
+      // `light dark`, set when the iframe was built
+      postMessageToIframe(iframe, { theme: resolveTheme(config.theme) });
     }
   }
 
@@ -169,11 +173,13 @@ function createInstance(config: typeof window.remark_config) {
     postMessageToIframe(iframe, { clickOutside: true });
   }
 
-  function changeTheme(theme: Theme) {
+  function changeTheme(theme: ThemeSetting) {
     config.theme = theme;
     window.remark_config.theme = theme;
-    iframe.style.colorScheme = theme;
-    postMessageToIframe(iframe, { theme });
+    // 'auto' -> `light dark` so the browser flips the outer iframe with the OS; a fixed theme pins it
+    iframe.style.colorScheme = colorSchemeFor(theme);
+    // the inner document only knows light/dark, so 'auto' is resolved to the concrete theme to render
+    postMessageToIframe(iframe, { theme: resolveTheme(theme) });
   }
 
   function detach() {
