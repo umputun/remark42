@@ -984,6 +984,172 @@ func TestService_SetTitleWriteWaitsForPostLock(t *testing.T) {
 	assert.Equal(t, 1, c.Score)
 }
 
+// TestService_SetTitleSkipsCommentDeletedDuringFetch deletes the comment while its page is fetched: the title update
+// leaves it deleted and reports no error, as it does for a comment deleted before the fetch
+func TestService_SetTitleSkipsCommentDeletedDuringFetch(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	var locator store.Locator
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		assert.NoError(t, eng.Delete(engine.DeleteRequest{Locator: locator, CommentID: "id-title", DeleteMode: store.SoftDelete}))
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	locator = store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	_, err = b.SetTitle(locator, "id-title")
+	require.NoError(t, err, "a comment deleted during the fetch is skipped")
+
+	c, err := eng.Get(getReq(locator, "id-title"))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted, "the comment stays deleted")
+	assert.Empty(t, c.PostTitle)
+}
+
+// deleteBeforeUpdate deletes the comment in the engine right before the first update of it goes through, the way a
+// user deletion, which takes no post lock, can land between a read and an update
+type deleteBeforeUpdate struct {
+	engine.Interface
+	done atomic.Bool
+}
+
+func (d *deleteBeforeUpdate) Update(c store.Comment) error {
+	if d.done.CompareAndSwap(false, true) {
+		if err := d.Delete(engine.DeleteRequest{Locator: c.Locator, CommentID: c.ID, DeleteMode: store.SoftDelete}); err != nil {
+			return err
+		}
+	}
+	return d.Interface.Update(c)
+}
+
+// TestService_SetTitleSkipsCommentDeletedBeforeUpdate has the comment deleted between the title update's read after
+// the fetch and its write, as a user deletion can do: the update is refused and the title run sees no error
+func TestService_SetTitleSkipsCommentDeletedBeforeUpdate(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: &deleteBeforeUpdate{Interface: eng}, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	c, err := b.SetTitle(locator, "id-title")
+	require.NoError(t, err, "a comment deleted before the update is skipped")
+	assert.True(t, c.Deleted)
+
+	stored, err := eng.Get(getReq(locator, "id-title"))
+	require.NoError(t, err)
+	assert.True(t, stored.Deleted, "the comment stays deleted")
+	assert.Empty(t, stored.PostTitle)
+}
+
+// failingUpdate refuses every update of a comment with the same error, the way a failed write of the engine does
+type failingUpdate struct{ engine.Interface }
+
+func (failingUpdate) Update(store.Comment) error { return errors.New("update failed") }
+
+// TestService_SetTitleReturnsUpdateError checks that a refused write of a comment that is not deleted is still
+// reported, so a title run counts it as a failure
+func TestService_SetTitleReturnsUpdateError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: failingUpdate{Interface: eng}, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	_, err = b.SetTitle(locator, "id-title")
+	require.EqualError(t, err, "update failed")
+}
+
+// heldDeleteEngine keeps the caller of Delete waiting before the engine deletes anything
+type heldDeleteEngine struct {
+	engine.Interface
+	deleting chan struct{} // closed when Delete is called
+	release  chan struct{} // Delete goes on after this is closed
+}
+
+func (h *heldDeleteEngine) Delete(req engine.DeleteRequest) error {
+	close(h.deleting)
+	<-h.release
+	return h.Interface.Delete(req)
+}
+
+// TestService_DeleteHoldsPostLock holds an admin's delete between reading the comment and deleting it while its
+// author edits a picture into it. The edit has to wait and then find the comment deleted; were it stored in
+// between, the delete would remove the pictures of the text it read and leave the new one behind.
+func TestService_DeleteHoldsPostLock(t *testing.T) {
+	for _, hold := range []string{"read", "engine delete"} {
+		t.Run("held at "+hold, func(t *testing.T) {
+			mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			locator := store.Locator{URL: "https://radio-t.com/post", SiteID: "radio-t"}
+			_, err := eng.Create(store.Comment{ID: "c1", Text: "text", Locator: locator, Timestamp: time.Now(),
+				User: store.User{ID: "user1", Name: "user name"}})
+			require.NoError(t, err)
+
+			// the delete is held at the read of the comment or right before the engine deletes it
+			reached, releaseCh := make(chan struct{}), make(chan struct{})
+			var wrapped engine.Interface = &heldGetEngine{Interface: eng, reading: reached, release: releaseCh}
+			if hold == "engine delete" {
+				wrapped = &heldDeleteEngine{Interface: eng, deleting: reached, release: releaseCh}
+			}
+			b := DataStore{Engine: wrapped, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"),
+				ImageService: imgSvc}
+			defer b.Close()
+
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(releaseCh) }) }
+			defer release() // a failed wait must not leave the delete held
+
+			deleteErr, editErr := make(chan error, 1), make(chan error, 1)
+			var editDone atomic.Bool
+			go func() { deleteErr <- b.Delete(locator, "c1", store.SoftDelete) }()
+			waitHeld(t, reached, deleteErr, "delete reaching its hold")
+			go func() {
+				_, e := b.EditComment(locator, "c1", EditRequest{Text: `text <img src="/images/user1/new.png"/>`})
+				editErr <- e
+				editDone.Store(true)
+			}()
+			require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || editDone.Load() },
+				30*time.Second, time.Millisecond, "edit neither waits for the lock nor completes")
+			assert.False(t, editDone.Load(), "the edit waits for the delete")
+			release()
+			require.NoError(t, waitReturn(t, deleteErr, "delete"))
+			require.Error(t, waitReturn(t, editErr, "edit"), "the edit finds the comment deleted")
+
+			c, err := eng.Get(getReq(locator, "c1"))
+			require.NoError(t, err)
+			assert.True(t, c.Deleted)
+			assert.Empty(t, c.Text)
+			assert.Empty(t, deletedImages(mockStore), "no picture was ever stored in the comment")
+		})
+	}
+}
+
 func TestService_VotePositive(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
