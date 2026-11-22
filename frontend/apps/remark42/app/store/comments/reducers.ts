@@ -79,17 +79,11 @@ export const childComments = (
   }
 };
 
-const cmpComment = (a: Comment | undefined, b: Comment): Comment => {
-  if (!a) return b;
-  if (a.id !== b.id) return b;
-  if (!a.edit) {
-    if (!b.edit) return a;
-    return b;
-  }
-  if (!b.edit) return b;
-  if (a.edit.time !== b.edit.time) return b;
-  return a;
-};
+// keeps the stored object when the fetched one carries the same data, so unchanged comments do not
+// rerender. The whole comment is compared and not only its edit time: a reader's own vote, the
+// score and the controversy change with no edit, and the thread fetched after signing in differs
+// from the one fetched before it in exactly those fields
+const cmpComment = (a: Comment | undefined, b: Comment): Comment => (a ? cmpRef(a, b) : b);
 
 const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comment['id'], Comment> => {
   c[x.comment.id] = cmpComment(c[x.comment.id], x.comment);

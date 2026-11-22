@@ -70,6 +70,50 @@ func TestVote_UpvoteCountsOnce(t *testing.T) {
 	assert.True(t, disabled, "an already-cast upvote should not be repeatable")
 }
 
+// TestVote_SigningInShowsTheReadersEarlierVote covers #571: a reader who voted from one browser
+// signs in from another, and the thread loaded before the sign-in carries the votes of nobody in
+// particular. Signing in has to load it again with the reader's own vote and keep that vote, or
+// the up button stays enabled for a vote the server refuses as already cast. The assertion runs
+// before any reload, because a reload shows the vote either way.
+//
+// The thread has to stay on screen while it loads again. A preloader in its place shrinks the
+// widget for the length of the request, and a reader far down a long thread is left at another
+// place on the host page when the list comes back
+func TestVote_SigningInShowsTheReadersEarlierVote(t *testing.T) {
+	t.Parallel()
+
+	text := "vote before sign-in " + runID
+	_, voterFrame, target := voteScenario(t, "signinvoteauthor", text)
+	require.NoError(t, target.Locator(`button[title="Vote up"]`).Click())
+	eventually(t, waitTimeout, "the first browser's upvote did not register", func() bool {
+		v, err := pollText(score(voterFrame, text))
+		return err == nil && v == "1"
+	})
+
+	// a signed-out reader gets no vote buttons at all, so the second browser loads the thread
+	// before signing in and the buttons appear only once it has. If the thread is not loaded
+	// again, or the loaded vote is dropped, they appear enabled and stay that way
+	other := newPage(t)
+	otherFrame := openThread(t, other)
+	// a node that stays in the document keeps what was written on it, and one that was taken
+	// out and rendered again does not, so the mark tells the two apart after the reload
+	waitVisible(t, comment(otherFrame, text))
+	_, err := comment(otherFrame, text).Evaluate(`(el) => { el.dataset.keptThroughSignIn = 'yes'; }`, nil)
+	require.NoError(t, err)
+
+	signInDev(t, other, otherFrame)
+	up := comment(otherFrame, text).Locator(`button[title="Vote up"]`)
+	waitVisible(t, up)
+	eventually(t, waitTimeout, "after signing in the reader's earlier upvote did not show", func() bool {
+		d, derr := up.IsDisabled()
+		return derr == nil && d
+	})
+
+	mark, err := comment(otherFrame, text).GetAttribute("data-kept-through-sign-in")
+	require.NoError(t, err)
+	assert.Equal(t, "yes", mark, "the thread was taken off screen while it loaded again after signing in")
+}
+
 // TestVote_FailureShowsAnErrorAndRestoresTheScore drives the catch branch in comment-votes.tsx.
 // The score is optimistic, so a failed request has to put it back instead of leaving the
 // reader believing a vote landed.

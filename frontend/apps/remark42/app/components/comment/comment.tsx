@@ -103,17 +103,21 @@ export class Comment extends Component<CommentProps, State> {
       newState.renderDummy = false;
     }
 
-    // set comment edit timer
-    if (this.isCurrentUser()) {
-      if (this.isAdmin() && StaticStore.config.admin_edit) {
-        newState.editDeadline = Infinity;
-      } else {
-        const editDuration = StaticStore.config.edit_duration;
-        const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
-        const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
+    // set comment edit timer. The reader is taken from the props the state is computed for and
+    // not from the current ones: a comment stays mounted while the reader signs in or out, and
+    // that is exactly when the two differ. Whoever does not own the comment has no timer
+    const isOwn = props.user !== null && props.data.user.id === props.user?.id;
 
-        newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
-      }
+    if (!isOwn) {
+      newState.editDeadline = undefined;
+    } else if (props.user?.admin && StaticStore.config.admin_edit) {
+      newState.editDeadline = Infinity;
+    } else {
+      const editDuration = StaticStore.config.edit_duration;
+      const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
+      const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
+
+      newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
     }
 
     return newState;

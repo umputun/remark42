@@ -214,6 +214,41 @@ describe('<Comment />', () => {
     });
   });
 
+  describe('edit controls follow the reader while the comment stays mounted', () => {
+    // signing in and out reloads the thread in place, so the same component sees the reader change
+    function ownRecentComment(): CommentProps {
+      const own = getProps();
+      own.repliesCount = 0;
+      own.data.user = own.user!;
+      own.data.time = new Date().toString();
+      StaticStore.config.edit_duration = 300;
+      return own;
+    }
+
+    it('takes them away when the reader signs out', () => {
+      const own = ownRecentComment();
+      const { rerender } = render(<CommentWithIntl {...own} />);
+      expect(screen.getByText('Edit')).toBeVisible();
+
+      rerender(<CommentWithIntl {...own} user={null} />);
+      // a later update, such as the reloaded thread arriving, must not bring them back either
+      rerender(<CommentWithIntl {...own} user={null} />);
+
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+    });
+
+    it('offers them when the author signs in', () => {
+      const own = ownRecentComment();
+      const { rerender } = render(<CommentWithIntl {...own} user={null} />);
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+
+      rerender(<CommentWithIntl {...own} />);
+
+      expect(screen.getByText('Edit')).toBeVisible();
+    });
+  });
+
   // Regression tests for issue #2040.
   // The edit textarea must reflect `data.orig` byte-for-byte; any transformation
   // (HTML-entity decoding in particular) corrupts user input on save because

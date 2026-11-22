@@ -3,10 +3,11 @@ import '@testing-library/jest-dom';
 import { fireEvent, waitFor, screen } from '@testing-library/preact';
 import { render } from 'tests/utils';
 
-import type { OAuthProvider, User } from 'common/types';
+import type { OAuthProvider, Tree, User } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { BASE_URL } from 'common/constants.config';
 import * as userActions from 'store/user/actions';
+import * as commentsActions from 'store/comments/actions';
 import * as postMessage from 'utils/post-message';
 
 import { Auth } from './auth';
@@ -22,6 +23,22 @@ describe('<Auth/>', () => {
   afterAll(() => {
     StaticStore.config.auth_providers = defaultProviders;
   });
+
+  // the comments a reader sees carry per-reader state such as their own vote, so every way of
+  // signing in has to load them again; the request itself is not under test here
+  function spyOnReloadComments() {
+    // the file never restores its spies, so a second spyOn returns the first one with its calls
+    return jest
+      .spyOn(commentsActions, 'reloadComments')
+      .mockClear()
+      .mockImplementation(() => async () => ({}) as Tree);
+  }
+
+  // signin is left to run, so the thunk under test is the real one; the calls are cleared for the
+  // same reason: an earlier test's call would satisfy an assertion made in a later one
+  function spyOnSignin() {
+    return jest.spyOn(userActions, 'signin').mockClear();
+  }
 
   // the embedding page posts into the widget with iframe.contentWindow.postMessage, which
   // arrives with source set to the parent. jsdom leaves source unset on window.postMessage,
@@ -188,6 +205,7 @@ describe('<Auth/>', () => {
     jest.spyOn(api, 'verifyEmailSignin').mockImplementationOnce(async () => ({}) as User);
     jest.spyOn(utils, 'getTokenInvalidReason').mockImplementationOnce(() => null);
     jest.spyOn(utils, 'persistEmail').mockImplementationOnce(jest.fn());
+    const reloadComments = spyOnReloadComments();
 
     render(<Auth />);
 
@@ -215,6 +233,7 @@ describe('<Auth/>', () => {
     await waitFor(() => expect(api.verifyEmailSignin).toHaveBeenCalled());
     expect(api.verifyEmailSignin).toHaveBeenCalledWith('token');
     expect(utils.persistEmail).toHaveBeenCalledWith('email@email.com');
+    await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
   });
 
   // server-side sign-in allows no space but the ordinary one, so the form refuses the others itself
@@ -286,6 +305,7 @@ describe('<Auth/>', () => {
   it('should send anonym form', async () => {
     StaticStore.config.auth_providers = ['anonymous'];
     jest.spyOn(api, 'anonymousSignin').mockImplementationOnce(async () => ({}) as User);
+    const reloadComments = spyOnReloadComments();
 
     render(<Auth />);
 
@@ -295,6 +315,7 @@ describe('<Auth/>', () => {
     expect(screen.getByRole('presentation')).toHaveClass('spinner');
     expect(screen.getByRole('presentation')).toHaveAttribute('aria-label', 'Loading...');
     await waitFor(() => expect(api.anonymousSignin).toHaveBeenCalled());
+    await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
   });
 
   it.each`
@@ -360,7 +381,8 @@ describe('<Auth/>', () => {
     it('should not set user if unauthorized', async () => {
       StaticStore.config.auth_providers = ['google'];
 
-      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      const signin = spyOnSignin();
+      const reloadComments = spyOnReloadComments();
       const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => null);
 
       render(<Auth />);
@@ -371,7 +393,8 @@ describe('<Auth/>', () => {
           `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
-      expect(setUser).toHaveBeenCalledTimes(0);
+      expect(signin).toHaveBeenCalledTimes(0);
+      expect(reloadComments).toHaveBeenCalledTimes(0);
       expect(screen.getByText('Sign in')).toBeInTheDocument();
     });
 
@@ -379,7 +402,8 @@ describe('<Auth/>', () => {
       StaticStore.config.auth_providers = ['google'];
 
       const user = { name: 'UserName1' } as User;
-      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      const signin = spyOnSignin();
+      const reloadComments = spyOnReloadComments();
       const oauthSignin = jest.spyOn(api, 'oauthSignin').mockImplementation(async () => user);
 
       render(<Auth />);
@@ -392,7 +416,8 @@ describe('<Auth/>', () => {
           `${BASE_URL}/auth/google/login?from=http%3A%2F%2Flocalhost%2F%3FselfClose&site=remark`
         )
       );
-      expect(setUser).toHaveBeenCalledWith(user);
+      expect(signin).toHaveBeenCalledWith(user);
+      await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
     });
 
     it('should use custom provider route', async () => {
@@ -422,7 +447,8 @@ describe('<Auth/>', () => {
         .spyOn(api, 'getTelegramSigninParams')
         .mockImplementationOnce(async () => ({ bot: 'botid', token: 'tokentokentoken' }));
       const verifyTelegramSignin = jest.spyOn(api, 'verifyTelegramSignin').mockImplementationOnce(async () => user);
-      const setUser = jest.spyOn(userActions, 'setUser').mockImplementation(jest.fn());
+      const signin = spyOnSignin();
+      const reloadComments = spyOnReloadComments();
       render(<Auth />);
 
       fireEvent.click(screen.getByText('Sign in'));
@@ -436,7 +462,8 @@ describe('<Auth/>', () => {
       expect(telegramUrl.pathname.startsWith(`/botid`)).toBeTruthy();
       fireEvent.click(screen.getByText('Check'));
       await waitFor(() => expect(verifyTelegramSignin).toHaveBeenCalledTimes(1));
-      await waitFor(() => expect(setUser).toHaveBeenCalledWith(user));
+      await waitFor(() => expect(signin).toHaveBeenCalledWith(user));
+      await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
     });
   });
 });

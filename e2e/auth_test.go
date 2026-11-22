@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
@@ -188,6 +192,107 @@ func TestAuth_SignOutEndsTheSession(t *testing.T) {
 	waitVisible(t, frame.Locator(".auth-button"))
 	waitHidden(t, frame.Locator(`[title="Sign out"]`),
 		"the panel signed out but the session survived the reload, so the cookie was never cleared")
+}
+
+// TestAuth_SignOutTakesTheEditControlsAway covers the reader changing under a mounted thread.
+// Signing out loads the comments again in place, so the comment the reader has just posted is the
+// same component before and after, and it has to stop offering an edit it would be refused. No
+// reload in between: a reload renders the comment anew and shows nothing of this
+func TestAuth_SignOutTakesTheEditControlsAway(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInAnon(t, page, frame, "editthensignout")
+
+	text := "mine until I sign out " + runID
+	postComment(t, frame, text)
+	edit := actions(frame, text).Locator(`button:has-text("Edit")`)
+	waitVisible(t, edit)
+
+	pauseForAuthLimit()
+	require.NoError(t, frame.Locator(`[title="Sign out"]`).Click())
+	waitVisible(t, frame.Locator(".auth-button"))
+
+	waitHidden(t, edit, "the comment still offers Edit to a reader who has signed out")
+	waitHidden(t, actions(frame, text).Locator(`[role="timer"]`),
+		"the comment still counts an edit window down for a reader who has signed out")
+	// the comment itself is still there, so the controls are gone and not the thread
+	waitVisible(t, comment(frame, text))
+}
+
+// TestAuth_CommentPostedRightAfterSigningInStays covers the reload the widget makes for a reader
+// who has just signed in. The thread stays usable while that request is out, so a comment can be
+// posted before its response arrives, and the response shows the thread as the server had it
+// before the post. The widget has to leave such a response out and ask again, or the comment goes
+// off the list until the page is reloaded.
+//
+// The response is fetched when the widget asks for it and handed over only after the post. Holding
+// the request itself would let it reach the server after the comment did, and then the response
+// would have the comment in it.
+func TestAuth_CommentPostedRightAfterSigningInStays(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	// only the first load made after signing in is held: the one before it has to render the thread,
+	// and the one after it is the widget asking again
+	var armed atomic.Bool
+	var loads atomic.Int32
+	var fetchErr error
+	fetched := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseHeld := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseHeld)
+	require.NoError(t, page.Route("**/api/v1/find?**", func(route playwright.Route) {
+		if !armed.Load() || loads.Add(1) > 1 {
+			// fails only once the page is gone, which the assertions report on their own
+			_ = route.Fallback()
+			return
+		}
+		// off the handler, so the held response does not hold up the other requests
+		go func() {
+			// the fetch is made outside the browser, which is the only place the stack's name resolves
+			resp, err := route.Fetch(playwright.RouteFetchOptions{
+				URL: new(strings.Replace(route.Request().URL(), baseURL, probeURL, 1)),
+			})
+			fetchErr = err
+			close(fetched)
+			<-release
+			if err != nil {
+				_ = route.Abort()
+				return
+			}
+			_ = route.Fulfill(playwright.RouteFulfillOptions{Response: resp})
+		}()
+	}))
+
+	armed.Store(true)
+	signInAnon(t, page, frame, "postsatonce")
+	select {
+	case <-fetched:
+	case <-time.After(waitTimeout):
+		t.Fatal("signing in did not load the comments again")
+	}
+	require.NoError(t, fetchErr, "the load made after signing in could not be fetched")
+
+	text := "posted while the thread loads again " + runID
+	postComment(t, frame, text)
+	releaseHeld()
+
+	// the held response has been dealt with once the widget either asks again or takes it, and
+	// taking it is what removes the comment
+	posted := comment(frame, text)
+	eventually(t, waitTimeout, "the widget neither asked for the comments again nor took the held response", func() bool {
+		n, err := posted.Count()
+		return loads.Load() > 1 || (err == nil && n == 0)
+	})
+	n, err := posted.Count()
+	require.NoError(t, err)
+	require.Equal(t, 1, n, "the comment posted while the thread was loading again went off the list "+
+		"when the older response arrived")
 }
 
 // TestAuth_HostPageMessageDoesNotCloseTheDropdown covers #2139. Every message reaching the widget

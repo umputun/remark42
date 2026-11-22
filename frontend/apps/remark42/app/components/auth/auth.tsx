@@ -2,10 +2,10 @@ import clsx from 'clsx';
 import type { JSX } from 'preact';
 import { h, Fragment } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useDispatch } from 'store/context';
+import { useAppDispatch } from 'store';
 
 import { useIntl } from 'common/intl';
-import { setUser } from 'store/user/actions';
+import { signin } from 'store/user/actions';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
 import { CrossIcon } from 'components/icons/cross';
@@ -33,7 +33,7 @@ export function Auth() {
   const intl = useIntl();
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
   const emailRef = useRef('');
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
   // UI State
@@ -90,7 +90,7 @@ export function Auth() {
         // TODO: add error message when user is null
         return;
       }
-      dispatch(setUser(user));
+      dispatch(signin(user));
     } catch (e) {
       setError(e);
     }
@@ -116,7 +116,7 @@ export function Auth() {
           const username = data.get('username') as string;
           const user = await anonymousSignin(username);
 
-          dispatch(setUser(user));
+          dispatch(signin(user));
           break;
         }
         case 'email': {
@@ -139,7 +139,7 @@ export function Auth() {
           }
 
           const user = await verifyEmailSignin(token);
-          dispatch(setUser(user));
+          dispatch(signin(user));
           persistEmail(emailRef.current);
 
           break;
@@ -169,7 +169,7 @@ export function Auth() {
     try {
       const user = await verifyTelegramSignin(telegramParamsRef.current.token);
 
-      dispatch(setUser(user));
+      dispatch(signin(user));
     } catch (e) {
       setError(e);
     }
