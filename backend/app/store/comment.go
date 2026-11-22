@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -122,10 +121,16 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	}
 }
 
-// Sanitize clean dangerous html/js from the comment.
-// Comment.Orig which is used to store the original comment text is not sanitized
-// as we expect to never render it as HTML and render Comment.Text instead
-func (c *Comment) Sanitize() {
+// the sanitizing policies are built once and shared: building one compiles a set of regular expressions,
+// too expensive to repeat for every comment read from the store, and a built policy is safe for concurrent use
+var (
+	commentPolicy = newCommentPolicy()        // used by Sanitize for the comment text
+	urlPolicy     = bluemonday.UGCPolicy()    // used by SanitizeAsURL
+	textPolicy    = bluemonday.StrictPolicy() // used by SanitizeText
+)
+
+// newCommentPolicy makes the UGC policy extended with the classes and attributes the comment renderer produces
+func newCommentPolicy() *bluemonday.Policy {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(regexp.MustCompile("^chroma$")).OnElements("pre")
 	// special case for embedding the quotes from Twitter
@@ -138,7 +143,14 @@ func (c *Comment) Sanitize() {
 		"|mo|o|ow|p|c|ch|cm|cp|cpf|c1|cs|g|gd|ge|gr|gh|gi|go|gp|gs|gu|gt|gl)$"
 	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
 	p.AllowAttrs("loading").Matching(regexp.MustCompile("^(lazy|eager)$")).OnElements("img")
-	c.Text = p.Sanitize(c.Text)
+	return p
+}
+
+// Sanitize clean dangerous html/js from the comment.
+// Comment.Orig which is used to store the original comment text is not sanitized
+// as we expect to never render it as HTML and render Comment.Text instead
+func (c *Comment) Sanitize() {
+	c.Text = commentPolicy.Sanitize(c.Text)
 	c.MarkLinksUGC()
 	c.User.ID = template.HTMLEscapeString(c.User.ID)
 	c.User.Name = c.SanitizeText(c.User.Name)
@@ -247,12 +259,29 @@ func (c *Comment) Snippet(limit int) string {
 var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 
 // SanitizeAsURL drops dangerous code from a url.
-// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
+// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done.
+// White space around the url is dropped. Sanitizing the result again returns it unchanged, as a locator's url is
+// sanitized on create and on every read: a url that a second pass would change is refused. So is a relative
+// path that comes out starting with "//", which a browser reads as another host.
 func (c *Comment) SanitizeAsURL(inp string) string {
-	h := fmt.Sprintf(`<a href=%q>`, html.EscapeString(inp))
-	clean := bluemonday.UGCPolicy().Sanitize(h)
+	res := sanitizeURL(inp)
+	if res == inp {
+		return res
+	}
+	if sanitizeURL(res) != res || (strings.HasPrefix(res, "//") && !strings.HasPrefix(strings.TrimSpace(inp), "//")) {
+		return ""
+	}
+	return res
+}
+
+// sanitizeURL makes one pass of the href filter over the url
+func sanitizeURL(inp string) string {
+	// quoted as html, not with %q: go escapes (\\, \u200b) don't exist in html and would end up in the url
+	h := `<a href="` + html.EscapeString(inp) + `">`
+	clean := urlPolicy.Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
-		return html.UnescapeString(match[1])
+		// bluemonday trims spaces before parsing only, trim the ones left at the end after an empty fragment is dropped
+		return strings.TrimSpace(html.UnescapeString(match[1]))
 	}
 	return "" // this shouldn't happen as we build the href
 }
@@ -267,6 +296,6 @@ func (c *Comment) escapeHTMLWithSome(inp string) string {
 
 // SanitizeText used to sanitize any input string, and removes any HTML tags
 func (c *Comment) SanitizeText(inp string) string {
-	clean := bluemonday.StrictPolicy().Sanitize(inp)
+	clean := textPolicy.Sanitize(inp)
 	return strings.TrimSpace(c.escapeHTMLWithSome(clean))
 }

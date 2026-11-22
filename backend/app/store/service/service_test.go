@@ -1775,6 +1775,71 @@ func (f *failingReads) Find(req engine.FindRequest) ([]store.Comment, error) {
 	return f.Interface.Find(req)
 }
 
+func TestService_UserRepliesBackslashInURL(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	// the url is sanitized on create and again on every read, both passes give the same url
+	loc := store.Locator{URL: `https://radio-t.com/backslash?ref=\`, SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := b.Create(store.Comment{ID: "parent", Text: "test 123", Locator: loc, Timestamp: base,
+		User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = b.Create(store.Comment{ID: "reply", ParentID: "parent", Text: "xyz test", Locator: loc,
+		Timestamp: base.Add(time.Second), User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+
+	last, err := b.Last("radio-t", 1, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, last, 1)
+	assert.Equal(t, loc, last[0].Locator, "the reported locator is the stored one")
+	_, err = b.Get(last[0].Locator, last[0].ID, store.User{})
+	require.NoError(t, err, "the comment is found by its reported locator")
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 1)
+	assert.Equal(t, "reply", cc[0].ID)
+	assert.Equal(t, "user one", u)
+
+	cc, _, err = b.UserReplies("radio-t", "uxxx", 10, 24*time.Hour)
+	require.NoError(t, err, "the reply does not fail the replies of another user")
+	assert.Empty(t, cc)
+}
+
+func TestService_UserRepliesBackslashInStoredURL(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	// older versions stored a url with a single backslash in the query with the backslash doubled, and a reply
+	// sent with that url was stored with it doubled again, in another post than its parent
+	stored := store.Locator{URL: `https://radio-t.com/backslash?ref=\\`, SiteID: "radio-t"}
+	other := store.Locator{URL: `https://radio-t.com/backslash?ref=\\\\`, SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: stored, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply", ParentID: "parent", Locator: stored, Timestamp: base.Add(time.Second),
+		User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "elsewhere", ParentID: "parent", Locator: other, Timestamp: base.Add(2 * time.Second),
+		User: store.User{ID: "u3", Name: "user three"}})
+	require.NoError(t, err)
+
+	last, err := b.Last("radio-t", 2, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, last, 2)
+	assert.Equal(t, other, last[0].Locator, "a stored url is reported as stored")
+	assert.Equal(t, stored, last[1].Locator, "a stored url is reported as stored")
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err, "a reply stored apart from its parent does not fail the feed")
+	assert.Equal(t, "user one", u)
+	require.Len(t, cc, 1, "the reply stored apart from its parent is skipped")
+	assert.Equal(t, "reply", cc[0].ID)
+}
+
 func TestService_Find(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)

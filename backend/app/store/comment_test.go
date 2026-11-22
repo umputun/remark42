@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -314,12 +315,68 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 			"<a href=javascript:alert(document.domain)//>xxx</a>",
 			"",
 		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\`,
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\`,
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\\`, // as stored by older versions for a single backslash
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\\`,
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep\747/#a\b`,
+			"https://radio-t.com/p/2021/03/23/prep%5C747/#a%5Cb",
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?a="b"&c='d'&amp;e=f`,
+			`https://radio-t.com/p/2021/03/23/prep-747/?a="b"&c='d'&amp;e=f`,
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u200b",
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u200b",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?a=b\nc",
+			"",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?a=b\x01",
+			"",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u00a0#",
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=",
+		},
+		// white space before the url is dropped, whatever kind it is
+		{"\thttps://radio-t.com/p/", "https://radio-t.com/p/"},
+		{"\n\u00a0 https://radio-t.com/p/", "https://radio-t.com/p/"},
+		// the html parser replaces NUL; a control character in the fragment, or one past ASCII, is kept escaped
+		{"https://radio-t.com\x00/p/", "https://radio-t.com%EF%BF%BD/p/"},
+		{"https://radio-t.com/p#a\x01b", "https://radio-t.com/p#a%01b"},
+		{"https://radio-t.com/p/\u0085x", "https://radio-t.com/p/%C2%85x"},
+		// a relative path starting with an encoded slash is kept while it can be written back as it came
+		{"/%2Ffolder/file", "/%2Ffolder/file"},
+		{"//radio-t.com/p/", "//radio-t.com/p/"},
+		// and refused once it would come out starting with "//", which the next pass would read as a host:
+		// a url that a second pass would change is not accepted
+		{"/%2F<x", ""},
+		{`/%2Ffolder\file`, ""},
+		{`%2f%2f\`, ""},
+		{"%2F/\u00a0=]22@@=", ""},
+		{"http://[fe80::1%25en%5B0]/p", ""}, // an escaped bracket in the zone of an address is written back unescaped
+		// a relative path that would come out as "//host/..." is refused although a second pass keeps it
+		{"/%2Fradio-t.com/p/<", ""},
+		{"%2F/radio-t.com/p/<", ""},
+		{"/%2Fdocs/caf\u00e9", ""},
 	}
 
 	for i, tt := range tbl {
 		c := Comment{}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, c.SanitizeAsURL(tt.inp))
+			out := c.SanitizeAsURL(tt.inp)
+			assert.Equal(t, tt.out, out)
+			// a stored url is sanitized again on every read, the second pass must not change it
+			assert.Equal(t, out, c.SanitizeAsURL(out), "not idempotent")
 		})
 	}
 }
@@ -352,4 +409,31 @@ func TestComment_sanitizeText(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))
 		})
 	}
+}
+
+func TestComment_sanitizeSharedPolicy(t *testing.T) {
+	// the policies are built once, not per call: building a UGC policy alone takes 800+ allocations
+	c := Comment{}
+	assert.Less(t, testing.AllocsPerRun(10, func() { c.SanitizeAsURL("https://radio-t.com/p/2021/03/23/prep-747/") }), 200.0)
+	assert.Less(t, testing.AllocsPerRun(10, func() { c.SanitizeText("<i>prep</i> 747") }), 35.0)
+	assert.Less(t, testing.AllocsPerRun(10, func() {
+		cc := Comment{Text: "<p>blah</p>", User: User{ID: "id", Name: "name", Picture: "https://example.com/pic.png"},
+			Locator: Locator{URL: "https://radio-t.com/p/2021/03/23/prep-747/"}, PostTitle: "prep 747"}
+		cc.Sanitize()
+	}), 600.0)
+
+	// the shared policies are used by many requests at once, the race detector checks it is safe
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			cc := Comment{Text: `<pre class="chroma">blah</pre><script>alert()</script>`, User: User{Name: "<b>name</b>"},
+				Locator: Locator{URL: "javascript:alert(document.domain)//"}, PostTitle: "<i>prep</i> 747"}
+			cc.Sanitize()
+			assert.Equal(t, `<pre class="chroma">blah</pre>`, cc.Text)
+			assert.Equal(t, "name", cc.User.Name)
+			assert.Empty(t, cc.Locator.URL)
+			assert.Equal(t, "prep 747", cc.PostTitle)
+		})
+	}
+	wg.Wait()
 }
