@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -295,6 +296,50 @@ func TestRest_CreateRejected(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusForbidden, resp.StatusCode, "reject wrong aud")
+}
+
+func TestRest_CreateBlockedDuringTitleFetch(t *testing.T) {
+	var pageReads atomic.Int32
+	var srvRef *Rest
+	// the page blocks the author permanently while its title is fetched, as an admin's block request does
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		pageReads.Add(1)
+		assert.NoError(t, srvRef.DataService.SetBlock("remark42", "provider1_dev", true, 0))
+		assert.NoError(t, srvRef.DataService.DeleteUser("remark42", "provider1_dev", store.SoftDelete))
+		_, err := w.Write([]byte("<html><title>post title</title><body>...</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer tss.Close()
+
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srvRef = srv
+		srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
+	})
+	defer teardown()
+
+	create := func() (code int, body string) {
+		reqBody := fmt.Sprintf(`{"text": "test 123", "locator":{"url": "%s/post1", "site": "remark42"}}`, tss.URL)
+		req, err := http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", strings.NewReader(reqBody))
+		require.NoError(t, err)
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := create()
+	assert.Equal(t, int32(1), pageReads.Load(), "the block was set during the title fetch")
+	assert.Equal(t, http.StatusForbidden, code, body)
+	comments, err := srv.DataService.Last("remark42", 10, time.Time{}, store.User{})
+	require.NoError(t, err)
+	assert.Empty(t, comments, "the comment of the blocked user is not stored")
+
+	// the answer is the one a user blocked before posting gets
+	earlyCode, earlyBody := create()
+	assert.Equal(t, earlyCode, code)
+	assert.Equal(t, earlyBody, body)
 }
 
 func TestRest_CreateWithWrongImage(t *testing.T) {

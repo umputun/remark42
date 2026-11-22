@@ -76,6 +76,9 @@ var nonAdminUser = store.User{}
 // ErrRestrictedWordsFound returned in case comment text contains restricted words
 var ErrRestrictedWordsFound = fmt.Errorf("comment contains restricted words")
 
+// ErrUserBlocked returned by Create when the author of a new comment is blocked
+var ErrUserBlocked = errors.New("user blocked")
+
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 	if comment, err = s.prepareNewComment(comment); err != nil {
@@ -102,6 +105,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		}
 		comment.PostTitle = title
 	}()
+
+	// the author may have been blocked while the page title was fetched, which can take seconds,
+	// and the block removes their comments stored so far. An import brings back what the site had
+	if !comment.Imported && s.IsBlocked(comment.Locator.SiteID, comment.User.ID) {
+		return "", ErrUserBlocked
+	}
 
 	commentID, err = s.Engine.Create(comment)
 	s.submitImages(comment)

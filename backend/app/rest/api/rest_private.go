@@ -159,6 +159,10 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.dataService.Create(comment)
+	if errors.Is(err, service.ErrUserBlocked) { // the author got blocked during the title fetch in Create
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "user blocked", rest.ErrUserBlocked)
+		return
+	}
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return

@@ -200,6 +200,72 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
 }
 
+func TestService_CreateBlockedDuringTitleFetch(t *testing.T) {
+	// the engine mock doesn't refuse blocked users itself, the block is set by the page while its title is fetched
+	var blocked atomic.Bool
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			return req.Flag == engine.Blocked && req.UserID == "user" && blocked.Load(), nil
+		},
+		CreateFunc: func(comment store.Comment) (string, error) { return comment.ID, nil },
+		GetFunc: func(req engine.GetRequest) (store.Comment, error) {
+			return store.Comment{ID: req.CommentID, Text: `<img src="/images/user/pic.png"/>`}, nil
+		},
+		CloseFunc: func() error { return nil },
+	}
+	adminMock := admin.StoreMock{
+		KeyFunc:     func(string) (string, error) { return "secret 123", nil },
+		EnabledFunc: func(string) (bool, error) { return true, nil },
+		OnEventFunc: func(string, admin.EventType) error { return nil },
+	}
+	imgStore := image.StoreMock{
+		ResetCleanupTimerFunc: func(string) error { return nil },
+		CommitFunc:            func(string) error { return nil },
+	}
+	imgSvc := image.NewService(&imgStore, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	defer imgSvc.Close(context.Background())
+
+	var pageReads atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		pageReads.Add(1)
+		blocked.Store(true)
+		_, err := w.Write([]byte("<html><title>post title</title><body>...</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	b := DataStore{Engine: &engineMock, AdminStore: &adminMock, ImageService: imgSvc,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+
+	comment := store.Comment{
+		Text:    `text <img src="/images/user/pic.png"/>`,
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: ts.URL + "/post/1", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	require.ErrorIs(t, err, ErrUserBlocked)
+	assert.Equal(t, int32(1), pageReads.Load(), "the block was set during the title fetch")
+	assert.Empty(t, engineMock.CreateCalls(), "the comment is not stored")
+	assert.Empty(t, imgStore.ResetCleanupTimerCalls(), "pictures of the comment are not submitted")
+	assert.Empty(t, adminMock.OnEventCalls(), "no create event")
+
+	// another user's comment on the same page is stored, with its pictures and event
+	other := comment
+	other.User.ID = "user2"
+	_, err = b.Create(other)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 1)
+	assert.Len(t, imgStore.ResetCleanupTimerCalls(), 1)
+	assert.Len(t, adminMock.OnEventCalls(), 1)
+
+	// an import brings back comments of a blocked user
+	comment.Imported = true
+	_, err = b.Create(comment)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 2)
+}
+
 func TestService_Put(t *testing.T) {
 	ks := admin.NewStaticKeyStore("secret 123")
 	eng, teardown := prepStoreEngine(t)
