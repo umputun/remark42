@@ -137,6 +137,35 @@ func (s suite) updateKeepsFields(t *testing.T) {
 	assert.Equal(t, orig.User, res.User, "user is immutable")
 }
 
+// updateDeleted writes a copy read before a delete: the delete has to hold
+func (s suite) updateDeleted(t *testing.T) {
+	for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+		e := s.prep(t)
+		stale, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		require.False(t, stale.Deleted)
+
+		require.NoError(t, e.Delete(engine.DeleteRequest{Locator: loc(postURL), CommentID: "id-1", DeleteMode: mode}))
+		deleted, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		require.True(t, deleted.Deleted)
+		count, err := e.Count(engine.FindRequest{Locator: loc(postURL)})
+		require.NoError(t, err)
+		require.Equal(t, 1, count, "the other comment of the post is left")
+
+		stale.Text = "text written after the delete"
+		require.Error(t, e.Update(stale), "a deleted comment is not written over, mode %v", mode)
+		require.Error(t, e.Update(deleted), "a deleted comment takes no update, mode %v", mode)
+
+		res, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		assert.Equal(t, deleted, res, "the comment stays as the delete left it, mode %v", mode)
+		count, err = e.Count(engine.FindRequest{Locator: loc(postURL)})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count, "the post count is as the delete left it, mode %v", mode)
+	}
+}
+
 func (s suite) findLast(t *testing.T) {
 	e := s.prep(t)
 

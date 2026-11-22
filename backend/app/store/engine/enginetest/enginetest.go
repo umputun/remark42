@@ -49,6 +49,7 @@ func Run(t *testing.T, newEngine func(t *testing.T) engine.Interface) {
 		{"Get", s.get},
 		{"Update", s.update},
 		{"UpdateKeepsFields", s.updateKeepsFields},
+		{"UpdateDeleted", s.updateDeleted},
 		{"FindLast", s.findLast},
 		{"FindLastSince", s.findLastSince},
 		{"FindInPostSince", s.findInPostSince},

@@ -225,21 +225,24 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	}
 }
 
-// Update for locator.URL with mutable part of comment
+// Update for locator.URL with mutable part of comment. The stored comment is read inside the write
+// transaction: a caller's copy can be older than a delete, and a deleted comment is not written over.
 func (b *BoltDB) Update(comment store.Comment) error {
-	getReq := GetRequest{Locator: comment.Locator, CommentID: comment.ID}
-	if curComment, err := b.Get(getReq); err == nil {
-		// preserve immutable fields
-		comment.ParentID = curComment.ParentID
-		comment.Locator = curComment.Locator
-		comment.Timestamp = curComment.Timestamp
-		comment.User = curComment.User
-	}
-
 	return b.update(comment.Locator.SiteID, func(tx *bolt.Tx) error {
 		bucket, e := b.getPostBucket(tx, comment.Locator.URL)
 		if e != nil {
 			return e
+		}
+		curComment := store.Comment{}
+		if e = b.load(bucket, comment.ID, &curComment); e == nil {
+			if curComment.Deleted {
+				return fmt.Errorf("comment %s is deleted", comment.ID)
+			}
+			// preserve immutable fields
+			comment.ParentID = curComment.ParentID
+			comment.Locator = curComment.Locator
+			comment.Timestamp = curComment.Timestamp
+			comment.User = curComment.User
 		}
 		return b.save(bucket, comment.ID, comment)
 	})

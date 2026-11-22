@@ -609,6 +609,10 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		return comment, err
 	}
 
+	if comment.Deleted { // the engine takes no update for a deleted comment, and a title run goes over every comment
+		return comment, nil
+	}
+
 	// set title, overwrite the current one
 	title, e := s.TitleExtractor.Get(comment.Locator.URL)
 	if e != nil {
