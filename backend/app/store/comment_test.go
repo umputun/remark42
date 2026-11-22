@@ -280,6 +280,14 @@ func TestComment_Snippet(t *testing.T) {
 		{5, "test\nblah", "test ..."},
 		{5, "xyz12345 xxx", "xyz12..."},
 		{10, "xyz12345 xxx\ntest 123456", "xyz12345 ..."},
+		{0, "<p>some <b>bold</b>, text.</p>\n<p>and more</p>\n", "some bold, text. and more"},
+		{0, "<p>one</p><p>two</p><ul><li>three</li><li>four</li></ul>five<br/>six", "one two three four five six"},
+		{0, "un<em>believ</em>able <code>co</code>de", "unbelievable code"},
+		{0, "<section>one</section><section>two</section><summary>three</summary>four", "one two three four"},
+		{0, `<p>1 &lt; 2 &amp; <a href="https://example.com">a "link"</a></p>`, "1 &lt; 2 &amp; a &#34;link&#34;"},
+		{0, "<p>quoted</blockquote></p><script>alert(1)</script>", "quoted"},
+		{14, `<p>picture <img src="https://example.com/p.png" alt="a b c"/> and text</p>`, "picture and ..."},
+		{4, "<p>&lt;&lt;&lt;&lt;&lt;&lt;</p>", "&lt;&lt;&lt;&lt;..."},
 	}
 
 	for i, tt := range tbl {
