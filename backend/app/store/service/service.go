@@ -496,25 +496,34 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
-		return comment, s.Engine.Delete(delReq)
+		if e := s.Engine.Delete(delReq); e != nil {
+			return comment, e
+		}
+		s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
+		return comment, nil
 	}
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
-		return comment, ErrRestrictedWordsFound
-	}
-
+	oldText := comment.Text
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
 	comment.Locator = locator
 	comment.Sanitize()
 
+	// match the sanitized text, as Create does, because this is the text to store and show
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+		return comment, ErrRestrictedWordsFound
+	}
+
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
 		log.Printf("[WARN] failed to send update event, %s", e)
 	}
 
-	err = s.Engine.Update(comment)
-	return comment, err
+	if e := s.Engine.Update(comment); e != nil {
+		return comment, e
+	}
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, oldText, comment.Text)
+	return comment, nil
 }
 
 // HasReplies checks if there is any reply to the comment among the comments of its post
@@ -837,20 +846,69 @@ func (s *DataStore) ownPictures(userID, commentHTML string) []string {
 	return res
 }
 
-// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
-// those other users' comments to the same pages also use, the same check Delete makes for one comment
-func (s *DataStore) userPictures(siteID, userID string) []string {
-	userImgIDs := []string{}
-	pages := map[string]bool{}
+// deleteRemovedPictures deletes the pictures authorID uploaded that oldHTML shows and newHTML does not, once the
+// edit or delete of comment commentID is stored. A picture another comment on the same page shows stays, as
+// Delete keeps it, and so does one any other comment of the author shows, on any page: the address of an upload
+// can be pasted into another comment. Other users' uploads and cached external images stay too. A picture still
+// waiting in staging is deleted there, and the delayed commit, which reads the comment's stored text, no longer
+// looks for it
+func (s *DataStore) deleteRemovedPictures(locator store.Locator, commentID, authorID, oldHTML, newHTML string) {
+	if s.ImageService == nil {
+		return
+	}
+	keep := s.ImageService.ExtractPictures(newHTML)
+	removed := []string{}
+	for _, id := range s.ownPictures(authorID, oldHTML) {
+		if !slices.Contains(keep, id) && !slices.Contains(removed, id) {
+			removed = append(removed, id)
+		}
+	}
+	if len(removed) == 0 {
+		return
+	}
+
+	comments, err := s.Engine.Find(engine.FindRequest{Locator: locator})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of %s for image cleanup of comment %s, %v", locator.URL, commentID, err)
+		return
+	}
+	// the comment's stored text counts as well: another edit of it may have been stored in the meantime
+	for _, c := range comments {
+		keep = append(keep, s.ImageService.ExtractPictures(c.Text)...)
+	}
+	if !slices.ContainsFunc(removed, func(id string) bool { return !slices.Contains(keep, id) }) {
+		return
+	}
+
+	err = s.eachUserComment(locator.SiteID, authorID, func(c store.Comment) {
+		keep = append(keep, s.ImageService.ExtractPictures(c.Text)...)
+	})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of user %s for image cleanup of comment %s, %v", authorID, commentID, err)
+		return
+	}
+	for _, id := range removed {
+		if slices.Contains(keep, id) {
+			continue
+		}
+		if err := s.ImageService.Delete(id); err != nil {
+			log.Printf("[WARN] failed to delete image %s removed from comment %s, %v", id, commentID, err)
+		}
+	}
+}
+
+// eachUserComment calls fn for every comment of the user on the site, reading them page by page and keeping
+// no page once it is passed on. It stops on a page with nothing new, as an engine may ignore Skip. A user with
+// no comments is not an error
+func (s *DataStore) eachUserComment(siteID, userID string, fn func(c store.Comment)) error {
 	seen := map[string]bool{}
-	// read the user's comments page by page; stop on a page with nothing new, as an engine may ignore Skip
 	for skip := 0; ; {
 		comments, err := s.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Skip: skip})
-		if err != nil {
-			if !errors.Is(err, engine.ErrNoUserComments) {
-				log.Printf("[WARN] can't get comments of user %s for image cleanup, %v", userID, err)
-			}
+		if errors.Is(err, engine.ErrNoUserComments) {
 			return nil
+		}
+		if err != nil {
+			return err
 		}
 		added := 0
 		for _, c := range comments {
@@ -860,15 +918,29 @@ func (s *DataStore) userPictures(siteID, userID string) []string {
 			}
 			seen[key] = true
 			added++
-			if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
-				userImgIDs = append(userImgIDs, ids...)
-				pages[c.Locator.URL] = true
-			}
+			fn(c)
 		}
 		if added == 0 {
-			break
+			return nil
 		}
 		skip += len(comments)
+	}
+}
+
+// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
+// those other users' comments to the same pages also use, the same check Delete makes for one comment
+func (s *DataStore) userPictures(siteID, userID string) []string {
+	userImgIDs := []string{}
+	pages := map[string]bool{}
+	err := s.eachUserComment(siteID, userID, func(c store.Comment) {
+		if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
+			userImgIDs = append(userImgIDs, ids...)
+			pages[c.Locator.URL] = true
+		}
+	})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of user %s for image cleanup, %v", userID, err)
+		return nil
 	}
 	if len(userImgIDs) == 0 {
 		return nil

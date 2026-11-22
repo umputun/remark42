@@ -2,7 +2,10 @@ package service
 
 import (
 	"fmt"
+	"html"
+	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -11,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	log "github.com/go-pkgz/lgr"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // RestrictedWordsLister provides restricted words in comments per site
@@ -87,7 +91,9 @@ func NewRestrictedWordsMatcher(lister RestrictedWordsLister) *RestrictedWordsMat
 	return &RestrictedWordsMatcher{lister: lister}
 }
 
-// Match matches comment text against restricted words for specified site
+// Match matches rendered comment text against restricted words for specified site.
+// The html is checked as it is and with percent-escapes decoded (for words in link and image addresses, which
+// the sanitizer stores percent-encoded when they are not ASCII), and so is the text with the tags removed.
 func (m *RestrictedWordsMatcher) Match(siteID, text string) bool {
 	restrictedWords, err := m.lister.List(siteID)
 	if err != nil {
@@ -99,9 +105,44 @@ func (m *RestrictedWordsMatcher) Match(siteID, text string) bool {
 	}
 
 	tokens := m.tokenize(text)
+	tokens = append(tokens, m.tokenize(visibleText(text))...)
+	tokens = append(tokens, m.tokenize(percentDecoded(text))...)
 	trie := newWildcardTrie(restrictedWords...)
 
 	return slices.ContainsFunc(tokens, trie.check)
+}
+
+// rePercentEscapes matches a run of percent-escaped bytes
+var rePercentEscapes = regexp.MustCompile(`(?:%[0-9A-Fa-f]{2})+`)
+
+// percentDecoded returns text with every run of percent-escaped bytes decoded. A "%" that starts no escape stays
+// as it is, and an escape cut in the middle of a character decodes to bytes that are no letter, so they end a word.
+func percentDecoded(text string) string {
+	return rePercentEscapes.ReplaceAllStringFunc(text, func(run string) string {
+		decoded, err := url.PathUnescape(run)
+		if err != nil { // can't happen, a run of well-formed escapes always decodes
+			return run
+		}
+		return decoded
+	})
+}
+
+// tagStripper removes every tag; built once, a built policy is safe for concurrent use
+var tagStripper = bluemonday.StrictPolicy()
+
+// visibleText returns what a reader sees of rendered comment html: tags removed, entities decoded and
+// characters which are not displayed (soft hyphen, zero-width space and joiners, variation selectors) dropped.
+// Without it any markup or invisible character inside a word splits it in two tokens.
+func visibleText(commentHTML string) string {
+	text := html.UnescapeString(tagStripper.Sanitize(commentHTML))
+	return strings.Map(func(r rune) rune {
+		// a format character is not displayed, except the few that are signs put before a number
+		if unicode.In(r, unicode.Cf, unicode.Variation_Selector, unicode.Other_Default_Ignorable_Code_Point) &&
+			!unicode.Is(unicode.Prepended_Concatenation_Mark, r) {
+			return -1
+		}
+		return r
+	}, text)
 }
 
 func (m *RestrictedWordsMatcher) tokenize(text string) []string {

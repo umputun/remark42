@@ -225,6 +225,13 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// a closed post takes no new text, as it takes no new comments. An admin's edit keeps working,
+	// and deleting one's own comment stays allowed.
+	if !edit.Delete && !user.Admin && s.isReadOnly(locator) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "old post, read-only", rest.ErrReadOnly)
+		return
+	}
+
 	// the new text is held to the rules of a new comment; a delete carries no text and is not checked
 	if !edit.Delete {
 		edited := currComment
@@ -236,17 +243,14 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	editReq := service.EditRequest{
-		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
-		Orig:    edit.Text,
-		Summary: edit.Summary,
-		Delete:  edit.Delete,
-		Admin:   user.Admin,
+	editReq := service.EditRequest{Orig: edit.Text, Summary: edit.Summary, Delete: edit.Delete, Admin: user.Admin}
+	if !edit.Delete { // a delete stores no text, so whatever text it carries is not rendered
+		editReq.Text = s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting)
 	}
 
 	_, err = s.dataService.EditComment(locator, id, editReq)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
 	}
 

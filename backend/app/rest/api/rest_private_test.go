@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -253,6 +254,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
+	assert.EqualValues(t, rest.ErrCommentRestrictWords, c["code"], "the restricted-words code, the same for a new and an edited comment")
 }
 
 func TestRest_CreateRelativeURL(t *testing.T) {
@@ -758,6 +760,74 @@ func TestRest_UpdateDelete(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
+// a user deleting their own comment, or editing a picture out of it, removes the pictures they uploaded
+// that no other comment on the page shows, and keeps another user's upload the comment showed
+func TestRest_UpdatePictures(t *testing.T) {
+	tbl := []struct {
+		name    string
+		body    string
+		removed []string
+		kept    []string
+	}{
+		{name: "delete", body: `{"delete": true}`, removed: []string{"provider1_dev/own.png", "provider1_dev/kept.png"},
+			kept: []string{"provider1_dev/reused.png", "user2/other.png"}},
+		{name: "picture edited out", body: `{"text": "![](https://demo.remark42.com/api/v1/picture/provider1_dev/kept.png)"}`,
+			removed: []string{"provider1_dev/own.png"},
+			kept:    []string{"provider1_dev/kept.png", "provider1_dev/reused.png", "user2/other.png"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, srv, teardown := startupT(t)
+			defer teardown()
+
+			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
+			defer imgSvc.Close(context.Background())
+			srv.DataService.ImageService = imgSvc
+
+			pic := func(id string) string { return `<img src="` + srv.RemarkURL + `/api/v1/picture/` + id + `"/>` }
+			for _, id := range []string{"provider1_dev/own.png", "provider1_dev/kept.png", "provider1_dev/reused.png", "user2/other.png"} {
+				require.NoError(t, fs.Save(id, []byte("image data")))
+				require.NoError(t, fs.Commit(id))
+			}
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			now := time.Now()
+			for _, c := range []store.Comment{
+				{ID: "c1", Text: pic("provider1_dev/own.png") + pic("provider1_dev/kept.png") + pic("provider1_dev/reused.png") +
+					pic("user2/other.png"), Locator: locator, User: store.User{ID: "provider1_dev", Name: "developer one"}, Timestamp: now},
+				// another user shows the author's upload on the same page
+				{ID: "c2", Text: pic("provider1_dev/reused.png"), Locator: locator,
+					User: store.User{ID: "user2", Name: "user2"}, Timestamp: now.Add(time.Second)},
+			} {
+				_, err := srv.DataService.Engine.Create(c) // directly to the engine, the pictures are already committed
+				require.NoError(t, err)
+			}
+
+			client := http.Client{}
+			defer client.CloseIdleConnections()
+			req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/comment/c1?site=remark42&url=https://radio-t.com/blah",
+				strings.NewReader(tt.body))
+			require.NoError(t, err)
+			req.Header.Add("X-JWT", devToken)
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+
+			for _, id := range tt.removed {
+				_, err = fs.Load(id)
+				assert.Error(t, err, "picture %s removed", id)
+			}
+			for _, id := range tt.kept {
+				_, err = fs.Load(id)
+				assert.NoError(t, err, "picture %s kept", id)
+			}
+		})
+	}
+}
+
 func TestRest_UpdateDeletedByAdmin(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -857,6 +927,123 @@ func TestRest_UpdateBlockedUser(t *testing.T) {
 	cr, err = srv.DataService.Get(locator, id, store.User{})
 	require.NoError(t, err)
 	assert.True(t, cr.Deleted)
+}
+
+func TestRest_UpdateReadOnlyPost(t *testing.T) {
+	var rendered atomic.Int32
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
+			rendered.Add(1)
+			return text
+		}))
+	})
+	defer teardown()
+
+	put := func(tkn string, locator store.Locator, id, body string) (code int, respBody string) {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, locator.URL), strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		rb, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(rb)
+	}
+	// comments are stored directly: a post closed by age takes none through the API
+	create := func(locator store.Locator, user store.User, ts time.Time) string {
+		id, err := srv.DataService.Create(store.Comment{Text: "<p>original text</p>\n", Orig: "original text",
+			Locator: locator, User: user, Timestamp: ts})
+		require.NoError(t, err)
+		return id
+	}
+	dev := store.User{ID: "provider1_dev", Name: "developer one"}
+	admin := store.User{ID: "github_ef0f706a7", Name: "Umputun", Admin: true}
+
+	tbl := []struct {
+		name    string
+		locator store.Locator
+		before  func(t *testing.T, locator store.Locator) // runs before the two comments are stored
+		after   func(t *testing.T, locator store.Locator) // runs after it
+	}{
+		{name: "closed by an admin", locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/closed"},
+			after: func(t *testing.T, locator store.Locator) {
+				require.NoError(t, srv.DataService.SetReadOnly(locator, true))
+			}},
+		{name: "closed by age", locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/old"},
+			before: func(_ *testing.T, locator store.Locator) {
+				// the test server closes a post ten days after its first comment
+				create(locator, store.User{ID: "provider1_other", Name: "other"}, time.Now().AddDate(0, 0, -11))
+			}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.before != nil {
+				tt.before(t, tt.locator)
+			}
+			devID := create(tt.locator, dev, time.Now())
+			adminID := create(tt.locator, admin, time.Now())
+			if tt.after != nil {
+				tt.after(t, tt.locator)
+			}
+			info, err := srv.DataService.Info(tt.locator, srv.ReadOnlyAge)
+			require.NoError(t, err)
+			require.True(t, info.ReadOnly, "the post is closed")
+
+			rendered.Store(0)
+			code, body := put(devToken, tt.locator, devID, `{"text":"updated text", "summary":"my edit"}`)
+			assert.Equal(t, http.StatusForbidden, code, body)
+			assert.Equal(t, `{"code":8,"details":"old post, read-only","error":"rejected"}`+"\n", body)
+			assert.Zero(t, rendered.Load(), "a refused edit is not rendered")
+			c, err := srv.DataService.Get(tt.locator, devID, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "<p>original text</p>\n", c.Text, "a comment on a closed post is not edited")
+			assert.Nil(t, c.Edit)
+
+			code, body = put(adminUmputunToken, tt.locator, adminID, `{"text":"updated text", "summary":"my edit"}`)
+			assert.Equal(t, http.StatusOK, code, "an admin still edits their comment on a closed post: %s", body)
+			c, err = srv.DataService.Get(tt.locator, adminID, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "<p>updated text</p>\n", c.Text)
+
+			code, body = put(devToken, tt.locator, devID, `{"delete": true}`)
+			assert.Equal(t, http.StatusOK, code, "the author still deletes their comment on a closed post: %s", body)
+			c, err = srv.DataService.Get(tt.locator, devID, store.User{})
+			require.NoError(t, err)
+			assert.True(t, c.Deleted)
+		})
+	}
+}
+
+func TestRest_UpdateDeleteDoesNotRenderText(t *testing.T) {
+	var rendered atomic.Int32
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
+			rendered.Add(1)
+			return text
+		}))
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+	put := func(body string) int {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, postURL), strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	rendered.Store(0)
+	require.Equal(t, http.StatusOK, put(`{"text":"updated text", "summary":"my edit"}`))
+	require.Positive(t, rendered.Load(), "an edit renders its text")
+
+	rendered.Store(0)
+	require.Equal(t, http.StatusOK, put(`{"delete": true, "text":"text sent with the delete"}`))
+	assert.Zero(t, rendered.Load(), "a delete does not render the text sent with it")
 }
 
 func TestRest_DeleteChildThenParent(t *testing.T) {
@@ -1040,6 +1227,7 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, b.StatusCode, string(body))
 	assert.Equal(t, "comment contains restricted words", c["error"])
 	assert.Equal(t, "invalid comment", c["details"])
+	assert.EqualValues(t, rest.ErrCommentRestrictWords, c["code"], "the restricted-words code, the same for a new and an edited comment")
 }
 
 func TestRest_UpdateValidation(t *testing.T) {
@@ -1164,6 +1352,79 @@ func TestRest_UpdateValidation(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, c.Deleted)
 			assert.Empty(t, c.Orig)
+		})
+	}
+}
+
+func TestRest_RestrictedWordsSplitByMarkup(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.UpdateLimiter = 1000 // every row posts and edits on the protected routes
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	id := addComment(t, store.Comment{Text: "What the quack is that?", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+
+	send := func(t *testing.T, method, path string, body map[string]any) (code int, resp R.JSON) {
+		t.Helper()
+		b, err := json.Marshal(body)
+		require.NoError(t, err)
+		req, err := http.NewRequest(method, ts.URL+path, bytes.NewReader(b))
+		require.NoError(t, err)
+		r, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.NoError(t, r.Body.Close())
+		resp = R.JSON{}
+		require.NoError(t, json.Unmarshal(raw, &resp), "status %d, body %s", r.StatusCode, raw)
+		return r.StatusCode, resp
+	}
+
+	tbl := []struct {
+		name, text string
+		refused    bool
+	}{
+		// markup or a character a reader does not see inside the word: the reader sees "duck"
+		{"markdown emphasis", "What the **du**ck is that?", true},
+		{"empty tag", "What the du<b></b>ck is that?", true},
+		{"html comment", "What the du<!-- -->ck is that?", true},
+		{"soft hyphen entity", "What the du&shy;ck is that?", true},
+		{"zero-width space", "What the du\u200bck is that?", true},
+		// a hand-written line break shows two lines, but tags are dropped without a space, so the words are joined
+		{"line break tag", "What the du<br>ck is that?", true},
+		// the word in a link address, with one letter percent-escaped
+		{"escaped letter in a link address", "see [this](https://example.com/d%75ck) page", true},
+		// the reader sees two words, or the markup itself
+		{"space", "What the du ck is that?", false},
+		{"two lines", "What the du\nck is that?", false},
+		{"markdown line break", "What the du  \nck is that?", false},
+		{"two paragraphs", "What the du\n\nck is that?", false},
+		{"list items", "- du\n- ck", false},
+		{"escaped tag", "What the du&lt;b&gt;&lt;/b&gt;ck is that?", false},
+		{"tag in code span", "What the du`<b></b>`ck is that?", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			code, resp := send(t, http.MethodPost, "/api/v1/comment?site=remark42",
+				map[string]any{"text": tt.text, "locator": map[string]string{"site": "remark42", "url": postURL}})
+			if !tt.refused {
+				assert.Equal(t, http.StatusCreated, code, "new comment %q: %v", tt.text, resp)
+			} else {
+				assert.Equal(t, http.StatusBadRequest, code, "new comment %q: %v", tt.text, resp)
+				assert.Equal(t, "comment contains restricted words", resp["error"], "new comment %q", tt.text)
+				assert.EqualValues(t, rest.ErrCommentRestrictWords, resp["code"], "new comment %q", tt.text)
+			}
+
+			code, resp = send(t, http.MethodPut, "/api/v1/comment/"+id+"?site=remark42&url="+postURL,
+				map[string]any{"text": tt.text, "summary": "my edit"})
+			if !tt.refused {
+				assert.Equal(t, http.StatusOK, code, "edit to %q: %v", tt.text, resp)
+			} else {
+				assert.Equal(t, http.StatusBadRequest, code, "edit to %q: %v", tt.text, resp)
+				assert.Equal(t, "comment contains restricted words", resp["error"], "edit to %q", tt.text)
+				assert.EqualValues(t, rest.ErrCommentRestrictWords, resp["code"], "edit to %q", tt.text)
+			}
 		})
 	}
 }
