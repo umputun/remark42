@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"net"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -94,6 +95,21 @@ func emailSafeHTML(commentHTML string) template.HTML {
 		balanced = bluemonday.StrictPolicy().Sanitize(clean)
 	}
 	return template.HTML(balanced) //nolint:gosec // sanitized above: <a>/<img> dropped, only balanced formatting tags survive
+}
+
+// reNotVerificationName matches a run of characters a user name in the verification message may not have
+var reNotVerificationName = regexp.MustCompile(`[^\p{L}\p{M}\d_]+`)
+
+// verificationUserName reduces a display name to letters with their combining marks, digits, underscores
+// and single spaces, at most 64 characters, as the email login accepts for a user name. The verification
+// message goes to an address nobody has confirmed yet, and most login providers let users choose a free-text
+// name, which as it is could carry a message and a link of the user's choice to anyone
+func verificationUserName(name string) string {
+	name = strings.TrimSpace(reNotVerificationName.ReplaceAllString(name, " "))
+	if runes := []rune(name); len(runes) > 64 {
+		name = strings.TrimSpace(string(runes[:64]))
+	}
+	return name
 }
 
 // verifyTmplData store data for verification message template execution
@@ -255,7 +271,7 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 func (e *Email) buildVerificationMessage(user, email, token, site string) (string, error) {
 	msg := bytes.Buffer{}
 	err := e.verifyTmpl.Execute(&msg, verifyTmplData{
-		User:         user,
+		User:         verificationUserName(user),
 		Token:        token,
 		Email:        email,
 		Site:         site,

@@ -551,3 +551,38 @@ func TokenGenFn(user, _, _ string) (string, error) {
 	}
 	return "token", nil
 }
+
+// the verification message goes to an address nobody has confirmed yet, so a free-text display name
+// can't carry a message and a link of the user's choice there
+func TestEmail_VerificationUserNameReduced(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, ntf.SMTPParams{})
+	require.NoError(t, err)
+
+	res, err := email.buildVerificationMessage(
+		"your prize! Claim it within 24 hours: https://evil.example/claim?id=42 - link expires",
+		"test@example.org", "secret_", "remark")
+	require.NoError(t, err)
+	assert.Contains(t, res, "Confirmation for <b>your prize Claim it within 24 hours https evil example claim id</b> on site <b>remark</b>")
+	assert.NotContains(t, res, "evil.example")
+}
+
+func TestVerificationUserName(t *testing.T) {
+	tbl := []struct{ name, in, want string }{
+		{"plain name", "developer one", "developer one"},
+		{"underscore and digits", "some_user 42", "some_user 42"},
+		{"non-latin letters", "Пользователь Ёж", "Пользователь Ёж"},
+		{"combining marks", "हिन्दी Cafe\u0301", "हिन्दी Cafe\u0301"},
+		{"empty", "", ""},
+		{"punctuation becomes a space", "  J. O'Neil-Smith, Jr.  ", "J O Neil Smith Jr"},
+		{"nothing left", "!!! ???", ""},
+		{"control and invisible characters", "dev\r\n\tone\u00a0\u202etwo\xffthree", "dev one two three"},
+		{"markup", `<a href="https://example.org">one</a>`, "a href https example org one a"},
+		{"cut to 64 characters", strings.Repeat("я", 100), strings.Repeat("я", 64)},
+		{"no trailing space after the cut", strings.Repeat("a", 63) + " " + strings.Repeat("b", 10), strings.Repeat("a", 63)},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, verificationUserName(tt.in))
+		})
+	}
+}
