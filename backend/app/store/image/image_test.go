@@ -6,9 +6,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"image/jpeg"
 	"io"
 	"math/big"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -415,6 +417,163 @@ func TestService_resizeRejectsDecompressionBomb(t *testing.T) {
 	err = svc.SaveWithID("bomb_id", bytes.NewReader(bomb))
 	require.Error(t, err, "SaveWithID must reject decompression bomb")
 	assert.Equal(t, 0, len(store.SaveCalls()), "rejected bomb must not be stored")
+}
+
+// TestService_resizeRejectsManyScanJPEG verifies the scan cap. A progressive jpeg may
+// repeat a scan any number of times, a scan that adds nothing takes a dozen bytes, and
+// image.Decode passes over every block of the picture for each of them, so resize must
+// refuse the file before image.Decode spends that time.
+func TestService_resizeRejectsManyScanJPEG(t *testing.T) {
+	allowed, bomb := manyScanJPEG(maxJPEGScans), manyScanJPEG(maxJPEGScans+1)
+
+	// sanity: both files are well-formed jpegs, only the number of scans gets one refused
+	for _, data := range [][]byte{allowed, bomb} {
+		_, format, err := image.Decode(bytes.NewReader(data))
+		require.NoError(t, err, "the file must decode when the scan cap is not applied")
+		require.Equal(t, "jpeg", format)
+	}
+
+	assert.Equal(t, allowed, resize(allowed, 100, 100), "jpeg with the allowed number of scans must pass")
+	assert.Nil(t, resize(bomb, 100, 100), "resize must refuse a jpeg with too many scans")
+	assert.Nil(t, resize(bomb, 0, 0), "even with no-resize limits, too many scans must be refused")
+
+	// the scans are counted before the full decode: refusing a picture of the largest allowed size must not
+	// allocate the memory a decode of it takes, 64 MB for the coefficients of a progressive 4096x4096 picture
+	large := manyScanJPEGSized(maxJPEGScans+1, 4096, 4096)
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	refused := resize(large, 100, 100)
+	runtime.ReadMemStats(&after)
+	assert.Nil(t, refused)
+	assert.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(8<<20), "refused before the full decode starts")
+
+	// integration-level: SaveWithID refuses the file with the error a client already gets
+	// for a picture over the pixel limit, and stores nothing
+	store := StoreMock{SaveFunc: func(string, []byte) error { return nil }}
+	svc := Service{store: &store, MaxSize: 1500}
+	err := svc.SaveWithID("bomb_id", bytes.NewReader(bomb))
+	require.EqualError(t, err, "image rejected: malformed or exceeds 16777216-pixel safe limit")
+	assert.Empty(t, store.SaveCalls(), "rejected file must not be stored")
+
+	require.NoError(t, svc.SaveWithID("allowed_id", bytes.NewReader(allowed)))
+	require.Len(t, store.SaveCalls(), 1)
+	assert.Equal(t, allowed, store.SaveCalls()[0].Img)
+}
+
+// manyScanJPEG builds an 8x8 grayscale progressive jpeg with the given number of scans,
+// each of them an AC refinement scan that changes nothing. The standard library can't
+// encode a progressive jpeg, so the segments are written by hand.
+func manyScanJPEG(scans int) []byte { return manyScanJPEGSized(scans, 8, 8) }
+
+// manyScanJPEGSized is manyScanJPEG with the declared picture size set. The scans cover one
+// block only, so a size above 8x8 gives a file whose header is right and whose scans are not
+// enough for the picture.
+func manyScanJPEGSized(scans, width, height int) []byte {
+	segment := func(marker byte, payload ...byte) []byte {
+		return append([]byte{0xff, marker, 0, byte(len(payload) + 2)}, payload...)
+	}
+
+	res := []byte{0xff, 0xd8} // SOI
+	// DQT: 8-bit table 0, all ones
+	res = append(res, segment(0xdb, append([]byte{0x00}, bytes.Repeat([]byte{1}, 64)...)...)...)
+	// SOF2 (progressive): 8-bit samples, 8x8, one component without subsampling, table 0
+	res = append(res, segment(0xc2, 8, byte(height>>8), byte(height), byte(width>>8), byte(width), 1, 1, 0x11, 0)...)
+	// DHT: AC table 0, its only code is one bit long and means "end of band" for a run of blocks
+	res = append(res, segment(0xc4, append(append([]byte{0x10, 1}, make([]byte, 15)...), 0xe0)...)...)
+	for range scans {
+		res = append(res, segment(0xda, 1, 1, 0x00, 1, 63, 0x10)...) // SOS: refine coefficients 1..63
+		res = append(res, 0, 0)                                      // one end-of-band run, covers the only block
+	}
+	return append(res, 0xff, 0xd9) // EOI
+}
+
+// baselineJPEG encodes a 16x16 grayscale picture with the standard library encoder. The
+// pattern is busy enough for the entropy-coded data to hold stuffed ff bytes.
+func baselineJPEG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewGray(image.Rect(0, 0, 16, 16))
+	for i := range img.Pix {
+		img.Pix[i] = byte(i * i * 37)
+	}
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, img, &jpeg.Options{Quality: 100}))
+	require.True(t, bytes.Contains(buf.Bytes(), []byte{0xff, 0x00}), "the encoded file must hold a stuffed byte")
+	return buf.Bytes()
+}
+
+func TestJpegScans(t *testing.T) {
+	baseline := baselineJPEG(t)
+	circles, err := os.ReadFile("testdata/circles.jpg")
+	require.NoError(t, err)
+
+	// a comment segment right after SOI with bytes that look like 200 scans and an end of image
+	comment := append([]byte{0xff, 0xfe, 0x01, 0x94}, bytes.Repeat([]byte{0xff, 0xda}, 200)...)
+	comment = append(comment, 0xff, 0xd9)
+	commented := append([]byte{0xff, 0xd8}, append(comment, manyScanJPEG(3)[2:]...)...)
+
+	// a scan header the walker skips by its length, so the bytes after it are entropy-coded data
+	soi, sos, eoi := []byte{0xff, 0xd8}, []byte{0xff, 0xda, 0x00, 0x02}, []byte{0xff, 0xd9}
+	join := func(parts ...[]byte) []byte { return bytes.Join(parts, nil) }
+
+	tbl := []struct {
+		name  string
+		data  []byte
+		scans int
+	}{
+		{"baseline from the standard library encoder", baseline, 1},
+		{"baseline file from another encoder", circles, 1},
+		{"progressive with many scans", manyScanJPEG(42), 42},
+		{"markers inside a comment segment are not counted", commented, 3},
+		// what follows EOI reads as a segment of a length that fits and then as 200 scans, so only the stop at
+		// EOI keeps them out of the count
+		{"data after the end of image is not counted",
+			append(append(manyScanJPEG(3), 0x00, 0x02), bytes.Repeat([]byte{0xff, 0xda, 0x00, 0x02}, 200)...), 3},
+		{"stuffed byte in a scan", join(soi, sos, []byte{0x5a, 0xff, 0x00}, sos, eoi), 2},
+		{"restart marker in a scan", join(soi, sos, []byte{0x5a, 0xff, 0xd0, 0x34}, sos, eoi), 2},
+		{"fill bytes before a marker", join(soi, sos, []byte{0x5a, 0xff, 0xff}, sos, eoi), 2},
+		{"extraneous bytes between segments", join(soi, []byte{0x01, 0x02}, sos, eoi), 1},
+		{"segment length below two", join(soi, []byte{0xff, 0xda, 0x00, 0x00}, sos, sos, eoi), 1},
+		{"segment length past the end", join(soi, []byte{0xff, 0xda, 0xff, 0xff}, sos, eoi), 1},
+		{"cut in the segment length", join(soi, []byte{0xff, 0xda, 0x00}), 1},
+		{"soi only", soi, 0},
+		{"empty", nil, 0},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.scans, jpegScans(tt.data))
+		})
+	}
+
+	// the segments the walker skips are skipped by the decoder too, the picture stays acceptable
+	_, _, err = image.Decode(bytes.NewReader(commented))
+	require.NoError(t, err)
+	assert.Equal(t, commented, resize(commented, 100, 100), "marker-like bytes in a comment must not get a jpeg refused")
+	assert.Equal(t, baseline, resize(baseline, 100, 100), "an ordinary baseline jpeg must pass")
+
+	many := manyScanJPEG(200)
+	assert.Zero(t, testing.AllocsPerRun(10, func() { jpegScans(many) }), "the walk must not allocate")
+}
+
+// TestJpegScansTruncated cuts valid files at every length. The walker must stop without a
+// panic and never count more than the whole file holds, and resize must refuse every cut
+// file: the walker passing a cut file does not get it stored, the full decode refuses it.
+func TestJpegScansTruncated(t *testing.T) {
+	files := map[string][]byte{
+		"baseline":          baselineJPEG(t),
+		"progressive":       manyScanJPEG(5),
+		"over the scan cap": manyScanJPEG(maxJPEGScans + 1),
+	}
+	for name, data := range files {
+		t.Run(name, func(t *testing.T) {
+			full := jpegScans(data)
+			for n := range len(data) {
+				cut := data[:n]
+				assert.LessOrEqual(t, jpegScans(cut), full, "cut at %d", n)
+				assert.Nil(t, resize(cut, 100, 100), "cut at %d", n)
+			}
+		})
+	}
 }
 
 func TestGetProportionalSizes(t *testing.T) {

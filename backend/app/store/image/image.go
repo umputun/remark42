@@ -297,6 +297,13 @@ func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids 
 // (~4096x4096) while keeping peak allocation bounded.
 const maxImagePixels = 16 * 1024 * 1024
 
+// maxJPEGScans caps the number of scans of a jpeg before the full decode is allowed.
+// The pixel cap bounds memory, not time: a progressive jpeg may carry any number of
+// scans, the decoder passes over every block of the picture for each of them, and a
+// scan that adds nothing takes a few dozen bytes, so a 5 MB upload declaring 4096x4096
+// px would keep a core busy for hours. Encoders write about ten scans.
+const maxJPEGScans = 32
+
 // prepareImage calls readAndValidateImage and resize on provided image.
 func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
 	data, err := readAndValidateImage(r, s.MaxSize)
@@ -314,9 +321,10 @@ func (s *Service) prepareImage(r io.Reader) ([]byte, error) {
 // resize validates an image and, if needed, re-encodes it to fit within the given
 // pixel limits preserving aspect ratio. Returns nil for malformed input or for
 // declared dimensions exceeding maxImagePixels so attacker payloads (decompression
-// bombs) never reach the store. With limit <= 0 or when the image already fits, the
-// original bytes are returned verbatim so animated GIFs and other multi-frame formats
-// round-trip without being flattened to one frame.
+// bombs) never reach the store, and for a jpeg with more than maxJPEGScans scans, which
+// would keep the decoder busy instead. With limit <= 0 or when the image already fits,
+// the original bytes are returned verbatim so animated GIFs and other multi-frame
+// formats round-trip without being flattened to one frame.
 //
 // Validation uses image.DecodeConfig (cheap — declares dimensions, allocates nothing)
 // before any full image.Decode, so a 100 KB compressed image declaring 65535x65535 px
@@ -327,7 +335,7 @@ func resize(data []byte, limitW, limitH int) []byte {
 	}
 
 	// validate format and dimensions without allocating pixel memory.
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		log.Printf("[WARN] can't decode image config, %s", err)
 		return nil
@@ -338,6 +346,12 @@ func resize(data []byte, limitW, limitH int) []byte {
 	if cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > int64(maxImagePixels) {
 		log.Printf("[WARN] image dimensions %dx%d exceed safe limit", cfg.Width, cfg.Height)
 		return nil
+	}
+	if format == "jpeg" {
+		if scans := jpegScans(data); scans > maxJPEGScans {
+			log.Printf("[WARN] jpeg with %d scans exceeds safe limit", scans)
+			return nil
+		}
 	}
 
 	// dimensions are bounded — full decode is now safe to allocate. Decode also
@@ -367,6 +381,52 @@ func resize(data []byte, limitW, limitH int) []byte {
 		return data // fall back to the validated original
 	}
 	return out.Bytes()
+}
+
+// jpegScans returns the number of scans (SOS segments) image.Decode would process in a
+// jpeg, without decoding anything. It follows the segments the way the decoder does: a
+// segment is skipped by its declared length, entropy-coded data up to the next marker,
+// and nothing after EOI is read, so marker-like bytes in metadata, in an embedded
+// thumbnail or past the end of the image are not counted. Every step moves forward by at
+// least one byte, so the walk is linear in the size of data. On input the decoder
+// refuses, such as a file cut short, it returns the count up to that point: the full
+// decode that follows refuses that file anyway.
+func jpegScans(data []byte) (scans int) {
+	const (
+		rst0Marker = 0xd0 // restart markers RST0..RST7 have no length and no payload
+		rst7Marker = 0xd7
+		eoiMarker  = 0xd9
+		sosMarker  = 0xda
+	)
+
+	for i := 2; i+1 < len(data); { // starts after SOI
+		marker := data[i+1]
+		switch {
+		case data[i] != 0xff: // entropy-coded data of a scan, or extraneous bytes
+			i++
+		case marker == 0xff: // fill byte in front of a marker
+			i++
+		case marker == 0x00 || (marker >= rst0Marker && marker <= rst7Marker): // stuffed ff in a scan, restart
+			i += 2
+		case marker == eoiMarker:
+			return scans
+		default:
+			if marker == sosMarker {
+				scans++
+			}
+			if i+3 >= len(data) { // the segment length is cut off
+				return scans
+			}
+			// the length counts its own two bytes; the decoder refuses a shorter one or a
+			// segment that runs past the end of data
+			n := int(data[i+2])<<8 | int(data[i+3])
+			if n < 2 || n > len(data)-i-2 {
+				return scans
+			}
+			i += 2 + n
+		}
+	}
+	return scans
 }
 
 // getProportionalSizes returns width and height resized by both dimensions proportionally
