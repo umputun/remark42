@@ -6,6 +6,7 @@
 // up itself when nothing is listening. Files:
 //
 //   - e2e_test.go: TestMain, shared helpers, constants
+//   - assets_test.go: the instance URL filled into the published files
 //   - harness_test.go: the stale-stack guard and the browser failures no assertion covers
 //   - auth_test.go: dev, anonymous and email sign-in
 //   - comment_test.go: post, reply, edit, delete
@@ -25,6 +26,7 @@
 //   - telegram_test.go: Telegram authentication through the bot API stub
 //   - telegramsub_test.go: the Telegram notification subscription round trip
 //   - widgets_test.go: last-comments, counter and the profile iframe
+//   - jscoverage_test.go: collecting the instrumented widget's coverage counters
 package e2e
 
 import (

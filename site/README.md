@@ -30,20 +30,23 @@ Writes the static site to `build/`, which is what the Docker image serves. `--cl
 
 ## Layout
 
-| Path                  | Contents                                                             |
-| --------------------- | -------------------------------------------------------------------- |
-| `content/`            | Pages as markdown. `content/docs/` is the documentation tree          |
-| `layouts/`            | Templates. `partials/`, `shortcodes/` and `_markup/` render hooks     |
-| `assets/`             | `styles.css` and the scripts, fingerprinted at build time             |
-| `static/`             | Files copied to the site root as-is: favicons, manifest, `robots.txt` |
-| `data/nav.json`       | The documentation sidebar                                             |
-| `hugo.toml`           | Site configuration                                                    |
+| Path                       | Contents                                                              |
+| -------------------------- | --------------------------------------------------------------------- |
+| `content/`                 | Pages as markdown. `content/docs/` is the documentation tree          |
+| `layouts/`                 | Templates. `partials/`, `shortcodes/` and `_markup/` render hooks     |
+| `assets/`                  | `styles.css` and the scripts, fingerprinted at build time             |
+| `static/`                  | Files copied to the site root as-is: favicons, manifest, `robots.txt` |
+| `data/nav.json`            | The documentation sidebar                                             |
+| `data/anchor_aliases.json` | Previous anchors of headings, kept as link targets                    |
+| `hugo.toml`                | Site configuration                                                    |
 
 ## Writing docs
 
 A page is a markdown file with a `title` in its front matter. A directory becomes a section when it holds `_index.md`, and a page that carries its own images is a directory with `index.md` and the images beside it.
 
 Adding a page to the sidebar means adding an entry to `data/nav.json`; the paths there are relative to `/docs`.
+
+`data/anchor_aliases.json` keeps a heading's previous anchors working after its anchor changes. For each page it maps a heading's current anchor to its previous anchor, or to a list of them, and the heading renders each one as an empty target. A renamed heading listed there needs its entry re-keyed under the new anchor, with the old anchor added to its list; otherwise every previous anchor of that heading stops resolving.
 
 Callouts use the `note` shortcode, which takes the emoji to show:
 
@@ -53,7 +56,7 @@ Anything markdown here.
 {{< /note >}}
 ```
 
-Two documentation pages are symlinked into the repository as `backend/README.md` and `frontend/apps/remark42/README.md`, so moving or renaming `content/docs/contributing/backend/index.md` or `content/docs/contributing/frontend/index.md` means repointing those symlinks.
+Two documentation pages are symlinked into the repository as `backend/README.md` and `frontend/apps/remark42/README.md`, so moving or renaming `content/docs/contributing/backend/index.md` or `content/docs/contributing/frontend/index.md` means repointing those symlinks. GitHub renders those two as plain markdown, where a shortcode shows as raw text, so their callouts are blockquotes instead of the `note` shortcode.
 
 ## Styling
 

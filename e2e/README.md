@@ -72,7 +72,7 @@ coverage, and `compose-e2e-test.yml` is what a plain run uses.
 Three ways this could report nothing and still look like a result, so each one fails instead:
 
 - **A killed instance writes no profile.** The instances are asked to stop with a 30 second grace,
-  and every directory is then checked rather than the total, because six clean exits and one kill
+  and every directory is then checked rather than the total, because seven clean exits and one kill
   merge into a plausible report with that instance's code reading as unreached. The failure names
   the services that produced nothing.
 - **A failing suite still has coverage worth keeping.** The run's exit status is preserved, but the
@@ -152,20 +152,20 @@ Before pushing, `cd e2e && go vet -tags=e2e ./...` and `golangci-lint run --buil
 - **remark42-https** on `:8443`, the widget over TLS with `AUTH_SAME_SITE=none` and `AUTH_SEND_JWT_HEADER=true`. The header mode is what makes the backend repeat its cookies in the partitioned form for a widget framed by another host, so those cookies are observable at all. Anonymous and email sign-in are both enabled, since the third-party cases run each flow: the partitioned pair is added to whichever response sets the cookies, whatever the provider, and that is an assumption worth measuring rather than asserting
 - **host-site-https** on `:8444`, an nginx serving the same `e2e/hostsite/` over TLS, so the embed is cross-site *and* secure. `post-https.html` is its page
 - **remark42-telegram** on `:8087`, telegram auth pointed at the stub below through `TELEGRAM_API_URL`. It has its own instance because telegram is an auth provider, and adding it to the main one would change the provider list every other case reads out of the auth panel
-- **telegram-stub** on `:8091`, which answers as the Telegram bot API for the four calls the auth flow makes, takes an injected update through `/control/send`, and exposes the bot's replies through `/control/sent`. Those endpoints represent the exchange inside Telegram that a browser cannot perform. Its source is `e2e/telegramstub`, the one file in this module without the `e2e` build tag, and compose builds it as its own image from a throwaway module so the suite's browser tooling stays out of it
+- **telegram-stub** on `:8091`, which answers as the Telegram bot API for the four calls the auth flow makes, takes an injected update through `/control/send`, and exposes the bot's replies through `/control/sent`. Those endpoints represent the exchange inside Telegram that a browser cannot perform. Its source is `e2e/telegramstub/main.go`, the one Go file in this module without the `e2e` build tag, and compose builds it as its own image from a throwaway module so the suite's browser tooling stays out of it
 - **mailpit** on `:8025`, which catches the email-auth verification message and the subscription token for the suite to read back
 
 Both TLS services read a self-signed certificate from `e2e/tls/`, which `e2e/tls/generate.sh` writes and `.gitignore` keeps out of the tree. `make e2e-up`, the workflow and `ensureStack` all run it before compose, so bringing the stack up by hand with a bare `docker compose up` is the one path that needs it run first. Every browser context and the readiness client accept that certificate, and they talk to nothing else.
 
 The main instance enables the notify module (`NOTIFY_USERS=email`). Without it `email_notifications` is false in the config, the widget never renders the subscribe control, and the whole subscribe, confirm and unsubscribe flow is unreachable from a browser.
 
-The remark42 instances beyond the first and `remark42-telegram` offer anonymous sign-in only, for the reason `remark42-shortedit` does: the dev oauth2 provider binds a port fixed at 8084 and cannot be published twice. `remark42-adminedit` enables email authentication and sets `ADMIN_SHARED_ID` to the SHA-1-derived ID of `adminedit@example.com`, which is the address its browser case uses.
+Only the first remark42 instance has the dev oauth2 provider, for the reason `remark42-shortedit` gives: the provider binds a port fixed at 8084, which cannot be published twice. `remark42-shortedit`, `remark42-jwtheader` and `remark42-anonvote` offer anonymous sign-in only. `remark42-adminedit` offers email sign-in only and sets `ADMIN_SHARED_ID` to the SHA-1-derived ID of `adminedit@example.com`, which is the address its browser case uses. `remark42-https` offers anonymous and email sign-in, `remark42-telegram` offers Telegram sign-in only, and `remark42-noauth` offers none.
 
 Four settings exist for the tests and not for realism, and each is there for a reason:
 
 - `REMARK_URL` uses a **hostname**, not `127.0.0.1`. The dev oauth2 server binds whatever host it reads out of `REMARK_URL` (`localBindAddr` in go-pkgz/auth), and a loopback bind inside a container cannot be published. The browser maps the names back with `--host-resolver-rules`.
 - `UPDATE_LIMIT=100`, because the default of 0.5 updates a second rejects any test that posts twice in a row.
-- Each browser context has its own forwarded client IP. Fresh contexts use the limiter's initial allowance; later auth actions wait one token-refill interval through `pauseForAuthLimit`. The limit is a bare literal at `backend/app/rest/api/rest.go:242`, not a setting.
+- Each browser context has its own forwarded client IP. Fresh contexts use the limiter's initial allowance; later auth actions wait one token-refill interval through `pauseForAuthLimit`. The limit is the bare literal in `rateLimiter(2)` on the `/auth/` route group in `backend/app/rest/api/rest.go`, not a setting.
 - `TRUSTED_PROXY` stays unset. The stack is loopback-only, and the harness verifies that its per-context `X-Real-IP` reaches the backend and separates auth limiter buckets.
 
 `VOTES_IP` follows the same reader model: one browser context is one voter IP. A vote-deduplication case that needs repeated actions from one reader must perform them in the same context.
@@ -187,7 +187,7 @@ The trap that remains is which cookie policy a run is under. Playwright's own de
 
 So a blocking run has to assert a control before anything it reports can be believed: set an ordinary `SameSite=None` cookie from inside the widget frame and require the browser to drop it. If it survives, the run is not blocking anything. The argument list is Playwright's own and version-specific, so that control is what keeps it from rotting silently.
 
-That control has to read the cookie back through `document.cookie` in the same frame evaluate that writes it, never through `page.Context().Cookies()`. The two are separate channels with no ordering between them: in the Chromium that Playwright 1.62.1 ships, `CookieJar::SetCookie` queues the write and returns, and the renderer's own `document.cookie` getter is the barrier that forces it to settle, while Playwright's context read is a browser-session `Storage.getCookies` that never touches that frame's jar. A control read that way can find the name absent because the write has not landed, which is the one outcome it exists to rule out. It also writes a valid `Secure; SameSite=None; Partitioned` sentinel and requires that one to be present, so "the browser refused the control" is distinguishable from "nothing was written at all".
+That control has to read the cookie back through `document.cookie` in the same frame evaluate that writes it, never through `page.Context().Cookies()`. The two are separate channels with no ordering between them. In the Chromium that Playwright 1.62.1 ships, which is where this was measured (the suite's current version is in `e2e/go.mod`), `CookieJar::SetCookie` queues the write and returns, and the renderer's own `document.cookie` getter is the barrier that forces it to settle, while Playwright's context read is a browser-session `Storage.getCookies` that never touches that frame's jar. A control read that way can find the name absent because the write has not landed, which is the one outcome it exists to rule out. It also writes a valid `Secure; SameSite=None; Partitioned` sentinel and requires that one to be present, so "the browser refused the control" is distinguishable from "nothing was written at all".
 
 None of that reaches the widget's own storage fallback, which the auth panel offers as `comments.html` when `IS_THIRD_PARTY && !IS_STORAGE_AVAILABLE`. `IS_STORAGE_AVAILABLE` stays true even with partitioning properly enforced, because Chromium partitions `localStorage` instead of denying it, so the probe behind that constant never throws and the condition cannot fire. That case needs WebKit, not a Chromium flag.
 
@@ -209,7 +209,7 @@ Everything else runs in Chromium alone, for the same reason inverted: those test
 
 ## Selectors
 
-Tests use the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-submit`, `.comment-actions`, `.comment-actions-additional`, `.sort-picker`, `.preloader`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
+Tests use the stable class hooks the widget keeps outside CSS modules (`.auth-button`, `.auth-dropdown`, `.auth-submit`, `.auth-error`, `.auth-input-username`, `.auth-input-email`, `.auth-token-textarea`, `.oauth-button`, `.oauth-icon`, `.telegram`, `.comment-actions`, `.comment-actions-additional`, `.raw-content`, `.sort-picker`, `.preloader`, `.profile-title`, `.profile-error`, `.comments-counter`), `title` attributes on icon-only controls, and visible text. These shapes are worth knowing:
 
 - `.auth` only exists while signed out, so waiting on it hangs after sign-in. `widget()` waits on the comment form, which is present either way.
 - The production build hashes every css-module class name to a short opaque id, so a component's own class is not something a test can hold. `role` is: the footer is `[role="contentinfo"]` and the edit countdown is `[role="timer"]`.

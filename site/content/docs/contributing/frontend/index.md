@@ -6,11 +6,7 @@ title: Frontend Development Guidelines
 
 Frontend for Remark42 is built with [Preact](https://preactjs.com) and [Redux](https://redux.js.org).
 
-{{< note "💡" >}}
-We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started).
-React libraries are not usable here: the store bindings and the i18n helpers are small local
-modules under `app/`.
-{{< /note >}}
+> 💡 We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started). React libraries are not usable here: the store bindings and the i18n helpers are small local modules under `app/`.
 
 In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget.
 Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
@@ -27,9 +23,7 @@ You must have at least 2GB RAM or swap enabled for building.
 
 The repository installs no git hooks. A clone where an earlier `pnpm i` set them up still has `core.hooksPath` pointing at `frontend/.husky`, where nothing runs any more; `git config --unset core.hooksPath` removes the setting, and the leftover `frontend/.husky` directory can be deleted.
 
-{{< note "🚨" >}}
-Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. The address dev auth uses is the backend's `REMARK_URL`, set in the compose file you start the backend from.
-{{< /note >}}
+> 🚨 Please use `127.0.0.1` and not `localhost` to access the server; otherwise, CORS will prevent your browser from authentication to work correctly. The address dev auth uses is the backend's `REMARK_URL`, set in the compose file you start the backend from.
 
 ## Development
 
@@ -47,9 +41,7 @@ pnpm dev --env apiBase=http://127.0.0.1:8081
 
 The `REMARK_API_BASE_URL` environment variable sets the same address.
 
-{{< note "ℹ️" >}}
-If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. A variable already set in the environment takes precedence over the file.
-{{< /note >}}
+> ℹ️ If you want to redefine env variables such as `PORT` on your local instance, you can add the `.env` file to the `./frontend/apps/remark42` folder and rewrite variables as you wish. A variable already set in the environment takes precedence over the file.
 
 ### Run frontend with backend locally
 
@@ -80,9 +72,7 @@ To access the frontend running by Node, go to <http://127.0.0.1:9000/web/>. The 
 
 Frontend Docker Compose config (`compose-dev-frontend.yml`) by default skips running backend related tests and the frontend build.
 
-{{< note "🚨" >}}
-Before submitting your changes as a Pull Request, run the backend using the `docker compose -f compose-private.yml build --build-arg SKIP_FRONTEND_BUILD="" && docker compose -f compose-private.yml up` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
-{{< /note >}}
+> 🚨 Before submitting your changes as a Pull Request, run the backend using the `docker compose -f compose-private.yml build --build-arg SKIP_FRONTEND_BUILD="" && docker compose -f compose-private.yml up` command and test your changes against <http://127.0.0.1:8080/web/>, frontend, built statically (unlike frontend on port 9000, which runs dynamically). That is how Remark42 authors will test your changes once you submit them.
 
 ## Static build
 
@@ -108,7 +98,7 @@ so prettier, stylelint and `pnpm lint` do not see them.
 
 - Component styles use CSS Modules in `component.module.css` files.
 - Use `root` for the component block and camelCase for element and modifier classes; combine classes with `clsx`.
-- Keep the stylesheet next to its component, for example `app/components/list-comments/list-comments.module.css` and `app/components/list-comments/list-comments.tsx`.
+- Keep the stylesheet next to its component, for example `app/components/select/select.module.css` and `app/components/select/select.tsx`.
 
 ## Imports
 

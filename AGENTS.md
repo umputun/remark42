@@ -10,8 +10,8 @@ The same rules as `CONTRIBUTING.md`, for an agent working on behalf of someone w
 
 ## Build/Test/Lint Commands
 - **Backend**:
-  - Run server: `make rundev`
-  - Build: `make backend`
+  - Run server: `cp compose-dev-backend.yml compose-private.yml` once (`compose-private.yml` is gitignored), then `make rundev`
+  - Build: `make backend` builds the development Docker image from `compose-dev-backend.yml`
   - Race test: `make race_test`
 - **Backend Testing**:
   - Run all tests: `cd backend/app && go test -timeout=300s -count 1 ./...`
@@ -45,9 +45,9 @@ Backend tests must never depend on how fast the machine is. CI runs them under `
 
 - **Wait on a condition, never on a duration.** Use `require.Eventually` / `require.EventuallyWithT` to poll for the state the assertion needs, and `require.Never` when the point is that something did *not* happen. A bare `time.Sleep` before an assertion is a defect; sleeping until a deadline you computed, as `waitPastMillisecond` does, is not.
 - **Polling closures must not touch `*testing.T`.** testify runs them on a separate goroutine, where `t.FailNow` is undefined behaviour. Assert on the `*assert.CollectT` that `EventuallyWithT` hands the closure, so the real error also lands in the failure message.
-- **Mind the rate limiter when polling over HTTP.** Route groups are capped independently and most of the caps are hard-coded in `rest.go`, out of reach of a test: `/auth/` at 2 req/s and the admin, protected and image routes at 10 req/s. Only the open-route group is settable, via `openRouteLimiter` (100 in `startupT`). Poll with the existing constants rather than a new number, `httpPoll` for anything issuing an HTTP request and `pollInterval` only for in-process or filesystem checks, or the poll manufactures the 429s it then has to interpret.
+- **Mind the rate limiter when polling over HTTP.** Route groups are capped independently and most of the caps are hard-coded in `rest.go`, out of reach of a test: `/auth/` at 2 req/s and the admin, protected and image routes at 10 req/s. Two are settable: the open-route group via `openRouteLimiter` (100 in `startupT`), and the comment, vote, subscription and picture upload routes via the exported `UpdateLimiter` (10 when unset). Poll with the existing constants rather than a new number, `httpPoll` for anything issuing an HTTP request and `pollInterval` only for in-process or filesystem checks, or the poll manufactures the 429s it then has to interpret.
 - **When a test needs time to have passed, pin the clock input rather than waiting for it:** `os.Chtimes` for file ages, an explicit `store.Comment.Timestamp` for anything that formats a timestamp.
-- **Prefer a `testing/synctest` bubble** where the code under test has no real I/O. Inside one the clock is fake, so `time.Sleep` is instant and deterministic. `app/notify`, `app/store/service`, `app/store/image`, `app/store/engine`, `app/providers`, `app/migrator` and `_example/memory_store/accessor` already use it, and most surviving `time.Sleep` calls live in them.
+- **Prefer a `testing/synctest` bubble** where the code under test has no real I/O. Inside one the clock is fake, so `time.Sleep` is instant and deterministic. `app/notify`, `app/store/service`, `app/store/image`, `app/store/engine`, `app/providers`, `app/migrator`, `app/rest/api`, `app/cmd` and `_example/memory_store/accessor` already use it, and most surviving `time.Sleep` calls live in them.
 - **Helpers fail loudly.** A wait that gives up must call `t.Fatal`/`require` naming what it was waiting for, never return silently and leave the next assertion to fail with something unrelated. Because these packages run `goleak.VerifyTestMain`, a failing helper also exits the test goroutine, so anything that started a server in a goroutine must `defer cancel()` or `defer srv.Shutdown()` right after launching it; otherwise a failed readiness wait is reported as a goroutine leak rather than the failure that caused it.
 - **Take ports and paths from outside the test.** Ports come from the kernel with `net.Listen("tcp", "127.0.0.1:0")`, files from `t.TempDir()`. `go test ./...` runs package binaries concurrently, so a number out of a fixed range or a fixed name under `/tmp` lets two of them collide. Probe on 127.0.0.1, not `:0`: on macOS a wildcard bind succeeds on a port another process holds on 127.0.0.1 only, and the test's requests then reach that process.
 - **Close idle connections before shutting a test server down.** Clients built as `http.Client{Timeout: x}` share `http.DefaultTransport`, and `Shutdown` waits on their keep-alive connections until its own deadline expires.
@@ -96,7 +96,8 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
 - **Backend**: Formatting with golangci-lint, strict error handling
 - **Frontend**: TypeScript with ESLint, Stylelint and Prettier
 - **Imports**: Group stdlib, external packages, then internal packages
-- **CSS**: All components use CSS Modules (`component.module.css`). Class naming: BEM block = `.root`, elements = camelCase, modifiers = camelCase. Use `clsx` for conditional class composition. `raw-content.css` is the only global CSS file (syntax highlighting utility). Root wrapper keeps bare `.dark`/`.light` theme class — 8+ module CSS files depend on `:global(.dark)` ancestor. `comment_highlighting` uses `:global()` for imperative `classList` usage in root.tsx
+- **CSS**: Components use CSS Modules (`component.module.css`). Class naming for new code: BEM block = `.root`, elements = camelCase, modifiers = camelCase; some existing files do not follow it. Use `clsx` for conditional class composition. Three stylesheets are global, not modules: `app/styles/global.css`, `app/styles/custom-properties.css` and `app/components/comment/raw-content.css` (rendered comment text and syntax highlighting). Root wrapper keeps bare `.dark`/`.light` theme class; several module CSS files depend on `:global(.dark)` ancestor. `comment_highlighting` uses `:global()` for imperative `classList` usage in root.tsx
+- **Docs**: Site docs describe what master does, in the present tense, without release markers.
 
 ## Key Backend Packages
 - **Web/API**: `github.com/go-pkgz/routegroup`, `github.com/go-pkgz/rest`

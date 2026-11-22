@@ -2,7 +2,7 @@
 
 ## What this project does and where untrusted input enters
 
-Remark42 is a self-hosted comment engine. A Go server (`backend/`) stores comments in BoltDB and serves a REST API; a Preact widget (`frontend/apps/remark42/`) is embedded into third-party sites through an iframe and renders comments in the Remark42 origin. The pages that host the widget and the comment counter script `counter.mjs` are plain files in `backend/app/webassets/assets/`, embedded in the binary outside the widget build. One server can host several sites (`--site`), each with its own comments and admins.
+Remark42 is a self-hosted comment engine. A Go server (`backend/`) stores comments in BoltDB and serves a REST API; a Preact widget (`frontend/apps/remark42/`) is embedded into third-party sites through an iframe and renders comments in the Remark42 origin. The pages that host the widget and the comment counter script `counter.mjs` are plain files in `backend/app/webassets/assets/`, embedded in the binary outside the widget build. One server can host several sites (`--site`), each with its own comments. With the default shared admin store (`--admin.type=shared`), the admin list and admin email are the same for every site (`store/admin/admin.go`); only the RPC admin store (`--admin.type=rpc`) can give each site its own admins.
 
 Untrusted input comes from:
 
@@ -11,14 +11,15 @@ Untrusted input comes from:
 - OAuth providers and user-supplied avatar URLs
 - remote servers the backend fetches from: the image proxy (`rest/proxy`) and the page title extractor (`store/service/title.go`)
 - the host page that embeds the widget, through `postMessage` (`app/utils/post-message.ts`, `app/embed.ts`, `app/remark.tsx`)
+- the deletion link an administrator opens, `/web/deleteme.html?site_id=…&token=…`: the widget reads the token from the page address (`app/common/settings.ts`) and sends it to `GET /api/v1/admin/deleteme` with the administrator's session (`app/deleteme.ts`), and the token is whatever the sender of the link put there
 
-Site admins are trusted for their own site but not for other sites on the same server. The operator who sets the command-line flags is fully trusted.
+With the RPC admin store, site admins are trusted for their own site but not for other sites on the same server. With the default shared admin store, every admin is an admin of every site by design, so an admin acting on another site is not an isolation break. The operator who sets the command-line flags is fully trusted.
 
 ## Components that matter most
 
 - Comment rendering: markdown to HTML in `store/formatter.go`, sanitizing with bluemonday in `store/comment.go`, and every place that re-emits comment text: the widget, the last-comments widget, RSS, and email, Telegram, Slack and webhook notifications (`notify/`). Past reports were stored XSS and HTML injection through these paths, including the browser re-parsing text the server had already sanitized.
 - Image proxy and title extractor: SSRF, protection bypass of `safehttp` (private, reserved and encoded address forms), responses that the browser can interpret as HTML in the Remark42 origin, and use of the server as an open relay.
-- Authentication and authorization: JWT cookies and the XSRF header (go-pkgz/auth), `--secret` and per-site secrets from the RPC admin store (`--admin.rpc.secret_per_site`), the anonymous and email providers, admin checks on `/api/v1/admin`, and isolation between sites (a user or admin of one site affecting another).
+- Authentication and authorization: JWT cookies and the XSRF header (go-pkgz/auth), `--secret` and per-site secrets from the RPC admin store (`--admin.rpc.secret_per_site`), the anonymous and email providers, the `--admin-passwd` Basic auth, admin checks on `/api/v1/admin`, and isolation between sites (a user or admin of one site affecting another). The Basic-auth user `admin` is an admin of every site. Its requests skip the XSRF check and the site match, and `rejectCrossSiteBasicAuth` in `rest/api/middleware.go` refuses them when they come from a cross-site browser request.
 - Client IP handling: rate limits, vote de-duplication and anonymous identities depend on the client IP, so check how forwarded headers are trusted.
 - Widget: iframe messaging origin checks, URL and locator handling, raw HTML insertion, clipboard and other DOM sinks.
 - Embedded web assets: `counter.mjs` runs in the host page's origin and builds its API request from `remark_config` and the page address, and the file server (`rest/api/webfiles.go`) writes `REMARK_URL` and the first site ID into the HTML and scripts it serves.
