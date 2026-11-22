@@ -295,6 +295,48 @@ func TestService_SubmitDelay(t *testing.T) {
 	})
 }
 
+func TestService_SubmitNeverBlocks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		const submits = 10000 // all inside one edit window, so none of them is committed while the loop runs
+		start := time.Now()
+		for i := range submits {
+			svc.Submit(func() []string { return []string{strconv.Itoa(i)} })
+		}
+		assert.Zero(t, time.Since(start), "Submit does not wait for earlier submits to pass EditDuration")
+		committed := len(store.CommitCalls())
+		assert.Zero(t, committed, "nothing is committed before EditDuration")
+		svc.Close(context.TODO())
+		commits := store.CommitCalls()
+		require.Len(t, commits, submits, "Close commits every queued submit")
+		for i, c := range commits {
+			require.Equal(t, strconv.Itoa(i), c.ID, "commits keep the order of submits")
+		}
+	})
+}
+
+func TestService_SubmitWakesIdleSubmitter(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := StoreMock{
+			CommitFunc:            func(string) error { return nil },
+			ResetCleanupTimerFunc: func(string) error { return nil },
+		}
+		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
+		svc.Submit(func() []string { return []string{"id1"} })
+		time.Sleep(2 * time.Hour) // id1 is committed and the submitter waits for the next submit
+		require.Len(t, store.CommitCalls(), 1)
+		svc.Submit(func() []string { return []string{"id2"} })
+		time.Sleep(2 * time.Hour)
+		assert.Len(t, store.CommitCalls(), 2, "a submit made while the submitter is idle is committed after EditDuration, not at Close")
+		svc.Close(context.TODO())
+		assert.Len(t, store.CommitCalls(), 2)
+	})
+}
+
 func TestService_Info(t *testing.T) {
 	store := StoreMock{InfoFunc: func() (StoreInfo, error) {
 		return StoreInfo{}, nil
@@ -614,7 +656,7 @@ func TestService_DoubleClose(t *testing.T) {
 			ResetCleanupTimerFunc: func(string) error { return nil },
 		}
 		svc := NewService(&store, ServiceParams{EditDuration: time.Hour})
-		svc.Submit(func() []string { return []string{"id1"} }) // starts the submitter, so Close has a queue to close
+		svc.Submit(func() []string { return []string{"id1"} }) // starts the submitter, so Close has one to stop
 		svc.Close(context.TODO())
 		assert.NotPanics(t, func() { svc.Close(context.TODO()) }, "second Close")
 		assert.Len(t, store.CommitCalls(), 1)
