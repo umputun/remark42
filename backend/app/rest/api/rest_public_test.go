@@ -1168,9 +1168,15 @@ func TestRest_Info(t *testing.T) {
 	info := store.PostInfo{}
 	err = json.Unmarshal([]byte(body), &info)
 	assert.NoError(t, err)
-	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
-		FirstTS: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local)}
-	assert.Equal(t, exp, info)
+	// compare timestamps by instant rather than by struct equality: the JSON round-trip
+	// normalizes the location to UTC, so assert.Equal on the whole struct would fail on
+	// any machine whose time.Local is not UTC even though the instants are identical
+	assert.Equal(t, "https://radio-t.com/blah1", info.URL)
+	assert.Equal(t, 3, info.Count)
+	assert.True(t, time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local).Equal(info.FirstTS),
+		"FirstTS mismatch: want %v, got %v", time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local), info.FirstTS)
+	assert.True(t, time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local).Equal(info.LastTS),
+		"LastTS mismatch: want %v, got %v", time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local), info.LastTS)
 
 	_, code = get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah-no")
 	assert.Equal(t, http.StatusBadRequest, code)
