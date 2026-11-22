@@ -625,6 +625,365 @@ func TestService_VoteConcurrent(t *testing.T) {
 	assert.Equal(t, 0.0, res[0].Controversy, "should have 0 controversy")
 }
 
+func TestService_VoteReleasesScopedLocks(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
+	require.NoError(t, err)
+	assert.Empty(t, b.scopedLocks.locks, "lock of the voted post released")
+
+	// concurrent votes for posts which don't exist, each with its own url
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Go(func() {
+			_, e := b.Vote(VoteReq{Locator: store.Locator{URL: fmt.Sprintf("https://radio-t.com/no-such-post-%d", i),
+				SiteID: "radio-t"}, CommentID: "id-1", UserID: "user2", Val: true})
+			assert.Error(t, e)
+		})
+	}
+	wg.Wait()
+	assert.Empty(t, b.scopedLocks.locks, "no locks kept for unknown posts")
+}
+
+func TestService_lockScope(t *testing.T) {
+	b := DataStore{}
+	refs := func(id string) int {
+		b.scopedLocks.Lock()
+		defer b.scopedLocks.Unlock()
+		if lock, ok := b.scopedLocks.locks[id]; ok {
+			return lock.refs
+		}
+		return 0
+	}
+
+	unlock := b.lockScope("id1")
+	unlockOther := b.lockScope("id2") // another scope is not blocked
+	assert.Equal(t, 1, refs("id1"))
+	assert.Equal(t, 1, refs("id2"))
+
+	var acquired atomic.Bool
+	release, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		unlockWaiter := b.lockScope("id1")
+		acquired.Store(true)
+		<-release
+		unlockWaiter()
+	}()
+	require.Eventually(t, func() bool { return refs("id1") == 2 }, 30*time.Second, time.Millisecond,
+		"second caller waits for id1")
+	assert.False(t, acquired.Load(), "id1 is locked by the first caller")
+
+	unlockOther()
+	assert.Equal(t, 0, refs("id2"), "unused lock removed")
+	assert.Equal(t, 2, refs("id1"), "lock in use kept")
+
+	unlock()
+	require.Eventually(t, acquired.Load, 30*time.Second, time.Millisecond,
+		"second caller gets id1 after the first released it")
+	assert.Equal(t, 1, refs("id1"), "lock held by the second caller kept")
+
+	close(release)
+	<-done
+	assert.Empty(t, b.scopedLocks.locks, "all locks removed")
+}
+
+// heldGetEngine keeps the caller of one Get waiting after the comment is read, so a test can put another call
+// between the read and the write of the one that made it
+type heldGetEngine struct {
+	engine.Interface
+	holdCall int32         // which Get to hold, the first one if not set
+	calls    atomic.Int32  // Gets made so far
+	reading  chan struct{} // closed when the held Get has read the comment
+	release  chan struct{} // the held Get returns after this is closed
+}
+
+func (h *heldGetEngine) Get(req engine.GetRequest) (store.Comment, error) {
+	c, err := h.Interface.Get(req)
+	if h.calls.Add(1) == max(h.holdCall, 1) {
+		close(h.reading)
+		<-h.release
+	}
+	return c, err
+}
+
+// waitHeld waits for the held call to reach its hold, and fails the test when that call returns first or never
+// gets there
+func waitHeld(t *testing.T, reached <-chan struct{}, returned <-chan error, what string) {
+	t.Helper()
+	select {
+	case <-reached:
+	case err := <-returned:
+		require.FailNowf(t, what+": returned before it got there", "error: %v", err)
+	case <-time.After(30 * time.Second):
+		require.FailNow(t, what+": never got there")
+	}
+}
+
+// waitReturn waits for a call to return its error, and fails the test when it does not return
+func waitReturn(t *testing.T, returned <-chan error, what string) error {
+	t.Helper()
+	select {
+	case err := <-returned:
+		return err
+	case <-time.After(30 * time.Second):
+		require.FailNow(t, what+": did not return")
+		return nil
+	}
+}
+
+// postLockWaited reports whether somebody waits for the lock of the post while another holds it
+func postLockWaited(b *DataStore, postURL string) bool {
+	b.scopedLocks.Lock()
+	defer b.scopedLocks.Unlock()
+	lock, ok := b.scopedLocks.locks[postURL]
+	return ok && lock.refs == 2
+}
+
+// TestService_PostLockKeepsConcurrentChanges holds one change of a comment between its read and its write, makes
+// another change of the same comment meanwhile, and expects both to be stored. Each of them writes the whole
+// comment back, so the one that read first would undo the other if the lock of the post did not make it wait.
+func TestService_PostLockKeepsConcurrentChanges(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	edit := func(b *DataStore) error {
+		_, err := b.EditComment(locator, "id-1", EditRequest{Text: "edited", Orig: "edited", Summary: "fix"})
+		return err
+	}
+	vote := func(b *DataStore) error {
+		_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-1", UserID: "voter", Val: true})
+		return err
+	}
+	pin := func(b *DataStore) error { return b.SetPin(locator, "id-1", true) }
+	del := func(b *DataStore) error { // the author's delete
+		_, err := b.EditComment(locator, "id-1", EditRequest{Delete: true})
+		return err
+	}
+
+	edited := func(t *testing.T, c store.Comment) { assert.Equal(t, "edited", c.Text, "the edit is stored") }
+	voted := func(t *testing.T, c store.Comment) {
+		assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote is stored")
+		assert.Equal(t, 1, c.Score)
+	}
+	pinned := func(t *testing.T, c store.Comment) { assert.True(t, c.Pin, "the pin is stored") }
+	deleted := func(t *testing.T, c store.Comment) {
+		assert.True(t, c.Deleted, "the delete is stored")
+		assert.Empty(t, c.Text, "a deleted comment keeps no text")
+	}
+
+	tbl := []struct {
+		name          string
+		first, second func(b *DataStore) error
+		checks        []func(t *testing.T, c store.Comment)
+	}{
+		{"vote during an edit", edit, vote, []func(*testing.T, store.Comment){edited, voted}},
+		{"pin during an edit", edit, pin, []func(*testing.T, store.Comment){edited, pinned}},
+		{"edit during a vote", vote, edit, []func(*testing.T, store.Comment){edited, voted}},
+		{"edit during a pin", pin, edit, []func(*testing.T, store.Comment){edited, pinned}},
+		{"vote during a pin", pin, vote, []func(*testing.T, store.Comment){voted, pinned}},
+		{"author's delete during a vote", vote, del, []func(*testing.T, store.Comment){deleted}},
+		{"author's delete during a pin", pin, del, []func(*testing.T, store.Comment){deleted}},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			held := &heldGetEngine{Interface: eng, reading: make(chan struct{}), release: make(chan struct{})}
+			b := DataStore{Engine: held, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+			defer b.Close()
+
+			var secondDone atomic.Bool
+			firstErr, secondErr := make(chan error, 1), make(chan error, 1)
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(held.release) }) }
+			defer release() // a failed wait must not leave the first call held
+
+			go func() { firstErr <- tt.first(&b) }()
+			// the first change has read the comment and has not written it yet
+			waitHeld(t, held.reading, firstErr, "first change reading the comment")
+			go func() {
+				secondErr <- tt.second(&b)
+				secondDone.Store(true)
+			}()
+
+			// with the lock the second change waits for the first one; without it the second one is stored
+			// right away and the first then writes over it
+			require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || secondDone.Load() },
+				30*time.Second, time.Millisecond, "second change neither waits for the lock nor completes")
+			release()
+			require.NoError(t, waitReturn(t, firstErr, "first change"))
+			require.NoError(t, waitReturn(t, secondErr, "second change"))
+
+			c, err := eng.Get(getReq(locator, "id-1"))
+			require.NoError(t, err)
+			for _, check := range tt.checks {
+				check(t, c)
+			}
+			assert.Empty(t, b.scopedLocks.locks, "the lock of the post is released")
+		})
+	}
+}
+
+// eventAdminStore reports the events sent to the admin store
+type eventAdminStore struct {
+	admin.Store
+	onEvent func(et admin.EventType)
+}
+
+func (a eventAdminStore) OnEvent(_ string, et admin.EventType) error {
+	a.onEvent(et)
+	return nil
+}
+
+// TestService_EditCommentEventSentUnlocked checks that an edit and a delete tell the admin store, which may be a
+// remote one, with the post unlocked, and that they still tell it when the write fails.
+func TestService_EditCommentEventSentUnlocked(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	tbl := []struct {
+		name     string
+		req      EditRequest
+		writeErr error
+		events   []admin.EventType
+	}{
+		{name: "edit", req: EditRequest{Text: "edited"}, events: []admin.EventType{admin.EvUpdate}},
+		{name: "delete", req: EditRequest{Delete: true}, events: []admin.EventType{admin.EvDelete}},
+		{name: "edit not stored", req: EditRequest{Text: "edited"}, writeErr: errors.New("write failed"),
+			events: []admin.EventType{admin.EvUpdate}},
+		{name: "delete not stored", req: EditRequest{Delete: true}, writeErr: errors.New("write failed"),
+			events: []admin.EventType{admin.EvDelete}},
+		{name: "deleted comment refused", req: EditRequest{Text: "edited"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			stored := store.Comment{ID: "c1", Text: "text", Locator: locator, User: store.User{ID: "user1"},
+				Timestamp: time.Now(), Deleted: tt.name == "deleted comment refused"}
+			eng := engine.InterfaceMock{
+				GetFunc:    func(engine.GetRequest) (store.Comment, error) { return stored, nil },
+				FindFunc:   func(engine.FindRequest) ([]store.Comment, error) { return nil, nil },
+				UpdateFunc: func(store.Comment) error { return tt.writeErr },
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.writeErr },
+			}
+			b := DataStore{Engine: &eng, EditDuration: time.Hour}
+			var events []admin.EventType
+			b.AdminStore = eventAdminStore{Store: admin.NewStaticKeyStore("secret 123"), onEvent: func(et admin.EventType) {
+				events = append(events, et)
+				b.scopedLocks.Lock()
+				defer b.scopedLocks.Unlock()
+				assert.Empty(t, b.scopedLocks.locks, "the post is unlocked when the admin store is told")
+			}}
+
+			_, err := b.EditComment(locator, "c1", tt.req)
+			if tt.writeErr != nil || stored.Deleted {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.events, events)
+		})
+	}
+}
+
+// TestService_SetTitleKeepsConcurrentVote checks that a title update fetches the page with the post unlocked and
+// then writes the title into the comment as it is by then, not as it was before the fetch.
+func TestService_SetTitleKeepsConcurrentVote(t *testing.T) {
+	fetching, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	releaseFetch := func() { releaseOnce.Do(func() { close(release) }) }
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(fetching)
+		<-release
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	defer releaseFetch() // a failed wait must not leave the handler, and with it ts.Close, waiting
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	id, err := b.Engine.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	titleErr := make(chan error, 1)
+	go func() {
+		_, e := b.SetTitle(locator, id)
+		titleErr <- e
+	}()
+	// the comment is read and the page is being fetched
+	waitHeld(t, fetching, titleErr, "title update fetching the page")
+
+	voteErr := make(chan error, 1)
+	go func() {
+		_, e := b.Vote(VoteReq{Locator: locator, CommentID: id, UserID: "voter", Val: true})
+		voteErr <- e
+	}()
+	require.NoError(t, waitReturn(t, voteErr, "vote during the title fetch, the post must not be locked while the page is fetched"))
+
+	releaseFetch()
+	require.NoError(t, waitReturn(t, titleErr, "title update"))
+
+	c, err := eng.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, "post title", c.PostTitle)
+	assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote made during the fetch is stored")
+	assert.Equal(t, 1, c.Score)
+}
+
+// TestService_SetTitleWriteWaitsForPostLock holds a title update between its second read, made after the page is
+// fetched, and its write: a vote made then has to wait and be stored.
+func TestService_SetTitleWriteWaitsForPostLock(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	held := &heldGetEngine{Interface: eng, holdCall: 2, reading: make(chan struct{}), release: make(chan struct{})}
+	b := DataStore{Engine: held, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	id, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(held.release) }) }
+	defer release() // a failed wait must not leave the title update held
+
+	titleErr, voteErr := make(chan error, 1), make(chan error, 1)
+	var voteDone atomic.Bool
+	go func() {
+		_, e := b.SetTitle(locator, id)
+		titleErr <- e
+	}()
+	// the page is fetched and the comment is read again, not written yet
+	waitHeld(t, held.reading, titleErr, "title update reading the comment again after the fetch")
+	go func() {
+		_, e := b.Vote(VoteReq{Locator: locator, CommentID: id, UserID: "voter", Val: true})
+		voteErr <- e
+		voteDone.Store(true)
+	}()
+	require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || voteDone.Load() },
+		30*time.Second, time.Millisecond, "vote neither waits for the lock nor completes")
+	release()
+	require.NoError(t, waitReturn(t, titleErr, "title update"))
+	require.NoError(t, waitReturn(t, voteErr, "vote"))
+
+	c, err := eng.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, "post title", c.PostTitle)
+	assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote is stored")
+	assert.Equal(t, 1, c.Score)
+}
+
 func TestService_VotePositive(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
