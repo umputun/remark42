@@ -139,7 +139,36 @@ export class Comment extends Component<CommentProps, State> {
   componentDidMount() {
     // eslint-disable-next-line react/no-did-mount-set-state
     this.setState({ initial: false });
+    this.watchEditDeadline();
   }
+
+  componentDidUpdate(_prevProps: CommentProps, prevState: State) {
+    if (prevState.editDeadline !== this.state.editDeadline) {
+      this.watchEditDeadline();
+    }
+  }
+
+  componentWillUnmount() {
+    window.clearTimeout(this.editDeadlineTimer);
+  }
+
+  editDeadlineTimer?: number;
+
+  /**
+   * Clears the edit deadline when it passes. The countdown next to Edit does the same, but it is
+   * not shown wherever Edit is not, and the author's Delete must still go when the window ends
+   */
+  watchEditDeadline = () => {
+    window.clearTimeout(this.editDeadlineTimer);
+    const deadline: number | undefined = this.state.editDeadline;
+    if (deadline === undefined || !Number.isFinite(deadline)) return;
+
+    // a delay past 2^31-1 ms fires at once, so a longer window is waited out in steps
+    this.editDeadlineTimer = window.setTimeout(
+      () => (Date.now() < deadline ? this.watchEditDeadline() : this.setState({ editDeadline: undefined })),
+      Math.min(deadline - Date.now(), 2 ** 31 - 1)
+    );
+  };
 
   toggleReplying = () => {
     const { editMode, setReplyEditState, data } = this.props;
@@ -506,7 +535,10 @@ export class Comment extends Component<CommentProps, State> {
               replying={isReplying}
               editable={
                 state.editDeadline !== undefined &&
-                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit))
+                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit)) &&
+                // the server refuses a commenter's edit on a read-only post; an admin's still goes through.
+                // An editor already open keeps its Cancel
+                (!props.post_info?.read_only || isAdmin || isEditing)
               }
               editDeadline={state.editDeadline}
               readOnly={props.post_info?.read_only}

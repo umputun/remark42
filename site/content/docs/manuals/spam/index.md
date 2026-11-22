@@ -11,7 +11,7 @@ Remark42 does not score a comment for spam when it is posted. A filter of that k
 - `UPDATE_LIMIT` sets how many requests a second one client address can send to post or preview comments, `0.5` by default; edits and votes are counted for every comment separately.
 - `RESTRICTED_WORDS` and `RESTRICTED_WORDS_FILE` list words that a new or edited comment must not contain; a comment with one of them is refused.
 - `RESTRICTED_NAMES` lists names, such as the names of the site's admins, that anonymous users and email users who are not admins must not take. A user who signs in with one of them is treated as blocked.
-- `READONLY_AGE` closes a post for new comments and votes that number of days after its first comment.
+- `READONLY_AGE` closes a post for new comments and votes that number of days after its first comment. Commenters can no longer edit their comments there either; an admin still can.
 
 Admins can also remove comments and block users by hand, see [Admin interface](https://remark42.com/docs/manuals/admin-interface/).
 
