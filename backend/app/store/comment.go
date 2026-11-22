@@ -305,15 +305,18 @@ func (c *Comment) SanitizeEditSummary() {
 	c.Edit = &edit
 }
 
-// Snippet from comment's text
+// Snippet returns the start of the comment's text as plain text, escaped to be put into HTML.
+// Text is HTML and can't be shortened as it is: the cut may fall inside a tag or an attribute value,
+// and the tags before the cut are not necessarily balanced. So the tags are dropped before the cut.
 func (c *Comment) Snippet(limit int) string {
 	if limit <= 0 {
 		limit = snippetLen
 	}
-	cleanText := strings.ReplaceAll(c.Text, "\n", " ")
+	cleanText := html.UnescapeString(bluemonday.StrictPolicy().Sanitize(spaceBlocks(c.Text)))
+	cleanText = strings.Join(strings.Fields(cleanText), " ") // dropped tags leave runs of spaces and newlines
 	size := len([]rune(cleanText))
 	if size < limit {
-		return cleanText
+		return html.EscapeString(cleanText)
 	}
 	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
@@ -325,9 +328,42 @@ func (c *Comment) Snippet(limit int) string {
 	}
 	// don't add a space if comment is just a one single word which has been truncated.
 	if len(snippet) == limit {
-		return string(snippet) + "..."
+		return html.EscapeString(string(snippet)) + "..."
 	}
-	return string(snippet) + " ..."
+	return html.EscapeString(string(snippet)) + " ..."
+}
+
+// snippetBreaks are the elements whose start and end separate words: with their tags dropped,
+// the last word of a paragraph would run into the first word of the next one
+var snippetBreaks = map[atom.Atom]bool{
+	atom.P: true, atom.Br: true, atom.Div: true, atom.Li: true, atom.Ul: true, atom.Ol: true, atom.Blockquote: true,
+	atom.H1: true, atom.H2: true, atom.H3: true, atom.H4: true, atom.H5: true, atom.H6: true, atom.Pre: true, atom.Hr: true,
+	atom.Table: true, atom.Tr: true, atom.Td: true, atom.Th: true, atom.Dl: true, atom.Dt: true, atom.Dd: true,
+	atom.Section: true, atom.Article: true, atom.Aside: true, atom.Figure: true, atom.Figcaption: true,
+	atom.Summary: true, atom.Details: true, atom.Hgroup: true, atom.Caption: true,
+	atom.Header: true, atom.Footer: true, atom.Nav: true, atom.Main: true, atom.Address: true,
+}
+
+// spaceBlocks adds a space after each tag of the elements in snippetBreaks and copies everything else as it is
+func spaceBlocks(text string) string {
+	z := nethtml.NewTokenizer(strings.NewReader(text))
+	var b strings.Builder
+	for {
+		tt := z.Next()
+		if tt == nethtml.ErrorToken {
+			if !errors.Is(z.Err(), io.EOF) {
+				return text // the tags are dropped anyway, only the spacing is lost
+			}
+			return b.String()
+		}
+		b.Write(z.Raw())
+		if tt != nethtml.StartTagToken && tt != nethtml.EndTagToken && tt != nethtml.SelfClosingTagToken {
+			continue
+		}
+		if name, _ := z.TagName(); snippetBreaks[atom.Lookup(name)] {
+			b.WriteByte(' ')
+		}
+	}
 }
 
 var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)

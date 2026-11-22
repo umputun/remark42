@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -190,6 +191,51 @@ func TestServer_RssWithReply(t *testing.T) {
 
 	expected, res = cleanRssFormatting(expected, res)
 	assert.Equal(t, expected, res)
+}
+
+// the quote of the parent comment in a reply's item is text: markup in the parent can't close the quote
+// or leave a tag open over what follows the item
+func TestServer_RssReplyQuotesParentAsText(t *testing.T) {
+	ts, rst, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, parent, quote string
+	}{
+		{
+			name:   "stray end tag stays inside the quote",
+			parent: `<p>nice post</blockquote></p><p>see <a href="https://example.com">this</a> &amp; &lt;that&gt;</p>`,
+			quote:  "<blockquote><p>nice post see this &amp; &lt;that&gt;</p></blockquote>",
+		},
+		{
+			name:   "cut does not fall inside a tag",
+			parent: `<p>picture <img src="https://example.com/p.png" alt="` + strings.Repeat("long ", 80) + `"/></p>`,
+			quote:  "<blockquote><p>picture</p></blockquote>",
+		},
+		{
+			name:   "long text is shortened",
+			parent: "<p>" + strings.Repeat("<em>word</em> ", 80) + "</p>",
+			quote:  "<blockquote><p>" + strings.Repeat("word ", 60) + "...</p></blockquote>",
+		},
+	}
+
+	for i, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{URL: fmt.Sprintf("https://radio-t.com/blah%d", i), SiteID: "remark42"}
+			parent := store.Comment{ID: "parent", Text: tt.parent, Locator: locator, Timestamp: time.Now(),
+				User: store.User{ID: "u1", Name: "developer one"}}
+			reply := store.Comment{ID: "reply", ParentID: "parent", Text: "<p>reply</p>", Locator: locator,
+				Timestamp: time.Now().Add(time.Millisecond), User: store.User{ID: "u2", Name: "developer two"}}
+			_, err := rst.DataService.Create(parent)
+			require.NoError(t, err)
+			_, err = rst.DataService.Create(reply)
+			require.NoError(t, err)
+
+			res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url="+locator.URL)
+			assert.Equal(t, http.StatusOK, code)
+			assert.Contains(t, res, "<description>"+html.EscapeString(reply.Text+tt.quote)+"</description>")
+		})
+	}
 }
 
 func TestServer_RssReplies(t *testing.T) {
