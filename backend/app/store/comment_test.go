@@ -2,6 +2,7 @@ package store
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -348,4 +349,31 @@ func TestComment_sanitizeText(t *testing.T) {
 			assert.Equal(t, tt.out, c.SanitizeText(tt.inp))
 		})
 	}
+}
+
+func TestComment_sanitizeSharedPolicy(t *testing.T) {
+	// the policies are built once, not per call: building a UGC policy alone takes 800+ allocations
+	c := Comment{}
+	assert.Less(t, testing.AllocsPerRun(10, func() { c.SanitizeAsURL("https://radio-t.com/p/2021/03/23/prep-747/") }), 200.0)
+	assert.Less(t, testing.AllocsPerRun(10, func() { c.SanitizeText("<i>prep</i> 747") }), 35.0)
+	assert.Less(t, testing.AllocsPerRun(10, func() {
+		cc := Comment{Text: "<p>blah</p>", User: User{ID: "id", Name: "name", Picture: "https://example.com/pic.png"},
+			Locator: Locator{URL: "https://radio-t.com/p/2021/03/23/prep-747/"}, PostTitle: "prep 747"}
+		cc.Sanitize()
+	}), 600.0)
+
+	// the shared policies are used by many requests at once, the race detector checks it is safe
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			cc := Comment{Text: `<pre class="chroma">blah</pre><script>alert()</script>`, User: User{Name: "<b>name</b>"},
+				Locator: Locator{URL: "javascript:alert(document.domain)//"}, PostTitle: "<i>prep</i> 747"}
+			cc.Sanitize()
+			assert.Equal(t, `<pre class="chroma">blah</pre>`, cc.Text)
+			assert.Equal(t, "name", cc.User.Name)
+			assert.Empty(t, cc.Locator.URL)
+			assert.Equal(t, "prep 747", cc.PostTitle)
+		})
+	}
+	wg.Wait()
 }
