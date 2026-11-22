@@ -263,12 +263,12 @@ Used for notifying users about replies to their comments and for admin notificat
 | Variable | Type | Description |
 |----------|------|-------------|
 | `{{.UserName}}` | string | Comment author name |
-| `{{.UserPicture}}` | string | Comment author avatar URL |
+| `{{.UserPicture}}` | string | Comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .UserPicture}}` |
 | `{{.CommentText}}` | string | Comment body (HTML) |
 | `{{.CommentLink}}` | string | Direct link to the comment |
 | `{{.CommentDate}}` | time.Time | Comment timestamp, format with `{{.CommentDate.Format "02.01.2006 at 15:04"}}` |
 | `{{.ParentUserName}}` | string | Parent comment author name |
-| `{{.ParentUserPicture}}` | string | Parent comment author avatar URL |
+| `{{.ParentUserPicture}}` | string | Parent comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .ParentUserPicture}}` |
 | `{{.ParentCommentText}}` | string | Parent comment body (HTML) |
 | `{{.ParentCommentLink}}` | string | Direct link to parent comment |
 | `{{.ParentCommentDate}}` | time.Time | Parent comment timestamp |

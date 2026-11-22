@@ -1243,6 +1243,21 @@ func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinat
 	return notify.NopService
 }
 
+// avatarURLs returns the URL prefixes of this instance's avatars at both routes, on the base URL the avatar
+// proxy makes pictures with. Each prefix is given as written and as a stored picture has it: a user picture is
+// stored through the URL sanitizer, which escapes a host name that is not ASCII.
+func (s *ServerCommand) avatarURLs() (res []string) {
+	base := strings.TrimSuffix(s.RemarkURL, "/")
+	for _, route := range []string{api.AvatarRoutePath, api.LegacyAvatarRoutePath} {
+		prefix := base + route + "/"
+		res = append(res, prefix)
+		if stored := (&store.Comment{}).SanitizeAsURL(prefix); stored != "" && stored != prefix {
+			res = append(res, stored)
+		}
+	}
+	return res
+}
+
 // constructs list of notify destinations except for telegram. A destination that cannot be built is
 // left out and its error returned, joined with the others, while the remaining destinations are still built
 func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]notify.Destination, error) {
@@ -1276,6 +1291,7 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			From:                s.Notify.Email.From,
 			VerificationSubject: s.Notify.Email.VerificationSubject,
 			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
+			AvatarURLs:          s.avatarURLs(),
 			// TODO: uncomment after #560 frontend part is ready and URL is known
 			// subscribeURL:        s.RemarkURL + "/subscribe.html?token=",
 			TokenGenFn: func(userID, email, site string) (string, error) {
@@ -1457,7 +1473,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		AvatarStore:         avas,
 		AvatarResizeLimit:   s.Avatar.RszLmt,
 		AvatarIdenticonSize: s.Avatar.IdenticonSize,
-		AvatarRoutePath:     "/api/v1/avatar",
+		AvatarRoutePath:     api.AvatarRoutePath,
 		Logger:              rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
 		RefreshCache:        authRefreshCache,
 		UseGravatar:         true,
