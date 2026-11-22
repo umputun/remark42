@@ -153,6 +153,7 @@ Notes:
 - When the response has no value in the `AUTH_CUSTOM_ID_FIELD` field, the unique id is made from the email field, then the name field, then the picture field, and from the whole response when all of them are empty. Users of a provider that sends neither an id nor an email can therefore end up as one Remark42 user when they share a name.
 - The field variables name top-level keys of the user info response only; a field nested inside an object cannot be used.
 - Remark42 sends a PKCE (S256) challenge with every authorization request; providers without PKCE support ignore it.
+- The user's picture is downloaded from the URL in the picture field without the access token, and only from a public address. A picture on a private, loopback or link-local address, or one that needs the token, is not loaded, and the user gets a generated avatar.
 
 ### Your Site's Own Accounts
 

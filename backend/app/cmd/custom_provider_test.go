@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -101,11 +102,21 @@ func TestCustomProviderLargeInt(t *testing.T) {
 // TestServerApp_CustomOAuthProviderSignIn signs users in through the custom provider and checks the
 // id each of them gets, as the session token carries it
 func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
+	// internal is a service on a loopback address, where only the server reaches it
+	var internalRequests atomic.Int32
+	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		internalRequests.Add(1)
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(testPNG(t))
+	}))
+	defer internal.Close()
+
 	idp := newCustomOAuthStub(t, map[string]string{
-		"alice":           `{"sub":"alice","name":"Alice"}`,
-		"hash-of-alice":   `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8","name":"Mallory"}`,
-		"large-number":    `{"sub":1152921504606846977,"name":"Carol"}`,
-		"the-next-number": `{"sub":1152921504606846980,"name":"Dave"}`,
+		"internal-picture": `{"sub":"eve","name":"Eve","picture":"` + internal.URL + `/camera.png"}`,
+		"alice":            `{"sub":"alice","name":"Alice"}`,
+		"hash-of-alice":    `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8","name":"Mallory"}`,
+		"large-number":     `{"sub":1152921504606846977,"name":"Carol"}`,
+		"the-next-number":  `{"sub":1152921504606846980,"name":"Dave"}`,
 	})
 	app := startCustomOAuthApp(t, idp, nil)
 
@@ -129,6 +140,23 @@ func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 		status, userID = customOAuthSignIn(t, app, "the-next-number", "")
 		require.Equal(t, http.StatusOK, status)
 		assert.Equal(t, "oidc_8be46ce66310773dbc100bb46a80509a1f8c21a0", userID)
+	})
+
+	t.Run("picture on a private address is not requested", func(t *testing.T) {
+		status, userID := customOAuthSignIn(t, app, "internal-picture", "")
+		require.Equal(t, http.StatusOK, status, "the user is signed in without the picture")
+		assert.NotEmpty(t, userID)
+		assert.Zero(t, internalRequests.Load(), "requests to the internal service")
+	})
+
+	t.Run("sends the user back to an allowed host only", func(t *testing.T) {
+		status, userID := customOAuthSignIn(t, app, "alice", "&from="+url.QueryEscape("https://evil.example.com/"))
+		assert.Equal(t, http.StatusOK, status, "no redirect to a host that is not allowed")
+		assert.NotEmpty(t, userID)
+
+		status, userID = customOAuthSignIn(t, app, "alice", "&from="+url.QueryEscape(fmt.Sprintf("http://localhost:%d/web/", app.Port)))
+		assert.Equal(t, http.StatusSeeOther, status, "redirect to the instance's own host")
+		assert.NotEmpty(t, userID)
 	})
 }
 

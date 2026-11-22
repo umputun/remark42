@@ -1127,7 +1127,21 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 			return 0, fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 
-		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+		// registered as a handler of our own making and not with AddCustomProvider, which gives the
+		// provider the avatar proxy as it is: the proxy requests any address the user info names as
+		// the picture. The other parameters are the ones getAuthenticator gives the authenticator,
+		// which hands them to the providers it makes itself
+		params := provider.Params{
+			URL:                  s.authURL(),
+			JwtService:           authenticator.TokenService(),
+			Issuer:               authIssuer,
+			AvatarSaver:          customAvatarSaver{proxy: authenticator.AvatarProxy()},
+			Cid:                  s.Auth.Custom.CID,
+			Csecret:              s.Auth.Custom.CSEC,
+			L:                    authLogger(),
+			AllowedRedirectHosts: s.allowedRedirectHosts(),
+		}
+		authenticator.AddCustomHandler(provider.NewCustom(customName, params, provider.CustomHandlerOpt{
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  s.Auth.Custom.AuthURL,
 				TokenURL: s.Auth.Custom.TokenURL,
@@ -1137,7 +1151,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 			MapUserFn: func(data provider.UserData, raw []byte) token.User {
 				return customProviderUser(customName, data, raw, s.Auth.Custom)
 			},
-		})
+		}))
 	}
 
 	if s.Auth.Dev {
@@ -1436,6 +1450,28 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
+// authIssuer is the issuer of the tokens the authenticator and its providers sign
+const authIssuer = "remark42"
+
+// authURL returns the address the authenticator and its providers build their own links from
+func (s *ServerCommand) authURL() string {
+	return strings.TrimSuffix(s.RemarkURL, "/")
+}
+
+// allowedRedirectHosts returns the hosts a sign-in may send the user back to, besides the host of
+// RemarkURL itself
+func (s *ServerCommand) allowedRedirectHosts() token.AllowedHosts {
+	return token.AllowedHostsFunc(func() ([]string, error) {
+		return s.getAllowedRedirectHosts(), nil
+	})
+}
+
+// authLogger returns the logger of the authenticator and its providers. Their error lines carry
+// the request url, which holds the address during email sign-in, so every line is masked
+func authLogger() rest.MaskedLog {
+	return rest.MaskedLog{L: log.Default()}
+}
+
 // getAuthenticator creates new authenticator service, which doesn't have any auth providers enabled
 func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) *auth.Service {
 	// claimsUpd sets what the store and the options say about a user, on a new token and on a refresh
@@ -1473,8 +1509,8 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 	}
 
 	return auth.NewService(auth.Opts{
-		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
-		Issuer:         "remark42",
+		URL:            s.authURL(),
+		Issuer:         authIssuer,
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SendJWTHeader:  s.Auth.SendJWTHeader,
@@ -1483,9 +1519,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
 		// post-auth redirects to RemarkURL's own host plus any configured
 		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
-		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
-			return s.getAllowedRedirectHosts(), nil
-		}),
+		AllowedRedirectHosts: s.allowedRedirectHosts(),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
@@ -1527,7 +1561,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		AvatarResizeLimit:   s.Avatar.RszLmt,
 		AvatarIdenticonSize: s.Avatar.IdenticonSize,
 		AvatarRoutePath:     api.AvatarRoutePath,
-		Logger:              rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
+		Logger:              authLogger(),
 		RefreshCache:        authRefreshCache,
 		UseGravatar:         true,
 		AudSecrets:          s.Admin.RPC.SecretPerSite,
