@@ -83,11 +83,17 @@ export interface PostInfo {
   read_only?: boolean;
   first_time?: string;
   last_time?: string;
+  /** comments after the returned page, set when the request asked for a limit */
+  count_left?: number;
+  /** the last top-level comment of the returned page, where the next page starts */
+  last_comment?: string;
 }
 
 export interface Tree {
   comments: Node[];
   info: PostInfo;
+  /** the pinned comments of the whole post, on the first page of a limited request only */
+  pinned?: Comment[];
 }
 
 export type DefaultOAuthProvider =

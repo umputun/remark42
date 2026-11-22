@@ -4,7 +4,7 @@ import { mockStore } from '__stubs__/store';
 import * as api from 'common/api';
 import type { User } from 'common/types';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
-import { COMMENTS_PATCH, COMMENTS_SET } from 'store/comments/types';
+import { COMMENTS_PAGE_SET, COMMENTS_PATCH, COMMENTS_SET } from 'store/comments/types';
 import { POST_INFO_SET } from 'store/post-info/types';
 import { apiFetcher, JWT_HEADER } from 'common/fetcher';
 
@@ -146,6 +146,7 @@ describe('store user actions', () => {
     expect(store.getActions()).toEqual([
       { type: USER_SET, user: { id: '1' } },
       { type: COMMENTS_SET, comments: [] },
+      { type: COMMENTS_PAGE_SET, page: { countLeft: 0, lastComment: '', loaded: 0, undeleted: 0 } },
       { type: POST_INFO_SET, info },
     ]);
   });

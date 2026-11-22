@@ -17,6 +17,9 @@ type RemarkConfig = {
   url?: string;
   // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
   max_shown_comments?: number;
+  // Optional, '100' by default. How many comments the widget loads at a time; a top-level comment always comes
+  // with all its replies, and "Show more" loads the next ones. '0' loads the whole thread at once.
+  comments_page_size?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.
   max_last_comments?: number;
   // Optional, '-active' by default. Comment order for a reader who has not picked one in the sort picker.

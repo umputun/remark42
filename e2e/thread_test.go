@@ -204,3 +204,69 @@ func TestThread_WidgetDocumentServesItsOwnChunks(t *testing.T) {
 	waitVisible(t, page.Locator("text=Сортировать по"))
 	waitVisible(t, page.Locator(`text=Войти`))
 }
+
+// TestThread_LoadsInPages covers comments_page_size and the paging of /find behind it (#782).
+// The thread gets five top-level comments, one with a reply. A page holds whole threads and stops
+// before one that would overflow it, so with the size at two and newest first the pages are
+// paged 4; paged 3 with its reply; paged 2 and 1; paged 0. Each Show more brings the next one.
+// A page with no setting is the control: the default page of 100 takes the whole thread and
+// offers no button. A link to the oldest comment, which is on the last page,
+// has to bring it on screen in one go
+func TestThread_LoadsInPages(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	embedConfig(t, page, map[string]any{})
+	frame := widget(t, page)
+	signInAnon(t, page, frame, anonName("pages"))
+	text := func(i int) string { return fmt.Sprintf("paged %d %s", i, runID) }
+	for i := range 5 {
+		postComment(t, frame, text(i))
+	}
+	// a reply makes its thread two comments, a whole page
+	require.NoError(t, actions(frame, text(3)).GetByText("Reply").Click())
+	submitForm(t, replyForm(t, frame), "reply to paged 3 "+runID)
+	waitVisible(t, comment(frame, "reply to paged 3 "+runID))
+	showMore := func(f playwright.FrameLocator) playwright.Locator {
+		return f.GetByRole(*playwright.AriaRoleButton, playwright.FrameLocatorGetByRoleOptions{Name: "Show more"})
+	}
+	// the control: a reader on a page with no setting gets the whole thread and no button
+	whole := newPage(t)
+	stubSignedOut(t, whole)
+	embedConfig(t, whole, map[string]any{})
+	wholeFrame := widget(t, whole)
+	eventually(t, waitTimeout, "the default page size did not take the whole thread", func() bool {
+		n, err := wholeFrame.Locator("article").Count()
+		return err == nil && n == 6
+	})
+	waitHidden(t, showMore(wholeFrame), "Show more was offered for a thread loaded whole")
+
+	paged := newPage(t)
+	stubSignedOut(t, paged)
+	embedConfig(t, paged, map[string]any{"comments_page_size": 2, "default_sort": sortNewestFirst})
+	pagedFrame := widget(t, paged)
+	more := showMore(pagedFrame)
+	waitVisible(t, more)
+	assert.Equal(t, 1, articleCount(t, pagedFrame), "comments_page_size=2 did not limit the first page")
+
+	for _, want := range []int{3, 5, 6} {
+		require.NoError(t, more.Click())
+		eventually(t, waitTimeout, fmt.Sprintf("Show more did not bring the thread to %d comments", want), func() bool {
+			n, err := pagedFrame.Locator("article").Count()
+			return err == nil && n == want
+		})
+	}
+	waitHidden(t, more, "Show more stayed with the whole thread loaded")
+
+	// the oldest comment's id, for a link to it
+	oldest, err := comment(pagedFrame, text(0)).GetAttribute("id")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(oldest, "remark42__comment-"), "unexpected comment id %q", oldest)
+
+	linked := newPage(t)
+	stubSignedOut(t, linked)
+	embedConfigOn(t, linked, "/web/privacy.html#"+oldest, map[string]any{"comments_page_size": 2, "default_sort": sortNewestFirst})
+	linkedFrame := widget(t, linked)
+	waitVisible(t, comment(linkedFrame, text(0)))
+	waitHidden(t, showMore(linkedFrame), "the link loaded the rest of the thread and still offered more")
+}

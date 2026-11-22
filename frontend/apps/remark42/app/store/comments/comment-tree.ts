@@ -48,3 +48,25 @@ export function findPinnedComments(thread: Node): Comment[] {
 export function getPinnedComments(threads: Node[]): Comment[] {
   return threads.reduce((acc: Comment[], thread: Node) => acc.concat(findPinnedComments(thread)), []);
 }
+
+/**
+ * Counts the comments of a tree, replies included, the way the server counts them for a page, or
+ * only those `fn` accepts
+ */
+export function countComments(tree: Node[], fn: (comment: Comment) => boolean = () => true): number {
+  return tree.reduce(
+    (count, node) => count + (fn(node.comment) ? 1 : 0) + (node.replies ? countComments(node.replies, fn) : 0),
+    0
+  );
+}
+
+/**
+ * Drops the top-level threads already loaded. Pages are cut from an order that can shift between
+ * requests, under score or activity, and a reader's own new comment is on screen before its page
+ * comes, so a page can repeat a thread.
+ */
+export function dropLoadedThreads(tree: Node[], loaded: readonly Comment['id'][]): Node[] {
+  const known = new Set(loaded);
+
+  return tree.filter((node) => !known.has(node.comment.id));
+}
