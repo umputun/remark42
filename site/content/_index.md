@@ -6,6 +6,10 @@ title: Remark42 – Privacy-focused lightweight commenting engine
 
 Remark42 allows you to have a self-hosted, lightweight, and simple (yet functional) comment engine, which doesn't spy on users. It can be embedded into blogs, articles or any other place where readers add comments.
 
+<p itemscope itemtype="https://schema.org/SoftwareApplication"><span itemprop="name">Remark42</span> is <span itemprop="offers" itemscope itemtype="https://schema.org/Offer"><meta itemprop="price" content="0"><meta itemprop="priceCurrency" content="USD">free</span> and open source under the <a itemprop="license" href="https://github.com/umputun/remark42/blob/master/LICENSE">MIT license</a>, with the source on <a itemprop="sameAs" href="https://github.com/umputun/remark42">GitHub</a>. It is an alternative to Disqus and other hosted comment services that keeps the comments on your own server. <a href="/demo/">Try the live demo</a> or <a href="/docs/getting-started/installation/">install it</a>.<meta itemprop="applicationCategory" content="CommunicationApplication"><meta itemprop="operatingSystem" content="Linux, Windows, macOS, FreeBSD"><link itemprop="url" href="https://remark42.com/"></p>
+
+![A thread of comments in the Remark42 widget](widget-thread.png)
+
 - Social login via Google, Facebook, Microsoft, GitHub, Apple, X (Twitter), Yandex, Patreon, Discord, Telegram and custom OAuth2 providers
 - Login via email
 - Optional anonymous access
