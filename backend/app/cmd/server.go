@@ -1468,7 +1468,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			}
 			return !claims.User.BoolAttr("blocked")
 		}),
-		JWTQuery:            "jwt", // change default from "token" as it used for deleteme
+		JWTQuery:            api.QueryTokenParam, // not the default "token", which carries the delete-me token
 		AvatarStore:         avas,
 		AvatarResizeLimit:   s.Avatar.RszLmt,
 		AvatarIdenticonSize: s.Avatar.IdenticonSize,

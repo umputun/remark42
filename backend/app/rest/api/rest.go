@@ -215,6 +215,7 @@ func (s *Rest) routes() http.Handler {
 	}
 	router := routegroup.New(http.NewServeMux())
 	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), recoverer(log.Default()))
+	router.Use(ignoreQueryToken) // ahead of everything that authenticates a request
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
@@ -250,7 +251,9 @@ func (s *Rest) routes() http.Handler {
 	router.Route(func(r *routegroup.Bundle) {
 		r.Use(authCookies)
 		r.Use(R.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
+		// sign-in and sign-out are not for an image or another embedded resource. Refused ahead of
+		// the limiter, so such requests do not use up what it allows the reader's own
+		r.Use(logInfoWithBody, rejectEmbedded, rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
 		r.Handle("/auth/", authHandler)
 	})

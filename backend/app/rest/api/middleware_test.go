@@ -500,6 +500,162 @@ func TestRest_rejectCrossSiteBasicAuth(t *testing.T) {
 	}
 }
 
+func TestRest_rejectEmbedded(t *testing.T) {
+	cases := []struct {
+		name string
+		dest string
+		want int
+	}{
+		{name: "no header, as a command-line client sends", dest: "", want: http.StatusOK},
+		{name: "a call from script", dest: "empty", want: http.StatusOK},
+		{name: "a page or a sign-in window", dest: "document", want: http.StatusOK},
+		{name: "an image", dest: "image", want: http.StatusForbidden},
+		{name: "a script", dest: "script", want: http.StatusForbidden},
+		{name: "a stylesheet", dest: "style", want: http.StatusForbidden},
+		{name: "a frame", dest: "iframe", want: http.StatusForbidden},
+		{name: "a value no browser sends", dest: "Document", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			reached := false
+			h := rejectEmbedded(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				reached = true
+				w.WriteHeader(http.StatusOK)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/auth/logout", http.NoBody)
+			if c.dest != "" {
+				req.Header.Set("Sec-Fetch-Dest", c.dest)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			assert.Equal(t, c.want, rec.Code)
+			assert.Equal(t, c.want == http.StatusOK, reached, "the handler runs only for a request let through")
+		})
+	}
+}
+
+func Test_withoutQueryParam(t *testing.T) {
+	cases := []struct{ name, query, want string }{
+		{name: "nothing to remove", query: "site=remark&url=https://example.com/post?a=1", want: "site=remark&url=https://example.com/post?a=1"},
+		{name: "removed from the end", query: "site=remark&jwt=abc.def.ghi", want: "site=remark"},
+		{name: "removed from the middle, the rest untouched", query: "b=2&jwt=abc&a=%D1%8F+1", want: "b=2&a=%D1%8F+1"},
+		{name: "the only parameter", query: "jwt=abc", want: ""},
+		{name: "every occurrence", query: "jwt=abc&site=remark&jwt=def", want: "site=remark"},
+		{name: "without a value", query: "jwt&site=remark", want: "site=remark"},
+		{name: "the name written escaped", query: "%6Awt=abc&site=remark", want: "site=remark"},
+		{name: "another name that contains it", query: "jwt2=abc&xjwt=def", want: "jwt2=abc&xjwt=def"},
+		{name: "the name as a value", query: "sort=jwt", want: "sort=jwt"},
+		{name: "a name that can't be unescaped stays", query: "%zz=1&jwt=abc", want: "%zz=1"},
+		{name: "empty pairs around it stay", query: "&&jwt=abc&&a=1&", want: "&&&a=1&"},
+		{name: "two in a row at the start", query: "jwt=a&jwt=b&site=remark", want: "site=remark"},
+		{name: "nothing else left but an empty pair", query: "jwt=abc&", want: ""},
+		{name: "an empty pair ahead of it stays", query: "&jwt=a&b=1", want: "&b=1"},
+		{name: "an empty query", query: "", want: ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, withoutQueryParam(c.query, QueryTokenParam))
+		})
+	}
+}
+
+// a token in the query must not authenticate a request, and must not get in the way of one that
+// carries its token where it belongs
+func TestRest_QueryTokenIgnored(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	status := func(t *testing.T, path, headerToken string) int {
+		req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
+		require.NoError(t, err)
+		if headerToken != "" {
+			req.Header.Set("X-JWT", headerToken)
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42", devToken), "the token is good in the header")
+	assert.Equal(t, http.StatusUnauthorized, status(t, "/api/v1/user?site=remark42&jwt="+devToken, ""),
+		"the same token in the query signs nobody in")
+	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42&jwt=not.a.token", devToken),
+		"a token in the query does not replace the one in the header")
+}
+
+// the sign-in and sign-out routes set and expire the session cookies on a plain GET, so they must
+// not answer a request the browser makes for an image
+func TestRest_AuthRefusesEmbeddedRequests(t *testing.T) {
+	const login = "/auth/anonymous/login?user=reader&passwd=x&aud=remark42"
+	cases := []struct {
+		name, path, dest string
+		want             int
+		cookies          bool // the answer sets or expires the session cookies
+	}{
+		{name: "sign-in from script", path: login, dest: "empty", want: http.StatusOK, cookies: true},
+		{name: "sign-in as an image", path: login, dest: "image", want: http.StatusForbidden},
+		{name: "sign-out from script", path: "/auth/logout", dest: "empty", want: http.StatusOK, cookies: true},
+		{name: "sign-out from a page", path: "/auth/logout", dest: "document", want: http.StatusOK, cookies: true},
+		{name: "sign-out by a client that sends no fetch metadata", path: "/auth/logout", want: http.StatusOK, cookies: true},
+		{name: "sign-out as an image", path: "/auth/logout", dest: "image", want: http.StatusForbidden},
+		{name: "sign-out as an image, named after a provider", path: "/auth/anonymous/logout", dest: "image", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// a server each: the auth routes take two requests a second from an address
+			ts, _, teardown := startupT(t)
+			defer teardown()
+
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			if c.dest != "" {
+				req.Header.Set("Sec-Fetch-Dest", c.dest)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+			if c.cookies {
+				assert.NotEmpty(t, resp.Header.Values("Set-Cookie"))
+			} else {
+				assert.Empty(t, resp.Header.Values("Set-Cookie"), "a refused request must not touch the session")
+			}
+		})
+	}
+}
+
+// requests refused as embedded do not count against the two a second the auth routes take from
+// an address, so they cannot use up the allowance of the reader's own sign-out
+func TestRest_AuthRefusalsAreNotRateLimited(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// the status, and the header the limiter puts on every request that reaches it
+	get := func(dest string) (status int, limit string) {
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/auth/logout", http.NoBody)
+		require.NoError(t, err)
+		req.Header.Set("Sec-Fetch-Dest", dest)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header.Get("X-Rate-Limit-Limit")
+	}
+
+	for range 5 {
+		status, limit := get("image")
+		assert.Equal(t, http.StatusForbidden, status)
+		assert.Empty(t, limit, "a refused request must not reach the limiter")
+	}
+	status, limit := get("empty")
+	assert.Equal(t, http.StatusOK, status)
+	assert.NotEmpty(t, limit, "a request let through is limited as before")
+}
+
 func TestCorsMiddleware(t *testing.T) {
 	h := corsMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

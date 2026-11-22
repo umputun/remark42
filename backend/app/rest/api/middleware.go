@@ -336,6 +336,89 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 	}
 }
 
+// QueryTokenParam is the query parameter the auth library is told to read a token from. It has to
+// be given a name, because left empty it falls back to "token", which carries the delete-me token.
+// The parameter is taken out of every request before the library sees it, see ignoreQueryToken.
+const QueryTokenParam = "jwt"
+
+// ignoreQueryToken removes the token parameter from the query, so a token is taken from the X-JWT
+// header or from the cookie and never from the URL. The auth library reads one in the query ahead
+// of both, without the XSRF check, and when the token is then rejected it expires the cookies of
+// whoever sent the request. A URL is where somebody else can put a token: as the source of an
+// image in a comment it is requested by every reader's browser, with that reader's cookies.
+// The rest of the query is passed on as it was sent.
+func ignoreQueryToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.RawQuery != "" {
+			r.URL.RawQuery = withoutQueryParam(r.URL.RawQuery, QueryTokenParam)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// withoutQueryParam returns the raw query with every pair of the given key removed and everything
+// else left byte for byte. A query without the key is returned as it is: a new one is built only
+// when there is a pair to leave out.
+func withoutQueryParam(rawQuery, key string) string {
+	isKey := func(pair string) bool {
+		name, _, _ := strings.Cut(pair, "=")
+		if name == key {
+			return true
+		}
+		if !strings.ContainsAny(name, "%+") {
+			return false // nothing to unescape, so it is some other name
+		}
+		unescaped, err := url.QueryUnescape(name)
+		return err == nil && unescaped == key
+	}
+
+	var kept strings.Builder
+	found, separate := false, false
+	for left, start := rawQuery, 0; ; {
+		pair, tail, more := strings.Cut(left, "&")
+		switch {
+		case isKey(pair):
+			if !found { // the first one: everything before it is kept
+				found, separate = true, start > 0
+				kept.Grow(len(rawQuery))
+				kept.WriteString(strings.TrimSuffix(rawQuery[:start], "&"))
+			}
+		case found:
+			if separate {
+				kept.WriteByte('&')
+			}
+			kept.WriteString(pair)
+			separate = true
+		}
+		if !more {
+			break
+		}
+		start += len(pair) + 1
+		left = tail
+	}
+	if !found {
+		return rawQuery
+	}
+	return kept.String()
+}
+
+// rejectEmbedded refuses a request the browser makes for an embedded resource: an image, a script,
+// a stylesheet, a frame. Browsers name what a request is for in Sec-Fetch-Dest, "empty" for a call
+// made from script and "document" for a page or a window, and those two are how the widget and the
+// sign-in windows reach the auth routes. The routes answer a plain GET by setting or expiring the
+// session cookies, so one of their URLs must not work as the source of an image in a comment.
+// A client that does not send the header, as command-line tools do not, is let through.
+func rejectEmbedded(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Header.Get("Sec-Fetch-Dest") {
+		case "", "empty", "document":
+			next.ServeHTTP(w, r)
+		default:
+			http.Error(w, "Access denied", http.StatusForbidden)
+		}
+	})
+}
+
 // validEmailAuth is a middleware for auth endpoints for email method.
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {

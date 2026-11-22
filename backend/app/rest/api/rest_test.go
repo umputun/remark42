@@ -464,8 +464,9 @@ func TestRest_RequestLogHidesEmail(t *testing.T) {
 			body: `{"site":"remark42","token":"` + devToken + `"}`, status: http.StatusBadRequest, want: `"token":"********"`},
 		{name: "email confirm, token in query", method: "POST", path: "/api/v1/email/confirm?site=remark42&tkn=" + devToken,
 			status: http.StatusBadRequest, want: "tkn=********"},
+		// the parameter is dropped before the request is logged, and the rest of the query is not
 		{name: "session token in query", method: "GET", path: "/api/v1/config?site=remark42&jwt=" + devToken,
-			status: http.StatusOK, want: "jwt=********"},
+			status: http.StatusOK, want: "/api/v1/config?site=remark42 - "},
 		{name: "comment keeps mentions and urls", method: "POST", path: "/api/v1/comment?site=remark42",
 			body:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`,
 			status: http.StatusCreated,
