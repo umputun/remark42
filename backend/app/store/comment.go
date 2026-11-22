@@ -70,6 +70,7 @@ type BlockedUser struct {
 type VotedIPInfo struct {
 	Timestamp time.Time
 	Value     bool
+	UserID    string `json:",omitempty"` // whose vote it is; empty in records stored before it was kept
 }
 
 // DeleteMode defines how much comment info will be erased

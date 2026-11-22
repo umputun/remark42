@@ -158,7 +158,7 @@ services:
 | max-votes                      | MAX_VOTES                      | `-1`                    | votes limit per comment, `-1` - unlimited                |
 | votes-ip                       | VOTES_IP                       | `false`                 | restrict votes from the same IP                          |
 | anon-vote                      | ANON_VOTE                      | `false`                 | allow voting for anonymous users, require VOTES_IP to be enabled as well |
-| votes-ip-time                  | VOTES_IP_TIME                  | `5m`                    | same IP vote restriction time, `0s` - unlimited. Stored hashes of voters' IPs older than this are removed on the comment's next vote, also with `votes-ip` off |
+| votes-ip-time                  | VOTES_IP_TIME                  | `5m`                    | same IP vote restriction time, `0s` - unlimited. With `votes-ip` on, a new vote on a comment is refused while that IP has a vote record inside this time, whatever the direction; a user can still take their own vote back. New IP hash records include the voter's user ID. Records older than this are removed on the comment's next accepted vote, also with `votes-ip` off |
 | low-score                      | LOW_SCORE                      | `-5`                    | low score threshold                                      |
 | critical-score                 | CRITICAL_SCORE                 | `-10`                   | critical score threshold                                 |
 | positive-score                 | POSITIVE_SCORE                 | `false`                 | restricts comment's score to be only positive            |
