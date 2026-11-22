@@ -64,6 +64,53 @@ func TestConfig_CustomPropertiesReachTheWidget(t *testing.T) {
 	assert.Equal(t, "Georgia", value, "custom_properties never reached the widget document")
 }
 
+// TestConfig_ThemeDecidesTheTextColors covers the colors text is rendered in. The light theme has
+// its own, dark enough to read on white, keyed on a class of the widget document's root element;
+// the dark theme keeps the lighter ones. A color an integrator passes in custom_properties is an
+// inline style on that same element and has to win over both. Nothing but a browser can check
+// this: the unit tests never load a stylesheet
+func TestConfig_ThemeDecidesTheTextColors(t *testing.T) {
+	t.Parallel()
+
+	tbl := []struct {
+		name         string
+		config       map[string]any
+		link, button string
+	}{
+		{name: "light", config: map[string]any{"theme": "light"}, link: "rgb(0, 117, 117)", button: "rgb(0, 117, 117)"},
+		{name: "dark", config: map[string]any{"theme": "dark"}, link: "rgb(0, 170, 170)", button: "rgb(0, 153, 153)"},
+		{name: "an integrator's link color in light",
+			config: map[string]any{"theme": "light", "custom_properties": map[string]any{"--color9": "rgb(1, 2, 3)"}},
+			link:   "rgb(1, 2, 3)", button: "rgb(0, 117, 117)"},
+		{name: "an integrator's link color in dark",
+			config: map[string]any{"theme": "dark", "custom_properties": map[string]any{"--color9": "rgb(1, 2, 3)"}},
+			link:   "rgb(1, 2, 3)", button: "rgb(0, 153, 153)"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			page := newPage(t)
+			stubSignedOut(t, page)
+			embedConfig(t, page, tt.config)
+			frame := widget(t, page)
+
+			color := func(selector, property string) string {
+				loc := frame.Locator(selector).First()
+				waitVisible(t, loc)
+				v, err := loc.Evaluate(`(el, property) => getComputedStyle(el)[property]`, property,
+					playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+				require.NoError(t, err)
+				res, ok := v.(string)
+				require.True(t, ok, "the browser returned %v for %s of %s", v, property, selector)
+				return res
+			}
+
+			assert.Equal(t, tt.link, color(`a[href="markdown-help.html"]`, "color"), "the link under the comment form")
+			assert.Equal(t, tt.button, color(".auth-button", "backgroundColor"), "the fill of the sign-in button")
+		})
+	}
+}
+
 // TestConfig_URLOverrideDecidesTheThread covers remark_config.url, which is how a canonical
 // address keeps one conversation across pages that differ: a print view, a path with tracking
 // parameters, a page that moved. Two host pages at different addresses name the same thread here,

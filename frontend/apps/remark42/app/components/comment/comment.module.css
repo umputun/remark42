@@ -348,19 +348,19 @@
 
 .themeLight {
   & .status {
-    color: var(--color11);
+    color: var(--color14);
   }
 
   & .time {
-    color: var(--color11);
+    color: var(--color14);
 
     &:hover {
-      color: var(--color10);
+      color: var(--color34);
     }
   }
 
   & .username {
-    color: var(--color10);
+    color: var(--color34);
   }
 
   &.editing {

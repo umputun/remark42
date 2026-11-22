@@ -1,3 +1,16 @@
+/* the light theme of the widget's own document: text and button colors dark enough to read on
+   white. They are set here and not in custom-properties.css, which the last-comments widget loads
+   into its host page too. remark.tsx sets the class on the root element; a value a site passes in
+   custom_properties is an inline style on that element and still wins */
+:root.light {
+  --color9: #007575;
+  --color15: #007575;
+  --color13: #6a6a6a;
+  --primary-color: 0, 117, 117;
+  --primary-brighter-color: 0, 128, 128;
+  --secondary-darker-text-color: 106, 106, 106;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
