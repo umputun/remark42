@@ -3368,3 +3368,112 @@ func TestRest_EmailUnsubscribeTellsNothingAboutAnotherUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "good@example.com", email, "the address of the user is kept")
 }
+
+// confirmation and unsubscribe tokens are issued for one site, kept in the token's audience, and are refused
+// for another site: the unsubscribe page needs no session, so nothing else ties the link to its site, and a
+// user has the same ID on every site of a server
+func TestRest_EmailTokenOfAnotherSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		dir := t.TempDir()
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(dir, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(dir, "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+	})
+	defer teardown()
+
+	siteToken := func(provider *token.AuthProvider, site ...string) string {
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+			Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
+			AuthProvider: provider,
+			Audience:     site,
+			ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:       "remark42",
+		})
+		require.NoError(t, err)
+		return tkn
+	}
+	userEmail := func(site string) string {
+		email, err := srv.DataService.GetUserEmail(site, "provider1_dev")
+		require.NoError(t, err)
+		return email
+	}
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	confirm := func(tkn string) int {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+			strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+		require.NoError(t, err)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// the session belongs to remark42, the confirmation token was issued on the other site or on both
+	subscribe := &token.AuthProvider{Name: emailSubscribeProvider}
+	assert.Equal(t, http.StatusForbidden, confirm(siteToken(subscribe, "other")), "confirm with the token of another site")
+	assert.Equal(t, http.StatusForbidden, confirm(siteToken(subscribe, "remark42", "other")), "confirm with a token of two sites")
+	assert.Empty(t, userEmail("remark42"), "email set by a token of another site")
+
+	// the user is subscribed on both sites, the unsubscribe link comes from a mail of remark42
+	for _, site := range []string{"remark42", "other"} {
+		_, err := srv.DataService.SetUserEmail(site, "provider1_dev", "good@example.com")
+		require.NoError(t, err)
+	}
+	tkn := siteToken(nil, "remark42")
+	for _, site := range []string{"other", ""} {
+		body, code := get(t, ts.URL+"/email/unsubscribe.html?site="+site+"&tkn="+tkn)
+		assert.Equal(t, http.StatusForbidden, code, "unsubscribe on site %q with the link of remark42: %s", site, body)
+	}
+	assert.Equal(t, "good@example.com", userEmail("other"), "subscription on the other site is kept")
+	assert.Equal(t, "good@example.com", userEmail("remark42"), "subscription is kept")
+
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+	assert.Equal(t, http.StatusOK, code, body)
+	assert.Empty(t, userEmail("remark42"), "unsubscribed on the site of the link")
+	assert.Equal(t, "good@example.com", userEmail("other"), "subscription on the other site is kept")
+}
+
+// the basic-auth admin may name the site in the body only; the confirmation token is issued for that site,
+// and the confirmation for the same site accepts it
+func TestRest_EmailConfirmationTokenForSiteInBody(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(url, body, tkn string) (int, string) {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		if tkn != "" {
+			req.Header.Add("X-JWT", tkn) // setEmail reads the token of the request to update it
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send("/api/v1/email/subscribe", `{"site":"remark42","address":"admin@example.com"}`, "")
+	require.Equal(t, http.StatusOK, code, body)
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
+	tkn := mockDestination.GetVerify()[0].Token
+
+	code, body = send("/api/v1/email/confirm", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn), tkn)
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
+}

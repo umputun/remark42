@@ -503,9 +503,15 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	_, userID, address, herr := s.parseHandshake(confirm.Token, emailSubscribeProvider)
+	claims, userID, address, herr := s.parseHandshake(confirm.Token, emailSubscribeProvider)
 	if herr != nil {
 		rest.SendErrorJSON(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	siteID := verifiedSite(r, confirm.Site)
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 	if userID != user.ID {
@@ -513,7 +519,7 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 			"invalid handshake token", rest.ErrInternal)
 		return
 	}
-	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
+	s.setEmail(w, r, user.ID, siteID, address)
 }
 
 // emailSubscribeProvider is the provider name in a token made by sendEmailConfirmationCtrl. Three tokens
@@ -551,12 +557,12 @@ func (s *private) emailSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorHTML(w, r, herr.status, herr.err, details, rest.ErrInternal)
 		return
 	}
-	if len(claims.Audience) != 1 || claims.Audience[0] == "" {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("not a subscription confirmation token"),
+	siteID := tokenSite(claims)
+	if siteID == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("no site in token"),
 			"invalid confirmation token", rest.ErrInternal)
 		return
 	}
-	siteID := claims.Audience[0]
 	// the session check refuses a blocked user on the paste path, and there is no session here
 	if s.dataService.IsBlocked(siteID, userID) {
 		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("user %s is blocked", userID), "user is blocked", rest.ErrInternal)
@@ -641,6 +647,16 @@ func (s *private) parseHandshake(tkn, provider string) (claims token.Claims, use
 	return claims, elems[0], elems[1], nil
 }
 
+// tokenSite returns the site a confirmation or unsubscribe token was issued for, or an empty string when
+// the token names no site or several. Users have the same ID on every site of a server, so a token from
+// one site must not act on another
+func tokenSite(claims token.Claims) string {
+	if len(claims.Audience) != 1 {
+		return ""
+	}
+	return claims.Audience[0]
+}
+
 // verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
 // The site in the request body is used only when the query has none, which matchSiteID allows only for
 // the basic-auth admin.
@@ -686,9 +702,15 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	siteID := r.URL.Query().Get("site")
 
-	_, userID, address, herr := s.parseHandshake(tkn, "")
+	claims, userID, address, herr := s.parseHandshake(tkn, "")
 	if herr != nil {
 		rest.SendErrorHTML(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	// the page has no session to check the site against, and every link carries the site of its token
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 
@@ -714,13 +736,13 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// clean User.Email from the token, if user has the token
-	claims, _, err := s.authenticator.TokenService().Get(r)
+	session, _, err := s.authenticator.TokenService().Get(r)
 	if err != nil {
 		log.Printf("[DEBUG] unsubscribed user doesn't have valid JWT token to update %s, %v", userID, err)
 	}
-	if claims.User != nil && claims.User.Email != "" {
-		claims.User.Email = ""
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+	if session.User != nil && session.User.Email != "" {
+		session.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, session); err != nil {
 			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
