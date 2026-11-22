@@ -1767,7 +1767,7 @@ func (f *fakeDestination) GetVerify() []notify.VerificationRequest {
 }
 
 // TestRest_EmailSubscribeTakesOnlyBareAddress checks what the subscription accepts as an address.
-// The value ends up in the confirmation mail
+// The value ends up in the confirmation mail and in the mailto destination the mailer reads it from
 func TestRest_EmailSubscribeTakesOnlyBareAddress(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
@@ -1780,6 +1780,9 @@ func TestRest_EmailSubscribeTakesOnlyBareAddress(t *testing.T) {
 		{name: "display name", address: `"unlock it at https://evil.example.com" <good@example.com>`, status: http.StatusBadRequest},
 		{name: "comment", address: "good@example.com (comment)", status: http.StatusBadRequest},
 		{name: "two addresses", address: "good@example.com,other@example.com", status: http.StatusBadRequest},
+		{name: "sender and subject of its own", address: "good@example.com?from=support%40bank.example.com&subject=Your+account+is+locked&x=",
+			status: http.StatusBadRequest},
+		{name: "address the mailer can't take", address: "first#last@example.com", status: http.StatusBadRequest},
 		{name: "as typed, with spaces around it", address: " good@example.com ", status: http.StatusOK},
 	}
 

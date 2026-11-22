@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"net/mail"
+	"net/url"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -478,6 +480,96 @@ func TestEmail_BuildMessageKeepsCommentInsideItsBlock(t *testing.T) {
 	assert.Contains(t, body, "<h1>Your account is suspended</h1>", "formatting is preserved")
 	assert.Equal(t, strings.Count(plain, "<div"), strings.Count(body, "<div"), "no block opened by the comment")
 	assert.Equal(t, strings.Count(plain, "</div>"), strings.Count(body, "</div>"), "no block closed by the comment")
+}
+
+// an address goes into the mailto destination as it is, where a comma adds a recipient and "?" or
+// "#" starts a query with a sender and a subject of its own
+func TestMailtoRecipient(t *testing.T) {
+	accepted := []struct{ address, recipient string }{
+		{"reader@example.org", "reader@example.org"},
+		{"Some.Reader+tag@sub.example.org", "Some.Reader+tag@sub.example.org"},
+		{"читатель@example.org", "читатель@example.org"},
+		{"reader&co=x%20@example.org", "reader&co=x%20@example.org"}, // none of these ends the recipient
+		// stored as typed before addresses were checked, and mailed at the bare address
+		{" reader@example.org ", "reader@example.org"},
+		{"Some Reader <reader@example.org>", "reader@example.org"},
+		{`"unlock it at https://evil.example.org" <reader@example.org>`, "reader@example.org"},
+		{"reader@example.org (comment)", "reader@example.org"},
+	}
+	for _, tt := range accepted {
+		t.Run(tt.address, func(t *testing.T) {
+			recipient, err := mailtoRecipient(tt.address)
+			require.NoError(t, err)
+			assert.Equal(t, tt.recipient, recipient)
+
+			// read back the way the notify library reads the destination
+			u, err := url.Parse(fmt.Sprintf("mailto:%s?from=%s&subject=%s", recipient, url.QueryEscape("from@example.org"), url.QueryEscape("subject")))
+			require.NoError(t, err)
+			to, err := mail.ParseAddressList(u.Opaque)
+			require.NoError(t, err)
+			require.Len(t, to, 1)
+			assert.Equal(t, tt.recipient, to[0].Address)
+			assert.Equal(t, "from@example.org", u.Query().Get("from"))
+			assert.Equal(t, "subject", u.Query().Get("subject"))
+		})
+	}
+
+	refused := []string{
+		"",
+		"not an address",
+		"reader@example.org,victim@example.org",
+		"reader@example.org, Victim <victim@example.org>",
+		"victim@example.org?from=support%40bank.example.org&subject=Your+account+is+locked&x=",
+		"reader@example.org,victim@example.org?from=support@bank.example.org&unsubscribeLink=https://evil.example.org/u&x=",
+		"victim@example.org#fragment",
+		"reader?tag@example.org",
+		"Some Reader <victim@example.org?from=support@bank.example.org>",
+		`"reader@example.org,victim"@example.org`, // sent with the quotes taken off, to two addresses
+		`"reader tag"@example.org`,
+	}
+	for _, address := range refused {
+		t.Run(address, func(t *testing.T) {
+			recipient, err := mailtoRecipient(address)
+			require.ErrorIs(t, err, errMailtoAddress)
+			assert.Empty(t, recipient)
+		})
+	}
+}
+
+func TestEmail_RefusesAddressThatChangesTheMail(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		email, err := NewEmail(EmailParams{
+			From:                     "from@example.org",
+			VerificationTemplatePath: "testdata/verification.html.tmpl",
+			MsgTemplatePath:          "testdata/msg.html.tmpl",
+		}, ntf.SMTPParams{Port: 99999}) // an invalid port fails the send before any dial, so the bubble has no real I/O
+		require.NoError(t, err)
+		email.TokenGenFn = TokenGenFn
+
+		comment := store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user"}, PostTitle: "test_title"}
+		for _, address := range []string{
+			"victim@example.org?from=support%40bank.example.org&subject=Your+account+is+locked&x=",
+			"reader@example.org,victim@example.org",
+			`"reader@example.org,victim"@example.org`,
+		} {
+			err = email.SendVerification(context.Background(), VerificationRequest{SiteID: "remark", User: "user", Token: "token", Email: address})
+			assert.ErrorIs(t, err, errMailtoAddress, address)
+
+			err = email.Send(context.Background(), Request{Comment: comment, Emails: []string{address}})
+			assert.ErrorIs(t, err, errMailtoAddress, address)
+		}
+
+		// an ordinary address gets as far as the send, which fails on the port
+		err = email.SendVerification(context.Background(), VerificationRequest{SiteID: "remark", User: "user", Token: "token", Email: "reader+tag@example.org"})
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, errMailtoAddress)
+
+		// an admin's address is the operator's and is not checked
+		email.AdminEmails = []string{"Admin <admin@example.org>, second@example.org"}
+		err = email.Send(context.Background(), Request{Comment: comment})
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, errMailtoAddress)
+	})
 }
 
 func TestEmail_SendVerification(t *testing.T) {

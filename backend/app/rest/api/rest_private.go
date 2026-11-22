@@ -375,7 +375,9 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	}
 	// the widget sends the field as it was typed
 	subscribe.Address = strings.TrimSpace(subscribe.Address)
-	if !isPlainEmail(subscribe.Address) {
+	// "?" and "#" can be part of an address, but the notification mails take their recipient as a
+	// mailto URL, where either of the two ends it, and are not sent to such an address
+	if !isPlainEmail(subscribe.Address) || strings.ContainsAny(subscribe.Address, "?#") {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest,
 			fmt.Errorf("not an email address"), "address parameter has to be an email address and nothing else", rest.ErrInternal)
 		return

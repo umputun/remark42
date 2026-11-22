@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net"
+	"net/mail"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -211,6 +212,14 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 }
 
 func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email string, forAdmin bool) error {
+	// an admin's address comes from the server's options and goes in as it is written there
+	recipient := email
+	if !forAdmin {
+		var err error
+		if recipient, err = mailtoRecipient(email); err != nil {
+			return err
+		}
+	}
 	log.Printf("[DEBUG] send notification via %s, comment id %s", e, req.Comment.ID)
 	msg, err := e.buildMessageFromRequest(req, email, forAdmin)
 	if err != nil {
@@ -223,7 +232,7 @@ func (e *Email) buildAndSendMessage(ctx context.Context, req Request, email stri
 			return e.Email.Send(
 				ctx,
 				fmt.Sprintf("mailto:%s?from=%s&unsubscribeLink=%s&subject=%s",
-					email,
+					recipient,
 					url.QueryEscape(e.From),
 					url.QueryEscape(msg.unsubscribeLink),
 					url.QueryEscape(msg.subject),
@@ -246,6 +255,11 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 	default:
 	}
 
+	recipient, err := mailtoRecipient(req.Email)
+	if err != nil {
+		return err
+	}
+
 	log.Printf("[DEBUG] send verification via %s, user %s", e, req.User)
 	msg, err := e.buildVerificationMessage(req.User, req.Email, req.Token, req.SiteID)
 	if err != nil {
@@ -258,13 +272,40 @@ func (e *Email) SendVerification(ctx context.Context, req VerificationRequest) e
 			return e.Email.Send(
 				ctx,
 				fmt.Sprintf("mailto:%s?from=%s&subject=%s",
-					req.Email,
+					recipient,
 					url.QueryEscape(e.From),
 					url.QueryEscape(e.VerificationSubject),
 				),
 				msg,
 			)
 		})
+}
+
+// errMailtoAddress is the refusal of a recipient the mailto destination can't carry
+var errMailtoAddress = errors.New("recipient is not one plain email address")
+
+// mailtoRecipient returns the address to put into the mailto destination of a mail to a user, or
+// an error for one that would change that mail. The notify library takes a mail's recipients,
+// sender and subject as one mailto URL and reads the recipients from it as they stand, so the
+// address goes in unescaped. There a comma adds a recipient, and a "?" or a "#" ends the
+// recipients, with what follows read as the query: a sender and a subject of the address's own,
+// ahead of ours. A quoted local part is refused too, the mail library sends to it with the quotes
+// taken off, and what they held can be a list.
+//
+// The address of a subscriber is whatever was stored as typed, so it is checked here, where the
+// destination is made. One written with a display name or with spaces around it is mailed at the
+// bare address, as it was before.
+func mailtoRecipient(address string) (string, error) {
+	addr, err := mail.ParseAddress(address)
+	if err != nil {
+		return "", errMailtoAddress
+	}
+	// the bare address has to read as itself: with a quoted local part it does not
+	bare, err := mail.ParseAddress(addr.Address)
+	if err != nil || bare.Address != addr.Address || strings.ContainsAny(addr.Address, "?#") {
+		return "", errMailtoAddress
+	}
+	return addr.Address, nil
 }
 
 // buildVerificationMessage generates verification email message based on given input

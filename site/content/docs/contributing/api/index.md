@@ -284,7 +284,7 @@ _returned ID should be appended to load image URL on the caller side_
 ## Email Subscription
 
 - `GET /api/v1/email?site=site-id` - get user's email, _auth required_
-- `POST /api/v1/email/subscribe?site=site-id` - makes confirmation token and sends it to the user over email, _auth required_. Body is `{"address": "user@example.org"}`. The address has to be a bare one, as for the email sign-in, except that spaces around it are dropped; otherwise the call gets 400. The token is valid for 30 minutes. A user signed in by email with the same address is subscribed at once, and the answer carries `"updated": true`. The older form sends an empty body and `address` in the query, and always sends the token
+- `POST /api/v1/email/subscribe?site=site-id` - makes confirmation token and sends it to the user over email, _auth required_. Body is `{"address": "user@example.org"}`. The address has to be a bare one, as for the email sign-in, except that spaces around it are dropped, and it must not have `?` or `#` in it, which the notification mailer does not take; otherwise the call gets 400. The token is valid for 30 minutes. A user signed in by email with the same address is subscribed at once, and the answer carries `"updated": true`. The older form sends an empty body and `address` in the query, and always sends the token
 
   Trying to subscribe to the same email a second time will return response code `409 Conflict` with explaining error message
 
