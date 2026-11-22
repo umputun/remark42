@@ -60,7 +60,7 @@ const (
 ## Authorization
 
 - `GET /auth/{provider}/login?from=http://url&site=site_id&session=1` - perform "social" login with one of [supported providers](https://remark42.com/docs/configuration/authorization/#oauth-providers) and redirect to `url`. The host of `url` has to be the `REMARK_URL` host (any port) or one of `ALLOWED_HOSTS`, where entries with `*` do not count; for another host, the login completes without the redirect. A non-empty `session` value other than `0` makes the cookies session-only instead of using the default expiration
-- `GET /auth/email/login?site=site-id&user=name&address=user@example.org` - send a sign-in token to the address, with `AUTH_EMAIL_ENABLE` set; see [email authentication](https://remark42.com/docs/configuration/email/). Returns `{"user": "name", "address": "user@example.org"}`. `GET /auth/email/login?token=token` then signs the user in, within 30 minutes; a token used once gets 403
+- `GET /auth/email/login?site=site-id&user=name&address=user@example.org` - send a sign-in token to the address, with `AUTH_EMAIL_ENABLE` set; see [email authentication](https://remark42.com/docs/configuration/email/). Returns `{"user": "name", "address": "user@example.org"}`. The address has to be a bare one: with a display name, a comment, a group, a quoted local part, a second address or spaces around it the call gets 403. `GET /auth/email/login?token=token` then signs the user in, within 30 minutes; a token used once gets 403
 - `GET /auth/telegram/login?site=site-id` - start Telegram sign-in, with `AUTH_TELEGRAM` set. Returns `{"token": "token", "bot": "bot-name"}`; the user sends `/start token` to the bot. `GET /auth/telegram/login?site=site-id&token=token` then signs the user in. Both steps have to finish within 10 minutes; the call answers 404 while the bot has no message, and for an unknown, expired or already used token
 - `GET /auth/anonymous/login?user=name&aud=site-id` - sign in anonymously, with `AUTH_ANON` set. The [authorization page](https://remark42.com/docs/configuration/authorization/#anonymous) describes the accepted names
 - `GET /auth/user` - the signed-in user as stored in the token, 401 without a valid token
@@ -284,7 +284,7 @@ _returned ID should be appended to load image URL on the caller side_
 ## Email Subscription
 
 - `GET /api/v1/email?site=site-id` - get user's email, _auth required_
-- `POST /api/v1/email/subscribe?site=site-id` - makes confirmation token and sends it to the user over email, _auth required_. Body is `{"address": "user@example.org"}`. The token is valid for 30 minutes. A user signed in by email with the same address is subscribed at once, and the answer carries `"updated": true`. The older form sends an empty body and `address` in the query, and always sends the token
+- `POST /api/v1/email/subscribe?site=site-id` - makes confirmation token and sends it to the user over email, _auth required_. Body is `{"address": "user@example.org"}`. The address has to be a bare one, as for the email sign-in, except that spaces around it are dropped; otherwise the call gets 400. The token is valid for 30 minutes. A user signed in by email with the same address is subscribed at once, and the answer carries `"updated": true`. The older form sends an empty body and `address` in the query, and always sends the token
 
   Trying to subscribe to the same email a second time will return response code `409 Conflict` with explaining error message
 

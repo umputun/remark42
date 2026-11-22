@@ -373,6 +373,13 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
+	// the widget sends the field as it was typed
+	subscribe.Address = strings.TrimSpace(subscribe.Address)
+	if !isPlainEmail(subscribe.Address) {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest,
+			fmt.Errorf("not an email address"), "address parameter has to be an email address and nothing else", rest.ErrInternal)
+		return
+	}
 	subscribe.Site = verifiedSite(r, subscribe.Site)
 	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
 	if getErr != nil {

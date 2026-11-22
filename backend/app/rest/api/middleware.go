@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
@@ -459,6 +460,18 @@ func singleAuthPath(registered func(provider string) bool) func(http.Handler) ht
 	}
 }
 
+// isPlainEmail reports whether s is an email address and nothing else. net/mail parses a mailbox
+// the way a mail header writes it, so it also takes a display name, a comment, a group and a
+// quoted local part, and the free text of those would end up in the mail sent to the address
+func isPlainEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return false
+	}
+	// net/mail lets any non-ASCII rune into an address, spaces and invisible ones included
+	return !strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) })
+}
+
 // validEmailAuth is a middleware for auth endpoints for email method.
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {
@@ -487,6 +500,11 @@ func validEmailAuth() func(http.Handler) http.Handler {
 			if a := r.URL.Query().Get("address"); a != "" {
 				if _, err := mail.ParseAddress(a); err != nil {
 					log.Printf("[WARN] suspicious address rejected: %s", store.MaskForLog(err.Error())) // it can quote the input
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+				if !isPlainEmail(a) {
+					log.Print("[WARN] suspicious address rejected: more than an address")
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
