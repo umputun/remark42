@@ -57,6 +57,7 @@ func Run(t *testing.T, newEngine func(t *testing.T) engine.Interface) {
 		{"FindForUserPagination", s.findForUserPagination},
 		{"CountPost", s.countPost},
 		{"CountUser", s.countUser},
+		{"ExclamationURL", s.exclamationURL},
 		{"InfoPost", s.infoPost},
 		{"InfoPostCreatedOutOfOrder", s.infoPostCreatedOutOfOrder},
 		{"InfoList", s.infoList},

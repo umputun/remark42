@@ -337,6 +337,33 @@ func (s suite) countUser(t *testing.T) {
 	assert.Equal(t, 2, c, "soft-deleted comment is not counted")
 }
 
+// exclamationURL checks a comment on a page whose url contains "!!" or ends with "!", both valid in a url:
+// the site's last comments and the user's comments list it, and the user's count counts it
+func (s suite) exclamationURL(t *testing.T) {
+	for _, url := range []string{"https://radio-t.com/wow!!", "https://radio-t.com/a!!b", "https://radio-t.com/hello!"} {
+		e := s.prep(t)
+		_, err := e.Create(store.Comment{ID: "id-3", Text: "some text3", Timestamp: ts(24), Locator: loc(url),
+			User: store.User{ID: "user1", Name: "user name"}})
+		require.NoError(t, err)
+
+		res, err := e.Find(engine.FindRequest{Locator: site, Sort: "-time"})
+		require.NoError(t, err, url)
+		assert.Equal(t, []string{"id-3", "id-2", "id-1"}, commentIDs(res), "last comments, %s", url)
+		if len(res) > 0 {
+			assert.Equal(t, url, res[0].Locator.URL)
+		}
+
+		user := engine.FindRequest{Locator: site, Sort: "-time", UserID: "user1"}
+		res, err = e.Find(user)
+		require.NoError(t, err, url)
+		assert.Equal(t, []string{"id-3", "id-2", "id-1"}, commentIDs(res), "user's comments, %s", url)
+
+		c, err := e.Count(user)
+		require.NoError(t, err, url)
+		assert.Equal(t, 3, c, "user's count, %s", url)
+	}
+}
+
 func (s suite) infoPost(t *testing.T) {
 	e := s.prep(t) // two comments for postURL
 

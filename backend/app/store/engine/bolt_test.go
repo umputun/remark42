@@ -122,10 +122,15 @@ func TestBoltDB_CountUserUnparsableRef(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
 
-	// a page url with the reference delimiter in it makes an unparsable reference, which is passed over
-	_, err := b.Create(store.Comment{ID: "id-4", Text: "some text4", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
-		Locator: store.Locator{URL: "https://radio-t.com/a!!b", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
-	require.NoError(t, err)
+	// a user's reference without the "!!" separator cannot be parsed and is passed over
+	require.NoError(t, b.dbs["radio-t"].Update(func(tx *bolt.Tx) error {
+		userBkt, e := b.getUserBucket(tx, "user1")
+		if e != nil {
+			return e
+		}
+		key := []byte(time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC).Format(tsNano))
+		return userBkt.Put(key, []byte("https://radio-t.com/no-separator"))
+	}))
 	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
 	c, err := b.Count(req)
 	require.NoError(t, err)
@@ -193,6 +198,41 @@ func TestBoltDB_ref(t *testing.T) {
 
 	_, _, err = b.parseRef([]byte("https://radio-t.com/2"))
 	assert.Error(t, err)
+
+	// the url may contain the separator or end with "!"; the id after the last separator is the comment's
+	for _, postURL := range []string{"https://radio-t.com/wow!!", "https://radio-t.com/a!!b", "https://radio-t.com/hello!",
+		"https://radio-t.com/hello!!!"} {
+		comment.Locator.URL = postURL
+		url, id, err = b.parseRef(b.makeRef(comment))
+		assert.NoError(t, err, postURL)
+		assert.Equal(t, postURL, url)
+		assert.Equal(t, "12345", id, postURL)
+	}
+}
+
+// a last-comments entry that cannot be parsed, or that points to a post which is not there, is passed over
+// and the other comments are still listed
+func TestBoltDB_LastSkipsUnreadableRef(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	// an entry without the separator, newer than every comment
+	require.NoError(t, b.dbs["radio-t"].Update(func(tx *bolt.Tx) error {
+		key := []byte(time.Date(2017, 12, 20, 15, 18, 30, 0, time.UTC).Format(tsNano))
+		return tx.Bucket([]byte(lastBucketName)).Put(key, []byte("https://radio-t.com/no-separator"))
+	}))
+	res, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"})
+	require.NoError(t, err, "unparsable entry")
+	assert.Equal(t, []string{"id-2", "id-1"}, commentIDs(res), "unparsable entry")
+
+	// an id kept as given, as an import does, with the separator in it: its entry reads back as a post that does
+	// not exist
+	_, err = b.Create(store.Comment{ID: "a!!b", Text: "some text", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/sep-in-id", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	res, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"})
+	require.NoError(t, err, "entry for a missing post")
+	assert.Equal(t, []string{"id-2", "id-1"}, commentIDs(res), "entry for a missing post")
 }
 
 func TestBoltDB_NewFailed(t *testing.T) {
