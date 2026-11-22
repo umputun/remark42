@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	ntf "github.com/go-pkgz/notify"
 	"github.com/stretchr/testify/assert"
@@ -196,6 +197,28 @@ admin@example.org
 		assert.Equal(t, `New comment to your site for "test_title"`, msg.subject)
 		assert.Empty(t, msg.unsubscribeLink)
 	})
+}
+
+// the dates in the reply e-mail carry their offset from UTC: a reader in another zone cannot tell
+// when a comment was written from the server's local time alone, and the two comments in one message
+// can carry different offsets when the server's zone changed between them
+// html/template writes the plus sign as &#43;, which a mail client shows as +
+func TestEmail_ReplyDatesCarryZone(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "from@example.org"}, ntf.SMTPParams{})
+	require.NoError(t, err)
+	email.TokenGenFn = TokenGenFn
+
+	req := Request{
+		Comment: store.Comment{ID: "2", ParentID: "1", User: store.User{ID: "u2", Name: "replier"},
+			Timestamp: time.Date(2026, 11, 21, 15, 30, 0, 0, time.UTC)},
+		parent: store.Comment{ID: "1", Text: "question", User: store.User{ID: "u1", Name: "author"},
+			Timestamp: time.Date(2026, 11, 21, 18, 5, 0, 0, time.FixedZone("", 3*60*60))},
+		Emails: []string{"test@example.org"},
+	}
+	msg, err := email.buildMessageFromRequest(req, req.Emails[0], false)
+	require.NoError(t, err)
+	assert.Contains(t, msg.body, "21.11.2026 at 18:05 (UTC&#43;03:00)", "date of the comment replied to")
+	assert.Contains(t, msg.body, "21.11.2026 at 15:30 (UTC&#43;00:00)", "date of the reply")
 }
 
 // a reply notifies the authors of every comment above it by email; the unsubscribe link in each message

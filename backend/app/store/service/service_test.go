@@ -1611,6 +1611,29 @@ func TestService_Find(t *testing.T) {
 	assert.Equal(t, "some title, link", res[0].PostTitle)
 }
 
+// comments stored by a release that marked links nofollow only are read back with ugc added
+func TestService_ReadMarksStoredLinksUGC(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	_, err := b.Engine.Create(store.Comment{ID: "stored", Text: `see <a href="http://radio-t.com" rel="nofollow">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), Locator: locator,
+		User: store.User{ID: "user1", Name: "user name"}}) // written directly, as an earlier release stored it
+	require.NoError(t, err)
+	want := `see <a href="http://radio-t.com" rel="nofollow ugc">link</a>`
+
+	res, err := b.Find(locator, "time", store.User{})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	assert.Equal(t, want, res[2].Text, "find")
+
+	c, err := b.Get(locator, "stored", store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, want, c.Text, "get")
+}
+
 func TestService_FindSince(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)

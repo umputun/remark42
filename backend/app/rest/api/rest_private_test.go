@@ -355,7 +355,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 	comment := store.Comment{}
 	err = json.Unmarshal([]byte(res), &comment)
 	assert.NoError(t, err)
-	assert.Equal(t, "<p><strong>test</strong> <em>123</em></p>\n\n<p><a href=\"http://radio-t.com\" rel=\"nofollow\">http://radio-t.com</a></p>\n", comment.Text)
+	assert.Equal(t, "<p><strong>test</strong> <em>123</em></p>\n\n<p><a href=\"http://radio-t.com\" rel=\"nofollow ugc\">http://radio-t.com</a></p>\n", comment.Text)
 	assert.Equal(t, "**test** *123*\n\n http://radio-t.com", comment.Orig)
 	assert.Equal(t, store.User{Name: "admin", ID: "admin", Admin: true, Blocked: false,
 		IP: "dbc7c999343f003f189f70aaf52cc04443f90790"},

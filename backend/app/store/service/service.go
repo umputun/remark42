@@ -1193,6 +1193,7 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
 	c.SanitizeEditSummary() // summaries stored before edits cleaned them
+	c.MarkLinksUGC()        // links stored before they were marked ugc
 	return c
 }
 

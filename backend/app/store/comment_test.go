@@ -98,7 +98,7 @@ func TestComment_Sanitize(t *testing.T) {
 		},
 		{
 			inp: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw">@marcsheep</a> <a href="https://t.co/ULnVpG8w55">pic.twitter.com/ULnVpG8w55</a></p>&mdash; Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw">November 9, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`, PostTitle: "Twitter quote"},
-			out: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn" rel="nofollow">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw" rel="nofollow">@marcsheep</a> <a href="https://t.co/ULnVpG8w55" rel="nofollow">pic.twitter.com/ULnVpG8w55</a></p>— Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw" rel="nofollow">November 9, 2020</a></blockquote> `, PostTitle: "Twitter quote"},
+			out: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn" rel="nofollow ugc">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw" rel="nofollow ugc">@marcsheep</a> <a href="https://t.co/ULnVpG8w55" rel="nofollow ugc">pic.twitter.com/ULnVpG8w55</a></p>— Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw" rel="nofollow ugc">November 9, 2020</a></blockquote> `, PostTitle: "Twitter quote"},
 		},
 	}
 
@@ -106,6 +106,42 @@ func TestComment_Sanitize(t *testing.T) {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			tt.inp.Sanitize()
 			assert.Equal(t, tt.out, tt.inp, "check #%d", n)
+		})
+	}
+}
+
+// TestComment_SanitizeMarksLinksUGC checks that every link in a comment is marked as written by the
+// commenter, and that the attribute text typed into a comment or an attribute value is left alone.
+func TestComment_SanitizeMarksLinksUGC(t *testing.T) {
+	tbl := []struct {
+		name, inp, out string
+	}{
+		{name: "link", inp: `see <a href="https://example.com">this</a>`,
+			out: `see <a href="https://example.com" rel="nofollow ugc">this</a>`},
+		{name: "commenter's own rel is replaced", inp: `<a href="https://example.com" rel="author">this</a>`,
+			out: `<a href="https://example.com" rel="nofollow ugc">this</a>`},
+		{name: "area with the commenter's rel", inp: `<map name="m"><area href="https://example.com" rel="author" alt="a"></map>`,
+			out: `<map name="m"><area href="https://example.com" rel="author nofollow ugc" alt="a"></map>`},
+		{name: "area already nofollow", inp: `<map name="m"><area href="https://example.com" rel="nofollow external" alt="a"></map>`,
+			out: `<map name="m"><area href="https://example.com" rel="nofollow external ugc" alt="a"></map>`},
+		{name: "area with nofollow only as part of a word", inp: `<map name="m"><area href="https://example.com" rel="nofollowed" alt="a"></map>`,
+			out: `<map name="m"><area href="https://example.com" rel="nofollowed nofollow ugc" alt="a"></map>`},
+		{name: "id that looks like the start of rel", inp: `<a id="item rel=" href="https://example.com/post">post</a>`,
+			out: `<a id="item rel=" href="https://example.com/post" rel="nofollow ugc">post</a>`},
+		{name: "attribute typed as text", inp: `<p>a rel="nofollow" b</p>`, out: `<p>a rel=&#34;nofollow&#34; b</p>`},
+		{name: "attribute typed into a link address", inp: `<a href='https://example.com/?q="x"rel="nofollow"'>x</a>`,
+			out: `<a href="https://example.com/?q=&#34;x&#34;rel=&#34;nofollow&#34;" rel="nofollow ugc">x</a>`},
+		{name: "attribute typed into code", inp: `<code> rel="nofollow"</code>`, out: `<code> rel=&#34;nofollow&#34;</code>`},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			c := Comment{Text: tt.inp}
+			c.Sanitize()
+			assert.Equal(t, tt.out, c.Text)
+
+			c.Sanitize()
+			assert.Equal(t, tt.out, c.Text, "a second pass changes nothing")
 		})
 	}
 }
