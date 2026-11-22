@@ -771,6 +771,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	}
 
 	remarkURL := "https://demo.remark42.com"
+	premod, err := NewPremoderationStrategy("none")
 
 	srv = &Rest{
 		DataService: dataStore,
@@ -808,7 +809,7 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 		NotifyService:    notify.NopService,
 		EmojiEnabled:     true,
 		openRouteLimiter: 100,
-		Premoderation:    NewPremoderationStrategy(""),
+		Premoderation:    premod,
 	}
 	srv.ScoreThresholds.Low, srv.ScoreThresholds.Critical = -5, -10
 

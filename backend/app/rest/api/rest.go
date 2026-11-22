@@ -43,15 +43,17 @@ const (
 )
 
 // NewPremoderationStrategy matches the provided string with available premoderations strategies.
-// Defaults to PremoderationNone
-func NewPremoderationStrategy(str string) Premoderation {
-	switch strings.ToLower(str) {
-	case string(PremoderationFirst):
-		return PremoderationFirst
+// Defaults to PremoderationFirst
+func NewPremoderationStrategy(str string) (Premoderation, error) {
+	switch strings.ToLower(strings.TrimSpace(str)) {
+	case string(PremoderationFirst), "":
+		return PremoderationFirst, nil
 	case string(PremoderationAll):
-		return PremoderationAll
+		return PremoderationAll, nil
+	case string(PremoderationNone):
+		return PremoderationNone, nil
 	default:
-		return PremoderationNone
+		return "", fmt.Errorf("unkwonwn value selected for premoderation: %s", str)
 	}
 }
 
