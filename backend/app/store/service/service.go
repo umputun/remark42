@@ -87,8 +87,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", ErrRestrictedWordsFound
 	}
 
-	func() { // keep input title and set to extracted if missing
-		if s.TitleExtractor == nil || comment.PostTitle != "" {
+	if comment.Deleted { // only an import brings one, and one deleted before titles were cleared still has its title
+		comment.PostTitle = ""
+	}
+
+	func() { // keep input title and set to extracted if missing; a deleted comment has no title to show
+		if s.TitleExtractor == nil || comment.PostTitle != "" || comment.Deleted {
 			return
 		}
 		title, e := s.TitleExtractor.Get(comment.Locator.URL)
@@ -1118,6 +1122,9 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
+	if c.Deleted {
+		c.PostTitle = "" // comments deleted before SetDeleted cleared the title still hold it
+	}
 	c.SanitizeEditSummary() // summaries stored before edits cleaned them
 	c.MarkLinksUGC()        // links stored before they were marked ugc
 	return c

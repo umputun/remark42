@@ -105,6 +105,7 @@ func (c *Comment) PrepareUntrusted() {
 func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Text = ""
 	c.Orig = ""
+	c.PostTitle = "" // the commenter can set it, so it goes with the text
 	c.Score = 0
 	c.Controversy = 0
 	c.Votes = map[string]bool{}

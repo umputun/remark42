@@ -139,10 +139,16 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
+	var deletedPageReads atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == postPath {
 			_, err := fmt.Fprintf(w, "<html><title>%s</title><body>...</body></html>", postTitle)
 			assert.NoError(t, err)
+			return
+		}
+		if r.URL.String() == "/post/of-deleted" {
+			deletedPageReads.Add(1)
+			_, _ = w.Write([]byte("<html><title>title of the page</title></html>"))
 			return
 		}
 		w.WriteHeader(404)
@@ -164,6 +170,26 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, postTitle, res.PostTitle)
+
+	// a deleted comment, which an import can bring, gets no title and its page is not read
+	deleted := comment
+	deleted.Deleted, deleted.Imported, deleted.Text = true, true, ""
+	deleted.Locator.URL = ts.URL + "/post/of-deleted"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle)
+	assert.Equal(t, int32(0), deletedPageReads.Load(), "the page of a deleted comment is not read")
+
+	// a backup can hold a comment deleted before a delete cleared the title; a restore drops that title
+	deleted.PostTitle = "title kept by an old delete"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle, "a deleted comment is stored without the title it came with")
+	assert.Equal(t, int32(0), deletedPageReads.Load())
 
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
@@ -2485,6 +2511,21 @@ func TestService_alterComment(t *testing.T) {
 		Deleted: false}, r, "blocked")
 	assert.Equal(t, 1, len(engineMock.FlagCalls()))
 	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
+}
+
+// a comment deleted before SetDeleted cleared the title keeps it in the store, readers must not get it
+func TestService_alterCommentDeletedTitle(t *testing.T) {
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil },
+	}
+	svc := DataStore{Engine: &engineMock}
+
+	for _, user := range []store.User{{}, {ID: "devid"}, {ID: "admin", Admin: true}} {
+		r := svc.alterComment(store.Comment{ID: "123", PostTitle: "some title", Deleted: true}, user)
+		assert.Empty(t, r.PostTitle, "title of a deleted comment is dropped for %+v", user)
+		r = svc.alterComment(store.Comment{ID: "123", PostTitle: "some title"}, user)
+		assert.Equal(t, "some title", r.PostTitle, "title of a live comment is kept for %+v", user)
+	}
 }
 
 func TestService_alterCommentsFlagCaching(t *testing.T) {

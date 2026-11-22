@@ -222,12 +222,14 @@ func TestComment_SetDeleted(t *testing.T) {
 		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:     map[string]bool{"uu": true},
 		Pin:       true,
+		PostTitle: "post title",
 	}
 
 	comment.SetDeleted(SoftDelete)
 
 	assert.Equal(t, "", comment.Text)
 	assert.Equal(t, "", comment.Orig)
+	assert.Equal(t, "", comment.PostTitle)
 	assert.Equal(t, map[string]bool{}, comment.Votes)
 	assert.Equal(t, map[string]VotedIPInfo{}, comment.VotedIPs)
 	assert.Equal(t, 0, comment.Score)
@@ -249,12 +251,14 @@ func TestComment_SetDeletedHard(t *testing.T) {
 		Timestamp: time.Date(2018, 1, 1, 9, 30, 0, 0, time.UTC),
 		Votes:     map[string]bool{"uu": true},
 		Pin:       true,
+		PostTitle: "post title",
 	}
 
 	comment.SetDeleted(HardDelete)
 
 	assert.Equal(t, "", comment.Text)
 	assert.Equal(t, "", comment.Orig)
+	assert.Equal(t, "", comment.PostTitle)
 	assert.Equal(t, map[string]bool{}, comment.Votes)
 	assert.Equal(t, map[string]VotedIPInfo{}, comment.VotedIPs)
 	assert.Equal(t, 0, comment.Score)
