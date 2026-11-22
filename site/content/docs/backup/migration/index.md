@@ -16,6 +16,8 @@ On Linux, the container makes its own `app` user the owner of `./var` at every s
 2. Copy this file to `/srv/var` in the Remark42 container. There is no need to unpack it: a file name ending in `.gz` is unpacked during the import
 3. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 remark42 import -p disqus -f /srv/var/{disqus-export-name}.xml.gz -s {your site ID}`
 
+A commenter with a Disqus account gets a Remark42 user ID made from the Disqus username; a comment posted without an account gets one made from the name its author typed. A guest who typed a name equal to somebody's Disqus username therefore shares that account's user ID, and verifying, blocking or deleting that user in Remark42 applies to both.
+
 The import also fetches each commenter's avatar from Disqus and stores it with the other avatars, so Remark42 serves it without linking to Disqus. Avatars are fetched before the existing comments are replaced, at about ten users a second; a commenter without a Disqus avatar, or whose avatar Disqus fails to return, is imported without one. The server needs outbound HTTPS access to `disqus.com` and `disquscdn.com` for this, and imports the comments without avatars when Disqus can't be reached.
 
 Left out of the import: the comments of deleted threads, votes, and avatars of guests who commented without a Disqus account. Deleted comments and comments marked as spam are kept without their text and author only when they have replies, so the replies stay in their thread; otherwise they are not shown.
@@ -26,7 +28,9 @@ Left out of the import: the comments of deleted threads, votes, and avatars of g
 2. Copy this file to `/srv/var` in the Remark42 container
 3. Run import command (`ADMIN_PASSWD` must be enabled on the server for it to work) - `docker exec -it remark42 remark42 import -p wordpress -f /srv/var/{wordpress-export-name}.xml -s {your site ID}`
 
-Only approved comments are imported. Pingbacks, trackbacks and records plugins keep as comments, such as WooCommerce order notes, are left out. Avatars and votes are not imported, and commenters are told apart by their display name only, so two commenters with the same name become one user.
+Only approved comments are imported. Pingbacks, trackbacks and records plugins keep as comments, such as WooCommerce order notes, are left out. Avatars and votes are not imported. Registered WordPress users and guests are told apart by their display name only. Commenters with the same name share one Remark42 user ID, so verifying, blocking or deleting that user applies to all of them.
+
+The visibility of a post is not carried over. Approved comments of every post in the export are imported, including private, draft, scheduled, trashed and password-protected posts, and Remark42 shows them like any other comment. Take such posts out of the export file before the import if their comments should stay hidden.
 
 Comment text is shown the way WordPress shows it: blank lines start paragraphs, line breaks are kept, bare links and email addresses become links and text smilies become emoji. Markdown is not interpreted, as WordPress does not interpret it either. Quotes and dashes are curled unless `DISABLE_FANCY_TEXT_FORMATTING` is set.
 
