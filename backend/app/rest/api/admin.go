@@ -124,6 +124,12 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse accepts an expired token, so the link deleteMeCtrl issues for three months is checked here
+	if claims.ExpiresAt == nil || claims.ExpiresAt.Before(time.Now()) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token expired"), "can't use provided token", rest.ErrNoAccess)
+		return
+	}
+
 	log.Printf("[INFO] delete all user comments by request for %s, site %s", claims.User.ID, claims.Audience)
 
 	// deleteme set by deleteMeCtrl, this check just to make sure we not trying to delete with leaked token

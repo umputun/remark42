@@ -103,6 +103,34 @@ func TestNative_Import(t *testing.T) {
 	assert.Equal(t, false, b.IsVerified("radio-t", "user2"))
 }
 
+func TestNative_ImportSkipsCommentsOfAnotherSite(t *testing.T) {
+	// a backup restored under the wrong site ID: the site given is cleared, and a comment recorded
+	// for another site must not be written there, into a site the import did not clear
+	boltStore, err := engine.NewBoltDB(bolt.Options{},
+		engine.BoltSite{SiteID: "radio-t", FileName: filepath.Join(t.TempDir(), "radio-t.db")},
+		engine.BoltSite{SiteID: "other", FileName: filepath.Join(t.TempDir(), "other.db")})
+	require.NoError(t, err)
+	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer func() { require.NoError(t, b.Close()) }()
+
+	inp := `{"version":1,"users":[],"posts":[]}
+	{"id":"c1","text":"own site","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}
+	{"id":"c2","text":"another site","user":{"name":"user name","id":"user1"},"locator":{"site":"other","url":"https://other.com"},"time":"2017-12-20T15:18:23-06:00"}`
+
+	size, err := (&Native{DataStore: b}).Import(strings.NewReader(inp), "radio-t")
+	require.EqualError(t, err, "failed to save 1 comments")
+	assert.Equal(t, 1, size)
+
+	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "c1", comments[0].ID)
+
+	comments, err = b.Last("other", 10, time.Time{}, store.User{})
+	require.NoError(t, err)
+	assert.Empty(t, comments, "nothing is written into the site the import did not clear")
+}
+
 func TestNative_ImportWithMapperBadRecord(t *testing.T) {
 	mapper, err := NewURLMapper(strings.NewReader("https://radio-t.com* https://rdt.c*"))
 	require.NoError(t, err)

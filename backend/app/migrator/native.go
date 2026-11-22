@@ -177,6 +177,13 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			log.Printf("[WARN] can't decode comment record %d, %s", total, err)
 			continue
 		}
+		// the site was cleared for siteID only, so a comment recorded for another site, as in a backup
+		// restored under the wrong site ID, would land in a site nobody cleared and whose cache nobody flushes
+		if comment.Locator.SiteID != siteID {
+			atomic.AddInt64(&failed, 1)
+			log.Printf("[WARN] comment %s belongs to site %q, not %q, skipped", comment.ID, comment.Locator.SiteID, siteID)
+			continue
+		}
 		comment.Imported = true
 		// exports made by earlier versions stored the blocked status of the time inside comments;
 		// it is kept in the users metadata, and leaving it in the comment marks the user blocked forever
