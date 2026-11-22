@@ -141,41 +141,34 @@ const (
 
 // SortComments is for engines can't sort data internally
 func SortComments(comments []store.Comment, sortFld string) []store.Comment {
-	sort.Slice(comments, func(i, j int) bool {
-		switch sortFld {
-		case "+time", "-time", "time", "+active", "-active", "active":
-			if strings.HasPrefix(sortFld, "-") {
-				return comments[i].Timestamp.After(comments[j].Timestamp)
-			}
-			return comments[i].Timestamp.Before(comments[j].Timestamp)
-
-		case "+score", "-score", "score":
-			if strings.HasPrefix(sortFld, "-") {
-				if comments[i].Score == comments[j].Score {
-					return comments[i].Timestamp.Before(comments[j].Timestamp)
-				}
-				return comments[i].Score > comments[j].Score
-			}
-			if comments[i].Score == comments[j].Score {
-				return comments[i].Timestamp.Before(comments[j].Timestamp)
-			}
-			return comments[i].Score < comments[j].Score
-
-		case "+controversy", "-controversy", "controversy":
-			if strings.HasPrefix(sortFld, "-") {
-				if comments[i].Controversy == comments[j].Controversy {
-					return comments[i].Timestamp.Before(comments[j].Timestamp)
-				}
-				return comments[i].Controversy > comments[j].Controversy
-			}
-			if comments[i].Controversy == comments[j].Controversy {
-				return comments[i].Timestamp.Before(comments[j].Timestamp)
-			}
-			return comments[i].Controversy < comments[j].Controversy
-
-		default:
-			return comments[i].Timestamp.Before(comments[j].Timestamp)
-		}
-	})
+	sort.Slice(comments, func(i, j int) bool { return LessComments(&comments[i], &comments[j], sortFld) })
 	return comments
+}
+
+// LessComments reports whether comment a sorts before b by sortFld: time, active, score or controversy,
+// optionally prefixed with + for ascending or - for descending order. Active sorts by Timestamp here.
+// Equal scores or controversies, and any other sortFld, sort by Timestamp, oldest first.
+func LessComments(a, b *store.Comment, sortFld string) bool {
+	desc := strings.HasPrefix(sortFld, "-")
+	switch sortFld {
+	case "+time", "-time", "time", "+active", "-active", "active":
+		if desc {
+			return a.Timestamp.After(b.Timestamp)
+		}
+	case "+score", "-score", "score":
+		if a.Score != b.Score {
+			if desc {
+				return a.Score > b.Score
+			}
+			return a.Score < b.Score
+		}
+	case "+controversy", "-controversy", "controversy":
+		if a.Controversy != b.Controversy {
+			if desc {
+				return a.Controversy > b.Controversy
+			}
+			return a.Controversy < b.Controversy
+		}
+	}
+	return a.Timestamp.Before(b.Timestamp)
 }

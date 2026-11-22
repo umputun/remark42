@@ -167,68 +167,41 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 
 // GetUserEmail gets user email
 func (s *DataStore) GetUserEmail(siteID, userID string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserEmail,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Email, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserEmail, "")
+	return entry.Email, err
 }
 
 // SetUserEmail sets user email
 func (s *DataStore) SetUserEmail(siteID, userID, value string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserEmail,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-		Update:  value,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Email, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserEmail, value)
+	return entry.Email, err
 }
 
 // GetUserTelegram gets user telegram
 func (s *DataStore) GetUserTelegram(siteID, userID string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserTelegram,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Telegram, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserTelegram, "")
+	return entry.Telegram, err
 }
 
 // SetUserTelegram sets user telegram
 func (s *DataStore) SetUserTelegram(siteID, userID, value string) (string, error) {
+	entry, err := s.userDetail(siteID, userID, engine.UserTelegram, value)
+	return entry.Telegram, err
+}
+
+// userDetail gets the user's detail, or sets it when update is not empty.
+// It returns an empty entry when the engine has none or more than one
+func (s *DataStore) userDetail(siteID, userID string, detail engine.UserDetail, update string) (engine.UserDetailEntry, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserTelegram,
+		Detail:  detail,
 		Locator: store.Locator{SiteID: siteID},
 		UserID:  userID,
-		Update:  value,
+		Update:  update,
 	})
-	if err != nil {
-		return "", err
+	if err != nil || len(res) != 1 {
+		return engine.UserDetailEntry{}, err
 	}
-	if len(res) == 1 {
-		return res[0].Telegram, nil
-	}
-	return "", nil
+	return res[0], nil
 }
 
 // DeleteUserDetail deletes user detail
@@ -1154,19 +1127,13 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 // a single listing, avoiding two engine.Flag calls per comment for repeated users.
 // It also keeps the viewer's admin status per site, see admin.
 type userFlagCache struct {
-	s         *DataStore
-	blockedM  map[flagKey]bool
-	verifiedM map[flagKey]bool
-	adminM    map[string]bool // viewer's admin status by site, for sites other than user.SiteID
-}
-
-type flagKey struct {
-	siteID string
-	userID string
+	s      *DataStore
+	flags  map[engine.FlagRequest]bool // engine flag by flag, site and user
+	adminM map[string]bool             // viewer's admin status by site, for sites other than user.SiteID
 }
 
 func (s *DataStore) newUserFlagCache() *userFlagCache {
-	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}, adminM: map[string]bool{}}
+	return &userFlagCache{s: s, flags: map[engine.FlagRequest]bool{}, adminM: map[string]bool{}}
 }
 
 // admin reports whether the viewer counts as an admin for a comment on siteID. The admin flag of a
@@ -1190,30 +1157,25 @@ func (f *userFlagCache) admin(siteID string, user store.User) bool {
 }
 
 func (f *userFlagCache) blocked(siteID, userID string) bool {
-	key := flagKey{siteID: siteID, userID: userID}
-	if v, ok := f.blockedM[key]; ok {
-		return v
-	}
-	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: siteID}, UserID: userID})
-	if err != nil {
-		// don't cache on error so a repeated user is retried, matching the
-		// pre-refactor per-comment behavior; treat this comment as not blocked
-		return false
-	}
-	f.blockedM[key] = v
-	return v
+	return f.flag(engine.Blocked, siteID, userID)
 }
 
 func (f *userFlagCache) verified(siteID, userID string) bool {
-	key := flagKey{siteID: siteID, userID: userID}
-	if v, ok := f.verifiedM[key]; ok {
+	return f.flag(engine.Verified, siteID, userID)
+}
+
+func (f *userFlagCache) flag(flag engine.Flag, siteID, userID string) bool {
+	req := engine.FlagRequest{Flag: flag, Locator: store.Locator{SiteID: siteID}, UserID: userID}
+	if v, ok := f.flags[req]; ok {
 		return v
 	}
-	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	v, err := f.s.Engine.Flag(req)
 	if err != nil {
-		return false // don't cache on error, retry on the next comment for this user
+		// don't cache on error so a repeated user is retried, matching the
+		// pre-refactor per-comment behavior; treat this comment as not flagged
+		return false
 	}
-	f.verifiedM[key] = v
+	f.flags[req] = v
 	return v
 }
 
