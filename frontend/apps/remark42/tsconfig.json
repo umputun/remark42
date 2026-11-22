@@ -20,7 +20,8 @@
     "skipLibCheck": true,
     "paths": {
       "preact": ["../node_modules/preact"],
-      "preact/*": ["../node_modules/preact/*"]
+      "preact/*": ["../node_modules/preact/*"],
+      "locales/*": ["../../../../backend/app/webassets/assets/*"]
     }
   },
   "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"]

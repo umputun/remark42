@@ -222,7 +222,6 @@ module.exports = (env, { mode }) => {
     output: {
       ...output,
       filename: '[name].mjs',
-      chunkFilename: '[name].mjs',
     },
     module: {
       rules: [getTsRule(), ...rules],

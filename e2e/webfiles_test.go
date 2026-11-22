@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -38,7 +40,10 @@ const (
 	// teardown and leaves the stack running
 	dockerTimeout = 30 * time.Second
 
-	localesDir = "../frontend/apps/remark42/app/locales"
+	// the message catalogs are plain files among the assets embedded in the binary, and the list of
+	// the ones the widget asks for lives with the translation tasks
+	catalogDir           = "../backend/app/webassets/assets"
+	supportedLocalesFile = "../frontend/apps/remark42/tasks/supportedLocales.json"
 )
 
 // the /web paths the documentation publishes, plus the legacy names of the same files. each is
@@ -122,7 +127,7 @@ func TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded(t *testing.T) {
 }
 
 // TestWeb_EveryBundleServesUnderBothSuffixes covers the names the list above does not, and takes
-// its input from the build and not from a list somebody maintains, so a locale joining or
+// its input from the build and not from a list somebody maintains, so a bundle joining or
 // leaving needs no edit here. Whatever the bundler emitted has to answer under its legacy .js name
 // with the same bytes and the same type, and has to parse as a classic script, which is the premise
 // serving one under the other rests on
@@ -130,12 +135,11 @@ func TestWeb_EveryBundleServesUnderBothSuffixes(t *testing.T) {
 	t.Parallel()
 
 	names := emittedBundles(t)
-	// a listing from the wrong place, or one that lost most of its entries to a chunk directory,
-	// would leave a handful of cases running and report green. every locale is a chunk of its own,
-	// so the catalog count on disk is a floor the build cannot drop below
-	require.Contains(t, names, "remark.mjs", "listing is not the served web root: %v", names)
-	require.GreaterOrEqual(t, len(names), localeCount(t),
-		"%d bundles is fewer than there are locales, so the listing is missing chunks: %v", len(names), names)
+	// a listing from the wrong place, or one that lost entries to a chunk directory, would leave a
+	// handful of cases running and report green. every entry point is a bundle of its own, so
+	// the four of them are a floor the build cannot drop below
+	require.Subset(t, names, []string{"deleteme.mjs", "embed.mjs", "last-comments.mjs", "remark.mjs"},
+		"the listing is not the served web root, or it lost entry points: %v", names)
 	t.Logf("checking %d bundles", len(names))
 
 	page := parsePage(t)
@@ -215,22 +219,48 @@ func emittedBundles(t *testing.T) []string {
 	return names
 }
 
-// localeCount is how many message catalogs the app carries, each of which the bundler emits as
-// its own chunk
-func localeCount(t *testing.T) int {
+// supportedLocales is the list of catalogs the widget asks the server for, read from the file the
+// translation tasks and the widget's loader read too
+func supportedLocales(t *testing.T) []string {
 	t.Helper()
 
-	entries, err := os.ReadDir(localesDir)
-	require.NoError(t, err, "reading %s", localesDir)
+	raw, err := os.ReadFile(supportedLocalesFile)
+	require.NoError(t, err, "reading %s", supportedLocalesFile)
+	var locales []string
+	require.NoError(t, json.Unmarshal(raw, &locales), "parsing %s", supportedLocalesFile)
+	require.NotEmpty(t, locales, "no locales in %s, so the cases built on it would assert nothing", supportedLocalesFile)
+	return locales
+}
 
-	count := 0
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".json") {
-			count++
-		}
+// TestWeb_EveryCatalogServesAsJSON covers the catalogs the widget fetches at runtime: each one the
+// loader may ask for answers under /web with the bytes on disk and a JSON type. The request carries
+// the host page's origin, as last-comments sends it from the embedding page, so a catalog the
+// browser would refuse to hand over fails here too
+func TestWeb_EveryCatalogServesAsJSON(t *testing.T) {
+	t.Parallel()
+
+	for _, locale := range supportedLocales(t) {
+		t.Run(locale, func(t *testing.T) {
+			want, err := os.ReadFile(filepath.Join(catalogDir, locale+".json")) //nolint:gosec // name from the list
+			require.NoError(t, err)
+
+			// probeURL: the instance's own name resolves inside the browser only
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, probeURL+"/web/"+locale+".json", http.NoBody)
+			require.NoError(t, err)
+			req.Header.Set("Origin", hostSiteURL)
+			resp, err := probeClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+
+			require.Equal(t, http.StatusOK, resp.StatusCode, "the %s catalog is not served", locale)
+			assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+			assert.Equal(t, digest(string(want)), digest(string(body)), "the %s catalog served is not the one on disk", locale)
+			assert.Equal(t, hostSiteURL, resp.Header.Get("Access-Control-Allow-Origin"),
+				"a page on another origin cannot read the %s catalog, so last-comments there stays in english", locale)
+		})
 	}
-	require.NotZero(t, count, "no catalogs in %s, so the floor below would be meaningless", localesDir)
-	return count
 }
 
 // exitStderr is what the command wrote to stderr, which Output keeps out of the parsed result

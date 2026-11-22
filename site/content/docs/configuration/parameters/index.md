@@ -172,7 +172,7 @@ services:
 | image-proxy.cache-external     | IMAGE_PROXY_CACHE_EXTERNAL     | `false`                 | enable caching external images to current image storage  |
 | emoji                          | EMOJI                          | `false`                 | enable emoji support                                     |
 | simple-view                    | SIMPLE_VIEW                    | `false`                 | simplified comment form, without the formatting toolbar and preview |
-| proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy           |
+| proxy-cors                     | PROXY_CORS                     | `false`                 | disable internal CORS and delegate it to proxy; the proxy has to cover `/web/` as well as `/api/`, since a host page loads the widget scripts and message catalogues from there |
 | allowed-hosts                  | ALLOWED_HOSTS                  | enable all              | limit hosts/sources allowed to embed comments via CSP 'frame-ancestors' |
 | address                        | REMARK_ADDRESS                 | all interfaces          | web server listening address                             |
 | port                           | REMARK_PORT                    | `8080`                  | web server port                                          |

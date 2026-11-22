@@ -101,7 +101,7 @@ These were deliberately not bumped because each is a config-migration or bundle-
 ## `/web` has a second source
 
 `privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar `ghost.svg`, the sign-in
-provider icons, the emoji table `emoji.json`, the widget's own document `iframe.html` and the pages
+provider icons, the emoji table `emoji.json`, the message catalogues `<locale>.json`, the widget's own document `iframe.html` and the pages
 that host the widget (`index.html`, `counter.html`, `last-comments.html`, `deleteme.html`,
 `comments.html`) live in `backend/app/webassets/assets` and are embedded in the Go binary. They are
 plain files: the bundler builds no HTML. `iframe.html` links `remark.css` itself, so the dev server
@@ -113,7 +113,16 @@ no lint, no transpiling. It has to stay a classic script with no module syntax, 
 answers `counter.js` with its bytes, and `TestFS_CounterIsAClassicScript` checks that. The widget
 addresses the images by name through `webAssetUrl` in `app/common/web-asset.ts`; the bundle resolves
 no image files. The comment form fetches `emoji.json` relative to its own document on the first `:`
-typed (`emoji-data.ts`), and `emoji-search.ts` matches names against it. The frontend build wins
+typed (`emoji-data.ts`), and `emoji-search.ts` matches names against it. The message catalogues are
+fetched the same way: `app/utils/loadLocale.ts` asks for `/web/<locale>.json`, only for a locale
+listed in `tasks/supportedLocales.json`, and never for English. `en.json` is not read by the widget:
+the English text is the `defaultMessage` in the code, `translation:generate` copies it into `en.json`,
+and the file exists as the reference translators work from and the extraction checks compare against.
+Change English text in the code and regenerate; an edit made only in `en.json` changes nothing on
+screen, and `extract-messages.unit.test.ts` fails until the two agree again. last-comments runs on the host page,
+so there the fetch is cross-origin and depends on the server's CORS headers, or the proxy's with
+`--proxy-cors`. Tests import a catalogue as `locales/<locale>.json`, which `tsconfig.json` and
+`jest.config.mjs` map to that directory. The frontend build wins
 for any name present in both, which is what
 lets an operator override one by dropping a file next to the frontend files in `--web-root`. That
 directory replaces the embedded frontend outright when it exists, so an override belongs in a
@@ -169,14 +178,14 @@ code, so a commented-out message keeps its key. A text given by a variable is no
 
 It fails instead of writing in these cases, because `tasks/generateDictionary.js` calls
 `removeAbandonedKeys` and `translation:generate` would otherwise delete the lost keys from every
-catalogue in `app/locales/`:
+catalogue in `backend/app/webassets/assets/`:
 
 - a `defaultMessage` given as a string that it cannot pair with a plain-string `id` (an `id` after
   its text or held in a variable), or a string that goes on into a concatenation or a call
 - a template literal with an expression, or a JSX attribute with a backslash, an entity or a line
   break
 - one `id` is defined twice with different text
-- a key in `app/locales/en.json` is no longer in the source. When the message was removed on
+- a key in `en.json` is no longer in the source. When the message was removed on
   purpose, `pnpm translation:extract --allow-removal` writes the file and `translation:generate`
   then drops the key from the catalogues
 

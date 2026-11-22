@@ -26,6 +26,8 @@ const config = {
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
+    // the catalogues are served from the assets embedded in the backend binary
+    '^locales/(.*)$': '<rootDir>/../../../backend/app/webassets/assets/$1',
   },
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',
@@ -42,8 +44,6 @@ const config = {
     '!**/*.unit.test.ts',
     '!**/__mocks__/**',
     '!**/__stubs__/**',
-    '!app/locales/**',
-    '!app/utils/loadLocale.ts',
     '!app/tests',
   ],
 };

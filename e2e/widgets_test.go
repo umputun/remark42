@@ -8,8 +8,10 @@ import (
 	neturl "net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -45,6 +47,32 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	list := page.Locator(".remark42__last-comments")
 	waitVisible(t, list)
 	waitVisible(t, list.Locator("text="+text))
+
+	// the same feed on a page of another origin, in Russian. The catalog is fetched from that page,
+	// so it is a cross-origin request: the loader has to ask for it, and the browser has to let the
+	// page read what comes back, which a response without the right CORS headers does not
+	raw, err := os.ReadFile(filepath.Join(catalogDir, "ru.json"))
+	require.NoError(t, err)
+	var ruCatalog map[string]string
+	require.NoError(t, json.Unmarshal(raw, &ruCatalog))
+	want := ruCatalog["comment.time"]
+	require.NotEmpty(t, want, "ru.json carries no comment.time message to compare against")
+
+	ru := newPage(t)
+	catalog, err := ru.ExpectResponse("**/web/ru.json", func() error {
+		_, gerr := ru.Goto(hostSiteURL + "/last-comments.html?locale=ru")
+		return gerr
+	}, playwright.PageExpectResponseOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err, "last-comments never asked for the Russian catalog")
+	assert.Equal(t, 200, catalog.Status(), "the Russian catalog did not load")
+	waitVisible(t, ru.Locator(".remark42__last-comments").Locator("text="+text))
+
+	got, err := ru.Evaluate(`async () => {
+		const response = await fetch(remark_config.host + '/web/ru.json');
+		return (await response.json())['comment.time'];
+	}`)
+	require.NoError(t, err, "the host page cannot read the catalog, so last-comments there stays in english")
+	assert.Equal(t, want, got)
 }
 
 // TestWidgets_DeleteMePageServesAndRuns covers the GDPR delete page, which nothing else opens. It
@@ -212,39 +240,51 @@ func TestWidgets_ProfileOpensInItsOwnIframe(t *testing.T) {
 	assert.Zero(t, inWidget)
 }
 
-// TestWidgets_EveryLocaleLoadsAndRenders drives the dynamic import behind every translation, once
-// per catalog. The catalogs are separate chunks the bundle fetches at runtime, so a change to
-// how chunks are named or emitted breaks them without touching a line of widget code, and the
-// failure is silent: loadLocale falls back to english instead of throwing, which is also what an
+// TestWidgets_EveryLocaleLoadsAndRenders drives the fetch behind every translation, once per
+// catalog. The catalogs are plain files the widget fetches from /web at runtime, so a change to
+// where they are served breaks them without touching a line of widget code, and the failure is
+// silent: loadLocale falls back to english instead of throwing, which is also what an
 // unrecognized name does. Each case therefore compares against the catalog on disk, so english
 // coming back is a failure and not a pass.
 //
-// The catalog set comes from the locales directory and not a list here, so a language added to
+// The catalog set comes from the list the loader reads and not one here, so a language added to
 // the app is covered without an edit, and injected into a plain page and not the demo one,
-// which is the only way to hand the widget a remark_config of this test's choosing
+// which is the only way to hand the widget a remark_config of this test's choosing.
+//
+// en.json is the exception among the catalogs: it is the reference translators work from,
+// written from the english text in the code by translation:generate, and the widget never
+// fetches it. The english case shows both halves: the text on screen, which comes from the
+// code, equals the one in en.json, and no catalog was requested at all. Every other locale
+// requests its own catalog and nothing else
 func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 	t.Parallel()
 
-	entries, err := os.ReadDir(localesDir)
-	require.NoError(t, err, "reading %s", localesDir)
-	require.NotEmpty(t, entries, "no catalogs in %s, so this test would assert nothing", localesDir)
+	catalogPath := regexp.MustCompile(`^/web/[a-z]{2}(-[a-z]{2})?\.json$`)
 
-	for _, entry := range entries {
-		locale, found := strings.CutSuffix(entry.Name(), ".json")
-		if !found {
-			continue
-		}
-
+	for _, locale := range supportedLocales(t) {
 		t.Run(locale, func(t *testing.T) {
-			raw, rerr := os.ReadFile(filepath.Join(localesDir, entry.Name())) //nolint:gosec // name from the walk
+			raw, rerr := os.ReadFile(filepath.Join(catalogDir, locale+".json")) //nolint:gosec // name from the list
 			require.NoError(t, rerr)
 
 			var catalog map[string]string
 			require.NoError(t, json.Unmarshal(raw, &catalog))
 			want := catalog["commentForm.input-placeholder"]
-			require.NotEmpty(t, want, "%s carries no placeholder message to compare against", entry.Name())
+			require.NotEmpty(t, want, "%s.json carries no placeholder message to compare against", locale)
 
 			page := newPage(t)
+
+			// a page's request event covers its iframes too, which is where the widget runs
+			var mu sync.Mutex
+			var requested []string
+			page.OnRequest(func(r playwright.Request) {
+				u, perr := neturl.Parse(r.URL())
+				if perr != nil || !catalogPath.MatchString(u.Path) {
+					return
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				requested = append(requested, u.Path)
+			})
 			// auth state is outside this translation case
 			stubSignedOut(t, page)
 			embedConfig(t, page, map[string]any{"locale": locale})
@@ -258,6 +298,17 @@ func TestWidgets_EveryLocaleLoadsAndRenders(t *testing.T) {
 			got, perr := textarea.GetAttribute("placeholder")
 			require.NoError(t, perr)
 			assert.Equal(t, want, got, "the %s catalog did not render, so the widget fell back to english", locale)
+
+			// the widget renders only once loadLocale has settled, so every catalog request it
+			// makes has been issued by the time the placeholder is there to read
+			mu.Lock()
+			defer mu.Unlock()
+			if locale == "en" {
+				assert.Empty(t, requested, "the english widget requested a catalog; en.json is the "+
+					"translators' reference and the english text comes from the code")
+				return
+			}
+			assert.Equal(t, []string{"/web/" + locale + ".json"}, requested)
 		})
 	}
 }

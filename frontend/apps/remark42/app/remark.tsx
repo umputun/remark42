@@ -10,7 +10,7 @@ import { parseMessage, isFromParent } from 'utils/post-message';
 import { ConnectedRoot } from 'components/root';
 import { Profile } from 'components/profile';
 import { store } from 'store';
-import { NODE_ID, BASE_URL, THEMES } from 'common/constants';
+import { NODE_ID, THEMES } from 'common/constants';
 import type { Theme } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
@@ -36,8 +36,6 @@ function applyTheme(next: Theme) {
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = `${BASE_URL}/web/`;
-
   const node = document.getElementById(NODE_ID);
 
   if (!node) {

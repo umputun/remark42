@@ -102,7 +102,6 @@ The list any no-bundler proposal has to answer for.
 - transpiles TypeScript and JSX
 - CSS modules, with nesting and with one `composes` that crosses a file boundary. That one has no
   plain-CSS equivalent and has to be flattened instead of translated
-- code-splits the locale catalogues
 - runs an autoprefixer pass against a browserslist query. Without a transpiler that query becomes the
   literal browser floor and source syntax ships as written
 - no longer builds any HTML page: all of them are plain files among the embedded assets, including
@@ -133,6 +132,8 @@ Worth stating because the widget build is now the last npm consumer in the repos
 - the widget's images are served from the embedded assets since #2309, and the comment counter is a
   script written by hand among them since #2341, so neither passes through the bundler
 - the git hooks went with #2343; nothing runs on commit or push, and CI is the only gate
+- the message catalogues are plain JSON among the embedded assets, which the widget fetches from
+  `/web/<locale>.json`, so no locale chunk and no dynamic import is left in the bundle
 
 ## Still open
 
@@ -167,7 +168,7 @@ Each of these can move the answer.
   known small library for a less-known one
 - **preact with htm over native ESM**: dropping the JSX transpile drops type-checked markup, since
   the JSX pragma is what types templates today and tagged literals are opaque to the type checker.
-  Unbundling every source file and locale chunk into individually fetched modules also multiplies a
+  Unbundling every source file into individually fetched modules also multiplies a
   cold load's request count against the rate limit the file server applies, and the cache headers
   revalidate each one
 - **Packaging the widget for npm (#1715)**: it must run in an iframe on the remark42 origin for OAuth

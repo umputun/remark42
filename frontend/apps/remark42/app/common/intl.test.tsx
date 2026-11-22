@@ -3,6 +3,8 @@ import { join } from 'path';
 
 import { render, screen } from '@testing-library/preact';
 
+import supportedLocales from '../../tasks/supportedLocales.json';
+
 import { FormattedMessage, IntlProvider, createIntl, useIntl } from './intl';
 
 describe('<FormattedMessage/>', () => {
@@ -91,9 +93,9 @@ describe('useIntl', () => {
 });
 
 describe('every shipped catalogue', () => {
-  const localesDir = join(__dirname, '..', 'locales');
+  const localesDir = join(__dirname, '..', '..', '..', '..', '..', 'backend', 'app', 'webassets', 'assets');
   const catalogues = readdirSync(localesDir)
-    .filter((file) => file.endsWith('.json'))
+    .filter((file) => supportedLocales.includes(file.replace('.json', '')))
     .map(
       (file) =>
         [file.replace('.json', ''), JSON.parse(readFileSync(join(localesDir, file), 'utf8'))] as [

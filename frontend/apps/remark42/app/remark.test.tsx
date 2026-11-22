@@ -1,6 +1,3 @@
-// webpack defines it in the bundle; init assigns it before anything else
-globalThis.__webpack_public_path__ = '';
-
 // keeps init suspended at its first await, which is the window a theme message used to be lost in
 jest.mock('utils/loadLocale', () => ({ loadLocale: () => new Promise(() => undefined) }));
 

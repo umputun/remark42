@@ -13,16 +13,26 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// catalogName is how a message catalog is named: the locale code, two letters with an optional
+// region, and .json
+var catalogName = regexp.MustCompile(`^[a-z]{2}(-[a-z]{2})?\.json$`)
+
 func TestFS_Contents(t *testing.T) {
 	entries, err := fs.ReadDir(FS, ".")
 	require.NoError(t, err)
 
-	names := make([]string, 0, len(entries))
+	names, catalogs := make([]string, 0, len(entries)), 0
 	for _, e := range entries {
 		assert.False(t, e.IsDir(), "the assets are served flat under /web, %s is a directory", e.Name())
 		info, err := e.Info()
 		require.NoError(t, err)
 		assert.NotZero(t, info.Size(), "%s is empty", e.Name())
+		// the catalogs are listed in the frontend's tasks/supportedLocales.json, and adding a
+		// language adds one here, so they are counted and checked by TestFS_Catalogs, not named
+		if catalogName.MatchString(e.Name()) {
+			catalogs++
+			continue
+		}
 		names = append(names, e.Name())
 	}
 	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "comments.html", "counter.html",
@@ -30,6 +40,31 @@ func TestFS_Contents(t *testing.T) {
 		"github-dark.svg", "github-light.svg", "google.svg", "iframe.html", "index.html", "last-comments.html", "markdown-help.html",
 		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
 		"yandex.svg"}, names)
+	// a floor and not the count, so a language added keeps this green and the move of the
+	// catalogs out of here does not
+	assert.GreaterOrEqual(t, catalogs, 29, "the message catalogs are missing from the embedded assets")
+}
+
+// TestFS_Catalogs checks that every message catalog is a flat object of message id to translated
+// text, which is the shape the widget's loader hands to its formatter, and that English is there:
+// the translation tasks read en.json as the list of messages in the source
+func TestFS_Catalogs(t *testing.T) {
+	entries, err := fs.ReadDir(FS, ".")
+	require.NoError(t, err)
+
+	seen := map[string]bool{}
+	for _, e := range entries {
+		if !catalogName.MatchString(e.Name()) {
+			continue
+		}
+		seen[e.Name()] = true
+		raw, err := fs.ReadFile(FS, e.Name())
+		require.NoError(t, err)
+		var catalog map[string]string
+		require.NoError(t, json.Unmarshal(raw, &catalog), "%s is not an object of strings", e.Name())
+		assert.NotEmpty(t, catalog, "%s holds no messages", e.Name())
+	}
+	assert.True(t, seen["en.json"], "en.json, the catalog the translation tasks compare against, is missing")
 }
 
 // TestFS_ContentShape catches an asset that has been truncated or replaced by something of the

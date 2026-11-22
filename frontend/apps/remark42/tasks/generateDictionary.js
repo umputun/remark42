@@ -1,8 +1,6 @@
 const fs = require('fs');
-const path = require('path');
 const { keyMessagePairs, keys } = require('./getTranslationKeys');
 const { getLocalePath } = require('./getLocalePath');
-const { renderLoadLocale } = require('./localeLoadTemplate');
 const { getSupportedLocales } = require('./getSupportedLocales');
 
 const locales = getSupportedLocales();
@@ -33,8 +31,4 @@ locales.forEach((locale) => {
   currentDict = removeAbandonedKeys(keys, currentDict);
   currentDict = sortDict(currentDict);
   fs.writeFileSync(pathToDict, `${JSON.stringify(currentDict, null, 2)}\n`);
-  fs.writeFileSync(
-    path.resolve(__dirname, `../app/utils/loadLocale.ts`),
-    renderLoadLocale(locales.filter((locale) => locale !== 'en'))
-  );
 });
