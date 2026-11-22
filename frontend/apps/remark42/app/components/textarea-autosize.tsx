@@ -22,11 +22,14 @@ export function TextareaAutosize({ onInput, value, textareaRef, ...props }: Prop
       return;
     }
 
-    if (onInput) {
-      return onInput(evt);
+    // a caller that listens is expected to pass the text back as `value`, and the effect below
+    // resizes to what it passes, which can be shorter than what was typed. A field left
+    // uncontrolled has no such effect to wait for
+    if (!onInput || value === undefined) {
+      autoResize(ref.current);
     }
 
-    autoResize(ref.current);
+    onInput?.(evt);
   };
 
   useEffect(() => {

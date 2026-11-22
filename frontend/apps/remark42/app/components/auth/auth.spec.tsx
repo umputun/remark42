@@ -9,6 +9,8 @@ import { BASE_URL } from 'common/constants.config';
 import * as userActions from 'store/user/actions';
 import * as commentsActions from 'store/comments/actions';
 import * as postMessage from 'utils/post-message';
+import * as commonApi from 'common/api';
+import { RequestError } from 'utils/errorUtils';
 
 import { Auth } from './auth';
 import * as utils from './auth.utils';
@@ -300,6 +302,166 @@ describe('<Auth/>', () => {
 
     await waitFor(() => expect(getByText('Token is invalid')).toBeInTheDocument());
     expect(getByText('Token is invalid')).toHaveClass('auth-error');
+  });
+
+  describe('token pasted into the field', () => {
+    const TOKEN_PLACEHOLDER = 'Paste the token from the email';
+
+    /** What the fetcher throws for a token the server refuses: a 403 is reported by its status alone */
+    const REFUSAL_TEXT = "You don't have permission to do this.";
+    const refusal = () => new RequestError(REFUSAL_TEXT, 403);
+
+    /** As long as the signature of the tokens the backend issues, which is what makes a token whole */
+    const SIGNATURE = 's'.repeat(43);
+
+    /** A token the widget can read the expiry of; the signature is never checked in the browser */
+    function tokenExpiringIn(seconds: number): string {
+      return `header.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + seconds }))}.${SIGNATURE}`;
+    }
+
+    // earlier tests leave calls and one-off implementations on the same spies. Nobody is signed
+    // in unless a test says so, which is what the form asks after a refused token
+    function spyOnVerify() {
+      const verify = jest.spyOn(api, 'verifyEmailSignin');
+
+      verify.mockReset();
+      jest.spyOn(utils, 'persistEmail').mockReset();
+      jest.spyOn(utils, 'getTokenInvalidReason').mockRestore();
+      jest
+        .spyOn(commonApi, 'getUser')
+        .mockReset()
+        .mockImplementation(async () => null);
+
+      return verify;
+    }
+
+    async function openTokenStep(): Promise<HTMLTextAreaElement> {
+      StaticStore.config.auth_providers = ['email'];
+      const emailSignin = jest.spyOn(api, 'emailSignin');
+
+      emailSignin.mockReset();
+      emailSignin.mockImplementation(async () => null);
+
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'username' } });
+      fireEvent.change(screen.getByPlaceholderText('Email address'), { target: { value: 'email@email.com' } });
+      fireEvent.click(screen.getByText('Confirm'));
+
+      return (await screen.findByPlaceholderText(TOKEN_PLACEHOLDER)) as HTMLTextAreaElement;
+    }
+
+    it('signs in without the submit button', async () => {
+      const verify = spyOnVerify().mockImplementation(async () => ({}) as User);
+      const signin = spyOnSignin();
+      const reloadComments = spyOnReloadComments();
+      const token = tokenExpiringIn(600);
+      const field = await openTokenStep();
+
+      fireEvent.input(field, { target: { value: `${token}\n` } });
+
+      await waitFor(() => expect(signin).toHaveBeenCalledTimes(1));
+      expect(verify).toHaveBeenCalledTimes(1);
+      expect(verify).toHaveBeenCalledWith(token);
+      expect(utils.persistEmail).toHaveBeenCalledWith('email@email.com');
+      await waitFor(() => expect(reloadComments).toHaveBeenCalledTimes(1));
+    });
+
+    it('sends one request for a token that arrives twice', async () => {
+      let finish: (user: User) => void = () => undefined;
+      const verify = spyOnVerify().mockImplementation(
+        () =>
+          new Promise<User>((resolve) => {
+            finish = resolve;
+          })
+      );
+      const signin = spyOnSignin();
+      spyOnReloadComments();
+      const token = tokenExpiringIn(600);
+      const field = await openTokenStep();
+
+      // both events are handled before the form is rendered again as disabled
+      fireEvent.input(field, { target: { value: token } });
+      fireEvent.input(field, { target: { value: token } });
+      finish({} as User);
+
+      await waitFor(() => expect(signin).toHaveBeenCalledTimes(1));
+      expect(verify).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports an expired token and does not send it', async () => {
+      const verify = spyOnVerify();
+      const field = await openTokenStep();
+
+      fireEvent.input(field, { target: { value: tokenExpiringIn(-600) } });
+
+      expect(await screen.findByText('Token is expired')).toHaveClass('auth-error');
+      expect(verify).not.toHaveBeenCalled();
+    });
+
+    // the payload parses as soon as it is complete, so the last two would pass for a token if
+    // only the expiry were looked at
+    it.each`
+      text                                                           | stage
+      ${() => 'eyJhbGciOi'}                                          | ${'inside the header'}
+      ${() => tokenExpiringIn(600).split('.').slice(0, 2).join('.')} | ${'without a signature'}
+      ${() => tokenExpiringIn(600).slice(0, -1)}                     | ${'one character short'}
+      ${() => tokenExpiringIn(-600).slice(0, -1)}                    | ${'expired and one character short'}
+    `('waits while the text is not a whole token: $stage', async ({ text }) => {
+      const verify = spyOnVerify();
+      const field = await openTokenStep();
+
+      fireEvent.input(field, { target: { value: text() } });
+
+      expect(verify).not.toHaveBeenCalled();
+      expect(screen.queryByText('Token is invalid')).not.toBeInTheDocument();
+      expect(screen.queryByText('Token is expired')).not.toBeInTheDocument();
+      expect(screen.getByText('Confirm')).toBeEnabled();
+      expect(field).toBeEnabled();
+    });
+
+    // the token is spent by the request that signs in, and the user is loaded by a second one.
+    // When only the second fails, the same token is refused from then on
+    it('signs in when the refused token is the one that opened the session', async () => {
+      const verify = spyOnVerify().mockRejectedValue(refusal());
+      const reader = { id: 'email_1', name: 'username' } as User;
+      const getUser = jest.spyOn(commonApi, 'getUser').mockImplementation(async () => reader);
+      const signin = spyOnSignin();
+      spyOnReloadComments();
+      const field = await openTokenStep();
+
+      fireEvent.input(field, { target: { value: tokenExpiringIn(600) } });
+
+      await waitFor(() => expect(signin).toHaveBeenCalledWith(reader));
+      expect(verify).toHaveBeenCalledTimes(1);
+      expect(getUser).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(REFUSAL_TEXT)).not.toBeInTheDocument();
+      // the session may be another account's, opened from another tab
+      expect(utils.persistEmail).not.toHaveBeenCalled();
+    });
+
+    it('shows why the server refused the token and takes the next one', async () => {
+      const verify = spyOnVerify()
+        .mockRejectedValueOnce(refusal())
+        .mockImplementationOnce(async () => ({}) as User);
+      const signin = spyOnSignin();
+      spyOnReloadComments();
+      const field = await openTokenStep();
+
+      fireEvent.input(field, { target: { value: tokenExpiringIn(600) } });
+      expect(await screen.findByText(REFUSAL_TEXT)).toHaveClass('auth-error');
+      expect(signin).not.toHaveBeenCalled();
+
+      const next = tokenExpiringIn(1200);
+      const fieldAgain = screen.getByPlaceholderText(TOKEN_PLACEHOLDER);
+
+      await waitFor(() => expect(fieldAgain).toBeEnabled());
+      fireEvent.input(fieldAgain, { target: { value: next } });
+
+      await waitFor(() => expect(signin).toHaveBeenCalledTimes(1));
+      expect(verify).toHaveBeenLastCalledWith(next);
+    });
   });
 
   it('should send anonym form', async () => {

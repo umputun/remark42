@@ -108,8 +108,9 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 	signInEmail(t, page, frame, "emailtester", fmt.Sprintf("email-tester-%s@example.com", runID))
 }
 
-// signInEmail completes the email flow: ask for a code, read it out of the mail catcher, submit
-// it. The address decides the user id, sha1 of it, so a case needing a known id picks the address
+// signInEmail completes the email flow: ask for a code, read it out of the mail catcher, paste
+// it. The field signs in by itself once it holds a token, so nothing presses the submit button.
+// The address decides the user id, sha1 of it, so a case needing a known id picks the address
 func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocator, username, address string) {
 	t.Helper()
 
@@ -131,7 +132,6 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 
 	token := verificationToken(t, mailpitMessage(t, address))
 	require.NoError(t, frame.Locator(".auth-token-textarea").Fill(token))
-	require.NoError(t, frame.Locator(".auth-submit").Click())
 
 	assertSignedIn(t, page, frame)
 }

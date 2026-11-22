@@ -6,6 +6,8 @@ import { useAppDispatch } from 'store';
 
 import { useIntl } from 'common/intl';
 import { signin } from 'store/user/actions';
+import { getUser } from 'common/api';
+import type { User } from 'common/types';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
 import { CrossIcon } from 'components/icons/cross';
@@ -17,7 +19,7 @@ import { Button } from './components/button';
 import { OAuth } from './components/oauth';
 import { messages } from './auth.messages';
 import { useDropdown, useErrorMessage } from './auth.hooks';
-import { getProviders, getTokenInvalidReason, persistEmail } from './auth.utils';
+import { getProviders, getTokenInvalidReason, isCompleteToken, persistEmail } from './auth.utils';
 import {
   oauthSignin,
   emailSignin,
@@ -35,6 +37,7 @@ export function Auth() {
   const intl = useIntl();
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
   const emailRef = useRef('');
+  const isVerifyingRef = useRef(false);
   const dispatch = useAppDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
@@ -105,6 +108,76 @@ export function Auth() {
     setError(null);
   }
 
+  /**
+   * A confirmation token signs in once, so a second request with the same one is refused. The
+   * state that disables the form is set a render later than the events that can ask twice
+   */
+  async function verifyToken(token: string) {
+    if (isVerifyingRef.current) {
+      return;
+    }
+
+    isVerifyingRef.current = true;
+
+    try {
+      let user: User | null;
+
+      try {
+        user = await verifyEmailSignin(token);
+        persistEmail(emailRef.current);
+      } catch (e) {
+        // a token refused as used may be the one that signed this browser in: its first request
+        // went through and the user was not loaded after it. The session is what tells. It can
+        // also belong to another account signed in from another tab, so the address typed here
+        // is not kept for it
+        user = await getUser();
+
+        if (user === null) {
+          throw e;
+        }
+      }
+
+      dispatch(signin(user));
+    } finally {
+      isVerifyingRef.current = false;
+    }
+  }
+
+  /**
+   * Signs in as soon as the field holds a whole token, the way the subscription form does. Text
+   * that is not one yet is left alone, since it may still be typed, and the submit button reports it
+   */
+  async function handleTokenInput(evt: JSX.TargetedEvent<HTMLTextAreaElement>) {
+    const token = evt.currentTarget.value.trim();
+
+    if (isVerifyingRef.current) {
+      return;
+    }
+
+    setError(null);
+
+    if (!isCompleteToken(token)) {
+      return;
+    }
+
+    const invalidReason = getTokenInvalidReason(token);
+
+    if (invalidReason) {
+      setError(invalidReason);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await verifyToken(token);
+    } catch (e) {
+      setError(e);
+    }
+
+    setLoading(false);
+  }
+
   async function handleSubmit(evt: Event) {
     const data = new FormData(evt.target as HTMLFormElement);
 
@@ -132,7 +205,7 @@ export function Auth() {
           break;
         }
         case 'token': {
-          const token = data.get('token') as string;
+          const token = (data.get('token') as string).trim();
           const invalidReason = getTokenInvalidReason(token);
 
           if (invalidReason) {
@@ -140,9 +213,7 @@ export function Auth() {
             break;
           }
 
-          const user = await verifyEmailSignin(token);
-          dispatch(signin(user));
-          persistEmail(emailRef.current);
+          await verifyToken(token);
 
           break;
         }
@@ -285,6 +356,7 @@ export function Auth() {
                     className={clsx('auth-token-textarea', inputStyles.input, styles.textarea)}
                     placeholder={intl.formatMessage(messages.token)}
                     disabled={isLoading}
+                    onInput={handleTokenInput}
                   />
                 </div>
                 {formFooterJSX}
