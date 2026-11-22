@@ -8,8 +8,26 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
-  <title>{{ with .Title }}{{ . }} | {{ site.Title }}{{ else }}{{ site.Title }}{{ end }}</title>
-  <meta name="description" content="{{ with .Params.metaDescription }}{{ . }}{{ else }}{{ with .Description }}{{ . }}{{ else }}{{ site.Params.description }}{{ end }}{{ end }}">
+  {{- $title := site.Title -}}
+  {{- with .Title }}{{ $title = printf "%s | %s" . site.Title }}{{ end -}}
+  {{- $description := site.Params.description -}}
+  {{- with .Description }}{{ $description = . }}{{ end -}}
+  {{- with .Params.metaDescription }}{{ $description = . }}{{ end }}
+  <title>{{ $title }}</title>
+  <meta name="description" content="{{ $description }}">
+  {{- /* the 404 page is served at every missing address, so it names no address of its own */ -}}
+  {{- if ne .Kind "404" }}
+  <link rel="canonical" href="{{ .Permalink }}">
+  <meta property="og:type" content="{{ if .IsHome }}website{{ else }}article{{ end }}">
+  <meta property="og:site_name" content="{{ site.Title }}">
+  <meta property="og:title" content="{{ with .Title }}{{ . }}{{ else }}{{ site.Title }}{{ end }}">
+  <meta property="og:description" content="{{ $description }}">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:image" content="{{ "og-image.png" | absURL }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  {{- end }}
   <link rel="stylesheet" href="{{ $style.RelPermalink }}">
   <script>{{ $inline.Content | safeJS }}</script>
   <script defer src="{{ $script.RelPermalink }}"></script>
