@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -270,6 +271,49 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 	require.NoError(t, page.Unroute("**/api/v1/comment?**"))
 	require.NoError(t, form.Locator(`button[type="submit"]`).Click())
 	waitVisible(t, comment(frame, text))
+}
+
+// TestComment_ShortcutSendsNothingWhenTheWidgetShowsAGuest covers Ctrl+Enter in a form that offers
+// no Send button. A guest has only the shortcut, and for one without a session the server refuses
+// the request anyway. The case that tells is a widget showing a guest over a session that is still
+// alive, which the host page's signout message produces: it clears the user in the widget and
+// leaves the cookies alone, so a request the form sent would be accepted
+func TestComment_ShortcutSendsNothingWhenTheWidgetShowsAGuest(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	var posts atomic.Int32
+	page.OnRequest(func(r playwright.Request) {
+		if u, err := neturl.Parse(r.URL()); err == nil && r.Method() == http.MethodPost && u.Path == "/api/v1/comment" {
+			posts.Add(1)
+		}
+	})
+
+	_, err := page.Evaluate(`() => {
+		document.querySelector('#remark42 iframe').contentWindow.postMessage({ signout: true }, '*');
+	}`)
+	require.NoError(t, err)
+	waitVisible(t, frame.Locator(".auth-button"))
+
+	form := frame.Locator(commentFormSel).First()
+	waitHidden(t, form.Locator(`button[type="submit"]`), "the form of a guest still offers a Send button")
+
+	field := form.Locator("textarea")
+	require.NoError(t, field.Fill("typed in a form that shows a guest "+runID))
+	require.NoError(t, field.Press("Control+Enter"))
+
+	// the message is waited for first and required last: the wait gives a request the time to
+	// leave, and a failure then names the comment that was sent, not only the message that is missing
+	alertErr := form.Locator(`[role="alert"]`, playwright.LocatorLocatorOptions{HasText: "Please sign in to do this."}).
+		WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: new(float64(waitTimeout.Milliseconds())),
+		})
+	assert.Zero(t, posts.Load(), "the shortcut sent the comment from a form that shows nobody signed in")
+	require.NoError(t, alertErr, "the form did not ask the guest to sign in")
 }
 
 // TestComment_AdminPinsAndVerifies covers two moderator actions that change what every reader

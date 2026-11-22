@@ -6,7 +6,7 @@ import { FormattedMessage, defineMessages } from 'common/intl';
 import type { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
-import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { errorMessages, extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
 import { replaceSelection } from 'utils/replaceSelection';
@@ -159,6 +159,13 @@ export class CommentForm extends Component<Props, State> {
     if (e) e.preventDefault();
 
     if (!text || !text.trim()) return;
+    // the Send button is rendered for a signed-in reader only, while the keyboard shortcut works
+    // in a guest's form too. The widget can show a guest while the browser still holds a session,
+    // and the server would then accept the comment
+    if (!this.props.user) {
+      this.setState({ isErrorShown: true, errorMessage: this.props.intl.formatMessage(errorMessages[401]) });
+      return;
+    }
     if (text === this.props.value) {
       this.props.onCancel && this.props.onCancel();
       this.setState({ preview: null, text: '' });
