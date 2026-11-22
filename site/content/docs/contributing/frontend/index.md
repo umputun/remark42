@@ -8,8 +8,7 @@ Frontend for Remark42 is built with [Preact](https://preactjs.com) and [Redux](h
 
 > 💡 We highly recommend checking out Preact [documentation](https://preactjs.com/guide/v10/getting-started). React libraries are not usable here: the store bindings and the i18n helpers are small local modules under `app/`.
 
-In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget.
-Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
+In order to inject Remark42 widgets into websites we use `iframe` and `postMessage` for communication between a site and the widget. Simple widgets like [counter widget](https://remark42.com/docs/configuration/frontend/#counter-widget) can be injected as a script because it doesn't have its own interface.
 
 While developing, we set up environment which imitates real world example. We serve the page which uses Remark42 config and inject all the widgets on it. You can check it on our [demo site](https://demo.remark42.com/web/). After successful installation you should have the same page running locally.
 
@@ -80,12 +79,7 @@ Remark42 frontend can be built statically, and that's how the production version
 
 Run `pnpm build` inside `./frontend/apps/remark42`, and result files will be saved in `./frontend/apps/remark42/public`.
 
-`/web` is served from two sources. This build output comes first; anything it does not emit is
-served from `backend/app/webassets/assets`, embedded in the backend binary, which is where
-`privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar, the sign-in provider
-icons, the emoji table `emoji.json`, the message catalogues `<locale>.json`, the widget document `iframe.html`, the demo, counter, last-comments, deleteme and comments pages and the `counter.mjs` script live. A plain page or image the bundler
-does not process belongs there rather than here. Those files sit outside the frontend toolchain,
-so prettier, stylelint and `pnpm lint` do not see them.
+`/web` is served from two sources. This build output comes first; anything it does not emit is served from `backend/app/webassets/assets`, embedded in the backend binary, which is where `privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar, the sign-in provider icons, the emoji table `emoji.json`, the message catalogues `<locale>.json`, the widget document `iframe.html`, the demo, counter, last-comments, deleteme and comments pages and the `counter.mjs` script live. A plain page or image the bundler does not process belongs there rather than here. Those files sit outside the frontend toolchain, so prettier, stylelint and `pnpm lint` do not see them.
 
 ## Code Style
 
@@ -105,12 +99,7 @@ so prettier, stylelint and `pnpm lint` do not see them.
 - Imports for TypeScript, JavaScript files should be without extension: `./index`, not `./index.ts`
 - If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
 - Otherwise, it should be imported by absolute path relative to the `app` folder like `common/types` which maps to `./app/common/types.ts` in webpack, tsconfig, and Jest
-- The extension rule and the alias rule above are reversed inside the dependency-free test layer described under
-  Testing, and in any module it imports: node's ESM resolver refuses an extensionless specifier and
-  knows nothing of the alias, so those files write `./types.ts` in full and never `common/…`.
-  Webpack, Jest and `tsc` all resolve the explicit relative form too, which is why the exception
-  costs nothing outside those files. It applies to value imports only; a type-only import erases
-  before either runtime sees it, and keeps the ordinary style
+- The extension rule and the alias rule above are reversed inside the dependency-free test layer described under Testing, and in any module it imports: node's ESM resolver refuses an extensionless specifier and knows nothing of the alias, so those files write `./types.ts` in full and never `common/…`. Webpack, Jest and `tsc` all resolve the explicit relative form too, which is why the exception costs nothing outside those files. It applies to value imports only; a type-only import erases before either runtime sees it, and keeps the ordinary style
 
 ## Testing
 
@@ -126,9 +115,7 @@ Tests come in two layers, and which one a test belongs in is decided by what it 
 
 ### Dependency-free tests, `*.unit.test.ts`
 
-Anything that is a function over plain values -- a parser, a reducer, a decoder -- is tested without
-a framework, a bundler or `node_modules`. These files import nothing but the module under test, its
-fixtures and `node:test`, and the runtime strips the types itself:
+Anything that is a function over plain values -- a parser, a reducer, a decoder -- is tested without a framework, a bundler or `node_modules`. These files import nothing but the module under test, its fixtures and `node:test`, and the runtime strips the types itself:
 
 ```shell
 pnpm test:unit
@@ -136,25 +123,16 @@ pnpm test:unit
 
 It needs nothing you do not already have.
 
-The `unit` job in `ci-frontend.yml` runs them with **no `pnpm install` step at all**. That missing
-step is the point: a test that starts needing `node_modules` to pass has quietly acquired a
-dependency, and the job fails instead of hiding it. `release.yml` runs the same script after an install,
-as a second gate and not as the dependency check.
+The `unit` job in `ci-frontend.yml` runs them with **no `pnpm install` step at all**. That missing step is the point: a test that starts needing `node_modules` to pass has quietly acquired a dependency, and the job fails instead of hiding it. `release.yml` runs the same script after an install, as a second gate and not as the dependency check.
 
-`node --test` exits 0 on a glob that matches nothing, so on its own it cannot tell a renamed
-suffix from a passing run. The CI step counts the files first and fails when none match.
+`node --test` exits 0 on a glob that matches nothing, so on its own it cannot tell a renamed suffix from a passing run. The CI step counts the files first and fails when none match.
 
-Two rules follow from having no bundler, and both apply to **value** imports only. A type-only
-import is erased before node sees the file, so it may keep the alias and drop the extension, which is why `import type { Comment } from 'common/types'` is correct inside this layer:
+Two rules follow from having no bundler, and both apply to **value** imports only. A type-only import is erased before node sees the file, so it may keep the alias and drop the extension, which is why `import type { Comment } from 'common/types'` is correct inside this layer:
 
 - import with the extension in full, `./types.ts`, since node resolves nothing else
-- import by relative path, never by the `common/…` alias, which only webpack, Jest and `tsc` know
-  about
+- import by relative path, never by the `common/…` alias, which only webpack, Jest and `tsc` know about
 
-Prefer this layer whenever the thing under test does not genuinely need a DOM. Where a module mixes
-the two -- a hook that both reads `sessionStorage` and computes something -- split the computation
-out and test that half here; `app/common/intl-message.ts` and `app/hooks/session-storage.ts` are the
-pure halves of `intl.tsx` and `useSessionState.ts`, kept apart for exactly this reason.
+Prefer this layer whenever the thing under test does not genuinely need a DOM. Where a module mixes the two -- a hook that both reads `sessionStorage` and computes something -- split the computation out and test that half here; `app/common/intl-message.ts` and `app/hooks/session-storage.ts` are the pure halves of `intl.tsx` and `useSessionState.ts`, kept apart for exactly this reason.
 
 ## Notes
 

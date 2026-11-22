@@ -42,10 +42,7 @@ docker cp remark42files:/srv/web/ ./backend/app/cmd/
 docker rm -f remark42files
 ```
 
-The assets under `/web` the frontend does not build (`privacy.html`, `markdown-help.html`,
-`400x400.jpeg`, the ghost avatar, the sign-in provider icons, the emoji table `emoji.json`, the message catalogues `<locale>.json`, the widget document `iframe.html`, the demo, counter, last-comments, deleteme and comments pages and the `counter.mjs` script) come from `backend/app/webassets/assets` and are embedded in the binary, so the copy
-above neither covers them nor needs to. At runtime a file of the same name under `web-root` /
-`REMARK_WEB_ROOT` is served in preference to the embedded one.
+The assets under `/web` the frontend does not build (`privacy.html`, `markdown-help.html`, `400x400.jpeg`, the ghost avatar, the sign-in provider icons, the emoji table `emoji.json`, the message catalogues `<locale>.json`, the widget document `iframe.html`, the demo, counter, last-comments, deleteme and comments pages and the `counter.mjs` script) come from `backend/app/webassets/assets` and are embedded in the binary, so the copy above neither covers them nor needs to. At runtime a file of the same name under `web-root` / `REMARK_WEB_ROOT` is served in preference to the embedded one.
 
 To run backend - `cd backend; go run app/main.go server --dbg --secret=12345 --url=http://127.0.0.1:8080 --admin-passwd=password --site=remark`. It starts backend service with embedded bolt store on port `8080` with basic auth, allowing to authenticate and run requests directly, like this:
 
