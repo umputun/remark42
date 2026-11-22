@@ -49,4 +49,7 @@ LABEL org.opencontainers.image.authors="Umputun <umputun@gmail.com>" \
 COPY --from=build /site/build /srv/site
 EXPOSE 8080
 USER app
-ENTRYPOINT ["/srv/reproxy", "--assets.location=/srv/site", "--assets.not-found=404.html"]
+# the stylesheet and the script carry a hash of their content in their names, so they can be kept
+# for a year; everything else is asked for again after an hour
+ENTRYPOINT ["/srv/reproxy", "--assets.location=/srv/site", "--assets.not-found=404.html", \
+    "--assets.cache=1h", "--assets.cache=text/css:8760h", "--assets.cache=text/javascript:8760h"]
