@@ -1,5 +1,7 @@
 ---
 title: Frontend Development Guidelines
+aliases:
+  - /docs/contributing/development/frontend/
 ---
 
 ## Prerequisites

@@ -3,6 +3,7 @@ title: Installation
 aliases:
   - /docs/getting-started/
   - /docs/
+  - /docs/getting-started/system-requirements/
 ---
 
 ## System Requirements

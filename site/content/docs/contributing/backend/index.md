@@ -2,6 +2,9 @@
 title: Backend Development Guidelines
 aliases:
   - /docs/contributing/
+  - /docs/contributing/development/
+  - /docs/contributing/development/backend/
+  - /docs/contributing/technical-details/
 ---
 
 You can use a fully functional local version to develop and test both frontend and backend. It requires at least 2GB RAM or swap enabled.

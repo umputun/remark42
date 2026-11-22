@@ -2,6 +2,8 @@
 title: Automatic and Manual Backup
 aliases:
   - /docs/backup/
+  - /docs/backup/automatic/
+  - /docs/backup/manual/
 ---
 
 ## Automatic
