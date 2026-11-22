@@ -1006,6 +1006,81 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, status, "blocked user can't post, %s", body)
 }
 
+// a token in the query is not read at all, so a URL that carries one, requested by a reader's
+// browser with that reader's cookies, can neither sign the reader out nor stand in for a session
+func TestServerApp_QueryTokenIgnored(t *testing.T) {
+	app := startServerApp(t, nil)
+
+	tkService := app.restSrv.Authenticator.TokenService()
+	tkService.TokenDuration = time.Hour
+	sessionToken := func(id, tokenID string) string {
+		tk, err := tkService.Token(token.Claims{
+			ID:        tokenID,
+			Audience:  jwt.ClaimStrings{"remark"},
+			Issuer:    "remark",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			User:      &token.User{ID: id, Name: id},
+		})
+		require.NoError(t, err)
+		return tk
+	}
+	reader, commenter := sessionToken("github_reader", "reader-token-id"), sessionToken("github_commenter", "commenter-token-id")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	// do sends a request with the given headers and returns the status, the Set-Cookie lines and the body
+	do := func(method, path string, headers map[string]string) (int, []string, string) {
+		t.Helper()
+		req, err := http.NewRequest(method, fmt.Sprintf("http://localhost:%d%s", app.Port, path), http.NoBody)
+		require.NoError(t, err)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header.Values("Set-Cookie"), string(b)
+	}
+
+	// the commenter's delete-me token is signed like a session and rejected by the validator
+	status, _, body := do(http.MethodPost, "/api/v1/deleteme?site=remark", map[string]string{"X-JWT": commenter})
+	require.Equal(t, http.StatusOK, status, body)
+	deleteMe := struct {
+		Token string `json:"token"`
+	}{}
+	require.NoError(t, json.Unmarshal([]byte(body), &deleteMe))
+	require.NotEmpty(t, deleteMe.Token)
+
+	// the reader's browser, asked for a URL that somebody else wrote
+	asReader := map[string]string{"Cookie": "JWT=" + reader + "; XSRF-TOKEN=reader-token-id", "X-XSRF-TOKEN": "reader-token-id"}
+
+	status, cookies, body := do(http.MethodGet, "/api/v1/user?site=remark", asReader)
+	require.Equal(t, http.StatusOK, status, body)
+	require.Contains(t, body, "github_reader")
+	require.Empty(t, cookies)
+
+	for _, path := range []string{"/api/v1/config?site=remark", "/api/v1/user?site=remark"} {
+		status, cookies, body = do(http.MethodGet, path+"&jwt="+deleteMe.Token, asReader)
+		assert.Equal(t, http.StatusOK, status, "%s: %s", path, body)
+		assert.Empty(t, cookies, "%s: a rejected token in the query must not expire the reader's cookies", path)
+	}
+
+	status, _, body = do(http.MethodGet, "/api/v1/user?site=remark&jwt="+commenter, asReader)
+	assert.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, "github_reader", "the reader stays the reader, whatever token the URL carries")
+
+	status, _, body = do(http.MethodGet, "/api/v1/user?site=remark&jwt="+commenter, nil)
+	assert.Equal(t, http.StatusUnauthorized, status, "a token in the query is not a session, %s", body)
+
+	// the sign-out of an OAuth provider wants the session it ends, and a token in the URL is not one
+	status, cookies, body = do(http.MethodGet, "/auth/logout?jwt="+commenter, map[string]string{"Cookie": asReader["Cookie"]})
+	assert.Equal(t, http.StatusForbidden, status, body)
+	assert.Empty(t, cookies, "a sign-out request without the reader's XSRF header must not end the session")
+}
+
 func TestServerCommand_parseSameSite(t *testing.T) {
 	tbl := []struct {
 		inp string
