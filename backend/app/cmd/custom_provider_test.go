@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,45 +21,91 @@ import (
 func TestCustomProviderUser(t *testing.T) {
 	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
 
+	// user maps the user info the way a sign-in does: raw is the provider's answer, decoded as the auth library decodes it
+	user := func(t *testing.T, raw string) token.User {
+		t.Helper()
+		data := provider.UserData{}
+		require.NoError(t, json.Unmarshal([]byte(raw), &data))
+		return customProviderUser("oidc", data, []byte(raw), cfg)
+	}
+
 	tbl := []struct {
 		name   string
-		data   provider.UserData
-		wantID string
+		raw    string
+		wantID string // "oidc_" and the sha1 of the value the comment names
 	}{
-		{name: "string id", data: provider.UserData{"sub": "alice"}, wantID: "oidc_522b276a356bdf39013dfabea2cd43e141ecc9e8"},
-		{name: "id spelling the hash of another id is hashed like any other",
-			data: provider.UserData{"sub": "522b276a356bdf39013dfabea2cd43e141ecc9e8"}, wantID: "oidc_c7ce375e45f37b15ba20069e4c26e87af25a6523"},
-		{name: "upper case of the same", data: provider.UserData{"sub": "522B276A356BDF39013DFABEA2CD43E141ECC9E8"},
+		{name: "string id", raw: `{"sub":"alice"}`, wantID: "oidc_522b276a356bdf39013dfabea2cd43e141ecc9e8"}, // alice
+		{name: "id spelling the hash of another id is hashed like any other", // the 40 digits themselves
+			raw: `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8"}`, wantID: "oidc_c7ce375e45f37b15ba20069e4c26e87af25a6523"},
+		{name: "upper case of the same", raw: `{"sub":"522B276A356BDF39013DFABEA2CD43E141ECC9E8"}`,
 			wantID: "oidc_b6220e9cb64f2e437618cfd856929546b09d8785"},
-		{name: "number as the user info decoder formats it", data: provider.UserData{"sub": float64(1345027)},
+		{name: "number keeps the id its float64 format gave it", raw: `{"sub":1345027}`, // 1.345027e+06
 			wantID: "oidc_47223acdc4a7f1be1a63d86170214b93687f3f78"},
+		{name: "2^53, the last number in the exact range", raw: `{"sub":9007199254740992}`, // 9.007199254740992e+15
+			wantID: "oidc_98edf1480c6e895258353c95a2d945fb7ebe7af2"},
+		{name: "number beyond 2^53 is taken with all its digits", raw: `{"sub":1152921504606846977}`, // 1152921504606846977
+			wantID: "oidc_ed2bdf22707789b16a97f0574256ba2efb391b92"},
+		{name: "the next id, the same float64, gets an id of its own", raw: `{ "sub" : 1152921504606846980 }`, // 1152921504606846980
+			wantID: "oidc_8be46ce66310773dbc100bb46a80509a1f8c21a0"},
+		{name: "string of digits beyond 2^53 is a string", raw: `{"sub":"1152921504606846977"}`,
+			wantID: "oidc_ed2bdf22707789b16a97f0574256ba2efb391b92"},
 	}
 
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.wantID, customProviderUser("oidc", tt.data, cfg).ID)
+			assert.Equal(t, tt.wantID, user(t, tt.raw).ID)
 		})
 	}
 
 	t.Run("fields", func(t *testing.T) {
-		user := customProviderUser("oidc", provider.UserData{"sub": "alice", "name": "Alice", "email": "a@example.com",
-			"picture": "https://example.com/a.png"}, cfg)
-		assert.Equal(t, "Alice", user.Name)
-		assert.Equal(t, "a@example.com", user.Email)
-		assert.Equal(t, "https://example.com/a.png", user.Picture)
+		u := user(t, `{"sub":"alice","name":"Alice","email":"a@example.com","picture":"https://example.com/a.png"}`)
+		assert.Equal(t, "Alice", u.Name)
+		assert.Equal(t, "a@example.com", u.Email)
+		assert.Equal(t, "https://example.com/a.png", u.Picture)
 	})
 
 	t.Run("no name", func(t *testing.T) {
-		assert.Equal(t, "noname_522b", customProviderUser("oidc", provider.UserData{"sub": "alice"}, cfg).Name)
+		assert.Equal(t, "noname_522b", user(t, `{"sub":"alice"}`).Name)
 	})
+}
+
+func TestCustomProviderLargeInt(t *testing.T) {
+	tbl := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "beyond 2^53", raw: `{"id":9007199254740993}`, want: "9007199254740993"},
+		{name: "negative beyond 2^53", raw: `{"id":-9007199254740993}`, want: "-9007199254740993"},
+		{name: "beyond int64", raw: `{"id":123456789012345678901234567890}`, want: "123456789012345678901234567890"},
+		{name: "spaces around the value", raw: "{\"id\" :\n 9007199254740993 }", want: "9007199254740993"},
+		{name: "2^53", raw: `{"id":9007199254740992}`, want: ""},
+		{name: "small", raw: `{"id":42}`, want: ""},
+		{name: "string", raw: `{"id":"9007199254740993"}`, want: ""},
+		{name: "fraction", raw: `{"id":9007199254740993.5}`, want: ""},
+		{name: "exponent", raw: `{"id":1e30}`, want: ""},
+		{name: "null", raw: `{"id":null}`, want: ""},
+		{name: "object", raw: `{"id":{"n":9007199254740993}}`, want: ""},
+		{name: "another field", raw: `{"uid":9007199254740993}`, want: ""},
+		{name: "not an object", raw: `[9007199254740993]`, want: ""},
+		{name: "no user info", raw: ``, want: ""},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, customProviderLargeInt([]byte(tt.raw), "id"))
+		})
+	}
 }
 
 // TestServerApp_CustomOAuthProviderSignIn signs users in through the custom provider and checks the
 // id each of them gets, as the session token carries it
 func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 	idp := newCustomOAuthStub(t, map[string]string{
-		"alice":         `{"sub":"alice","name":"Alice"}`,
-		"hash-of-alice": `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8","name":"Mallory"}`,
+		"alice":           `{"sub":"alice","name":"Alice"}`,
+		"hash-of-alice":   `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8","name":"Mallory"}`,
+		"large-number":    `{"sub":1152921504606846977,"name":"Carol"}`,
+		"the-next-number": `{"sub":1152921504606846980,"name":"Dave"}`,
 	})
 	app := startCustomOAuthApp(t, idp, nil)
 
@@ -71,6 +119,16 @@ func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 		status, userID := customOAuthSignIn(t, app, "hash-of-alice", "")
 		require.Equal(t, http.StatusOK, status)
 		assert.Equal(t, "oidc_c7ce375e45f37b15ba20069e4c26e87af25a6523", userID)
+	})
+
+	t.Run("numbers a float64 can't tell apart get ids of their own", func(t *testing.T) {
+		status, userID := customOAuthSignIn(t, app, "large-number", "")
+		require.Equal(t, http.StatusOK, status)
+		assert.Equal(t, "oidc_ed2bdf22707789b16a97f0574256ba2efb391b92", userID)
+
+		status, userID = customOAuthSignIn(t, app, "the-next-number", "")
+		require.Equal(t, http.StatusOK, status)
+		assert.Equal(t, "oidc_8be46ce66310773dbc100bb46a80509a1f8c21a0", userID)
 	})
 }
 

@@ -504,12 +504,12 @@ func TestIsValidCustomProviderName(t *testing.T) {
 func TestCustomProviderSourceID(t *testing.T) {
 	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
 
-	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
-	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
-	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
-	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
-	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
-	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, nil, cfg))
+	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, nil, cfg))
+	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, nil, cfg))
+	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, nil, cfg))
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {

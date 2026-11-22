@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/big"
 	"net"
 	"net/http"
 	"net/url"
@@ -489,8 +490,12 @@ var reservedCustomProviderNames = []string{
 
 var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
-	sourceID := cmp.Or(data.Value(cfg.IDField), data.Value(cfg.EmailField), data.Value(cfg.NameField), data.Value(cfg.PictureField))
+// customProviderSourceID returns the value identifying a user at the custom OAuth2 provider. raw is
+// the user info as the provider sent it and data the same decoded. An id sent as a whole number too
+// large for a float64 to hold exactly is taken from raw, with all its digits.
+func customProviderSourceID(data provider.UserData, raw []byte, cfg CustomAuthGroup) string {
+	sourceID := cmp.Or(customProviderLargeInt(raw, cfg.IDField), data.Value(cfg.IDField), data.Value(cfg.EmailField),
+		data.Value(cfg.NameField), data.Value(cfg.PictureField))
 	if sourceID == "" {
 		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
 		payload, err := json.Marshal(data)
@@ -503,13 +508,36 @@ func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string 
 	return sourceID
 }
 
-// customProviderUser maps the user info of the custom OAuth2 provider to a user. The id is the
-// provider name and the sha1 of the value identifying the user at the provider. That value is always
-// hashed, also when it looks like a sha1 digest already: token.HashID returns such a value as it is,
-// and a user whose identifier at the provider spells the hash of another user's would get that
-// user's id.
-func customProviderUser(name string, data provider.UserData, cfg CustomAuthGroup) token.User {
-	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(customProviderSourceID(data, cfg)))) //nolint:gosec // stable id, not a secret
+// maxExactFloatInt is 2^53: every whole number up to it, of either sign, is a float64 of its own,
+// and above it several share one
+var maxExactFloatInt = new(big.Int).Lsh(big.NewInt(1), 53)
+
+// customProviderLargeInt returns the digits of a top-level field of the user info when the provider
+// sent it as a whole number beyond 2^53, and an empty string for anything else. The user info is
+// decoded with numbers as float64, where such numbers lose their last digits, so that adjacent
+// ids of different users read as one. A number within the exact range is left to the decoded value,
+// formatted as it always was, 1345027 as "1.345027e+06": users keep the id that format gave them.
+func customProviderLargeInt(raw []byte, field string) string {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return ""
+	}
+	// only a plain integer literal parses here, a string comes with its quotes
+	n, ok := new(big.Int).SetString(string(fields[field]), 10)
+	if !ok || n.CmpAbs(maxExactFloatInt) <= 0 {
+		return ""
+	}
+	return n.String()
+}
+
+// customProviderUser maps the user info of the custom OAuth2 provider to a user: raw is what the
+// provider sent and data the same decoded. The id is the provider name and the sha1 of the value
+// identifying the user at the provider. That value is always hashed, also when it looks like a sha1
+// digest already: token.HashID returns such a value as it is, and a user whose identifier at the
+// provider spells the hash of another user's would get that user's id.
+func customProviderUser(name string, data provider.UserData, raw []byte, cfg CustomAuthGroup) token.User {
+	sourceID := customProviderSourceID(data, raw, cfg)
+	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(sourceID))) //nolint:gosec // stable id, not a secret
 	user := token.User{
 		ID:      name + "_" + hashID,
 		Name:    data.Value(cfg.NameField),
@@ -1106,8 +1134,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 			},
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
-			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				return customProviderUser(customName, data, s.Auth.Custom)
+			MapUserFn: func(data provider.UserData, raw []byte) token.User {
+				return customProviderUser(customName, data, raw, s.Auth.Custom)
 			},
 		})
 	}
