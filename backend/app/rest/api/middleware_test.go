@@ -389,6 +389,57 @@ func Test_validEmailAuth(t *testing.T) {
 	}
 }
 
+func Test_singleAuthPath(t *testing.T) {
+	registered := func(name string) bool { return name == "email" || name == "github" }
+
+	tbl := []struct {
+		path   string
+		status int
+	}{
+		{"/auth/status", http.StatusOK},
+		{"/auth/user", http.StatusOK},
+		{"/auth/list", http.StatusOK},
+		{"/auth/logout", http.StatusOK},
+		{"/auth/email/login", http.StatusOK},
+		{"/auth/github/login", http.StatusOK},
+		{"/auth/github/callback", http.StatusOK},
+		// in front of an endpoint
+		{"/auth/x/email/login", http.StatusNotFound},
+		{"/auth/1/2/email/login", http.StatusNotFound},
+		{"/auth/x%2Femail/login", http.StatusNotFound},
+		{"/auth/email%2Flogin/login", http.StatusNotFound},
+		{"/auth/x/status", http.StatusNotFound},
+		{"/auth/x/list", http.StatusNotFound},
+		{"/auth/x/logout", http.StatusNotFound},
+		// a provider in front of a call that has none
+		{"/auth/email/status", http.StatusNotFound},
+		{"/auth/email/user", http.StatusNotFound},
+		{"/auth/github/list", http.StatusNotFound},
+		{"/auth/github/logout", http.StatusNotFound},
+		// a provider's call without the provider, which the handler would read from the mount point
+		{"/auth/login", http.StatusNotFound},
+		{"/auth/callback", http.StatusNotFound},
+		// after an endpoint
+		{"/auth/email/login/", http.StatusNotFound},
+		{"/auth/status/", http.StatusNotFound},
+		// no endpoint
+		{"/auth/", http.StatusNotFound},
+		{"/auth/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/email/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/twitter/login", http.StatusNotFound}, // not registered
+		{"/auth/EMAIL/login", http.StatusNotFound},   // the handler matches the name exactly too
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "http://example.com"+tt.path+"?site=remark42", http.NoBody)
+			w := httptest.NewRecorder()
+			singleAuthPath(registered)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+			assert.Equal(t, tt.status, w.Code)
+		})
+	}
+}
+
 // regression: a rejected login printed the user, address or site as typed, which can be an email address
 func Test_validEmailAuthLogHidesEmail(t *testing.T) {
 	logs := &lockedBuffer{}

@@ -211,6 +211,12 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 	}
 }
 
+// authProviderRegistered reports whether the authenticator has a sign-in provider of that name
+func (s *Rest) authProviderRegistered(name string) bool {
+	_, err := s.Authenticator.Provider(name)
+	return err == nil
+}
+
 func (s *Rest) routes() http.Handler {
 	if s.openRouteLimiter == 0 {
 		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
@@ -255,10 +261,11 @@ func (s *Rest) routes() http.Handler {
 		r.Use(authCookies)
 		r.Use(R.Timeout(5 * time.Second))
 		// sign-in and sign-out are not for an image or another embedded resource. Refused ahead of
-		// the limiter, so such requests do not use up what it allows the reader's own
-		r.Use(logInfoWithBody, rejectEmbedded, rateLimiter(2), R.NoCache)
+		// the limiter, so such requests do not use up what it allows the reader's own. singleAuthPath
+		// also goes ahead of the limiter and of validEmailAuth, which both go by the path
+		r.Use(logInfoWithBody, rejectEmbedded, singleAuthPath(s.authProviderRegistered), rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
-		r.Handle("/auth/", authHandler)
+		r.Handle(authRoutePrefix, authHandler)
 	})
 
 	// avatars are served at the root, where pictures stored by older versions point, and under the api

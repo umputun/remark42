@@ -68,6 +68,8 @@ const (
 - `GET /auth/list` - list of enabled providers
 - `GET /auth/logout` - logout
 
+Any other path under `/auth/` gets 404, apart from `/auth/{provider}/callback`, where a provider sends the user back.
+
 ## Commenting
 
 - `POST /api/v1/comment?site=site-id` - add a comment, _auth required_. A reply sets `pid` to the ID of the comment it answers, which must be a comment on the same post; otherwise the request is rejected with status 400. The body carries Markdown in `text`, the post's `locator`, and optionally `pid` and `title`; the server sets the other fields itself, `orig` included. Except for the Basic-auth admin, `locator.site` has to be the user's site. Returns status 201 with the stored `Comment`. A blocked user or a read-only post gets 403. The text gets 400 when it is empty, when its length in Unicode code points is outside `MIN_COMMENT_SIZE` and `MAX_COMMENT_SIZE` (2048 when that is 0 or less), or when a non-empty Markdown link or image destination does not start with `http://`, `https://` or `mailto:`

@@ -389,6 +389,37 @@ func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
 	})
 }
 
+// TestRest_AuthEndpointsHaveOnePath checks that the auth handler answers each of its endpoints
+// under one path only. The limiter of the auth routes and validEmailAuth both go by the path
+func TestRest_AuthEndpointsHaveOnePath(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	get := func(path string) int {
+		t.Helper()
+		resp, err := client.Get(ts.URL + path)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// startupT registers "email" as a provider that signs in anyone with a user name and a password
+	const login = "/email/login?user=someone&passwd=password&aud=remark42"
+	assert.Equal(t, http.StatusOK, get("/auth"+login), "the sign-in under its own path")
+	assert.Equal(t, http.StatusOK, get("/auth/status"))
+
+	for _, path := range []string{
+		"/auth/x" + login, "/auth/1/2" + login, "/auth/x%2Femail/login?user=someone&passwd=password&aud=remark42",
+		"/auth/email/login/?user=someone&passwd=password&aud=remark42", "/auth/nobody" + strings.TrimPrefix(login, "/email"),
+		"/auth/x/status", "/auth/x/user", "/auth/x/list", "/auth/x/logout",
+		"/auth/email/status", "/auth/email/user", "/auth/email/list", "/auth/email/logout",
+	} {
+		assert.Equal(t, http.StatusNotFound, get(path), path)
+	}
+}
+
 // regression: a browser holding cached admin basic credentials replayed them for a cross-site page
 func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
 	ts, _, teardown := startupT(t)
