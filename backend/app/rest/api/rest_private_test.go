@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -926,6 +927,123 @@ func TestRest_UpdateBlockedUser(t *testing.T) {
 	cr, err = srv.DataService.Get(locator, id, store.User{})
 	require.NoError(t, err)
 	assert.True(t, cr.Deleted)
+}
+
+func TestRest_UpdateReadOnlyPost(t *testing.T) {
+	var rendered atomic.Int32
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
+			rendered.Add(1)
+			return text
+		}))
+	})
+	defer teardown()
+
+	put := func(tkn string, locator store.Locator, id, body string) (code int, respBody string) {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, locator.URL), strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		rb, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(rb)
+	}
+	// comments are stored directly: a post closed by age takes none through the API
+	create := func(locator store.Locator, user store.User, ts time.Time) string {
+		id, err := srv.DataService.Create(store.Comment{Text: "<p>original text</p>\n", Orig: "original text",
+			Locator: locator, User: user, Timestamp: ts})
+		require.NoError(t, err)
+		return id
+	}
+	dev := store.User{ID: "provider1_dev", Name: "developer one"}
+	admin := store.User{ID: "github_ef0f706a7", Name: "Umputun", Admin: true}
+
+	tbl := []struct {
+		name    string
+		locator store.Locator
+		before  func(t *testing.T, locator store.Locator) // runs before the two comments are stored
+		after   func(t *testing.T, locator store.Locator) // runs after it
+	}{
+		{name: "closed by an admin", locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/closed"},
+			after: func(t *testing.T, locator store.Locator) {
+				require.NoError(t, srv.DataService.SetReadOnly(locator, true))
+			}},
+		{name: "closed by age", locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/old"},
+			before: func(_ *testing.T, locator store.Locator) {
+				// the test server closes a post ten days after its first comment
+				create(locator, store.User{ID: "provider1_other", Name: "other"}, time.Now().AddDate(0, 0, -11))
+			}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.before != nil {
+				tt.before(t, tt.locator)
+			}
+			devID := create(tt.locator, dev, time.Now())
+			adminID := create(tt.locator, admin, time.Now())
+			if tt.after != nil {
+				tt.after(t, tt.locator)
+			}
+			info, err := srv.DataService.Info(tt.locator, srv.ReadOnlyAge)
+			require.NoError(t, err)
+			require.True(t, info.ReadOnly, "the post is closed")
+
+			rendered.Store(0)
+			code, body := put(devToken, tt.locator, devID, `{"text":"updated text", "summary":"my edit"}`)
+			assert.Equal(t, http.StatusForbidden, code, body)
+			assert.Equal(t, `{"code":8,"details":"old post, read-only","error":"rejected"}`+"\n", body)
+			assert.Zero(t, rendered.Load(), "a refused edit is not rendered")
+			c, err := srv.DataService.Get(tt.locator, devID, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "<p>original text</p>\n", c.Text, "a comment on a closed post is not edited")
+			assert.Nil(t, c.Edit)
+
+			code, body = put(adminUmputunToken, tt.locator, adminID, `{"text":"updated text", "summary":"my edit"}`)
+			assert.Equal(t, http.StatusOK, code, "an admin still edits their comment on a closed post: %s", body)
+			c, err = srv.DataService.Get(tt.locator, adminID, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "<p>updated text</p>\n", c.Text)
+
+			code, body = put(devToken, tt.locator, devID, `{"delete": true}`)
+			assert.Equal(t, http.StatusOK, code, "the author still deletes their comment on a closed post: %s", body)
+			c, err = srv.DataService.Get(tt.locator, devID, store.User{})
+			require.NoError(t, err)
+			assert.True(t, c.Deleted)
+		})
+	}
+}
+
+func TestRest_UpdateDeleteDoesNotRenderText(t *testing.T) {
+	var rendered atomic.Int32
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
+			rendered.Add(1)
+			return text
+		}))
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+	put := func(body string) int {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/comment/%s?site=remark42&url=%s", ts.URL, id, postURL), strings.NewReader(body))
+		require.NoError(t, err)
+		resp, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	rendered.Store(0)
+	require.Equal(t, http.StatusOK, put(`{"text":"updated text", "summary":"my edit"}`))
+	require.Positive(t, rendered.Load(), "an edit renders its text")
+
+	rendered.Store(0)
+	require.Equal(t, http.StatusOK, put(`{"delete": true, "text":"text sent with the delete"}`))
+	assert.Zero(t, rendered.Load(), "a delete does not render the text sent with it")
 }
 
 func TestRest_DeleteChildThenParent(t *testing.T) {
