@@ -42,11 +42,12 @@ type Service struct {
 
 	store     Store
 	wg        sync.WaitGroup
-	once      sync.Once      // starts the submitter on the first Submit
-	mu        sync.RWMutex   // Submit sends to submitCh under the read lock, Close closes it under the write lock
-	submitCh  chan submitReq // created by the first Submit
-	done      chan struct{}  // closed by Close, so queued submits commit without waiting out EditDuration
-	closed    chan struct{}  // closed once every submitted image is committed after Close
+	once      sync.Once     // starts the submitter on the first Submit
+	mu        sync.Mutex    // guards queue; Close closes done under it, so nothing is queued after that
+	queue     []submitReq   // submits waiting for the submitter, oldest first; not bounded, so Submit never blocks
+	queued    *sync.Cond    // wakes the submitter when a submit is queued or Close is called
+	done      chan struct{} // closed by Close, so queued submits commit without waiting out EditDuration
+	closed    chan struct{} // closed once every submitted image is committed after Close
 	closeOnce sync.Once
 }
 
@@ -80,8 +81,6 @@ type Store interface {
 	Cleanup(ctx context.Context, ttl time.Duration) error // run removal loop for old images on staging
 }
 
-const submitQueueSize = 5000
-
 type submitReq struct {
 	idsFn func() (ids []string)
 	TS    time.Time
@@ -89,7 +88,9 @@ type submitReq struct {
 
 // NewService returns new Service instance
 func NewService(s Store, p ServiceParams) *Service {
-	return &Service{ServiceParams: p, store: s, done: make(chan struct{}), closed: make(chan struct{})}
+	res := &Service{ServiceParams: p, store: s, done: make(chan struct{}), closed: make(chan struct{})}
+	res.queued = sync.NewCond(&res.mu)
+	return res
 }
 
 // Commit multiple ids immediately
@@ -116,10 +117,10 @@ func (s *Service) Submit(idsFn func() []string) {
 		_ = s.store.ResetCleanupTimer(imgID)
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
 	select {
 	case <-s.done: // closed, nothing is left to wait out EditDuration, so commit right away
+		s.mu.Unlock()
 		if err := s.Commit(idsFn); err != nil {
 			log.Printf("[WARN] image commit error %v", err)
 		}
@@ -129,9 +130,12 @@ func (s *Service) Submit(idsFn func() []string) {
 
 	s.once.Do(func() {
 		log.Printf("[DEBUG] image submitter activated")
-		s.submitCh = make(chan submitReq, submitQueueSize)
 		s.wg.Go(func() {
-			for req := range s.submitCh {
+			for {
+				req, ok := s.nextSubmit()
+				if !ok {
+					break
+				}
 				// wait for EditDuration expiration, Close cuts the wait short
 				select {
 				case <-time.After(time.Until(req.TS.Add(s.EditDuration))):
@@ -144,7 +148,28 @@ func (s *Service) Submit(idsFn func() []string) {
 			log.Printf("[INFO] image submitter terminated")
 		})
 	})
-	s.submitCh <- submitReq{idsFn: idsFn, TS: time.Now()}
+	s.queue = append(s.queue, submitReq{idsFn: idsFn, TS: time.Now()})
+	s.mu.Unlock()
+	s.queued.Signal()
+}
+
+// nextSubmit takes the oldest submit off the queue, waiting for one while the queue is empty.
+// Returns false once Close was called and the queue is empty.
+func (s *Service) nextSubmit() (req submitReq, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for len(s.queue) == 0 {
+		select {
+		case <-s.done:
+			return submitReq{}, false
+		default:
+		}
+		s.queued.Wait()
+	}
+	req = s.queue[0]
+	s.queue[0] = submitReq{} // the backing array stays in use, so don't let it hold on to idsFn
+	s.queue = s.queue[1:]
+	return req, true
 }
 
 // ExtractPictures gets list of images from the doc html and convert from urls to ids, i.e. user/pic.png
@@ -198,13 +223,11 @@ func (s *Service) Info() (StoreInfo, error) {
 func (s *Service) Close(ctx context.Context) {
 	log.Printf("[INFO] close image service ")
 	s.closeOnce.Do(func() {
-		close(s.done) // before taking the lock: a Submit blocked on a full queue holds the read lock until the queue drains
+		s.mu.Lock() // a Submit either queued its request before this or sees done closed
+		close(s.done)
+		s.mu.Unlock()
+		s.queued.Broadcast()
 		go func() {
-			s.mu.Lock()
-			if s.submitCh != nil {
-				close(s.submitCh)
-			}
-			s.mu.Unlock()
 			s.wg.Wait()
 			close(s.closed)
 		}()
