@@ -1006,6 +1006,108 @@ func TestServerAuthHooks(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, status, "blocked user can't post, %s", body)
 }
 
+// TestServerApp_BlockEndsSessionWithExpiredToken covers a session cookie kept from before a block.
+// The token in a cookie is refreshed when it has expired, and the block shows up only in the
+// refreshed claims, so a request with the old cookie has to be refused on those
+func TestServerApp_BlockEndsSessionWithExpiredToken(t *testing.T) {
+	app := startServerApp(t, nil)
+
+	// expiredToken signs a session token of the user that expired a minute ago, with id as its xsrf
+	// token. It is signed as it is: the token service would bring the claims up to date first, and
+	// the token has to say what one issued before the block or the restriction says
+	expiredToken := func(id string, user token.User) string {
+		t.Helper()
+		return signRawToken(t, token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ID:        id,
+				Audience:  jwt.ClaimStrings{"remark"},
+				Issuer:    "remark42",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+			},
+			User: &user,
+		})
+	}
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	// getUser asks who the cookie's user is, as a client that never stores the refreshed cookie
+	getUser := func(id, tkn string) (status int, body string) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/api/v1/user?site=remark", app.Port), http.NoBody)
+		require.NoError(t, err)
+		req.AddCookie(&http.Cookie{Name: "JWT", Value: tkn})
+		req.Header.Set("X-XSRF-TOKEN", id)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	dev := token.User{ID: "github_dev", Name: "developer one"}
+	refreshedBefore, neverRefreshed := expiredToken("id-1", dev), expiredToken("id-2", dev)
+
+	status, body := getUser("id-1", refreshedBefore)
+	require.Equal(t, http.StatusOK, status, "expired token of a user who is not blocked is refreshed, %s", body)
+	status, body = getUser("id-1", refreshedBefore)
+	require.Equal(t, http.StatusOK, status, "and once more, from the refresh cache, %s", body)
+	_, cached := app.authRefreshCache.Get(refreshedBefore)
+	require.True(t, cached, "the refresh of the first cookie is cached")
+	_, cached = app.authRefreshCache.Get(neverRefreshed)
+	require.False(t, cached, "the second cookie has not been refreshed")
+
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=240h", app.Port), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, "user github_dev blocked")
+
+	status, body = getUser("id-1", refreshedBefore)
+	assert.Equal(t, http.StatusUnauthorized, status, "cookie refreshed before the block, its refresh still cached, %s", body)
+	status, body = getUser("id-2", neverRefreshed)
+	assert.Equal(t, http.StatusUnauthorized, status, "cookie not seen since before the block, %s", body)
+	status, body = getUser("id-2", neverRefreshed)
+	assert.Equal(t, http.StatusUnauthorized, status, "the same cookie sent again, %s", body)
+
+	// a token that says blocked stays refused, whatever the store says now, as it is before it expires
+	wasBlocked := token.User{ID: "github_other", Name: "developer two"}
+	wasBlocked.SetBoolAttr("blocked", true)
+	status, body = getUser("id-5", expiredToken("id-5", wasBlocked))
+	assert.Equal(t, http.StatusUnauthorized, status, "expired token issued during a block, the user not blocked any more, %s", body)
+
+	// a name restricted after the cookie was issued is marked as blocked at the refresh only
+	status, body = getUser("id-3", expiredToken("id-3", token.User{ID: "email_1234", Name: "Umputun"}))
+	assert.Equal(t, http.StatusUnauthorized, status, "email user under a restricted name, %s", body)
+	status, body = getUser("id-4", expiredToken("id-4", token.User{ID: "email_5678", Name: "somebody"}))
+	assert.Equal(t, http.StatusOK, status, "email user under another name, %s", body)
+}
+
+func TestTokenExpired(t *testing.T) {
+	claims := func(exp *jwt.NumericDate) token.Claims {
+		return token.Claims{RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: exp}, User: &token.User{ID: "user"}}
+	}
+	svc := token.NewService(token.Opts{SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil })})
+
+	for name, c := range map[string]token.Claims{
+		"expired":   claims(jwt.NewNumericDate(time.Now().Add(-time.Minute))),
+		"valid":     claims(jwt.NewNumericDate(time.Now().Add(time.Minute))),
+		"no expiry": claims(nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, svc.IsExpired(c), tokenExpired(c), "the same answer as the token service gives")
+		})
+	}
+	assert.True(t, tokenExpired(claims(jwt.NewNumericDate(time.Now().Add(-time.Minute)))))
+	assert.False(t, tokenExpired(claims(jwt.NewNumericDate(time.Now().Add(time.Minute)))))
+	assert.False(t, tokenExpired(claims(nil)))
+}
+
 // a token in the query is not read at all, so a URL that carries one, requested by a reader's
 // browser with that reader's cookies, can neither sign the reader out nor stand in for a session
 func TestServerApp_QueryTokenIgnored(t *testing.T) {
