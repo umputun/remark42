@@ -2278,28 +2278,28 @@ func TestService_DoubleClose_Static(t *testing.T) {
 
 func TestService_ApproveComments(t *testing.T) {
 	c1 := store.Comment{
-		ID:        "id-1",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-		Approved:  false,
+		ID:              "id-1",
+		Text:            `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp:       time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
+		Locator:         store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:            store.User{ID: "user1", Name: "user name"},
+		PendingApproval: false,
 	}
 	c2 := store.Comment{
-		ID:        "id-2",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 25, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-		Approved:  false,
+		ID:              "id-2",
+		Text:            `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp:       time.Date(2017, 12, 20, 15, 25, 22, 0, time.Local),
+		Locator:         store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:            store.User{ID: "user1", Name: "user name"},
+		PendingApproval: false,
 	}
 	c3 := store.Comment{
-		ID:        "id-3",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 28, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-		Approved:  false,
+		ID:              "id-3",
+		Text:            `some text, <a href="http://radio-t.com">link</a>`,
+		Timestamp:       time.Date(2017, 12, 20, 15, 28, 22, 0, time.Local),
+		Locator:         store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:            store.User{ID: "user1", Name: "user name"},
+		PendingApproval: false,
 	}
 	engineMock := engine.InterfaceMock{
 		// Get single comment by id so that I can grab the user
@@ -2319,9 +2319,9 @@ func TestService_ApproveComments(t *testing.T) {
 		},
 	}
 	svc := DataStore{Engine: &engineMock}
-	c, err := svc.ApproveComments(store.Locator{URL: "myURl", SiteID: "myId"}, "id-1", true)
+	c, err := svc.ApproveComments(store.Locator{URL: "myURl", SiteID: "myId"}, "id-1", true, true)
 	assert.NoError(t, err)
-	assert.Equal(t, true, c.Approved)
+	assert.Equal(t, true, !c.PendingApproval)
 }
 
 // makes new boltdb, put two records

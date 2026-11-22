@@ -331,5 +331,5 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
 	log.Printf("[INFO] returning comment %+v", comment)
-	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": comment.PendingApproval})
+	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": !comment.PendingApproval})
 }

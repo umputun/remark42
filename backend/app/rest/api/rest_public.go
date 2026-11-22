@@ -103,9 +103,13 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 			comments = []store.Comment{} // error should clear comments and continue for post info
 		}
 
-		if s.premoderation != PremoderationNone && !user.Admin {
-			log.Printf("[DEBUG] premoderation enabled and user is not admin. Hiding unapproved comments")
-			comments = filterComments(comments, func(c store.Comment) bool { return c.Approved })
+		switch s.premoderation {
+		case PremoderationFirst, PremoderationAll:
+			if !user.Admin {
+				log.Printf("[DEBUG] premoderation enabled (%s) and user is not admin. Hiding comments", s.premoderation)
+				comments = filterComments(comments, func(c store.Comment) bool { return !c.PendingApproval || c.User.ID == user.ID })
+			}
+		default:
 		}
 
 		comments = s.applyView(comments, view)
@@ -118,7 +122,7 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		if !since.IsZero() { // if since is set, number of comments can be different from total in the DB
 			commentsInfo.Count = 0
 			for _, c := range comments {
-				if !c.Deleted {
+				if !c.Deleted && !c.PendingApproval {
 					commentsInfo.Count++
 				}
 			}
@@ -177,7 +181,8 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 	key := cache.NewKey(siteID).ID(urlKey(r, true)).Scopes(lastCommentsScope, lastVotesScope)
 	s.cachedJSON(w, r, key, func() (any, error) {
-		comments, e := s.dataService.Last(siteID, limit, sinceTime, rest.GetUserOrEmpty(r))
+		user := rest.GetUserOrEmpty(r)
+		comments, e := s.dataService.Last(siteID, limit, sinceTime, user)
 		if e != nil {
 			return nil, e
 		}
@@ -187,7 +192,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
 		filters := []func(c store.Comment) bool{deleteFilter}
 		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
-			approvedFilter := func(c store.Comment) bool { return c.Approved }
+			approvedFilter := func(c store.Comment) bool { return !c.PendingApproval || user.ID == c.User.ID }
 			filters = append(filters, approvedFilter)
 		}
 		// we don't want to leak unapproved comments
@@ -250,7 +255,7 @@ func (s *public) findUserCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		deleteFilter := func(c store.Comment) bool { return !c.Deleted }
 		filters := []func(c store.Comment) bool{deleteFilter}
 		if s.premoderation != PremoderationNone && !rest.GetUserOrEmpty(r).Admin {
-			approvedFilter := func(c store.Comment) bool { return c.Approved }
+			approvedFilter := func(c store.Comment) bool { return !c.PendingApproval || c.User.ID == userID }
 			filters = append(filters, approvedFilter)
 		}
 		// we don't want to leak unapproved comments

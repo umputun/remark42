@@ -1373,7 +1373,7 @@ func TestAdmin_ApproveComments(t *testing.T) {
 
 	id1, err := srv.DataService.Create(c1)
 	assert.NoError(t, err)
-	assert.Equal(t, false, c1.Approved)
+	assert.Equal(t, false, c1.PendingApproval)
 
 	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
 	require.NoError(t, err)
@@ -1392,7 +1392,7 @@ func TestAdmin_ApproveComments(t *testing.T) {
 	err = decoder.Decode(&c)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, true, c.Approved)
+	assert.Equal(t, true, c.PendingApproval)
 	t.Logf("Approve comment response: %+v", c)
 }
 
@@ -1415,9 +1415,9 @@ func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	id3, err := srv.DataService.Create(c3)
 	assert.NoError(t, err)
 
-	assert.Equal(t, false, c1.Approved)
-	assert.Equal(t, false, c2.Approved)
-	assert.Equal(t, false, c3.Approved)
+	assert.Equal(t, false, c1.PendingApproval)
+	assert.Equal(t, false, c2.PendingApproval)
+	assert.Equal(t, false, c3.PendingApproval)
 
 	req, err := http.NewRequest("PUT", ts.URL+"/api/v1/admin/comment/"+id1+"/approve?site=remark42&url=https://radio-t.com/blah", http.NoBody)
 	require.NoError(t, err)
@@ -1434,17 +1434,17 @@ func TestAdmin_ApprovePreviousComments(t *testing.T) {
 	err = decoder.Decode(&c)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, true, c.Approved)
+	assert.Equal(t, true, c.PendingApproval)
 	t.Logf("Approve comment response: %+v", c)
 
 	// given our moderation strategy ensure that also other comments have been approved
 	c2, err = srv.pubRest.dataService.Get(c2.Locator, id2, c2.User)
 	t.Logf("c2: %+v", c2)
 	assert.NoError(t, err)
-	assert.Equal(t, true, c2.Approved)
+	assert.Equal(t, true, c2.PendingApproval)
 
 	c3, err = srv.pubRest.dataService.Get(c3.Locator, id3, c3.User)
 	t.Logf("c3: %+v", c3)
 	assert.NoError(t, err)
-	assert.Equal(t, true, c3.Approved)
+	assert.Equal(t, true, c3.PendingApproval)
 }

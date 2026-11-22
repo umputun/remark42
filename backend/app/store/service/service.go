@@ -646,23 +646,25 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 // ApproveComments sets the approved status on comments. The boolean approvePrevious defines
 // whether or not previous message should be approved as well.
 // Returns the approved message.
-func (s *DataStore) ApproveComments(locator store.Locator, commentID string, approvePrevious bool) (comment store.Comment, err error) {
+func (s *DataStore) ApproveComments(locator store.Locator, commentID string, approveStatus bool, approvePrevious bool) (comment store.Comment, err error) {
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return comment, err
 	}
 
-	weAreDeApproving := comment.Approved // we are disapproving as the current state of the triggering comment is approved
-	// we want to disapprove a single comment, not all of them.
-	if !approvePrevious || weAreDeApproving {
-		comment.Approved = !comment.Approved // we always want to approve the one the method was called against
-		err = s.Engine.Update(comment)
+	comment.PendingApproval = !approveStatus
+	err = s.Engine.Update(comment)
+	if err != nil {
 		return comment, err
+	}
+
+	if !approvePrevious || !approveStatus {
+		return comment, nil
 	}
 
 	// grab the user and all his messages
 	user := comment.User
-	comments, err := s.Find(locator, "-time", user) // fixme this is returning all comments rather than those created by that specific user
+	comments, err := s.Find(locator, "-time", user)
 	if err != nil {
 		return comment, err
 	}
@@ -673,8 +675,8 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 		if c.User.ID != user.ID {
 			continue
 		}
-		if !c.Approved {
-			c.Approved = true
+		if c.PendingApproval {
+			c.PendingApproval = false
 			err = s.Engine.Update(c)
 			if err != nil {
 				return store.Comment{}, err // perf: we might want to ignore/collect errors?

@@ -14,24 +14,24 @@ import (
 
 // Comment represents a single comment with optional reference to its parent
 type Comment struct {
-	ID          string                 `json:"id" bson:"_id"`
-	ParentID    string                 `json:"pid"`
-	Text        string                 `json:"text"`
-	Orig        string                 `json:"orig,omitempty"` // important: never render this as HTML! It's not sanitized.
-	User        User                   `json:"user"`
-	Locator     Locator                `json:"locator"`
-	Score       int                    `json:"score"`
-	Votes       map[string]bool        `json:"votes,omitempty"`
-	VotedIPs    map[string]VotedIPInfo `json:"voted_ips,omitempty"` // voted ips (hashes) with TS
-	Vote        int                    `json:"vote"`                // vote for the current user, -1/1/0.
-	Controversy float64                `json:"controversy,omitempty"`
-	Timestamp   time.Time              `json:"time" bson:"time"`
-	Edit        *Edit                  `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
-	Pin         bool                   `json:"pin,omitempty" bson:"pin,omitempty"`
-	Deleted     bool                   `json:"delete,omitempty" bson:"delete"`
-	Imported    bool                   `json:"imported,omitempty" bson:"imported"`
-	PostTitle   string                 `json:"title,omitempty" bson:"title"`
-	Approved    bool                   `json:"approved,omitempty" bson:"approved"`
+	ID              string                 `json:"id" bson:"_id"`
+	ParentID        string                 `json:"pid"`
+	Text            string                 `json:"text"`
+	Orig            string                 `json:"orig,omitempty"` // important: never render this as HTML! It's not sanitized.
+	User            User                   `json:"user"`
+	Locator         Locator                `json:"locator"`
+	Score           int                    `json:"score"`
+	Votes           map[string]bool        `json:"votes,omitempty"`
+	VotedIPs        map[string]VotedIPInfo `json:"voted_ips,omitempty"` // voted ips (hashes) with TS
+	Vote            int                    `json:"vote"`                // vote for the current user, -1/1/0.
+	Controversy     float64                `json:"controversy,omitempty"`
+	Timestamp       time.Time              `json:"time" bson:"time"`
+	Edit            *Edit                  `json:"edit,omitempty" bson:"edit,omitempty"` // pointer to have empty default in json response
+	Pin             bool                   `json:"pin,omitempty" bson:"pin,omitempty"`
+	Deleted         bool                   `json:"delete,omitempty" bson:"delete"`
+	Imported        bool                   `json:"imported,omitempty" bson:"imported"`
+	PostTitle       string                 `json:"title,omitempty" bson:"title"`
+	PendingApproval bool                   `json:"pendingApproval,omitempty" bson:"pendingApproval"`
 }
 
 // Locator keeps site and url of the post
@@ -96,7 +96,7 @@ func (c *Comment) PrepareUntrusted() {
 	c.Pin = false
 	c.Deleted = false
 	c.Imported = false
-	c.Approved = false // TODO: check if this actually goes here
+	c.PendingApproval = true
 }
 
 // SetDeleted clears comment info, reset to deleted state. hard flag will clear all user info as well
@@ -110,7 +110,7 @@ func (c *Comment) SetDeleted(mode DeleteMode) {
 	c.Edit = nil
 	c.Deleted = true
 	c.Pin = false
-	c.Approved = false
+	c.PendingApproval = true
 
 	if mode == HardDelete {
 		c.User.Name = "deleted"
