@@ -1175,6 +1175,40 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoFileExists(t, testAvatarDir(srv)+"/42/pic.image", "user's avatar should be removed on deleteme")
 }
 
+func TestAdmin_DeleteMeRequestRejectsExpiredToken(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1 name", ID: "user1"}}
+	_, err := srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ID:        "4567890",
+		Issuer:    "remark42",
+		NotBefore: jwt.NewNumericDate(time.Now().AddDate(0, -4, 0)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+
+	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
+	require.NoError(t, err)
+	assert.Len(t, comments, 1, "an expired link deletes nothing")
+}
+
 // an admin is an admin of the site the session belongs to, so a deletion token for another site
 // served by the same instance must not be processed under that session
 func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
