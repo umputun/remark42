@@ -139,3 +139,37 @@ func TestFS_RelativeReferencesResolve(t *testing.T) {
 		})
 	}
 }
+
+// TestFS_Robots keeps every page under /web out of search results. Each one is the same stock page on
+// every installation, and comments.html takes any site and address in its query, so an indexed copy
+// only multiplies one page under many hosts. The widget document is the exception: it carries
+// indexifembedded as well, which lets Google keep the comments as part of the page that embeds them,
+// and a plain noindex there would drop them.
+func TestFS_Robots(t *testing.T) {
+	robots := regexp.MustCompile(`<meta\s+name="robots"\s+content="([^"]*)"`)
+	want := map[string]string{
+		"comments.html":      "noindex",
+		"counter.html":       "noindex",
+		"deleteme.html":      "noindex",
+		"iframe.html":        "noindex, indexifembedded",
+		"index.html":         "noindex",
+		"last-comments.html": "noindex",
+		"markdown-help.html": "noindex",
+		"privacy.html":       "noindex",
+	}
+
+	pages, err := fs.Glob(FS, "*.html")
+	require.NoError(t, err)
+	require.Len(t, pages, len(want), "a page was added or removed; decide its robots rule here")
+
+	for _, page := range pages {
+		t.Run(page, func(t *testing.T) {
+			b, err := fs.ReadFile(FS, page)
+			require.NoError(t, err)
+
+			rules := robots.FindAllStringSubmatch(string(b), -1)
+			require.Len(t, rules, 1, "%s needs exactly one robots meta tag", page)
+			assert.Equal(t, want[page], rules[0][1])
+		})
+	}
+}
