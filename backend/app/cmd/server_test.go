@@ -1690,6 +1690,45 @@ func TestServerCommand_makeNotifyDestinationsAdminEmailMissing(t *testing.T) {
 	})
 }
 
+// TestServerCommand_makeNotifyDestinationsAvatarURLs covers the pictures in notification emails: the email
+// shows only avatars of this instance, so it must know the prefix the avatar proxy makes pictures with and
+// the root route that pictures stored by older versions point to
+func TestServerCommand_makeNotifyDestinationsAvatarURLs(t *testing.T) {
+	cmd := ServerCommand{RemarkURL: "https://remark42.example.com/"} // a picture URL has no double slash
+	cmd.Notify.Users = []string{"email"}
+	authenticator := cmd.getAuthenticator(nil, avatar.NewLocalFS(t.TempDir()), nil, nil)
+
+	destinations, err := cmd.makeNotifyDestinations(authenticator)
+	require.NoError(t, err)
+	require.Len(t, destinations, 1)
+	e, ok := destinations[0].(*notify.Email)
+	require.True(t, ok, "email destination, got %T", destinations[0])
+
+	picture, err := authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		strings.TrimSuffix(picture, path.Base(picture)), // where the avatar proxy makes pictures
+		"https://remark42.example.com/avatar/",          // where pictures stored by older versions point
+	}, e.AvatarURLs)
+
+	// a host name that is not ASCII: the picture is stored through the URL sanitizer, which escapes the name
+	cmd = ServerCommand{RemarkURL: "https://комменты.example.com"}
+	cmd.Notify.Users = []string{"email"}
+	authenticator = cmd.getAuthenticator(nil, avatar.NewLocalFS(t.TempDir()), nil, nil)
+	destinations, err = cmd.makeNotifyDestinations(authenticator)
+	require.NoError(t, err)
+	require.Len(t, destinations, 1)
+	e, ok = destinations[0].(*notify.Email)
+	require.True(t, ok)
+	picture, err = authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
+	require.NoError(t, err)
+	c := store.Comment{User: store.User{ID: "anonymous_1", Name: "anon", Picture: picture}}
+	c.Sanitize()
+	require.NotEqual(t, picture, c.User.Picture, "the stored picture has the host name escaped")
+	assert.Contains(t, e.AvatarURLs, strings.TrimSuffix(picture, path.Base(picture)), "the picture as the proxy makes it")
+	assert.Contains(t, e.AvatarURLs, strings.TrimSuffix(c.User.Picture, path.Base(c.User.Picture)), "the picture as stored")
+}
+
 func TestServerCommand_makeTelegramNotifyNoChannel(t *testing.T) {
 	cmd := ServerCommand{}
 	cmd.Notify.Admins = []string{"telegram"}

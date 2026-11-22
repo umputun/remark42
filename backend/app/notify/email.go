@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/url"
+	"strings"
 	"time"
 
 	log "github.com/go-pkgz/lgr"
@@ -26,6 +27,7 @@ type EmailParams struct {
 	VerificationTemplatePath string   // path to verification template
 	SubscribeURL             string   // full subscribe handler URL
 	UnsubscribeURL           string   // full unsubscribe handler URL
+	AvatarURLs               []string // URL prefixes of avatars stored by this instance, other user pictures are left out
 
 	TokenGenFn func(userID, email, site string) (string, error) // unsubscribe token generation function
 }
@@ -288,7 +290,7 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 	msg := bytes.Buffer{}
 	tmplData := msgTmplData{
 		UserName:        req.Comment.User.Name,
-		UserPicture:     req.Comment.User.Picture,
+		UserPicture:     e.storedAvatar(req.Comment.User.Picture),
 		CommentText:     emailSafeHTML(req.Comment.Text),
 		CommentLink:     commentURLPrefix + req.Comment.ID,
 		CommentDate:     req.Comment.Timestamp,
@@ -300,7 +302,7 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 	// in case of message to admin, parent message might be empty
 	if req.Comment.ParentID != "" {
 		tmplData.ParentUserName = req.parent.User.Name
-		tmplData.ParentUserPicture = req.parent.User.Picture
+		tmplData.ParentUserPicture = e.storedAvatar(req.parent.User.Picture)
 		tmplData.ParentCommentText = emailSafeHTML(req.parent.Text)
 		tmplData.ParentCommentLink = commentURLPrefix + req.parent.ID
 		tmplData.ParentCommentDate = req.parent.Timestamp
@@ -314,4 +316,19 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 		body:            msg.String(),
 		unsubscribeLink: unsubscribeLink,
 	}, err
+}
+
+// storedAvatar returns the user picture when it is an avatar stored by this instance, and an empty string
+// otherwise. A user who logs in gets such a picture from the avatar proxy, but an imported or restored user
+// keeps the URL from the file, which may point to any host and would put the same remote tracking image
+// into the email that emailCommentPolicy removes from the comment text.
+func (e *Email) storedAvatar(picture string) string {
+	for _, prefix := range e.AvatarURLs {
+		avatarID, ok := strings.CutPrefix(picture, prefix)
+		// the avatar id is a single path segment, anything else may lead to another endpoint of the same host
+		if prefix != "" && ok && avatarID != "" && avatarID != "." && avatarID != ".." && !strings.ContainsAny(avatarID, `/\?#%`) {
+			return picture
+		}
+	}
+	return ""
 }

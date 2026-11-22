@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -292,6 +293,74 @@ func TestEmail_CommentTextSanitizedForEmail(t *testing.T) {
 	assert.NotContains(t, msg.body, "<a ", "no anchor tags in email body")
 	assert.Contains(t, msg.body, "click to verify", "anchor text is preserved, only the link is dropped")
 	assert.Contains(t, msg.body, "<b>kept</b>", "basic formatting is preserved")
+}
+
+// TestEmail_UserPictureFromThisInstanceOnly covers the pictures of the comment's and the parent comment's
+// authors: the email shows them only when they are avatars stored by this instance, at either avatar route.
+// An imported or restored user keeps the picture URL of the file, which may point to any host and would be
+// the same remote tracking image the email policy drops from the comment text.
+func TestEmail_UserPictureFromThisInstanceOnly(t *testing.T) {
+	const apiAvatars, rootAvatars = "https://remark42.example.org/api/v1/avatar/", "https://remark42.example.org/avatar/"
+	email, err := NewEmail(EmailParams{From: "from@example.org", AvatarURLs: []string{apiAvatars, rootAvatars}},
+		ntf.SMTPParams{}) // the default template, which shows both pictures
+	require.NoError(t, err)
+	email.TokenGenFn = TokenGenFn
+
+	build := func(e *Email, picture, parentPicture string) string {
+		req := Request{
+			Comment: store.Comment{ID: "999", User: store.User{ID: "1", Name: "test_user", Picture: picture}, ParentID: "1", Text: "reply"},
+			parent:  store.Comment{ID: "1", User: store.User{ID: "2", Name: "parent_user", Picture: parentPicture}, Text: "parent"},
+		}
+		msg, e1 := e.buildMessageFromRequest(req, "admin@example.org", true)
+		require.NoError(t, e1)
+		return msg.body
+	}
+
+	for _, stored := range []string{apiAvatars + "aabbcc.image", rootAvatars + "aabbcc.image"} {
+		body := build(email, stored, apiAvatars+"ddeeff.image")
+		assert.Contains(t, body, `<img src="`+stored+`"`, "picture of the user")
+		body = build(email, apiAvatars+"ddeeff.image", stored)
+		assert.Contains(t, body, `<img src="`+stored+`"`, "picture of the parent's user")
+	}
+
+	const stored = apiAvatars + "ddeeff.image"
+	for _, external := range []string{
+		"https://attacker.example/track.png",
+		"https://remark42.example.org.attacker.example/api/v1/avatar/aabbcc.image",
+		"https://remark42.example.org/api/v1/img?src=aHR0cHM6Ly9hdHRhY2tlci5leGFtcGxlL3RyYWNrLnBuZw",
+		apiAvatars + "../img?src=aHR0cHM6Ly9hdHRhY2tlci5leGFtcGxlL3RyYWNrLnBuZw",
+		rootAvatars + "../api/v1/img?src=aHR0cHM6Ly9hdHRhY2tlci5leGFtcGxlL3RyYWNrLnBuZw",
+		apiAvatars + "..%2Fimg%3Fsrc=aHR0cHM6Ly9hdHRhY2tlci5leGFtcGxlL3RyYWNrLnBuZw",
+		apiAvatars + "../picture/user/aabbcc.png",
+		apiAvatars + `..\img`,
+		apiAvatars + "aabbcc.image?attacker.example",
+		apiAvatars + "aabbcc.image#attacker.example",
+		apiAvatars,
+		apiAvatars + "..",
+		rootAvatars + ".",
+		"/api/v1/avatar/aabbcc.image",
+	} {
+		body := build(email, external, stored)
+		assert.NotContains(t, body, `src="`+external+`"`, "picture of the user %q", external)
+		assert.Equal(t, 1, strings.Count(body, "<img"), "only the parent's picture is left, %q", external)
+		assert.Contains(t, body, `<img src="`+stored+`"`)
+
+		body = build(email, stored, external)
+		assert.NotContains(t, body, `src="`+external+`"`, "picture of the parent's user %q", external)
+		assert.Equal(t, 1, strings.Count(body, "<img"), "only the user's picture is left, %q", external)
+		assert.Contains(t, body, `<img src="`+stored+`"`)
+	}
+
+	assert.NotContains(t, build(email, "", ""), "<img", "an empty picture is left out")
+
+	// pictures are left out when the location of the avatars is not known
+	email, err = NewEmail(EmailParams{From: "from@example.org"}, ntf.SMTPParams{})
+	require.NoError(t, err)
+	email.TokenGenFn = TokenGenFn
+	assert.NotContains(t, build(email, stored, "https://attacker.example/track.png"), "<img")
+
+	email.AvatarURLs = []string{""}
+	assert.NotContains(t, build(email, "aabbcc.image", "track.png"), "<img", "an empty prefix matches nothing")
 }
 
 // emailSafeHTML drops links/images while keeping inline/block formatting and escaping nothing extra.

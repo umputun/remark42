@@ -96,6 +96,14 @@ const lastCommentsScope = "last"
 // per-user vote data, so a vote does not also drop the feeds
 const lastVotesScope = "last-votes"
 
+// avatars are served at two routes: AvatarRoutePath, where the avatar proxy makes user pictures, and
+// LegacyAvatarRoutePath at the root, where pictures stored by older versions point
+const (
+	apiRoutePath          = "/api/v1"
+	LegacyAvatarRoutePath = "/avatar"
+	AvatarRoutePath       = apiRoutePath + LegacyAvatarRoutePath
+)
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info"`
@@ -251,14 +259,14 @@ func (s *Rest) routes() http.Handler {
 	avatarRoutes := func(r *routegroup.Bundle) {
 		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
-		r.Handle("/avatar/", avatarHandler)
+		r.Handle(LegacyAvatarRoutePath+"/", avatarHandler)
 	}
 	router.Route(avatarRoutes)
 
 	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
-	rapi := router.Mount("/api/v1")
+	rapi := router.Mount(apiRoutePath)
 	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth, authCookies)
 
 	rapi.Group().Route(avatarRoutes)
