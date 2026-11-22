@@ -418,4 +418,43 @@ describe('<ConnectedRoot />', () => {
       expect(sent.slice(-2)).toEqual(['height with first, second, third', 'scrollTo 400 with first, second, third']);
     });
   });
+
+  it('looks the comment of the url hash up by its id and never uses the hash as a selector', async () => {
+    jest.spyOn(api, 'getUser').mockResolvedValue(null);
+    jest.spyOn(api, 'getPostComments').mockResolvedValue({ comments: [], info: stateStub.info! });
+    jest.spyOn(postMessage, 'updateIframeHeight').mockImplementation(() => undefined);
+    const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockImplementation(() => true);
+    const addEventListener = jest.spyOn(window, 'addEventListener');
+    const querySelector = jest.spyOn(document, 'querySelector');
+
+    const comment = document.createElement('article');
+    comment.id = 'remark42__comment-1';
+    document.body.append(comment);
+
+    try {
+      render(<ConnectedRoot />, stateStub);
+      await waitFor(() => expect(addEventListener).toHaveBeenCalledWith('hashchange', expect.any(Function)));
+
+      const changeHash = (hash: string) =>
+        window.dispatchEvent(new HashChangeEvent('hashchange', { newURL: `http://localhost/${hash}` }));
+
+      // the embedding page sends the hash and gets `scrollTo` back when it matches, so a hash
+      // read as a selector list would tell that page what the widget shows to the signed-in user
+      changeHash('#remark42__comment-,article');
+      // a hash with no comment on screen is looked up once more after the hidden ones are shown
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      expect(postMessageToParent).not.toHaveBeenCalled();
+
+      changeHash('#remark42__comment-1');
+      await waitFor(() => expect(postMessageToParent).toHaveBeenCalledWith({ scrollTo: expect.any(Number) }));
+      expect(postMessageToParent).toHaveBeenCalledTimes(1);
+
+      // the first lookup decides whether hidden comments are expanded, which changes the height the
+      // widget posts to the page, so neither lookup may read the hash as a selector
+      const hashQueries = querySelector.mock.calls.filter(([selector]) => selector.startsWith('#remark42__comment-'));
+      expect(hashQueries).toEqual([]);
+    } finally {
+      comment.remove();
+    }
+  });
 });

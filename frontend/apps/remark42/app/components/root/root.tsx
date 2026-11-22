@@ -180,7 +180,7 @@ export class Root extends Component<Props, State> {
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
       if (e) e.preventDefault();
 
-      if (!document.querySelector(hash)) {
+      if (!document.getElementById(hash.slice(1))) {
         const id = getCollapsedParent(hash, this.props.childToParentComments);
         if (!restLoaded && this.props.topComments.indexOf(id) === -1 && this.props.countLeft > 0) {
           // the comment is on a page not loaded yet: the rest of the thread comes first, and then the
@@ -206,7 +206,9 @@ export class Root extends Component<Props, State> {
   };
 
   toMessage = (hash: string) => {
-    const target = document.querySelector(hash);
+    // the hash comes from the embedding page and the answer goes back to it, so it is looked up
+    // as the comment id it stands for and never as a selector, which could match anything in here
+    const target = document.getElementById(hash.slice(1));
     if (!target) {
       return;
     }
@@ -217,7 +219,7 @@ export class Root extends Component<Props, State> {
     // grows under the reader. So the comments the reader will see are rendered first, and the
     // height they take goes out before the position, both measured now.
     this.setState({ revealedComments: getCommentsAround(target) }, () => {
-      const comment = document.querySelector(hash);
+      const comment = document.getElementById(hash.slice(1));
       if (!comment) {
         return;
       }
