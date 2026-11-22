@@ -36,6 +36,23 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   {{- end }}
+  {{- /* the docs show a page's place only in the side menu, so it is given to crawlers as data:
+        the site, the menu section with its first page, the page */ -}}
+  {{- $current := .RelPermalink -}}
+  {{- $page := . -}}
+  {{- range hugo.Data.nav }}
+    {{- $section := .section -}}
+    {{- $first := "" -}}
+    {{- range first 1 .children }}{{ $first = printf "/docs%s" .href }}{{ end -}}
+    {{- range .children }}
+      {{- if and $section (eq (printf "/docs%s" .href) $current) }}
+        {{- $items := slice (dict "@type" "ListItem" "position" 1 "name" site.Title "item" ("/" | absURL)) -}}
+        {{- $items = $items | append (dict "@type" "ListItem" "position" 2 "name" $section "item" ($first | absURL)) -}}
+        {{- $items = $items | append (dict "@type" "ListItem" "position" 3 "name" $page.Title) }}
+  <script type="application/ld+json">{{ dict "@context" "https://schema.org" "@type" "BreadcrumbList" "itemListElement" $items | jsonify | safeJS }}</script>
+      {{- end }}
+    {{- end }}
+  {{- end }}
   <link rel="stylesheet" href="{{ $style.RelPermalink }}">
   <script>{{ $inline.Content | safeJS }}</script>
   <script defer src="{{ $script.RelPermalink }}"></script>
