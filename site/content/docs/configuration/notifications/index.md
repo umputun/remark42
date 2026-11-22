@@ -8,7 +8,7 @@ There are two types of notifications, "Admin" and "User" notifications. Admin no
 
 ## Slack admin notifications
 
-To integrate notifications from remark42 with [Slack](https://slack.com), you should create [a bot](https://slack.com/intl/en-cn/help/articles/115005265703-Create-a-bot-for-your-workspace) and obtain a token.
+To integrate notifications from remark42 with [Slack](https://slack.com), you need a Slack app with a bot token, created as described below.
 
 ### Create a Slack Bot
 
@@ -25,7 +25,7 @@ The Slack token which you obtained before should be used as `NOTIFY_SLACK_TOKEN`
 
 You also need to set `NOTIFY_ADMINS=slack` for the Slack notification to be active.
 
-By default, the notifications are sent to the `general` channel on Slack. If you need another channel, you can specify it with `NOTIFY_SLACK_CHAN=channel_name`.
+By default, the notifications are sent to the `general` channel on Slack. If you need another channel, you can specify it with `NOTIFY_SLACK_CHAN`, either as a channel name or as an ID. A value starting with `C` or `U` is taken as a channel or user ID and used as is; any other value is a channel name, which Remark42 looks up through the Slack API, and the lookup is what needs the `channels:read` scope.
 
 ```
     - NOTIFY_ADMINS=slack
@@ -37,9 +37,9 @@ By default, the notifications are sent to the `general` channel on Slack. If you
 
 If all goes fine, you should be able to see the following message on your Slack notification channel:
 
-> New comment from _author_ -> _original author_
+> New comment from _author_ → _original author_
 >
-> > [Demo | Remark42](http://127.0.0.1:8080/web/#remark42__comment-11288987987)
+> > [↦ Demo | Remark42](http://127.0.0.1:8080/web/#remark42__comment-11288987987)
 > > This is the comment written by the _author_
 
 ## WebHook admin notifications
@@ -48,12 +48,15 @@ You need to set `NOTIFY_ADMINS=webhook` to enable WebHook notifications on all n
 
 Additionally, you might want to set `NOTIFY_WEBHOOK_TEMPLATE` (which is Go Template, `{"text": {{.Text | escapeJSONString}}}` by default) and `NOTIFY_WEBHOOK_HEADERS`, which is HTTP header(s) in format `Header1:Value1,Header2:Value2,...`.
 
+Remark42 sends the rendered template as the body of a `POST` request to `NOTIFY_WEBHOOK_URL`. The request has no `Content-Type` header unless `NOTIFY_WEBHOOK_HEADERS` sets one, for example `Content-Type:application/json`. `NOTIFY_WEBHOOK_TIMEOUT` (`5s` by default) limits the whole request. Redirects are followed, and a 301, 302 or 303 turns the `POST` into a `GET` without the body. A final status outside 2xx counts as a failure: Remark42 logs it and does not retry.
+
 Here are some additional common variables that you can use with your template:
 
 | Variable      | Type        | Description                                                                                           |
 |---------------|-------------|-------------------------------------------------------------------------------------------------------|
 | `ID`          | `string`    |                                                                                                       |
-| `Text`        | `string`    |                                                                                                       |
+| `Text`        | `string`    | Comment as rendered HTML                                                                              |
+| `Orig`        | `string`    | Comment text as the user typed it, not sanitized                                                      |
 | `User.Name`   | `string`    | [Full struct defined here](https://github.com/umputun/remark42/blob/master/backend/app/store/user.go) |
 | `Locator.URL` | `string`    | Post URL                                                                                              |
 | `Score`       | `int`       |                                                                                                       |

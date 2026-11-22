@@ -2,6 +2,10 @@
   "docs/backup/restore/index.md": {
     "importrestore-without-removing-existing-comments": "import/restore-without-removing-existing-comments"
   },
+  "docs/configuration/authorization/index.md": {
+    "discord": "discord-auth-provider",
+    "sign-in-providers": "oauth-providers"
+  },
   "docs/configuration/email/index.md": {
     "email_confirmation_loginhtmltmpl--login-confirmation": "email_confirmation_login.html.tmpl-—-login-confirmation",
     "email_confirmation_subscriptionhtmltmpl--subscription-confirmation": "email_confirmation_subscription.html.tmpl-—-subscription-confirmation",

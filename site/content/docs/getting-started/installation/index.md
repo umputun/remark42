@@ -24,15 +24,15 @@ _This is the recommended way to run Remark42_
 
 - copy provided [`docker-compose.yml`](https://github.com/umputun/remark42/blob/master/docker-compose.yml) and customize for your needs
 - make sure you **don't keep** `ADMIN_PASSWD=something...` for any non-development deployments
-- pull prepared images from the Docker Hub and start - `docker compose pull && docker compose up -d`
+- pull prepared images from the GitHub Container Registry and start - `docker compose pull && docker compose up -d`
 - alternatively, compile from the sources - `docker compose build && docker compose up -d`
 
 ### Installation with Binary
 
 - download [archive for the stable release](https://github.com/umputun/remark42/releases)
-- extract the `.tar.gz` archive with `tar -xzf <archive>.tar.gz` (Linux, macOS), or extract the `.zip` archive (Windows)
+- extract the `.tar.gz` archive with `tar -xzf <archive>.tar.gz` (Linux, macOS, FreeBSD), or extract the `.zip` archive (Windows)
 - run as `remark42.{os}-{arch} server {parameters...}`, i.e., `remark42.linux-amd64 server --secret=12345 --url=http://127.0.0.1:8080`
-- alternatively compile from the sources - `make OS=[linux|darwin|windows] ARCH=[amd64,386,arm64,arm]`. Source binary builds require Go 1.27, Node 24+, PNPM 10, and Perl because the frontend assets are built and embedded locally.
+- alternatively, [build from the source](#build-from-the-source)
 
 #### Installation as a systemd Service
 
@@ -55,10 +55,13 @@ For a clean persistent setup without lengthy command line parameters:
    Type=simple
    EnvironmentFile=/etc/remark42.env
    ExecStart=/usr/local/bin/remark42 server
-   WorkingDirectory=/var/www/remark42       # directory where data files are stored and automatic backups will be created
+   # directory where data files are stored and automatic backups are created
+   WorkingDirectory=/var/www/remark42
    Restart=on-failure
-   User=nobody                              # another good alternative is `www-data`
-   Group=nogroup                            # another good alternative is `www-data`
+   # another good alternative is `www-data`
+   User=nobody
+   # another good alternative is `www-data`
+   Group=nogroup
 
    [Install]
    WantedBy=multi-user.target
@@ -75,11 +78,16 @@ For a clean persistent setup without lengthy command line parameters:
    sudo systemctl restart remark42.service
    ```
 
+### Build from the source
+
+- to build a Docker image, run `make docker`. It produces an image tagged both `umputun/remark42` and `ghcr.io/umputun/remark42`
+- to build a single binary for direct execution, run `make OS=<linux|darwin|freebsd|windows> ARCH=<amd64|arm64|386>` (`linux` and `amd64` by default). This requires Go 1.27, Node 24+, PNPM 10 and Git, builds the frontend assets locally and produces an executable `remark42` file with everything embedded
+
 ## Setup on Your Website
 
 Add config for Remark on a page of your site ([here](/docs/configuration/frontend/) is the full reference):
 
-- `REMARK_URL` – the URL where is Remark42 instance is served, passed as `REMARK_URL` to backend
+- `REMARK_URL` – the URL where the Remark42 instance is served, passed as `REMARK_URL` to backend
 - `YOUR_SITE_ID` - the `SITE` that you passed to Remark42 instance on start, `remark` by default.
 
 ```html
@@ -122,17 +130,12 @@ Put the next code snippet on a page of your site where you want to have comments
 
 After that widget will be rendered inside this node. Any content you place inside the div (such as "Comments loading..." above) is automatically removed once the widget initialises, so you can use it as a loading placeholder. The widget grows to the height of the comments once they load, which moves the content below it; the `min-height` reserves space so that the content moves less. Set it close to the usual height of your comments, or leave it out.
 
-For more information about frontend configuration please [learn about other parameters here](https://remark42.com/docs/configuration/frontend/)
-If you want to set this up on a Single Page App, see the [appropriate doc page](https://remark42.com/docs/configuration/frontend/spa/).
+For more information about frontend configuration please [learn about other parameters here](/docs/configuration/frontend/).
+If you want to set this up on a Single Page App, see the [appropriate doc page](/docs/configuration/frontend/spa/).
 
-#### Quick installation test
+### Quick installation test
 
-To verify if Remark42 has been properly installed, check a demo page at `${REMARK_URL}/web` URL. Make sure to include `remark` site ID to the `${SITE}` list.
-
-### Build from the source
-
-- to build Docker container - `make docker`. This command will produce container `ghcr.io/umputun/remark42`
-- to build a single binary for direct execution - `make OS=<linux|windows|darwin> ARCH=<amd64|386>`. This requires Go 1.27, Node 24+, PNPM 10, and Perl, builds frontend assets locally, and produces an executable `remark42` file with everything embedded
+To verify if Remark42 has been properly installed, check a demo page at `${REMARK_URL}/web` URL. It shows the comments of the first site ID listed in `SITE`.
 
 ## Privacy
 

@@ -10,7 +10,7 @@ To set up notifications or auth with Telegram, first, you need to create a bot a
 
 ## Getting bot token for Telegram
 
-To get a token, talk to [BotFather](https://core.telegram.org/bots#6-botfather). All you need is to send `/newbot` command and choose the name for your bot (it must end in `bot`). That is it, and you got a token which you'll need to write down into remark42 configuration as `TELEGRAM_TOKEN`.
+To get a token, talk to [BotFather](https://core.telegram.org/bots/features#botfather). All you need is to send `/newbot` command and choose a name and a username for your bot (the username must end in `bot`). That is it, and you got a token which you'll need to write down into remark42 configuration as `TELEGRAM_TOKEN`.
 
 _Example of such a "talk"_:
 
@@ -73,6 +73,10 @@ To integrate notifications about any comment on your sites with remark42 with [T
 
 Enabling Telegram user notifications allows users to sign up for notifications about replies to their messages. To do it, set the variable `NOTIFY_USERS=telegram`.
 
+A signed-in user who is not anonymous subscribes under the comment form: "Subscribe by" and then "Telegram" shows a link to your bot, and on a wide screen also a QR code. The user opens the bot in Telegram, presses "Start" there and then clicks "Check" in the widget. The link works for 10 minutes.
+
+At start, Remark42 asks Telegram for the bot's details. If that fails, Remark42 refuses to start when `AUTH_TELEGRAM` or `TELEGRAM_API_URL` is set; otherwise it logs one warning and runs without any Telegram notifications.
+
 ### Technical details
 
-Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram. To mitigate this, `h1`-`h6` are replaced with supported `<b>` tag.
+Telegram notifications formatting is [limited](https://core.telegram.org/bots/api#html-style) by Telegram API and, because of that, lose most of the formatting of the original comment. Notification implementation of the remark42 backend takes the rendered HTML of the comment and strips it of the unsupported tags before sending it to Telegram. To mitigate this, `h1`-`h3` are replaced with `<b>` and `h4`-`h6` with `<i><b>`. The text of the comment, and of the comment it replies to, is shortened at a word boundary to at most 100 bytes, about 100 characters of Latin text, ending in `...`.
