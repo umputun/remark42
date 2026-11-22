@@ -123,6 +123,12 @@ Right now Remark42 is translated to English (en), Russian (ru), German (de), Fin
 
 Do you want to translate Remark42 to other locales? Please see [this documentation](https://remark42.com/docs/contributing/translations/) for details.
 
+#### What the widget keeps in the reader's browser
+
+The widget uses the browser's `localStorage` to save the sort order, collapsed threads, hidden users, the email address used for a successful email sign-in, and the text of comments that were typed and not sent.
+
+Unsent text is saved per page for a new comment and per comment for a reply or an edit. The draft of a new comment returns after a reload, and the draft of a reply returns when the reply form is opened again; an edit form shows the published text. Drafts are not tied to an account: signing out clears the saved email address and leaves the drafts, so whoever opens the same page in the same browser profile finds them. A reader on a shared computer should empty the comment forms they used before leaving.
+
 ## Widgets
 
 ### Last comments widget
