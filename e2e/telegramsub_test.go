@@ -124,9 +124,11 @@ func tgSendSubscriptionToken(t *testing.T, token, readerID, firstName string) {
 
 func clearTelegramSubscriptionSession(t *testing.T, page playwright.Page) {
 	t.Helper()
+	// the panel keeps its state under a key per site and user, so the keys are matched by prefix
 	_, err := page.Evaluate(`() => {
-		sessionStorage.removeItem('telegram-subscription-step');
-		sessionStorage.removeItem('telegram-subscription-telegram');
+		Object.keys(sessionStorage)
+			.filter((key) => key.startsWith('telegram-subscription-'))
+			.forEach((key) => sessionStorage.removeItem(key));
 	}`)
 	require.NoError(t, err)
 }

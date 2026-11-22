@@ -6,6 +6,7 @@ import { useSelector } from 'store/context';
 
 import { useIntl, defineMessages } from 'common/intl';
 import type { User } from 'common/types';
+import { siteId } from 'common/settings';
 import type { StoreState } from 'store';
 import type { FetcherError, RequestError } from 'utils/errorUtils';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
@@ -55,12 +56,16 @@ type STEP = 'initial' | 'subscribed' | 'unsubscribed';
 
 export const SubscribeByTelegramForm: FunctionComponent = () => {
   const intl = useIntl();
-  const [step, setStep] = useSessionStorage<STEP>('telegram-subscription-step', 'initial');
+  const userId = useSelector<StoreState, string>(({ user }) => user?.id ?? '');
+  // sessionStorage outlives a sign-out, and the server issues a link to one user of one site, so
+  // the state is kept per site and user and the next user of the tab gets a link of their own
+  const owner = `${encodeURIComponent(siteId)}/${encodeURIComponent(userId)}`;
+  const [step, setStep] = useSessionStorage<STEP>(`telegram-subscription-step/${owner}`, 'initial');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [telegram, setTelegram] = useSessionStorage<{ token: string; bot: string } | null>(
-    'telegram-subscription-telegram',
+    `telegram-subscription-telegram/${owner}`,
     null
   );
 

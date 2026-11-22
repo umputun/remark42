@@ -75,6 +75,49 @@ describe('<SubscribeByTelegram />', () => {
     expect(api.telegramSubscribe).toHaveBeenCalledTimes(1);
   });
 
+  describe('for the next user of the tab', () => {
+    const nextUser = { ...initialStore, user: { ...user, id: 'email_2' } };
+
+    it('requests a link of their own', async () => {
+      jest
+        .spyOn(api, 'telegramSubscribe')
+        .mockResolvedValueOnce({ bot: 'foo_bot', token: 'token_of_first' })
+        .mockResolvedValueOnce({ bot: 'foo_bot', token: 'token_of_second' });
+
+      const first = createWrapper();
+      fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+      expect(await screen.findByText(/using this link/)).toHaveAttribute(
+        'href',
+        'https://t.me/foo_bot/?start=token_of_first'
+      );
+      // the panel goes away with its user, and sessionStorage stays as it is
+      first.unmount();
+
+      createWrapper(nextUser);
+      fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+
+      expect(await screen.findByText(/using this link/)).toHaveAttribute(
+        'href',
+        'https://t.me/foo_bot/?start=token_of_second'
+      );
+      expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not show them the subscription of the previous one', async () => {
+      const first = createWrapper();
+      fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+      fireEvent.click(await screen.findByText('Check'));
+      await screen.findByText(/You have subscribed/);
+      first.unmount();
+
+      createWrapper(nextUser);
+      fireEvent.click(screen.getByTitle('Subscribe by Telegram'));
+
+      expect(await screen.findByText('Check')).toBeInTheDocument();
+      expect(screen.queryByText(/You have subscribed/)).not.toBeInTheDocument();
+    });
+  });
+
   it('should subscribe', async () => {
     createWrapper();
     const button = screen.getByTitle('Subscribe by Telegram');
