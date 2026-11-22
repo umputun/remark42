@@ -444,6 +444,46 @@ describe('<Comment />', () => {
       expect(textarea.value).toBe(expectedTextareaValue(payload));
     });
   });
+  // the preview is a plain-text snippet: the entities the server escaped are decoded in it, so
+  // inserted as HTML it would turn markup a commenter wrote as text into elements
+  describe('preview', () => {
+    it.each([
+      [
+        'in a code span',
+        '<p><code>&lt;img src=x onerror=&#34;alert(1)&#34;&gt;</code></p>',
+        '<img src=x onerror="alert(1)">',
+      ],
+      ['as entities', '<p>&lt;img src=x onerror=alert(1)&gt;</p>', '<img src=x onerror=alert(1)>'],
+    ])('shows markup written %s as text', (_label, text, snippet) => {
+      props.view = 'preview';
+      props.data.text = text;
+
+      const { container } = render(<CommentWithIntl {...props} />);
+      const node = container.querySelector('.raw-content');
+
+      expect(node).toHaveTextContent(snippet, { normalizeWhitespace: false });
+      expect(node?.querySelector('*')).toBeNull();
+    });
+
+    it('shows an entity a commenter typed as the characters typed', () => {
+      props.view = 'preview';
+      props.data.text = '<p>&amp;lt;b&amp;gt; and &amp;amp;</p>';
+
+      const { container } = render(<CommentWithIntl {...props} />);
+
+      expect(container.querySelector('.raw-content')?.textContent).toBe('&lt;b&gt; and &amp;');
+    });
+
+    it('cuts the text of a long comment', () => {
+      props.view = 'preview';
+      props.data.text = `<p>${'a'.repeat(150)}</p>`;
+
+      const { container } = render(<CommentWithIntl {...props} />);
+
+      expect(container.querySelector('.raw-content')?.textContent).toBe(`${'a'.repeat(100)}...`);
+    });
+  });
+
   describe('block confirmation', () => {
     // the duration is a select label reused inside the sentence: only its first letter may be
     // lowered, or a language that capitalises nouns, such as German, loses those capitals
