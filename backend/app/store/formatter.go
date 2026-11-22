@@ -1,6 +1,9 @@
 package store
 
 import (
+	"bytes"
+	"html/template"
+	"io"
 	"net/url"
 	"strings"
 	"unicode/utf8"
@@ -8,6 +11,7 @@ import (
 	"github.com/Depado/bfchroma/v2"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/chroma/v2/formatters/html"
+	log "github.com/go-pkgz/lgr"
 	bf "github.com/russross/blackfriday/v2"
 )
 
@@ -44,9 +48,18 @@ func (f *CommentFormatter) Format(c Comment, raw bool) Comment {
 // FormatText converts text with markdown processor, applies external converters and shortens links
 //
 // raw=true disables SmartyPants for HTML rendering (replacement of quotes, dashes, fractions, etc).
+//
+// A code block that can't be highlighted is rendered as plain code. Text the markdown processor
+// panics on is returned HTML-escaped, as a paragraph with line breaks.
 func (f *CommentFormatter) FormatText(txt string, raw bool) (res string) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[WARN] can't format comment text, returned it escaped, %v", rec)
+			res = "<p>" + strings.ReplaceAll(template.HTMLEscapeString(txt), "\n", "<br/>\n") + "</p>\n"
+		}
+	}()
 	mdExt, rend := GetMdExtensionsAndRenderer(raw)
-	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(rend)))
+	res = string(bf.Run([]byte(txt), bf.WithExtensions(mdExt), bf.WithRenderer(plainCodeOnPanic{rend})))
 	return f.FormatHTML(f.unEscape(res))
 }
 
@@ -144,4 +157,35 @@ func GetMdExtensionsAndRenderer(raw bool) (bf.Extensions, *bfchroma.Renderer) {
 
 	extRend := bfchroma.NewRenderer(bfchroma.Extend(rend), bfchroma.ChromaOptions(html.WithClasses(true)))
 	return mdExt, extRend
+}
+
+// plainCodeOnPanic renders a code block as plain code when its highlighting panics, the same way
+// bfchroma renders one whose highlighting fails. The lexer is picked by the language the commenter
+// names after the fence, and some of chroma's lexers panic on some input.
+type plainCodeOnPanic struct {
+	*bfchroma.Renderer
+}
+
+// RenderNode satisfies the Renderer interface
+func (r plainCodeOnPanic) RenderNode(w io.Writer, node *bf.Node, entering bool) bf.WalkStatus {
+	if node.Type != bf.CodeBlock {
+		return r.Renderer.RenderNode(w, node, entering)
+	}
+	var buf bytes.Buffer // nothing reaches w if the highlighting panics halfway
+	if !r.highlight(&buf, node) {
+		return r.Base.RenderNode(w, node, entering)
+	}
+	_, _ = buf.WriteTo(w)
+	return bf.SkipChildren
+}
+
+// highlight writes the code block highlighted by chroma to w and reports whether it succeeded
+func (r plainCodeOnPanic) highlight(w io.Writer, node *bf.Node) (ok bool) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[WARN] can't highlight code block, rendered it plain, %v", rec)
+			ok = false
+		}
+	}()
+	return r.RenderWithChroma(w, node.Literal, node.CodeBlockData) == nil
 }

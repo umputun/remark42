@@ -658,8 +658,12 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	// while for storing the comment that flag is set based on user preference
 	mdExt, rend := store.GetMdExtensionsAndRenderer(false)
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
+	doc, err := parseMarkdown(parser, c.Orig)
+	if err != nil {
+		return err
+	}
 	var wrongLinkError error
-	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
+	doc.Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
 		if len(node.Destination) != 0 &&
 			(!strings.HasPrefix(string(node.Destination), "http://") && !strings.HasPrefix(string(node.Destination), "https://") && !strings.HasPrefix(string(node.Destination), "mailto:")) {
 			wrongLinkError = fmt.Errorf("links should start with mailto:, http:// or https://")
@@ -668,6 +672,17 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 		return bf.GoToNext
 	})
 	return wrongLinkError
+}
+
+// parseMarkdown parses the comment text, the parser panics on some text, which is refused then
+func parseMarkdown(parser *bf.Markdown, txt string) (doc *bf.Node, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[WARN] can't parse comment text, %v", rec)
+			err = fmt.Errorf("can't parse comment text")
+		}
+	}()
+	return parser.Parse([]byte(txt)), nil
 }
 
 // IsAdmin checks if usesID in the list of admins

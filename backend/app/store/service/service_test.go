@@ -1175,10 +1175,12 @@ func TestService_ValidateComment(t *testing.T) {
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 		{inp: store.Comment{Orig: "multiple links, one is bad: [test](http://test) [test2](bad_url) [test3](https://test3)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "some text\n[0]:<", User: store.User{ID: "myid", Name: "name"}}, err: "can't parse comment text"}, // the parser panics on it
 	}
 
 	for n, tt := range tbl {
-		err := b.ValidateComment(&tt.inp)
+		var err error
+		require.NotPanics(t, func() { err = b.ValidateComment(&tt.inp) }, "check #%d", n)
 		if tt.err == "" {
 			assert.NoError(t, err, "check #%d", n)
 			continue
