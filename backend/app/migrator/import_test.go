@@ -294,6 +294,27 @@ func TestDisqus_ImportRepliesToRemovedComments(t *testing.T) {
 	assert.Equal(t, "Post one", reply.PostTitle, "the title comes from the export")
 }
 
+func TestCommento_ImportCodeBlockTheHighlighterPanicsOn(t *testing.T) {
+	// the lexer of yang panics on this block, the import must still bring in every comment
+	export := `{"version":1,"comments":[
+{"commentHex":"c1","domain":"example.com","url":"/p1","commenterHex":"u1","markdown":"first","parentHex":"root","state":"approved","creationDate":"2021-03-17T12:00:01Z"},
+{"commentHex":"c2","domain":"example.com","url":"/p1","commenterHex":"u1","markdown":"**see**\n\n` + "```" + `yang\n/* /*\n` + "```" + `","parentHex":"root","state":"approved","creationDate":"2021-03-17T12:00:02Z"},
+{"commentHex":"c3","domain":"example.com","url":"/p1","commenterHex":"u1","markdown":"reply","parentHex":"c2","state":"approved","creationDate":"2021-03-17T12:00:03Z"}
+],"commenters":[{"commenterHex":"u1","name":"User One","photo":"undefined"}]}`
+	ds := newImportStore(t)
+	var size int
+	var err error
+	require.NotPanics(t, func() { size, err = (&Commento{DataStore: ds}).Import(strings.NewReader(export), "test") })
+	require.NoError(t, err)
+	assert.Equal(t, 3, size)
+	assert.Equal(t, []string{"c1", "c2", "c2>c3"}, shownTree(t, ds))
+
+	c, err := ds.Get(store.Locator{SiteID: "test", URL: "https://example.com/p1"}, "c2", adminUser)
+	require.NoError(t, err)
+	assert.Equal(t, "<p><strong>see</strong></p>\n\n<pre><code>/* /*\n</code></pre>\n", c.Text,
+		"the block is shown as plain code, the rest of the comment keeps its formatting")
+}
+
 func TestCommento_ImportFidelity(t *testing.T) {
 	export := `{"version":1,"comments":[
 {"commentHex":"c1","domain":"example.com","url":"/p1","commenterHex":"u1","markdown":"**bold** and [a link](https://example.com)\n\nsecond paragraph","parentHex":"root","state":"approved","creationDate":"2021-03-17T12:00:01Z"},
