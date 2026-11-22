@@ -2062,6 +2062,85 @@ func TestService_EditCommentPicturesUsedOnAnotherPage(t *testing.T) {
 	})
 }
 
+// an admin's delete keeps a picture the author's comment on another page shows, as the author's own delete does
+func TestService_DeletePicturesUsedOnAnotherPage(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	pageA := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	pageB := store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}
+
+	for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+		t.Run(fmt.Sprintf("mode %d", mode), func(t *testing.T) {
+			mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := &DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+			now := time.Now()
+			for _, c := range []store.Comment{
+				{ID: "u1-a", Text: pic("user1/first.png"), Locator: pageA, User: store.User{ID: "user1"}, Timestamp: now},
+				// the same upload shown again in a new comment on another page, next to an upload of its own
+				{ID: "u1-b", Text: pic("user1/first.png") + pic("user1/second.png"), Locator: pageB, User: store.User{ID: "user1"},
+					Timestamp: now.Add(time.Second)},
+			} {
+				_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, b.Delete(pageB, "u1-b", mode))
+			assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+
+			require.NoError(t, b.Delete(pageA, "u1-a", mode))
+			assert.ElementsMatch(t, []string{"user1/second.png", "user1/first.png"}, deletedImages(mockStore),
+				"no comment shows first.png any more")
+		})
+	}
+}
+
+// an admin's delete removes pictures only once the engine has deleted the comment, and only when the page could be read
+func TestService_DeletePicturesEngineError(t *testing.T) {
+	tbl := []struct {
+		name               string
+		deleteErr, findErr error
+		wantErr            bool
+		deleted            []string
+	}{
+		{name: "delete stored", deleted: []string{"user1/own.png"}},
+		{name: "delete fails", deleteErr: errors.New("delete failed"), wantErr: true},
+		{name: "page lookup fails", findErr: errors.New("find failed")},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+			eng := engine.InterfaceMock{
+				GetFunc: func(engine.GetRequest) (store.Comment, error) {
+					return store.Comment{ID: "c1", Text: `<img src="/images/user1/own.png"/>`, Locator: locator,
+						User: store.User{ID: "user1"}, Timestamp: time.Now()}, nil
+				},
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if req.UserID != "" { // the author has no other comments on the site
+						return nil, engine.ErrNoUserComments
+					}
+					return nil, tt.findErr
+				},
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			err := b.Delete(locator, "c1", store.SoftDelete)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.ElementsMatch(t, tt.deleted, deletedImages(&mockStore))
+		})
+	}
+}
+
 // a picture is removed only once the engine has stored the edit or the delete, and only when the page could be read
 func TestService_EditCommentPicturesEngineError(t *testing.T) {
 	tbl := []struct {

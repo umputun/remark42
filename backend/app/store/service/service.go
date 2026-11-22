@@ -776,7 +776,8 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 
 }
 
-// Delete comment by id
+// Delete comment by id. The pictures its author uploaded go with it once the engine has deleted it, unless another
+// comment still shows them, see deleteRemovedPictures
 func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
 	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
 		log.Printf("[WARN] failed to send delete event, %s", e)
@@ -786,35 +787,11 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	if err != nil {
 		return err
 	}
-	// delete the author's own images from the comment if they are not reused elsewhere in comments to the same page
-	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
-		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
-		if e != nil {
-			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, e)
-			return nil
-		}
-		var imgIDs = []string{}
-		for _, cc := range comments {
-			// exclude the comment we are deleting
-			if cc.ID != commentID {
-				imgIDs = append(imgIDs, s.ImageService.ExtractPictures(cc.Text)...)
-			}
-		}
-		return imgIDs
+	if err := s.Engine.Delete(engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}); err != nil {
+		return err
 	}
-	commentImgIDs := s.ownPictures(comment.User.ID, comment.Text)
-	pageImgIDs := idsFn()
-	for _, id := range commentImgIDs {
-		if !slices.Contains(pageImgIDs, id) {
-			if err := s.ImageService.Delete(id); err != nil {
-				log.Printf("[WARN] failed to delete image %s on comment %s deletion, %v", id, commentID, err)
-			}
-		}
-	}
-	log.Printf("[DEBUG] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
-
-	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
-	return s.Engine.Delete(req)
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
+	return nil
 }
 
 // DeleteUser removes all comments from user, along with the pictures used in them
@@ -847,9 +824,9 @@ func (s *DataStore) ownPictures(userID, commentHTML string) []string {
 }
 
 // deleteRemovedPictures deletes the pictures authorID uploaded that oldHTML shows and newHTML does not, once the
-// edit or delete of comment commentID is stored. A picture another comment on the same page shows stays, as
-// Delete keeps it, and so does one any other comment of the author shows, on any page: the address of an upload
-// can be pasted into another comment. Other users' uploads and cached external images stay too. A picture still
+// edit or delete of comment commentID is stored. A picture another comment on the same page shows stays, and
+// so does one any other comment of the author shows, on any page: the address of an upload can be pasted into
+// another comment. Other users' uploads and cached external images stay too. A picture still
 // waiting in staging is deleted there, and the delayed commit, which reads the comment's stored text, no longer
 // looks for it
 func (s *DataStore) deleteRemovedPictures(locator store.Locator, commentID, authorID, oldHTML, newHTML string) {
