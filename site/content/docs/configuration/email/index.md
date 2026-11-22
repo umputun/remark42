@@ -265,17 +265,18 @@ Used for notifying users about replies to their comments and for admin notificat
 | `{{.UserName}}` | string | Comment author name |
 | `{{.UserPicture}}` | string | Comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .UserPicture}}` |
 | `{{.CommentText}}` | string | Comment body (HTML) |
-| `{{.CommentLink}}` | string | Direct link to the comment |
+| `{{.CommentLink}}` | string | Direct link to the comment. In an admin notification the page address is written again from its parts, and the link is empty when it is not a plain `http` or `https` address with a host, so wrap it in `{{if .CommentLink}}` |
 | `{{.CommentDate}}` | time.Time | Comment timestamp, format with `{{.CommentDate.Format "02.01.2006 at 15:04"}}` |
 | `{{.ParentUserName}}` | string | Parent comment author name |
 | `{{.ParentUserPicture}}` | string | Parent comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .ParentUserPicture}}` |
 | `{{.ParentCommentText}}` | string | Parent comment body (HTML) |
-| `{{.ParentCommentLink}}` | string | Direct link to parent comment |
+| `{{.ParentCommentLink}}` | string | Direct link to parent comment, with the same rule for admin notifications |
 | `{{.ParentCommentDate}}` | time.Time | Parent comment timestamp |
 | `{{.PostTitle}}` | string | Title of the post |
 | `{{.Email}}` | string | Recipient email address |
 | `{{.UnsubscribeLink}}` | string | Unsubscribe URL |
 | `{{.ForAdmin}}` | bool | True when this is an admin notification |
+| `{{.LinkHost}}` | string | Host that `{{.CommentLink}}` and `{{.ParentCommentLink}}` open, in ASCII, set in admin notifications only: the page address of a comment comes from the commenter, so the default template names the host next to both links |
 
 #### `email_confirmation_subscription.html.tmpl` — subscription confirmation
 

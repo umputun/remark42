@@ -222,6 +222,73 @@ func TestEmail_ReplyDatesCarryZone(t *testing.T) {
 	assert.Contains(t, msg.body, "21.11.2026 at 15:30 (UTC&#43;00:00)", "date of the reply")
 }
 
+// TestEmail_AdminLinksNameTheirHost checks the links in a message to an admin. The page address of a
+// comment comes from the commenter, and an admin is notified about every comment, so the address is
+// written again from its parts, the label names the host the link opens, and an address that is not a
+// plain web address gets no link.
+func TestEmail_AdminLinksNameTheirHost(t *testing.T) {
+	email, err := NewEmail(EmailParams{TokenGenFn: func(_, _, _ string) (string, error) { return "token", nil }}, ntf.SMTPParams{})
+	require.NoError(t, err)
+
+	build := func(pageURL string, forAdmin bool) string {
+		req := Request{
+			Comment: store.Comment{ID: "2", ParentID: "1", Text: "<p>reply</p>", User: store.User{ID: "u2", Name: "commenter"},
+				Locator: store.Locator{SiteID: "remark", URL: pageURL}},
+			parent: store.Comment{ID: "1", Text: "<p>parent</p>", User: store.User{ID: "u1", Name: "author"}},
+		}
+		msg, e := email.buildMessageFromRequest(req, "to@example.org", forAdmin)
+		require.NoError(t, e)
+		return msg.body
+	}
+
+	linked := []struct{ name, pageURL, link, host string }{
+		{name: "plain address", pageURL: "https://evil.example/blog-login", link: "https://evil.example/blog-login", host: "evil.example"},
+		{name: "user part, port and fragment", pageURL: "https://blog.example@evil.example:8443/x?a=1#frag",
+			link: "https://evil.example:8443/x?a=1", host: "evil.example"},
+		{name: "a Cyrillic letter", pageURL: "https://bl\u043eg.example/post", link: "https://xn--blg-ted.example/post", host: "xn--blg-ted.example"},
+		{name: "a capital Cyrillic letter", pageURL: "https://BL\u041eG.example/x", link: "https://xn--blg-ted.example/x", host: "xn--blg-ted.example"},
+		{name: "letters a browser drops", pageURL: "https://p\u0430ypal" + strings.Repeat("\u00ad", 2400) + "\U000E0100.com/x",
+			link: "https://xn--pypal-4ve.com/x", host: "xn--pypal-4ve.com"},
+		{name: "a full stop a browser reads as a dot", pageURL: "https://blog.example\u3002evil.example/x",
+			link: "https://blog.example.evil.example/x", host: "blog.example.evil.example"},
+		{name: "capitals", pageURL: "HTTPS://Blog.Example/Path", link: "https://blog.example/Path", host: "blog.example"},
+		{name: "IPv6 address", pageURL: "http://[::1]:8080/x", link: "http://[::1]:8080/x", host: "::1"},
+		{name: "IPv4 address", pageURL: "http://127.0.0.1:8080/x", link: "http://127.0.0.1:8080/x", host: "127.0.0.1"},
+		{name: "a name that only looks like a number to Go", pageURL: "https://docs.0b10/x", link: "https://docs.0b10/x", host: "docs.0b10"},
+		{name: "a question mark with nothing after it", pageURL: "https://blog.example/post?", link: "https://blog.example/post?", host: "blog.example"},
+	}
+	for _, tt := range linked {
+		t.Run(tt.name, func(t *testing.T) {
+			body := build(tt.pageURL, true)
+			assert.Contains(t, body, `<a href="`+tt.link+`#remark42__comment-2" style="color: #0aa; font-size: 14px;"><b>Reply on `+tt.host+`</b></a>`)
+			assert.Contains(t, body, `<a href="`+tt.link+`#remark42__comment-1" style="color: #0aa; font-size: 14px;"><b>Show on `+tt.host+`</b></a>`)
+		})
+	}
+
+	// what a browser opens as evil.example and Go reads as an address with no host, and what is no web address
+	for _, pageURL := range []string{"https:evil.example/x", "https:/evil.example/x", "https:///evil.example/x", "http:evil.example",
+		"mailto:x@evil.example", "/post", "https://xn--a-.bl\u043eg.example/x", "https://evil.example\\@blog.example/",
+		// a wide "@" and a wide space, which the mapping turns into plain ones, a port out of range, an IPv6 zone
+		"https://blog.example\uff20evil.example/x", "https://evil.example\u3000/x", "https://evil.example:65536/x",
+		"http://[fe80::1%25evil.example]/x",
+		// numbers a browser expands to another address or refuses
+		"http://127.1/evil.example", "http://2130706433/evil.example", "http://0x7f.1/evil.example", "https://evil.example.1/x",
+		"http://10.0.1.0x/evil.example", "https://evil.example.08/x"} {
+		t.Run("no link for "+pageURL, func(t *testing.T) {
+			body := build(pageURL, true)
+			assert.NotContains(t, body, "Reply")
+			assert.NotContains(t, body, "Show")
+			assert.NotContains(t, body, "evil.example")
+		})
+	}
+
+	t.Run("a user's message links the page as it is", func(t *testing.T) {
+		body := build("https://blog.example/post", false)
+		assert.Contains(t, body, `<a href="https://blog.example/post#remark42__comment-2" style="color: #0aa; font-size: 14px;"><b>Reply</b></a>`)
+		assert.Contains(t, body, `<a href="https://blog.example/post#remark42__comment-1" style="color: #0aa; font-size: 14px;"><b>Show</b></a>`)
+	})
+}
+
 // a reply notifies the authors of every comment above it by email; the unsubscribe link in each message
 // must name the user the address belongs to, not the author of the comment replied to
 func TestEmail_UnsubscribeLinkPerRecipient(t *testing.T) {
