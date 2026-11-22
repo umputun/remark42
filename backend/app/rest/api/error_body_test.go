@@ -130,6 +130,12 @@ func TestRest_SavePictureNotMultipart(t *testing.T) {
 // uploadPicture posts img as the "file" field of POST /picture, signed in as the dev user
 func uploadPicture(t *testing.T, url string, img io.Reader) *http.Response {
 	t.Helper()
+	return uploadPictureAs(t, url, devToken, img)
+}
+
+// uploadPictureAs posts img as the "file" field of POST /picture with the session token tkn
+func uploadPictureAs(t *testing.T, url, tkn string, img io.Reader) *http.Response {
+	t.Helper()
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
@@ -141,7 +147,7 @@ func uploadPicture(t *testing.T, url string, img io.Reader) *http.Response {
 	req, err := http.NewRequest(http.MethodPost, url+"/api/v1/picture?site=remark42", bodyBuf)
 	require.NoError(t, err)
 	req.Header.Add("Content-Type", bodyWriter.FormDataContentType())
-	resp, err := sendReq(req, devToken)
+	resp, err := sendReq(req, tkn)
 	require.NoError(t, err)
 	return resp
 }

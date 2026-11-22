@@ -393,7 +393,7 @@ func (s *Rest) routes() http.Handler {
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
-		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
+		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID, subscribersOnly(s.SubscribersOnly))
 		rauth.Use(logger.New(reqLog, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
 	})

@@ -805,6 +805,35 @@ func TestRest_UpdateDelete(t *testing.T) {
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
 
+func TestRest_SavePictureSubscribersOnly(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.SubscribersOnly = true })
+	defer teardown()
+
+	t.Run("not a subscriber", func(t *testing.T) {
+		resp := uploadPicture(t, ts.URL, gopherPNG())
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Equal(t, "Access denied\n", string(body))
+	})
+
+	t.Run("subscriber", func(t *testing.T) {
+		subscriber := token.User{ID: "provider1_subscriber", Name: "subscriber"}
+		subscriber.SetPaidSub(true)
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)), User: &subscriber})
+		require.NoError(t, err)
+
+		resp := uploadPictureAs(t, ts.URL, tkn, gopherPNG())
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusOK, resp.StatusCode, string(body))
+		assert.Contains(t, string(body), `"id":"provider1_subscriber/`)
+	})
+}
+
 // a user deleting their own comment, or editing a picture out of it, removes the pictures they uploaded
 // that no other comment on the page shows, and keeps another user's upload the comment showed
 func TestRest_UpdatePictures(t *testing.T) {
