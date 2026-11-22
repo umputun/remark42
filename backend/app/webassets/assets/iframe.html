@@ -125,6 +125,11 @@
                 return c;
               }, {});
 
+      // the address every request of the widget goes to, with the reader's session. Read from where
+      // this document was served, never from its query, which whichever page frames it writes. The
+      // instance serves it as <host>/web/iframe.html, and its policy allows requests to this origin only
+      remark_config.host = location.origin + location.pathname.replace(/\/[^/]*$/, '').replace(/\/web$/, '');
+
       window.parent.postMessage({ inited: true }, '*');
     </script>
   </body>
