@@ -370,16 +370,16 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		}
 	}
 
-	// add ip hash to voted ip map
 	if comment.VotedIPs == nil {
 		comment.VotedIPs = map[string]store.VotedIPInfo{}
 	}
-	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: now, Value: req.Val}
-
-	// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 	if voted && v != req.Val {
+		// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 		delete(comment.Votes, req.UserID)
-		delete(comment.VotedIPs, userIPHash)
+		forgetVoteAddress(comment.VotedIPs, req.UserID, userIPHash, v)
+	} else {
+		// add ip hash to voted ip map
+		comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: now, Value: req.Val, UserID: req.UserID}
 	}
 
 	// add to voted map if first vote
@@ -412,15 +412,36 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	return comment, s.Engine.Update(comment)
 }
 
+// forgetVoteAddress drops the address record of the vote userID takes back, a vote of direction val. The address
+// that vote came from is free again, and only that one: the record of another user's vote stays, whatever address
+// the change comes from. A record stored before records named their voter is taken for the user's own when no
+// record names the user, it is the one of the request's address ipHash and it holds a vote of that direction
+func forgetVoteAddress(votedIPs map[string]store.VotedIPInfo, userID, ipHash string, val bool) {
+	named := false
+	for hash, rec := range votedIPs {
+		if rec.UserID == userID {
+			delete(votedIPs, hash)
+			named = true
+		}
+	}
+	if rec, ok := votedIPs[ipHash]; ok && !named && rec.UserID == "" && rec.Value == val {
+		delete(votedIPs, ipHash)
+	}
+}
+
 func (s *DataStore) isSameIPVote(req VoteReq, userIPHash string, comment store.Comment) bool {
 	if req.UserIP == "" || !s.RestrictSameIPVotes.Enabled {
 		return false
 	}
 
+	// a user taking their own vote back adds no vote from the address
+	if _, voted := comment.Votes[req.UserID]; voted {
+		return false
+	}
+
+	// a vote recorded for the address counts whatever its direction: an opposite vote of another user could be
+	// changed afterwards, and the address would then stand behind two votes in the same direction
 	if v, ipFound := comment.VotedIPs[userIPHash]; ipFound {
-		if v.Value != req.Val {
-			return false // opposite direction vote allowed
-		}
 		return !s.sameIPVoteExpired(v, time.Now())
 	}
 	return false

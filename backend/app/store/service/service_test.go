@@ -771,15 +771,194 @@ func TestService_VoteSameIP(t *testing.T) {
 	assert.EqualError(t, err, "the same ip already voted for id-2")
 	assert.Equal(t, 1, c.Score, "still have 1 score, rejected")
 
+	// another user on the same address is refused in the opposite direction too
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: false})
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+	assert.Equal(t, 1, c.Score, "still have 1 score, opposite vote of another user rejected")
+
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: false})
 	assert.NoError(t, err)
-	assert.Equal(t, 0, c.Score, "reset to 0 score, opposite vote allowed")
+	assert.Equal(t, 0, c.Score, "reset to 0 score, the user's own opposite vote allowed")
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: false})
 	assert.NoError(t, err)
 	assert.Equal(t, -1, c.Score, "set to -1 score, correction vote allowed")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: true})
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+	assert.Equal(t, -1, c.Score, "still have -1 score")
+}
+
+// several users on one address must not add up: each used to vote against the standing vote and then change
+// their vote, which freed the address for the next one
+func TestService_VoteSameIPManyUsers(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+	b.RestrictSameIPVotes.Enabled = true
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	c, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: "user2", UserIP: "123", Val: true})
+	require.NoError(t, err)
+	require.Equal(t, 1, c.Score)
+
+	for _, user := range []string{"user3", "user4", "user5"} {
+		for _, val := range []bool{false, true, true} {
+			_, err = b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: user, UserIP: "123", Val: val})
+			assert.EqualError(t, err, "the same ip already voted for id-2", "%s, vote %v", user, val)
+		}
+	}
+
+	c, err = b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.Equal(t, 1, c.Score, "single vote from the ip")
+	assert.Equal(t, map[string]bool{"user2": true}, c.Votes)
+
+	// a user on another address is not affected
+	c, err = b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: "user6", UserIP: "456", Val: true})
+	require.NoError(t, err)
+	assert.Equal(t, 2, c.Score)
+}
+
+// the record of an address belongs to the vote it was written for: a user taking their vote back frees the address
+// of that vote only, whatever address the change comes from
+func TestService_VoteSameIPRecordBelongsToVoter(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	vote := func(b *DataStore, user, ip string, val bool) (store.Comment, error) {
+		return b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: user, UserIP: ip, Val: val})
+	}
+	prep := func(t *testing.T) *DataStore {
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+		b.RestrictSameIPVotes.Enabled = true
+		return b
+	}
+	const sameIP = "the same ip already voted for id-2"
+
+	t.Run("change from another address", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "456", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user3", "123", true)
+		require.NoError(t, err)
+
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "user2 takes the vote back from the address user3 voted from")
+		assert.Equal(t, 1, c.Score)
+
+		_, err = vote(b, "user4", "123", true)
+		assert.EqualError(t, err, sameIP, "the vote of user3 still stands for the address")
+		_, err = vote(b, "user2", "123", false)
+		assert.EqualError(t, err, sameIP, "user2 can't add a vote there either")
+
+		c, err = vote(b, "user5", "456", true)
+		require.NoError(t, err, "the address of the vote taken back is free")
+		assert.Equal(t, 2, c.Score)
+	})
+
+	t.Run("correction through another address", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user2", "456", false)
+		require.NoError(t, err)
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "the user's first address is free once the vote is taken back")
+		assert.Equal(t, -1, c.Score)
+	})
+
+	t.Run("record stored without its voter", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		require.Len(t, c.VotedIPs, 1)
+		for ipHash, rec := range c.VotedIPs { // as records were stored before they named the voter
+			require.Equal(t, "user2", rec.UserID)
+			rec.UserID = ""
+			c.VotedIPs[ipHash] = rec
+		}
+		require.NoError(t, b.Engine.Update(c))
+
+		_, err = vote(b, "user3", "123", false)
+		assert.EqualError(t, err, sameIP)
+		c, err = vote(b, "user2", "123", false)
+		require.NoError(t, err, "the user takes the vote back")
+		assert.Equal(t, 0, c.Score)
+		c, err = vote(b, "user2", "123", false)
+		require.NoError(t, err, "and votes the other way from the same address")
+		assert.Equal(t, -1, c.Score)
+	})
+
+	// stripVoters stores the records the way they were stored before they named the voter
+	stripVoters := func(t *testing.T, b *DataStore) {
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		for ipHash, rec := range c.VotedIPs {
+			rec.UserID = ""
+			c.VotedIPs[ipHash] = rec
+		}
+		require.NoError(t, b.Engine.Update(c))
+	}
+
+	t.Run("named record next to one stored without its voter", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		stripVoters(t, b)
+		_, err = vote(b, "user3", "456", true)
+		require.NoError(t, err)
+
+		c, err := vote(b, "user3", "123", false)
+		require.NoError(t, err, "user3 takes the vote back from the address of user2")
+		assert.Equal(t, 1, c.Score)
+		_, err = vote(b, "user4", "123", true)
+		assert.EqualError(t, err, sameIP, "the vote of user2 still stands for its address")
+		c, err = vote(b, "user5", "456", true)
+		require.NoError(t, err, "the address of the vote taken back is free")
+		assert.Equal(t, 2, c.Score)
+	})
+
+	t.Run("records without voters, change from the address of another vote", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "456", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user3", "123", false)
+		require.NoError(t, err)
+		stripVoters(t, b)
+
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "user2 takes the vote back from the address user3 voted down from")
+		assert.Equal(t, -1, c.Score)
+		_, err = vote(b, "user4", "123", false)
+		assert.EqualError(t, err, sameIP, "the record there holds a vote the other way, it is not the one of user2")
+	})
+
+	t.Run("window ended for the first vote", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			b := prep(t)
+			b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
+			_, err := vote(b, "user2", "123", false)
+			require.NoError(t, err)
+			time.Sleep(501 * time.Millisecond)
+			_, err = vote(b, "user3", "123", true)
+			require.NoError(t, err, "a new window, the address may vote again")
+
+			c, err := vote(b, "user2", "123", true)
+			require.NoError(t, err, "user2 takes the old vote back")
+			assert.Equal(t, 1, c.Score)
+			_, err = vote(b, "user2", "123", true)
+			assert.EqualError(t, err, sameIP, "the vote of user3 stands for the address in this window")
+			_, err = vote(b, "user4", "123", true)
+			assert.EqualError(t, err, sameIP)
+		})
+	})
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
