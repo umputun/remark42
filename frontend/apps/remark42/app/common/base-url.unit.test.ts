@@ -109,4 +109,20 @@ describe('resolveBaseUrl', () => {
     assert.throws(() => resolveBaseUrl('httpx://example.com', 'http:'), /Invalid host URL/);
     assert.throws(() => resolveBaseUrl('https-x://example.com', 'http:'), /Invalid host URL/);
   });
+
+  // the widget appends its request paths to the host as text, so a host ending in a fragment or in
+  // an open query would send every request, with the reader's session, to the one url it names
+  it('refuses a host carrying a query or a fragment, even an empty one', (t) => {
+    const errors = t.mock.method(console, 'error', () => {});
+
+    for (const host of [
+      'https://example.com/api/v1/admin/wait?site=blog#',
+      'https://example.com/api/v1/user?site=blog&x=',
+      'https://example.com/sub?',
+      'https://example.com/sub#',
+    ]) {
+      assert.throws(() => resolveBaseUrl(host, 'https:'), /Invalid host URL/, host);
+    }
+    assert.ok(messages(errors).includes('Remark42: Query or fragment in host URL.'));
+  });
 });

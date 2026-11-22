@@ -30,6 +30,14 @@ export function resolveBaseUrl(host: string | undefined, pageProtocol: string): 
       console.error('Remark42: Wrong protocol in host URL.');
       throw new Error();
     }
+
+    // request paths are appended to the host as text, so a `?` or `#` in it would swallow them and
+    // send every request to whatever the host names. Tested on the text, because the parser drops
+    // an empty query or fragment (`new URL('https://h/a?').search` is '')
+    if (/[?#]/.test(host)) {
+      console.error('Remark42: Query or fragment in host URL.');
+      throw new Error();
+    }
   } catch (e) {
     throw new Error('Remark42: Invalid host URL.');
   }

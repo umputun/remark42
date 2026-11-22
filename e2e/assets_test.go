@@ -3,8 +3,8 @@
 package e2e
 
 import (
-	"fmt"
 	neturl "net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,45 +43,71 @@ func TestAssets_InstanceURLIsFilledIn(t *testing.T) {
 	assert.Contains(t, body, baseURL, "embed.mjs should fall back to this instance")
 }
 
-// TestAssets_WidgetRunsOnTheCompiledInURL is the behavior the substitution exists for.
+// TestAssets_WidgetAddressesTheInstanceThatServedIt pins where the widget document sends its
+// requests. iframe.html builds remark_config out of its own query string, and any page can frame
+// it with a query of its choosing. Every request the widget makes carries the reader's session
+// and XSRF token, so the host must come from the address the document was served from: a host in
+// the query ending in `#` or an open query would otherwise swallow the paths the widget appends
+// and send all of them to the one endpoint it names.
 //
-// The widget document carries no host: iframe.html builds remark_config out of its own query
-// string, and the parent never passes one, so everything the bundle requests is addressed with
-// the url the build was substituted with. A marker left in place leaves the widget asking for
-// `{% REMARK_URL %}/api/v1/config` and rendering nothing.
-//
-// The demo pages cannot show this. Their loader builds the bundle's own script url from
-// remark_config.host, so a page without one never gets as far as loading the widget.
-func TestAssets_WidgetRunsOnTheCompiledInURL(t *testing.T) {
+// The no-host case is the plain document opened on its own. The prefixed case serves the instance
+// under /remark42 on this origin, as a reverse proxy mounting it on a path would, so the address the
+// document derives differs from the instance's REMARK_URL and the prefix has to survive.
+func TestAssets_WidgetAddressesTheInstanceThatServedIt(t *testing.T) {
 	t.Parallel()
 
-	page := newPage(t)
+	for _, tc := range []struct{ name, prefix, host string }{
+		{name: "no host"},
+		{name: "host swallowing the path in a fragment", host: baseURL + "/api/v1/user?site=remark#"},
+		{name: "host swallowing the path in a query", host: baseURL + "/api/v1/user?site=remark&x="},
+		{name: "instance mounted under a path", prefix: "/remark42"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			page := newPage(t)
+			instance := baseURL + tc.prefix
 
-	var configURL string
-	page.OnRequest(func(r playwright.Request) {
-		if configURL == "" && strings.Contains(r.URL(), "/api/v1/config") {
-			configURL = r.URL()
-		}
-	})
+			if tc.prefix != "" {
+				// strip the prefix on the way out, as the proxy would. Fallback keeps the context's
+				// own route, which sets the reader address, in the chain
+				mounted := regexp.MustCompile("^" + regexp.QuoteMeta(instance) + "/")
+				require.NoError(t, page.Route(mounted, func(route playwright.Route) {
+					target := baseURL + "/" + mounted.ReplaceAllString(route.Request().URL(), "")
+					if err := route.Fallback(playwright.RouteFallbackOptions{URL: &target}); err != nil {
+						t.Errorf("route %s to the instance: %v", route.Request().URL(), err)
+					}
+				}))
+			}
 
-	_, err := page.Goto(fmt.Sprintf("%s/web/iframe.html?site_id=remark&url=%s",
-		baseURL, neturl.QueryEscape(threadURL(t))))
-	require.NoError(t, err)
+			// the config request by its path, not by a substring: a swallowing host turns it into
+			// /api/v1/user?site=remark&x=/api/v1/config?site=remark, which still contains the name
+			var configURL string
+			page.OnRequest(func(r playwright.Request) {
+				if u, err := neturl.Parse(r.URL()); err == nil && configURL == "" && u.Path == tc.prefix+"/api/v1/config" {
+					configURL = r.URL()
+				}
+			})
 
-	// the document really had no host of its own, or the fallback was never reached
-	host, err := page.Evaluate(`() => window.remark_config && window.remark_config.host`)
-	require.NoError(t, err)
-	require.Nil(t, host, "the widget document should carry no host")
+			query := neturl.Values{"site_id": {"remark"}, "url": {threadURL(t)}}
+			if tc.host != "" {
+				query.Set("host", tc.host)
+			}
+			_, err := page.Goto(instance + "/web/iframe.html?" + query.Encode())
+			require.NoError(t, err)
 
-	// it rendered, so the url it was addressing resolved
-	waitVisible(t, page.Locator(commentFormSel).First())
+			host, err := page.Evaluate(`() => window.remark_config && window.remark_config.host`)
+			require.NoError(t, err)
+			assert.Equal(t, instance, host, "the widget should address the instance that served it")
 
-	eventually(t, waitTimeout, "the widget never asked for its config", func() bool {
-		return configURL != ""
-	})
-	assert.True(t, strings.HasPrefix(configURL, baseURL),
-		"the widget addressed %q rather than this instance", configURL)
-	assert.NotContains(t, configURL, remarkURLPlaceholder)
+			// it rendered, so the url it was addressing resolved
+			waitVisible(t, page.Locator(commentFormSel).First())
+
+			eventually(t, waitTimeout, "the widget never asked this instance for its config", func() bool {
+				return configURL != ""
+			})
+			assert.True(t, strings.HasPrefix(configURL, instance+"/api/v1/config?"),
+				"the widget asked %q rather than this instance for its config", configURL)
+		})
+	}
 }
 
 // TestAssets_WidgetImagesActuallyLoad covers a class of defect the unit suite structurally cannot
