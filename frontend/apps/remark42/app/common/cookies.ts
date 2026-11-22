@@ -23,14 +23,21 @@ export function authCookieOptions(isSecure: boolean): CookieOptions {
  * cleared, or the browser treats this as a different cookie and leaves the original in place; an
  * HttpOnly cookie is out of script's reach either way and is expired by the backend at sign-out.
  * @param name The name of the cookie to clear
+ * @param bothForms Clear the form this context does not address as well. A frame on another host
+ * of the page's site holds the backend's cookie in both forms, and a sign-out the backend did not
+ * answer has to leave neither
  */
-export function clearAuthCookie(name: string) {
+export function clearAuthCookie(name: string, bothForms = false) {
   const isSecure = window.location.protocol === 'https:';
+  // epoch time, to expire immediately
+  const options: CookieOptions = { ...authCookieOptions(isSecure), expires: new Date(0) };
 
-  setCookie(name, '', {
-    ...authCookieOptions(isSecure),
-    expires: new Date(0), // Set to epoch time to expire immediately
-  });
+  setCookie(name, '', options);
+
+  // Partitioned requires Secure, so over http a cookie has one form only
+  if (bothForms && isSecure) {
+    setCookie(name, '', { ...options, partitioned: !options.partitioned });
+  }
 }
 
 export function getCookie(name: string) {

@@ -74,6 +74,18 @@ describe('clearAuthCookie', () => {
 
     raw.restore();
   });
+
+  it('has one form to clear over http, where no cookie can be partitioned', async () => {
+    const raw = captureRaw();
+    const { clearAuthCookie } = await loadCookies(true);
+
+    clearAuthCookie('XSRF-TOKEN', true);
+
+    expect(raw.written).toHaveLength(1);
+    expect(raw.written[0]).not.toContain('partitioned');
+
+    raw.restore();
+  });
 });
 
 describe('getCookie', () => {
