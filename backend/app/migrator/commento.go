@@ -21,11 +21,11 @@ type Commento struct {
 
 // Credit: https://gitlab.com/commento/commento/-/blob/master/api/domain_import_commento.go#L11-L15
 type commentoExport struct {
-	Version    int                 `json:"version"`
 	Comments   []commentoComment   `json:"comments"`
 	Commenters []commentoCommenter `json:"commenters"`
 }
 
+// commentoComment holds the fields the import reads.
 // Credit: https://gitlab.com/commento/commento/-/blob/master/api/comment.go#L7-L20
 type commentoComment struct {
 	CommentHex   string    `json:"commentHex"`
@@ -33,25 +33,18 @@ type commentoComment struct {
 	Path         string    `json:"url,omitempty"`
 	CommenterHex string    `json:"commenterHex"`
 	Markdown     string    `json:"markdown"`
-	HTML         string    `json:"html"`
 	ParentHex    string    `json:"parentHex"`
-	Score        int       `json:"score"`
 	State        string    `json:"state,omitempty"`
 	CreationDate time.Time `json:"creationDate"`
-	Direction    int       `json:"direction"`
 	Deleted      bool      `json:"deleted"`
 }
 
+// commentoCommenter holds the fields the import reads.
 // Credit: https://gitlab.com/commento/commento/-/blob/master/api/commenter.go#L7-L16
 type commentoCommenter struct {
-	CommenterHex string    `json:"commenterHex,omitempty"`
-	Email        string    `json:"email,omitempty"`
-	Name         string    `json:"name"`
-	Link         string    `json:"link"`
-	Photo        string    `json:"photo"`
-	Provider     string    `json:"provider,omitempty"`
-	JoinDate     time.Time `json:"joinDate"`
-	IsModerator  bool      `json:"isModerator"`
+	CommenterHex string `json:"commenterHex,omitempty"`
+	Name         string `json:"name"`
+	Photo        string `json:"photo"`
 }
 
 // Import comments from Commento and save to store

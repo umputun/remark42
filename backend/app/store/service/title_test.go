@@ -1,17 +1,16 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/go-pkgz/syncs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -91,16 +90,17 @@ func TestTitle_GetConcurrent(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	g := syncs.NewSizedGroup(10)
-
-	for i := range 100 {
-		g.Go(func(_ context.Context) {
-			title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(i))
-			require.NoError(t, err)
-			assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(i), title)
+	var wg sync.WaitGroup
+	for w := range 10 { // 10 workers, 10 pages each
+		wg.Go(func() {
+			for i := w * 10; i < w*10+10; i++ {
+				title, err := ex.Get(ts.URL + "/good/" + strconv.Itoa(i))
+				assert.NoError(t, err)
+				assert.Equal(t, "blah 123 "+"/good/"+strconv.Itoa(i), title)
+			}
 		})
 	}
-	g.Wait()
+	wg.Wait()
 	assert.Equal(t, int32(100), hits.Load())
 }
 

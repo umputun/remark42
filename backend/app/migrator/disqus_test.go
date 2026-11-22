@@ -154,3 +154,43 @@ func TestDisqus_Convert(t *testing.T) {
 	exp0.Timestamp, _ = time.Parse("2006-01-02T15:04:05Z", "2011-08-31T15:16:29Z")
 	assert.Equal(t, exp0, res[0])
 }
+
+// a thread is read for its id, link, title and deleted mark, so a value that does not parse in one of its
+// other fields keeps neither the thread nor its comments out of the import
+func TestDisqus_ConvertThreadWithUnreadFields(t *testing.T) {
+	tbl := []struct{ name, field string }{
+		{name: "creation date in another format", field: `<createdAt>2011-03-07 20:46:25</createdAt>`},
+		{name: "closed mark not a boolean", field: `<isClosed>no</isClosed>`},
+		{name: "anonymous mark not a boolean", field: `<author><isAnonymous>no</isAnonymous></author>`},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			export := `<?xml version="1.0" encoding="utf-8"?>
+<disqus xmlns="http://disqus.com" xmlns:dsq="http://disqus.com/disqus-internals">
+    <thread dsq:id="1">
+        <link>https://example.com/1</link>
+        <title>post 1</title>
+        ` + tt.field + `
+        <isDeleted>false</isDeleted>
+    </thread>
+    <post dsq:id="11">
+        <message>first</message>
+        <createdAt>2011-08-31T15:16:29Z</createdAt>
+        <author><name>user</name><username>user</username></author>
+        <thread dsq:id="1"/>
+        <isDeleted>false</isDeleted>
+        <isSpam>false</isSpam>
+    </post>
+</disqus>`
+			var res []store.Comment
+			err := (&Disqus{}).convert(strings.NewReader(export), "test", func(c store.Comment) error {
+				res = append(res, c)
+				return nil
+			})
+			require.NoError(t, err)
+			require.Len(t, res, 1, "the comment of the thread is imported")
+			assert.Equal(t, store.Locator{SiteID: "test", URL: "https://example.com/1"}, res[0].Locator)
+			assert.Equal(t, "post 1", res[0].PostTitle)
+		})
+	}
+}

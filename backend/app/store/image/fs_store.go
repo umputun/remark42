@@ -2,8 +2,10 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc64"
+	"io/fs"
 	"math"
 	"os"
 	"path"
@@ -95,30 +97,24 @@ func (f *FileSystem) Load(id string) ([]byte, error) {
 	if err := f.checkID(id); err != nil {
 		return nil, err
 	}
-	// get image file by id. first try permanent location and if not found - staging
-	img := func(id string) (file string, err error) {
-		file = f.location(f.Location, id)
-		_, err = os.Stat(file)
-		if err != nil {
-			file = f.location(f.Staging, id)
-			_, err = os.Stat(file)
-		}
-		if err != nil {
-			return file, fmt.Errorf("can't get image stats for %s: %w", id, err)
-		}
-		return file, nil
+	// the permanent location is read first, then staging. Commit moves the file from staging to the permanent
+	// location and can do it between the two reads, so the permanent location is read once more.
+	permanent, staging := f.location(f.Location, id), f.location(f.Staging, id)
+	data, err := os.ReadFile(permanent) //nolint:gosec // we open file from known location
+	if err == nil {
+		return data, nil
 	}
-
-	imgFile, err := img(id)
-	if err != nil {
-		return nil, fmt.Errorf("can't get image file for %s: %w", id, err)
+	data, stagingErr := os.ReadFile(staging) //nolint:gosec // we open file from known location
+	if stagingErr == nil {
+		return data, nil
 	}
-
-	data, err := os.ReadFile(imgFile) //nolint:gosec // we open file from known location
-	if err != nil {
-		return nil, fmt.Errorf("can't load image %s: %w", id, err)
+	if data, err = os.ReadFile(permanent); err == nil { //nolint:gosec // we open file from known location
+		return data, nil
 	}
-	return data, nil
+	if !errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("can't load image %s: %w", id, err) // the permanent file is there and can't be read
+	}
+	return nil, fmt.Errorf("can't load image %s: %w", id, stagingErr)
 }
 
 // Delete image from storage
@@ -128,17 +124,14 @@ func (f *FileSystem) Delete(id string) error {
 	}
 	f.moveLock.Lock()
 	defer f.moveLock.Unlock()
-	staging := f.location(f.Staging, id)
-	// file doesn't exist on staging, delete from permanent location
-	if _, err := os.Stat(staging); os.IsNotExist(err) {
-		file := f.location(f.Location, id)
-		e := os.Remove(file)
-		_ = os.Remove(path.Dir(file)) // try to remove directory
-		return e
+	// delete from staging, or from permanent location if it is not on staging
+	file := f.location(f.Staging, id)
+	err := os.Remove(file)
+	if errors.Is(err, fs.ErrNotExist) {
+		file = f.location(f.Location, id)
+		err = os.Remove(file)
 	}
-	// delete file from staging
-	err := os.Remove(staging)
-	_ = os.Remove(path.Dir(staging)) // try to remove directory
+	_ = os.Remove(path.Dir(file)) // try to remove directory
 	return err
 }
 

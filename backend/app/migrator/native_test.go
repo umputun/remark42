@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -447,4 +450,66 @@ func TestNative_ExportImportKeepsEachUsersDetails(t *testing.T) {
 	tg, err = b.GetUserTelegram("radio-t", "user2")
 	require.NoError(t, err)
 	assert.Empty(t, tg, "email-only user has no telegram after restore")
+}
+
+// import reads a record only when a writer is free for it, so a slow store holds back the reading
+// of the export instead of piling decoded records up in memory
+func TestNative_ImportWaitsForFreeWriter(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		st := &blockingStore{release: make(chan struct{})}
+		pr, pw := io.Pipe()
+		var sent atomic.Int32 // records the import has read from the pipe
+		go func() {
+			_, _ = io.WriteString(pw, `{"version":1}`+"\n")
+			for i := range 10 {
+				rec := fmt.Sprintf(`{"id":"%d","locator":{"site":"radio-t","url":"https://radio-t.com"}}`+"\n", i)
+				if _, err := io.WriteString(pw, rec); err != nil {
+					return
+				}
+				sent.Add(1)
+			}
+			_ = pw.Close()
+		}()
+
+		var size int
+		var err error
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			size, err = (&Native{DataStore: st, Concurrent: 2}).Import(pr, "radio-t")
+		}()
+
+		synctest.Wait()
+		assert.Equal(t, int32(2), st.started.Load(), "two writes run")
+		assert.Equal(t, int32(3), sent.Load(), "one more record is read, then reading waits for a free writer")
+
+		close(st.release)
+		<-done
+		require.NoError(t, err)
+		assert.Equal(t, 10, size)
+		assert.Equal(t, int32(10), st.started.Load())
+	})
+}
+
+// blockingStore is a Store whose Create waits until release is closed
+type blockingStore struct {
+	release chan struct{}
+	started atomic.Int32
+}
+
+func (s *blockingStore) Create(c store.Comment) (string, error) {
+	s.started.Add(1)
+	<-s.release
+	return c.ID, nil
+}
+
+func (*blockingStore) FindRaw(store.Locator) ([]store.Comment, error)  { return nil, nil }
+func (*blockingStore) List(string, int, int) ([]store.PostInfo, error) { return nil, nil }
+func (*blockingStore) DeleteAll(string) error                          { return nil }
+func (*blockingStore) Metas(string) ([]service.UserMetaData, []service.PostMetaData, error) {
+	return nil, nil, nil
+}
+
+func (*blockingStore) SetMetas(string, []service.UserMetaData, []service.PostMetaData) error {
+	return nil
 }

@@ -148,6 +148,60 @@ func TestCleanup_ExecuteFailsWhenCommentsUnreadable(t *testing.T) {
 	assert.Contains(t, err.Error(), "1 of 1 posts")
 }
 
+func TestCleanup_ExecuteFailsWhenCommentsNotChanged(t *testing.T) {
+	// the server refuses to change comments of the first post only, so the failures have to survive the second one
+	newServer := func(t *testing.T) *httptest.Server {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/api/v1/list", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`[{"url":"http://test.com/post1","first_time":"2018-12-17T10:00:00Z","last_time":"2018-12-17T10:30:00Z"},` +
+				`{"url":"http://test.com/post2","first_time":"2018-12-18T10:00:00Z","last_time":"2018-12-18T10:30:00Z"}]`))
+		})
+		mux.HandleFunc("/api/v1/find", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("url") == "http://test.com/post2" {
+				_, _ = w.Write([]byte(`{"comments":[{"id":"4","text":"bad1 bad2 http://xyz.com","user":{"id":"u4"}}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"comments":[{"id":"1","text":"bad1 bad2 http://xyz.com","user":{"id":"u1"}},` +
+				`{"id":"2","text":"bad1 bad2 https://xyz.com","user":{"id":"u2"}},{"id":"3","text":"good one","score":1,"user":{"id":"u3"}}]}`))
+		})
+		mux.HandleFunc("DELETE /api/v1/admin/comment/{id}", func(w http.ResponseWriter, r *http.Request) {
+			if r.PathValue("id") == "1" {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+		})
+		mux.HandleFunc("PUT /api/v1/admin/title/{id}", func(w http.ResponseWriter, r *http.Request) {
+			if id := r.PathValue("id"); id == "1" || id == "2" {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		})
+		ts := httptest.NewServer(mux)
+		t.Cleanup(ts.Close)
+		return ts
+	}
+
+	t.Run("spam not removed", func(t *testing.T) {
+		cmd := CleanupCommand{}
+		parseCmd(t, &cmd, newServer(t).URL, "--site=remark", "--bword=bad1", "--bword=bad2", "--admin-passwd=secret")
+		err := cmd.Execute(nil)
+		require.Error(t, err, "a spam comment the server refused to remove fails the run")
+		assert.EqualError(t, err, "can't remove 1 of 3 spam comments")
+	})
+
+	t.Run("title not set", func(t *testing.T) {
+		cmd := CleanupCommand{}
+		parseCmd(t, &cmd, newServer(t).URL, "--site=remark", "--title", "--admin-passwd=secret")
+		err := cmd.Execute(nil)
+		require.Error(t, err, "a title the server refused to set fails the run")
+		assert.EqualError(t, err, "can't set title for 2 of 4 comments")
+	})
+
+	t.Run("dry run", func(t *testing.T) {
+		cmd := CleanupCommand{}
+		parseCmd(t, &cmd, newServer(t).URL, "--site=remark", "--bword=bad1", "--bword=bad2", "--dry")
+		assert.NoError(t, cmd.Execute(nil), "a dry run sends no removal, so nothing can fail")
+	})
+}
+
 func TestCleanup_ExecuteHonoursTimeout(t *testing.T) {
 	r := http.NewServeMux()
 	cleanupRoutes(t, r, &cleanedComments{})

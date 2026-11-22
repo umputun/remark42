@@ -15,7 +15,6 @@ require (
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.2
-	github.com/go-pkgz/syncs v1.3.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
