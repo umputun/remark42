@@ -110,6 +110,26 @@ describe('embed', () => {
     expect(resized).toBe(false);
   });
 
+  it('takes an open profile away on destroy, with the widget its sign-out is addressed to', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+    window.dispatchEvent(
+      new MessageEvent('message', { data: { profile: { id: 'reader', current: '1' } }, source: iframe.contentWindow })
+    );
+    expect(document.querySelectorAll('iframe')).toHaveLength(2);
+    expect(document.body.style.overflow).toBe('hidden');
+    // the dimmed layer over the whole page that the profile's frame sits in
+    const overlay = document.querySelector('iframe[src*="page=profile"]')!.parentElement!;
+    expect(overlay.style.display).toBe('block');
+
+    window.REMARK42.destroy!();
+
+    expect(document.querySelectorAll('iframe')).toHaveLength(0);
+    expect(overlay.style.display).toBe('none');
+    expect(document.body.style.overflow).toBe('');
+  });
+
   it('resizes for its own iframe', async () => {
     const root = await mount();
     const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;

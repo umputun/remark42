@@ -4,6 +4,7 @@ import { waitFor, fireEvent, screen } from '@testing-library/preact';
 import { render } from 'tests/utils';
 import * as api from 'common/api';
 import * as pq from 'utils/parse-query';
+import * as postMessage from 'utils/post-message';
 import type { Comment, User } from 'common/types';
 
 import { Profile } from './profile';
@@ -124,6 +125,23 @@ describe('<Profile />', () => {
     expect(queryByTitle('Sign out')).toBeInTheDocument();
     expect(queryByText('Request deletion of my data')).toBeInTheDocument();
     expect(queryByRole('button', { name: /load more/i })).toBeInTheDocument();
+  });
+
+  it('leaves the sign-out to the widget and sends no logout request of its own', async () => {
+    jest.spyOn(pq, 'parseQuery').mockImplementation(() => ({ ...userParamsStub, current: '1' }));
+    jest.spyOn(api, 'getUserComments').mockImplementation(async () => ({ comments: [], count: 0 }));
+    const posted = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
+    posted.mockClear();
+    fetchMock.mockClear();
+
+    const { getByTitle } = render(<Profile />);
+
+    fireEvent.click(getByTitle('Sign out'));
+
+    // the page removes this frame on the message, and a request sent from it would be cancelled
+    expect(posted).toHaveBeenCalledWith({ profile: null, signout: true });
+    await waitFor(() => expect(getByTitle('Sign out')).toBeDisabled());
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/auth/logout'))).toEqual([]);
   });
 
   it('should render user without footer', async () => {

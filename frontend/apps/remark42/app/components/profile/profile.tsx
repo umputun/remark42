@@ -14,7 +14,6 @@ import { postMessageToParent } from 'utils/post-message';
 import { Comment } from 'components/comment';
 import { Preloader } from 'components/preloader';
 import { SignOutIcon } from 'components/icons/signout';
-import { logout } from 'components/auth/auth.api';
 import { Spinner } from 'components/spinner/spinner';
 import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
@@ -36,9 +35,13 @@ function isEmailUser(id: string) {
   return id.startsWith('email_');
 }
 
-async function signout() {
+/**
+ * Asks the widget to sign the reader out, and the page to close the profile. The page removes this
+ * frame on the message, and a logout request sent from here would go with it, so the request is
+ * the widget's to make: its document stays
+ */
+function signout() {
   postMessageToParent({ profile: null, signout: true });
-  await logout();
 }
 
 // TODO: rewrite hide user logic and bring button to user profile
@@ -92,15 +95,14 @@ export function Profile() {
     });
   }
 
-  async function handleClickLogout() {
+  function handleClickLogout() {
     setSigningOut(true);
-    await signout();
-    setSigningOut?.(false);
+    signout();
   }
 
   async function handleClickRequestRemoveData() {
     await requestDeletion();
-    await signout();
+    signout();
   }
 
   useEffect(() => {
