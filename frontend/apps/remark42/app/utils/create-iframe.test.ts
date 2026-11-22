@@ -33,6 +33,18 @@ describe('createIframe', () => {
     expect(iframe.style.visibility).toBe('hidden');
   });
 
+  it('ignores inited with no source while the iframe is outside the page', () => {
+    const onReveal = jest.fn();
+    const iframe = createIframe({ site_id: 'remark', onReveal });
+
+    // an iframe outside the page has no contentWindow, and a message whose sender is gone has no source
+    expect(iframe.contentWindow).toBeNull();
+    postInited(null);
+
+    expect(iframe.style.visibility).toBe('hidden');
+    expect(onReveal).not.toHaveBeenCalled();
+  });
+
   it('reveals on timeout when inited never arrives', () => {
     const iframe = createIframe({ site_id: 'remark' });
     document.body.appendChild(iframe);

@@ -74,7 +74,9 @@ function hideUntilInited(iframe: HTMLIFrameElement, onReveal?: () => void) {
   }
 
   function handleMessage(event: MessageEvent) {
-    if (event.source === iframe.contentWindow && parseMessage(event).inited === true) {
+    // a message whose sender is gone has no source, and an iframe outside the page has no
+    // contentWindow. No source on both sides is not a match
+    if (event.source !== null && event.source === iframe.contentWindow && parseMessage(event).inited === true) {
       reveal();
     }
   }

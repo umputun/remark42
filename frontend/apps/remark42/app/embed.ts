@@ -78,8 +78,11 @@ function createInstance(config: typeof window.remark_config) {
   function handleReceiveMessage(event: MessageEvent): void {
     // only the frames this module created. window.parent is reachable by every frame on the page,
     // an advertisement among them, and the handler below resizes the widget, scrolls the page and
-    // opens the profile overlay, so an unchecked sender can drive all three
-    if (event.source !== iframe.contentWindow && !ownsWindow(event.source)) {
+    // opens the profile overlay, so an unchecked sender can drive all three. A message whose
+    // sender was removed before delivery has no source, and the iframe has no contentWindow once
+    // the host page drops the root without destroy(), which leaves this listener attached. No
+    // source on both sides is not a match
+    if (event.source === null || (event.source !== iframe.contentWindow && !ownsWindow(event.source))) {
       return;
     }
 
