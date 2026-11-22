@@ -700,7 +700,13 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 	}
 	comment.PostTitle = title
 	comment.Locator = locator
-	err = s.Engine.Update(comment)
+	if err = s.Engine.Update(comment); err != nil {
+		// the engine refuses to update a deleted comment; one deleted while the page was fetched, or by a user
+		// deletion, which takes no post lock, between the read above and the update, is skipped
+		if stored, e := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); e == nil && stored.Deleted {
+			return stored, nil
+		}
+	}
 	return comment, err
 }
 
@@ -881,16 +887,25 @@ func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.D
 	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
 		log.Printf("[WARN] failed to send delete event, %s", e)
 	}
-	// get the comment to learn its author and pictures
-	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	comment, err := s.deleteComment(locator, commentID, mode)
 	if err != nil {
 		return err
 	}
-	if err := s.Engine.Delete(engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}); err != nil {
-		return err
-	}
+	// the pictures go with the post unlocked, finding them reads every comment of the author on the site
 	s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
 	return nil
+}
+
+// deleteComment reads the comment, to learn its author and pictures, and deletes it, holding the lock of the post
+// that edits, votes, pins and title updates take, so the text read is the text deleted
+func (s *DataStore) deleteComment(locator store.Locator, commentID string, mode store.DeleteMode) (store.Comment, error) {
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	if err != nil {
+		return comment, err
+	}
+	return comment, s.Engine.Delete(engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode})
 }
 
 // DeleteUser removes all comments from user, along with the pictures used in them
