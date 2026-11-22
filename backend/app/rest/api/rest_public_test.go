@@ -1444,7 +1444,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"anonymous": {
 			"remark42@@/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1455,7 +1455,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"user": {
 			"remark42@@provider1_dev!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@provider1_dev!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1466,7 +1466,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"admin token": {
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1477,7 +1477,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"admin password": {
 			"remark42@@admin!!admin!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!admin!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
