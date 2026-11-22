@@ -60,11 +60,15 @@ class AuthPanelComponent extends Component<Props, State> {
   };
 
   renderAuthorized = (user: User) => {
+    // the page embedding the widget receives the message below, so it carries the fields the
+    // profile shows and nothing else of the user record
+    const { id, name, picture } = user;
+
     return (
       <div className={styles.user}>
         <button
           className={styles.userButton}
-          onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
+          onClick={() => postMessageToParent({ profile: { id, name, picture, current: '1' } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>

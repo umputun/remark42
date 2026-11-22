@@ -11,6 +11,7 @@ import type { CommentProps } from './comment';
 import { Comment } from './comment';
 import { CommentForm } from 'components/comment-form';
 import { CommentMode } from 'common/types';
+import * as postMessage from 'utils/post-message';
 import de from 'locales/de.json';
 
 function CommentWithIntl(props: CommentProps) {
@@ -88,6 +89,31 @@ describe('<Comment />', () => {
     const { container } = render(<CommentWithIntl {...props} />);
 
     expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-11-21T15:05:00.000Z');
+  });
+
+  describe('opening a profile', () => {
+    // the message goes to whatever page embeds the widget, and an admin's copy of a comment has
+    // the commenter's IP hash in its user record
+    it.each([
+      ['of another user', 'someone', { id: 'someone', name: 'username', picture: 'http://localhost/somepicture-url' }],
+      [
+        'of the current user',
+        'testuser',
+        { id: 'testuser', name: 'username', picture: 'http://localhost/somepicture-url', current: '1' },
+      ],
+    ])('sends the parent only the profile fields %s', (_label, id, expected) => {
+      const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
+      const props = getProps();
+      props.user!.admin = true;
+      Object.assign(props.data.user, { id, ip: 'ip-hash', verified: true, paid_sub: true, site_id: 'remark' });
+
+      render(<CommentWithIntl {...props} />);
+      fireEvent.click(screen.getByText('username'));
+
+      expect(postMessageToParent).toHaveBeenCalledTimes(1);
+      expect(postMessageToParent).toHaveBeenCalledWith({ profile: expected });
+      postMessageToParent.mockRestore();
+    });
   });
 
   describe('voting', () => {

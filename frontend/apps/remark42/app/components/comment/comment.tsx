@@ -183,7 +183,10 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleUserInfoVisibility = () => {
-    const profile: Profile = { ...this.props.data.user };
+    // the page embedding the widget receives this message, so it carries the fields the profile
+    // shows and nothing else of the record, which for an admin holds the commenter's IP hash
+    const { id, name, picture } = this.props.data.user;
+    const profile: Profile = { id, name, picture };
 
     if (this.props.user?.id === profile.id) {
       profile.current = '1';
