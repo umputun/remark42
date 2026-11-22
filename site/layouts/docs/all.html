@@ -5,7 +5,9 @@
     <h1 class="docs__title" id="{{ .Title | anchorize }}">{{ .Title }}</h1>
     <div class="prose">{{ partial "content.html" . }}</div>
     <footer class="docs__meta">
-      <span>Updated <time datetime="{{ .Lastmod.Format "2006-01-02" }}">{{ .Lastmod.Format "Jan 02, 2006" }}</time></span>
+      {{- with partial "page-date.html" . }}
+      <span>Updated <time datetime="{{ .Format "2006-01-02" }}">{{ .Format "Jan 02, 2006" }}</time></span>
+      {{- end }}
       <a target="_blank" rel="noopener noreferrer" href="{{ site.Params.githubUrl }}/edit/{{ site.Params.githubBranch }}/site/content/{{ with .File }}{{ .Path }}{{ end }}">Edit</a>
     </footer>
   </article>

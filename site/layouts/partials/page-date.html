@@ -1,0 +1,16 @@
+{{- /* the date a page last changed. The image is built from site/ alone, with no git history, so
+       scripts/page-dates.sh writes the commit dates to data/lastmod.json before the build. A local
+       build with HUGO_ENABLEGITINFO=true reads git itself. With neither there is no date to show:
+       the time of the build is not one. params.requirePageDates makes that an error, which is how
+       the published image is built */ -}}
+{{- $date := false -}}
+{{- with .File -}}
+  {{- with index (site.Data.lastmod | default dict) .Path }}{{ $date = time.AsTime . }}{{ end -}}
+{{- end -}}
+{{- /* the committer date, as the script writes: .Lastmod would give the author date */ -}}
+{{- if not $date }}{{ with .GitInfo }}{{ $date = .CommitDate }}{{ end }}{{ end -}}
+{{- /* the build argument arrives as text, and the text "false" would count as set */ -}}
+{{- if and (not $date) .File (eq (printf "%v" site.Params.requirePageDates) "true") -}}
+  {{- errorf "no commit date for %s: run site/scripts/page-dates.sh on a full clone before the build" .File.Path -}}
+{{- end -}}
+{{- return $date -}}
