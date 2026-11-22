@@ -44,6 +44,8 @@ Create the instance when the `div` for Remark42 has appeared, usually in `mounte
   }
 ```
 
+The script dispatches `REMARK42::ready` when it initialises, even on a page without the `remark42` element, so it can be loaded on a route without comments and `REMARK42.createInstance` called when a route with comments opens. On such a page its first attempt still throws `Remark42: Can't find root node.`, which shows in the console and is expected.
+
 - Ensure that this is called every time route changes
 
 ```ts

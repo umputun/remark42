@@ -172,16 +172,6 @@
   font-family: inherit;
 }
 
-.honeypot {
-  position: absolute;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  height: 0;
-  width: 0;
-  opacity: 0;
-}
-
 .submit {
   width: 100%;
   height: 36px;

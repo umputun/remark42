@@ -39,6 +39,23 @@ describe('embed', () => {
     expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
   });
 
+  it('dispatches REMARK42::ready on a page without the root node', async () => {
+    // a single-page site loads the script on a route without comments and waits for the event to
+    // call createInstance once a route with the node is shown
+    document.body.innerHTML = '';
+    jest.resetModules();
+    // earlier tests leave createInstance on the shared window; the listener must find this import's own
+    Reflect.deleteProperty(window, 'REMARK42');
+    const ready = jest.fn(() => typeof window.REMARK42?.createInstance);
+    window.addEventListener('REMARK42::ready', ready);
+
+    await expect(import('./embed')).rejects.toThrow("Remark42: Can't find root node.");
+
+    window.removeEventListener('REMARK42::ready', ready);
+    expect(ready).toHaveBeenCalledTimes(1);
+    expect(ready).toHaveReturnedWith('function');
+  });
+
   it('reuses its own iframe on a second createInstance', async () => {
     const root = await mount();
     const first = root.querySelector(MARKED);

@@ -24,9 +24,14 @@ function init() {
   window.REMARK42 = window.REMARK42 || {};
   window.REMARK42.createInstance = createInstance;
 
-  createInstance(window.remark_config);
-
-  window.dispatchEvent(new Event('REMARK42::ready'));
+  // a single-page site loads this script once, often on a route without the comments node, and
+  // waits for the event to call createInstance itself later, so it goes out even when this first
+  // call throws
+  try {
+    createInstance(window.remark_config);
+  } finally {
+    window.dispatchEvent(new Event('REMARK42::ready'));
+  }
 }
 
 function createInstance(config: typeof window.remark_config) {
