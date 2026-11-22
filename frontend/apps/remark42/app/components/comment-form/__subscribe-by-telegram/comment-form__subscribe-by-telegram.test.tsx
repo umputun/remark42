@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
-import { fireEvent, screen, waitForElementToBeRemoved } from '@testing-library/preact';
+import { fireEvent, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/preact';
+import { act } from 'preact/test-utils';
 
 import { render } from 'tests/utils';
 import * as api from 'common/api';
@@ -115,6 +116,158 @@ describe('<SubscribeByTelegram />', () => {
 
       expect(await screen.findByText('Check')).toBeInTheDocument();
       expect(screen.queryByText(/You have subscribed/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('a link the server no longer keeps', () => {
+    const LIFETIME = 10 * 60 * 1000;
+    const link = (token: string) => `https://t.me/foo_bot/?start=${token}`;
+    const shownLink = () => screen.getByText(/using this link/);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      // reset, not cleared: a link queued by an earlier case and never asked for would come first
+      jest
+        .spyOn(api, 'telegramSubscribe')
+        .mockReset()
+        .mockResolvedValueOnce({ bot: 'foo_bot', token: 'old_token' })
+        .mockResolvedValueOnce({ bot: 'foo_bot', token: 'new_token' });
+      jest.spyOn(api, 'telegramCurrentSubscribtion').mockResolvedValue({ address: '223211010', updated: true });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      // a case that asked for one link leaves the second queued, and it would come first later on
+      jest.spyOn(api, 'telegramSubscribe').mockReset();
+    });
+
+    async function open() {
+      const button = screen.getByTitle('Subscribe by Telegram');
+
+      fireEvent.click(button);
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('old_token')));
+
+      return button;
+    }
+
+    it('is replaced when the panel is opened again', async () => {
+      createWrapper();
+      const button = await open();
+
+      fireEvent.click(button); // close
+      jest.advanceTimersByTime(LIFETIME);
+      fireEvent.click(button);
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+    });
+
+    it('is replaced while the panel stays open', async () => {
+      createWrapper();
+      await open();
+
+      act(() => {
+        jest.advanceTimersByTime(LIFETIME);
+      });
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+    });
+
+    it('is replaced when the clock has moved on while the timers stood still', async () => {
+      createWrapper();
+      await open();
+
+      // a computer asleep: the clock passes the deadline and no timer has run meanwhile
+      jest.setSystemTime(Date.now() + LIFETIME);
+      act(() => {
+        jest.advanceTimersByTime(10 * 1000);
+      });
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+    });
+
+    it('is replaced at its deadline when that comes before the next regular check', async () => {
+      createWrapper();
+      const button = await open();
+
+      fireEvent.click(button); // close
+      jest.advanceTimersByTime(LIFETIME - 1000);
+      fireEvent.click(button);
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('old_token')));
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      // asked for by now: the wait below moves the clock on, and would let a late request pass
+      expect(api.telegramSubscribe).toHaveBeenCalledTimes(2);
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+    });
+
+    it('is not blamed for a check of the link it replaced, answered late', async () => {
+      let refuse: (reason: Error) => void = () => undefined;
+      jest.spyOn(api, 'telegramCurrentSubscribtion').mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+          refuse = reject;
+        })
+      );
+      createWrapper();
+      await open();
+      fireEvent.click(screen.getByText('Check'));
+
+      act(() => {
+        jest.advanceTimersByTime(LIFETIME);
+      });
+      await act(async () => {
+        refuse(new RequestError('request expired', 0));
+      });
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+      expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
+    });
+
+    it('takes the error of its last check with it', async () => {
+      jest
+        .spyOn(api, 'telegramCurrentSubscribtion')
+        .mockRejectedValueOnce(new RequestError('request is not verified yet', 0));
+      createWrapper();
+      await open();
+      fireEvent.click(screen.getByText('Check'));
+      await waitFor(() => expect(screen.getByText(/Something went wrong/)).toBeInTheDocument());
+
+      act(() => {
+        jest.advanceTimersByTime(LIFETIME);
+      });
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('new_token')));
+      expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
+    });
+
+    it('stays for as long as the server keeps it', async () => {
+      createWrapper();
+      const button = await open();
+
+      act(() => {
+        jest.advanceTimersByTime(LIFETIME - 60 * 1000);
+      });
+      fireEvent.click(button); // close
+      fireEvent.click(button);
+
+      await waitFor(() => expect(shownLink()).toHaveAttribute('href', link('old_token')));
+      expect(api.telegramSubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not asked for again once the user has subscribed', async () => {
+      createWrapper();
+      await open();
+      fireEvent.click(screen.getByText('Check'));
+      await waitFor(() => expect(screen.getByText(/You have subscribed/)).toBeInTheDocument());
+
+      act(() => {
+        jest.advanceTimersByTime(LIFETIME);
+      });
+
+      expect(screen.getByText(/You have subscribed/)).toBeInTheDocument();
+      expect(api.telegramSubscribe).toHaveBeenCalledTimes(1);
     });
   });
 

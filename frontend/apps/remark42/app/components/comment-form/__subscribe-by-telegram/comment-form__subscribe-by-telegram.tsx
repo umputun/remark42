@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { FunctionComponent } from 'preact';
 import { h, Fragment } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { useSelector } from 'store/context';
 
 import { useIntl, defineMessages } from 'common/intl';
@@ -54,6 +54,18 @@ const messages = defineMessages({
 
 type STEP = 'initial' | 'subscribed' | 'unsubscribed';
 
+/** how long the server keeps a subscription link, see telegramSubscribeCtrl in the backend */
+const LINK_LIFETIME = 10 * 60 * 1000;
+
+/**
+ * the longest an open panel goes without comparing the link's deadline with the clock. One timer
+ * set for the whole lifetime would not count the time a computer spends asleep
+ */
+const EXPIRY_CHECK_INTERVAL = 10 * 1000;
+
+/** a subscription link and the time the server forgets it */
+type TelegramLinkState = { token: string; bot: string; expires: number };
+
 export const SubscribeByTelegramForm: FunctionComponent = () => {
   const intl = useIntl();
   const userId = useSelector<StoreState, string>(({ user }) => user?.id ?? '');
@@ -64,7 +76,7 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [telegram, setTelegram] = useSessionStorage<{ token: string; bot: string } | null>(
+  const [telegram, setTelegram] = useSessionStorage<TelegramLinkState | null>(
     `telegram-subscription-telegram/${owner}`,
     null
   );
@@ -74,8 +86,10 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
       setLoading(true);
     }
     try {
+      // counted from before the request, so the link is never shown past the server's own deadline
+      const expires = Date.now() + LINK_LIFETIME;
       const { token, bot } = await telegramSubscribe();
-      setTelegram({ token, bot });
+      setTelegram({ token, bot, expires });
       return true;
     } catch (e) {
       if ((e as RequestError).error === 'already subscribed') {
@@ -103,6 +117,47 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telegram]);
 
+  useEffect(() => {
+    // the link is on screen only in this step
+    if (!telegram || step !== 'initial') {
+      return;
+    }
+    // a link the server has forgotten is dropped, at once when it is already that old and by the
+    // timer when it gets there with the panel open. The effect above then asks for a new one.
+    // An error on screen came from checking the dropped link, so it goes with it
+    const dropExpired = () => {
+      if (telegram.expires > Date.now()) {
+        return false;
+      }
+      setError(null);
+      setTelegram(null);
+      return true;
+    };
+
+    if (dropExpired()) {
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const checkLater = () => {
+      timer = setTimeout(
+        () => {
+          if (!dropExpired()) {
+            checkLater();
+          }
+        },
+        Math.min(EXPIRY_CHECK_INTERVAL, telegram.expires - Date.now())
+      );
+    };
+
+    checkLater();
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [telegram, step]);
+
+  // the link a check was made for can be replaced before the answer arrives
+  const shownToken = useRef<string | undefined>(undefined);
+  shownToken.current = telegram?.token;
+
   const fetchTelegramSubscription = async (token: string) => {
     try {
       setTimeout(() => {
@@ -116,7 +171,10 @@ export const SubscribeByTelegramForm: FunctionComponent = () => {
       }
       setStep('subscribed');
     } catch (err) {
-      setError(extractErrorMessageFromResponse(err, intl));
+      // a refusal of a link that has been replaced meanwhile says nothing about the one on screen
+      if (shownToken.current === token) {
+        setError(extractErrorMessageFromResponse(err, intl));
+      }
     } finally {
       setLoading(false);
     }
