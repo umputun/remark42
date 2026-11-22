@@ -139,6 +139,11 @@ export const emailVerificationForSubscribe = (emailAddress: string): Promise<Ema
 export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', {}, { token });
 
 /**
+ * The address the signed-in user is subscribed with, empty when there is none
+ */
+export const getEmailSubscription = (): Promise<{ user: User; address: string }> => apiFetcher.get('/email');
+
+/**
  * Decline current subscription to updates
  */
 export const unsubscribeFromEmailUpdates = () => apiFetcher.delete('/email');

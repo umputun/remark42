@@ -1,6 +1,6 @@
 import type { FunctionComponent } from 'preact';
 import { h, Fragment } from 'preact';
-import { useState, useCallback, useRef } from 'preact/hooks';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { useSelector, useDispatch } from 'store/context';
 import clsx from 'clsx';
 
@@ -13,7 +13,12 @@ import type { RequestError } from 'utils/errorUtils';
 import { extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { useTheme } from 'hooks/useTheme';
 import { getHandleClickProps } from 'common/accessibility';
-import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
+import {
+  emailVerificationForSubscribe,
+  emailConfirmationForSubscribe,
+  unsubscribeFromEmailUpdates,
+  getEmailSubscription,
+} from 'common/api';
 import { Input } from 'components/input';
 import { Button } from 'components/button';
 import { Dropdown, useDropdown } from 'components/dropdown';
@@ -27,6 +32,15 @@ import styles from './subscribe-by-email.module.css';
 
 const emailRegexp = /[^@]+@[^.]+\..+/;
 
+function sameAddress(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+// how often the token step asks whether the link in the email has confirmed the subscription
+export const CONFIRMATION_POLL_INTERVAL = 10 * 1000;
+// how long it keeps asking: the confirmation token the email carries expires after 30 minutes
+export const CONFIRMATION_POLL_DURATION = 30 * 60 * 1000;
+
 enum Step {
   Email,
   Token,
@@ -36,8 +50,8 @@ enum Step {
 
 const messages = defineMessages({
   token: {
-    id: 'token',
-    defaultMessage: 'Paste the token from the email',
+    id: 'subscribeByEmail.token',
+    defaultMessage: 'Paste the token from the email, or click the link in it',
   },
   expiredToken: {
     id: 'token.expired',
@@ -83,6 +97,12 @@ const renderEmailPart = (
     <div className={styles.title}>
       <FormattedMessage id="subscribeByEmail.subscribe-to-replies" defaultMessage="Email subscription to replies" />
     </div>
+    <div className={styles.description}>
+      <FormattedMessage
+        id="subscribeByEmail.subscribe-to-replies-description"
+        defaultMessage="Get an email about every reply to your comments and to the discussions under them."
+      />
+    </div>
     <Input
       autofocus
       placeholder={intl.formatMessage(messages.email)}
@@ -119,10 +139,11 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const intl = useIntl();
-  const { close } = useDropdown();
+  const { close, keepOpen } = useDropdown();
   const subscribed = useSelector<StoreState, boolean>(({ user }) =>
     user === null ? false : Boolean(user.email_subscription)
   );
+  const userId = useSelector<StoreState, string | undefined>(({ user }) => user?.id);
   const justSubscribed = useRef<Boolean>(false);
 
   const [step, setStep] = useState(subscribed ? Step.Subscribed : Step.Email);
@@ -132,6 +153,72 @@ export const SubscribeByEmailForm: FunctionComponent = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // a click elsewhere on the page while the reader is in the mailbox would otherwise drop the token step.
+  // A layout effect, so it holds before the token field is painted: an effect runs a frame later, and a
+  // click in that frame still closes the panel
+  useLayoutEffect(() => {
+    keepOpen(step === Step.Token);
+    return () => keepOpen(false);
+  }, [step, keepOpen]);
+
+  // read by the checks below without restarting them on every keystroke
+  const pendingAddress = useRef(emailAddress);
+  pendingAddress.current = emailAddress;
+
+  // the link in the email confirms the subscription from another tab or another device, so the form
+  // asks the API whether it has happened: once when it opens, and while it waits for the token or has
+  // just unsubscribed, each time the page becomes visible again, and every few seconds until the token
+  // in the email expires
+  useEffect(() => {
+    if (step === Step.Subscribed) {
+      return undefined;
+    }
+    let active = true;
+
+    async function check() {
+      if (document.hidden) {
+        return;
+      }
+      const subscription = await getEmailSubscription().catch(() => null);
+      // another tab may have signed in as someone else since this form was rendered
+      if (!active || !subscription?.address || subscription.user.id !== userId) {
+        return;
+      }
+      // the token step waits for one address; a link to an earlier, perhaps mistyped one does not end
+      // it, and pasting this step's token still replaces that address
+      if (step === Step.Token && !sameAddress(subscription.address, pendingAddress.current)) {
+        return;
+      }
+      justSubscribed.current = step !== Step.Email;
+      dispatch(setUserSubscribed(true));
+      setStep(Step.Subscribed);
+    }
+
+    if (step === Step.Email) {
+      void check();
+      return () => {
+        active = false;
+      };
+    }
+
+    // the reader may confirm in webmail in this browser and come back later than that, so the check on
+    // returning to the page has no deadline; only the timer stops
+    const deadline = Date.now() + CONFIRMATION_POLL_DURATION;
+    const timer = setInterval(() => {
+      if (Date.now() > deadline) {
+        clearInterval(timer);
+        return;
+      }
+      void check();
+    }, CONFIRMATION_POLL_INTERVAL);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [step, dispatch, userId]);
 
   const sendForm = useCallback(
     async (currentToken: string = token) => {

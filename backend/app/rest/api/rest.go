@@ -321,6 +321,9 @@ func (s *Rest) routes() http.Handler {
 		rauth.Group().Route(func(r *routegroup.Bundle) {
 			r.Use(R.Timeout(30 * time.Second))
 			r.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+			// a read, which the comment form repeats while it waits for the confirmation link. Under the
+			// update limit it would share a bucket with DELETE /email and refuse the reader's Unsubscribe
+			r.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		})
 	})
 
@@ -373,7 +376,6 @@ func (s *Rest) routes() http.Handler {
 			rauth.With(rejectAnonUser).HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
 		}
 		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
-		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/confirm", s.privRest.setConfirmedEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("DELETE /email", s.privRest.deleteEmailCtrl)
@@ -397,6 +399,8 @@ func (s *Rest) routes() http.Handler {
 		rroot.HandleFunc("GET /robots.txt", s.pubRest.robotsCtrl)
 		rroot.With(rejectHead("GET, POST")).HandleFunc("GET /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("GET /email/subscribe.html", s.privRest.emailSubscribeCtrl)
+		rroot.HandleFunc("POST /email/subscribe.html", s.privRest.emailSubscribeCtrl)
 	})
 
 	// file server for /web: the frontend build first, then the assets embedded in the binary.

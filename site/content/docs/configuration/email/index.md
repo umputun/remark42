@@ -18,6 +18,8 @@ This documentation describes how to enable the email-related capabilities of Rem
 
   ![Email notifications subscription](images/email_notifications.png)
 
+  The confirmation email carries a link that opens a page with a button confirming the subscription, which works without signing in, so the email can be opened on any device. Once confirmed, the page closes itself where the browser allows it, and the comment form shows the subscription without a reload. The token in the same email can still be pasted into the comment form instead. The link does not replace an address the user has already confirmed; to change it, unsubscribe first and open the link again.
+
 ## Setup email server connection
 
 To enable any email functionality, you need to set up an email (SMTP) server connection using these variables:
@@ -230,6 +232,7 @@ Now we have the following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
+- `email_subscribe.html.tmpl` – used for the page the link in the subscription confirmation email opens, both before and after the subscription is confirmed
 - `email_reply.html.tmpl` – used for sending replies to user comments (when the user subscribed to it) and for noticing admins about new comments on a site
 - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
@@ -241,6 +244,7 @@ volumes:
   - ./var:/srv/var
   - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
   - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
+  - ./customised_templates/email_subscribe.html.tmpl:/srv/email_subscribe.html.tmpl:ro
   - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
   - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
   - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
@@ -287,7 +291,17 @@ Sent when a user subscribes to email notifications for a comment thread.
 | `{{.Token}}` | string | Confirmation token |
 | `{{.Email}}` | string | Recipient email address |
 | `{{.Site}}` | string | Site name |
-| `{{.SubscribeURL}}` | string | Subscription confirmation base URL |
+| `{{.SubscribeURL}}` | string | Start of the confirmation link; the link is `{{.SubscribeURL}}{{.Token}}` |
+
+#### `email_subscribe.html.tmpl` — subscription confirmation page
+
+Shown at `/email/subscribe.html` when the link from the subscription confirmation email is opened. Without `{{.Confirmed}}` the page must offer a form posting back to itself (`<form method="post">`), as opening the link alone does not subscribe: mail scanners open links in incoming messages on their own.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{{.Site}}` | string | Site name |
+| `{{.Confirmed}}` | bool | True once the form was submitted and the subscription is stored |
+| `{{.Nonce}}` | string | Value for the `nonce` attribute of an inline `<script>`; the page's Content Security Policy runs no other script |
 
 #### `email_confirmation_login.html.tmpl` — login confirmation
 
