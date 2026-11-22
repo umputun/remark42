@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"fmt"
 	"html"
 	"html/template"
 	"io"
@@ -259,12 +258,29 @@ func (c *Comment) Snippet(limit int) string {
 var reHref = regexp.MustCompile(`<a\s+(?:[^>]*?\s+)?href="([^"]*)"`)
 
 // SanitizeAsURL drops dangerous code from a url.
-// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done
+// It wraps input with href to trigger bluemonday sanitizer and cleans href after sanitizing done.
+// White space around the url is dropped. Sanitizing the result again returns it unchanged, as a locator's url is
+// sanitized on create and on every read: a url that a second pass would change is refused. So is a relative
+// path that comes out starting with "//", which a browser reads as another host.
 func (c *Comment) SanitizeAsURL(inp string) string {
-	h := fmt.Sprintf(`<a href=%q>`, html.EscapeString(inp))
+	res := sanitizeURL(inp)
+	if res == inp {
+		return res
+	}
+	if sanitizeURL(res) != res || (strings.HasPrefix(res, "//") && !strings.HasPrefix(strings.TrimSpace(inp), "//")) {
+		return ""
+	}
+	return res
+}
+
+// sanitizeURL makes one pass of the href filter over the url
+func sanitizeURL(inp string) string {
+	// quoted as html, not with %q: go escapes (\\, \u200b) don't exist in html and would end up in the url
+	h := `<a href="` + html.EscapeString(inp) + `">`
 	clean := urlPolicy.Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
-		return html.UnescapeString(match[1])
+		// bluemonday trims spaces before parsing only, trim the ones left at the end after an empty fragment is dropped
+		return strings.TrimSpace(html.UnescapeString(match[1]))
 	}
 	return "" // this shouldn't happen as we build the href
 }

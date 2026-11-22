@@ -311,12 +311,68 @@ func TestComment_sanitizeAsURL(t *testing.T) {
 			"<a href=javascript:alert(document.domain)//>xxx</a>",
 			"",
 		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\`,
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\`,
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\\`, // as stored by older versions for a single backslash
+			`https://radio-t.com/p/2021/03/23/prep-747/?ref=\\`,
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep\747/#a\b`,
+			"https://radio-t.com/p/2021/03/23/prep%5C747/#a%5Cb",
+		},
+		{
+			`https://radio-t.com/p/2021/03/23/prep-747/?a="b"&c='d'&amp;e=f`,
+			`https://radio-t.com/p/2021/03/23/prep-747/?a="b"&c='d'&amp;e=f`,
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u200b",
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u200b",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?a=b\nc",
+			"",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?a=b\x01",
+			"",
+		},
+		{
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=\u00a0#",
+			"https://radio-t.com/p/2021/03/23/prep-747/?ref=",
+		},
+		// white space before the url is dropped, whatever kind it is
+		{"\thttps://radio-t.com/p/", "https://radio-t.com/p/"},
+		{"\n\u00a0 https://radio-t.com/p/", "https://radio-t.com/p/"},
+		// the html parser replaces NUL; a control character in the fragment, or one past ASCII, is kept escaped
+		{"https://radio-t.com\x00/p/", "https://radio-t.com%EF%BF%BD/p/"},
+		{"https://radio-t.com/p#a\x01b", "https://radio-t.com/p#a%01b"},
+		{"https://radio-t.com/p/\u0085x", "https://radio-t.com/p/%C2%85x"},
+		// a relative path starting with an encoded slash is kept while it can be written back as it came
+		{"/%2Ffolder/file", "/%2Ffolder/file"},
+		{"//radio-t.com/p/", "//radio-t.com/p/"},
+		// and refused once it would come out starting with "//", which the next pass would read as a host:
+		// a url that a second pass would change is not accepted
+		{"/%2F<x", ""},
+		{`/%2Ffolder\file`, ""},
+		{`%2f%2f\`, ""},
+		{"%2F/\u00a0=]22@@=", ""},
+		{"http://[fe80::1%25en%5B0]/p", ""}, // an escaped bracket in the zone of an address is written back unescaped
+		// a relative path that would come out as "//host/..." is refused although a second pass keeps it
+		{"/%2Fradio-t.com/p/<", ""},
+		{"%2F/radio-t.com/p/<", ""},
+		{"/%2Fdocs/caf\u00e9", ""},
 	}
 
 	for i, tt := range tbl {
 		c := Comment{}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.out, c.SanitizeAsURL(tt.inp))
+			out := c.SanitizeAsURL(tt.inp)
+			assert.Equal(t, tt.out, out)
+			// a stored url is sanitized again on every read, the second pass must not change it
+			assert.Equal(t, out, c.SanitizeAsURL(out), "not idempotent")
 		})
 	}
 }
