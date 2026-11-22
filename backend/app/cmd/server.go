@@ -503,6 +503,25 @@ func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string 
 	return sourceID
 }
 
+// customProviderUser maps the user info of the custom OAuth2 provider to a user. The id is the
+// provider name and the sha1 of the value identifying the user at the provider. That value is always
+// hashed, also when it looks like a sha1 digest already: token.HashID returns such a value as it is,
+// and a user whose identifier at the provider spells the hash of another user's would get that
+// user's id.
+func customProviderUser(name string, data provider.UserData, cfg CustomAuthGroup) token.User {
+	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(customProviderSourceID(data, cfg)))) //nolint:gosec // stable id, not a secret
+	user := token.User{
+		ID:      name + "_" + hashID,
+		Name:    data.Value(cfg.NameField),
+		Picture: data.Value(cfg.PictureField),
+		Email:   data.Value(cfg.EmailField),
+	}
+	if user.Name == "" {
+		user.Name = "noname_" + hashID[:4]
+	}
+	return user
+}
+
 func (c CustomAuthGroup) isConfigured() bool {
 	return c.Name != "" || c.CID != "" || c.CSEC != "" || c.AuthURL != "" || c.TokenURL != "" || c.InfoURL != "" ||
 		len(c.Scopes) > 0 || c.IDField != "sub" || c.NameField != "name" || c.PictureField != "picture" || c.EmailField != "email"
@@ -1088,18 +1107,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
 			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				sourceID := customProviderSourceID(data, s.Auth.Custom)
-				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
-				user := token.User{
-					ID:      customName + "_" + hashID,
-					Name:    data.Value(s.Auth.Custom.NameField),
-					Picture: data.Value(s.Auth.Custom.PictureField),
-					Email:   data.Value(s.Auth.Custom.EmailField),
-				}
-				if user.Name == "" {
-					user.Name = "noname_" + hashID[:4]
-				}
-				return user
+				return customProviderUser(customName, data, s.Auth.Custom)
 			},
 		})
 	}
