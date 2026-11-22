@@ -321,15 +321,14 @@ func pauseForWebLimit() {
 }
 
 // TestWeb_NoBundleHardcodesTheWebRoot pins the fix for #2203, which shipped with no test at any
-// level. The bundler used to bake a fixed public path into every entry, so an instance mounted
-// under a prefix, which manuals/subdomain documents, asked the domain root for its provider icons
-// and got nothing. The path is derived from the URL the bundle was loaded from now, which is
-// correct for both arrangements.
+// level. Every entry used to carry a fixed path to the web root, so an instance mounted under a
+// prefix, which manuals/subdomain documents, asked the domain root for its provider icons and got
+// nothing. A bundle addresses the files beside it from the instance URL now, which is correct for
+// both arrangements.
 //
-// What separates the two builds is the assignment webpack emits for its runtime public path: a
-// literal when the path is fixed, and a computed value when it is derived. Asset filenames appear
-// bare either way, so a case looking for a rooted "/web/name.svg" string finds nothing in either
-// build and proves nothing; this asserts the assignment instead.
+// What gives a fixed path away is a string that starts at the web root. An address built from the
+// instance URL has that URL in front of "/web/", so the text of a correct bundle holds no quote
+// followed by it, while "/web/name.svg" written out in the source arrives in the bundle as is.
 //
 // Every emitted bundle is checked rather than the obvious one: the original defect put fifteen
 // icons in remark.mjs and one in last-comments.mjs, so a case reading a single entry would have
@@ -340,18 +339,16 @@ func TestWeb_NoBundleHardcodesTheWebRoot(t *testing.T) {
 	require.Contains(t, names, "last-comments.mjs",
 		"the entry carrying the second half of #2203 is missing from the listing: %v", names)
 
-	// webpack writes its public path to the `p` property of the runtime object. A baked-in path
-	// is a string literal there; a derived one is an expression
-	baked := regexp.MustCompile("\\.p\\s*=\\s*[\"'`]/web/[\"'`]")
+	rooted := regexp.MustCompile("[\"'`]/web/")
 
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			body := getWeb(t, "/web/"+name).body
 			require.NotEmpty(t, body, "%s serves nothing, so this asserts nothing", name)
 
-			assert.NotRegexp(t, baked, body,
-				"%s bakes the public path in rather than deriving it, so an instance mounted under "+
-					"a prefix fetches its assets from the domain root", name)
+			assert.NotRegexp(t, rooted, body,
+				"%s carries a path that starts at the web root, so an instance mounted under a "+
+					"prefix fetches that file from the domain root", name)
 		})
 	}
 }

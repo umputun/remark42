@@ -19,6 +19,8 @@ The same rules as `CONTRIBUTING.md`, for an agent working on behalf of someone w
   - **IMPORTANT**: Run example tests: `cd backend/_example/memory_store && go test -race ./... && go build -race ./...`
 - **Frontend**:
   - Development: `cd frontend/apps/remark42 && pnpm dev`
+  - Build: `cd frontend/apps/remark42 && pnpm build`, which runs the go program in `frontend/build`
+    (esbuild through its go API). Its own tests: `cd frontend/build && go test ./...`
   - Tests: `cd frontend/apps/remark42 && pnpm test`
   - Dependency-free tests: `cd frontend/apps/remark42 && pnpm test:unit`.
     `*.unit.test.ts` files run straight from source with no `node_modules`, and the `unit` CI job
@@ -114,4 +116,4 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
   then `backend/app/webassets/assets`, embedded in the binary. Every HTML page is a plain file in
   `webassets`, the widget's own document `iframe.html` included, and so is any image the bundler does
   not process, the message catalogues `<locale>.json`, and `counter.mjs`, the comment counter,
-  written by hand; the widget's CSS and JS go through webpack. A name present in both is served from the frontend build.
+  written by hand; the widget's CSS and JS are compiled by the go program in `frontend/build`. A name present in both is served from the frontend build.

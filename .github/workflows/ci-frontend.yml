@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/setup-go/**"
       - "frontend/**"
       # the message catalogs, which the translation check and the tests read
       - "backend/app/webassets/assets/*.json"
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/setup-go/**"
       - "frontend/**"
       # the message catalogs, which the translation check and the tests read
       - "backend/app/webassets/assets/*.json"
@@ -150,11 +152,47 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: ./frontend/apps/remark42
 
+      # the widget is compiled by the go program in frontend/build, which `pnpm build` runs
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          go-mod: frontend/build/go.mod
+          cache-dependency-path: frontend/build/go.sum
+
       # the budgets live in tasks/check-size.ts; the check prints each file's gzipped size against
       # its budget and fails when one is over or missing
       - name: Check bundle size
         run: pnpm size-check
         working-directory: ./frontend/apps/remark42
+
+  builder:
+    name: Builder tests & lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          go-mod: frontend/build/go.mod
+          cache-dependency-path: frontend/build/go.sum
+
+      # the tests build a fixture app of their own, so nothing has to be installed for them
+      - name: Test
+        run: go test -race -count 1 ./...
+        working-directory: ./frontend/build
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          working-directory: frontend/build
+          args: --config ../../backend/.golangci.yml
 
   unit:
     name: Dependency-free unit tests

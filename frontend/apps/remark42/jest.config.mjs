@@ -1,9 +1,5 @@
 import path from 'node:path';
 
-// babel reads this to pick the test branch of .babelrc.js; setting it here rather than relying on
-// NODE_ENV means running the suite under any other NODE_ENV still compiles for the current node
-process.env.BABEL_ENV = 'test';
-
 /**
  * Plain ESM rather than TypeScript on purpose: a `.ts` config is compiled against
  * `tsconfig.json`, whose `verbatimModuleSyntax` rejects ESM syntax in a file the package has not
@@ -18,7 +14,7 @@ const config = {
   // bundler, which is the property they exist to hold
   testPathIgnorePatterns: ['/node_modules/', '\\.unit\\.test\\.ts$'],
   // babel-jest would otherwise skip node_modules, where .babelrc.js does not reach: passing it as
-  // configFile applies the same config the bundle uses to the ESM-only packages below
+  // configFile applies the suites' own config to the ESM-only packages below as well
   transform: {
     '^.+\\.(t|j|mj)sx?$': ['babel-jest', { configFile: path.join(import.meta.dirname, '.babelrc.js') }],
   },

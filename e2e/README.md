@@ -9,7 +9,6 @@ The import path is `github.com/mxschmitt/playwright-go`, which is what the modul
 - Docker with compose, which the suite shells out to
 - A Go toolchain matching `e2e/go.mod`
 - Network access on the first run: the Playwright driver and the browsers are downloaded into the user cache directory, `~/.cache/…` on Linux and `~/Library/Caches/…` on macOS, and that download is the slowest part of a cold run
-- `make e2e-cover` additionally needs the frontend dependencies installed, since the widget report is made with `nyc`: run `pnpm install` in `frontend/apps/remark42`. The plain `make e2e` does not.
 
 ## Running
 
@@ -50,19 +49,13 @@ The build tag keeps these out of `go test ./...`; nothing runs without `-tags=e2
 make e2e-cover
 ```
 
-Reports what the suite reaches, in the backend and in the widget. Neither is visible to the tool
-that usually measures it: the backend runs in a container instead of in the test process, so
-`go test -cover` sees nothing, and the widget runs in the browser, where jest reports only what
-its own suites reach. `compose-e2e-coverage.yml` overlays the stack so one `COVERAGE` argument
-instruments both, and `e2e/coverage.sh` runs the suite and reports each.
+Reports what the suite reaches in the backend. The backend runs in a container instead of in the
+test process, so `go test -cover` sees nothing. `compose-e2e-coverage.yml` overlays the stack with
+a `COVERAGE` argument that instruments the binary, and `e2e/coverage.sh` runs the suite and reports
+the result. The widget is not measured.
 
 The backend is built with `go build -cover` and mounts a profile directory per instance. The
 profiles are merged into `e2e/coverage/e2e.cov` and the total printed.
-
-The widget is built with `babel-plugin-istanbul`, so the bundle counts what runs and keeps the
-counters on the page. The suite reads them out of every frame into `e2e/coverage/frontend`,
-whenever a document is about to be replaced and again at cleanup, and `nyc` merges that directory
-and reports it.
 
 The overlay is a separate file because a bind mount in the short form creates its host path when
 it is missing. Carried in `compose-e2e-test.yml`, it would have an ordinary `make e2e` create

@@ -159,8 +159,9 @@
   }
 }
 
+/* the token field is also given the input class, in auth.tsx, and this rule adjusts it. Both set
+   the box, so this stylesheet has to follow the input's, which the import order there sees to */
 .textarea {
-  composes: input from 'components/input/input.module.css';
   box-sizing: border-box;
   width: 100%;
   min-height: 60px;

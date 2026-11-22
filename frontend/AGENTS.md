@@ -41,27 +41,50 @@ It rejects relative request URLs, and the failure is
 silent: requests simply never match. Any test harness that mocks fetch needs absolute base URLs and
 a jsdom base URL set.
 
-## Babel is the only thing that compiles
+## The bundle is compiled by `frontend/build`, the tests by babel
 
-`.babelrc.js` drives both the bundle, through `babel-loader`, and the tests, which get it as
-`babel-jest`'s `configFile` in `jest.config.mjs`. That indirection is not decoration: `.babelrc.js`
-is a file-relative config and would not reach `node_modules`, so the ESM-only packages in
-`transformIgnorePatterns` would arrive at jest untransformed.
+The widget is built by the go program in `frontend/build`, which calls esbuild through its go API.
+`pnpm build` and `pnpm dev` run it (`go -C ../../build run .`, with `-serve` for the development
+server, which keeps its build in memory), and so do the Dockerfile and
+`scripts/prepare-release-assets.sh`. There is no bundler configuration in JavaScript: the entries,
+the browser floor and the CSS handling are all in `build.go`, each with the reason beside it. The
+build needs go and the six runtime packages in `node_modules`, which it bundles; nothing else pnpm
+installs takes part in it. `build_test.go` builds a small fixture app, so the builder's own tests
+need nothing installed.
 
-Babel merges an `env` block over the root rather than replacing it, so anything the test run must
-not see has to be decided before the object is built rather than put in an `env`. `jest.config.mjs`
-sets `BABEL_ENV` itself and `.babelrc.js` reads it for two things: the compile targets, and
-keeping the e2e coverage instrumentation out of the suites. The `data-testid` attributes the
-suites query by ship in the bundle as written; nothing strips them.
+Four things in `build.go` are easy to undo by accident:
 
-`tsconfig.json` types but never emits, so its `target` has no effect on output; browserslist in
-`.babelrc.js` decides that. The build does not type check: `pnpm type-check` does, as its own CI
-job, in the Dockerfile's test step and in `release.yml`.
+- `engines` is the browser floor for the scripts and the styles alike. There is no browserslist
+  query, so the list does not move when a browser database is updated; raising a version is a
+  decision to drop that browser.
+- `lowered` keeps nested rules expanded into one selector per parent. Left to itself esbuild writes
+  one `:is()` over the parents, which has the specificity of its heaviest argument, so the rule
+  starts beating rules it used to lose to.
+- nothing adds vendor prefixes or font fallbacks for browsers below the floor. A property that
+  needs a prefix in a supported browser has to be written with it.
+- CSS module classes ship as `<module>_<class>` in letters, such as `c_b`, and esbuild's own short
+  names are switched off for it. Its names start at one letter, and `p` or `w` is what the backend's
+  code highlighter marks tokens with inside a comment, and what the host page that last-comments
+  renders into may use for anything. `compile` renames the classes after the build and minifies the
+  scripts in a second pass. The names are not an interface: they move whenever a class or a module
+  is added.
+
+`.babelrc.js` is read by jest alone, as `babel-jest`'s `configFile` in `jest.config.mjs`. That
+indirection is not decoration: `.babelrc.js` is a file-relative config and would not reach
+`node_modules`, so the ESM-only packages in `transformIgnorePatterns` would arrive at jest
+untransformed. The `data-testid` attributes the suites query by ship in the bundle as written;
+nothing strips them.
+
+`tsconfig.json` types but never emits. Its `target` does not choose the output syntax, which is
+`engines`' job, but esbuild does read the file: `jsx` and `jsxImportSource`, the `baseUrl` the
+imports resolve from, `verbatimModuleSyntax`, and from `target` that class fields are assigned in
+the constructor. The build does not type check: `pnpm type-check` does, as its own CI job, in the
+Dockerfile's test step and in `release.yml`.
 
 ## Type-only imports have to say so
 
-Babel compiles one file at a time with no type information, so it cannot tell that an import is
-types-only. Left unmarked, the module and everything it imports stay in the bundle, and a single
+esbuild compiles one file at a time with no type information, as babel does for the tests, so it
+cannot tell that an import is types-only. Left unmarked, the module and everything it imports stay in the bundle, and a single
 type import of a store-connected component is enough to pull the whole redux graph into an entry
 that never uses it.
 
@@ -77,12 +100,15 @@ module legitimately appears twice.
 TypeScript 5.1+ via `JSX.ElementType`, and it scopes the `JSX` namespace to `preact/jsx-runtime` rather
 than declaring it globally. So the type layer has to use the automatic runtime:
 
-- `tsconfig.json`: `jsx: react-jsx` with `jsxImportSource: preact`
-- `.babelrc.js`: `@babel/preset-react` with `runtime: 'automatic'`, `importSource: 'preact'`
+- `tsconfig.json`: `jsx: react-jsx` with `jsxImportSource: preact`, which the type checker and the
+  build both read
+- `.babelrc.js`: `@babel/preset-react` with `runtime: 'automatic'`, `importSource: 'preact'`, for
+  the suites
 
 Keep both in step. If babel were left on the classic `pragma: 'h'` transform, a new `.tsx`
-without `import { h }` would type-check and lint clean, then throw at runtime, because
-`eslint-config-preact` sets `react/react-in-jsx-scope` to 0 and the local config turns `no-undef` off.
+without `import { h }` would type-check, lint clean and run in the bundle, then throw in its
+tests, because `eslint-config-preact` sets `react/react-in-jsx-scope` to 0 and the local config
+turns `no-undef` off.
 
 ## `@babel/core` is pinned to 8 for the whole dependency tree
 
@@ -96,7 +122,7 @@ scoped override, `eslint-config-preact>@babel/core`, holds that subtree on 7.
 
 These were deliberately not bumped because each is a config-migration or bundle-changing major, not a drop-in update — don't bump them opportunistically inside an unrelated dependency PR:
 
-- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, `redux` 5 with `redux-thunk` 3, and `postcss-preset-env` 11 with `cssnano` 8, which change generated CSS
+- `eslint` 10 (`eslint-config-preact` peers on ^9), `typescript` 7, and `redux` 5 with `redux-thunk` 3
 
 ## `/web` has a second source
 
@@ -145,7 +171,7 @@ by `prettierRecommended`) switches several of them off and later entries win.
 ## Verifying a build didn't regress
 
 There's no automated build-output diff in CI. Before merging a dependency PR that touches the bundler/build tooling, manually diff the build output against a clean `master` checkout:
-- `apps/remark42`: expect webpack module-id numbers and css-module class tokens (e.g. `.F_A` → `.L_A`) to differ — that's normal churn from a webpack/css-loader bump. HTML, CSS values, and translation content should be byte-identical.
+- `apps/remark42`: expect minified identifiers and css-module class names (e.g. `.c_b` → `.c_c`) to differ — that's normal churn from an esbuild bump or an added class. CSS values and the order of the rules should be identical.
 - `site`: asset URLs carry a content hash, so a stylesheet or script change moves the filename on every page referencing it. Anything else differing is a real regression.
 
 ## Where the alerts actually were
@@ -234,9 +260,9 @@ this layer:
 - **write the extension in full**, `./types.ts`. This is why `app/store/thread/reducers.ts` and
   `app/store/user/reducers.ts` import `./types.ts` while their neighbours do not, and why
   `app/common/json-store.ts` and `app/utils/errorUtils.ts` carry it too. `allowImportingTsExtensions` in `tsconfig.json` is what
-  stops `tsc` rejecting it, and webpack and jest resolve the explicit path unchanged
-- **import by relative path**, never through the `common/…` alias, which only webpack, jest and
-  `tsc` know about. A type-only import of an alias is fine, since it erases before either runtime
+  stops `tsc` rejecting it, and the builder and jest resolve the explicit path unchanged
+- **import by relative path**, never through the `common/…` alias, which only the builder, jest
+  and `tsc` know about. A type-only import of an alias is fine, since it erases before either runtime
   sees the file
 
 A module that mixes computation with browser state gets split instead of skipped:

@@ -359,7 +359,6 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
-	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.Reload()
 	require.NoError(t, err)

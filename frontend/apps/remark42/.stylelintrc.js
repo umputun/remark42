@@ -1,4 +1,6 @@
-const { CUSTOM_PROPERTIES_PATH } = require('./webpack.config');
+const path = require('path');
+
+const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
 module.exports = {
   extends: ['stylelint-config-standard'],
@@ -6,8 +8,7 @@ module.exports = {
   // lets property-layout-mappings/value-keyword-layout-mappings autofix a physical property to
   // the correct logical one (stylelint --fix): every logical
   // property in this codebase is authored as if ltr were the base direction, and ships to the
-  // browser as written — postcss-preset-env's logical-properties-and-values transform is disabled
-  // (see webpack.config.js) so the browser's own bidi/dir handling resolves it per element, rather
+  // browser as written, so the browser's own bidi/dir handling resolves it per element, rather
   // than a build-time [dir=rtl] selector pair keyed off the page's direction — so ltr is still the
   // direction stylelint normalizes from
   languageOptions: {

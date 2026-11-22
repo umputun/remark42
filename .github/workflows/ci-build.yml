@@ -6,6 +6,7 @@ on:
       - ".github/workflows/ci-build.yml"
       - "backend/**"
       - "frontend/apps/**"
+      - "frontend/build/**"
       - ".dockerignore"
       - "docker-init.sh"
       - "Dockerfile"

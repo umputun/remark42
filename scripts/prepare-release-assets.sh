@@ -7,7 +7,7 @@ PUBLIC_DIR="$APP_DIR/public"
 EMBED_DIR="$ROOT/backend/app/cmd/web"
 PREPARED_MARKER="$EMBED_DIR/.release-assets-prepared"
 
-for cmd in git pnpm; do
+for cmd in git pnpm go; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "error: $cmd is required to build release assets" >&2
     exit 1
@@ -40,11 +40,12 @@ mkdir -p "$EMBED_DIR"
 
 (
   cd "$APP_DIR"
+  # the widget is bundled with the runtime packages pnpm installs; the build itself is a go program
   if [[ "${SKIP_PNPM_INSTALL:-}" != "true" ]]; then
     CI=true pnpm install --frozen-lockfile
   fi
-  CI=true pnpm build
 )
+go -C "$ROOT/frontend/build" run . -app "$APP_DIR"
 
 cp -R "$PUBLIC_DIR"/. "$EMBED_DIR"/
 
