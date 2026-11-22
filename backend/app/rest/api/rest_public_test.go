@@ -360,6 +360,85 @@ func TestRest_FindReadOnly(t *testing.T) {
 	assert.False(t, tree.Info.ReadOnly, "post is writable")
 }
 
+func TestRest_FindPagesOfImportedComments(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	// imported comments keep the IDs of the system they came from, which are not UUIDs
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/imported"}
+	start := time.Now().Add(-time.Hour)
+	for i, id := range []string{"1001", "1002", "1003"} {
+		_, err := srv.DataService.Create(store.Comment{ID: id, Text: "imported " + id, Locator: locator,
+			Timestamp: start.Add(time.Duration(i) * time.Minute), User: store.User{ID: "u1"}, Imported: true})
+		require.NoError(t, err)
+	}
+
+	find := func(params string) treeWithInfo {
+		t.Helper()
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/imported&format=tree&sort=+time&"+params)
+		require.Equal(t, http.StatusOK, code, res)
+		tree := treeWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &tree))
+		return tree
+	}
+
+	first := find("limit=1")
+	require.Len(t, first.Nodes, 1)
+	assert.Equal(t, "1001", first.Nodes[0].Comment.ID)
+	assert.Equal(t, "1001", first.Info.LastComment)
+	assert.Equal(t, 2, first.Info.CountLeft)
+
+	second := find("limit=1&offset_id=" + first.Info.LastComment)
+	require.Len(t, second.Nodes, 1)
+	assert.Equal(t, "1002", second.Nodes[0].Comment.ID, "the page after the imported comment")
+	assert.Equal(t, 1, second.Info.CountLeft)
+}
+
+func TestRest_FindListsPinnedCommentsOnFirstPage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/pinned"}
+	start := time.Now().Add(-time.Hour)
+	ids := make([]string, 4)
+	for i := range ids {
+		id, err := srv.DataService.Create(store.Comment{Text: fmt.Sprintf("comment %d", i), Locator: locator,
+			Timestamp: start.Add(time.Duration(i) * time.Minute), User: store.User{ID: "u1"}})
+		require.NoError(t, err)
+		ids[i] = id
+	}
+	// a reply pinned on the last page, a top-level comment pinned on the first one, and a pinned
+	// comment deleted since, which no page shows
+	reply, err := srv.DataService.Create(store.Comment{Text: "reply", ParentID: ids[3], Locator: locator,
+		Timestamp: start.Add(10 * time.Minute), User: store.User{ID: "u1"}})
+	require.NoError(t, err)
+	require.NoError(t, srv.DataService.SetPin(locator, reply, true))
+	require.NoError(t, srv.DataService.SetPin(locator, ids[0], true))
+	require.NoError(t, srv.DataService.SetPin(locator, ids[1], true))
+	require.NoError(t, srv.DataService.Delete(locator, ids[1], store.SoftDelete))
+
+	find := func(params string) (treeWithInfo, string) {
+		t.Helper()
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/pinned&format=tree&sort=+time&"+params)
+		require.Equal(t, http.StatusOK, code, res)
+		tree := treeWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &tree))
+		return tree, res
+	}
+
+	first, _ := find("limit=1")
+	require.Len(t, first.Nodes, 1)
+	assert.Equal(t, ids[0], first.Nodes[0].Comment.ID)
+	require.Len(t, first.Pinned, 2, "the pins of the whole post, without the deleted one")
+	assert.Equal(t, ids[0], first.Pinned[0].ID)
+	assert.Equal(t, reply, first.Pinned[1].ID)
+
+	_, body := find("limit=1&offset_id=" + first.Info.LastComment)
+	assert.NotContains(t, body, `"pinned"`, "later pages leave the list out")
+	_, body = find("")
+	assert.NotContains(t, body, `"pinned"`, "an unlimited tree is unchanged")
+}
+
 func TestRest_FindUserView(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -830,7 +909,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 
 		// test parameters limit, offset_id for format=plain
 		{"limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
-		{"offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		// an ID that names no comment starts from the beginning, whatever its form
+		{"offset_id=bad", `"info":{"count":7,"count_left":0,`},
 		{"limit=2", `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
 		{"limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
 		{"limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
@@ -873,7 +953,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 
 		// test parameters limit, offset_id for format=tree
 		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
-		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"format=tree&offset_id=bad", `"info":{"count":7,"count_left":0,`},
 		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
 		{"format=tree&limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
 		{"format=tree&limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
