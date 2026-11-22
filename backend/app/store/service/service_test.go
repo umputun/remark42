@@ -1980,12 +1980,64 @@ func TestService_EditCommentPictures(t *testing.T) {
 	})
 }
 
+// the address of an upload can be pasted into another comment: a picture any other comment of its author shows,
+// on whatever page, stays when one of the comments showing it is deleted or edited
+func TestService_EditCommentPicturesUsedOnAnotherPage(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	pageA := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	pageB := store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		now := time.Now()
+		for _, c := range []store.Comment{
+			{ID: "u1-a", Text: pic("user1/first.png"), Locator: pageA, User: store.User{ID: "user1"}, Timestamp: now},
+			// the same upload shown again in a new comment on another page, next to an upload of its own
+			{ID: "u1-b", Text: pic("user1/first.png") + pic("user1/second.png"), Locator: pageB, User: store.User{ID: "user1"},
+				Timestamp: now.Add(time.Second)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	t.Run("second comment deleted", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+	})
+
+	t.Run("pictures edited out of the second comment", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Text: "no pictures"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+	})
+
+	t.Run("both comments deleted", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Delete: true})
+		require.NoError(t, err)
+		_, err = b.EditComment(pageA, "u1-a", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"user1/second.png", "user1/first.png"}, deletedImages(mockStore),
+			"a deleted comment keeps no picture")
+	})
+}
+
 // a picture is removed only once the engine has stored the edit or the delete, and only when the page could be read
 func TestService_EditCommentPicturesEngineError(t *testing.T) {
 	tbl := []struct {
 		name                          string
 		req                           EditRequest
 		updateErr, deleteErr, findErr error
+		userFindErr                   error // for the lookup of the author's comments on the site
 		found                         []store.Comment
 		wantErr                       bool
 		deleted                       []string
@@ -1995,6 +2047,9 @@ func TestService_EditCommentPicturesEngineError(t *testing.T) {
 		{name: "update fails", req: EditRequest{Text: "no picture"}, updateErr: errors.New("update failed"), wantErr: true},
 		{name: "delete fails", req: EditRequest{Delete: true}, deleteErr: errors.New("delete failed"), wantErr: true},
 		{name: "page lookup fails", req: EditRequest{Text: "no picture"}, findErr: errors.New("find failed")},
+		{name: "author's comments lookup fails", req: EditRequest{Text: "no picture"}, userFindErr: errors.New("find failed")},
+		{name: "author has no other comments", req: EditRequest{Delete: true}, userFindErr: engine.ErrNoUserComments,
+			deleted: []string{"user1/own.png"}},
 		{name: "stored text shows the picture again", req: EditRequest{Text: "no picture"},
 			found: []store.Comment{{ID: "c1", Text: `<img src="/images/user1/own.png"/>`}}},
 	}
@@ -2009,7 +2064,12 @@ func TestService_EditCommentPicturesEngineError(t *testing.T) {
 					return store.Comment{ID: "c1", Text: `<img src="/images/user1/own.png"/>`, Locator: locator,
 						User: store.User{ID: "user1"}, Timestamp: time.Now()}, nil
 				},
-				FindFunc:   func(engine.FindRequest) ([]store.Comment, error) { return tt.found, tt.findErr },
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if req.UserID != "" { // the author's comments on the site: none, or the error of the case
+						return nil, tt.userFindErr
+					}
+					return tt.found, tt.findErr
+				},
 				UpdateFunc: func(store.Comment) error { return tt.updateErr },
 				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
 			}
