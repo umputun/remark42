@@ -1,5 +1,5 @@
 ---
-title: Notification
+title: Notifications
 ---
 
 There are two types of notifications, "Admin" and "User" notifications. Admin notifications will forward every new comment on the site to your desired location, like email or Telegram channel. User notifications will allow users to subscribe to replies to their comments. Enabling user notifications doesn't enable them by default; for example, users need to click a button in the interface to subscribe to email notifications even if they are logged in by email.

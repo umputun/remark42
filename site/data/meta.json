@@ -1,0 +1,114 @@
+{
+	"/": {
+		"title": "Remark42: self-hosted, privacy-focused comment engine",
+		"description": "Remark42 is a free, open source comment engine you host yourself. No tracking and no ads; readers sign in with a social account, email or anonymously."
+	},
+	"/demo/": {
+		"title": "Live demo | Remark42",
+		"description": "Try Remark42 on a live page: sign in, write a comment with Markdown, reply, vote, and switch between the light and dark themes."
+	},
+	"/privacy/": {
+		"title": "Privacy Policy | Remark42",
+		"description": "What remark42.com and its demo collect about visitors and commenters, how that data is used, and how to ask for it to be deleted."
+	},
+	"/docs/getting-started/installation/": {
+		"title": "Install Remark42 with Docker or as a binary | Remark42",
+		"description": "Install Remark42 with Docker Compose or as a single binary, set the two required parameters, and add the comment widget to your site."
+	},
+	"/docs/configuration/frontend/": {
+		"title": "Widget configuration: remark_config options | Remark42",
+		"description": "Every remark_config option of the Remark42 widget, including host, site_id, theme and locale, plus the last-comments and counter widgets."
+	},
+	"/docs/configuration/frontend/spa/": {
+		"title": "Remark42 in a single-page application | Remark42",
+		"description": "Use the Remark42 widget in a single-page application: destroy the old instance and call REMARK42.createInstance again when the route changes."
+	},
+	"/docs/configuration/parameters/": {
+		"title": "Server parameters and environment variables | Remark42",
+		"description": "Every Remark42 server option with its command-line flag, environment variable and default: storage, sign-in, notifications, images and admins."
+	},
+	"/docs/configuration/authorization/": {
+		"title": "Sign-in: OAuth providers, email and anonymous | Remark42",
+		"description": "Set up sign-in for commenters: GitHub, Google, Facebook, Microsoft, Apple, X, Yandex, Patreon, Discord, Telegram, a custom OAuth2 provider, or anonymous."
+	},
+	"/docs/configuration/email/": {
+		"title": "Email: SMTP, sign-in and notifications | Remark42",
+		"description": "Connect Remark42 to an SMTP server such as Mailgun, SendGrid, Gmail or Amazon SES, then enable email sign-in, reply notifications and custom templates."
+	},
+	"/docs/configuration/notifications/": {
+		"title": "Notifications for admins and users | Remark42",
+		"description": "How Remark42 notifies admins of new comments and users of replies, with setup steps for Slack and webhook notifications."
+	},
+	"/docs/configuration/telegram/": {
+		"title": "Telegram notifications and login | Remark42",
+		"description": "Create a Telegram bot for Remark42 and use it for sign-in, new-comment notifications to admins and reply notifications to users."
+	},
+	"/docs/backup/backup/": {
+		"title": "Automatic and manual backup | Remark42",
+		"description": "How Remark42 backs up every site each day, where the files are kept, how to make a backup by hand, and what the backup format holds."
+	},
+	"/docs/backup/restore/": {
+		"title": "Restore comments from a backup | Remark42",
+		"description": "Restore a Remark42 site from a backup file: what a restore replaces, the command to run, and how to import without removing existing comments."
+	},
+	"/docs/backup/migration/": {
+		"title": "Import from Disqus, WordPress or Commento | Remark42",
+		"description": "Move your comments to Remark42 from Disqus, WordPress or Commento: where each export file goes and the command that imports it."
+	},
+	"/docs/backup/url-migration/": {
+		"title": "Move comments when post URLs change | Remark42",
+		"description": "Keep comments attached to their posts after the post addresses change: write a rules file of old and new URLs and apply it."
+	},
+	"/docs/manuals/admin-interface/": {
+		"title": "Admin controls in the widget | Remark42",
+		"description": "What a Remark42 administrator can do from the comment widget: pin and delete comments, block and verify users, and close a post to new comments."
+	},
+	"/docs/manuals/spam/": {
+		"title": "Anti-spam tools | Remark42",
+		"description": "What Remark42 does about spam: the checks applied when a comment is posted and the cleanup command that removes spam afterwards."
+	},
+	"/docs/manuals/nginx/": {
+		"title": "Nginx reverse proxy for Remark42 | Remark42",
+		"description": "An Nginx reverse proxy configuration for Remark42 on its own subdomain, with TLS, gzip and the proxy headers the server reads."
+	},
+	"/docs/manuals/reproxy/": {
+		"title": "Reproxy with Docker Compose | Remark42",
+		"description": "A Docker Compose setup that runs Remark42 behind Reproxy, which obtains Let's Encrypt certificates and compresses responses."
+	},
+	"/docs/manuals/subdomain/": {
+		"title": "Remark42 under a path instead of a subdomain | Remark42",
+		"description": "Serve Remark42 from a path of your site, such as example.com/remark42, with Docker Compose, Nginx and Caddy configurations."
+	},
+	"/docs/manuals/separate-domain/": {
+		"title": "Remark42 on a different domain from your site | Remark42",
+		"description": "What works when Remark42 and the page embedding it are on different domains, how each browser treats sign-in there, and the settings that help."
+	},
+	"/docs/manuals/kubernetes/": {
+		"title": "Deploy Remark42 on Kubernetes | Remark42",
+		"description": "Run Remark42 on Kubernetes with the community Helm chart, or adapt the sample manifests written for Hetzner Cloud."
+	},
+	"/docs/manuals/integration-with-astro/": {
+		"title": "Remark42 comments in an Astro site | Remark42",
+		"description": "Add Remark42 comments and comment counters to an Astro site, with Svelte, React or Preact component examples."
+	},
+	"/docs/manuals/integration-with-gatsby/": {
+		"title": "Remark42 comments in a Gatsby site | Remark42",
+		"description": "Add Remark42 comments to a Gatsby site with a React component that loads the widget, written in JavaScript or TypeScript."
+	},
+	"/docs/contributing/api/": {
+		"title": "REST API reference | Remark42",
+		"description": "The Remark42 REST API: sign-in, comments and votes, streaming, RSS feeds, images, email subscription and the admin endpoints."
+	},
+	"/docs/contributing/backend/": {
+		"title": "Backend development | Remark42",
+		"description": "Build, run and test the Remark42 backend locally on macOS or Linux, with notes on how the server is put together."
+	},
+	"/docs/contributing/frontend/": {
+		"title": "Frontend development | Remark42",
+		"description": "Set up the Remark42 widget for development: run it against a local or remote backend, test it, and follow the code style."
+	},
+	"/docs/contributing/translations/": {
+		"title": "Translate the Remark42 interface | Remark42",
+		"description": "Add a language to the Remark42 widget or update a translation: where the files are, what a string may contain and how it is checked."
+	}
+}

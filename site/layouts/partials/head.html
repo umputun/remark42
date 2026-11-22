@@ -8,11 +8,19 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
+  {{- /* data/meta.json holds the title and description of a page under its address, so that
+        rewording them does not touch the page and its date. A page without an entry gets its
+        own title and the start of its text */ -}}
+  {{- $meta := index hugo.Data.meta .RelPermalink | default dict -}}
+  {{- $suffix := printf " | %s" site.Title -}}
   {{- $title := site.Title -}}
-  {{- with .Title }}{{ $title = printf "%s | %s" . site.Title }}{{ end -}}
+  {{- with .Title }}{{ $title = printf "%s%s" . $suffix }}{{ end -}}
+  {{- with $meta.title }}{{ $title = . }}{{ end -}}
   {{- $description := site.Params.description -}}
+  {{- if not (or .IsHome (eq .Kind "404")) }}{{ with .Plain | htmlUnescape | replaceRE `\s+` " " | strings.TrimSpace }}{{ $description = . | truncate 155 }}{{ end }}{{ end -}}
   {{- with .Description }}{{ $description = . }}{{ end -}}
-  {{- with .Params.metaDescription }}{{ $description = . }}{{ end }}
+  {{- with .Params.metaDescription }}{{ $description = . }}{{ end -}}
+  {{- with $meta.description }}{{ $description = . }}{{ end }}
   <title>{{ $title }}</title>
   <meta name="description" content="{{ $description }}">
   {{- /* the 404 page is served at every missing address, so it names no address of its own */ -}}
@@ -20,7 +28,7 @@
   <link rel="canonical" href="{{ .Permalink }}">
   <meta property="og:type" content="{{ if .IsHome }}website{{ else }}article{{ end }}">
   <meta property="og:site_name" content="{{ site.Title }}">
-  <meta property="og:title" content="{{ with .Title }}{{ . }}{{ else }}{{ site.Title }}{{ end }}">
+  <meta property="og:title" content="{{ strings.TrimSuffix $suffix $title }}">
   <meta property="og:description" content="{{ $description }}">
   <meta property="og:url" content="{{ .Permalink }}">
   <meta property="og:image" content="{{ "og-image.png" | absURL }}">
