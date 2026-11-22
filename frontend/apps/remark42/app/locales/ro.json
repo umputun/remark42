@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Abonează-te prin Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Dezabonează-te",
+  "thread.toggle": "Restrânge sau extinde firul",
   "token": "Lipește tokenul din email",
   "token.expired": "Tokenul a expirat",
   "token.invalid": "Tokenul este invalid",

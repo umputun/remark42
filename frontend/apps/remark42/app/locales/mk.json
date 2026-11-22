@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Претплати се преку Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Откажи претплата",
+  "thread.toggle": "Собери или прошири ја нишката",
   "token": "Залепи го токенот од е-поштата",
   "token.expired": "Токенот е истечен",
   "token.invalid": "Токенот е неважечки",

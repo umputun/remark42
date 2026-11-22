@@ -1,6 +1,11 @@
 .avatar {
   display: block;
   max-width: 100%;
+
+  /* the wrapper reserves the box; a loaded picture keeps its own size, shrunk to the wrapper, as
+     before width and height were set on it */
+  width: auto;
+  height: auto;
   border-radius: 4px;
 }
 

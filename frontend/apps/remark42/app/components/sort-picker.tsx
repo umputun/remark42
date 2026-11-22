@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import { useMemo } from 'preact/hooks';
 
-import { FormattedMessage, defineMessages, useIntl } from 'common/intl';
+import { defineMessages, useIntl } from 'common/intl';
 import type { StoreState } from 'store';
 import { useAppDispatch, useAppSelector } from 'store';
 import { Select } from 'components/select';
@@ -44,15 +44,20 @@ export function SortPicker() {
     dispatch(updateSorting(value as Sorting));
   }
 
+  const sortBy = intl.formatMessage(messages.sortBy);
+
   return (
     <span className="sort-picker">
-      <FormattedMessage id="sort-by" defaultMessage="Sort by" />{' '}
-      <Select items={items} selected={selected} onChange={handleSortChange} />
+      {sortBy} <Select items={items} selected={selected} onChange={handleSortChange} aria-label={sortBy} />
     </span>
   );
 }
 
 const messages = defineMessages({
+  sortBy: {
+    id: 'sort-by',
+    defaultMessage: 'Sort by',
+  },
   best: {
     id: 'commentsSort.best',
     defaultMessage: 'Best',

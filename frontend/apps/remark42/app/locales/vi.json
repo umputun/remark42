@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Đăng ký với Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Hủy đăng ký",
+  "thread.toggle": "Thu gọn hoặc mở rộng chuỗi",
   "token": "Dán token từ email",
   "token.expired": "token đã hết hạn",
   "token.invalid": "Token không hợp lệ",

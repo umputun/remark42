@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "透過 Telegram 訂閱",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "取消訂閱",
+  "thread.toggle": "收合或展開討論串",
   "token": "貼上電子郵件中的權杖（Token）",
   "token.expired": "權杖已過期",
   "token.invalid": "無效的權杖",

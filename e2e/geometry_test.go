@@ -279,7 +279,7 @@ func TestGeometry_CollapsingAThreadShrinksTheFrame(t *testing.T) {
 
 	id, err := comment(frame, parent).GetAttribute("id")
 	require.NoError(t, err)
-	thread := frame.Locator(fmt.Sprintf("[aria-expanded]:has(article#%s)", id))
+	thread := frame.Locator(fmt.Sprintf(`[role="listitem"]:has(> article#%s)`, id))
 	require.NoError(t, thread.Locator(`:scope > [role="button"]`).Click())
 
 	eventually(t, waitTimeout, "the frame did not shrink when the thread collapsed", func() bool {

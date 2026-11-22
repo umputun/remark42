@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Підписатися через Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Відмовитися від підписки",
+  "thread.toggle": "Згорнути або розгорнути гілку",
   "token": "Вставте токен з листа",
   "token.expired": "Час дії токена минув",
   "token.invalid": "Токен недійсний",

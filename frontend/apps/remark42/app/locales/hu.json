@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Feliratkozás Telegramon",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Leiratkozás",
+  "thread.toggle": "Szál összecsukása vagy kibontása",
   "token": "Másolja be a tokent a levélből",
   "token.expired": "A token lejárt",
   "token.invalid": "A token érvénytelen",

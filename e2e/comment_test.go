@@ -63,7 +63,7 @@ func TestComment_ReplyNestsUnderItsParent(t *testing.T) {
 	submitForm(t, replyForm(t, frame), reply)
 
 	// nesting is the point: the reply has to live inside the parent's thread, not beside it
-	parentThread := frame.Locator("[aria-expanded]", playwright.FrameLocatorLocatorOptions{HasText: parent}).First()
+	parentThread := frame.Locator(`[role="listitem"]`, playwright.FrameLocatorLocatorOptions{HasText: parent}).First()
 	waitVisible(t, parentThread.Locator("article", playwright.LocatorLocatorOptions{HasText: reply}))
 }
 

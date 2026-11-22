@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Подписаться через Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Отписаться",
+  "thread.toggle": "Свернуть или развернуть ветку",
   "token": "Вставьте токен из электронного письма",
   "token.expired": "Время действия токена истекло",
   "token.invalid": "Токен недействителен",

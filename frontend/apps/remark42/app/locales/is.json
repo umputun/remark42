@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Fá tilkynningar með Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Hætta að fá tilkynningar",
+  "thread.toggle": "Fella saman eða opna þráð",
   "token": "Límdu kóðann úr tölvupóstinum",
   "token.expired": "Kóðinn er útrunninn",
   "token.invalid": "Kóðinn er ógildur",

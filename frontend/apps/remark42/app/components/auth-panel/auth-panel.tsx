@@ -68,7 +68,7 @@ class AuthPanelComponent extends Component<Props, State> {
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>
-            <Avatar url={user.picture} identicon={isUserAnonymous(user)} />
+            <Avatar url={user.picture} size={20} identicon={isUserAnonymous(user)} />
           </div>
           {user.name}
         </button>{' '}
@@ -152,7 +152,7 @@ class AuthPanelComponent extends Component<Props, State> {
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
-      <div className={styles.root}>
+      <div className={styles.root} data-nosnippet>
         <div className={styles.column}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}

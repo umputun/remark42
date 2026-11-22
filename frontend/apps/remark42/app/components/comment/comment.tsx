@@ -354,7 +354,7 @@ export class Comment extends Component<CommentProps, State> {
                 </a>
               </div>
             )}
-            <div className={styles.info}>
+            <div className={styles.info} data-nosnippet>
               {!!o.title && o.user.name}
 
               {!o.title && (
@@ -399,10 +399,10 @@ export class Comment extends Component<CommentProps, State> {
             </a>
           </div>
         )}
-        <div className={styles.info}>
+        <div className={styles.info} data-nosnippet>
           {props.view !== 'user' && !props.collapsed && (
             <div className={styles.avatar}>
-              <Avatar url={o.user.picture} identicon={isUserAnonymous(o.user)} />
+              <Avatar url={o.user.picture} size={24} identicon={isUserAnonymous(o.user)} />
             </div>
           )}
 
@@ -438,7 +438,9 @@ export class Comment extends Component<CommentProps, State> {
           </div>
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.time}>
-            {getLocalDatetime(this.props.intl, o.time)}
+            <time dateTime={Number.isNaN(o.time.getTime()) ? undefined : o.time.toISOString()}>
+              {getLocalDatetime(this.props.intl, o.time)}
+            </time>
           </a>
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
@@ -486,6 +488,8 @@ export class Comment extends Component<CommentProps, State> {
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
               dir="auto"
+              // a deleted comment shows the widget's own sentence in place of its text
+              data-nosnippet={props.data.delete || undefined}
             />
           )}
 

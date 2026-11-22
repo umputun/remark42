@@ -293,7 +293,7 @@ export class Root extends Component<Props, State> {
                   ))}
                 </div>
               )}
-              <div className={styles.sortPicker}>
+              <div className={styles.sortPicker} data-nosnippet>
                 <SortPicker />
               </div>
               <Comments
@@ -322,16 +322,24 @@ function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsP
   const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
 
   return (
-    <div className={styles.threads} role="list">
+    <div className={styles.threads}>
       {isLoading ? (
         <Preloader className={styles.preloader} />
       ) : (
         <>
-          {topComments.length > 0 &&
-            renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
+          {renderComments.length > 0 && (
+            // the list holds the threads only: the preloader and the button below are not its items
+            <div role="list">
+              {renderComments.map((id) => (
+                <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />
+              ))}
+            </div>
+          )}
           {isShowMoreButtonVisible && (
             <Button className={styles.moreComments} onClick={showMore}>
-              <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+              <span data-nosnippet>
+                <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+              </span>
             </Button>
           )}
         </>
@@ -360,11 +368,13 @@ export function ConnectedRoot() {
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
         <p className={styles.copyright} role="contentinfo">
-          <FormattedMessage
-            id="root.powered-by"
-            defaultMessage="Powered by <a>Remark42</a>"
-            values={{ a: CopyrightLink }}
-          />
+          <span data-nosnippet>
+            <FormattedMessage
+              id="root.powered-by"
+              defaultMessage="Powered by <a>Remark42</a>"
+              values={{ a: CopyrightLink }}
+            />
+          </span>
         </p>
       )}
     </div>

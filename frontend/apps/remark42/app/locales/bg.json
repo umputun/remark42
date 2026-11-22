@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Запиши се чрез Telegram",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Отпиши се",
+  "thread.toggle": "Свиване или разгъване на нишката",
   "token": "Поставете токена от имейла",
   "token.expired": "Изтекъл токен",
   "token.invalid": "Токенът е невалиден",

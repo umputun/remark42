@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "Tilaa Telegramin kautta",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "Lopeta tilaus",
+  "thread.toggle": "Supista tai laajenna keskustelu",
   "token": "Liitä tunniste (TOKEN) sähköpostista",
   "token.expired": "Tunnus on vanhentunut",
   "token.invalid": "Tunnus on virheellinen",

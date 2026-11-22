@@ -163,6 +163,7 @@
   "subscribeByTelegram.subscribe-by-telegram": "اشترك عبر تيليجرام",
   "subscribeByTelegram.telegram": "Telegram",
   "subscribeByTelegram.unsubscribe": "إلغاء الاشتراك",
+  "thread.toggle": "طيّ النقاش أو توسيعه",
   "token": "الصق الرمز المميز (TOKEN) من البريد الإلكتروني",
   "token.expired": "الرمز انتهت صلاحيته",
   "token.invalid": "الرمز غير صالح",

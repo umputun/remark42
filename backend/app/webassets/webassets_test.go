@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 func TestFS_Contents(t *testing.T) {
@@ -63,6 +65,29 @@ func TestFS_ContentShape(t *testing.T) {
 			assert.Contains(t, string(b), "</html>", "the document is truncated")
 		})
 	}
+}
+
+// TestFS_IframeLang checks that the widget document declares English, which holds until the widget
+// sets the language of the locale it shows
+func TestFS_IframeLang(t *testing.T) {
+	f, err := FS.Open("iframe.html")
+	require.NoError(t, err)
+	defer f.Close()
+	doc, err := html.Parse(f)
+	require.NoError(t, err)
+
+	var lang string
+	for n := doc.FirstChild; n != nil; n = n.NextSibling {
+		if n.Type != html.ElementNode || n.DataAtom != atom.Html {
+			continue
+		}
+		for _, a := range n.Attr {
+			if a.Key == "lang" {
+				lang = a.Val
+			}
+		}
+	}
+	assert.Equal(t, "en", lang)
 }
 
 // TestFS_SVGShape does the same for the images the widget loads by name: the ghost avatar and the
