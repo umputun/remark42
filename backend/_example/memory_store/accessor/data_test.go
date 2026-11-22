@@ -7,8 +7,6 @@
 package accessor
 
 import (
-	"fmt"
-	"sort"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -18,796 +16,127 @@ import (
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
+	"github.com/umputun/remark42/backend/app/store/engine/enginetest"
 )
 
-func TestMemData_CreateAndFind(t *testing.T) {
-	m := prepMem(t) // adds two comments
+// TestMemData_Engine runs the shared engine test set, the same one the bolt engine runs
+func TestMemData_Engine(t *testing.T) {
+	enginetest.Run(t, func(*testing.T) engine.Interface { return NewMemData() })
+}
 
-	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := m.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
-	assert.Equal(t, "user1", res[0].User.ID)
+// The tests below cover what is particular to this engine: its error texts, and an unknown site or user,
+// for which it returns nothing where bolt returns an error, as it serves any site id it is given.
 
-	_, err = m.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
+func TestMemData_ErrorTexts(t *testing.T) {
+	b := prepMem(t)
+	loc := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	_, err := b.Create(store.Comment{ID: "id-1", Locator: loc})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "dup key")
 
-	id, err := m.Create(store.Comment{ID: "id-3", Locator: store.Locator{URL: "https://radio-t2.com", SiteID: "radio-t2"}})
-	require.NoError(t, err)
-	assert.Equal(t, "id-3", id)
-	req = engine.FindRequest{Locator: store.Locator{URL: "https://radio-t2.com", SiteID: "radio-t2"}, Sort: "time"}
-	res, err = m.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-}
-
-func TestMemData_CreateFailedReadOnly(t *testing.T) {
-	b := prepMem(t)
-	comment := store.Comment{
-		ID:        "id-ro",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com/ro", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-
-	flagReq := engine.FlagRequest{Locator: comment.Locator, Flag: engine.ReadOnly, Update: engine.FlagTrue}
-	v, err := b.Flag(flagReq)
-	require.NoError(t, err)
-	assert.Equal(t, true, v)
-
-	_, err = b.Create(comment)
-	assert.Error(t, err)
-	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
-
-	imported := comment
-	imported.ID, imported.Imported = "id-imported", true
-	_, err = b.Create(imported)
-	require.NoError(t, err, "an import writes to a read-only post")
-
-	flagReq = engine.FlagRequest{Locator: comment.Locator, Flag: engine.ReadOnly, Update: engine.FlagFalse}
-	v, err = b.Flag(flagReq)
-	require.NoError(t, err)
-	assert.Equal(t, false, v)
-
-	_, err = b.Create(comment)
-	assert.NoError(t, err)
-}
-
-func TestMemData_Get(t *testing.T) {
-	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res), "2 records initially")
-
-	comment, err := b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID))
-	assert.NoError(t, err)
-	assert.Equal(t, "some text2", comment.Text)
-
-	_, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567"))
+	_, err = b.Get(getReq(loc, "1234567"))
 	assert.EqualError(t, err, `not found`)
 
-	_, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, res[1].ID))
+	err = b.Update(store.Comment{ID: "id-1", Locator: store.Locator{URL: "https://radio-t.com-bad", SiteID: "radio-t"}})
+	assert.EqualError(t, err, `not found`)
+
+	err = b.Delete(engine.DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}, CommentID: "id-1"})
 	assert.EqualError(t, err, `not found`)
 }
 
-func TestMemData_Update(t *testing.T) {
+func TestMemData_UnknownSite(t *testing.T) {
 	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res), "2 records initially")
+	bad := store.Locator{URL: "https://radio-t.com", SiteID: "bad"}
+	badSite := store.Locator{SiteID: "bad"}
 
-	comment := res[0]
-	comment.Text = "abc 123"
-	comment.Score = 100
-	err = b.Update(comment)
+	res, err := b.Find(engine.FindRequest{Locator: badSite, Sort: "-time"})
 	assert.NoError(t, err)
+	assert.Empty(t, res, "find last")
 
-	comment, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
+	res, err = b.Find(engine.FindRequest{Locator: badSite, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1})
 	assert.NoError(t, err)
-	assert.Equal(t, "abc 123", comment.Text)
-	assert.Equal(t, res[0].ID, comment.ID)
-	assert.Equal(t, 100, comment.Score)
+	assert.Empty(t, res, "find for user")
 
-	comment.Locator.SiteID = "bad"
-	err = b.Update(comment)
+	_, err = b.Get(getReq(bad, "id-1"))
 	assert.EqualError(t, err, `not found`)
 
-	comment.Locator.SiteID = "https://radio-t.com"
-	comment.Locator.URL = "https://radio-t.com-bad"
-	err = b.Update(comment)
+	err = b.Update(store.Comment{ID: "id-1", Locator: bad})
 	assert.EqualError(t, err, `not found`)
+
+	c, err := b.Count(engine.FindRequest{Locator: bad})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c, "count post")
+
+	c, err = b.Count(engine.FindRequest{Locator: badSite, UserID: "user1"})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c, "count user")
+
+	info, err := b.Info(engine.InfoRequest{Locator: badSite, Limit: 1, Skip: 1})
+	assert.NoError(t, err)
+	assert.Equal(t, []store.PostInfo{}, info, "info list")
+
+	_, err = b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: badSite, UserID: "u1", Update: engine.FlagTrue})
+	assert.NoError(t, err, "a flag is set on any site")
+
+	flags, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: "radio-t-bad"}})
+	assert.NoError(t, err)
+	assert.Empty(t, flags, "list verified")
+
+	flags, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: badSite})
+	assert.NoError(t, err)
+	assert.Empty(t, flags, "list blocked")
+
+	err = b.Delete(engine.DeleteRequest{Locator: bad, CommentID: "id-1", DeleteMode: store.SoftDelete})
+	assert.EqualError(t, err, `not found`)
+
 }
 
-func TestMemData_FindLast(t *testing.T) {
+func TestMemData_UnknownUser(t *testing.T) {
 	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"}
-	res, err := b.Find(req)
+	site := store.Locator{SiteID: "radio-t"}
+
+	res, err := b.Find(engine.FindRequest{Locator: site, Sort: "-time", UserID: "userZ", Limit: 1, Skip: 1})
 	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
+	assert.Empty(t, res)
 
-	req.Limit = 1
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Locator.SiteID = "bad"
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-}
-
-func TestMemData_FindLastSince(t *testing.T) {
-	b := prepMem(t)
-	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.Local)
-	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", Since: ts}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.Local)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-}
-
-func TestMemData_FindForUser(t *testing.T) {
-	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 5}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text, "second comment")
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "bad"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res), "no comments")
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "userZ", Limit: 1, Skip: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res), "no comments")
-}
-
-func TestMemData_FindForUserPagination(t *testing.T) {
-	b := NewMemData()
-
-	c := store.Comment{
-		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:    store.User{ID: "user1", Name: "user name"},
-	}
-
-	// write 200 comments
-	for i := range 200 {
-		c.ID = fmt.Sprintf("idd-%d", i)
-		c.Text = fmt.Sprintf("text #%d", i)
-		c.Timestamp = time.Date(2017, 12, 20, 15, 18, i, 0, time.Local)
-		_, err := b.Create(c)
-		require.NoError(t, err)
-	}
-
-	// get all comments
-	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 200, len(res))
-	assert.Equal(t, "idd-199", res[0].ID)
-
-	// seek 0, 5 comments
-	req.Limit = 5
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 5, len(res))
-	assert.Equal(t, "idd-199", res[0].ID)
-	assert.Equal(t, "idd-195", res[4].ID)
-
-	// seek 10, 3 comments
-	req.Skip, req.Limit = 10, 3
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 3, len(res))
-	assert.Equal(t, "idd-189", res[0].ID)
-	assert.Equal(t, "idd-187", res[2].ID)
-
-	// seek 195, ask 10 comments
-	req.Skip, req.Limit = 195, 10
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 5, len(res))
-	assert.Equal(t, "idd-4", res[0].ID)
-	assert.Equal(t, "idd-0", res[4].ID)
-
-	// seek 255, ask 10 comments
-	req.Skip, req.Limit = 255, 10
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-
-	// deleted comments take no place in a page and are not counted by skip
-	for _, id := range []string{"idd-199", "idd-197", "idd-190"} {
-		require.NoError(t, b.Delete(engine.DeleteRequest{Locator: c.Locator, CommentID: id, DeleteMode: store.SoftDelete}))
-	}
-	req.Skip, req.Limit = 0, 5
-	res, err = b.Find(req)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"idd-198", "idd-196", "idd-195", "idd-194", "idd-193"}, commentIDs(res))
-	req.Skip, req.Limit = 5, 3
-	res, err = b.Find(req)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"idd-192", "idd-191", "idd-189"}, commentIDs(res))
-}
-
-func commentIDs(comments []store.Comment) []string {
-	ids := make([]string, 0, len(comments))
-	for _, c := range comments {
-		ids = append(ids, c.ID)
-	}
-	return ids
-}
-
-func TestMemData_CountPost(t *testing.T) {
-	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}}
-	c, err := b.Count(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, c)
-
-	req = engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com-xxx", SiteID: "radio-t"}}
-	c, err = b.Count(req)
+	c, err := b.Count(engine.FindRequest{Locator: site, UserID: "userZ"})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c)
 
-	req = engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "bad"}}
-	c, err = b.Count(req)
+	require.NoError(t, b.Delete(engine.DeleteRequest{Locator: site, UserID: "user1", DeleteMode: store.HardDelete}))
+	res, err = b.Find(engine.FindRequest{Locator: site, UserID: "user1", Limit: 5})
 	assert.NoError(t, err)
-	assert.Equal(t, 0, c)
-
-	c, err = b.Count(engine.FindRequest{})
-	assert.Error(t, err)
-	assert.Equal(t, 0, c)
+	assert.Empty(t, res)
 }
 
-func TestMemData_CountUser(t *testing.T) {
-	b := prepMem(t)
-	req := engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
-	c, err := b.Count(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, c)
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1"}
-	c, err = b.Count(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c)
-
-	req = engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "userZ"}
-	c, err = b.Count(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c)
-}
-
-func TestMemData_InfoPost(t *testing.T) {
-	b := prepMem(t)
-	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, 18, minute, 0, time.Local).In(time.UTC) }
-
-	// add one more for https://radio-t.com/2
-	comment := store.Comment{
-		ID:        "12345",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Create(comment)
-	assert.NoError(t, err)
-
-	req := engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err := b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24)}}, r)
-
-	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1,
-		FirstTS: ts(24), LastTS: ts(24), ReadOnly: true}}, r)
-
-	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, r)
-
-	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	_, err = b.Info(req)
-	require.Error(t, err)
-
-	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, ReadOnlyAge: 0}
-	_, err = b.Info(req)
-	require.Error(t, err)
-
-	_, err = b.Info(engine.InfoRequest{})
-	require.Error(t, err)
-
-	fr := engine.FlagRequest{Flag: engine.ReadOnly,
-		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, Update: engine.FlagTrue}
-	_, err = b.Flag(fr)
-	require.NoError(t, err)
-	req = engine.InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24),
-		ReadOnly: true}}, r)
-}
-
-func TestMemData_InfoList(t *testing.T) {
-	b := prepMem(t)
-	// add one more for https://radio-t.com/2
-	comment := store.Comment{
-		ID:        "12345",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.Local),
-		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Create(comment)
-	assert.NoError(t, err)
-
-	ts := func(sec int) time.Time { return time.Date(2017, 12, 20, 15, 18, sec, 0, time.Local).In(time.UTC) }
-
-	req := engine.InfoRequest{Locator: store.Locator{SiteID: "radio-t"}}
-	res, err := b.Info(req)
-	assert.NoError(t, err)
-	assert.EqualValues(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
-		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = engine.InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: -1, Skip: -1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.EqualValues(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
-		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = engine.InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}}, res)
-
-	req = engine.InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 1, Skip: 1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = engine.InfoRequest{Locator: store.Locator{SiteID: "bad"}, Limit: 1, Skip: 1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{}, res)
-}
-
-func TestMemData_FlagBlockedUser(t *testing.T) {
-
-	b := prepMem(t)
-	req := engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
-	val, err := b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing blocked yet")
-
-	req = engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
-		Update: engine.FlagTrue}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.True(t, val, "user1 blocked")
-
-	req = engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
-		Update: engine.FlagTrue}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.True(t, val, "user1 still blocked")
-
-	req = engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
-		Update: engine.FlagFalse}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.False(t, val, "user1 unblocked")
-}
-
-func TestMemData_FlagReadOnlyPost(t *testing.T) {
-
-	b := prepMem(t)
-	req := engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly}
-	val, err := b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing ro")
-
-	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly,
-		Update: engine.FlagTrue}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.True(t, val)
-	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.True(t, val, "url-1 ro")
-
-	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-2"}, Flag: engine.ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "url-2 still writable")
-
-	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly,
-		Update: engine.FlagFalse}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	req = engine.FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: engine.ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "url-1 writable")
-}
-
-func TestMemData_FlagVerified(t *testing.T) {
-
-	b := prepMem(t)
-	isVerified := func(site, user string) bool {
-		req := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: site}, UserID: user}
-		v, err := b.Flag(req)
-		require.NoError(t, err)
-		return v
-	}
-
-	setVerified := func(site, user string, status engine.FlagStatus) error {
-		req := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: site}, UserID: user, Update: status}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	assert.False(t, isVerified("radio-t", "u1"), "nothing verified")
-
-	assert.NoError(t, setVerified("radio-t", "u1", engine.FlagTrue))
-	assert.True(t, isVerified("radio-t", "u1"), "u1 verified")
-
-	assert.False(t, isVerified("radio-t", "u2"), "u2 still not verified")
-	assert.NoError(t, setVerified("radio-t", "u1", engine.FlagFalse))
-	assert.False(t, isVerified("radio-t", "u1"), "u1 not verified anymore")
-
-	assert.NoError(t, setVerified("bad", "u1", engine.FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u1xyz", engine.FlagFalse))
-
-	assert.False(t, isVerified("radio-t-bad", "u1"), "nothing verified on wrong site")
-
-	assert.NoError(t, setVerified("radio-t", "u1", engine.FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u2", engine.FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u3", engine.FlagFalse))
-}
-
-func TestMemData_FlagListVerified(t *testing.T) {
-
-	b := prepMem(t)
-	toIDs := func(inp []any) (res []string) {
-		res = make([]string, len(inp))
-		for i, v := range inp {
-			vv, ok := v.(string)
-			require.True(t, ok)
-			res[i] = vv
-		}
-		sort.Strings(res)
-		return res
-	}
-
-	setVerified := func(site, user string, status engine.FlagStatus) error {
-		req := engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: site}, UserID: user, Update: status}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	ids, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	assert.Equal(t, []string{}, toIDs(ids), "verified list empty")
-
-	assert.NoError(t, setVerified("radio-t", "u1", engine.FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u2", engine.FlagTrue))
-	ids, err = b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	assert.EqualValues(t, []string{"u1", "u2"}, toIDs(ids), "verified 2 ids")
-
-	ids, err = b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: "radio-t-bad"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(ids))
-
-	ids, err = b.ListFlags(engine.FlagRequest{})
-	assert.Error(t, err)
-	assert.Equal(t, 0, len(ids))
-}
-
-func TestMemData_FlagListBlocked(t *testing.T) {
+// TestMemData_FlagListBlockedExpires checks that a block ends once its TTL has passed. It stays per engine
+// because it moves the clock, which a synctest bubble can do here and the shared set can't do for an engine
+// behind a network.
+func TestMemData_FlagListBlockedExpires(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		b := prepMem(t)
-		setBlocked := func(site, user string, status engine.FlagStatus, ttl time.Duration) error {
-			req := engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status,
-				TTL: ttl}
-			_, err := b.Flag(req)
-			return err
+		site := store.Locator{SiteID: "radio-t"}
+		for user, ttl := range map[string]time.Duration{"user1": 0, "user2": 50 * time.Millisecond} {
+			_, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: site, UserID: user, Update: engine.FlagTrue, TTL: ttl})
+			require.NoError(t, err)
 		}
-
-		toBlocked := func(inp []any) (res []store.BlockedUser) {
-			res = make([]store.BlockedUser, len(inp))
-			for i, v := range inp {
-				vv, ok := v.(store.BlockedUser)
-				require.True(t, ok)
-				res[i] = vv
-			}
+		blocked := func() []any {
+			res, err := b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: site})
+			require.NoError(t, err)
 			return res
 		}
-		assert.NoError(t, setBlocked("radio-t", "user1", engine.FlagTrue, 0))
-		assert.NoError(t, setBlocked("radio-t", "user2", engine.FlagTrue, 50*time.Millisecond))
-		assert.NoError(t, setBlocked("radio-t", "user3", engine.FlagFalse, 0))
+		require.Len(t, blocked(), 2)
 
-		vv, err := b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-		assert.NoError(t, err)
-
-		blockedList := toBlocked(vv)
-		var blockedIDs = make([]string, len(blockedList))
-		for i, x := range blockedList {
-			blockedIDs[i] = x.ID
-		}
-		require.Equal(t, 2, len(blockedList), b.metaUsers)
-		assert.ElementsMatch(t, []string{"user1", "user2"}, blockedIDs)
-		t.Logf("%+v", blockedList)
-
-		// check block expiration
 		time.Sleep(50 * time.Millisecond)
-		vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-		assert.NoError(t, err)
-		blockedList = toBlocked(vv)
-		require.Equal(t, 1, len(blockedList))
-		assert.Equal(t, "user1", blockedList[0].ID)
+		res := blocked()
+		require.Len(t, res, 1)
+		assert.Equal(t, "user1", res[0].(store.BlockedUser).ID)
 
-		vv, err = b.ListFlags(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: "bad"}})
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(vv))
+		stillBlocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: site, UserID: "user2"})
+		require.NoError(t, err)
+		assert.False(t, stillBlocked, "a block that ran out does not block")
 	})
-}
-
-func TestMemData_DeleteComment(t *testing.T) {
-
-	b := prepMem(t)
-	reqReq := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res), "initially 2 comments")
-
-	count, err := b.Count(reqReq)
-	require.NoError(t, err)
-	require.Equal(t, 2, count, "count=2 initially")
-
-	delReq := engine.DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID: res[0].ID, DeleteMode: store.SoftDelete}
-
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	res, err = b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "", res[0].Text)
-	assert.True(t, res[0].Deleted, "marked deleted")
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
-
-	assert.Equal(t, "some text2", res[1].Text)
-	assert.False(t, res[1].Deleted)
-
-	comments, err := b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 10})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
-
-	count, err = b.Count(reqReq)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count)
-
-	delReq.CommentID = "123456"
-	err = b.Delete(delReq)
-	assert.Error(t, err)
-
-	delReq.Locator.SiteID = "bad"
-	delReq.CommentID = res[0].ID
-	err = b.Delete(delReq)
-	assert.EqualError(t, err, `not found`)
-
-	delReq.Locator = store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}
-	err = b.Delete(delReq)
-	assert.EqualError(t, err, `not found`)
-
-	err = b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}})
-	assert.Error(t, err)
-}
-
-func TestMemData_Close(t *testing.T) {
-	b := prepMem(t)
-	assert.NoError(t, b.Close())
-	assert.NoError(t, b.Close(), "second call should not result in panic or errors")
-}
-
-func TestMemData_DeleteHard(t *testing.T) {
-
-	b := prepMem(t)
-	reqReq := engine.FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(reqReq)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "initially 2 comments")
-
-	delReq := engine.DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID: res[0].ID, DeleteMode: store.HardDelete}
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	res, err = b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "", res[0].Text)
-	assert.True(t, res[0].Deleted, "marked deleted")
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
-}
-
-func TestMemData_DeleteAll(t *testing.T) {
-	b := prepMem(t)
-	delReq := engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}}
-	err := b.Delete(delReq)
-	assert.NoError(t, err)
-
-	comments, err := b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 10})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
-}
-
-func TestMemData_UserDetailAll(t *testing.T) {
-	b := prepMem(t)
-
-	val, err := b.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.AllUserDetails})
-	require.NoError(t, err)
-	require.Nil(t, val)
-}
-
-func TestMemData_UserDetailErrors(t *testing.T) {
-	b := prepMem(t)
-
-	val, err := b.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.UserEmail, Update: "value1"})
-	require.EqualError(t, err, "userid cannot be empty in request for single detail")
-	require.Nil(t, val)
-
-	val, err = b.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: engine.AllUserDetails, Update: "value1"})
-	require.EqualError(t, err, "unsupported request with userdetail all")
-	require.Nil(t, val)
-
-	val, err = b.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, Detail: "bad"})
-	require.EqualError(t, err, "unsupported detail \"bad\"")
-	require.Nil(t, val)
-}
-
-func TestMemData_DeleteUserDetail(t *testing.T) {
-	var (
-		createEmailUser    = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserEmail, Update: "value1"}
-		readEmailUser      = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserEmail}
-		createTelegramUser = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserTelegram, Update: "value1"}
-		readTelegramUser   = engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", Detail: engine.UserTelegram}
-		emailSet           = []engine.UserDetailEntry{{UserID: "user1", Email: "value1"}}
-		emailUnset         = []engine.UserDetailEntry{{UserID: "user1", Email: ""}}
-		telegramSet        = []engine.UserDetailEntry{{UserID: "user1", Telegram: "value1"}}
-		telegramUnset      = []engine.UserDetailEntry{{UserID: "user1", Telegram: ""}}
-	)
-
-	b := prepMem(t)
-
-	var testData = []struct {
-		delReq    engine.DeleteRequest
-		detailReq engine.UserDetailRequest
-		expected  []engine.UserDetailEntry
-	}{
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserEmail},
-			detailReq: createEmailUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: engine.UserEmail},
-			detailReq: readEmailUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserEmail},
-			detailReq: readEmailUser, expected: emailUnset},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserTelegram},
-			detailReq: createTelegramUser, expected: telegramSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: engine.UserTelegram},
-			detailReq: readTelegramUser, expected: telegramSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.UserTelegram},
-			detailReq: readTelegramUser, expected: telegramUnset},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.AllUserDetails},
-			detailReq: createEmailUser, expected: emailSet},
-		{delReq: engine.DeleteRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "user1", UserDetail: engine.AllUserDetails},
-			detailReq: readEmailUser, expected: emailUnset},
-	}
-
-	for i, x := range testData {
-		err := b.Delete(x.delReq)
-		require.NoError(t, err, "delete request #%d error", i)
-
-		val, err := b.UserDetail(x.detailReq)
-		require.NoError(t, err, "user request #%d error", i)
-		require.Equal(t, x.expected, val, "user request #%d result", i)
-	}
-}
-
-func TestMemAdmin_DeleteUserHard(t *testing.T) {
-	b := prepMem(t)
-	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
-		DeleteMode: store.HardDelete})
-	require.NoError(t, err)
-
-	comments, err := b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"},
-		Sort: "time"})
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-
-	c, err := b.Count(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c, "0 count")
-
-	_, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
-
-	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
-}
-
-func TestMemAdmin_DeleteUserSoft(t *testing.T) {
-
-	b := prepMem(t)
-	err := b.Delete(engine.DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1",
-		DeleteMode: store.SoftDelete})
-	require.NoError(t, err)
-
-	comments, err := b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"},
-		Sort: "time"})
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-
-	c, err := b.Count(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c, "0 count")
-
-	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
-	assert.Empty(t, comments, "deleted comments are not listed for the user")
-
-	comments, err = b.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
 }
 
 func prepMem(t *testing.T) *MemData {
@@ -841,27 +170,4 @@ func getReq(locator store.Locator, commentID string) engine.GetRequest {
 		Locator:   locator,
 		CommentID: commentID,
 	}
-}
-
-func TestMemData_FlagsKeepUserMeta(t *testing.T) {
-	b := prepMem(t)
-	loc := store.Locator{SiteID: "radio-t"}
-
-	_, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1", Update: "u1@example.com"})
-	require.NoError(t, err)
-	_, err = b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
-	require.NoError(t, err)
-
-	verified, err := b.ListFlags(engine.FlagRequest{Flag: engine.Verified, Locator: loc})
-	require.NoError(t, err)
-	assert.Empty(t, verified, "a blocked user with an email is not listed as verified")
-
-	_, err = b.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: loc, UserID: "u1", Update: engine.FlagTrue})
-	require.NoError(t, err)
-	blocked, err := b.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: loc, UserID: "u1"})
-	require.NoError(t, err)
-	assert.True(t, blocked, "verifying a user keeps the block")
-	email, err := b.UserDetail(engine.UserDetailRequest{Detail: engine.UserEmail, Locator: loc, UserID: "u1"})
-	require.NoError(t, err)
-	assert.Equal(t, []engine.UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}}, email, "flag changes keep the email")
 }
