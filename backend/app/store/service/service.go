@@ -44,8 +44,14 @@ type DataStore struct {
 	scopedLocks struct {
 		sync.Mutex
 		sync.Once
-		locks map[string]sync.Locker
+		locks map[string]*scopedLock
 	}
+}
+
+// scopedLock is a lock for a single scope with the number of callers holding or waiting for it
+type scopedLock struct {
+	sync.Mutex
+	refs int
 }
 
 // UserMetaData keeps info about user flags and details
@@ -317,9 +323,8 @@ type VoteReq struct {
 
 // Vote for comment by id and locator
 func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
-	cLock := s.getScopedLocks(req.Locator.URL) // get lock for URL scope
-	cLock.Lock()                               // prevents race on voting
-	defer cLock.Unlock()
+	unlock := s.lockScope(req.Locator.URL) // lock URL scope, prevents race on voting
+	defer unlock()
 
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: req.Locator, CommentID: req.CommentID})
 	if err != nil {
@@ -1141,19 +1146,32 @@ func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
 	return ups, downs
 }
 
-// getScopedLocks pull lock from the map if found or create a new one
-func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
-	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })
+// lockScope pulls lock from the map if found or creates a new one, locks it and returns the func to unlock it.
+// The lock stays in the map only while somebody holds or waits for it. The id is whatever the caller sent and
+// may not match any post, so keeping a lock for every id ever seen would grow the map without limit.
+func (s *DataStore) lockScope(id string) (unlock func()) {
+	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]*scopedLock{} })
 
 	s.scopedLocks.Lock()
 	lock, ok := s.scopedLocks.locks[id]
 	if !ok {
-		lock = &sync.Mutex{}
+		lock = &scopedLock{}
 		s.scopedLocks.locks[id] = lock
 	}
+	lock.refs++
 	s.scopedLocks.Unlock()
 
-	return lock
+	lock.Lock()
+	return func() {
+		lock.Unlock()
+
+		s.scopedLocks.Lock()
+		lock.refs--
+		if lock.refs == 0 {
+			delete(s.scopedLocks.locks, id)
+		}
+		s.scopedLocks.Unlock()
+	}
 }
 
 func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []store.Comment) {

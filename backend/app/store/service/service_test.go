@@ -533,6 +533,72 @@ func TestService_VoteConcurrent(t *testing.T) {
 	assert.Equal(t, 0.0, res[0].Controversy, "should have 0 controversy")
 }
 
+func TestService_VoteReleasesScopedLocks(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
+	require.NoError(t, err)
+	assert.Empty(t, b.scopedLocks.locks, "lock of the voted post released")
+
+	// concurrent votes for posts which don't exist, each with its own url
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Go(func() {
+			_, e := b.Vote(VoteReq{Locator: store.Locator{URL: fmt.Sprintf("https://radio-t.com/no-such-post-%d", i),
+				SiteID: "radio-t"}, CommentID: "id-1", UserID: "user2", Val: true})
+			assert.Error(t, e)
+		})
+	}
+	wg.Wait()
+	assert.Empty(t, b.scopedLocks.locks, "no locks kept for unknown posts")
+}
+
+func TestService_lockScope(t *testing.T) {
+	b := DataStore{}
+	refs := func(id string) int {
+		b.scopedLocks.Lock()
+		defer b.scopedLocks.Unlock()
+		if lock, ok := b.scopedLocks.locks[id]; ok {
+			return lock.refs
+		}
+		return 0
+	}
+
+	unlock := b.lockScope("id1")
+	unlockOther := b.lockScope("id2") // another scope is not blocked
+	assert.Equal(t, 1, refs("id1"))
+	assert.Equal(t, 1, refs("id2"))
+
+	var acquired atomic.Bool
+	release, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		unlockWaiter := b.lockScope("id1")
+		acquired.Store(true)
+		<-release
+		unlockWaiter()
+	}()
+	require.Eventually(t, func() bool { return refs("id1") == 2 }, 30*time.Second, time.Millisecond,
+		"second caller waits for id1")
+	assert.False(t, acquired.Load(), "id1 is locked by the first caller")
+
+	unlockOther()
+	assert.Equal(t, 0, refs("id2"), "unused lock removed")
+	assert.Equal(t, 2, refs("id1"), "lock in use kept")
+
+	unlock()
+	require.Eventually(t, acquired.Load, 30*time.Second, time.Millisecond,
+		"second caller gets id1 after the first released it")
+	assert.Equal(t, 1, refs("id1"), "lock held by the second caller kept")
+
+	close(release)
+	<-done
+	assert.Empty(t, b.scopedLocks.locks, "all locks removed")
+}
+
 func TestService_VotePositive(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
