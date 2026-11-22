@@ -292,6 +292,9 @@ func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
 	require.Equal(t, http.StatusOK, code)
 	require.Contains(t, res, "existing comment", "the comment is listed, and the listing is cached")
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is in the last comments, and they are cached")
 
 	// both items read, so the site is replaced, then the input breaks off
 	wp := strings.ReplaceAll(xmlTestWP, "'", "`")
@@ -310,6 +313,8 @@ func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
 
 	res, _ = get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
 	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after a failed import")
+	res, _ = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	assert.NotContains(t, res, "existing comment", "the cached last comments are dropped after a failed import")
 	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://realmenweardress.es/2010/07/do-you-rp/")
 	require.Equal(t, http.StatusOK, code)
 	assert.Contains(t, res, `"count":2`, "comments read before the input broke off are imported")
@@ -433,13 +438,35 @@ func TestMigrator_ImportProvider(t *testing.T) {
 	assert.Equal(t, 1, comments.Info.Count)
 }
 
-type panickingImporter struct{}
+// panickingImporter clears the site, as an import does before it writes, then panics
+type panickingImporter struct{ ds *service.DataStore }
 
-func (panickingImporter) Import(io.Reader, string) (int, error) { panic("importer bug") }
+func (p panickingImporter) Import(_ io.Reader, siteID string) (int, error) {
+	if err := p.ds.DeleteAll(siteID); err != nil {
+		return 0, err
+	}
+	panic("importer bug")
+}
 
 func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Migrator.DisqusImporter = panickingImporter{} })
+	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+		srv.Migrator.Cache = srv.Cache
+		srv.Migrator.DisqusImporter = panickingImporter{ds: srv.DataService}
+	})
 	defer teardown()
+
+	const postURL = "https://radio-t.com/blah-before-import"
+	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is listed, and the listing is cached")
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is in the last comments, and they are cached")
+
 	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	req, err := http.NewRequest("POST", ts.URL+"/api/v1/admin/import?site=remark42&provider=disqus", strings.NewReader("<disqus/>"))
@@ -450,6 +477,11 @@ func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 	waitForMigrationCompletion(t, ts) // the site is released after the panic and the server still answers
+
+	res, _ = get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
+	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after the importer panics")
+	res, _ = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	assert.NotContains(t, res, "existing comment", "the cached last comments are dropped after the importer panics")
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
@@ -807,6 +839,9 @@ func TestMigrator_RemapFailureFlushesCache(t *testing.T) {
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
 	require.Equal(t, http.StatusOK, code)
 	require.Contains(t, res, "existing comment", "the comment is listed, and the listing is cached")
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "existing comment", "the comment is in the last comments, and they are cached")
 
 	resp, err := post(t, ts.URL+"/api/v1/admin/remap?site=remark42", "https://remark42.com/* https://www.remark42.com/*")
 	require.NoError(t, err)
@@ -816,6 +851,8 @@ func TestMigrator_RemapFailureFlushesCache(t *testing.T) {
 
 	res, _ = get(t, ts.URL+"/api/v1/find?site=remark42&url="+postURL)
 	assert.NotContains(t, res, "existing comment", "the cached listing is dropped after a failed remap import")
+	res, _ = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	assert.NotContains(t, res, "existing comment", "the cached last comments are dropped after a failed remap import")
 }
 
 func TestMigrator_RemapReject(t *testing.T) {

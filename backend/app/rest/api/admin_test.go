@@ -552,6 +552,32 @@ func TestAdmin_Pin(t *testing.T) {
 	assert.False(t, cr.Pin)
 }
 
+func TestAdmin_PinFlushesLastComments(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+	})
+	defer teardown()
+
+	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+	res, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "test test #1", "the comment is in the last comments, and they are cached")
+	require.NotContains(t, res, `"pin":true`)
+
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/pin/"+id+"?site=remark42&url=https://radio-t.com/blah&pin=1", http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	assert.Contains(t, res, `"pin":true`, "the cached last comments are dropped when a comment is pinned")
+}
+
 func TestAdmin_Block(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -1054,6 +1080,35 @@ func TestAdmin_Verify(t *testing.T) {
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.False(t, comments.Comments[0].User.Verified)
+}
+
+func TestAdmin_VerifyFlushesLastComments(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+	})
+	defer teardown()
+
+	_, err := srv.DataService.Create(store.Comment{Text: "test test #1", User: store.User{Name: "user1 name", ID: "user1"},
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}})
+	require.NoError(t, err)
+	require.NoError(t, srv.DataService.SetVerified("remark42", "user1", true))
+
+	res, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, `"verified":true`, "the user is verified in the last comments, and they are cached")
+
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/verify/user1?site=remark42&verified=0", http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	assert.NotContains(t, res, `"verified":true`, "the cached last comments are dropped when the status changes")
 }
 
 func TestAdmin_ExportStream(t *testing.T) {

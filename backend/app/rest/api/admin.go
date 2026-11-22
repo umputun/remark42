@@ -328,6 +328,6 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status", rest.ErrActionRejected)
 		return
 	}
-	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
