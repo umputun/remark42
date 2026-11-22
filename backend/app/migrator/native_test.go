@@ -409,6 +409,42 @@ func TestNative_ExportKeepsStoredComments(t *testing.T) {
 	assert.False(t, c.User.Blocked, "blocked status lives in the users meta, not in the comment")
 }
 
+func TestNative_ExportDropsTitleOfDeletedComment(t *testing.T) {
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
+	const deletedID = "efbc17f177ee1a1c0ee6e1e025749966ec071adc"
+
+	// both comments get a title, and the first is stored the way a delete used to leave it: no text, the title kept
+	for _, post := range []string{"https://radio-t.com", "https://radio-t.com/2"} {
+		comments, err := b.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: post}})
+		require.NoError(t, err)
+		require.Len(t, comments, 1)
+		c := comments[0]
+		c.PostTitle = "title sent with the comment"
+		if c.ID == deletedID {
+			c.Text, c.Orig, c.Deleted = "", "", true
+		}
+		require.NoError(t, b.Engine.Update(c))
+	}
+
+	buf := &bytes.Buffer{}
+	size, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+	require.Equal(t, 2, size)
+
+	dec := json.NewDecoder(buf)
+	require.NoError(t, dec.Decode(&meta{}))
+	titles := map[bool]string{}
+	for range size {
+		c := store.Comment{}
+		require.NoError(t, dec.Decode(&c))
+		require.Equal(t, c.ID == deletedID, c.Deleted)
+		titles[c.Deleted] = c.PostTitle
+	}
+	assert.Equal(t, map[bool]string{true: "", false: "title sent with the comment"}, titles,
+		"the title of a deleted comment is not exported, the title of another comment is")
+}
+
 func TestNative_ImportClearsBlockedMarkInComments(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()

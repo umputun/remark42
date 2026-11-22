@@ -141,10 +141,16 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
+	var deletedPageReads atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == postPath {
 			_, err := fmt.Fprintf(w, "<html><title>%s</title><body>...</body></html>", postTitle)
 			assert.NoError(t, err)
+			return
+		}
+		if r.URL.String() == "/post/of-deleted" {
+			deletedPageReads.Add(1)
+			_, _ = w.Write([]byte("<html><title>title of the page</title></html>"))
 			return
 		}
 		w.WriteHeader(404)
@@ -167,6 +173,26 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	t.Logf("%+v", res)
 	assert.Equal(t, postTitle, res.PostTitle)
 
+	// a deleted comment, which an import can bring, gets no title and its page is not read
+	deleted := comment
+	deleted.Deleted, deleted.Imported, deleted.Text = true, true, ""
+	deleted.Locator.URL = ts.URL + "/post/of-deleted"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle)
+	assert.Equal(t, int32(0), deletedPageReads.Load(), "the page of a deleted comment is not read")
+
+	// a backup can hold a comment deleted before a delete cleared the title; a restore drops that title
+	deleted.PostTitle = "title kept by an old delete"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle, "a deleted comment is stored without the title it came with")
+	assert.Equal(t, int32(0), deletedPageReads.Load())
+
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
 	assert.NoError(t, err)
@@ -174,6 +200,72 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
+}
+
+func TestService_CreateBlockedDuringTitleFetch(t *testing.T) {
+	// the engine mock doesn't refuse blocked users itself, the block is set by the page while its title is fetched
+	var blocked atomic.Bool
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			return req.Flag == engine.Blocked && req.UserID == "user" && blocked.Load(), nil
+		},
+		CreateFunc: func(comment store.Comment) (string, error) { return comment.ID, nil },
+		GetFunc: func(req engine.GetRequest) (store.Comment, error) {
+			return store.Comment{ID: req.CommentID, Text: `<img src="/images/user/pic.png"/>`}, nil
+		},
+		CloseFunc: func() error { return nil },
+	}
+	adminMock := admin.StoreMock{
+		KeyFunc:     func(string) (string, error) { return "secret 123", nil },
+		EnabledFunc: func(string) (bool, error) { return true, nil },
+		OnEventFunc: func(string, admin.EventType) error { return nil },
+	}
+	imgStore := image.StoreMock{
+		ResetCleanupTimerFunc: func(string) error { return nil },
+		CommitFunc:            func(string) error { return nil },
+	}
+	imgSvc := image.NewService(&imgStore, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	defer imgSvc.Close(context.Background())
+
+	var pageReads atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		pageReads.Add(1)
+		blocked.Store(true)
+		_, err := w.Write([]byte("<html><title>post title</title><body>...</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	b := DataStore{Engine: &engineMock, AdminStore: &adminMock, ImageService: imgSvc,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+
+	comment := store.Comment{
+		Text:    `text <img src="/images/user/pic.png"/>`,
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: ts.URL + "/post/1", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	require.ErrorIs(t, err, ErrUserBlocked)
+	assert.Equal(t, int32(1), pageReads.Load(), "the block was set during the title fetch")
+	assert.Empty(t, engineMock.CreateCalls(), "the comment is not stored")
+	assert.Empty(t, imgStore.ResetCleanupTimerCalls(), "pictures of the comment are not submitted")
+	assert.Empty(t, adminMock.OnEventCalls(), "no create event")
+
+	// another user's comment on the same page is stored, with its pictures and event
+	other := comment
+	other.User.ID = "user2"
+	_, err = b.Create(other)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 1)
+	assert.Len(t, imgStore.ResetCleanupTimerCalls(), 1)
+	assert.Len(t, adminMock.OnEventCalls(), 1)
+
+	// an import brings back comments of a blocked user
+	comment.Imported = true
+	_, err = b.Create(comment)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 2)
 }
 
 func TestService_Put(t *testing.T) {
@@ -2787,6 +2879,21 @@ func TestService_alterComment(t *testing.T) {
 		Deleted: false}, r, "blocked")
 	assert.Equal(t, 1, len(engineMock.FlagCalls()))
 	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
+}
+
+// a comment deleted before SetDeleted cleared the title keeps it in the store, readers must not get it
+func TestService_alterCommentDeletedTitle(t *testing.T) {
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil },
+	}
+	svc := DataStore{Engine: &engineMock}
+
+	for _, user := range []store.User{{}, {ID: "devid"}, {ID: "admin", Admin: true}} {
+		r := svc.alterComment(store.Comment{ID: "123", PostTitle: "some title", Deleted: true}, user)
+		assert.Empty(t, r.PostTitle, "title of a deleted comment is dropped for %+v", user)
+		r = svc.alterComment(store.Comment{ID: "123", PostTitle: "some title"}, user)
+		assert.Equal(t, "some title", r.PostTitle, "title of a live comment is kept for %+v", user)
+	}
 }
 
 func TestService_alterCommentsFlagCaching(t *testing.T) {

@@ -56,6 +56,9 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 		for _, comment := range comments {
 			comment.VotedIPs = nil // voters' IP hashes stay out of backups, as before
+			if comment.Deleted {
+				comment.PostTitle = "" // a comment deleted before deletes cleared the title still holds it
+			}
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)

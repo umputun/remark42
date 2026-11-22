@@ -76,6 +76,9 @@ var nonAdminUser = store.User{}
 // ErrRestrictedWordsFound returned in case comment text contains restricted words
 var ErrRestrictedWordsFound = fmt.Errorf("comment contains restricted words")
 
+// ErrUserBlocked returned by Create when the author of a new comment is blocked
+var ErrUserBlocked = errors.New("user blocked")
+
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 	if comment, err = s.prepareNewComment(comment); err != nil {
@@ -87,8 +90,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		return "", ErrRestrictedWordsFound
 	}
 
-	func() { // keep input title and set to extracted if missing
-		if s.TitleExtractor == nil || comment.PostTitle != "" {
+	if comment.Deleted { // only an import brings one, and one deleted before titles were cleared still has its title
+		comment.PostTitle = ""
+	}
+
+	func() { // keep input title and set to extracted if missing; a deleted comment has no title to show
+		if s.TitleExtractor == nil || comment.PostTitle != "" || comment.Deleted {
 			return
 		}
 		title, e := s.TitleExtractor.Get(comment.Locator.URL)
@@ -98,6 +105,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		}
 		comment.PostTitle = title
 	}()
+
+	// the author may have been blocked while the page title was fetched, which can take seconds,
+	// and the block removes their comments stored so far. An import brings back what the site had
+	if !comment.Imported && s.IsBlocked(comment.Locator.SiteID, comment.User.ID) {
+		return "", ErrUserBlocked
+	}
 
 	commentID, err = s.Engine.Create(comment)
 	s.submitImages(comment)
@@ -1182,6 +1195,9 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
+	if c.Deleted {
+		c.PostTitle = "" // comments deleted before SetDeleted cleared the title still hold it
+	}
 	c.SanitizeEditSummary() // summaries stored before edits cleaned them
 	c.MarkLinksUGC()        // links stored before they were marked ugc
 	return c
