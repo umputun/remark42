@@ -502,6 +502,9 @@ func (m *MemData) updateComment(comment store.Comment) error {
 		if c.ID != comment.ID || c.Locator != comment.Locator {
 			continue
 		}
+		if c.Deleted { // the caller's copy can be older than the delete
+			return fmt.Errorf("comment %s is deleted", comment.ID)
+		}
 		// keep the immutable fields and replace the others, as the bolt engine does
 		comment.ParentID, comment.Timestamp, comment.User = c.ParentID, c.Timestamp, c.User
 		comments[i] = comment

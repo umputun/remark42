@@ -26,7 +26,7 @@ var ErrNoUserComments = errors.New("no comments for user")
 // Interface defines methods provided by low-level storage engine
 type Interface interface {
 	Create(comment store.Comment) (commentID string, err error) // create new comment, avoid dups by id
-	Update(comment store.Comment) error                         // update comment, mutable parts only
+	Update(comment store.Comment) error                         // update comment, mutable parts only; fails for a deleted comment
 	Get(req GetRequest) (store.Comment, error)                  // get comment by id
 	Find(req FindRequest) ([]store.Comment, error)              // find comments for locator or site
 	Info(req InfoRequest) ([]store.PostInfo, error)             // get post(s) meta info

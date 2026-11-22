@@ -1251,6 +1251,100 @@ func TestService_EditCommentDeleted(t *testing.T) {
 	assert.Empty(t, c.Text)
 }
 
+func TestService_SetTitleDeleted(t *testing.T) {
+	var fetched atomic.Int32
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fetched.Add(1)
+		_, _ = w.Write([]byte("<html><title>post title</title></html>"))
+	}))
+	defer tss.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}
+	id, err := b.Create(store.Comment{Text: "text", Locator: locator, User: store.User{ID: "user", Name: "name"},
+		PostTitle: "old title"})
+	require.NoError(t, err)
+	require.NoError(t, b.Delete(locator, id, store.SoftDelete))
+
+	c, err := b.SetTitle(locator, id)
+	require.NoError(t, err, "a deleted comment is skipped, so a title run over a post with one does not fail")
+	assert.True(t, c.Deleted)
+	assert.Zero(t, fetched.Load(), "no title is fetched for a deleted comment")
+	res, err := b.Engine.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, c, res, "the deleted comment is left as it was")
+}
+
+// deleteAfterGet deletes a comment in the engine right after the first read of any comment, the way a delete made
+// by somebody else lands between the read and the write of a change
+type deleteAfterGet struct {
+	engine.Interface
+	req     engine.DeleteRequest
+	deletes int
+}
+
+func (d *deleteAfterGet) Get(req engine.GetRequest) (store.Comment, error) {
+	c, err := d.Interface.Get(req)
+	if err == nil && d.deletes == 0 {
+		d.deletes++
+		err = d.Delete(d.req)
+	}
+	return c, err
+}
+
+// a delete that lands after a change has read the comment and before it writes it back has to hold
+func TestService_ChangeDoesNotUndoDelete(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	tbl := []struct {
+		name   string
+		change func(b *DataStore) error
+	}{
+		{"edit", func(b *DataStore) error {
+			_, err := b.EditComment(locator, "id-1", EditRequest{Orig: "edited", Text: "edited", Summary: "my edit"})
+			return err
+		}},
+		{"vote", func(b *DataStore) error {
+			_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-1", UserID: "user2", Val: true})
+			return err
+		}},
+	}
+	for _, tt := range tbl {
+		for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+			t.Run(fmt.Sprintf("%s, delete mode %v", tt.name, mode), func(t *testing.T) {
+				eng, teardown := prepStoreEngine(t)
+				defer teardown()
+				// the delete lands right after the change has read the comment, before it writes it back
+				hooked := &deleteAfterGet{Interface: eng,
+					req: engine.DeleteRequest{Locator: locator, CommentID: "id-1", DeleteMode: mode}}
+				b := DataStore{Engine: hooked, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+				defer b.Close()
+
+				assert.Error(t, tt.change(&b), "the change is refused")
+				require.Equal(t, 1, hooked.deletes, "the delete ran in the middle of the change")
+
+				res, err := eng.Get(getReq(locator, "id-1"))
+				require.NoError(t, err)
+				assert.True(t, res.Deleted, "the comment stays deleted")
+				assert.Empty(t, res.Text)
+				assert.Empty(t, res.Votes)
+				comments, err := eng.Find(engine.FindRequest{Locator: locator})
+				require.NoError(t, err)
+				live := []string{}
+				for _, c := range comments {
+					if !c.Deleted {
+						live = append(live, c.ID)
+					}
+				}
+				assert.Equal(t, []string{"id-2"}, live, "the other comment of the post is the only one not deleted")
+			})
+		}
+	}
+}
+
 func TestService_ValidateComment(t *testing.T) {
 	b := DataStore{MinCommentSize: 6, MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")

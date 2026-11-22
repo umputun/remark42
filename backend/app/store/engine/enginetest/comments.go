@@ -137,6 +137,35 @@ func (s suite) updateKeepsFields(t *testing.T) {
 	assert.Equal(t, orig.User, res.User, "user is immutable")
 }
 
+// updateDeleted writes a copy read before a delete: the delete has to hold
+func (s suite) updateDeleted(t *testing.T) {
+	for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+		e := s.prep(t)
+		stale, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		require.False(t, stale.Deleted)
+
+		require.NoError(t, e.Delete(engine.DeleteRequest{Locator: loc(postURL), CommentID: "id-1", DeleteMode: mode}))
+		deleted, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		require.True(t, deleted.Deleted)
+		count, err := e.Count(engine.FindRequest{Locator: loc(postURL)})
+		require.NoError(t, err)
+		require.Equal(t, 1, count, "the other comment of the post is left")
+
+		stale.Text = "text written after the delete"
+		require.Error(t, e.Update(stale), "a deleted comment is not written over, mode %v", mode)
+		require.Error(t, e.Update(deleted), "a deleted comment takes no update, mode %v", mode)
+
+		res, err := e.Get(getReq(loc(postURL), "id-1"))
+		require.NoError(t, err)
+		assert.Equal(t, deleted, res, "the comment stays as the delete left it, mode %v", mode)
+		count, err = e.Count(engine.FindRequest{Locator: loc(postURL)})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count, "the post count is as the delete left it, mode %v", mode)
+	}
+}
+
 func (s suite) findLast(t *testing.T) {
 	e := s.prep(t)
 
@@ -306,6 +335,33 @@ func (s suite) countUser(t *testing.T) {
 	c, err = e.Count(req)
 	require.NoError(t, err)
 	assert.Equal(t, 2, c, "soft-deleted comment is not counted")
+}
+
+// exclamationURL checks a comment on a page whose url contains "!!" or ends with "!", both valid in a url:
+// the site's last comments and the user's comments list it, and the user's count counts it
+func (s suite) exclamationURL(t *testing.T) {
+	for _, url := range []string{"https://radio-t.com/wow!!", "https://radio-t.com/a!!b", "https://radio-t.com/hello!"} {
+		e := s.prep(t)
+		_, err := e.Create(store.Comment{ID: "id-3", Text: "some text3", Timestamp: ts(24), Locator: loc(url),
+			User: store.User{ID: "user1", Name: "user name"}})
+		require.NoError(t, err)
+
+		res, err := e.Find(engine.FindRequest{Locator: site, Sort: "-time"})
+		require.NoError(t, err, url)
+		assert.Equal(t, []string{"id-3", "id-2", "id-1"}, commentIDs(res), "last comments, %s", url)
+		if len(res) > 0 {
+			assert.Equal(t, url, res[0].Locator.URL)
+		}
+
+		user := engine.FindRequest{Locator: site, Sort: "-time", UserID: "user1"}
+		res, err = e.Find(user)
+		require.NoError(t, err, url)
+		assert.Equal(t, []string{"id-3", "id-2", "id-1"}, commentIDs(res), "user's comments, %s", url)
+
+		c, err := e.Count(user)
+		require.NoError(t, err, url)
+		assert.Equal(t, 3, c, "user's count, %s", url)
+	}
 }
 
 func (s suite) infoPost(t *testing.T) {

@@ -225,21 +225,24 @@ func (b *BoltDB) UserDetail(req UserDetailRequest) ([]UserDetailEntry, error) {
 	}
 }
 
-// Update for locator.URL with mutable part of comment
+// Update for locator.URL with mutable part of comment. The stored comment is read inside the write
+// transaction: a caller's copy can be older than a delete, and a deleted comment is not written over.
 func (b *BoltDB) Update(comment store.Comment) error {
-	getReq := GetRequest{Locator: comment.Locator, CommentID: comment.ID}
-	if curComment, err := b.Get(getReq); err == nil {
-		// preserve immutable fields
-		comment.ParentID = curComment.ParentID
-		comment.Locator = curComment.Locator
-		comment.Timestamp = curComment.Timestamp
-		comment.User = curComment.User
-	}
-
 	return b.update(comment.Locator.SiteID, func(tx *bolt.Tx) error {
 		bucket, e := b.getPostBucket(tx, comment.Locator.URL)
 		if e != nil {
 			return e
+		}
+		curComment := store.Comment{}
+		if e = b.load(bucket, comment.ID, &curComment); e == nil {
+			if curComment.Deleted {
+				return fmt.Errorf("comment %s is deleted", comment.ID)
+			}
+			// preserve immutable fields
+			comment.ParentID = curComment.ParentID
+			comment.Locator = curComment.Locator
+			comment.Timestamp = curComment.Timestamp
+			comment.User = curComment.User
 		}
 		return b.save(bucket, comment.ID, comment)
 	})
@@ -426,13 +429,17 @@ func (b *BoltDB) lastComments(siteID string, maximum int, since time.Time) (comm
 					break
 				}
 			}
+			// a reference that cannot be read is passed over, as a comment that cannot be loaded is below,
+			// so one bad entry does not fail the whole list
 			url, commentID, e := b.parseRef(v)
 			if e != nil {
-				return e
+				log.Printf("[WARN] skip last comment reference %s: %v", v, e)
+				continue
 			}
 			postBkt, e := b.getPostBucket(tx, url)
 			if e != nil {
-				return e
+				log.Printf("[WARN] skip last comment reference %s: %v", v, e)
+				continue
 			}
 
 			comment := store.Comment{}
@@ -525,8 +532,8 @@ func (b *BoltDB) countUserComments(tx *bolt.Tx, userIDBkt *bolt.Bucket) (count i
 }
 
 // isLiveRef reports whether a user bucket's url!!id reference points to a stored comment that is not deleted.
-// Only the deleted flag is decoded from the comment. A reference that cannot be parsed, as happens for a
-// page url containing "!!", is logged and passed over, so one such comment does not fail the whole list.
+// Only the deleted flag is decoded from the comment. A reference that cannot be parsed, one without the "!!"
+// separator, is logged and passed over, so one such entry does not fail the whole list.
 func (b *BoltDB) isLiveRef(postsBkt *bolt.Bucket, ref []byte) (bool, error) {
 	url, commentID, err := b.parseRef(ref)
 	if err != nil {
@@ -982,11 +989,15 @@ func (b *BoltDB) makeRef(comment store.Comment) []byte {
 	return fmt.Appendf(nil, "%s!!%s", comment.Locator.URL, comment.ID)
 }
 
-// parseRef gets parts of reference
+// parseRef gets parts of reference made by makeRef. It splits at the last separator: the url comes from the
+// page and may contain "!!" or end with "!", while the comment id comes last. That is right for an id that
+// neither contains "!!" nor starts with "!", as every id the server and the importers make is; a url ending
+// with "!" and an id starting with "!" give the same reference as the url without it and the id with one more.
 func (b *BoltDB) parseRef(val []byte) (url, id string, err error) {
-	elems := strings.Split(string(val), "!!")
-	if len(elems) != 2 {
-		return "", "", fmt.Errorf("invalid reference value %s", string(val))
+	ref := string(val)
+	idx := strings.LastIndex(ref, "!!")
+	if idx < 0 {
+		return "", "", fmt.Errorf("invalid reference value %s", ref)
 	}
-	return elems[0], elems[1], nil
+	return ref[:idx], ref[idx+len("!!"):], nil
 }
