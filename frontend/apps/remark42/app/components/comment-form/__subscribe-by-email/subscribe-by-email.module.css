@@ -17,7 +17,13 @@
 }
 
 .title {
+  margin-bottom: 4px;
+}
+
+.description {
   margin-bottom: 12px;
+  font-size: 0.8em;
+  opacity: 0.75;
 }
 
 .button {

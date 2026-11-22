@@ -8,13 +8,19 @@ jest.mock('common/api');
 
 import { user, anonymousUser } from '__stubs__/user';
 import { validToken } from '__stubs__/jwt';
-import { emailVerificationForSubscribe, emailConfirmationForSubscribe, unsubscribeFromEmailUpdates } from 'common/api';
+import {
+  emailVerificationForSubscribe,
+  emailConfirmationForSubscribe,
+  unsubscribeFromEmailUpdates,
+  getEmailSubscription,
+} from 'common/api';
 import { sleep } from 'utils/sleep';
 import { persistEmail } from 'components/auth/auth.utils';
 
 import type { StoreState } from 'store';
 
 import { SubscribeByEmail, SubscribeByEmailForm } from '.';
+import { CONFIRMATION_POLL_DURATION, CONFIRMATION_POLL_INTERVAL } from './comment-form__subscribe-by-email';
 import { RequestError } from '../../../utils/errorUtils';
 import styles from './subscribe-by-email.module.css';
 
@@ -27,6 +33,8 @@ const emailConfirmationForSubscribeMock = emailConfirmationForSubscribe as unkno
 const unsubscribeFromEmailUpdatesMock = unsubscribeFromEmailUpdates as unknown as jest.Mock<
   ReturnType<typeof unsubscribeFromEmailUpdates>
 >;
+
+const getEmailSubscriptionMock = getEmailSubscription as unknown as jest.Mock<ReturnType<typeof getEmailSubscription>>;
 
 emailVerificationForSubscribeMock.mockImplementation((email) => Promise.resolve({ address: email, updated: false }));
 
@@ -46,6 +54,8 @@ beforeEach(() => {
   emailVerificationForSubscribeMock.mockClear();
   emailConfirmationForSubscribeMock.mockClear();
   unsubscribeFromEmailUpdatesMock.mockClear();
+  getEmailSubscriptionMock.mockReset();
+  getEmailSubscriptionMock.mockImplementation(() => Promise.resolve({ user, address: '' }));
 });
 
 describe('<SubscribeByEmail/>', () => {
@@ -202,6 +212,173 @@ describe('<SubscribeByEmailForm/>', () => {
   });
 });
 
+describe('<SubscribeByEmailForm/> confirmed by the link in the email', () => {
+  // the address the tests below submit on the email step
+  const subscribed = { user, address: 'some@email.com' };
+
+  async function openTokenStep() {
+    const result = render(<SubscribeByEmailForm />, initialStore);
+
+    fireEvent.input(result.container.querySelector('input') as HTMLInputElement, {
+      target: { value: 'some@email.com' },
+    });
+    fireEvent.submit(result.container.querySelector('form') as HTMLFormElement);
+    await act(() => sleep(0));
+    // the field names both ways to confirm, the token and the link
+    expect(result.container.querySelector('textarea')?.getAttribute('placeholder')).toBe(
+      'Paste the token from the email, or click the link in it'
+    );
+
+    return result;
+  }
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('leaves the token step when the page becomes visible after the link was used', async () => {
+    const { container } = await openTokenStep();
+
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve(subscribed));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await act(() => sleep(0));
+
+    expect(container.querySelector('textarea')).toBeNull();
+    expect(container.textContent?.startsWith('You have subscribed to email updates')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Unsubscribe' })).toBeTruthy();
+  });
+
+  it('stays on the token step while the subscription is not confirmed', async () => {
+    const { container } = await openTokenStep();
+    // the form also asks once when it opens; only the call the token step makes counts here
+    getEmailSubscriptionMock.mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await act(() => sleep(0));
+
+    expect(getEmailSubscriptionMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('textarea')).not.toBeNull();
+  });
+
+  it('ignores a subscription of another account signed in from another tab', async () => {
+    const { container } = await openTokenStep();
+    getEmailSubscriptionMock.mockClear();
+
+    getEmailSubscriptionMock.mockImplementation(() =>
+      Promise.resolve({ ...subscribed, user: { ...user, id: 'someone_else' } })
+    );
+    document.dispatchEvent(new Event('visibilitychange'));
+    await act(() => sleep(0));
+
+    expect(getEmailSubscriptionMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('textarea')).not.toBeNull();
+  });
+
+  it('stops the timer once the token in the email has expired, but still checks on return', async () => {
+    jest.useFakeTimers();
+    const { container } = render(<SubscribeByEmailForm />, initialStore);
+
+    fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.querySelector('textarea')).not.toBeNull();
+
+    await act(async () => {
+      jest.advanceTimersByTime(CONFIRMATION_POLL_DURATION + CONFIRMATION_POLL_INTERVAL);
+      await Promise.resolve();
+    });
+    getEmailSubscriptionMock.mockClear();
+    await act(async () => {
+      jest.advanceTimersByTime(CONFIRMATION_POLL_INTERVAL * 3);
+      await Promise.resolve();
+    });
+    expect(getEmailSubscriptionMock).not.toHaveBeenCalled();
+    expect(container.querySelector('textarea')).not.toBeNull();
+
+    // confirmed in webmail long ago: coming back to the page still notices it
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve(subscribed));
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getEmailSubscriptionMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('textarea')).toBeNull();
+  });
+
+  it('notices a confirmation from another device without any page event', async () => {
+    jest.useFakeTimers();
+    const { container } = render(<SubscribeByEmailForm />, initialStore);
+
+    fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.querySelector('textarea')).not.toBeNull();
+
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve(subscribed));
+    await act(async () => {
+      jest.advanceTimersByTime(CONFIRMATION_POLL_INTERVAL);
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector('textarea')).toBeNull();
+    expect(container.textContent?.startsWith('You have subscribed to email updates')).toBe(true);
+  });
+
+  it('shows the subscription when the form opens after the link was used', async () => {
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve(subscribed));
+    const { container } = render(<SubscribeByEmailForm />, initialStore);
+
+    await act(() => sleep(0));
+
+    expect(container.textContent?.startsWith('You are subscribed to email updates')).toBe(true);
+  });
+});
+
+describe('<SubscribeByEmailForm/> other addresses and steps', () => {
+  it('keeps waiting when an address other than the requested one was confirmed', async () => {
+    const { container } = render(<SubscribeByEmailForm />, initialStore);
+    fireEvent.input(container.querySelector('input') as HTMLInputElement, { target: { value: 'some@email.com' } });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await act(() => sleep(0));
+    getEmailSubscriptionMock.mockClear();
+
+    // an earlier, perhaps mistyped address confirmed by whoever received its link
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve({ user, address: 'typo@email.com' }));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await act(() => sleep(0));
+
+    expect(getEmailSubscriptionMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('textarea')).not.toBeNull();
+  });
+
+  it('notices a link confirmed after unsubscribing', async () => {
+    render(<SubscribeByEmail />, { ...initialStore, user: { ...user, email_subscription: true } });
+    fireEvent.click(screen.getByTitle('Subscribe by email'));
+    fireEvent.click(screen.getByRole('button', { name: 'Unsubscribe' }));
+    await act(() => sleep(0));
+    expect(screen.getByText('You have unsubscribed from email updates')).toBeTruthy();
+
+    getEmailSubscriptionMock.mockImplementation(() => Promise.resolve({ user, address: 'other@email.com' }));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await act(() => sleep(0));
+
+    expect(screen.getByText('You have subscribed to email updates')).toBeTruthy();
+  });
+
+  it('says what the subscription covers', () => {
+    const { container } = render(<SubscribeByEmailForm />, initialStore);
+
+    expect(container.textContent).toContain(
+      'Get an email about every reply to your comments and to the discussions under them.'
+    );
+  });
+});
+
 describe('<SubscribeByEmail/> dropdown', () => {
   // jsdom keeps contains(target) true in both phases, so nothing here can distinguish the capture
   // listener from the bubble one. That distinction is what the issue is about and it is covered in
@@ -237,5 +414,26 @@ describe('<SubscribeByEmail/> dropdown', () => {
     // the panel itself has to go, not merely its contents: the old trick rendered null inside a
     // dropdown that stayed open, which left an empty listbox on the page
     expect(document.querySelector('div[role="listbox"]')).toBeNull();
+  });
+  it('stays open on a click elsewhere while it waits for the token', async () => {
+    render(<SubscribeByEmail />, initialStore);
+    fireEvent.click(screen.getByTitle('Subscribe by email'));
+    const listbox = () => document.querySelector('div[role="listbox"]');
+
+    fireEvent.input(screen.getByPlaceholderText('Email'), { target: { value: 'some@email.com' } });
+    fireEvent.submit(listbox()?.querySelector('form') as HTMLFormElement);
+    await act(() => sleep(0));
+    expect(listbox()?.querySelector('textarea')).not.toBeNull();
+
+    fireEvent.click(document.body);
+    await act(() => sleep(0));
+    expect(listbox()?.querySelector('textarea')).not.toBeNull();
+
+    // back on the email step a click elsewhere closes it as before
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await act(() => sleep(0));
+    fireEvent.click(document.body);
+    await act(() => sleep(0));
+    expect(listbox()).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -3054,6 +3055,201 @@ func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
 			body, code := get(t, ts.URL+tc.url)
 			assert.Equal(t, tc.code, code)
 			assert.True(t, strings.HasPrefix(body, tc.body), "the override's defined template renders: %q", body)
+		})
+	}
+}
+
+// the link in the confirmation email subscribes with no session: GET only shows the button, POST from it
+// stores the address. The token comes from the subscribe request itself, so the marker and the site it
+// carries are the ones sendEmailConfirmationCtrl writes
+func TestRest_EmailSubscribeLink(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	do := func(method, url string, auth bool) (status int, body string, hdr http.Header) {
+		req, err := http.NewRequest(method, ts.URL+url, http.NoBody)
+		require.NoError(t, err)
+		if auth {
+			req.Header.Add("X-JWT", devToken)
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b), resp.Header
+	}
+	storedEmail := func() string {
+		email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+		require.NoError(t, err)
+		return email
+	}
+
+	status, body, _ := do(http.MethodPost, "/api/v1/email/subscribe?site=remark42&address=good@example.com", true)
+	require.Equal(t, http.StatusOK, status, body)
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
+	link := "/email/subscribe.html?tkn=" + mockDestination.GetVerify()[0].Token
+
+	status, body, hdr := do(http.MethodGet, link, false)
+	require.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, "Confirm subscription")
+	assert.Contains(t, body, "<b>remark42</b>")
+	assert.Contains(t, hdr.Get("Content-Security-Policy"), "form-action 'self'", "the global policy would block the form")
+	assert.Contains(t, hdr.Get("Content-Security-Policy"), "frame-ancestors 'none'")
+	assert.Equal(t, "no-referrer", hdr.Get("Referrer-Policy"))
+	assert.Empty(t, storedEmail(), "GET must not subscribe, mail scanners fetch links")
+
+	// the script that posts in place and closes the tab runs only under the nonce the policy names,
+	// and the nonce is new on every response
+	nonceRe := regexp.MustCompile(`script-src 'nonce-([A-Z2-7]{26})'`)
+	m := nonceRe.FindStringSubmatch(hdr.Get("Content-Security-Policy"))
+	require.Len(t, m, 2, hdr.Get("Content-Security-Policy"))
+	assert.Contains(t, body, `<script nonce="`+m[1]+`">`)
+	assert.Contains(t, hdr.Get("Content-Security-Policy"), "connect-src 'self'", "the script posts the page to itself")
+	_, _, hdr2 := do(http.MethodGet, link, false)
+	m2 := nonceRe.FindStringSubmatch(hdr2.Get("Content-Security-Policy"))
+	require.Len(t, m2, 2)
+	assert.NotEqual(t, m[1], m2[1])
+
+	status, body, _ = do(http.MethodHead, link, false)
+	assert.Equal(t, http.StatusOK, status, body)
+	assert.Empty(t, storedEmail(), "HEAD must not subscribe")
+
+	status, body, _ = do(http.MethodPost, link, false)
+	require.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, "Successfully subscribed")
+	assert.Equal(t, "good@example.com", storedEmail())
+
+	// a second click on the same link changes nothing and says the same
+	status, body, _ = do(http.MethodPost, link, false)
+	assert.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, "Successfully subscribed")
+	assert.Equal(t, "good@example.com", storedEmail())
+
+	// a link for another address, here sent before or after the confirmed one, does not replace it: it
+	// may have gone to a mistyped address whose owner would then get this user's notifications
+	status, body, _ = do(http.MethodPost, "/api/v1/email/subscribe?site=remark42&address=typo@example.com", true)
+	require.Equal(t, http.StatusOK, status, body)
+	waitForCount(t, 2, func() int { return len(mockDestination.GetVerify()) })
+	staleLink := "/email/subscribe.html?tkn=" + mockDestination.GetVerify()[1].Token
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		status, body, _ = do(method, staleLink, false)
+		assert.Equal(t, http.StatusConflict, status, method)
+		assert.Contains(t, body, "a different email address is already confirmed", method)
+		// the widget shows only Unsubscribe once an address is stored, so that is the advice that works
+		assert.Contains(t, body, "unsubscribe in the comment form and open this link again", method)
+		assert.Equal(t, "good@example.com", storedEmail(), method)
+	}
+
+	// once unsubscribed, the user has no address to protect, and the link sets the new one
+	require.NoError(t, srv.DataService.DeleteUserDetail("remark42", "provider1_dev", engine.UserEmail))
+	status, body, _ = do(http.MethodPost, staleLink, false)
+	require.Equal(t, http.StatusOK, status, body)
+	assert.Equal(t, "typo@example.com", storedEmail())
+
+	// the paste path still takes the marked token
+	require.NoError(t, srv.DataService.DeleteUserDetail("remark42", "provider1_dev", engine.UserEmail))
+	status, body, _ = do(http.MethodPost, "/api/v1/email/confirm?site=remark42&tkn="+mockDestination.GetVerify()[0].Token, true)
+	assert.Equal(t, http.StatusOK, status, body)
+	assert.Equal(t, "good@example.com", storedEmail())
+}
+
+// the comment form reads GET /email over and over while it waits for the confirmation link. At the
+// default update limit, half a request a second per path, that read must not use up the reader's
+// DELETE /email: the limiter keys on the path and not the method
+func TestRest_GetEmailLeavesUnsubscribeAvailable(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { srv.UpdateLimiter = 0.5 })
+	defer teardown()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	do := func(method string) int {
+		req, err := http.NewRequest(method, ts.URL+"/api/v1/email?site=remark42", http.NoBody)
+		require.NoError(t, err)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	for range 3 {
+		assert.Equal(t, http.StatusOK, do(http.MethodGet))
+	}
+	assert.Equal(t, http.StatusOK, do(http.MethodDelete), "the reads used up the unsubscribe")
+}
+
+// the link takes only a token made for subscription confirmation: the unsubscribe and email login tokens
+// carry the same user::address handshake, and with no session to compare the user with, accepting them
+// would let anyone point another user's notifications at their own address
+func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mint := func(c token.Claims) string {
+		if c.ExpiresAt == nil {
+			c.ExpiresAt = jwt.NewNumericDate(time.Now().Add(10 * time.Minute))
+		}
+		c.NotBefore = jwt.NewNumericDate(time.Now().Add(-1 * time.Minute))
+		c.Issuer = "remark42"
+		tkn, err := srv.Authenticator.TokenService().Token(c)
+		require.NoError(t, err)
+		return tkn
+	}
+	subscribeHandshake := func(id string) *token.Handshake { return &token.Handshake{ID: id, State: emailSubscribeState} }
+
+	tbl := []struct {
+		name, tkn, details string
+		code               int
+	}{
+		{name: "no token", code: http.StatusBadRequest, details: "token parameter is required"},
+		{name: "not a token", tkn: "jwt", code: http.StatusForbidden, details: "failed to verify confirmation token"},
+		{name: "expired", code: http.StatusForbidden, details: "the confirmation link has expired",
+			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev::bad@example.com"), Audience: jwt.ClaimStrings{"remark42"},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute))})},
+		{name: "unsubscribe token", code: http.StatusBadRequest, details: "invalid confirmation token",
+			tkn: mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::bad@example.com"}, Audience: jwt.ClaimStrings{"remark42"},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour))})},
+		{name: "email login token", code: http.StatusBadRequest, details: "invalid confirmation token",
+			tkn: mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::bad@example.com"}, Audience: jwt.ClaimStrings{"remark42"},
+				SessionOnly: true, AuthProvider: &token.AuthProvider{Name: "email"}})},
+		{name: "session token", tkn: devToken, code: http.StatusBadRequest, details: "invalid handshake token"},
+		{name: "two audiences", code: http.StatusBadRequest, details: "invalid confirmation token",
+			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev::bad@example.com"), Audience: jwt.ClaimStrings{"remark42", "other"}})},
+		{name: "malformed handshake", code: http.StatusBadRequest, details: "invalid handshake token",
+			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev"), Audience: jwt.ClaimStrings{"remark42"}})},
+		{name: "blocked user", code: http.StatusForbidden, details: "user is blocked",
+			tkn: mint(token.Claims{Handshake: subscribeHandshake("blocked_user::bad@example.com"), Audience: jwt.ClaimStrings{"remark42"}})},
+	}
+	require.NoError(t, srv.DataService.SetBlock("remark42", "blocked_user", true, 0))
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, method := range []string{http.MethodGet, http.MethodPost} {
+				req, err := http.NewRequest(method, ts.URL+"/email/subscribe.html?tkn="+tt.tkn, http.NoBody)
+				require.NoError(t, err)
+				resp, err := client.Do(req)
+				require.NoError(t, err)
+				b, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+				assert.Equal(t, tt.code, resp.StatusCode, "%s: %s", method, string(b))
+				assert.Contains(t, string(b), tt.details, method)
+				assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'none'", method)
+			}
+			for _, user := range []string{"provider1_dev", "blocked_user"} {
+				email, err := srv.DataService.GetUserEmail("remark42", user)
+				require.NoError(t, err)
+				assert.Empty(t, email, "nothing stored for %s", user)
+			}
 		})
 	}
 }

@@ -529,6 +529,22 @@ Sent to test@example.org
 	})
 }
 
+// the default template carries the confirmation link, with the token box kept below it as the fallback
+func TestEmail_DefaultVerificationTemplateLink(t *testing.T) {
+	email, err := NewEmail(EmailParams{From: "from@example.org", SubscribeURL: "https://remark.example.org/email/subscribe.html?tkn="},
+		ntf.SMTPParams{})
+	require.NoError(t, err)
+	res, err := email.buildVerificationMessage("test_username", "test@example.org", "aaa.bbb-ccc_ddd", "remark")
+	require.NoError(t, err)
+	assert.Contains(t, res, `<a href="https://remark.example.org/email/subscribe.html?tkn=aaa.bbb-ccc_ddd">`)
+	assert.Contains(t, res, `user-select: all;">aaa.bbb-ccc_ddd</p>`, "the token to paste stays")
+
+	email.SubscribeURL = ""
+	res, err = email.buildVerificationMessage("test_username", "test@example.org", "aaa.bbb-ccc_ddd", "remark")
+	require.NoError(t, err)
+	assert.NotContains(t, res, "<a href", "no link without a subscribe URL")
+}
+
 func TokenGenFn(user, _, _ string) (string, error) {
 	if user == "error" {
 		return "", fmt.Errorf("token generation error")
