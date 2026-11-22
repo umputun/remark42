@@ -503,16 +503,17 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, nil
 	}
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
-		return comment, ErrRestrictedWordsFound
-	}
-
 	oldText := comment.Text
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
 	comment.Locator = locator
 	comment.Sanitize()
+
+	// match the sanitized text, as Create does, because this is the text to store and show
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+		return comment, ErrRestrictedWordsFound
+	}
 
 	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
 		log.Printf("[WARN] failed to send update event, %s", e)

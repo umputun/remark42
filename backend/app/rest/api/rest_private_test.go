@@ -1356,6 +1356,79 @@ func TestRest_UpdateValidation(t *testing.T) {
 	}
 }
 
+func TestRest_RestrictedWordsSplitByMarkup(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		srv.UpdateLimiter = 1000 // every row posts and edits on the protected routes
+	})
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	id := addComment(t, store.Comment{Text: "What the quack is that?", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
+
+	send := func(t *testing.T, method, path string, body map[string]any) (code int, resp R.JSON) {
+		t.Helper()
+		b, err := json.Marshal(body)
+		require.NoError(t, err)
+		req, err := http.NewRequest(method, ts.URL+path, bytes.NewReader(b))
+		require.NoError(t, err)
+		r, err := sendReq(req, devToken)
+		require.NoError(t, err)
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.NoError(t, r.Body.Close())
+		resp = R.JSON{}
+		require.NoError(t, json.Unmarshal(raw, &resp), "status %d, body %s", r.StatusCode, raw)
+		return r.StatusCode, resp
+	}
+
+	tbl := []struct {
+		name, text string
+		refused    bool
+	}{
+		// markup or a character a reader does not see inside the word: the reader sees "duck"
+		{"markdown emphasis", "What the **du**ck is that?", true},
+		{"empty tag", "What the du<b></b>ck is that?", true},
+		{"html comment", "What the du<!-- -->ck is that?", true},
+		{"soft hyphen entity", "What the du&shy;ck is that?", true},
+		{"zero-width space", "What the du\u200bck is that?", true},
+		// a hand-written line break shows two lines, but tags are dropped without a space, so the words are joined
+		{"line break tag", "What the du<br>ck is that?", true},
+		// the word in a link address, with one letter percent-escaped
+		{"escaped letter in a link address", "see [this](https://example.com/d%75ck) page", true},
+		// the reader sees two words, or the markup itself
+		{"space", "What the du ck is that?", false},
+		{"two lines", "What the du\nck is that?", false},
+		{"markdown line break", "What the du  \nck is that?", false},
+		{"two paragraphs", "What the du\n\nck is that?", false},
+		{"list items", "- du\n- ck", false},
+		{"escaped tag", "What the du&lt;b&gt;&lt;/b&gt;ck is that?", false},
+		{"tag in code span", "What the du`<b></b>`ck is that?", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			code, resp := send(t, http.MethodPost, "/api/v1/comment?site=remark42",
+				map[string]any{"text": tt.text, "locator": map[string]string{"site": "remark42", "url": postURL}})
+			if !tt.refused {
+				assert.Equal(t, http.StatusCreated, code, "new comment %q: %v", tt.text, resp)
+			} else {
+				assert.Equal(t, http.StatusBadRequest, code, "new comment %q: %v", tt.text, resp)
+				assert.Equal(t, "comment contains restricted words", resp["error"], "new comment %q", tt.text)
+				assert.EqualValues(t, rest.ErrCommentRestrictWords, resp["code"], "new comment %q", tt.text)
+			}
+
+			code, resp = send(t, http.MethodPut, "/api/v1/comment/"+id+"?site=remark42&url="+postURL,
+				map[string]any{"text": tt.text, "summary": "my edit"})
+			if !tt.refused {
+				assert.Equal(t, http.StatusOK, code, "edit to %q: %v", tt.text, resp)
+			} else {
+				assert.Equal(t, http.StatusBadRequest, code, "edit to %q: %v", tt.text, resp)
+				assert.Equal(t, "comment contains restricted words", resp["error"], "edit to %q", tt.text)
+				assert.EqualValues(t, rest.ErrCommentRestrictWords, resp["code"], "edit to %q", tt.text)
+			}
+		})
+	}
+}
+
 func TestRest_Vote(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()

@@ -640,6 +640,37 @@ func TestService_RestrictedWords(t *testing.T) {
 	assert.Equal(t, "c-1", id)
 }
 
+func TestService_EditCommentRestrictedWords(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		RestrictedWordsMatcher: NewRestrictedWordsMatcher(StaticRestrictedWordsLister{Words: []string{"restricted"}})}
+	defer b.Close()
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	// the sanitizer removes the markup of the last two, so the stored text would have the word as is
+	for _, text := range []string{"restricted word", "restr<b></b>icted word", "restr<!-- -->icted word",
+		"restr<script></script>icted word"} {
+		_, err := b.EditComment(locator, "id-2", EditRequest{Orig: "yyy", Text: text, Summary: "my edit"})
+		assert.EqualError(t, err, ErrRestrictedWordsFound.Error(), "should fail with RestrictedWordError for %q", text)
+
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		assert.Equal(t, "some text2", c.Text, "comment should not be changed by %q", text)
+		assert.Nil(t, c.Edit)
+	}
+
+	// the word only in what the sanitizer drops is not stored or shown, and a new comment with it is accepted
+	const dropped = `allowed <span data-x="restricted">word</span><script>restricted</script>`
+	_, err := b.Create(store.Comment{ID: "c-1", Text: dropped, Locator: locator, User: store.User{ID: "user2", Name: "user name 2"}})
+	require.NoError(t, err, "a new comment with the word only in dropped markup")
+	_, err = b.EditComment(locator, "id-2", EditRequest{Orig: "yyy", Text: dropped, Summary: "my edit"})
+	require.NoError(t, err, "an edit is matched on the text it stores, as a new comment is")
+	c, err := b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.Equal(t, "allowed <span>word</span>", c.Text)
+}
+
 func TestDataStore_AdminStoreErrors(t *testing.T) {
 	badKey := true
 	badEnabled := true

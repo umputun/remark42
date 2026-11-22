@@ -108,3 +108,72 @@ func TestFileRestrictedWordsLister(t *testing.T) {
 	assert.Equal(t, []string{"duck", "poker"}, words)
 	require.Error(t, lister.Load())
 }
+
+func TestMatcher_MatchRenderedText(t *testing.T) {
+	matcher := NewRestrictedWordsMatcher(StaticRestrictedWordsLister{[]string{"duck", "quack*"}})
+
+	tbl := []struct {
+		text  string
+		match bool
+	}{
+		{"<p>What the duck is that?</p>\n", true},
+		{"<p>What the du<b></b>ck is that?</p>\n", true},
+		{"<p>What the <strong>du</strong>ck is that?</p>\n", true},
+		{"<p>What the du<span class=\"w\"></span>ck is that?</p>\n", true},
+		{"<p>What the du<!-- -->ck is that?</p>\n", true},
+		{"<p>What the du<wbr/>ck is that?</p>\n", true},
+		{"<p>What the du<br/>ck is that?</p>\n", true}, // hand-written, shown on two lines but joined: tags are dropped without a space
+		{"<p>What the qu<i></i>acker is that?</p>\n", true},
+		{"<p>What the du\u00adck is that?</p>\n", true},  // soft hyphen
+		{"<p>What the du&shy;ck is that?</p>\n", true},   // soft hyphen as entity
+		{"<p>What the du\u200bck is that?</p>\n", true},  // zero-width space
+		{"<p>What the du&#8203;ck is that?</p>\n", true}, // zero-width space as entity
+		{"<p>What the du\u200dck is that?</p>\n", true},  // zero-width joiner
+		{"<p>What the du\u034fck is that?</p>\n", true},  // combining grapheme joiner
+		{"<p>What the du\ufe0fck is that?</p>\n", true},  // variation selector
+		{"<p>What the d&#117;ck is that?</p>\n", true},   // letter as entity
+		{"<p><a href=\"https://duck.example.com/\" rel=\"nofollow\">link</a></p>\n", true},
+		{"<p><img src=\"https://example.com/duck.png\" alt=\"pic\"/></p>\n", true},
+		{"<pre><code><span class=\"nx\">du</span><span class=\"nx\">ck</span></code></pre>", true},
+		{"<p>What the du ck is that?</p>\n", false},
+		{"<p>What the du-ck is that?</p>\n", false},
+		{"<p>What the du</p>\n\n<p>ck is that?</p>\n", false},
+		{"<p>What the du<br/>\nck is that?</p>\n", false},
+		{"<ul>\n<li>du</li>\n<li>ck</li>\n</ul>\n", false},
+		{"<p>What the du&lt;b&gt;&lt;/b&gt;ck is that?</p>\n", false}, // escaped tag is shown as is
+		{"<p>What the du&amp;shy;ck is that?</p>\n", false},           // escaped entity is shown as is
+		{"<p>What the <b>dock</b> is that?</p>\n", false},
+		{"<p>What the du\u0600ck is that?</p>\n", false}, // the arabic number sign is a format character that is displayed
+	}
+
+	for _, td := range tbl {
+		assert.Equal(t, td.match, matcher.Match("fakeID", td.text), "unexpected result for text %q", td.text)
+	}
+}
+
+func TestMatcher_MatchPercentEncodedAddress(t *testing.T) {
+	matcher := NewRestrictedWordsMatcher(StaticRestrictedWordsLister{[]string{"duck", "\u0443\u0442\u043a\u0430"}})
+
+	tbl := []struct {
+		text  string
+		match bool
+	}{
+		// the sanitizer stores a link or image address with its non-ASCII letters percent-encoded
+		{`<p><a href="https://example.com/%D1%83%D1%82%D0%BA%D0%B0" rel="nofollow">link</a></p>`, true},
+		{`<p><a href="https://%D1%83%D1%82%D0%BA%D0%B0.example.com/" rel="nofollow">link</a></p>`, true},
+		{`<p><img src="https://example.com/%D1%83%D1%82%D0%BA%D0%B0.png" alt="pic"/></p>`, true},
+		{`<p><a href="https://example.com/d%75ck" rel="nofollow">link</a></p>`, true}, // an escaped ASCII letter
+		{`<p><a href="https://example.com/%D1%83%D1%82%D0%BA%D0%BE" rel="nofollow">link</a></p>`, false},
+		// a "%" that starts no escape is kept and does not switch the decoding off for the rest of the text
+		{`<p>100% sure, see <a href="https://example.com/d%75ck" rel="nofollow">link</a></p>`, true},
+		// an escape cut in the middle of a character decodes to a byte that ends the word before it
+		{`<p><a href="https://example.com/%D1%83%D1%82%D0%BA%D0%B0%D1" rel="nofollow">link</a></p>`, true},
+		// incomplete escapes with no banned word around them: no match
+		{`<p>100% of 50%zz and %D1 alone, then %D1%83%D1</p>`, false},
+	}
+	for _, tt := range tbl {
+		assert.Equal(t, tt.match, matcher.Match("radio-t", tt.text), "unexpected result for text %q", tt.text)
+	}
+
+	assert.Equal(t, "50%zz and \xd1 alone, d\u0443ck", percentDecoded("50%zz and %D1 alone, d%D1%83ck"))
+}
