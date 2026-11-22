@@ -18,7 +18,7 @@ The command only submits the job: it prints `completed, status=202` and exits wh
 
 ### Import/restore without removing existing comments
 
-The `restore` command removes the existing comments on the site, and so does an import. To add comments from Disqus, WordPress or Commento while keeping the ones you have, combine two backups and restore the result:
+The `restore` command removes the existing comments on the site, and so does an import. To add comments from Disqus, WordPress or Commento while keeping the ones you have, combine two backups and restore the result. Stop all writes from step 1 until the server log confirms the final restore: a comment or subscription saved in between is in neither file and is lost. For example, block the site at the reverse proxy and run the commands with `--url=http://127.0.0.1:8080`, which reaches the server directly instead of through `REMARK_URL`.
 
 1. Back up the site: `docker exec -it remark42 remark42 backup -s {your site ID} -f current.gz`
 2. Import the comments from the other system as described in [Migration](https://remark42.com/docs/backup/migration/). This replaces the existing comments.
