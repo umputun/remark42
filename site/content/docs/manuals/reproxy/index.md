@@ -7,11 +7,9 @@ title: Configure with Reproxy
 Example of Reproxy configuration (reverse proxy) running remark42 service on remark42.example.com with Docker Compose. Reproxy handles SSL termination with LE and gzip all the responses.
 
 ```yaml
-version: "3.4"
-
 services:
   reproxy:
-    image: umputun/reproxy:master
+    image: umputun/reproxy:latest
     restart: always
     hostname: reproxy
     container_name: reproxy
@@ -31,6 +29,7 @@ services:
       - SSL_ACME_FQDN=remark42.example.com
       - SSL_ACME_LOCATION=/srv/var/ssl
       - GZIP=true
+      - MAX_SIZE=10M
       - LOGGER_ENABLED=true
       - LOGGER_FILE=/srv/var/logs/access.log
       - LOGGER_STDOUT=true
@@ -43,21 +42,19 @@ services:
       - ./var/logs:/srv/var/logs
 
   remark42:
-    image: ghcr.io/umputun/remark42:master
+    image: ghcr.io/umputun/remark42:latest
     container_name: "remark42"
     hostname: "remark42"
     restart: always
     logging: *default_logging
     environment:
-      - MHOST
       - SECRET=some-secret-thing
-      - USER=app
       - REMARK_URL=https://remark42.example.com
+      - SITE=remark
       - CACHE_MAX_VALUE=10000000
       - IMAGE_PROXY_HTTP2HTTPS=true
       - AVATAR_RESIZE=48
       - ADMIN_SHARED_ID=github_ef0f706a79cc24b112345
-      - ADMIN_SHARED_NAME=myname,anothername
       - ADMIN_SHARED_EMAIL=admin@example.com
       - AUTH_ANON=true
       - AUTH_EMAIL_ENABLE=true
@@ -69,8 +66,6 @@ services:
       - SMTP_PASSWORD=thepassword
       - IMAGE_MAX_SIZE=5000000
       - EMOJI=true
-    ports:
-      - "8080"
     volumes:
       - ./var/remark42:/srv/var
     labels:
@@ -81,4 +76,8 @@ services:
       reproxy.ping: "/ping"
 ```
 
-To make per-IP rate limiting and vote de-duplication use the real client IP, set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) to the network Reproxy connects from (the Docker network for a same-compose Reproxy, e.g. `172.16.0.0/12`). Two Reproxy-specific cautions: Reproxy derives `X-Real-IP` from an incoming `X-Forwarded-For`, so a directly-exposed Reproxy still lets a client spoof the IP — front it with something that strips client `X-Forwarded-For`; and drop the `ports: - "8080"` mapping on the `remark42` service once Reproxy is the entry point, otherwise Remark42 is reachable directly and external traffic appears as a trusted Docker peer.
+Reproxy accepts request bodies up to 64K by default and refuses larger ones, which stops picture uploads and imports through it. `MAX_SIZE=10M` raises the limit; keep it above `IMAGE_MAX_SIZE` and above the uncompressed size of the largest backup or export you restore or import through Reproxy, since the `restore` and `import` commands send a `.gz` file unpacked.
+
+If Docker rejects Reproxy's default API version (1.24), set `DOCKER_API_VERSION` to a version your engine supports (`docker version` shows the range), for example `1.44`.
+
+To make per-IP rate limiting and vote de-duplication use the real client IP, set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) to the network Reproxy connects from (the Docker network for a same-compose Reproxy, e.g. `172.16.0.0/12`). Two Reproxy-specific cautions. Reproxy derives `X-Real-IP` from an incoming `X-Forwarded-For`, so a directly-exposed Reproxy still lets a client spoof the IP; front it with something that strips client `X-Forwarded-For`. Keep the `remark42` service's port unpublished, as in the example: Reproxy is the entry point, and a published port makes Remark42 reachable directly, so that external traffic appears as a trusted Docker peer.

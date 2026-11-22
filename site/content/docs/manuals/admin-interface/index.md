@@ -1,5 +1,7 @@
 ---
 title: Admin UI
+aliases:
+  - /docs/manuals/
 ---
 
 Administrators are defined by `admin.shared.id` / `$ADMIN_SHARED_ID` and get the following extra control elements. On a device with a mouse, the controls below a comment appear when the pointer is over that row.
