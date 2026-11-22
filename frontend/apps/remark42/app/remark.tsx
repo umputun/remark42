@@ -30,6 +30,8 @@ if (document.readyState === 'loading') {
 
 function applyTheme(next: Theme) {
   document.body.classList.toggle('dark', next === 'dark');
+  // global.css keys the light theme's own colors on this class
+  document.documentElement.classList.toggle('light', next === 'light');
   document.documentElement.style.colorScheme = next;
   // Root renders from the store, whose initial theme is the URL's
   boundActions.setTheme(next);

@@ -50,6 +50,26 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 				computed, err := page.Evaluate("() => getComputedStyle(document.documentElement).colorScheme")
 				require.NoError(t, err)
 				assert.Equal(t, tc.expected, computed)
+
+				// the stylesheet keys the colors of the light theme on this class, the preloader's
+				// among them, and the preloader is on screen before the bundle runs
+				hasLight := func() bool {
+					v, lerr := page.Evaluate("() => document.documentElement.classList.contains('light')")
+					return lerr == nil && v == true
+				}
+				assert.Equal(t, tc.expected == "light", hasLight(), "the class of the theme in the address")
+
+				// a theme the parent posts before the bundle runs: opened on its own, the document is
+				// its own parent
+				posted := "dark"
+				if tc.expected == "dark" {
+					posted = "light"
+				}
+				_, err = page.Evaluate("(theme) => window.postMessage({ theme }, '*')", posted)
+				require.NoError(t, err)
+				eventually(t, waitTimeout, "the class did not follow a theme posted before the bundle ran", func() bool {
+					return hasLight() == (posted == "light")
+				})
 			})
 		}
 	}

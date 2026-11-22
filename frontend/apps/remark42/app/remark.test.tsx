@@ -25,6 +25,7 @@ describe('remark', () => {
     delete window.remark_config.theme;
     document.body.className = '';
     document.body.innerHTML = '';
+    document.documentElement.className = '';
     document.documentElement.style.colorScheme = '';
   });
 
@@ -42,10 +43,13 @@ describe('remark', () => {
   it('applies a theme posted while the locale is still loading', async () => {
     const store = await start();
     expect(store.getState().theme).toBe('light');
+    // the class the light theme's own colors are keyed on
+    expect(document.documentElement.classList.contains('light')).toBe(true);
 
     window.dispatchEvent(new MessageEvent('message', { data: { theme: 'dark' }, source: window.parent }));
 
     expect(document.body.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('light')).toBe(false);
     expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(store.getState().theme).toBe('dark');
   });
