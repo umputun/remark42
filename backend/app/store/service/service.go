@@ -303,6 +303,9 @@ func (s *DataStore) DeleteAll(siteID string) error {
 
 // SetPin pin/un-pin comment as special
 func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool) error {
+	unlock := s.lockScope(locator.URL) // the whole comment is written back, see EditComment
+	defer unlock()
+
 	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
@@ -464,6 +467,46 @@ type EditRequest struct {
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
+	comment, res, err := s.editComment(locator, commentID, req)
+
+	// the admin store, which may be a remote one, is told with the post unlocked, and also when the write failed
+	if res.notify {
+		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, res.event); e != nil {
+			what := "update"
+			if req.Delete {
+				what = "delete"
+			}
+			log.Printf("[WARN] failed to send %s event, %s", what, e)
+		}
+	}
+	if err != nil {
+		return comment, err
+	}
+
+	// the pictures go with the post unlocked as well, finding them reads every comment of the author on the site
+	newText := comment.Text
+	if req.Delete {
+		newText = ""
+	}
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, res.oldText, newText)
+	return comment, nil
+}
+
+// editResult is what editComment leaves for EditComment to do once the post is unlocked
+type editResult struct {
+	oldText string          // text before the change, to find the pictures the change removed
+	event   admin.EventType // event for the admin store
+	notify  bool            // the request got as far as its event
+}
+
+// editComment makes the edit or the delete of EditComment. It holds the lock of the post, the one Vote, SetPin and
+// SetTitle take. Each of them reads a comment and writes all of it back, so without the lock a vote or a pin made
+// between the read and the write of an edit would be lost, and so would an edit made between the read and the
+// write of a vote.
+func (s *DataStore) editComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, res editResult, err error) {
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+
 	editAllowed := func(comment store.Comment) error {
 		if req.Admin && s.AdminEdits {
 			return nil
@@ -482,33 +525,27 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); err != nil {
-		return comment, err
+		return comment, res, err
 	}
 
 	if err = editAllowed(comment); err != nil { //nolint gocritic
-		return comment, err
+		return comment, res, err
 	}
 
 	// a soft-deleted comment keeps its author, who must not be able to write text back into it,
 	// admin edits included; a repeated delete request is still accepted
 	if comment.Deleted && !req.Delete {
-		return comment, fmt.Errorf("deleted comment can't be edited, %s", commentID)
+		return comment, res, fmt.Errorf("deleted comment can't be edited, %s", commentID)
 	}
 
 	if req.Delete { // delete request
-		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
-			log.Printf("[WARN] failed to send delete event, %s", e)
-		}
+		res = editResult{oldText: comment.Text, event: admin.EvDelete, notify: true}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
-		if e := s.Engine.Delete(delReq); e != nil {
-			return comment, e
-		}
-		s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
-		return comment, nil
+		return comment, res, s.Engine.Delete(delReq)
 	}
 
-	oldText := comment.Text
+	res.oldText = comment.Text
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
@@ -517,18 +554,11 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 
 	// match the sanitized text, as Create does, because this is the text to store and show
 	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
-		return comment, ErrRestrictedWordsFound
+		return comment, res, ErrRestrictedWordsFound
 	}
 
-	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
-		log.Printf("[WARN] failed to send update event, %s", e)
-	}
-
-	if e := s.Engine.Update(comment); e != nil {
-		return comment, e
-	}
-	s.deleteRemovedPictures(locator, commentID, comment.User.ID, oldText, comment.Text)
-	return comment, nil
+	res.event, res.notify = admin.EvUpdate, true
+	return comment, res, s.Engine.Update(comment)
 }
 
 // HasReplies checks if there is any reply to the comment among the comments of its post
@@ -618,6 +648,14 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 	title, e := s.TitleExtractor.Get(comment.Locator.URL)
 	if e != nil {
 		return comment, e
+	}
+
+	// the page was fetched with the post unlocked, so the comment is read again under the lock: the whole
+	// comment is written back, and a vote, a pin or an edit made during the fetch has to stay, see EditComment
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+	if comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); err != nil {
+		return comment, err
 	}
 	comment.PostTitle = title
 	comment.Locator = locator
