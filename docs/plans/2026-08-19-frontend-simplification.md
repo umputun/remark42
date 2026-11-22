@@ -97,13 +97,16 @@ confirmed with `--allow-removal`.
 
 ## What the bundler still does
 
-The list any no-bundler proposal has to answer for.
+The bundler is esbuild, called through its Go API by the program in `frontend/build`, so the build
+runs on go and the installed runtime packages, with no node and no bundler configuration in
+JavaScript. The list any no-bundler proposal has to answer for:
 
 - transpiles TypeScript and JSX
-- CSS modules, with nesting and with one `composes` that crosses a file boundary. That one has no
-  plain-CSS equivalent and has to be flattened instead of translated
-- runs an autoprefixer pass against a browserslist query. Without a transpiler that query becomes the
-  literal browser floor and source syntax ships as written
+- CSS modules, with nesting. The one `composes` that crossed a file boundary is gone: the element
+  carries both classes instead
+- writes the scripts and the styles down to a list of browser versions kept in `build.go`. That
+  list is the literal browser floor: nothing derives it from a query and nothing adds vendor
+  prefixes below it
 - no longer builds any HTML page: all of them are plain files among the embedded assets, including
   the widget's own document and the fallback page a reader is offered when the widget detects a
   third-party context with storage unavailable. This is the one point where multi-domain hosting
@@ -134,6 +137,11 @@ Worth stating because the widget build is now the last npm consumer in the repos
 - the git hooks went with #2343; nothing runs on commit or push, and CI is the only gate
 - the message catalogues are plain JSON among the embedded assets, which the widget fetches from
   `/web/<locale>.json`, so no locale chunk and no dynamic import is left in the bundle
+- webpack, its loaders and plugins, postcss and the babel loader went when the build moved to
+  esbuild's Go API. Node is still needed to install the six runtime packages and to run the type
+  check, the linters and jest; babel stays for jest alone
+- the development server is the same go program: `-serve` rebuilds on change and serves the result
+  with the API proxied to a backend
 
 ## Still open
 
@@ -155,8 +163,6 @@ Each of these can move the answer.
   names, which must stay module-free. `/web` is an overlay: a `--web-root` file wins and only a
   missing name falls through to the embedded assets, so moving a page between the two sources
   silently changes whether an operator can override it
-- **The development loop.** The dev server goes with npm, and `make rundev` with `--web-root`
-  replaces it
 - **Message-channel hardening**, available and not done. Both ends post with `'*'` and check the
   sender instead of the target. The parent builds the iframe URL itself, so it knows the widget
   origin and could pass it as `targetOrigin` and compare the origin alongside the source

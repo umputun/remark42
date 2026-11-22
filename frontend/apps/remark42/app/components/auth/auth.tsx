@@ -27,6 +27,8 @@ import {
   getTelegramSigninParams,
 } from './auth.api';
 
+// before the form's own styles: the token field takes the input's look and auth.module.css adjusts it
+import inputStyles from 'components/input/input.module.css';
 import styles from './auth.module.css';
 
 export function Auth() {
@@ -280,7 +282,7 @@ export function Auth() {
                 <div className={clsx('auth-row', styles.row)}>
                   <TextareaAutosize
                     name="token"
-                    className={clsx('auth-token-textarea', styles.textarea)}
+                    className={clsx('auth-token-textarea', inputStyles.input, styles.textarea)}
                     placeholder={intl.formatMessage(messages.token)}
                     disabled={isLoading}
                   />
