@@ -24,6 +24,9 @@ const customAvatarTimeout = 3 * time.Second
 // addresses, at every redirect too, and without the provider's access token, which the client handed
 // to Put adds to its requests. A picture that can't be fetched or is not an image is replaced by an
 // identicon and the user is signed in all the same.
+//
+// It is also where a user without an id is refused. The function mapping the user info to a user
+// has no way to fail the sign-in, and storing the picture is the next step of it that has.
 type customAvatarSaver struct {
 	proxy     *avatar.Proxy
 	transport http.RoundTripper // safehttp.Transport() when nil
@@ -31,6 +34,9 @@ type customAvatarSaver struct {
 
 // Put stores the picture of u and returns the address remark42 serves it from
 func (a customAvatarSaver) Put(u token.User, _ *http.Client) (avatarURL string, err error) {
+	if u.ID == "" {
+		return "", errors.New("user info has no user id")
+	}
 	if u.Picture != "" {
 		if avatarURL, err = a.fetch(u); err == nil {
 			return avatarURL, nil

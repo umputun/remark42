@@ -68,6 +68,27 @@ func TestCustomProviderUser(t *testing.T) {
 	t.Run("no name", func(t *testing.T) {
 		assert.Equal(t, "noname_522b", user(t, `{"sub":"alice"}`).Name)
 	})
+
+	t.Run("no id, the email identifies the user", func(t *testing.T) {
+		// sha1 of the address, the id such a user had before
+		u := user(t, `{"id":1,"login":"alice","name":"Alice","email":"a@example.com","picture":"https://example.com/a.png"}`)
+		assert.Equal(t, "oidc_11a586cd1f7d573b856f94a619ae806a9a63f0a4", u.ID)
+		assert.Equal(t, "Alice", u.Name)
+		assert.Equal(t, "oidc_11a586cd1f7d573b856f94a619ae806a9a63f0a4", user(t, `{"sub":"a@example.com"}`).ID, "the same id as with the email set as the id field")
+		// hashed as sent, spaces included, which is the id master gave
+		assert.Equal(t, "oidc_35e6883040cada53512fa5182ffe9f47019099aa", user(t, `{"email":" a@example.com "}`).ID)
+	})
+
+	t.Run("no id and no email", func(t *testing.T) {
+		for _, raw := range []string{
+			`{"id":1,"login":"alice","name":"Alice","picture":"https://example.com/a.png"}`,
+			`{"sub":null,"name":"Alice"}`, `{"sub":"","email":"","name":"Alice"}`, `{}`,
+			// what a provider may send for a missing email is not one
+			`{"email":null}`, `{"email":" "}`, `{"email":false}`, `{"email":0}`, `{"email":[]}`, `{"email":{}}`,
+		} {
+			assert.Equal(t, token.User{}, user(t, raw), "user info %s", raw)
+		}
+	})
 }
 
 func TestCustomProviderLargeInt(t *testing.T) {
@@ -112,6 +133,8 @@ func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 	defer internal.Close()
 
 	idp := newCustomOAuthStub(t, map[string]string{
+		"no-id":            `{"id":2,"login":"mallory","name":"Alice","picture":"https://example.com/alice.png"}`,
+		"email-only":       `{"id":3,"login":"bob","name":"Bob","email":"alice@example.com"}`,
 		"internal-picture": `{"sub":"eve","name":"Eve","picture":"` + internal.URL + `/camera.png"}`,
 		"alice":            `{"sub":"alice","name":"Alice"}`,
 		"hash-of-alice":    `{"sub":"522b276a356bdf39013dfabea2cd43e141ecc9e8","name":"Mallory"}`,
@@ -140,6 +163,18 @@ func TestServerApp_CustomOAuthProviderSignIn(t *testing.T) {
 		status, userID = customOAuthSignIn(t, app, "the-next-number", "")
 		require.Equal(t, http.StatusOK, status)
 		assert.Equal(t, "oidc_8be46ce66310773dbc100bb46a80509a1f8c21a0", userID)
+	})
+
+	t.Run("no session without a value in the id field and without an email", func(t *testing.T) {
+		status, userID := customOAuthSignIn(t, app, "no-id", "")
+		assert.Equal(t, http.StatusInternalServerError, status)
+		assert.Empty(t, userID, "user id of the session")
+	})
+
+	t.Run("email identifies a user without a value in the id field", func(t *testing.T) {
+		status, userID := customOAuthSignIn(t, app, "email-only", "")
+		require.Equal(t, http.StatusOK, status)
+		assert.Equal(t, "oidc_fc2398a73dd54d6237c4fdb58fd7d75347cf5af3", userID) // sha1 of the address
 	})
 
 	t.Run("picture on a private address is not requested", func(t *testing.T) {

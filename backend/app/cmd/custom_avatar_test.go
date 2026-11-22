@@ -99,6 +99,18 @@ func TestCustomAvatarSaver_Put(t *testing.T) {
 	}
 }
 
+func TestCustomAvatarSaver_PutRefusesUserWithoutID(t *testing.T) {
+	store := avatar.NewLocalFS(t.TempDir())
+	saver := customAvatarSaver{proxy: &avatar.Proxy{L: log.Default(), Store: store, RoutePath: "/avatar", URL: "http://remark42.example.com"}}
+
+	avatarURL, err := saver.Put(token.User{Name: "user"}, nil)
+	require.EqualError(t, err, "user info has no user id")
+	assert.Empty(t, avatarURL)
+	ids, err := store.List()
+	require.NoError(t, err)
+	assert.Empty(t, ids, "stored avatars")
+}
+
 func TestPictureHost(t *testing.T) {
 	assert.Equal(t, "example.com", pictureHost("https://user:pass@example.com:8443/a.png?token=secret"))
 	assert.Equal(t, "an address without a host", pictureHost("/a.png?token=secret"))

@@ -490,22 +490,27 @@ var reservedCustomProviderNames = []string{
 
 var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-// customProviderSourceID returns the value identifying a user at the custom OAuth2 provider. raw is
-// the user info as the provider sent it and data the same decoded. An id sent as a whole number too
-// large for a float64 to hold exactly is taken from raw, with all its digits.
+// customProviderSourceID returns the value identifying a user at the custom OAuth2 provider: what
+// the user info holds in the configured id field, or the email when it holds nothing there, which
+// keeps the ids of users of a provider set up without an id field. With neither it returns an empty
+// string. A name or a picture never stands in: its owner can change it and two users can have the
+// same one, so a user identified by it is whoever claims that value. An email identifies a user
+// only as well as the provider checks it, so its use is logged. Only a string with something in it
+// is an email: false, 0 or [] sent for a missing one would be the id of every account without one.
+// raw is the user info as the provider sent it and data the same decoded. An id sent as a whole
+// number too large for a float64 to hold exactly is taken from raw, with all its digits.
 func customProviderSourceID(data provider.UserData, raw []byte, cfg CustomAuthGroup) string {
-	sourceID := cmp.Or(customProviderLargeInt(raw, cfg.IDField), data.Value(cfg.IDField), data.Value(cfg.EmailField),
-		data.Value(cfg.NameField), data.Value(cfg.PictureField))
-	if sourceID == "" {
-		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
-		payload, err := json.Marshal(data)
-		if err != nil {
-			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
-		} else {
-			sourceID = string(payload)
-		}
+	if id := cmp.Or(customProviderLargeInt(raw, cfg.IDField), data.Value(cfg.IDField)); id != "" {
+		return id
 	}
-	return sourceID
+	email, _ := data[cfg.EmailField].(string)
+	if strings.TrimSpace(email) == "" {
+		return ""
+	}
+	// no advice to set the id field here: a user identified by the email gets a new id when it is set
+	log.Printf("[WARN] custom oauth provider returned no value in the id field %q, user identified by the email field %q",
+		cfg.IDField, cfg.EmailField)
+	return email
 }
 
 // maxExactFloatInt is 2^53: every whole number up to it, of either sign, is a float64 of its own,
@@ -535,8 +540,16 @@ func customProviderLargeInt(raw []byte, field string) string {
 // identifying the user at the provider. That value is always hashed, also when it looks like a sha1
 // digest already: token.HashID returns such a value as it is, and a user whose identifier at the
 // provider spells the hash of another user's would get that user's id.
+//
+// User info with neither a value in the id field nor an email gives a user without an id, whom
+// customAvatarSaver refuses to sign in.
 func customProviderUser(name string, data provider.UserData, raw []byte, cfg CustomAuthGroup) token.User {
 	sourceID := customProviderSourceID(data, raw, cfg)
+	if sourceID == "" {
+		log.Printf("[WARN] custom oauth provider returned no value in the id field %q and no email in %q, sign-in refused: "+
+			"set AUTH_CUSTOM_ID_FIELD to the user info field that identifies a user", cfg.IDField, cfg.EmailField)
+		return token.User{}
+	}
 	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(sourceID))) //nolint:gosec // stable id, not a secret
 	user := token.User{
 		ID:      name + "_" + hashID,

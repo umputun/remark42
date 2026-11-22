@@ -107,7 +107,7 @@ services:
 | auth.custom.token-url          | AUTH_CUSTOM_TOKEN_URL          |                         | custom OAuth token endpoint                              |
 | auth.custom.info-url           | AUTH_CUSTOM_INFO_URL           |                         | custom OAuth user info endpoint                          |
 | auth.custom.scopes             | AUTH_CUSTOM_SCOPES             | none                    | custom OAuth scopes, comma-separated                     |
-| auth.custom.id-field           | AUTH_CUSTOM_ID_FIELD           | `sub`                   | user info field used as unique id                        |
+| auth.custom.id-field           | AUTH_CUSTOM_ID_FIELD           | `sub`                   | user info field used as unique id; without a value in it the email identifies the user, and without both the sign-in is refused |
 | auth.custom.name-field         | AUTH_CUSTOM_NAME_FIELD         | `name`                  | user info field used as display name                     |
 | auth.custom.picture-field      | AUTH_CUSTOM_PICTURE_FIELD      | `picture`               | user info field used as avatar URL                       |
 | auth.custom.email-field        | AUTH_CUSTOM_EMAIL_FIELD        | `email`                 | user info field holding the email, used only as a fallback id |
