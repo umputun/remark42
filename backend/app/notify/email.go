@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	ntf "github.com/go-pkgz/notify"
 	"github.com/go-pkgz/repeater/v2"
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/net/idna"
 
 	"github.com/umputun/remark42/backend/app/templates"
 )
@@ -57,6 +60,7 @@ type msgTmplData struct {
 	Email             string
 	UnsubscribeLink   string
 	ForAdmin          bool
+	LinkHost          string // the host CommentLink and ParentCommentLink lead to, set in admin notifications only
 }
 
 // emailCommentPolicy sanitizes comment HTML for inclusion in notification emails.
@@ -260,6 +264,55 @@ type commentMessage struct {
 	unsubscribeLink string
 }
 
+// adminLinkIDNA turns a host name into its ASCII form the way browsers do before they open it: letters
+// are mapped and normalised, characters a browser drops are dropped, and a name it would refuse is an error
+var adminLinkIDNA = idna.New(idna.MapForLookup(), idna.Transitional(false), idna.StrictDomainName(false),
+	idna.CheckHyphens(false), idna.BidiRule(), idna.CheckJoiners(true))
+
+// adminPageLink returns the page address of a comment for a link in a message to an admin, and the host
+// to name next to that link. The address comes from the commenter and is not checked against the site, and
+// an admin is notified about every comment, so the link must not lead anywhere the message does not say.
+// Go and browsers read some addresses differently: "https:evil.example" has no host for Go and opens
+// evil.example in a browser, and a host can hold letters that are invisible or look like others. So the
+// address is written again from its parts, with the host in ASCII, and that is both what the link opens
+// and what the label shows. An address that is not a plain web address with a host gets no link.
+func adminPageLink(pageURL string) (link, host string) {
+	u, err := url.Parse(pageURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Opaque != "" || u.Host == "" {
+		return "", ""
+	}
+	host = u.Hostname()
+	if net.ParseIP(host) == nil {
+		// the mapping turns wide forms of "@", "/" or a space into the plain ones, which no host name
+		// may hold; an IPv6 address with a zone lands here as well and has a "%" and colons
+		if host, err = adminLinkIDNA.ToASCII(host); err != nil || host == "" || strings.ContainsAny(host, " #%/:<>?@[\\]^|") {
+			return "", ""
+		}
+		// a browser reads a name whose last label is a number, all digits or "0x" and hexadecimal
+		// digits, as an IPv4 address in a short spelling and opens the address it stands for,
+		// "127.1" as 127.0.0.1 and "10.0.1.0x" as 10.0.1.0, or refuses it
+		last := strings.TrimSuffix(host, ".")
+		last = last[strings.LastIndexByte(last, '.')+1:]
+		if last == "" || strings.Trim(last, "0123456789") == "" ||
+			(strings.HasPrefix(last, "0x") && strings.Trim(last[2:], "0123456789abcdef") == "") {
+			return "", ""
+		}
+	}
+	hostPort := host
+	switch {
+	case u.Port() != "":
+		if _, err = strconv.ParseUint(u.Port(), 10, 16); err != nil {
+			return "", ""
+		}
+		hostPort = net.JoinHostPort(host, u.Port())
+	case strings.Contains(host, ":"):
+		hostPort = "[" + host + "]"
+	}
+	// ForceQuery keeps a "?" with nothing after it: comments are stored under the exact page address
+	clean := url.URL{Scheme: u.Scheme, Host: hostPort, Path: u.Path, RawPath: u.RawPath, RawQuery: u.RawQuery, ForceQuery: u.ForceQuery}
+	return clean.String(), host
+}
+
 // buildMessageFromRequest generates email message based on Request using e.MsgTemplate
 func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool) (commentMessage, error) {
 	subject := "New reply to your comment"
@@ -286,13 +339,28 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 		unsubscribeLink = ""
 	}
 
-	commentURLPrefix := req.Comment.Locator.URL + uiNav
+	// a user is notified only about a page that user commented on, so the address is linked as it is;
+	// an admin gets a message for a comment on any address the commenter named
+	commentURLPrefix, linkHost := req.Comment.Locator.URL+uiNav, ""
+	if forAdmin {
+		commentURLPrefix, linkHost = adminPageLink(req.Comment.Locator.URL)
+		if commentURLPrefix != "" {
+			commentURLPrefix += uiNav
+		}
+	}
+	commentLink := func(id string) string {
+		if commentURLPrefix == "" {
+			return ""
+		}
+		return commentURLPrefix + id
+	}
 	msg := bytes.Buffer{}
 	tmplData := msgTmplData{
 		UserName:        req.Comment.User.Name,
 		UserPicture:     e.storedAvatar(req.Comment.User.Picture),
 		CommentText:     emailSafeHTML(req.Comment.Text),
-		CommentLink:     commentURLPrefix + req.Comment.ID,
+		CommentLink:     commentLink(req.Comment.ID),
+		LinkHost:        linkHost,
 		CommentDate:     req.Comment.Timestamp,
 		PostTitle:       req.Comment.PostTitle,
 		Email:           email,
@@ -304,7 +372,7 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 		tmplData.ParentUserName = req.parent.User.Name
 		tmplData.ParentUserPicture = e.storedAvatar(req.parent.User.Picture)
 		tmplData.ParentCommentText = emailSafeHTML(req.parent.Text)
-		tmplData.ParentCommentLink = commentURLPrefix + req.parent.ID
+		tmplData.ParentCommentLink = commentLink(req.parent.ID)
 		tmplData.ParentCommentDate = req.parent.Timestamp
 	}
 	err = e.msgTmpl.Execute(&msg, tmplData)
