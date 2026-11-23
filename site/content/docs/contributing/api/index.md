@@ -192,7 +192,7 @@ type User struct {
 
 - `PUT /api/v1/vote/{id}?site=site-id&url=post-url&vote=1` - vote for comment, _auth required_. `vote=1` increases the score, and any other value, a missing one included, decreases it. A vote opposite to the user's earlier one cancels it, and a second one casts the opposite vote. Returns `{"id": "comment-id", "score": N}`. A vote for one's own comment, a repeated vote in the same direction, and a vote refused by `MAX_VOTES`, `POSITIVE_SCORE` or `VOTES_IP` get 400; a blocked user or a read-only post gets 403
 - `GET /api/v1/userdata?site=site-id` - export user data to gz stream, _auth required_. The document is `{"info": {...}, "details": {...}, "comments": [...]}`: user info, notification email and Telegram (`details` is left out when neither is stored), and up to 10,000 of the user's comments, newest first. Deleted comments are left out
-- `POST /api/v1/deleteme?site=site-id` - request deletion of user data, _auth required_. The call deletes nothing itself. It returns `{"site": "site-id", "user_id": "user-id", "token": "token", "link": "url"}`, and the data is deleted when an admin opens `link`
+- `POST /api/v1/deleteme?site=site-id` - request deletion of user data, _auth required_. The call deletes nothing itself. It returns `{"site": "site-id", "user_id": "user-id", "token": "token", "link": "url"}`, and the data is deleted when an admin opens `link` within three months
 - `GET /api/v1/config?site=site-id` - returns configuration (parameters) for given site. `edit_duration` is in seconds
 
 ```go
@@ -329,7 +329,7 @@ http://oldsite.com/from-old-page/1 https://newsite.com/to-new-page/1
 - `PUT /api/v1/admin/readonly?site=site-id&url=post-url&ro=1` - set (`ro=1`) or clear (any other value) read-only status. A post that is read-only by `READONLY_AGE` cannot be cleared and gets 403
 - `PUT /api/v1/admin/verify/{userid}?site=site-id&verified=1` - set (`verified=1`) or clear (any other value) verified status
 - `PUT /api/v1/admin/title/{id}?site=site-id&url=post-url` - set the comment's `title` to the title of the post page
-- `GET /api/v1/admin/deleteme?site=site-id&token=token` - process a user's deleteme request; already-deleted or dataless users return success (idempotent). Removes the comments, stored details and pictures as `DELETE /api/v1/admin/user/{userid}` does, and the avatar named in the token
+- `GET /api/v1/admin/deleteme?site=site-id&token=token` - process a user's deleteme request; a token older than three months gets 403, and already-deleted or dataless users return success (idempotent). Removes the comments, stored details and pictures as `DELETE /api/v1/admin/user/{userid}` does, and the avatar named in the token
 
 _all admin calls require auth and admin privilege_
 
