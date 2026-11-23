@@ -1,7 +1,7 @@
 baseURL = "https://remark42.com/"
 locale = "en-us"
 title = "Remark42"
-disableKinds = ["taxonomy", "term", "rss", "sitemap"]
+disableKinds = ["taxonomy", "term", "rss"]
 
 # off by default: the image build context is site/ alone, so there is no .git for
 # hugo to read and it fails rather than degrading. HUGO_ENABLEGITINFO=true turns it

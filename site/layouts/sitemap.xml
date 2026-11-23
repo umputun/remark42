@@ -1,0 +1,12 @@
+{{- /* the pages of the site, one entry each. No lastmod: the image build has no git history to
+       take real page dates from */ -}}
+{{ printf "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" | safeHTML }}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  {{- range where .Pages "Sitemap.Disable" "ne" true }}
+    {{- if .Permalink }}
+  <url>
+    <loc>{{ .Permalink }}</loc>
+  </url>
+    {{- end }}
+  {{- end }}
+</urlset>

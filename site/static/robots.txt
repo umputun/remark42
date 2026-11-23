@@ -1,2 +1,4 @@
 User-agent: *
 Disallow: /404.html
+
+Sitemap: https://remark42.com/sitemap.xml

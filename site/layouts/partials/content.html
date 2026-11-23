@@ -1,0 +1,22 @@
+{{- /* the content of a page, with the width and height of the page's own images written into
+       their tags, so the text below an image does not move when it loads. Only a tag that is
+       exactly what the Markdown renderer writes for an image file of the page is touched: src,
+       alt and perhaps a title. A remote image, a missing file, an SVG, a file that cannot be read
+       as an image and a tag an author wrote by hand with other attributes stay as they were */ -}}
+{{- $content := .Content -}}
+{{- range .Resources.ByType "image" -}}
+  {{- if reflect.IsImageResourceWithMeta . -}}
+    {{- /* the file name with the characters a pattern would read as its own syntax escaped */ -}}
+    {{- $name := replaceRE `([\\.+*?()|\[\]{}^$])` `\$1` .Name -}}
+    {{- $tag := printf `(<img src="(?:\./)?%s")( alt="[^"]*"(?: title="[^"]*")?>)` $name -}}
+    {{- /* the size is read only for an image the page shows, and a file that cannot be read as
+           an image, which fails the read or gives no size, leaves its tag as it is */ -}}
+    {{- if findRE $tag $content 1 -}}
+      {{- $size := try (cond (and (gt .Width 0) (gt .Height 0)) (printf ` width="%d" height="%d"` .Width .Height) "") -}}
+      {{- with $size.Value -}}
+        {{- $content = replaceRE $tag (printf `${1}%s${2}` .) $content -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- return ($content | safeHTML) -}}
