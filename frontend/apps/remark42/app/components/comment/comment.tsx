@@ -399,12 +399,11 @@ export class Comment extends Component<CommentProps, State> {
                 </a>
               )}
             </div>{' '}
-            <div
-              className={clsx(styles.text, 'raw-content')}
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: o.text }}
-              dir="auto"
-            />
+            {/* the snippet is the comment's plain text with its entities decoded: parsed as HTML it
+                would turn markup a commenter wrote as text into elements */}
+            <div className={clsx(styles.text, 'raw-content')} dir="auto">
+              {o.text}
+            </div>
           </div>
         </article>
       );
@@ -604,7 +603,8 @@ function getTextSnippet(html: string) {
   const tmp = document.createElement('div');
   tmp.innerHTML = html.replace('</p><p>', ' ');
 
-  const result = tmp.innerText || '';
+  // the div is never rendered, and for such an element innerText is defined as its textContent
+  const result = tmp.textContent || '';
   const snippet = result.substring(0, LENGTH);
 
   return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;

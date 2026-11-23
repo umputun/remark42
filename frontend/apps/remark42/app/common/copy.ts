@@ -5,17 +5,22 @@ export async function copy(content: string): Promise<void> {
     return navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
   }
 
-  // We use `div` instead of `input` or `textarea` because we want to copy styles
+  // No clipboard API: browsers expose it in a secure context only, so a page served over plain
+  // http has none unless it comes from localhost or a loopback address. The text goes into an
+  // off-screen element that is selected and copied
   const container = document.createElement('div');
   const previouslyFocusedElement = document.activeElement as HTMLElement;
 
-  container.innerHTML = content;
+  // `content` is plain text, as in the branch above. Parsed as HTML, markup a commenter wrote as
+  // text would become elements
+  container.textContent = content;
 
   Object.assign(container.style, {
     contain: 'strict',
     position: 'absolute',
     left: '-9999px',
     fontSize: '12pt', // Prevent zooming on iOS
+    whiteSpace: 'pre', // Keep the line breaks of the text in the copy
   });
 
   document.body.appendChild(container);
