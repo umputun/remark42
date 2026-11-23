@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -135,17 +134,10 @@ func uploadPicture(t *testing.T, url string, img io.Reader) *http.Response {
 // uploadPictureAs posts img as the "file" field of POST /picture with the session token tkn
 func uploadPictureAs(t *testing.T, url, tkn string, img io.Reader) *http.Response {
 	t.Helper()
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
-	require.NoError(t, err)
-	_, err = io.Copy(fileWriter, img)
-	require.NoError(t, err)
-	require.NoError(t, bodyWriter.Close())
-
+	bodyBuf, contentType := multipartFile(t, "picture.png", img)
 	req, err := http.NewRequest(http.MethodPost, url+"/api/v1/picture?site=remark42", bodyBuf)
 	require.NoError(t, err)
-	req.Header.Add("Content-Type", bodyWriter.FormDataContentType())
+	req.Header.Add("Content-Type", contentType)
 	resp, err := sendReq(req, tkn)
 	require.NoError(t, err)
 	return resp
@@ -243,15 +235,8 @@ func TestMigrator_ImportTempFileError(t *testing.T) {
 	})
 
 	t.Run("form", func(t *testing.T) {
-		bodyBuf := &bytes.Buffer{}
-		bodyWriter := multipart.NewWriter(bodyBuf)
-		fileWriter, err := bodyWriter.CreateFormFile("file", "import.json")
-		require.NoError(t, err)
-		_, err = fileWriter.Write([]byte(`{"version":1}`))
-		require.NoError(t, err)
-		require.NoError(t, bodyWriter.Close())
-		resp, err := http.Post(authts+"/api/v1/admin/import/form?site=remark42&provider=native",
-			bodyWriter.FormDataContentType(), bodyBuf)
+		bodyBuf, contentType := multipartFile(t, "import.json", strings.NewReader(`{"version":1}`))
+		resp, err := http.Post(authts+"/api/v1/admin/import/form?site=remark42&provider=native", contentType, bodyBuf)
 		require.NoError(t, err)
 		body, e := readErrorResponse(t, resp)
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)

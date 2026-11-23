@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -966,6 +967,20 @@ func get(t *testing.T, url string) (response string, statusCode int) {
 	require.NoError(t, err)
 	require.NoError(t, r.Body.Close())
 	return string(body), r.StatusCode
+}
+
+// multipartFile builds a form with content as its "file" field under the file name name, and returns
+// the body and its Content-Type
+func multipartFile(t *testing.T, name string, content io.Reader) (body *bytes.Buffer, contentType string) {
+	t.Helper()
+	body = &bytes.Buffer{}
+	w := multipart.NewWriter(body)
+	fw, err := w.CreateFormFile("file", name)
+	require.NoError(t, err)
+	_, err = io.Copy(fw, content)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	return body, w.FormDataContentType()
 }
 
 // sendReq sends r with tkn, if any, as the X-JWT header. It is for a request with headers of its own

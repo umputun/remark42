@@ -1,13 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -170,14 +168,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 "ip":"ae12fe3b5f129b5cc4cdd2b136b7b7947c4d2741"},"locator":{"site":"remark42","url":"https://radio-t.com/blah2"},"score":0,
 "votes":{},"time":"2018-04-30T01:37:00.861387771-05:00"}`)
 
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	fileWriter, err := bodyWriter.CreateFormFile("file", "import.json")
-	require.NoError(t, err)
-	_, err = io.Copy(fileWriter, r)
-	require.NoError(t, err)
-	contentType := bodyWriter.FormDataContentType()
-	require.NoError(t, bodyWriter.Close())
+	bodyBuf, contentType := multipartFile(t, "import.json", r)
 
 	authts := strings.Replace(ts.URL, "http://", "http://admin:password@", 1)
 	resp, err := http.Post(authts+"/api/v1/admin/import/form?site=remark42&provider=native", contentType, bodyBuf)

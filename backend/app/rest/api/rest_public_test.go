@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image/png"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1199,14 +1198,7 @@ func TestRest_LoadPictureDefenseHeaders(t *testing.T) {
 	ts, _ := startupT(t)
 
 	// upload a real PNG via /api/v1/picture
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	fileWriter, err := bodyWriter.CreateFormFile("file", "picture.png")
-	require.NoError(t, err)
-	_, err = io.Copy(fileWriter, gopherPNG())
-	require.NoError(t, err)
-	contentType := bodyWriter.FormDataContentType()
-	require.NoError(t, bodyWriter.Close())
+	bodyBuf, contentType := multipartFile(t, "picture.png", gopherPNG())
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()

@@ -1,14 +1,12 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1936,15 +1934,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 
 	// save picture
 	savePic := func(name string) (id string) {
-		bodyBuf := &bytes.Buffer{}
-		bodyWriter := multipart.NewWriter(bodyBuf)
-		fileWriter, err := bodyWriter.CreateFormFile("file", name)
-		require.NoError(t, err)
-		_, err = io.Copy(fileWriter, gopherPNG())
-		require.NoError(t, err)
-		contentType := bodyWriter.FormDataContentType()
-		require.NoError(t, bodyWriter.Close())
-
+		bodyBuf, contentType := multipartFile(t, name, gopherPNG())
 		client := http.Client{}
 		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
@@ -2035,14 +2025,7 @@ func TestRest_CreateWithPictures(t *testing.T) {
 	svc.privRest.dataService = dataService
 
 	uploadPicture := func(file string) (id string) {
-		bodyBuf := &bytes.Buffer{}
-		bodyWriter := multipart.NewWriter(bodyBuf)
-		fileWriter, err := bodyWriter.CreateFormFile("file", file)
-		require.NoError(t, err)
-		_, err = io.Copy(fileWriter, gopherPNG())
-		require.NoError(t, err)
-		contentType := bodyWriter.FormDataContentType()
-		require.NoError(t, bodyWriter.Close())
+		bodyBuf, contentType := multipartFile(t, file, gopherPNG())
 		client := http.Client{}
 		defer client.CloseIdleConnections()
 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v1/picture?site=remark42", ts.URL), bodyBuf)
