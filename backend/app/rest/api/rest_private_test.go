@@ -3477,3 +3477,47 @@ func TestRest_EmailConfirmationTokenForSiteInBody(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "admin@example.com", email)
 }
+
+// the admin password authenticates a request with no session token, and the address must be stored, and removed,
+// with a 200 for both, as there is no token to update
+func TestRest_EmailWithAdminPasswordAndNoSessionToken(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(method, url, body string) (int, string) {
+		req, err := http.NewRequest(method, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send(http.MethodPost, "/api/v1/email/subscribe", `{"site":"remark42","address":"admin@example.com"}`)
+	require.Equal(t, http.StatusOK, code, body)
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
+	tkn := mockDestination.GetVerify()[0].Token
+
+	code, body = send(http.MethodPost, "/api/v1/email/confirm", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn))
+	assert.Equal(t, http.StatusOK, code, body)
+	assert.JSONEq(t, `{"updated":true,"address":"admin@example.com"}`, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
+
+	code, body = send(http.MethodDelete, "/api/v1/email?site=remark42", "")
+	assert.Equal(t, http.StatusOK, code, body)
+	assert.JSONEq(t, `{"deleted":true}`, body)
+	email, err = srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Empty(t, email)
+}
