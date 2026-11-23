@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -1401,6 +1402,40 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 
 // getAuthenticator creates new authenticator service, which doesn't have any auth providers enabled
 func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) *auth.Service {
+	// claimsUpd sets what the store and the options say about a user, on a new token and on a refresh
+	claimsUpd := func(c token.Claims) token.Claims {
+		if c.User == nil {
+			return c
+		}
+		// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+		if len(c.Audience) != 1 {
+			return c
+		}
+		audience := c.Audience[0]
+
+		c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
+		c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
+		var err error
+		c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
+		if err != nil {
+			log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
+		}
+
+		// don't allow anonymous and email with admins names
+		// exclude admin from impersonation detection over email, it prevents a valid admin to login with RestrictedNames
+		if strings.HasPrefix(c.User.ID, "anonymous_") || (strings.HasPrefix(c.User.ID, "email_") && !c.User.IsAdmin()) {
+			for _, a := range s.RestrictedNames {
+				if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
+					c.User.SetBoolAttr("blocked", true)
+					log.Print(impersonationLogLine(c.User))
+					break
+				}
+			}
+		}
+
+		return c
+	}
+
 	return auth.NewService(auth.Opts{
 		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
 		Issuer:         "remark42",
@@ -1419,39 +1454,8 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			return admns.Key(aud)
 		}),
 		AudienceReader: s.tokenAudiences(),
-		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
-			if c.User == nil {
-				return c
-			}
-			// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
-			if len(c.Audience) != 1 {
-				return c
-			}
-			audience := c.Audience[0]
-
-			c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
-			c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
-			var err error
-			c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
-			if err != nil {
-				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
-			}
-
-			// don't allow anonymous and email with admins names
-			// exclude admin from impersonation detection over email, it prevents a valid admin to login with RestrictedNames
-			if strings.HasPrefix(c.User.ID, "anonymous_") || (strings.HasPrefix(c.User.ID, "email_") && !c.User.IsAdmin()) {
-				for _, a := range s.RestrictedNames {
-					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
-						c.User.SetBoolAttr("blocked", true)
-						log.Print(impersonationLogLine(c.User))
-						break
-					}
-				}
-			}
-
-			return c
-		}),
-		AdminPasswd: s.AdminPasswd,
+		ClaimsUpd:      token.ClaimsUpdFunc(claimsUpd),
+		AdminPasswd:    s.AdminPasswd,
 		Validator: token.ValidatorFunc(func(_ string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false
@@ -1467,7 +1471,20 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if !s.servesAudience(claims.Audience) {
 				return false
 			}
-			return !claims.User.BoolAttr("blocked")
+			if claims.User.BoolAttr("blocked") {
+				return false
+			}
+			// the middleware refreshes an expired token after this check and serves the request on the
+			// refreshed claims without checking them, so an expired token is also judged here by the
+			// claims its refresh gives it. A cookie from before a block, sent again and again, would
+			// otherwise pass for good. The user is copied, the claims in hand stay as they came
+			if tokenExpired(claims) {
+				user := *claims.User
+				user.Attributes = maps.Clone(user.Attributes)
+				claims.User = &user
+				return !claimsUpd(claims).User.BoolAttr("blocked")
+			}
+			return true
 		}),
 		JWTQuery:            api.QueryTokenParam, // not the default "token", which carries the delete-me token
 		AvatarStore:         avas,
@@ -1479,6 +1496,12 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		UseGravatar:         true,
 		AudSecrets:          s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// tokenExpired reports whether the auth middleware takes the token of these claims for an expired
+// one, which it then refreshes. It is the check of token.Service.IsExpired, made without the service
+func tokenExpired(claims token.Claims) bool {
+	return errors.Is(jwt.NewValidator(jwt.WithExpirationRequired()).Validate(claims), jwt.ErrTokenExpired)
 }
 
 // tokenAudiences limits the audience of issued and accepted tokens to the configured sites when
