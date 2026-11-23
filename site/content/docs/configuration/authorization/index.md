@@ -177,7 +177,7 @@ A site with its own user accounts can sign its users in to the widget by issuing
    ```
 
    `aud` is the site ID, one of the values of `SITE`. `user.id` is the name of an enabled provider, an underscore and your own ID for the user; a token with any other prefix is refused with "provider is not allowed". When the provider name itself contains an underscore, also add `"auth_provider": {"name": "<provider>"}` at the top level of the token. `picture` is optional. A user under the `anonymous_` prefix has the limits of an [anonymous user](#anonymous).
-1. Set two cookies together, with `Path=/` and a domain that covers the Remark42 host: `JWT` with the token, and `XSRF-TOKEN` with the token's `jti`. `XSRF-TOKEN` must not be `HttpOnly`: the widget copies it into the `X-XSRF-TOKEN` header, and a `JWT` cookie without a matching header is refused.
+1. Set two cookies together, with `Path=/` and a domain that covers the Remark42 host: `JWT` with the token, and `XSRF-TOKEN` with the token's `jti`. Set `JWT` with `HttpOnly` and `Secure`, and serve your site and Remark42 over HTTPS: a script that reads `JWT` can send it in the `X-JWT` header, which has no XSRF check. `XSRF-TOKEN` must not be `HttpOnly`: the widget copies it into the `X-XSRF-TOKEN` header, and a `JWT` cookie without a matching header is refused.
 
 The widget then opens signed in. A call from your server can send the token in the `X-JWT` header instead. Remark42 does not read the `Authorization: Bearer` header, and `remark_config` has no option for a token.
 
