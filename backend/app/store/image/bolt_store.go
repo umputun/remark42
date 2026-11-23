@@ -55,11 +55,16 @@ func (b *Bolt) Save(id string, img []byte) error {
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
-// Data from staging bucket not removed immediately, but would be removed on Cleanup
+// Data from staging bucket not removed immediately, but would be removed on Cleanup.
+// An image already committed and removed from staging is left as it is, as a comment's images are
+// submitted again after a restart.
 func (b *Bolt) Commit(id string) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
+			if tx.Bucket([]byte(imagesBktName)).Get([]byte(id)) != nil {
+				return nil
+			}
 			return fmt.Errorf("failed to commit %s, not found in staging", id)
 		}
 		err := tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data)

@@ -135,6 +135,24 @@ func TestBoltStore_LoadAfterDelete(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestBoltStore_CommitCommitted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		svc, teardown := prepareBoltImageStorageTest(t)
+		defer teardown()
+
+		id := "user1/test_img"
+		require.NoError(t, svc.Save(id, gopherPNGBytes()))
+		require.NoError(t, svc.Commit(id))
+		time.Sleep(time.Second)
+		require.NoError(t, svc.Cleanup(context.Background(), time.Millisecond)) // removes the staged copy
+		assertBoltImgNil(t, svc.db, imagesStagedBktName, id)
+
+		assert.NoError(t, svc.Commit(id), "committed image committed again")
+		assertBoltImgNotNil(t, svc.db, imagesBktName, id)
+		assert.Error(t, svc.Commit("user1/missing_img"), "image in neither bucket")
+	})
+}
+
 func TestBoltStore_Cleanup(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		svc, teardown := prepareBoltImageStorageTest(t)

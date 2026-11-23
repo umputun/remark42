@@ -3616,11 +3616,15 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 				ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
 			})
 		defer imgSvcEmpty.Close(context.TODO())
-		bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
+		engEmpty := engine.InterfaceMock{FindFunc: func(engine.FindRequest) ([]store.Comment, error) { return nil, nil }}
+		bEmpty := DataStore{Engine: &engEmpty, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
 
-		// resubmit receive empty timestamp and should do nothing )
+		// with nothing staged, resubmit goes through the comments still in their edit window only
 		err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
 		assert.NoError(t, err)
+		require.Len(t, engEmpty.FindCalls(), 2)
+		assert.Equal(t, time.Now().Add(-10*time.Millisecond), engEmpty.FindCalls()[0].Req.Since)
+		assert.Equal(t, "non_existent", engEmpty.FindCalls()[1].Req.Locator.SiteID)
 
 		assert.Equal(t, 1, len(mockStore.InfoCalls()))
 
@@ -3648,6 +3652,107 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	})
 }
 
+// TestService_ResubmitStagingImages_StagedAfterComment checks the images of a comment are resubmitted
+// although their staging time is later than the comment's own, as it always is once the comment's
+// submit has reset their cleanup timers
+func TestService_ResubmitStagingImages_StagedAfterComment(t *testing.T) {
+	const editDuration = 5 * time.Minute
+	const imageAPI = "http://127.0.0.1:8080/api/v1/picture/"
+
+	// prep returns a data store with a comment posted age ago, holding one staged picture whose staging
+	// time is stagedAfter after the comment's, and a check whether that picture is committed
+	prep := func(t *testing.T, age, stagedAfter time.Duration) (b *DataStore, imgSvc *image.Service, committed func() bool) {
+		t.Helper()
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		dir := t.TempDir()
+		fsStore := &image.FileSystem{Location: filepath.Join(dir, "images"), Staging: filepath.Join(dir, "staging")}
+		imgSvc = image.NewService(fsStore, image.ServiceParams{EditDuration: editDuration, ImageAPI: imageAPI})
+		t.Cleanup(func() { imgSvc.Close(context.Background()) })
+
+		const picID = "dev_user/pic1"
+		require.NoError(t, fsStore.Save(picID, []byte("picture")))
+		ts := time.Now().Add(-age)
+		stagedTS := ts.Add(stagedAfter)
+		require.NoError(t, os.Chtimes(filepath.Join(fsStore.Staging, picID), stagedTS, stagedTS))
+		_, err := eng.Create(store.Comment{
+			ID:        "id-pic",
+			Text:      `<img src="` + imageAPI + picID + `">`,
+			Timestamp: ts,
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "dev_user", Name: "dev user"},
+		})
+		require.NoError(t, err)
+
+		b = &DataStore{Engine: eng, EditDuration: editDuration, ImageService: imgSvc}
+		committed = func() bool {
+			_, err := os.Stat(filepath.Join(fsStore.Location, picID))
+			return err == nil
+		}
+		return b, imgSvc, committed
+	}
+
+	t.Run("comment in its edit window", func(t *testing.T) {
+		b, imgSvc, committed := prep(t, time.Minute, time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.False(t, committed(), "waits for the edit window to end")
+		imgSvc.Close(context.Background()) // commits submitted images without waiting
+		assert.True(t, committed(), "picture committed")
+	})
+
+	t.Run("comment past its edit window", func(t *testing.T) {
+		b, _, committed := prep(t, 2*editDuration, time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.True(t, committed(), "picture committed right away")
+	})
+
+	t.Run("picture staged just after its comment's edit window", func(t *testing.T) {
+		// a submit after a restart can reset the staging time just as the comment's window ends
+		b, _, committed := prep(t, 3*editDuration, editDuration+time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.True(t, committed(), "picture committed right away")
+	})
+}
+
+// TestService_ResubmitStagingImages_EditAfterRestart checks a picture added by editing a comment after a
+// restart is committed, although nothing was staged when the server started, as after a graceful stop
+func TestService_ResubmitStagingImages_EditAfterRestart(t *testing.T) {
+	const imageAPI = "http://127.0.0.1:8080/api/v1/picture/"
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	dir := t.TempDir()
+	fsStore := &image.FileSystem{Location: filepath.Join(dir, "images"), Staging: filepath.Join(dir, "staging")}
+	imgSvc := image.NewService(fsStore, image.ServiceParams{EditDuration: 5 * time.Minute, ImageAPI: imageAPI})
+	defer imgSvc.Close(context.Background())
+	b := DataStore{Engine: eng, EditDuration: 5 * time.Minute, ImageService: imgSvc}
+
+	// a comment posted a minute before the restart, whose first picture was committed at the stop
+	require.NoError(t, fsStore.Save("dev_user/pic1", []byte("picture 1")))
+	require.NoError(t, fsStore.Commit("dev_user/pic1"))
+	comment := store.Comment{
+		ID:        "id-pic",
+		Text:      `<img src="` + imageAPI + `dev_user/pic1">`,
+		Timestamp: time.Now().Add(-time.Minute),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "dev_user", Name: "dev user"},
+	}
+	_, err := eng.Create(comment)
+	require.NoError(t, err)
+
+	require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+
+	// the comment is edited after the restart to add a second picture
+	require.NoError(t, fsStore.Save("dev_user/pic2", []byte("picture 2")))
+	comment.Text += `<img src="` + imageAPI + `dev_user/pic2">`
+	require.NoError(t, eng.Update(comment))
+
+	imgSvc.Close(context.Background()) // commits submitted images without waiting
+	for _, id := range []string{"dev_user/pic1", "dev_user/pic2"} {
+		_, err = os.Stat(filepath.Join(fsStore.Location, id))
+		assert.NoError(t, err, "%s committed", id)
+	}
+}
+
 func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 	mockStore := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
 		return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
@@ -3669,8 +3774,9 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 			return nil, fmt.Errorf("mockError")
 		},
 	}
-	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
-	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
+	since := time.Time{}.Add(time.Second - 20*time.Millisecond) // the oldest staged image's time less two edit windows
+	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: since}
+	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: since}
 	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
 	// one call without error and one with error

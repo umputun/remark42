@@ -127,6 +127,17 @@ func TestFsStore_LoadAfterSave(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFsStore_CommitCommitted(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	id := "user1/test_img"
+	require.NoError(t, svc.Save(id, gopherPNGBytes()))
+	require.NoError(t, svc.Commit(id))
+	assert.NoError(t, svc.Commit(id), "committed image committed again")
+	assert.Error(t, svc.Commit("user1/missing_img"), "image in neither location")
+}
+
 func TestFsStore_LoadAfterCommit(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()
