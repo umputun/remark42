@@ -56,6 +56,7 @@ type privStore interface {
 	EditComment(locator store.Locator, commentID string, req service.EditRequest) (comment store.Comment, err error)
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+	ReplyDepth(locator store.Locator, comment store.Comment, limit int) (int, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	GetUserEmail(siteID, userID string) (string, error)
 	SetUserEmail(siteID, userID, value string) (string, error)
@@ -99,6 +100,11 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	rest.HTMLResponse(w, http.StatusOK, comment.Text)
 }
+
+// maxReplyDepth is how many replies can stand one under another below a top-level comment. The tree of
+// a post goes out as nested JSON, a level of nesting for every reply in such a chain, and the encoder
+// refuses nesting past a limit of its own; discussions stay far below either number.
+const maxReplyDepth = 500
 
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
@@ -151,9 +157,22 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	// from the top-level comments, so a reply to anything else would be stored and counted but never shown.
 	// A deleted parent stays in the store and can still be answered.
 	if comment.ParentID != "" {
-		if _, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{}); err != nil {
+		parent, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{})
+		if err != nil {
 			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("parent comment not found"),
 				"can't find parent comment", rest.ErrCommentNotFound)
+			return
+		}
+		depth, err := s.dataService.ReplyDepth(comment.Locator, parent, maxReplyDepth)
+		if err != nil {
+			rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("can't read the thread"),
+				"can't check reply depth", rest.ErrInternal)
+			return
+		}
+		if depth >= maxReplyDepth {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest,
+				fmt.Errorf("a reply can be at most %d replies below a top-level comment", maxReplyDepth),
+				"invalid comment", rest.ErrCommentValidation)
 			return
 		}
 	}

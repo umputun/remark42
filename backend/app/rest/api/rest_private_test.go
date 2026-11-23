@@ -508,6 +508,88 @@ func TestRest_CreateReplyToExistingParent(t *testing.T) {
 		deletedByAdmin: {replyToAdminDeleted}}, replies)
 }
 
+func TestRest_CreateReplyDepthLimit(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	loc := store.Locator{SiteID: "remark42", URL: postURL}
+
+	// a top-level comment with a chain of replies under it, each answering the one before, put
+	// straight into the store. The last of them is one reply short of the limit
+	deepest := ""
+	for depth := range maxReplyDepth {
+		id := fmt.Sprintf("depth-%d", depth)
+		_, err := srv.DataService.Engine.Create(store.Comment{ID: id, ParentID: deepest, Text: "chain", Locator: loc,
+			User: store.User{ID: "u1", Name: "user"}, Timestamp: time.Now()})
+		require.NoError(t, err)
+		deepest = id
+	}
+
+	// a reply to it stands at the limit and is taken
+	atLimit := addComment(t, store.Comment{Text: "at the limit", ParentID: deepest, Locator: loc}, ts)
+
+	// a reply to that one would stand past the limit
+	body, err := json.Marshal(store.Comment{Text: "past the limit", ParentID: atLimit, Locator: loc})
+	require.NoError(t, err)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", string(body))
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, string(b))
+	assert.JSONEq(t, `{"code":4,"details":"invalid comment",
+		"error":"a reply can be at most 500 replies below a top-level comment"}`, string(b))
+
+	// a comment higher up the same chain can still be answered
+	branch := addComment(t, store.Comment{Text: "branch", ParentID: "depth-100", Locator: loc}, ts)
+
+	// the post comes back as a tree with both replies that were taken and without the refused one
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&format=tree&url="+postURL)
+	require.Equal(t, http.StatusOK, code)
+	tree := service.Tree{}
+	require.NoError(t, json.Unmarshal([]byte(res), &tree))
+	ids := map[string]bool{}
+	nodes := tree.Nodes
+	for len(nodes) > 0 {
+		n := nodes[len(nodes)-1]
+		nodes = append(nodes[:len(nodes)-1], n.Replies...)
+		ids[n.Comment.ID] = true
+	}
+	assert.Equal(t, maxReplyDepth+2, len(ids), "the chain and the two replies that were taken")
+	assert.True(t, ids[atLimit], "the reply at the limit")
+	assert.True(t, ids[branch], "the reply higher up the chain")
+}
+
+func TestRest_CreateReplyUnknownDepth(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	const postURL = "https://radio-t.com/blah1"
+	loc := store.Locator{SiteID: "remark42", URL: postURL}
+
+	// a comment whose parent is not in the store, as an import can leave one
+	_, err := srv.DataService.Engine.Create(store.Comment{ID: "orphan", ParentID: "missing", Text: "orphan",
+		Locator: loc, User: store.User{ID: "u1", Name: "user"}, Timestamp: time.Now()})
+	require.NoError(t, err)
+
+	// a reply to it can't be placed at a known depth and is refused before it is stored
+	body, err := json.Marshal(store.Comment{Text: "reply", ParentID: "orphan", Locator: loc})
+	require.NoError(t, err)
+	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", string(body))
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, string(b))
+	assert.JSONEq(t, `{"code":0,"details":"can't check reply depth","error":"can't read the thread"}`, string(b))
+
+	comments, err := srv.DataService.Engine.Find(engine.FindRequest{Locator: loc, Sort: "time"})
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "orphan", comments[0].ID)
+}
+
 func TestRest_CreateWithQuotes(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()

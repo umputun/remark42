@@ -178,6 +178,23 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 	return s.alterComment(c, user), nil
 }
 
+// ReplyDepth returns how many comments stand above the comment in its thread, 0 for a top-level one,
+// counting no further than limit. It reads only the stored comments, one per step, since nothing but
+// their parent ids is needed. A comment above it that can't be read is an error, as the depth is then
+// unknown.
+func (s *DataStore) ReplyDepth(locator store.Locator, comment store.Comment, limit int) (int, error) {
+	depth := 0
+	for comment.ParentID != "" && depth < limit {
+		parent, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: comment.ParentID})
+		if err != nil {
+			return depth, fmt.Errorf("can't read comment %s above %s: %w", comment.ParentID, comment.ID, err)
+		}
+		comment = parent
+		depth++
+	}
+	return depth, nil
+}
+
 // Put updates comment, mutable parts only
 func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	comment.Locator = locator
