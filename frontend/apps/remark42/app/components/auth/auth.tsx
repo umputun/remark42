@@ -44,6 +44,11 @@ export function Auth() {
   // UI State
   const [isLoading, setLoading] = useState(false);
   const [view, setView] = useState<(typeof formProviders)[number] | 'token' | 'telegram'>(formProviders[0]);
+  // what the reader has typed and the tab it is on stay while the dropdown is closed and opened
+  // again, and the address while the email field is away on another tab or step
+  const [formView, setFormView] = useState(formProviders[0]);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
@@ -55,7 +60,7 @@ export function Auth() {
   }
 
   function resetView() {
-    setView(formProviders[0]);
+    setView(formView);
     setError(null);
   }
 
@@ -102,9 +107,10 @@ export function Auth() {
   }
 
   function handleProviderChange(evt: Event) {
-    const { value } = evt.currentTarget as HTMLInputElement;
+    const value = (evt.currentTarget as HTMLInputElement).value as (typeof formProviders)[number];
 
-    setView(value as (typeof formProviders)[number]);
+    setFormView(value);
+    setView(value);
     setError(null);
   }
 
@@ -252,6 +258,7 @@ export function Auth() {
 
   function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
+    setFormView('email');
     setView('email');
     setError(null);
   }
@@ -408,9 +415,12 @@ export function Auth() {
                         title={intl.formatMessage(messages.usernameRestriction)}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
+                        value={username}
+                        onInput={(evt) => setUsername(evt.currentTarget.value)}
                         onBlur={(evt) => {
-                          const element = evt.target as HTMLInputElement;
+                          const element = evt.currentTarget;
                           element.value = element.value.trim();
+                          setUsername(element.value);
                         }}
                         dir="auto"
                       />
@@ -424,6 +434,8 @@ export function Auth() {
                           type="email"
                           placeholder={intl.formatMessage(messages.emailAddress)}
                           disabled={isLoading}
+                          value={email}
+                          onInput={(evt) => setEmail(evt.currentTarget.value)}
                           dir="auto"
                         />
                       </div>

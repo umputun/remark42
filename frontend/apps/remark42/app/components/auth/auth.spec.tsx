@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 
-import { fireEvent, waitFor, screen } from '@testing-library/preact';
+import { act, fireEvent, waitFor, screen } from '@testing-library/preact';
 import { render } from 'tests/utils';
 
 import type { OAuthProvider, Tree, User } from 'common/types';
@@ -302,6 +302,123 @@ describe('<Auth/>', () => {
 
     await waitFor(() => expect(getByText('Token is invalid')).toBeInTheDocument());
     expect(getByText('Token is invalid')).toHaveClass('auth-error');
+  });
+
+  describe('what the reader has typed', () => {
+    function typeInto(placeholder: string, value: string) {
+      fireEvent.input(screen.getByPlaceholderText(placeholder), { target: { value } });
+    }
+
+    function valueOf(placeholder: string) {
+      return (screen.getByPlaceholderText(placeholder) as HTMLInputElement).value;
+    }
+
+    it('stays when the dropdown is closed by its button and opened again', () => {
+      StaticStore.config.auth_providers = ['email'];
+      const { container } = render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      typeInto('Name', 'username');
+      typeInto('Email address', 'email@email.com');
+      fireEvent.click(screen.getByText('Sign in'));
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Sign in'));
+      expect(valueOf('Name')).toBe('username');
+      expect(valueOf('Email address')).toBe('email@email.com');
+    });
+
+    it('stays when the page closes the dropdown', async () => {
+      StaticStore.config.auth_providers = ['anonymous'];
+      const { container } = render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      typeInto('Name', 'username');
+      // act runs the effects of the close, which a reader's next click comes long after: until
+      // then the closed dropdown still takes a click on the button for one outside it
+      await act(async () => postFromParent({ clickOutside: true }));
+      expect(container.querySelector('.auth-dropdown')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Sign in'));
+      expect(valueOf('Name')).toBe('username');
+    });
+
+    it('keeps the address and the tab through a visit to the other tab', () => {
+      StaticStore.config.auth_providers = ['anonymous', 'email'];
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.click(screen.getByLabelText('email'));
+      typeInto('Name', 'username');
+      typeInto('Email address', 'email@email.com');
+      fireEvent.click(screen.getByLabelText('anonym'));
+      expect(screen.queryByPlaceholderText('Email address')).not.toBeInTheDocument();
+      expect(valueOf('Name')).toBe('username');
+
+      fireEvent.click(screen.getByLabelText('email'));
+      expect(valueOf('Email address')).toBe('email@email.com');
+
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.click(screen.getByText('Sign in'));
+      expect(screen.getByDisplayValue('email')).toBeChecked();
+      expect(valueOf('Email address')).toBe('email@email.com');
+    });
+
+    it.each`
+      way            | leave
+      ${'goes back'} | ${() => fireEvent.click(screen.getByText('Back'))}
+      ${'closes the dropdown'} | ${() => {
+        fireEvent.click(screen.getByTitle('Close sign-in dropdown'));
+        fireEvent.click(screen.getByText('Sign in'));
+      }}
+    `('is on the email tab when the reader $way from the token step', async ({ leave }) => {
+      StaticStore.config.auth_providers = ['anonymous', 'email'];
+      const emailSignin = jest.spyOn(api, 'emailSignin').mockImplementationOnce(async () => null);
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.click(screen.getByLabelText('email'));
+      typeInto('Name', 'username');
+      typeInto('Email address', 'email@email.com');
+      fireEvent.click(screen.getByText('Confirm'));
+      await waitFor(() => expect(emailSignin).toHaveBeenCalled());
+      expect(screen.getByPlaceholderText('Paste the token from the email')).toBeInTheDocument();
+
+      leave();
+      expect(screen.getByDisplayValue('email')).toBeChecked();
+      expect(valueOf('Name')).toBe('username');
+      expect(valueOf('Email address')).toBe('email@email.com');
+    });
+
+    // the tabs stay enabled while the address is being sent, so the reader can be on another one by the
+    // time the token step opens
+    it('is on the email tab after a step back to it from the token step', async () => {
+      StaticStore.config.auth_providers = ['anonymous', 'email'];
+      let sent = () => {};
+      const emailSignin = jest
+        .spyOn(api, 'emailSignin')
+        .mockImplementationOnce(() => new Promise((resolve) => (sent = () => resolve(null))));
+      render(<Auth />);
+
+      fireEvent.click(screen.getByText('Sign in'));
+      fireEvent.click(screen.getByLabelText('email'));
+      typeInto('Name', 'username');
+      typeInto('Email address', 'email@email.com');
+      fireEvent.click(screen.getByText('Confirm'));
+      await waitFor(() => expect(emailSignin).toHaveBeenCalled());
+      fireEvent.click(screen.getByLabelText('anonym'));
+      await act(async () => sent());
+      expect(screen.getByPlaceholderText('Paste the token from the email')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Back'));
+      expect(screen.getByDisplayValue('email')).toBeChecked();
+      fireEvent.click(screen.getByText('Confirm'));
+      await screen.findByPlaceholderText('Paste the token from the email');
+      fireEvent.click(screen.getByTitle('Close sign-in dropdown'));
+      fireEvent.click(screen.getByText('Sign in'));
+
+      expect(screen.getByDisplayValue('email')).toBeChecked();
+    });
   });
 
   describe('token pasted into the field', () => {
