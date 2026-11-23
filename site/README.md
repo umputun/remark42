@@ -38,6 +38,7 @@ Writes the static site to `build/`, which is what the Docker image serves. `--cl
 | `static/`                  | Files copied to the site root as-is: favicons, manifest, `robots.txt` |
 | `data/nav.json`            | The documentation sidebar                                             |
 | `data/anchor_aliases.json` | Previous anchors of headings, kept as link targets                    |
+| `data/meta.json`           | Title and description of each page for search and link previews       |
 | `hugo.toml`                | Site configuration                                                    |
 
 ## Writing docs
@@ -45,6 +46,8 @@ Writes the static site to `build/`, which is what the Docker image serves. `--cl
 A page is a markdown file with a `title` in its front matter. A directory becomes a section when it holds `_index.md`, and a page that carries its own images is a directory with `index.md` and the images beside it.
 
 Adding a page to the sidebar means adding an entry to `data/nav.json`; the paths there are relative to `/docs`.
+
+The title and description a page shows in search results and link previews are set in `data/meta.json`, keyed by the page's URL path, such as `/docs/manuals/nginx/`. Without an entry a page gets "<its title> | Remark42" as the title, and as the description its front-matter `metaDescription` or `description`, or else the start of its text.
 
 `data/anchor_aliases.json` keeps a heading's previous anchors working after its anchor changes. For each page it maps a heading's current anchor to its previous anchor, or to a list of them, and the heading renders each one as an empty target. A renamed heading listed there needs its entry re-keyed under the new anchor, with the old anchor added to its list; otherwise every previous anchor of that heading stops resolving.
 
