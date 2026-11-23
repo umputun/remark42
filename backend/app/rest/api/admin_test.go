@@ -32,8 +32,7 @@ import (
 )
 
 func TestAdmin_Delete(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
@@ -123,8 +122,7 @@ func TestAdmin_Delete(t *testing.T) {
 }
 
 func TestAdmin_Title(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +168,7 @@ func TestAdmin_Title(t *testing.T) {
 // TestAdmin_TitleKeptWhenPageFails runs the title update the way cleanup --title does, one request per
 // comment of a post, against a page that can no longer be read: every comment keeps the title it has
 func TestAdmin_TitleKeptWhenPageFails(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	var pageDown atomic.Bool
 	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -216,8 +213,7 @@ func TestAdmin_TitleKeptWhenPageFails(t *testing.T) {
 }
 
 func TestAdmin_DeleteUser(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Orig: "o test test #1", User: store.User{ID: "id1", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
@@ -270,8 +266,7 @@ func TestAdmin_DeleteUser(t *testing.T) {
 
 // an admin deleting a comment removes the author's own upload and keeps another user's upload the comment showed
 func TestAdmin_DeleteCommentPictures(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
 	imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
@@ -340,8 +335,7 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
-			ts, srv, teardown := startupT(t)
-			defer teardown()
+			ts, srv := startupT(t)
 
 			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
 			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
@@ -389,8 +383,7 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 func TestAdmin_DeleteUserAvatar(t *testing.T) {
 	for _, avatarExists := range []bool{true, false} {
 		t.Run(fmt.Sprintf("avatar exists %v", avatarExists), func(t *testing.T) {
-			ts, srv, teardown := startupT(t)
-			defer teardown()
+			ts, srv := startupT(t)
 
 			avatarFile := testAvatarDir(srv) + "/42/pic.image"
 			if avatarExists {
@@ -419,8 +412,7 @@ func TestAdmin_DeleteUserAvatar(t *testing.T) {
 func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
 	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 	require.NoError(t, err)
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
 		User: store.User{Name: "user1", ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image"}}
@@ -468,8 +460,7 @@ func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
 func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 	require.NoError(t, err)
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
 		User: store.User{Name: "user1", ID: "user1"}}
@@ -507,8 +498,7 @@ func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 }
 
 func TestAdmin_Pin(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
@@ -553,12 +543,11 @@ func TestAdmin_Pin(t *testing.T) {
 }
 
 func TestAdmin_PinFlushesLastComments(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+	ts, _ := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
 		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 		require.NoError(t, err)
 		srv.Cache = cache.NewScache(lru)
 	})
-	defer teardown()
 
 	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
 	res, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
@@ -579,8 +568,7 @@ func TestAdmin_PinFlushesLastComments(t *testing.T) {
 }
 
 func TestAdmin_Block(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	makeTwoComments := func() {
 		c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -715,8 +703,7 @@ func putBlockUser(t *testing.T, tsURL, userID, query string) (code int, body str
 }
 
 func TestAdmin_BlockRejectsBadTTL(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	tbl := []struct {
 		name, userID, query string
@@ -750,8 +737,7 @@ func TestAdmin_BlockRejectsBadTTL(t *testing.T) {
 }
 
 func TestAdmin_BlockAcceptedTTL(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	tbl := []struct {
 		name, userID, query string
@@ -802,8 +788,7 @@ func TestAdmin_BlockAcceptedTTL(t *testing.T) {
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -879,8 +864,7 @@ func TestAdmin_BlockedList(t *testing.T) {
 }
 
 func TestAdmin_ReadOnly(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -950,8 +934,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 }
 
 func TestAdmin_ReadOnlyNoComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// set post to read-only
 	req, err := http.NewRequest(http.MethodPut,
@@ -987,8 +970,7 @@ func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 }
 
 func TestAdmin_ReadOnlyWithAge(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"},
@@ -1026,8 +1008,7 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	assert.True(t, info.ReadOnly)
 }
 func TestAdmin_Verify(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -1083,12 +1064,11 @@ func TestAdmin_Verify(t *testing.T) {
 }
 
 func TestAdmin_VerifyFlushesLastComments(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+	ts, srv := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
 		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 		require.NoError(t, err)
 		srv.Cache = cache.NewScache(lru)
 	})
-	defer teardown()
 
 	_, err := srv.DataService.Create(store.Comment{Text: "test test #1", User: store.User{Name: "user1 name", ID: "user1"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}})
@@ -1112,8 +1092,7 @@ func TestAdmin_VerifyFlushesLastComments(t *testing.T) {
 }
 
 func TestAdmin_ExportStream(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1131,8 +1110,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 }
 
 func TestAdmin_ExportFile(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1162,8 +1140,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequest(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -1231,8 +1208,7 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequestRejectsExpiredToken(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
 		User: store.User{Name: "user1 name", ID: "user1"}}
@@ -1267,7 +1243,7 @@ func TestAdmin_DeleteMeRequestRejectsExpiredToken(t *testing.T) {
 // an admin is an admin of the site the session belongs to, so a deletion token for another site
 // served by the same instance must not be processed under that session
 func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		require.NoError(t, srv.DataService.Engine.Close())
 		b, err := engine.NewBoltDB(bolt.Options{},
 			engine.BoltSite{FileName: filepath.Join(t.TempDir(), "remark42.db"), SiteID: "remark42"},
@@ -1276,7 +1252,6 @@ func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
 		srv.DataService.Engine = b
 		srv.DataService.AdminStore = adminstore.NewStaticStore("123456", []string{"remark42", "other"}, []string{"a1", "a2"}, "admin@remark-42.com")
 	})
-	defer teardown()
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "other", URL: "https://radio-t.com/blah"},
 		User: store.User{Name: "user1 name", ID: "user1"}}
@@ -1322,8 +1297,7 @@ func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
 // a delete_me request whose token carries a picture must still succeed when the avatar is
 // already gone from the store: the user data is deleted and a missing avatar is tolerated
 func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user3 name", ID: "user3"}}
@@ -1366,8 +1340,7 @@ func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
 // a genuine (non not-found) avatar-store failure must now surface, not be silently swallowed:
 // avatar.ErrNotFound lets deleteMeRequestCtrl tell an already-gone avatar from a real error
 func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user5 name", ID: "user5"}}
@@ -1432,8 +1405,7 @@ func TestAvatarIDFromPicture(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "provider1_user1"}}
@@ -1533,8 +1505,7 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 }
 
 func TestAdmin_GetUserInfo(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
 		URL: "https://radio-t.com/blah"}, User: store.User{Name: "user1 name", ID: "user1"}}
@@ -1564,8 +1535,7 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 
 // a token without a user, such as an email confirmation token, is refused, not dereferenced
 func TestAdmin_DeleteMeRequestTokenWithoutUser(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::me@example.com"},
@@ -1593,10 +1563,9 @@ func (e emptyUserFinder) Find(req engine.FindRequest) ([]store.Comment, error) {
 
 // an empty user list without an error is reported as a client error, not passed on as a nil error
 func TestAdmin_GetUserInfoEmptyWithoutError(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.DataService.Engine = emptyUserFinder{Interface: srv.DataService.Engine}
 	})
-	defer teardown()
 
 	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/user/nobody?site=remark42")
 	assert.Equal(t, http.StatusBadRequest, code, body)

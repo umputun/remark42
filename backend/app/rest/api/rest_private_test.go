@@ -44,8 +44,7 @@ const gopher = `iVBORw0KGgoAAAANSUhEUgAAAEsAAAA8CAAAAAALAhhPAAAFfUlEQVRYw62XeWwU
 func gopherPNG() io.Reader { return base64.NewDecoder(base64.StdEncoding, strings.NewReader(gopher)) }
 
 func TestRest_Create(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
@@ -66,8 +65,7 @@ func TestRest_Create(t *testing.T) {
 
 // based on issue https://github.com/umputun/remark42/issues/1292
 func TestRest_CreateFilteredCode(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
 		`{"text": "`+"`foo<bar>`"+`", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`)
@@ -91,9 +89,8 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 
 // based on issue https://github.com/umputun/remark42/issues/1631
 func TestRest_CreateAndPreviewWithImage(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv := startupT(t)
 	ts.Close()
-	defer teardown()
 
 	srv.ImageService.ProxyAPI = srv.RemarkURL + "/api/v1/img"
 	srv.ImageProxy = &proxy.Image{
@@ -171,8 +168,7 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 }
 
 func TestRest_CreateOldPost(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// make old, but not too old comment
 	old := store.Comment{Text: "test test old", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
@@ -206,8 +202,7 @@ func TestRest_CreateOldPost(t *testing.T) {
 }
 
 func TestRest_CreateTooBig(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	longComment := fmt.Sprintf(`{"text": "%4001s", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, "Щ")
 
@@ -238,8 +233,7 @@ func TestRest_CreateTooBig(t *testing.T) {
 }
 
 func TestRest_CreateWithRestrictedWord(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	badComment := `{"text": "What the duck is that?", "locator":{"url": "https://radio-t.com/blah1",
 "site": "remark42"}}`
@@ -259,8 +253,7 @@ func TestRest_CreateWithRestrictedWord(t *testing.T) {
 }
 
 func TestRest_CreateRelativeURL(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	// check that it's not possible to click insert URL button and not alter the URL in it (which is `url` by default)
 	relativeURLText := `{"text": "here is a link with relative URL: [google.com](url)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
@@ -278,8 +271,7 @@ func TestRest_CreateRelativeURL(t *testing.T) {
 }
 
 func TestRest_CreateRejected(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	body := `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 
 	// try to create without auth
@@ -311,13 +303,12 @@ func TestRest_CreateBlockedDuringTitleFetch(t *testing.T) {
 		_, err := w.Write([]byte("<html><title>post title</title><body>...</body></html>"))
 		assert.NoError(t, err)
 	}))
-	defer tss.Close()
+	t.Cleanup(tss.Close) // after the server of startupT stops, which is registered later
 
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		srvRef = srv
 		srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})
 	})
-	defer teardown()
 
 	create := func() (code int, body string) {
 		reqBody := fmt.Sprintf(`{"text": "test 123", "locator":{"url": "%s/post1", "site": "remark42"}}`, tss.URL)
@@ -345,8 +336,7 @@ func TestRest_CreateBlockedDuringTitleFetch(t *testing.T) {
 }
 
 func TestRest_CreateWithWrongImage(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	// create comment
@@ -362,8 +352,7 @@ func TestRest_CreateWithWrongImage(t *testing.T) {
 }
 
 func TestRest_CreateWithLazyImage(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	body := `{"text": "test 123 ![](http://example.com/image.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42", body)
@@ -379,8 +368,7 @@ func TestRest_CreateWithLazyImage(t *testing.T) {
 }
 
 func TestRest_CreateAndGet(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	// create comment
 	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
@@ -418,8 +406,7 @@ func TestRest_CreateAndGet(t *testing.T) {
 }
 
 func TestRest_CreateReplyWithoutParentRefused(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	top := addComment(t, store.Comment{Text: "top-level",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}, ts)
@@ -459,8 +446,7 @@ func TestRest_CreateReplyWithoutParentRefused(t *testing.T) {
 }
 
 func TestRest_CreateReplyToExistingParent(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	const postURL = "https://radio-t.com/blah1"
 	loc := store.Locator{SiteID: "remark42", URL: postURL}
@@ -509,8 +495,7 @@ func TestRest_CreateReplyToExistingParent(t *testing.T) {
 }
 
 func TestRest_CreateReplyDepthLimit(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	const postURL = "https://radio-t.com/blah1"
 	loc := store.Locator{SiteID: "remark42", URL: postURL}
@@ -562,8 +547,7 @@ func TestRest_CreateReplyDepthLimit(t *testing.T) {
 }
 
 func TestRest_CreateReplyUnknownDepth(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	const postURL = "https://radio-t.com/blah1"
 	loc := store.Locator{SiteID: "remark42", URL: postURL}
@@ -591,8 +575,7 @@ func TestRest_CreateReplyUnknownDepth(t *testing.T) {
 }
 
 func TestRest_CreateWithQuotes(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// create comment with quotes with smartypants
 	resp, err := post(t, ts.URL+"/api/v1/comment?site=remark42",
@@ -641,8 +624,7 @@ func TestRest_CreateWithQuotes(t *testing.T) {
 }
 
 func TestRest_Update(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -682,8 +664,7 @@ func TestRest_Update(t *testing.T) {
 }
 
 func TestRest_UpdateSanitizesSummary(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
@@ -730,8 +711,7 @@ func TestRest_UpdateSanitizesSummary(t *testing.T) {
 }
 
 func TestRest_ReadSanitizesStoredSummary(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
@@ -760,8 +740,7 @@ func TestRest_ReadSanitizesStoredSummary(t *testing.T) {
 }
 
 func TestRest_UpdateHidesVoters(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
 	id := addComment(t, c1, ts)
@@ -822,8 +801,7 @@ func TestRest_UpdateHidesVoters(t *testing.T) {
 }
 
 func TestRest_UpdateDelete(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -888,8 +866,7 @@ func TestRest_UpdateDelete(t *testing.T) {
 }
 
 func TestRest_SavePictureSubscribersOnly(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.SubscribersOnly = true })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.SubscribersOnly = true })
 
 	t.Run("not a subscriber", func(t *testing.T) {
 		resp := uploadPicture(t, ts.URL, gopherPNG())
@@ -934,8 +911,7 @@ func TestRest_UpdatePictures(t *testing.T) {
 	}
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
-			ts, srv, teardown := startupT(t)
-			defer teardown()
+			ts, srv := startupT(t)
 
 			fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
 			imgSvc := image.NewService(fs, image.ServiceParams{ImageAPI: srv.RemarkURL + "/api/v1/picture/"})
@@ -986,8 +962,7 @@ func TestRest_UpdatePictures(t *testing.T) {
 }
 
 func TestRest_UpdateDeletedByAdmin(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	const postURL = "https://radio-t.com/blah1"
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}
@@ -1046,8 +1021,7 @@ func TestRest_UpdateDeletedByAdmin(t *testing.T) {
 }
 
 func TestRest_UpdateBlockedUser(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	const postURL = "https://radio-t.com/blah1"
 	c1 := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}
@@ -1088,13 +1062,12 @@ func TestRest_UpdateBlockedUser(t *testing.T) {
 
 func TestRest_UpdateReadOnlyPost(t *testing.T) {
 	var rendered atomic.Int32
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
 			rendered.Add(1)
 			return text
 		}))
 	})
-	defer teardown()
 
 	put := func(tkn string, locator store.Locator, id, body string) (code int, respBody string) {
 		req, err := http.NewRequest(http.MethodPut,
@@ -1174,13 +1147,12 @@ func TestRest_UpdateReadOnlyPost(t *testing.T) {
 
 func TestRest_UpdateDeleteDoesNotRenderText(t *testing.T) {
 	var rendered atomic.Int32
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.CommentFormatter = store.NewCommentFormatter(store.CommentConverterFunc(func(text string) string {
 			rendered.Add(1)
 			return text
 		}))
 	})
-	defer teardown()
 
 	const postURL = "https://radio-t.com/blah1"
 	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -1204,8 +1176,7 @@ func TestRest_UpdateDeleteDoesNotRenderText(t *testing.T) {
 }
 
 func TestRest_DeleteChildThenParent(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	p := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1307,8 +1278,7 @@ func TestRest_DeleteChildThenParent(t *testing.T) {
 }
 
 func TestRest_UpdateNotOwner(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "xyz"}}
@@ -1340,8 +1310,7 @@ func TestRest_UpdateNotOwner(t *testing.T) {
 }
 
 func TestRest_UpdateWrongAud(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1360,8 +1329,7 @@ func TestRest_UpdateWrongAud(t *testing.T) {
 }
 
 func TestRest_UpdateWithRestrictedWords(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "What the quack is that?",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1388,11 +1356,10 @@ func TestRest_UpdateWithRestrictedWords(t *testing.T) {
 }
 
 func TestRest_UpdateValidation(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		srv.DataService.MinCommentSize = 5
 		srv.UpdateLimiter = 1000 // every subtest posts and edits on the protected routes
 	})
-	defer teardown()
 
 	const postURL = "https://radio-t.com/blah1"
 	locator := store.Locator{SiteID: "remark42", URL: postURL}
@@ -1514,10 +1481,9 @@ func TestRest_UpdateValidation(t *testing.T) {
 }
 
 func TestRest_RestrictedWordsSplitByMarkup(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.UpdateLimiter = 1000 // every row posts and edits on the protected routes
 	})
-	defer teardown()
 
 	const postURL = "https://radio-t.com/blah1"
 	id := addComment(t, store.Comment{Text: "What the quack is that?", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -1587,8 +1553,7 @@ func TestRest_RestrictedWordsSplitByMarkup(t *testing.T) {
 }
 
 func TestRest_Vote(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
@@ -1679,8 +1644,7 @@ func TestRest_Vote(t *testing.T) {
 func TestRest_AnonVote(t *testing.T) {
 	// startServer starts a server with two comments and returns it with the id of the first one
 	startServer := func(anonVote bool) (ts *httptest.Server, id1 string) {
-		ts, _, teardown := startupT(t, func(srv *Rest) { srv.AnonVote = anonVote })
-		t.Cleanup(teardown)
+		ts, _ = startupT(t, func(srv *Rest) { srv.AnonVote = anonVote })
 
 		c1 := store.Comment{Text: "test test #1",
 			Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
@@ -1744,8 +1708,7 @@ func TestRest_AnonVote(t *testing.T) {
 }
 
 func TestRest_EmailAndTelegram(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	srv.privRest.telegramService = &mockTelegram{site: "remark42"}
 
@@ -1881,8 +1844,7 @@ func (f *fakeDestination) GetVerify() []notify.VerificationRequest {
 // TestRest_EmailSubscribeTakesOnlyBareAddress checks what the subscription accepts as an address.
 // The value ends up in the confirmation mail and in the mailto destination the mailer reads it from
 func TestRest_EmailSubscribeTakesOnlyBareAddress(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	tbl := []struct {
 		name    string
@@ -1918,8 +1880,7 @@ func TestRest_EmailSubscribeTakesOnlyBareAddress(t *testing.T) {
 }
 
 func TestRest_EmailNotification(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
@@ -2154,8 +2115,7 @@ func TestRest_EmailNotification(t *testing.T) {
 }
 
 func TestRest_TelegramNotification(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
@@ -2343,8 +2303,7 @@ func TestRest_TelegramNotification(t *testing.T) {
 }
 
 func TestRest_UserAllData(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// write 3 comments
 	user := store.User{ID: "provider1_dev", Name: "user name 1"}
@@ -2402,8 +2361,7 @@ func TestRest_UserAllData(t *testing.T) {
 }
 
 func TestRest_UserAllDataManyComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	user := store.User{ID: "provider1_dev", Name: "user name 1"}
 	c := store.Comment{User: user, Text: "test test #1", Locator: store.Locator{SiteID: "remark42",
@@ -2440,8 +2398,7 @@ func TestRest_UserAllDataManyComments(t *testing.T) {
 func TestRest_UserAllDataPageBoundaries(t *testing.T) {
 	for _, n := range []int{100, 101, 250} {
 		t.Run(fmt.Sprintf("%d comments", n), func(t *testing.T) {
-			ts, srv, teardown := startupT(t)
-			defer teardown()
+			ts, srv := startupT(t)
 
 			user := store.User{ID: "provider1_dev", Name: "user name 1"}
 			c := store.Comment{User: user, Text: "test", Locator: store.Locator{SiteID: "remark42",
@@ -2460,8 +2417,7 @@ func TestRest_UserAllDataPageBoundaries(t *testing.T) {
 }
 
 func TestRest_UserAllDataNoComments(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	parsed := getUserAllData(t, ts.URL)
 	assert.Equal(t, "provider1_dev", parsed.Info.ID)
@@ -2522,8 +2478,7 @@ func TestRest_UserAllDataDetails(t *testing.T) {
 
 	for _, tt := range tbl {
 		t.Run(tt.name, func(t *testing.T) {
-			ts, srv, teardown := startupT(t)
-			defer teardown()
+			ts, srv := startupT(t)
 
 			if tt.email != "" {
 				_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", tt.email)
@@ -2565,8 +2520,7 @@ func TestRest_UserAllDataDetails(t *testing.T) {
 }
 
 func TestRest_UserAllDataDetailsError(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	srv.privRest.dataService = failingDetailsStore{privStore: srv.privRest.dataService}
 
 	code, body := getUserAllDataBody(t, ts.URL)
@@ -2607,8 +2561,7 @@ func getUserAllDataBody(t *testing.T, url string) (code int, body []byte) {
 }
 
 func TestRest_DeleteMe(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
@@ -2645,8 +2598,7 @@ func TestRest_DeleteMe(t *testing.T) {
 }
 
 func TestRest_SavePictureCtrl(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// save picture
 	savePic := func(name string) (id string) {
@@ -2724,8 +2676,7 @@ func TestRest_SavePictureCtrl(t *testing.T) {
 }
 
 func TestRest_CreateWithPictures(t *testing.T) {
-	ts, svc, teardown := startupT(t)
-	defer teardown()
+	ts, svc := startupT(t)
 	lgr.Setup(lgr.Debug, lgr.CallerFile, lgr.CallerFunc)
 
 	images := filepath.Join(t.TempDir(), "images")
@@ -2851,8 +2802,7 @@ func TestExtractIP(t *testing.T) {
 // a token without a handshake, such as the login token, used as a confirmation token is rejected as invalid,
 // not dereferenced
 func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake:    &token.Handshake{ID: "someone_else::good@example.com"},
@@ -2898,7 +2848,7 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 
 // subscribe and confirm act on the site matchSiteID verified in the query, not on a different site named in the body
 func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		require.NoError(t, srv.DataService.Engine.Close())
 		dir := t.TempDir()
 		b, err := engine.NewBoltDB(bolt.Options{},
@@ -2907,7 +2857,6 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 		require.NoError(t, err)
 		srv.DataService.Engine = b
 	})
-	defer teardown()
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
@@ -2953,8 +2902,7 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 // with the expiry of the token the request came with: the response replaced the renewed token, in the
 // cookie and in the X-JWT header, with one that had expired already.
 func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	userToken := func(email string, expires time.Time) string {
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
@@ -3032,8 +2980,7 @@ func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
 // the admin password sent along with a token that has no user, such as a confirmation token, passes
 // authentication; setting and deleting the email then has no token user to update, which is not a panic
 func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake:    &token.Handshake{ID: "admin::admin@example.com"},
@@ -3079,8 +3026,7 @@ func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 
 // a malformed handshake carries the address, which stays out of the error sent back and logged
 func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
 		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
@@ -3112,8 +3058,7 @@ func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
 
 // a handshake with an empty user or address is rejected, not acted on with the empty part
 func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	for _, hs := range []string{"provider1_dev::", "::good@example.com"} {
 		t.Run(hs, func(t *testing.T) {
@@ -3170,8 +3115,7 @@ func TestRest_EmailUnsubscribeBrokenTemplate(t *testing.T) {
 	}
 	t.Chdir(dir)
 
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	tkn := subscribedUserToken(t, srv)
 
 	for name, url := range map[string]string{
@@ -3201,8 +3145,7 @@ func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
 	}
 	t.Chdir(dir)
 
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	tkn := subscribedUserToken(t, srv)
 
 	for name, tc := range map[string]struct {
@@ -3225,8 +3168,7 @@ func TestRest_EmailUnsubscribeNamedTemplateOverride(t *testing.T) {
 // stores the address. The token comes from the subscribe request itself, so the marker and the site it
 // carries are the ones sendEmailConfirmationCtrl writes
 func TestRest_EmailSubscribeLink(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
@@ -3326,8 +3268,7 @@ func TestRest_EmailSubscribeLink(t *testing.T) {
 // default update limit, half a request a second per path, that read must not use up the reader's
 // DELETE /email: the limiter keys on the path and not the method
 func TestRest_GetEmailLeavesUnsubscribeAvailable(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { srv.UpdateLimiter = 0.5 })
-	defer teardown()
+	ts, _ := startupT(t, func(srv *Rest) { srv.UpdateLimiter = 0.5 })
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
@@ -3351,8 +3292,7 @@ func TestRest_GetEmailLeavesUnsubscribeAvailable(t *testing.T) {
 // carry the same user::address handshake, and with no session to compare the user with, accepting them
 // would let anyone point another user's notifications at their own address
 func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mint := func(c token.Claims) string {
 		if c.ExpiresAt == nil {
@@ -3423,8 +3363,7 @@ func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
 // the token of the unsubscribe link is mailed with every reply and lasts a century, so it does not confirm
 // the address it names, while the confirmation token sent on subscribe does, and does not unsubscribe
 func TestRest_EmailConfirmWithUnsubscribeToken(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
@@ -3481,8 +3420,7 @@ func TestRest_EmailConfirmWithUnsubscribeToken(t *testing.T) {
 // the unsubscribe page gives one answer to a link that does not match the stored address, whether the user
 // has no address or another one, and takes no email login token, whose user part the requester chooses
 func TestRest_EmailUnsubscribeTellsNothingAboutAnotherUser(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mint := func(c token.Claims) string {
 		c.Audience = jwt.ClaimStrings{"remark42"}
@@ -3524,7 +3462,7 @@ func TestRest_EmailUnsubscribeTellsNothingAboutAnotherUser(t *testing.T) {
 // for another site: the unsubscribe page needs no session, so nothing else ties the link to its site, and a
 // user has the same ID on every site of a server
 func TestRest_EmailTokenOfAnotherSite(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		require.NoError(t, srv.DataService.Engine.Close())
 		dir := t.TempDir()
 		b, err := engine.NewBoltDB(bolt.Options{},
@@ -3533,7 +3471,6 @@ func TestRest_EmailTokenOfAnotherSite(t *testing.T) {
 		require.NoError(t, err)
 		srv.DataService.Engine = b
 	})
-	defer teardown()
 
 	siteToken := func(provider *token.AuthProvider, site ...string) string {
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
@@ -3593,8 +3530,7 @@ func TestRest_EmailTokenOfAnotherSite(t *testing.T) {
 // the basic-auth admin may name the site in the body only; the confirmation token is issued for that site,
 // and the confirmation for the same site accepts it
 func TestRest_EmailConfirmationTokenForSiteInBody(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
@@ -3632,8 +3568,7 @@ func TestRest_EmailConfirmationTokenForSiteInBody(t *testing.T) {
 // the admin password authenticates a request with no session token, and the address must be stored, and removed,
 // with a 200 for both, as there is no token to update
 func TestRest_EmailWithAdminPasswordAndNoSessionToken(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	mockDestination := &fakeDestination{}
 	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)

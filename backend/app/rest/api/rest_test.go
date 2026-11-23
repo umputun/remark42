@@ -61,8 +61,7 @@ var devTokenBadAud = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJyZW1hcms0M
 var adminUmputunToken = `eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJyZW1hcms0MiIsImV4cCI6MTk1NDU5Nzk4MCwianRpIjoiOTdhMmUwYWM0ZGM3ZDVmNjkyNmQ1ZTg2MjBhY2VmOWE0MGMwIiwiaWF0IjoxNDU0NTk3NjgwLCJpc3MiOiJyZW1hcms0MiIsInVzZXIiOnsibmFtZSI6IlVtcHV0dW4iLCJpZCI6ImdpdGh1Yl9lZjBmNzA2YTciLCJwaWN0dXJlIjoiaHR0cHM6Ly9yZW1hcms0Mi5yYWRpby10LmNvbS9hcGkvdjEvYXZhdGFyL2NiNDJmZjQ5M2FkZTY5NmQ4OGEzYTU5MGYxMzZhZTllMzRkZTdjMWIuaW1hZ2UiLCJhdHRycyI6eyJhZG1pbiI6dHJ1ZSwiYmxvY2tlZCI6ZmFsc2V9fX0.dZiOjWHguo9f42XCMooMcv4EmYFzifl_-LEvPZHCtks`
 
 func TestRest_FileServer(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	testHTMLName := "test-remark.html"
 	err := os.WriteFile(filepath.Join(srv.WebRoot, testHTMLName), []byte("some html"), 0o600)
@@ -77,8 +76,7 @@ func TestRest_FileServer(t *testing.T) {
 // sensitive to the router: the bare /web -> /web/ redirect, cache headers applied to
 // served assets, 404 for missing files, and the directory-listing block.
 func TestRest_FileServerStaticAssets(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	require.NoError(t, os.WriteFile(srv.WebRoot+"/asset-test.html", []byte("static body"), 0o600))
 	require.NoError(t, os.MkdirAll(srv.WebRoot+"/subdir-test", 0o700))
@@ -127,8 +125,7 @@ func TestRest_FileServerStaticAssets(t *testing.T) {
 // name the frontend build provides is served from there instead. WebRoot is a fresh empty
 // directory so the frontend side is known, rather than the shared temp dir startupT defaults to.
 func TestRest_FileServerBackendAssets(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.WebRoot = t.TempDir() })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.WebRoot = t.TempDir() })
 
 	t.Run("serves every embedded asset byte for byte", func(t *testing.T) {
 		for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg"} {
@@ -271,11 +268,10 @@ func TestRest_FileServerRoutesEmbedded(t *testing.T) {
 		"web/iframe.html": {Data: []byte("embedded iframe")},
 		"web/remark.mjs":  {Data: []byte("embedded bundle")},
 	}
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.WebRoot = filepath.Join(t.TempDir(), "absent")
 		srv.WebFS = frontend
 	})
-	defer teardown()
 
 	t.Run("serves the frontend from under the web prefix", func(t *testing.T) {
 		for name, want := range map[string]string{
@@ -318,11 +314,10 @@ func (refusingSubFS) Sub(string) (fs.FS, error) { return nil, errors.New("refuse
 // TestRest_FileServerFrontendSourceRefused covers the branch where the frontend source cannot be
 // sub-rooted: /web must keep serving the embedded assets rather than panicking.
 func TestRest_FileServerFrontendSourceRefused(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.WebRoot = filepath.Join(t.TempDir(), "absent")
 		srv.WebFS = refusingSubFS{}
 	})
-	defer teardown()
 
 	t.Run("the embedded assets still serve", func(t *testing.T) {
 		want, err := fs.ReadFile(webassets.FS, "privacy.html")
@@ -344,8 +339,7 @@ func TestRest_FileServerFrontendSourceRefused(t *testing.T) {
 // GET routes (which stdlib http.ServeMux would otherwise route to the GET handler) while
 // still being served for safe, read-only routes.
 func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
@@ -392,8 +386,7 @@ func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
 // TestRest_AuthEndpointsHaveOnePath checks that the auth handler answers each of its endpoints
 // under one path only. The limiter of the auth routes and validEmailAuth both go by the path
 func TestRest_AuthEndpointsHaveOnePath(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	client := http.Client{Timeout: 10 * time.Second}
 	defer client.CloseIdleConnections()
@@ -422,8 +415,7 @@ func TestRest_AuthEndpointsHaveOnePath(t *testing.T) {
 
 // regression: a browser holding cached admin basic credentials replayed them for a cross-site page
 func TestRest_CrossSiteBasicAuthRejected(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	client := http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
@@ -469,8 +461,7 @@ func TestRest_RequestLogHidesEmail(t *testing.T) {
 	logs := &lockedBuffer{}
 	lgr.Setup(lgr.Out(logs), lgr.Err(io.Discard))
 	t.Cleanup(func() { lgr.Setup() })
-	ts, _, teardown := startupT(t) // routes() picks up the logger set above
-	defer teardown()
+	ts, _ := startupT(t) // routes() picks up the logger set above
 
 	client := http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
@@ -555,8 +546,7 @@ func (b *lockedBuffer) String() string {
 // still route to the avatar handler after the chi Mount -> ServeMux Handle rewiring,
 // rather than falling through to a router 404.
 func TestRest_AvatarMounts(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	for _, path := range []string{"/api/v1/avatar/nonexistent.image", "/avatar/nonexistent.image"} {
 		t.Run(path, func(t *testing.T) {
@@ -749,7 +739,7 @@ func TestRest_parseError(t *testing.T) {
 }
 
 func TestRest_frameAncestors(t *testing.T) {
-	ts, _, teardown := startupT(t, func(o *Rest) {
+	ts, _ := startupT(t, func(o *Rest) {
 		o.AllowedAncestors = []string{"'self'", "https://example.com"}
 	})
 
@@ -759,17 +749,16 @@ func TestRest_frameAncestors(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "frame-ancestors 'self' https://example.com;")
-	// httptest.Server.Close waits on connections still in use, and a deferred close does not run
-	// until the test ends, so the body has to be released before the server is torn down here
+	// httptest.Server.Close waits on connections still in use, and the cleanup of startupT does not
+	// run until the test ends, so the body has to be released before the server is closed here
 	require.NoError(t, resp.Body.Close())
 	client.CloseIdleConnections()
-	teardown()
+	ts.Close() // stop the first server here, its cleanup closing it again does nothing
 
 	// test case without frame-ancestors
-	ts, _, teardown = startupT(t, func(srv *Rest) {
+	ts, _ = startupT(t, func(srv *Rest) {
 		srv.AllowedAncestors = []string{}
 	})
-	defer teardown()
 	resp, err = client.Get(ts.URL + "/web/index.html")
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -779,7 +768,7 @@ func TestRest_frameAncestors(t *testing.T) {
 
 // startupT runs fully configured testing server
 // srvHook is an optional func to set some Rest param after the creation but prior to Run
-func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest, teardown func()) {
+func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, srv *Rest) {
 	// every directory the server writes to is the test's own, so a run in another checkout can't remove it
 	tmp := t.TempDir()
 	testDB := filepath.Join(tmp, "test-remark.db")
@@ -859,12 +848,13 @@ func startupT(t *testing.T, srvHook ...func(srv *Rest)) (ts *httptest.Server, sr
 	routes := srv.routes()
 	ts = httptest.NewServer(routes)
 
-	teardown = func() {
+	// registered after t.TempDir, so the server stops before its directory is removed
+	t.Cleanup(func() {
 		ts.Close()
 		require.NoError(t, srv.DataService.Close())
-	}
+	})
 
-	return ts, srv, teardown
+	return ts, srv
 }
 
 // avatarDir is where the server started by startupT keeps avatars, given its temporary directory

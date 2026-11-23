@@ -52,8 +52,7 @@ func readErrorResponse(t *testing.T, resp *http.Response) (body string, e errorR
 func serverDir(srv *Rest) string { return filepath.Dir(srv.WebRoot) }
 
 func TestRest_SavePictureStoreError(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	// a file where the staging directory belongs makes the file system store fail to save
@@ -72,8 +71,7 @@ func TestRest_SavePictureStoreError(t *testing.T) {
 
 // an image the service refuses keeps the reason in the body, as API users tell the cases apart by it
 func TestRest_SavePictureRejectedImage(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	tbl := []struct {
 		name, img, want string
@@ -94,8 +92,7 @@ func TestRest_SavePictureRejectedImage(t *testing.T) {
 
 // an upload over the in-memory limit spills to a temp file; a failure there keeps the temp path out of the body
 func TestRest_SavePictureUploadSpillError(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	logs := captureLog(t)
 	missing := filepath.Join(t.TempDir(), "missing")
 	t.Setenv("TMPDIR", missing)
@@ -112,8 +109,7 @@ func TestRest_SavePictureUploadSpillError(t *testing.T) {
 
 // a request error from the multipart parser carries no path and keeps its text
 func TestRest_SavePictureNotMultipart(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/picture?site=remark42", strings.NewReader(`{}`))
 	require.NoError(t, err)
@@ -153,8 +149,7 @@ func uploadPictureAs(t *testing.T, url, tkn string, img io.Reader) *http.Respons
 }
 
 func TestRest_VoteSameIP(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.DataService.RestrictSameIPVotes.Enabled = true })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.DataService.RestrictSameIPVotes.Enabled = true })
 
 	id := addComment(t, store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
@@ -184,8 +179,7 @@ func TestRest_VoteSameIP(t *testing.T) {
 }
 
 func TestAdmin_DeleteUserAvatarErrorBody(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
@@ -209,8 +203,7 @@ func TestAdmin_DeleteUserAvatarErrorBody(t *testing.T) {
 }
 
 func TestAdmin_DeleteMeRequestAvatarErrorBody(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
@@ -249,8 +242,7 @@ func blockAvatarRemoval(t *testing.T, srv *Rest) string {
 }
 
 func TestMigrator_ImportTempFileError(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	logs := captureLog(t)
 	missing := filepath.Join(t.TempDir(), "missing")
 	t.Setenv("TMPDIR", missing)

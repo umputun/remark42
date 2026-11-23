@@ -36,8 +36,7 @@ import (
 )
 
 func TestRest_Ping(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/ping")
 	require.NoError(t, err)
@@ -51,10 +50,9 @@ func TestRest_Ping(t *testing.T) {
 }
 
 func TestRest_PingNoSignature(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		srv.DisableSignature = true
 	})
-	defer teardown()
 
 	resp, err := http.Get(ts.URL + "/api/v1/ping")
 	require.NoError(t, err)
@@ -68,8 +66,7 @@ func TestRest_PingNoSignature(t *testing.T) {
 }
 
 func TestRest_Preview(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
 	assert.NoError(t, err)
@@ -112,8 +109,7 @@ func TestRest_Preview(t *testing.T) {
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
@@ -128,8 +124,7 @@ func TestRest_PreviewWithWrongImage(t *testing.T) {
 }
 
 func TestRest_LoadMissingPicture(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 	logs := captureLog(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/picture/dev_user/missing_picture")
@@ -144,8 +139,7 @@ func TestRest_LoadMissingPicture(t *testing.T) {
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	text := `
 # h1
@@ -178,8 +172,7 @@ BKT
 }
 
 func TestRest_PreviewCode(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	text := `BKTgo
 func main(aa string) int {return 0}
@@ -200,8 +193,7 @@ BKT
 }
 
 func TestRest_Find(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
 	assert.Equal(t, http.StatusOK, code)
@@ -259,14 +251,13 @@ func TestRest_Find(t *testing.T) {
 }
 
 func TestRest_FindFlushedForURLWithKeySeparator(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		backend, err := cache.NewLruCache[[]byte]()
 		require.NoError(t, err)
 		lc := cache.NewScache[[]byte](backend)
 		t.Cleanup(func() { assert.NoError(t, lc.Close()) })
 		srv.Cache = lc
 	})
-	defer teardown()
 
 	// "@@" separates the parts of a cache key, so the page URL has to be escaped inside the key
 	// for a new comment to flush the cached /find response
@@ -287,8 +278,7 @@ func TestRest_FindFlushedForURLWithKeySeparator(t *testing.T) {
 }
 
 func TestRest_FindAge(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -5),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
@@ -318,8 +308,7 @@ func TestRest_FindAge(t *testing.T) {
 }
 
 func TestRest_FindReadOnly(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "", Timestamp: time.Now().AddDate(0, 0, -1),
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, User: store.User{ID: "u1"}}
@@ -361,8 +350,7 @@ func TestRest_FindReadOnly(t *testing.T) {
 }
 
 func TestRest_FindPagesOfImportedComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// imported comments keep the IDs of the system they came from, which are not UUIDs
 	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/imported"}
@@ -395,8 +383,7 @@ func TestRest_FindPagesOfImportedComments(t *testing.T) {
 }
 
 func TestRest_FindListsPinnedCommentsOnFirstPage(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/pinned"}
 	start := time.Now().Add(-time.Hour)
@@ -440,8 +427,7 @@ func TestRest_FindListsPinnedCommentsOnFirstPage(t *testing.T) {
 }
 
 func TestRest_FindUserView(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user")
 	assert.Equal(t, http.StatusOK, code)
@@ -494,8 +480,7 @@ func TestRest_LastVoteIsPerUser(t *testing.T) {
 	// startupT's cache stores nothing, which would hide the defect this covers
 	lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 	require.NoError(t, err)
-	ts, _, teardown := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
-	defer teardown()
+	ts, _ := startupT(t, func(srv *Rest) { srv.Cache = cache.NewScache[[]byte](lru) })
 
 	const postURL = "https://radio-t.com/blah-last-vote"
 	id := addComment(t, store.Comment{Text: "vote target", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -568,8 +553,7 @@ func TestRest_LastVoteIsPerUser(t *testing.T) {
 }
 
 func TestRest_Last(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	res, code := get(t, ts.URL+"/api/v1/last/2?site=remark42")
 	assert.Equal(t, http.StatusOK, code)
@@ -641,8 +625,7 @@ func TestRest_Last(t *testing.T) {
 }
 
 func TestRest_FindUserComments(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -704,10 +687,9 @@ func TestRest_FindUserComments(t *testing.T) {
 }
 
 func TestRest_FindUserComments_CWE_918(t *testing.T) {
-	ts, srv, teardown := startupT(t)
+	ts, srv := startupT(t)
 	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"radio-t.com"}) // required for extracting the title, bad URL test
 	defer srv.DataService.TitleExtractor.Close()
-	defer teardown()
 
 	backendRequestedArbitraryServer := false
 	arbitraryServer := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -760,8 +742,7 @@ func sinceAfter(ts time.Time) string {
 func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	// test that comment counting is consistent between tree and plain formats
 	// the open-route limit is lifted so the subtests below can run back to back
-	ts, srv, teardown := startupT(t, func(srv *Rest) { srv.openRouteLimiter = 100000 })
-	defer teardown()
+	ts, srv := startupT(t, func(srv *Rest) { srv.openRouteLimiter = 100000 })
 
 	commentLocator := store.Locator{URL: "test-url", SiteID: "remark42"}
 
@@ -1009,8 +990,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 }
 
 func TestRest_UserInfo(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	body, code := getWithDevAuth(t, ts.URL+"/api/v1/user?site=remark42")
 	assert.Equal(t, http.StatusOK, code)
@@ -1022,8 +1002,7 @@ func TestRest_UserInfo(t *testing.T) {
 }
 
 func TestRest_Count(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1054,8 +1033,7 @@ func TestRest_Count(t *testing.T) {
 }
 
 func TestRest_Counts(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1089,8 +1067,7 @@ func TestRest_Counts(t *testing.T) {
 }
 
 func TestRest_List(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1118,8 +1095,7 @@ func TestRest_List(t *testing.T) {
 }
 
 func TestRest_ListWithSkipAndLimit(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
@@ -1149,8 +1125,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 }
 
 func TestRest_Config(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	body, code := get(t, ts.URL+"/api/v1/config?site=remark42")
 	assert.Equal(t, http.StatusOK, code)
@@ -1171,8 +1146,7 @@ func TestRest_Config(t *testing.T) {
 }
 
 func TestRest_QR(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	// missing parameter
 	body, code := get(t, ts.URL+"/api/v1/qr/telegram")
@@ -1222,8 +1196,7 @@ func TestRest_QR(t *testing.T) {
 }
 
 func TestRest_Info(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	srv.pubRest.readOnlyAge = 10000000 // make sure we don't hit read-only
 
@@ -1259,8 +1232,7 @@ func TestRest_Info(t *testing.T) {
 }
 
 func TestRest_Robots(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	body, code := get(t, ts.URL+"/robots.txt")
 	assert.Equal(t, http.StatusOK, code)
@@ -1277,8 +1249,7 @@ func TestRest_Robots(t *testing.T) {
 // directory. Even when the file did not exist (default Partitions=100 mitigates direct hits),
 // the FS error message leaked the constructed internal path back to the unauthenticated caller.
 func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	cases := []struct {
 		name       string
@@ -1323,8 +1294,7 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 // turn this into log forgery — and no legitimate picture id ever needs control
 // characters, so the right place to slam the door is in the validator.
 func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	cases := []struct {
 		name string
@@ -1359,8 +1329,7 @@ func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
 // (strict CSP, nosniff, Content-Disposition with filename) and that the strict ETag
 // matcher does not 304 on a substring-of-the-real-etag (the pre-fix matcher would).
 func TestRest_LoadPictureDefenseHeaders(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	// upload a real PNG via /api/v1/picture
 	bodyBuf := &bytes.Buffer{}
@@ -1490,11 +1459,10 @@ func (k *keyRecorder) take() []string {
 // The keys are what an external cache (redis) holds across restarts, so they must not change
 func TestRest_CacheKeys(t *testing.T) {
 	rec := &keyRecorder{}
-	ts, _, teardown := startupT(t, func(srv *Rest) {
+	ts, _ := startupT(t, func(srv *Rest) {
 		rec.LoadingCache = srv.Cache
 		srv.Cache = rec
 	})
-	defer teardown()
 
 	const post = "https://radio-t.com/blah1"
 	countsBody := `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`
@@ -1588,7 +1556,7 @@ func TestRest_CacheKeys(t *testing.T) {
 // not of another. The open routes accept the token issued for the first site on every site, and the
 // token's admin flag must not reveal the other site's commenters' ip hashes
 func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
-	ts, srv, teardown := startupT(t, func(srv *Rest) {
+	ts, srv := startupT(t, func(srv *Rest) {
 		tmp := t.TempDir()
 		require.NoError(t, srv.DataService.Engine.Close())
 		b, err := engine.NewBoltDB(bolt.Options{},
@@ -1606,7 +1574,6 @@ func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
 			},
 		}
 	})
-	defer teardown()
 
 	siteToken := func(site, userID string) string {
 		u := token.User{ID: userID, Name: userID}

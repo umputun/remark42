@@ -106,8 +106,7 @@ func TestMigrator_ImportFormClaimsSiteWhileReadingBody(t *testing.T) {
 }
 
 func TestMigrator_Import(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
 "user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com",
@@ -154,8 +153,7 @@ func TestMigrator_Import(t *testing.T) {
 
 // a new comment must answer a comment on its post, an import keeps the parent ids it brings
 func TestMigrator_ImportKeepsParentIDs(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	rec := `{"id":%q,"pid":%q,"text":"<p>text</p>","user":{"name":"developer one","id":"dev"},` +
 		`"locator":{"site":"remark42","url":"https://radio-t.com/blah1"},"time":"2018-04-30T01:37:00-05:00"}` + "\n"
@@ -188,8 +186,7 @@ func TestMigrator_ImportKeepsParentIDs(t *testing.T) {
 }
 
 func TestMigrator_ImportForm(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
 "user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com",
@@ -239,8 +236,7 @@ func TestMigrator_ImportForm(t *testing.T) {
 }
 
 func TestMigrator_ImportFromWP(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(strings.ReplaceAll(xmlTestWP, "'", "`"))
 
@@ -279,13 +275,12 @@ func TestMigrator_ImportFromWP(t *testing.T) {
 }
 
 func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+	ts, _ := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
 		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 		require.NoError(t, err)
 		srv.Cache = cache.NewScache(lru)
 		srv.Migrator.Cache = srv.Cache
 	})
-	defer teardown()
 
 	const postURL = "https://radio-t.com/blah-before-import"
 	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -321,8 +316,7 @@ func TestMigrator_ImportFailureFlushesCache(t *testing.T) {
 }
 
 func TestMigrator_ImportFromCommento(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(`{"version":1,"comments":[{"commentHex":"7d77e39fcd813241d6281478cc8f21ab5f807d043c750bc1a936bc23b34fb854",
 "domain":"example.com","url":"/blog/post/1","commenterHex":"a1ac58ed1146bd7fe3feff6a7276f73955c3bfd23cacee00e2e0a7a89b1a8c10",
@@ -366,8 +360,7 @@ func TestMigrator_ImportFromCommento(t *testing.T) {
 }
 
 func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r, err := os.Open("testdata/commento.json")
 	require.NoError(t, err)
@@ -407,8 +400,7 @@ func TestMigrator_ImportFromCommentoJSON(t *testing.T) {
 }
 
 func TestMigrator_ImportProvider(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 	client := &http.Client{Timeout: waitTimeout}
 	defer client.CloseIdleConnections()
 	post := func(path, contentType string, body io.Reader) int {
@@ -449,14 +441,13 @@ func (p panickingImporter) Import(_ io.Reader, siteID string) (int, error) {
 }
 
 func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+	ts, _ := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
 		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 		require.NoError(t, err)
 		srv.Cache = cache.NewScache(lru)
 		srv.Migrator.Cache = srv.Cache
 		srv.Migrator.DisqusImporter = panickingImporter{ds: srv.DataService}
 	})
-	defer teardown()
 
 	const postURL = "https://radio-t.com/blah-before-import"
 	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -485,8 +476,7 @@ func TestMigrator_ImportPanicKeepsServer(t *testing.T) {
 }
 
 func TestMigrator_ImportRejected(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
 "user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com",
@@ -508,8 +498,7 @@ func TestMigrator_ImportRejected(t *testing.T) {
 }
 
 func TestMigrator_ImportDouble(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev",
 "picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,
@@ -563,8 +552,7 @@ func TestMigrator_ImportDouble(t *testing.T) {
 }
 
 func TestMigrator_ImportWaitExpired(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	tmpl := `{"id":"%d","pid":"","text":"<p>test test #1</p>","user":{"name":"developer one","id":"dev",
 "picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com","admin":true,
@@ -610,8 +598,7 @@ func TestMigrator_ImportWaitExpired(t *testing.T) {
 }
 
 func TestMigrator_Export(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	r := strings.NewReader(`{"version":1} {"id":"2aa0478c-df1b-46b1-b561-03d507cf482c","pid":"","text":"<p>test test #1</p>",
 "user":{"name":"developer one","id":"dev","picture":"/api/v1/avatar/remark.image","profile":"https://remark42.com",
@@ -703,8 +690,7 @@ func TestMigrator_Export(t *testing.T) {
 }
 
 func TestMigrator_Remap(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// create 2 comments in https://remark42.com/demo/
 	c1 := store.Comment{Text: "first comment", Timestamp: time.Now(),
@@ -825,14 +811,13 @@ func (c clearingFailedImporter) Import(r io.Reader, siteID string) (int, error) 
 }
 
 func TestMigrator_RemapFailureFlushesCache(t *testing.T) {
-	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+	ts, _ := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
 		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
 		require.NoError(t, err)
 		srv.Cache = cache.NewScache(lru)
 		srv.Migrator.Cache = srv.Cache
 		srv.Migrator.NativeImporter = clearingFailedImporter{ds: srv.DataService}
 	})
-	defer teardown()
 
 	const postURL = "https://remark42.com/demo/"
 	addComment(t, store.Comment{Text: "existing comment", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
@@ -856,8 +841,7 @@ func TestMigrator_RemapFailureFlushesCache(t *testing.T) {
 }
 
 func TestMigrator_RemapReject(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	// without admin credentials
 	client := &http.Client{Timeout: waitTimeout}

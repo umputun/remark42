@@ -26,8 +26,7 @@ func rssPubTime() (base time.Time, pubDate string) {
 }
 
 func TestServer_RssPost(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	base, pubDate := rssPubTime()
 
@@ -71,8 +70,7 @@ func TestServer_RssPost(t *testing.T) {
 }
 
 func TestServer_RssSite(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	base, pubDate := rssPubTime()
 
@@ -134,8 +132,7 @@ func TestServer_RssSite(t *testing.T) {
 }
 
 func TestServer_RssWithReply(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	base, pubDate := rssPubTime()
 
@@ -196,8 +193,7 @@ func TestServer_RssWithReply(t *testing.T) {
 // the quote of the parent comment in a reply's item is text: markup in the parent can't close the quote
 // or leave a tag open over what follows the item
 func TestServer_RssReplyQuotesParentAsText(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	tbl := []struct {
 		name, parent, quote string
@@ -239,8 +235,7 @@ func TestServer_RssReplyQuotesParentAsText(t *testing.T) {
 }
 
 func TestServer_RssReplies(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	base, pubDate := rssPubTime()
 
@@ -330,8 +325,7 @@ func TestServer_RssReplies(t *testing.T) {
 }
 
 func TestServer_RssRepliesWithOrphanReply(t *testing.T) {
-	ts, srv, teardown := startupT(t)
-	defer teardown()
+	ts, srv := startupT(t)
 
 	base, _ := rssPubTime()
 	loc := store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"}
@@ -367,8 +361,7 @@ func cleanRssFormatting(expected, actual string) (cleanExp, cleanAct string) {
 }
 
 func TestServer_RssPostLimitsItems(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	base, _ := rssPubTime()
 	for i := range maxRssItems + 5 {
@@ -390,8 +383,7 @@ func TestServer_RssPostLimitsItems(t *testing.T) {
 // TestServer_RssResponses pins what every feed answers besides the feed itself: the content type on
 // success and the status, details and code of the JSON error for an unknown site
 func TestServer_RssResponses(t *testing.T) {
-	ts, rst, teardown := startupT(t)
-	defer teardown()
+	ts, rst := startupT(t)
 
 	_, err := rst.DataService.Create(store.Comment{ID: "c1", Text: "test 123", Timestamp: time.Now(),
 		Locator: store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"}, User: store.User{ID: "u1", Name: "user one"}})

@@ -20,8 +20,7 @@ import (
 )
 
 func TestRest_CreateAndFindCommentWithQueryParams(t *testing.T) {
-	ts, _, teardown := startupT(t)
-	defer teardown()
+	ts, _ := startupT(t)
 
 	locatorURL := "https://example.com/post?a=1&b=2"
 	body, err := json.Marshal(map[string]any{
