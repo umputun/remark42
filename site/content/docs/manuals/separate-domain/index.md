@@ -35,7 +35,7 @@ The `'self'` in `ALLOWED_HOSTS` value means "domain where Remark42 is installed 
 
 ### Technical details
 
-`ALLOWED_HOSTS` sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which, once enabled, limits the domains where Remark42 would work. The default value is `*` so that it would work on any domain.
+`ALLOWED_HOSTS` has three uses. It sets CSP [frame-ancestors](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), which limits the hosts allowed to embed Remark42; when it is empty, any host can. Its plain host entries, with the host of `REMARK_URL`, also limit the address a sign-in returns the reader to; `'self'` and entries with `*` do not count there. Page titles are fetched only from addresses on the listed domains and their subdomains, and on the domain formed by the last two labels of the `REMARK_URL` host name and its subdomains; every redirect target is checked against the same domains.
 
 `AUTH_SAME_SITE` sets the [SameSite](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite) attribute on the cookies the server sets. `none` lets those cookies be set on any domain where Remark42 is shown.
 
