@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +25,7 @@ var fixture = map[string]string{
 	"tsconfig.json":                    `{"compilerOptions": {"baseUrl": "app", "target": "es6", "strict": true}}`,
 	"app/embed.ts":                     `console.log('embed marker');`,
 	"app/deleteme.ts":                  `console.log('deleteme marker');`,
-	"app/last-comments.tsx":            `import { title } from 'shared'; console.log('last-comments marker', title);`,
+	"app/last-comments.js":             `import { title } from 'shared'; console.log('last-comments marker', title);`,
 	"app/styles/custom-properties.css": `:root { --fixture-color: #123456; }`,
 	"node_modules/preact/package.json": `{"name": "preact", "exports": {"./debug": "./debug.js"}}`,
 	"node_modules/preact/debug.js":     `console.log('preact debug marker');`,
@@ -391,8 +394,8 @@ func TestBuildDevelopment(t *testing.T) {
 		t.Error("preact/debug has to run before the widget does")
 	}
 
-	mustContain(t, "last-comments.mjs", string(files["last-comments.mjs"]), "preact debug marker")
-	// the two scripts that render nothing stay as they are
+	// only an entry with packages gets it
+	mustNotContain(t, "last-comments.mjs", string(files["last-comments.mjs"]), "preact debug marker")
 	mustNotContain(t, "embed.mjs", string(files["embed.mjs"]), "preact debug marker")
 	mustNotContain(t, "deleteme.mjs", string(files["deleteme.mjs"]), "preact debug marker")
 
@@ -420,6 +423,87 @@ func TestBuildFailsOnBrokenSource(t *testing.T) {
 	if read(t, filepath.Join(out, "embed.mjs")) != before {
 		t.Error("a build that failed replaced the files of the one before it")
 	}
+}
+
+func TestBuildRefusesAPackageInAnEntryWrittenWithoutThem(t *testing.T) {
+	// the same import in each entry, which only remark may make
+	const imported = "import 'preact/debug';\n"
+
+	for _, tc := range []struct {
+		entry, file string
+		refused     bool
+	}{
+		{"last-comments", "app/last-comments.js", true},
+		{"embed", "app/embed.ts", true},
+		{"deleteme", "app/deleteme.ts", true},
+		{"remark", "app/remark.tsx", false},
+	} {
+		for _, dev := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s, development build %v", tc.entry, dev), func(t *testing.T) {
+				app := writeFixture(t)
+				file := filepath.Join(app, filepath.FromSlash(tc.file))
+				if err := os.WriteFile(file, []byte(imported+read(t, file)), 0o600); err != nil {
+					t.Fatal(err)
+				}
+
+				var err error
+				if dev {
+					err = devBuild(t, app, tc.entry+".mjs")
+				} else {
+					_, err = compile(app, false)
+				}
+				if !tc.refused {
+					if err != nil {
+						t.Fatalf("an entry with packages did not build: %v", err)
+					}
+					return
+				}
+				if err == nil {
+					t.Fatal("the build bundled a package into an entry written without them")
+				}
+				want := tc.entry + ".mjs bundles node_modules/preact/debug.js"
+				if !strings.Contains(err.Error(), want) || strings.Count(err.Error(), " bundles ") != 1 {
+					t.Errorf("the error has to name the one output and the file, %q, got: %v", want, err)
+				}
+			})
+		}
+	}
+}
+
+// devBuild builds app the way the development server does, after a first build of the fixture as
+// it is, and returns what esbuild reported about the second. A build the server refuses must
+// leave the first one being served, which is checked on the script named watched.
+func devBuild(t *testing.T, app, watched string) error {
+	t.Helper()
+	clean := writeFixture(t)
+	latest := newBuilt()
+
+	first := options(clean, true, nil)
+	first.Plugins = append(first.Plugins, servePlugin(latest, first.Outdir))
+	first.LogLevel = api.LogLevelSilent
+	if result := api.Build(first); len(result.Errors) > 0 {
+		t.Fatalf("the fixture did not build: %v", result.Errors)
+	}
+	served, ok := latest.file(watched)
+	if !ok {
+		t.Fatalf("the first build served no %s", watched)
+	}
+
+	second := options(app, true, nil)
+	second.Plugins = append(second.Plugins, servePlugin(latest, second.Outdir))
+	second.LogLevel = api.LogLevelSilent
+	result := api.Build(second)
+	if len(result.Errors) == 0 {
+		return nil
+	}
+	if now, _ := latest.file(watched); !bytes.Equal(now, served) {
+		t.Error("a refused build replaced what the server serves")
+	}
+	texts := make([]string, 0, len(result.Errors))
+	for _, m := range result.Errors {
+		texts = append(texts, m.Text)
+	}
+	return errors.New(strings.Join(texts, "; "))
 }
 
 func TestDevHandler(t *testing.T) {

@@ -75,6 +75,77 @@ func TestWidgets_LastCommentsRendersIntoTheHostPage(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+// TestWidgets_LastCommentsShowsACommentAsItsText covers what the list makes of a comment: the start
+// of its text and nothing else of it. Whatever a commenter wrote stays text.
+func TestWidgets_LastCommentsShowsACommentAsItsText(t *testing.T) {
+	// serial for the reason the case above is: the feed is site-wide
+	const commenter = "lastsnippets"
+
+	poster := newPage(t)
+	frame := openThread(t, poster)
+	signInAnon(t, poster, frame, commenter)
+
+	long := "long " + runID + " " + strings.Repeat("a", 150)
+	postComment(t, frame, long)
+	markup := "markup " + runID
+	posted := postCommentMatching(t, frame, markup+" `<img src=x onerror=alert(1)>` `&lt;b&gt;`", markup)
+	postedID, err := posted.GetAttribute("id")
+	require.NoError(t, err)
+	require.NotEmpty(t, postedID, "the posted comment has no id in the thread")
+
+	page := newPage(t)
+
+	// a page of another origin, in a language written right to left
+	_, err = page.Goto(hostSiteURL + "/last-comments.html?locale=he")
+	require.NoError(t, err)
+
+	list := page.Locator(".remark42__last-comments")
+	item := func(marker string) playwright.Locator {
+		return list.Locator("article", playwright.LocatorLocatorOptions{HasText: marker})
+	}
+	snippet := func(marker string) string {
+		text, terr := item(marker).Locator(".raw-content").TextContent()
+		require.NoError(t, terr)
+		return strings.TrimSpace(text)
+	}
+	waitVisible(t, item(markup))
+
+	dir, err := list.Locator("> div").GetAttribute("dir")
+	require.NoError(t, err)
+	assert.Equal(t, "rtl", dir, "the list does not follow the direction of the locale")
+
+	// the entities the server escaped are decoded and shown, so markup written as text reads as
+	// it was typed and makes no element
+	assert.Equal(t, markup+" <img src=x onerror=alert(1)> &lt;b&gt;", snippet(markup))
+	elements, err := item(markup).Locator(".raw-content *").Count()
+	require.NoError(t, err)
+	assert.Zero(t, elements, "the snippet is text, with no element in it")
+
+	assert.Equal(t, long[:100]+"...", snippet(long[:40]), "a long comment is cut to its first hundred characters")
+
+	// the name is kept out of search snippets and the text is not
+	named, err := item(markup).Locator("[data-nosnippet]", playwright.LocatorLocatorOptions{HasText: commenter}).Count()
+	require.NoError(t, err)
+	assert.Equal(t, 1, named, "the commenter's name is not marked as not for search snippets")
+	hidden, err := item(markup).Locator(".raw-content").Evaluate(`el => el.closest('[data-nosnippet]') !== null`, nil)
+	require.NoError(t, err)
+	assert.Equal(t, false, hidden, "the comment text is marked as not for search snippets")
+
+	href, err := item(markup).Locator("a").First().GetAttribute("href")
+	require.NoError(t, err)
+	assert.Equal(t, threadURL(t)+"#"+postedID, href, "the comment is not linked to its place in the thread")
+
+	// and left to right for any other language
+	en := newPage(t)
+	_, err = en.Goto(hostSiteURL + "/last-comments.html")
+	require.NoError(t, err)
+	enList := en.Locator(".remark42__last-comments")
+	waitVisible(t, enList.Locator("article", playwright.LocatorLocatorOptions{HasText: markup}))
+	dir, err = enList.Locator("> div").GetAttribute("dir")
+	require.NoError(t, err)
+	assert.Equal(t, "ltr", dir)
+}
+
 // TestWidgets_DeleteMePageServesAndRuns covers the GDPR delete page, which nothing else opens. It
 // needs an admin token to do its work, so this drives the branch it takes without one: reaching
 // that message proves the html and its bundle were both served and executed.

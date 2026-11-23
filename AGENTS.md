@@ -96,7 +96,7 @@ For local artifact runs, install GoReleaser, Go 1.27, Node 24+ and PNPM 10, then
 ## Code Style
 - **API**: No futureproofing: every endpoint and API field must be in use. Do not add one for a future client.
 - **Backend**: Formatting with golangci-lint, strict error handling
-- **Frontend**: TypeScript with ESLint, Stylelint and Prettier
+- **Frontend**: TypeScript with ESLint, Stylelint and Prettier. The `last-comments` entry is plain JavaScript typed in JSDoc comments and imports no package; see `frontend/AGENTS.md`
 - **Imports**: Group stdlib, external packages, then internal packages
 - **CSS**: Components use CSS Modules (`component.module.css`). Class naming for new code: BEM block = `.root`, elements = camelCase, modifiers = camelCase; some existing files do not follow it. Use `clsx` for conditional class composition. Three stylesheets are global, not modules: `app/styles/global.css`, `app/styles/custom-properties.css` and `app/components/comment/raw-content.css` (rendered comment text and syntax highlighting). Root wrapper keeps bare `.dark`/`.light` theme class; several module CSS files depend on `:global(.dark)` ancestor. `comment_highlighting` uses `:global()` for imperative `classList` usage in root.tsx
 - **Docs**: Site docs describe what master does, in the present tense, without release markers.
