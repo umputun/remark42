@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // reproduces the unsalted anonymous ID the server must no longer issue
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
 	"image/png"
 	"io"
+	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
 	"net/http"
@@ -559,6 +561,71 @@ func TestServerApp_Shutdown(t *testing.T) {
 		t.Fatal("server app did not stop after context cancel")
 	}
 	app.Wait()
+}
+
+// TestServerApp_ShutdownCommitsPictures checks a picture of a comment still in its edit window is
+// committed when the server stops, before the data store the commit reads the comment from is closed
+func TestServerApp_ShutdownCommitsPictures(t *testing.T) {
+	dir := t.TempDir()
+	images, staging := filepath.Join(dir, "images"), filepath.Join(dir, "staging")
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Image.FS.Path, o.Image.FS.Staging, o.Image.FS.Partitions = images, staging, 0 // pictures at <dir>/<user>/<id>
+		o.EditDuration = time.Hour // the edit window outlasts the test, so only the shutdown commits
+		return o
+	})
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+	defer cancel()
+	waitForHTTPServerStart(t, app.Port)
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	pic, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+	body := &bytes.Buffer{}
+	mw := multipart.NewWriter(body)
+	fw, err := mw.CreateFormFile("file", "pic.png")
+	require.NoError(t, err)
+	_, err = fw.Write(pic)
+	require.NoError(t, err)
+	require.NoError(t, mw.Close())
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/picture", app.Port), body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	var uploaded struct{ ID string }
+	err = json.NewDecoder(resp.Body).Decode(&uploaded)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, uploaded.ID)
+
+	text := fmt.Sprintf("![pic](%s/api/v1/picture/%s)", app.RemarkURL, uploaded.ID)
+	commentJSON, err := json.Marshal(map[string]any{"text": text, "locator": map[string]string{"url": "https://radio-t.com/blah1", "site": "remark"}})
+	require.NoError(t, err)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", app.Port), bytes.NewReader(commentJSON))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	cancel()
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	case <-time.After(serverStopTimeout):
+		t.Fatal("server app did not stop after context cancel")
+	}
+	app.Wait()
+
+	_, err = os.Stat(filepath.Join(images, uploaded.ID))
+	assert.NoError(t, err, "picture committed")
+	_, err = os.Stat(filepath.Join(staging, uploaded.ID))
+	assert.True(t, os.IsNotExist(err), "picture moved out of staging, %v", err)
 }
 
 func TestServerApp_ActivateBackupStopWaitsForExport(t *testing.T) {

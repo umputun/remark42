@@ -79,6 +79,17 @@ func TestFsStore_SaveNoResizeJpeg(t *testing.T) {
 	assert.Equal(t, 16756, len(data))
 }
 
+func TestFsStore_ResetCleanupTimerCommitted(t *testing.T) {
+	svc, teardown := prepareImageTest(t)
+	defer teardown()
+
+	id := "user1/test_img"
+	require.NoError(t, svc.Save(id, gopherPNGBytes()))
+	require.NoError(t, svc.Commit(id))
+	assert.NoError(t, svc.ResetCleanupTimer(id), "cleanup timer of a committed image")
+	assert.Error(t, svc.ResetCleanupTimer("user1/missing_img"), "image in neither location")
+}
+
 func TestFsStore_SaveAndCommit(t *testing.T) {
 	svc, teardown := prepareImageTest(t)
 	defer teardown()

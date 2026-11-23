@@ -73,7 +73,8 @@ func (f *FileSystem) Commit(id string) error {
 	return nil
 }
 
-// ResetCleanupTimer resets cleanup timer for the image
+// ResetCleanupTimer resets cleanup timer for the image. An image already committed has no timer, so it is
+// left as it is: a graceful stop commits the images of comments that can still be edited after the restart.
 func (f *FileSystem) ResetCleanupTimer(id string) error {
 	if err := f.checkID(id); err != nil {
 		return err
@@ -81,6 +82,9 @@ func (f *FileSystem) ResetCleanupTimer(id string) error {
 	file := f.location(f.Staging, id)
 	_, err := os.Stat(file)
 	if err != nil {
+		if _, permErr := os.Stat(f.location(f.Location, id)); errors.Is(err, fs.ErrNotExist) && permErr == nil {
+			return nil
+		}
 		return fmt.Errorf("can't get image stats for %s: %w", id, err)
 	}
 	// we don't need to update access time (second arg),

@@ -849,6 +849,11 @@ func (a *serverApp) run(ctx context.Context) error {
 	if a.devAuth != nil {
 		a.devAuth.Shutdown()
 	}
+	// commit the pictures of comments still in their edit window before the data store closes, as each
+	// commit reads its comment from the store. Bounded by a minute, as a safeguard against a store that hangs
+	minuteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	a.imageService.Close(minuteCtx)
 	if e := a.dataService.Close(); e != nil {
 		log.Printf("[WARN] failed to close data store, %s", e)
 	}
@@ -862,10 +867,6 @@ func (a *serverApp) run(ctx context.Context) error {
 		log.Printf("[WARN] failed to close auth authRefreshCache, %s", e)
 	}
 	a.notifyService.Close()
-	// call potentially infinite loop with cancellation after a minute as a safeguard
-	minuteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	a.imageService.Close(minuteCtx)
 
 	close(a.terminated)
 	return nil
