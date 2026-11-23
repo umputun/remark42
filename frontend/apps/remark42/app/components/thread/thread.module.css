@@ -6,10 +6,6 @@
   margin-inline-start: 17px;
 }
 
-.level6 .level6 {
-  margin-inline-start: 0;
-}
-
 .collapse {
   height: calc(100% - 50px);
   width: 11px;
