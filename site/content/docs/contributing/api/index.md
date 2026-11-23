@@ -7,7 +7,7 @@ title: API
 A request is authenticated in one of three ways:
 
 - the `JWT` cookie set at login, with the `X-XSRF-TOKEN` header carrying the value of the `XSRF-TOKEN` cookie. An expired cookie token is renewed;
-- the token in the `X-JWT` header or in the `jwt` query parameter, with no XSRF header. Such a token must not be expired, and it takes precedence over the cookie, so a request carrying one does not renew the cookie session. With `AUTH_SEND_JWT_HEADER` set, a response that issues or renews a token carries it in the `X-JWT` header, which the built-in CORS policy does not expose to cross-origin scripts;
+- the token in the `X-JWT` header, with no XSRF header; a token in the `jwt` query parameter is ignored. A header token must not be expired, and it takes precedence over the cookie, so a request carrying one does not renew the cookie session. With `AUTH_SEND_JWT_HEADER` set, a response that issues or renews a token carries it in the `X-JWT` header, which the built-in CORS policy does not expose to cross-origin scripts;
 - Basic auth as user `admin` with the `ADMIN_PASSWD` password, which makes the request an admin of every site.
 
 Calls marked _auth required_ and all admin calls need `site` in the query, and it has to be the site the user signed in to; otherwise the answer is 403. Basic-auth requests are exempt from this check. Under `/api/v1`, a Basic-auth request that the browser marks as cross-site, or that carries an `Origin` other than the `REMARK_URL` origin, is rejected with 403.
