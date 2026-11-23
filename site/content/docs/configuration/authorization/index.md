@@ -158,7 +158,7 @@ Notes:
 
 A site with its own user accounts can sign its users in to the widget by issuing Remark42 tokens on its server. The steps assume the default `ADMIN_TYPE=shared`; with `ADMIN_TYPE=rpc`, tokens are signed with the key the admin store supplies instead of `SECRET`.
 
-1. Serve Remark42 on a host your site can set cookies for, such as a subdomain of the site's domain; see the [subdomain manual](/docs/manuals/subdomain/).
+1. Serve Remark42 under a path of your site, such as `https://example.com/remark42`, as the [manual for running without a subdomain](/docs/manuals/subdomain/) shows, so your server can set the cookies for its own host only. With Remark42 on a subdomain, the cookies need the parent domain, and every host under it, such as a hosted help or status page on a CNAME, receives the token and can act as the user. Do that only when every host under the domain is one you trust.
 1. Enable at least one sign-in provider, for example `AUTH_ANON=true`.
 1. On your server, issue a JWT signed with HS256 and the value of `SECRET`:
 
@@ -177,7 +177,7 @@ A site with its own user accounts can sign its users in to the widget by issuing
    ```
 
    `aud` is the site ID, one of the values of `SITE`. `user.id` is the name of an enabled provider, an underscore and your own ID for the user; a token with any other prefix is refused with "provider is not allowed". When the provider name itself contains an underscore, also add `"auth_provider": {"name": "<provider>"}` at the top level of the token. `picture` is optional. A user under the `anonymous_` prefix has the limits of an [anonymous user](#anonymous).
-1. Set two cookies together, with `Path=/` and a domain that covers the Remark42 host: `JWT` with the token, and `XSRF-TOKEN` with the token's `jti`. Set `JWT` with `HttpOnly` and `Secure`, and serve your site and Remark42 over HTTPS: a script that reads `JWT` can send it in the `X-JWT` header, which has no XSRF check. `XSRF-TOKEN` must not be `HttpOnly`: the widget copies it into the `X-XSRF-TOKEN` header, and a `JWT` cookie without a matching header is refused.
+1. Set two cookies together, with `Path=/` and no `Domain` attribute, or the parent domain when Remark42 is on a subdomain: `JWT` with the token, and `XSRF-TOKEN` with the token's `jti`. Set `JWT` with `HttpOnly` and `Secure`, and serve your site and Remark42 over HTTPS: a script that reads `JWT` can send it in the `X-JWT` header, which has no XSRF check. `XSRF-TOKEN` must not be `HttpOnly`: the widget copies it into the `X-XSRF-TOKEN` header, and a `JWT` cookie without a matching header is refused.
 
 The widget then opens signed in. A call from your server can send the token in the `X-JWT` header instead. Remark42 does not read the `Authorization: Bearer` header, and `remark_config` has no option for a token.
 
