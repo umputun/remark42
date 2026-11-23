@@ -31,9 +31,12 @@ EXPOSE 1313
 CMD ["hugo", "server", "--bind", "0.0.0.0", "--port", "1313", "--baseURL", "http://127.0.0.1:1313/", "--appendPort=false"]
 
 FROM hugo AS build
+# true in the workflow that publishes the image: the build then fails on a page that has no
+# commit date in data/lastmod.json, which scripts/page-dates.sh writes before the build
+ARG REQUIRE_PAGE_DATES=false
 WORKDIR /site
 COPY ./ /site
-RUN hugo --minify --destination /site/build \
+RUN HUGO_PARAMS_REQUIREPAGEDATES="${REQUIRE_PAGE_DATES}" hugo --minify --destination /site/build \
     && test -s /site/build/index.html \
     && test -s /site/build/docs/getting-started/installation/index.html
 

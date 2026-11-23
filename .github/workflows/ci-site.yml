@@ -33,6 +33,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # the page dates below are read from the history of each page
+          fetch-depth: 0
+
+      - name: write the commit date of every page
+        run: ./site/scripts/page-dates.sh
 
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v4
@@ -41,6 +46,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./site
+          build-args: REQUIRE_PAGE_DATES=true
           load: true
           push: false
           cache-from: |
@@ -71,6 +77,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # the page dates below are read from the history of each page
+          fetch-depth: 0
+
+      - name: write the commit date of every page
+        run: ./site/scripts/page-dates.sh
 
       - name: set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -87,6 +98,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./site
+          build-args: REQUIRE_PAGE_DATES=true
           platforms: ${{ matrix.platform }}
           cache-from: type=gha,scope=site-${{ matrix.platform }}
           cache-to: type=gha,scope=site-${{ matrix.platform }},mode=max,ignore-error=true
