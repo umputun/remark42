@@ -11,6 +11,12 @@
   text-align: end;
 }
 
+/* a link inside a sentence of the panel's text: the underline marks it, as its color alone is
+   close to the text's */
+.textLink {
+  text-decoration: underline;
+}
+
 .columnSeparated > * + * {
   position: relative;
   display: inline-block;

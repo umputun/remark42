@@ -82,6 +82,12 @@
   padding-inline: 56px 16px;
   font-size: 12px;
   line-height: 1.4;
+
+  /* the link is a line of plain text above the hint, in a color close to the hint's, so the
+     underline is what marks it as a link */
+  & a {
+    text-decoration: underline;
+  }
 }
 
 .editAvatarHint {

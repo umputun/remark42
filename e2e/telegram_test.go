@@ -197,6 +197,13 @@ func TestTelegram_SignInThroughTheBot(t *testing.T) {
 
 	token := tgStartSignIn(t, frame)
 
+	// the link stands inside a sentence, in a color close to the color of the text around it, so
+	// the underline is what shows a reader where to click
+	decoration, err := frame.Locator(`.telegram a`).First().Evaluate(`el => getComputedStyle(el).textDecorationLine`, nil,
+		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
+	require.NoError(t, err)
+	assert.Equal(t, "underline", decoration, "the link in the Telegram panel is not underlined")
+
 	// the reader messages the bot, and the shared update dispatcher picks it up
 	tgSendToBot(t, "/start "+token, tgReaderID(t), "E2E Reader")
 

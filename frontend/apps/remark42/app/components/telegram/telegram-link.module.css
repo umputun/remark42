@@ -1,5 +1,11 @@
 .telegram {
   margin-bottom: 0;
+
+  /* the link stands inside a sentence, and its color is close to the color of the text around
+     it, so the underline is what marks it as a link */
+  & a {
+    text-decoration: underline;
+  }
 }
 
 .telegramQR {
