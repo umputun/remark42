@@ -33,6 +33,7 @@ const stateStub: Partial<StoreState> = {
   comments: {
     sort: '-active',
     isFetching: false,
+    page: { countLeft: 0, lastComment: '', loaded: 0, undeleted: 0 },
     childComments: {},
     topComments: [],
     pinnedComments: [],
@@ -128,7 +129,7 @@ describe('<ConnectedRoot />', () => {
   };
 
   /** renders a thread with a reply, a deleted comment and `more` further comments, all in view */
-  async function renderThreads(user: User | null, { more = 0, hideReply = false } = {}) {
+  async function renderThreads(user: User | null, { more = 0, hideReply = false, countLeft = 0 } = {}) {
     jest.spyOn(api, 'getUser').mockResolvedValue(user);
     jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
     // every comment is in view, as on the tall page a crawler renders; off screen one is a placeholder
@@ -172,6 +173,7 @@ describe('<ConnectedRoot />', () => {
         topComments: ['c1', 'c3', ...extra.map((c) => c.id)],
         childComments: { c1: ['c2'] },
         allComments: comments,
+        page: { countLeft, lastComment: 'c3', loaded: 3, undeleted: 3 },
       },
     });
 
@@ -233,6 +235,36 @@ describe('<ConnectedRoot />', () => {
     } finally {
       mockMobile = false;
     }
+  });
+
+  it('loads the next page on a desktop when the server has more comments than it sent', async () => {
+    const container = await renderThreads(null, { countLeft: 5 });
+    const getPostComments = jest.mocked(api.getPostComments);
+    expect(getPostComments).toHaveBeenCalledTimes(1);
+    // the page is held back until the button has been seen disabled, and then answered, since the
+    // next load waits for this one
+    let answer!: () => void;
+    getPostComments.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = () => resolve({ comments: [], info: { url: 'test-url', count: 0 } });
+        })
+    );
+
+    const button = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Show more');
+    expect(button).toBeDefined();
+    button!.click();
+
+    await waitFor(() => expect(getPostComments).toHaveBeenLastCalledWith('-active', { limit: 100, offsetId: 'c3' }));
+    // the page is still on its way, so a second click cannot ask for it again
+    await waitFor(() => expect(button).toBeDisabled());
+    answer();
+  });
+
+  it('shows no "Show more" on a desktop when the whole thread is loaded', async () => {
+    const container = await renderThreads(null);
+
+    expect(container).not.toHaveTextContent('Show more');
   });
 
   it('leaves no empty list behind a thread whose only reply is hidden', async () => {
@@ -334,6 +366,19 @@ describe('<ConnectedRoot />', () => {
     afterEach(() => {
       window.IntersectionObserver = IntersectionObserver;
       window.history.replaceState(null, '', window.location.pathname);
+    });
+
+    it('loads the rest of the thread when the linked comment is on a page not loaded yet', async () => {
+      jest.spyOn(api, 'getUser').mockResolvedValue(null);
+      const getPostComments = jest.spyOn(api, 'getPostComments').mockResolvedValue({ comments: [], info: state.info! });
+      window.history.replaceState(null, '', '#remark42__comment-fourth');
+
+      render(<ConnectedRoot />, {
+        ...state,
+        comments: { ...state.comments!, page: { countLeft: 2, lastComment: 'third', loaded: 3, undeleted: 3 } },
+      });
+
+      await waitFor(() => expect(getPostComments).toHaveBeenCalledWith('-active', { limit: 0, offsetId: 'third' }));
     });
 
     it('renders the linked comment and reports the height before asking the page to scroll to it', async () => {

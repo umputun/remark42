@@ -16,6 +16,7 @@ aliases:
   - `'last-comments'` – last comments widget, see [Last Comments](#last-comments-widget) section below
   - `'counter'` – counter widget, see [Counter](#counter-widget) section below
 - **`max_shown_comments`**`: number` (optional, `10` by default) – initial number of top-level comments shown on mobile
+- **`comments_page_size`**`: number` (optional, `100` by default) – how many comments the widget loads at a time. A top-level comment always comes with all its replies, so a page can hold more; "Show more" at the bottom loads the next page, and a link to a comment on a page not loaded yet loads the rest of the thread. `0` loads the whole thread at once
 - **`max_last_comments`**`: number` (optional, `15` by default) – maximum number of comments in the last comments widget
 - **`default_sort`**`: string` (optional, `'-active'` by default) – comment order for a reader who has not picked one in the sort picker: `'-score'` (best), `'+score'` (worst), `'-time'` (newest), `'+time'` (oldest), `'-active'` (recently updated), `'+active'` (least recently updated), `'-controversy'` (most controversial) or `'+controversy'` (least controversial). A reader's own choice in the sort picker is remembered and wins over this setting
 - **`theme`**`: 'light' | 'dark'` (optional, `'light'` by default) – changes UI theme

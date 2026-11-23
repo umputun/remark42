@@ -130,7 +130,9 @@ The call takes more optional parameters:
 - `view=user` fills only `id` and `user` of each comment that is not deleted; the other fields keep zero values, so in the `tree` format every comment becomes a top-level node.
 - `since` (epoch time, milliseconds) returns only newer comments, and `info.count` then counts the matching comments that are not deleted, before paging. The `tree` format ignores it.
 - `limit`, when positive, returns the first `limit` comments; the `tree` format returns whole top-level threads, and always at least one. `info.count_left` is the number of comments after the page, deleted placeholders the result keeps included, and `info.last_comment` is the ID of the last returned comment, top-level in the `tree` format.
-- `offset_id` returns the comments after the one with this ID, so `info.last_comment` passed as `offset_id` gives the next page. It has to be a UUID, otherwise the answer is 400; an ID not in the result starts from the beginning, and the `tree` format matches top-level comments only.
+- `offset_id` returns the comments after the one with this ID, so `info.last_comment` passed as `offset_id` gives the next page. An ID not in the result starts from the beginning, and the `tree` format matches top-level comments only.
+
+In the `tree` format, the first page of a request with `limit` (no `offset_id`) also carries `pinned`, the post's pinned comments that are not deleted, oldest first, wherever their pages are.
 
 Without `url`, the call returns up to 1000 latest comments of the site that are not deleted.
 

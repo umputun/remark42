@@ -112,6 +112,9 @@ type commentsWithInfo struct {
 type treeWithInfo struct {
 	*service.Tree
 	Info store.PostInfo `json:"info"`
+	// the pinned comments of the whole post, set on the first page of a limited tree only, so that
+	// a pin on a later page is shown before the page holding it is loaded
+	Pinned []store.Comment `json:"pinned,omitempty"`
 }
 
 // Run the lister and request's router, activate rest server

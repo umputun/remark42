@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import type { Comment, Node } from '../../common/types.ts';
 
-import { filterTree, findPinnedComments, getPinnedComments } from './comment-tree.ts';
+import { countComments, dropLoadedThreads, filterTree, findPinnedComments, getPinnedComments } from './comment-tree.ts';
 
 function node(id: string, replies?: Node[], pin?: boolean): Node {
   return { comment: { id, pin } as Comment, replies };
@@ -142,5 +142,27 @@ describe('getPinnedComments', () => {
 
   it('returns nothing for no threads', () => {
     assert.deepEqual(getPinnedComments([]), []);
+  });
+});
+
+/** the number a page of the thread is measured in on the server: every comment, replies included */
+describe('countComments', () => {
+  it('counts the replies at every depth', () => {
+    assert.equal(countComments([node('a', [node('b', [node('c')]), node('d')]), node('e')]), 5);
+  });
+
+  it('counts an empty tree as none', () => {
+    assert.equal(countComments([]), 0);
+  });
+});
+
+describe('dropLoadedThreads', () => {
+  it('drops the top-level threads already loaded and keeps the order of the rest', () => {
+    assert.deepEqual(ids(dropLoadedThreads([node('a'), node('b'), node('c')], ['b'])), ['a', 'c']);
+  });
+
+  it('compares top-level ids only, so a loaded id among the replies keeps its thread', () => {
+    const tree = [node('a', [node('b')])];
+    assert.deepEqual(ids(dropLoadedThreads(tree, ['b'])), ['a']);
   });
 });
