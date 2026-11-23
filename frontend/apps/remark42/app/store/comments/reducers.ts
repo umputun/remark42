@@ -29,7 +29,7 @@ import {
   COMMENT_PATCH,
 } from './types';
 import { getInitialSort } from './utils';
-import { getPinnedComments } from './comment-tree';
+import { getPinnedComments, walkTree } from './comment-tree';
 import { cmpRef } from 'utils/cmpRef';
 
 export const topComments = (
@@ -57,16 +57,15 @@ export const topComments = (
 };
 
 const reduceChildIds = (c: Record<Comment['id'], Comment['id'][]>, x: Node): Record<Comment['id'], Comment['id'][]> => {
-  if (!x.replies) return c;
-  if (!c[x.comment.id]) {
-    c[x.comment.id] = [];
-  }
-  for (const reply of x.replies) {
-    c[x.comment.id].push(reply.comment.id);
-    if (reply.replies) {
-      reduceChildIds(c, reply);
+  walkTree([x], ({ comment, replies }) => {
+    if (!replies) return;
+    if (!c[comment.id]) {
+      c[comment.id] = [];
     }
-  }
+    for (const reply of replies) {
+      c[comment.id].push(reply.comment.id);
+    }
+  });
 
   return c;
 };
@@ -99,10 +98,10 @@ export const childComments = (
 const cmpComment = (a: Comment | undefined, b: Comment): Comment => (a ? cmpRef(a, b) : b);
 
 const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comment['id'], Comment> => {
-  c[x.comment.id] = cmpComment(c[x.comment.id], x.comment);
-  if (x.replies) {
-    x.replies.reduce(reduceComments, c);
-  }
+  walkTree([x], ({ comment }) => {
+    c[comment.id] = cmpComment(c[comment.id], comment);
+  });
+
   return c;
 };
 
