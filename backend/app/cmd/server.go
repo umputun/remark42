@@ -664,7 +664,8 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 	if s.EnableEmoji {
 		emojiFmt = func(text string) string { return emoji.Sprint(text) }
 	}
-	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
+	// sizes go on after the proxy, which turns an external image into one the image store may hold
+	commentFormatter := store.NewCommentFormatter(imgProxy, store.CommentConverterFunc(imageService.SetSizes), emojiFmt)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {

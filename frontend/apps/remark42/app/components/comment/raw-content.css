@@ -23,6 +23,14 @@
     max-height: 300px;
   }
 
+  /* the server gives an image it holds the width and height it is drawn at, and the class, so the
+     browser keeps its space before the image loads; the height follows the width max-width sets,
+     and contain keeps the picture's shape in a box the rounded width makes a fraction wider */
+  & img.sized {
+    height: auto;
+    object-fit: contain;
+  }
+
   & blockquote {
     padding-block: 12px;
     padding-inline: 16px 8px;

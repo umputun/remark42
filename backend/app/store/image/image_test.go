@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"image"
+	"image/color"
+	"image/gif"
 	"image/jpeg"
+	"image/png"
 	"io"
 	"math/big"
 	"os"
@@ -154,6 +159,344 @@ func TestService_ExtractPictures(t *testing.T) {
 <img src="https://remark42.radio-t.com/api/v1/picture/user1/pic1.png">`
 	assert.Equal(t, []string{"user1/pic1.png"}, svc.ExtractPictures(html))
 	assert.Equal(t, []string{"user1/pic1.png"}, svc.ExtractNonProxiedPictures(html))
+}
+
+func TestService_SetSizes(t *testing.T) {
+	encodePNG := func(w, h int) []byte {
+		var buf bytes.Buffer
+		require.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, w, h))))
+		return buf.Bytes()
+	}
+	var plainJPEG bytes.Buffer
+	require.NoError(t, jpeg.Encode(&plainJPEG, image.NewGray(image.Rect(0, 0, 240, 180)), nil))
+
+	cachedURL := "https://example.com/cached.png"
+	cachedID, err := CachedImgID(cachedURL)
+	require.NoError(t, err)
+	stored := map[string][]byte{
+		"user1/wide.png": encodePNG(600, 200), cachedID: encodePNG(600, 200), "user1/tall.png": encodePNG(200, 900),
+		"user1/turned.jpg":  withExifOrientation(t, plainJPEG.Bytes(), binary.BigEndian, 6),
+		"user1/upright.jpg": withExifOrientation(t, plainJPEG.Bytes(), binary.LittleEndian, 3),
+		"user1/broken.png":  []byte("not an image"),
+		"user1/sliver.png":  encodePNG(50, 700),
+		"user1/dense.jpg":   withExifTIFF(t, plainJPEG.Bytes(), exifTIFFWithPixels(binary.LittleEndian, 1, 120, 90)),
+		"user1/exact.jpg":   withExifTIFF(t, plainJPEG.Bytes(), exifTIFFWithPixels(binary.BigEndian, 6, 240, 180)),
+		"user1/dense.png":   withPNGExif(t, encodePNG(400, 200), exifTIFFWithPixels(binary.BigEndian, 1, 200, 100)),
+		"user1/shot.png":    withPNGExif(t, encodePNG(400, 200), exifTIFFWithPixels(binary.BigEndian, 1, 400, 200)),
+		"user1/long.jpg":    withExifTIFF(t, plainJPEG.Bytes(), exifTIFFOrientationAs(binary.BigEndian, 4, 1)),
+		"user1/stray.jpg":   append([]byte{0xff, 0xd8, 0x00}, withExifOrientation(t, plainJPEG.Bytes(), binary.BigEndian, 6)[2:]...),
+		"user1/small.gif":   gifWithFrame(t, 400, 200, image.Rect(0, 0, 100, 50)),
+		"user1/full.gif":    gifWithFrame(t, 400, 200, image.Rect(0, 0, 400, 200)),
+		"user1/swapped.jpg": withExifTIFF(t, plainJPEG.Bytes(), exifTIFFWithPixels(binary.BigEndian, 6, 180, 240)),
+		"user1/turned.png":  withPNGExifOrientation(t, encodePNG(240, 180), 6),
+		"user1/upside.png":  withPNGExifOrientation(t, encodePNG(240, 180), 3),
+	}
+	store := StoreMock{LoadFunc: func(id string) ([]byte, error) {
+		if data, ok := stored[id]; ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf("can't load image %s", id)
+	}}
+	svc := NewService(&store, ServiceParams{ImageAPI: "https://r.example.com/api/v1/picture/", ProxyAPI: "https://r.example.com/api/v1/img"})
+	pic := func(id string) string { return "https://r.example.com/api/v1/picture/" + id }
+	proxied := func(u string) string {
+		return "https://r.example.com/api/v1/img?src=" + base64.URLEncoding.EncodeToString([]byte(u))
+	}
+	unchanged := func(img string) [2]string { return [2]string{img, img} }
+
+	tbl := []struct {
+		name  string
+		inOut [2]string
+	}{
+		{"uploaded", [2]string{`<img src="` + pic("user1/wide.png") + `" alt="a"/>`,
+			`<img src="` + pic("user1/wide.png") + `" alt="a" width="600" height="200" class="sized"/>`}},
+		{"taller than drawn, scaled down", [2]string{`<img src="` + pic("user1/tall.png") + `"/>`,
+			`<img src="` + pic("user1/tall.png") + `" width="67" height="300" class="sized"/>`}},
+		{"width of a capped image rounded up", [2]string{`<img src="` + pic("user1/sliver.png") + `"/>`,
+			`<img src="` + pic("user1/sliver.png") + `" width="22" height="300" class="sized"/>`}},
+		{"class of its own replaced", [2]string{`<img src="` + pic("user1/wide.png") + `" class="x"/>`,
+			`<img src="` + pic("user1/wide.png") + `" class="sized" width="600" height="200"/>`}},
+		{"jpeg with exif pixel dimensions other than its size", unchanged(`<img src="` + pic("user1/dense.jpg") + `"/>`)},
+		{"jpeg with exif pixel dimensions of its size, turned", [2]string{`<img src="` + pic("user1/exact.jpg") + `"/>`,
+			`<img src="` + pic("user1/exact.jpg") + `" width="180" height="240" class="sized"/>`}},
+		{"jpeg with exif pixel dimensions of its turned size", [2]string{`<img src="` + pic("user1/swapped.jpg") + `"/>`,
+			`<img src="` + pic("user1/swapped.jpg") + `" width="180" height="240" class="sized"/>`}},
+		{"png with exif pixel dimensions other than its size", unchanged(`<img src="` + pic("user1/dense.png") + `"/>`)},
+		{"png with exif pixel dimensions of its size", [2]string{`<img src="` + pic("user1/shot.png") + `"/>`,
+			`<img src="` + pic("user1/shot.png") + `" width="400" height="200" class="sized"/>`}},
+		{"jpeg orientation as a LONG, which browsers ignore", [2]string{`<img src="` + pic("user1/long.jpg") + `"/>`,
+			`<img src="` + pic("user1/long.jpg") + `" width="240" height="180" class="sized"/>`}},
+		{"jpeg with a stray byte before its exif", unchanged(`<img src="` + pic("user1/stray.jpg") + `"/>`)},
+		{"gif with a frame smaller than its screen", unchanged(`<img src="` + pic("user1/small.gif") + `"/>`)},
+		{"gif with a frame covering its screen", [2]string{`<img src="` + pic("user1/full.gif") + `"/>`,
+			`<img src="` + pic("user1/full.gif") + `" width="400" height="200" class="sized"/>`}},
+		{"png turned by exif", unchanged(`<img src="` + pic("user1/turned.png") + `"/>`)},
+		{"png upside down by exif", [2]string{`<img src="` + pic("user1/upside.png") + `"/>`,
+			`<img src="` + pic("user1/upside.png") + `" width="240" height="180" class="sized"/>`}},
+		{"jpeg turned by exif", [2]string{`<img src="` + pic("user1/turned.jpg") + `"/>`,
+			`<img src="` + pic("user1/turned.jpg") + `" width="180" height="240" class="sized"/>`}},
+		{"jpeg upside down by exif", [2]string{`<img src="` + pic("user1/upright.jpg") + `"/>`,
+			`<img src="` + pic("user1/upright.jpg") + `" width="240" height="180" class="sized"/>`}},
+		{"proxied and cached", [2]string{`<img src="` + proxied(cachedURL) + `"/>`,
+			`<img src="` + proxied(cachedURL) + `" width="600" height="200" class="sized"/>`}},
+		{"proxied, not cached yet", unchanged(`<img src="` + proxied("https://example.com/new.png") + `"/>`)},
+		{"uploaded, missing", unchanged(`<img src="` + pic("user1/gone.png") + `"/>`)},
+		{"stored, not an image", unchanged(`<img src="` + pic("user1/broken.png") + `"/>`)},
+		{"external", unchanged(`<img src="https://example.com/cached.png"/>`)},
+		{"external with a picture url in its query",
+			unchanged(`<img src="https://thumbs.example.com/x?u=` + pic("user1/wide.png") + `"/>`)},
+		{"own width", unchanged(`<img src="` + pic("user1/wide.png") + `" width="10"/>`)},
+		{"own height", unchanged(`<img src="` + pic("user1/wide.png") + `" height="10"/>`)},
+		{"two images and text", [2]string{`<p>one <img src="` + pic("user1/wide.png") + `"/> two <img src="https://example.com/x.png"/></p>`,
+			`<p>one <img src="` + pic("user1/wide.png") + `" width="600" height="200" class="sized"/> two <img src="https://example.com/x.png"/></p>`}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.inOut[1], svc.SetSizes(tt.inOut[0]))
+		})
+	}
+
+	t.Run("a picture shown many times is read once", func(t *testing.T) {
+		before := len(store.LoadCalls())
+		res := svc.SetSizes(strings.Repeat(`<img src="`+pic("user1/wide.png")+`"/>`, 300))
+		assert.Equal(t, 300, strings.Count(res, `class="sized"`))
+		assert.Equal(t, 1, len(store.LoadCalls())-before)
+	})
+
+	t.Run("no more than maxSizedPictures different pictures are read", func(t *testing.T) {
+		var html strings.Builder
+		for n := range maxSizedPictures + 5 {
+			stored[fmt.Sprintf("user2/p%d.png", n)] = stored["user1/wide.png"]
+			fmt.Fprintf(&html, `<img src="%s"/>`, pic(fmt.Sprintf("user2/p%d.png", n)))
+		}
+		before := len(store.LoadCalls())
+		res := svc.SetSizes(html.String())
+		assert.Equal(t, maxSizedPictures, strings.Count(res, `class="sized"`))
+		assert.Equal(t, maxSizedPictures, len(store.LoadCalls())-before)
+	})
+}
+
+func TestGifFrameCoversScreen(t *testing.T) {
+	full := gifWithFrame(t, 40, 20, image.Rect(0, 0, 40, 20))
+	assert.True(t, gifFrameCoversScreen(full, 40, 20))
+	assert.False(t, gifFrameCoversScreen(gifWithFrame(t, 40, 20, image.Rect(0, 0, 10, 5)), 40, 20), "smaller frame")
+	assert.False(t, gifFrameCoversScreen(gifWithFrame(t, 40, 20, image.Rect(5, 0, 40, 20)), 40, 20), "frame at an offset")
+
+	// two frames bring the looping application extension and graphic control extensions before the first frame
+	var buf bytes.Buffer
+	pal := color.Palette{color.Black, color.White}
+	frames := []*image.Paletted{image.NewPaletted(image.Rect(0, 0, 40, 20), pal), image.NewPaletted(image.Rect(0, 0, 40, 20), pal)}
+	require.NoError(t, gif.EncodeAll(&buf, &gif.GIF{Image: frames, Delay: []int{10, 10}, Disposal: []byte{gif.DisposalBackground, 0},
+		Config: image.Config{ColorModel: pal, Width: 40, Height: 20}}))
+	animated := buf.Bytes()
+	require.True(t, bytes.Contains(animated, []byte("NETSCAPE2.0")))
+	assert.True(t, gifFrameCoversScreen(animated, 40, 20))
+
+	for n := range len(animated) { // a file cut anywhere is read without a panic and is not sized
+		if gifFrameCoversScreen(animated[:n], 40, 20) {
+			idx := bytes.IndexByte(animated[13+6:], 0x2c) // first image separator after the color table
+			require.GreaterOrEqual(t, n, 13+6+idx+9, "sized only once the image descriptor is whole")
+		}
+	}
+}
+
+// jpegExifTags reads the EXIF tags of a jpeg
+func jpegExifTags(data []byte) exifTags {
+	tiff, _ := jpegExif(data)
+	return readExif(tiff)
+}
+
+// pictureExifTags reads the EXIF tags of a picture
+func pictureExifTags(data []byte, format string) exifTags {
+	tiff, _ := pictureExif(data, format)
+	return readExif(tiff)
+}
+
+// exifTIFF returns a TIFF structure with IFD0 holding one orientation entry
+func exifTIFF(order binary.AppendByteOrder, orientation uint16) []byte {
+	tiff := []byte("II")
+	if order == binary.AppendByteOrder(binary.BigEndian) {
+		tiff = []byte("MM")
+	}
+	tiff = order.AppendUint16(tiff, 42)
+	tiff = order.AppendUint32(tiff, 8)           // IFD0 right after the header
+	tiff = order.AppendUint16(tiff, 1)           // one entry
+	tiff = order.AppendUint16(tiff, 0x0112)      // orientation
+	tiff = order.AppendUint16(tiff, 3)           // SHORT
+	tiff = order.AppendUint32(tiff, 1)           // one value
+	tiff = order.AppendUint16(tiff, orientation) // the value, left-justified in four bytes
+	return append(tiff, 0, 0, 0, 0, 0, 0)        // padding, then no next IFD
+}
+
+// exifTIFFWithPixels returns a TIFF structure with IFD0 holding the orientation and a pointer to an Exif
+// IFD holding PixelXDimension as a LONG and PixelYDimension as a SHORT
+func exifTIFFWithPixels(order binary.AppendByteOrder, orientation uint16, pixW uint32, pixH uint16) []byte {
+	tiff := []byte("II")
+	if order == binary.AppendByteOrder(binary.BigEndian) {
+		tiff = []byte("MM")
+	}
+	tiff = order.AppendUint16(tiff, 42)
+	tiff = order.AppendUint32(tiff, 8)
+	tiff = order.AppendUint16(tiff, 2)
+	tiff = order.AppendUint16(tiff, 0x0112) // orientation, SHORT
+	tiff = order.AppendUint16(tiff, 3)
+	tiff = order.AppendUint32(tiff, 1)
+	tiff = order.AppendUint16(tiff, orientation)
+	tiff = append(tiff, 0, 0)
+	tiff = order.AppendUint16(tiff, 0x8769) // Exif IFD pointer, LONG
+	tiff = order.AppendUint16(tiff, 4)
+	tiff = order.AppendUint32(tiff, 1)
+	tiff = order.AppendUint32(tiff, 8+2+2*12+4) // right after IFD0 and its next-IFD offset
+	tiff = append(tiff, 0, 0, 0, 0)
+	tiff = order.AppendUint16(tiff, 2)
+	tiff = order.AppendUint16(tiff, 0xa002) // PixelXDimension, LONG
+	tiff = order.AppendUint16(tiff, 4)
+	tiff = order.AppendUint32(tiff, 1)
+	tiff = order.AppendUint32(tiff, pixW)
+	tiff = order.AppendUint16(tiff, 0xa003) // PixelYDimension, SHORT
+	tiff = order.AppendUint16(tiff, 3)
+	tiff = order.AppendUint32(tiff, 1)
+	tiff = order.AppendUint16(tiff, pixH)
+	return append(tiff, 0, 0, 0, 0, 0, 0)
+}
+
+// withExifTIFF returns the jpeg with an Exif APP1 segment holding the TIFF structure put in after SOI
+func withExifTIFF(t *testing.T, jpg, tiff []byte) []byte {
+	t.Helper()
+	seg := append([]byte("Exif\x00\x00"), tiff...)
+	require.True(t, bytes.HasPrefix(jpg, []byte{0xff, 0xd8}))
+	res := append([]byte{0xff, 0xd8, 0xff, 0xe1, byte((len(seg) + 2) >> 8), byte(len(seg) + 2)}, seg...)
+	return append(res, jpg[2:]...)
+}
+
+// withExifOrientation returns the jpeg with an Exif APP1 segment holding the orientation put in after SOI
+func withExifOrientation(t *testing.T, jpg []byte, order binary.AppendByteOrder, orientation uint16) []byte {
+	t.Helper()
+	seg := append([]byte("Exif\x00\x00"), exifTIFF(order, orientation)...)
+	require.True(t, bytes.HasPrefix(jpg, []byte{0xff, 0xd8}))
+	res := append([]byte{0xff, 0xd8, 0xff, 0xe1, byte((len(seg) + 2) >> 8), byte(len(seg) + 2)}, seg...)
+	return append(res, jpg[2:]...)
+}
+
+// pngChunk returns a png chunk with its length and crc
+func pngChunk(kind string, data []byte) []byte {
+	c := binary.BigEndian.AppendUint32(nil, uint32(len(data))) //nolint:gosec // a few bytes
+	c = append(append(c, kind...), data...)
+	return binary.BigEndian.AppendUint32(c, crc32.ChecksumIEEE(c[4:]))
+}
+
+// withPNGExifOrientation returns the png with an eXIf chunk holding the orientation put in after IHDR
+func withPNGExifOrientation(t *testing.T, img []byte, orientation uint16) []byte {
+	t.Helper()
+	return withPNGExif(t, img, exifTIFF(binary.BigEndian, orientation))
+}
+
+// withPNGExif returns the png with an eXIf chunk holding the TIFF structure put in after IHDR
+func withPNGExif(t *testing.T, img, tiff []byte) []byte {
+	t.Helper()
+	ihdrEnd := 8 + 8 + 13 + 4 // signature, IHDR length and type, its data, its crc
+	require.Equal(t, "IHDR", string(img[12:16]))
+	return append(append(append([]byte{}, img[:ihdrEnd]...), pngChunk("eXIf", tiff)...), img[ihdrEnd:]...)
+}
+
+// exifTIFFOrientationAs returns a TIFF structure with IFD0 holding orientation 6 as an entry of the
+// given type and count, the value in the first two or four bytes of the value field
+func exifTIFFOrientationAs(order binary.AppendByteOrder, typ uint16, count uint32) []byte {
+	const value = 6
+	tiff := []byte("II")
+	if order == binary.AppendByteOrder(binary.BigEndian) {
+		tiff = []byte("MM")
+	}
+	tiff = order.AppendUint16(tiff, 42)
+	tiff = order.AppendUint32(tiff, 8)
+	tiff = order.AppendUint16(tiff, 1)
+	tiff = order.AppendUint16(tiff, 0x0112)
+	tiff = order.AppendUint16(tiff, typ)
+	tiff = order.AppendUint32(tiff, count)
+	if typ == 4 {
+		tiff = order.AppendUint32(tiff, value)
+	} else {
+		tiff = order.AppendUint16(tiff, value)
+		tiff = append(tiff, 0, 0)
+	}
+	return append(tiff, 0, 0, 0, 0)
+}
+
+// gifWithFrame returns a one-frame gif with a logical screen of the given size and a frame at rect
+func gifWithFrame(t *testing.T, screenW, screenH int, rect image.Rectangle) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	frame := image.NewPaletted(rect, color.Palette{color.Black, color.White})
+	require.NoError(t, gif.EncodeAll(&buf, &gif.GIF{Image: []*image.Paletted{frame}, Delay: []int{0},
+		Config: image.Config{ColorModel: frame.Palette, Width: screenW, Height: screenH}}))
+	return buf.Bytes()
+}
+
+func TestPNGAndWebPOrientation(t *testing.T) {
+	webpOrientation := func(data []byte) int { return readExif(webpExif(data)).orientation }
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 8, 8))))
+	plain := buf.Bytes()
+	assert.Equal(t, 0, readExif(pngExif(plain)).orientation, "no eXIf")
+	turned := withPNGExifOrientation(t, plain, 6)
+	_, format, err := image.DecodeConfig(bytes.NewReader(turned))
+	require.NoError(t, err, "the chunk leaves a valid png")
+	assert.Equal(t, 6, pictureExifTags(turned, format).orientation)
+	late := append(append(append([]byte{}, plain[:len(plain)-12]...), pngChunk("eXIf", exifTIFF(binary.BigEndian, 6))...), plain[len(plain)-12:]...)
+	assert.Equal(t, 0, readExif(pngExif(late)).orientation, "eXIf after IDAT does not count")
+
+	riff := func(chunks ...[]byte) []byte {
+		body := []byte("WEBP")
+		for _, c := range chunks {
+			body = append(body, c...)
+		}
+		return append(binary.LittleEndian.AppendUint32([]byte("RIFF"), uint32(len(body))), body...) //nolint:gosec // a few bytes
+	}
+	chunk := func(kind string, data []byte) []byte {
+		c := binary.LittleEndian.AppendUint32([]byte(kind), uint32(len(data))) //nolint:gosec // a few bytes
+		c = append(c, data...)
+		if len(data)%2 == 1 {
+			c = append(c, 0)
+		}
+		return c
+	}
+	assert.Equal(t, 0, webpOrientation(riff(chunk("VP8X", make([]byte, 10)))), "no EXIF")
+	assert.Equal(t, 8, webpOrientation(riff(chunk("VP8X", make([]byte, 10)), chunk("ICCP", []byte{1, 2, 3}),
+		chunk("EXIF", exifTIFF(binary.LittleEndian, 8)))), "after an odd-sized chunk")
+	assert.Equal(t, 6, webpOrientation(riff(chunk("EXIF", append([]byte("Exif\x00\x00"), exifTIFF(binary.BigEndian, 6)...)))),
+		"with the jpeg-style header")
+	full := riff(chunk("EXIF", exifTIFF(binary.BigEndian, 6)))
+	for n := range len(turned) - 1 { // a file cut anywhere is read without a panic
+		_ = webpOrientation(full[:min(n, len(full))])
+		_ = readExif(pngExif(turned[:n])).orientation
+	}
+}
+
+func TestJpegOrientation(t *testing.T) {
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, image.NewGray(image.Rect(0, 0, 8, 8)), nil))
+	plain := buf.Bytes()
+	assert.Equal(t, 0, jpegExifTags(plain).orientation, "no exif")
+	for _, o := range []uint16{1, 5, 6, 8} {
+		assert.Equal(t, int(o), jpegExifTags(withExifOrientation(t, plain, binary.BigEndian, o)).orientation, "big endian %d", o)
+		assert.Equal(t, int(o), jpegExifTags(withExifOrientation(t, plain, binary.LittleEndian, o)).orientation, "little endian %d", o)
+	}
+	assert.Equal(t, 0, jpegExifTags(withExifOrientation(t, plain, binary.BigEndian, 9)).orientation, "out of range")
+	tags := jpegExifTags(withExifTIFF(t, plain, exifTIFFWithPixels(binary.BigEndian, 8, 70000, 300)))
+	assert.Equal(t, exifTags{orientation: 8, pixelWidth: 70000, pixelHeight: 300}, tags, "big endian, LONG and SHORT")
+	tags = jpegExifTags(withExifTIFF(t, plain, exifTIFFWithPixels(binary.LittleEndian, 3, 640, 480)))
+	assert.Equal(t, exifTags{orientation: 3, pixelWidth: 640, pixelHeight: 480}, tags, "little endian")
+	assert.Equal(t, 0, readExif(exifTIFFOrientationAs(binary.BigEndian, 4, 1)).orientation, "LONG")
+	assert.Equal(t, 0, readExif(exifTIFFOrientationAs(binary.LittleEndian, 3, 2)).orientation, "two SHORTs")
+	assert.Equal(t, 6, readExif(exifTIFFOrientationAs(binary.LittleEndian, 3, 1)).orientation, "one SHORT")
+	full := exifTIFFWithPixels(binary.LittleEndian, 3, 640, 480)
+	for n := range len(full) { // a structure cut anywhere is read without a panic
+		readExif(full[:n])
+	}
+	turned := withExifOrientation(t, plain, binary.BigEndian, 6)
+	for n := range len(turned) - 1 { // a file cut anywhere is read without a panic
+		_ = jpegExifTags(turned[:n]).orientation
+	}
 }
 
 func TestSafeIDSegment(t *testing.T) {

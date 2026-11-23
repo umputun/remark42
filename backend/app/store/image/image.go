@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec // not used for cryptography
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,9 +21,11 @@ import (
 	_ "image/jpeg" // register jpeg decoder
 	"image/png"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -283,34 +286,340 @@ func (s *Service) extractImageIDs(commentHTML string, includeProxied bool) (ids 
 	}
 	doc.Find("img").Each(func(_ int, sl *goquery.Selection) {
 		if im, ok := sl.Attr("src"); ok {
-			if strings.Contains(im, s.ImageAPI) {
-				elems := strings.Split(im, "/")
-				if len(elems) >= 2 {
-					user, file := elems[len(elems)-2], elems[len(elems)-1]
-					if SafeIDSegment(user) && SafeIDSegment(file) {
-						ids = append(ids, user+"/"+file)
-					}
-				}
-			}
-			if includeProxied && strings.Contains(im, s.ProxyAPI) {
-				proxiedURL, err := url.Parse(im)
-				if err != nil {
-					return
-				}
-				imgURL, err := base64.URLEncoding.DecodeString(proxiedURL.Query().Get("src"))
-				if err != nil {
-					return
-				}
-				imgID, err := CachedImgID(string(imgURL))
-				if err != nil {
-					return
-				}
-				ids = append(ids, imgID)
-			}
+			ids = append(ids, s.srcImageIDs(im, includeProxied)...)
 		}
 	})
 
 	return ids
+}
+
+// srcImageIDs returns the IDs of the stored image an img src points to, including a proxied
+// image if includeProxied is true
+func (s *Service) srcImageIDs(src string, includeProxied bool) (ids []string) {
+	if strings.Contains(src, s.ImageAPI) {
+		elems := strings.Split(src, "/")
+		if len(elems) >= 2 {
+			user, file := elems[len(elems)-2], elems[len(elems)-1]
+			if SafeIDSegment(user) && SafeIDSegment(file) {
+				ids = append(ids, user+"/"+file)
+			}
+		}
+	}
+	if includeProxied && strings.Contains(src, s.ProxyAPI) {
+		proxiedURL, err := url.Parse(src)
+		if err != nil {
+			return ids
+		}
+		imgURL, err := base64.URLEncoding.DecodeString(proxiedURL.Query().Get("src"))
+		if err != nil {
+			return ids
+		}
+		imgID, err := CachedImgID(string(imgURL))
+		if err != nil {
+			return ids
+		}
+		ids = append(ids, imgID)
+	}
+	return ids
+}
+
+// SizedClass marks an image SetSizes gave its width and height to, so the widget can tell it
+// from one whose commenter set a size
+const SizedClass = "sized"
+
+// maxSizedPictures caps how many different pictures SetSizes reads from the store for one comment, so
+// a comment pointing at many big uploads can't make it read them all on every preview
+const maxSizedPictures = 32
+
+// maxDrawnHeight is the max-height the widget draws a comment image at (raw-content.css)
+const maxDrawnHeight = 300
+
+// SetSizes gives every image in the comment html that is in the store the width and height the
+// widget draws it at, so a browser reserves its space before loading it and the text below doesn't
+// move when it loads. Uploaded images are in the store from the upload on; a proxied one only once
+// the proxy has cached it, which needs CacheExternal. An image with a width or height of its own is
+// left as it is, and so is any picture past the first maxSizedPictures different ones.
+func (s *Service) SetSizes(commentHTML string) string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))
+	if err != nil {
+		return commentHTML
+	}
+	type size struct {
+		width, height int
+		ok            bool
+	}
+	sizes := map[string]size{} // a comment can show one picture many times, so each is read once
+	doc.Find("img").Each(func(_ int, sl *goquery.Selection) {
+		src, ok := sl.Attr("src")
+		// a picture url anywhere else in src, such as in the query of an external thumbnail, is not the image loaded
+		if !ok || (!strings.HasPrefix(src, s.ImageAPI) && !strings.HasPrefix(src, s.ProxyAPI+"?")) {
+			return
+		}
+		if _, ok = sl.Attr("width"); ok {
+			return
+		}
+		if _, ok = sl.Attr("height"); ok {
+			return
+		}
+		for _, id := range s.srcImageIDs(src, true) {
+			sz, seen := sizes[id]
+			if !seen && len(sizes) >= maxSizedPictures {
+				return
+			}
+			if !seen {
+				sz.width, sz.height, sz.ok = s.drawnSize(id)
+				sizes[id] = sz
+			}
+			if !sz.ok {
+				continue
+			}
+			w, h := sz.width, sz.height
+			sl.SetAttr("width", strconv.Itoa(w))
+			sl.SetAttr("height", strconv.Itoa(h))
+			// the sanitizer keeps no other class on an image, and drops a class attribute holding more than this one
+			sl.SetAttr("class", SizedClass)
+			return
+		}
+	})
+	res, err := doc.Find("body").Html()
+	if err != nil {
+		return commentHTML
+	}
+	return res
+}
+
+// drawnSize returns the size the widget draws the stored image with the given id at in a column wide
+// enough for it: as the browser shows it, turned by the EXIF orientation of a jpeg, and scaled down
+// to maxDrawnHeight. The scaled width is rounded up, so the height that follows from it once the
+// picture loads is never below maxDrawnHeight, which caps it. An image some browser may draw at
+// another size than the one in its file is not sized: a png or webp whose EXIF orientation turns it
+// a quarter, as browsers differ on whether they turn it; a jpeg or png whose EXIF pixel dimensions
+// differ from its size, which browsers may take as a density to scale it by; a jpeg whose segments
+// can't be walked to its EXIF; and a gif whose first frame doesn't cover its logical screen, which
+// some browsers draw at the frame's size.
+func (s *Service) drawnSize(id string) (width, height int, ok bool) {
+	data, err := s.store.Load(id)
+	if err != nil {
+		return 0, 0, false
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 {
+		return 0, 0, false
+	}
+	width, height = cfg.Width, cfg.Height
+	if format == "gif" && !gifFrameCoversScreen(data, width, height) {
+		return 0, 0, false
+	}
+	tiff, readable := pictureExif(data, format)
+	if !readable {
+		return 0, 0, false
+	}
+	tags := readExif(tiff)
+	if (format == "jpeg" || format == "png") && (tags.pixelWidth > 0 || tags.pixelHeight > 0) &&
+		(tags.pixelWidth != width || tags.pixelHeight != height) && (tags.pixelWidth != height || tags.pixelHeight != width) {
+		return 0, 0, false
+	}
+	if tags.orientation >= 5 { // 5 to 8 turn the picture by a quarter
+		if format != "jpeg" {
+			return 0, 0, false
+		}
+		width, height = height, width
+	}
+	if height > maxDrawnHeight {
+		width = int(math.Ceil(float64(width) * maxDrawnHeight / float64(height)))
+		height = maxDrawnHeight
+	}
+	return width, height, true
+}
+
+// pictureExif returns the EXIF TIFF structure of a jpeg, png or webp, or nil when it has none, and
+// false when the file can't be walked to where its EXIF would be
+func pictureExif(data []byte, format string) (tiff []byte, readable bool) {
+	switch format {
+	case "jpeg":
+		return jpegExif(data)
+	case "png":
+		return pngExif(data), true
+	case "webp":
+		return webpExif(data), true
+	}
+	return nil, true
+}
+
+// gifFrameCoversScreen reports whether the first frame of a gif covers its logical screen of the given
+// size, which is what browsers agree to draw it at. It reads the frame's place from the image
+// descriptor, stepping over the color table and extensions before it, and decodes no pixels.
+func gifFrameCoversScreen(data []byte, width, height int) bool {
+	const (
+		headerLen      = 6 + 7 // signature and version, logical screen descriptor
+		extensionIntro = 0x21
+		imageSeparator = 0x2c
+	)
+	if len(data) < headerLen {
+		return false
+	}
+	i := headerLen
+	if flags := data[10]; flags&0x80 != 0 { // global color table
+		i += 3 << (flags&0x07 + 1)
+	}
+	for i < len(data) {
+		switch data[i] {
+		case imageSeparator:
+			if i+9 > len(data) {
+				return false
+			}
+			le := binary.LittleEndian
+			left, top := int(le.Uint16(data[i+1:])), int(le.Uint16(data[i+3:]))
+			w, h := int(le.Uint16(data[i+5:])), int(le.Uint16(data[i+7:]))
+			return left == 0 && top == 0 && w == width && h == height
+		case extensionIntro: // introducer, label, then data sub-blocks up to an empty one
+			i += 2
+			for i < len(data) && data[i] != 0 {
+				i += 1 + int(data[i])
+			}
+			i++
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// jpegExif returns the TIFF structure of the first Exif APP1 segment of a jpeg, walking the segments
+// before the first scan. It returns false at anything between segments other than fill bytes, which
+// browsers differ on: some step over it to the EXIF after it, some stop there.
+func jpegExif(data []byte) (tiff []byte, readable bool) {
+	const (
+		app1Marker = 0xe1
+		sosMarker  = 0xda
+		eoiMarker  = 0xd9
+	)
+	for i := 2; i+3 < len(data); {
+		if data[i] != 0xff {
+			return nil, false
+		}
+		marker := data[i+1]
+		if marker == 0xff { // fill byte in front of a marker
+			i++
+			continue
+		}
+		if marker == sosMarker || marker == eoiMarker {
+			return nil, true
+		}
+		n := int(data[i+2])<<8 | int(data[i+3])
+		if n < 2 || n > len(data)-i-2 {
+			return nil, false
+		}
+		if seg := data[i+4 : i+2+n]; marker == app1Marker && bytes.HasPrefix(seg, []byte("Exif\x00\x00")) {
+			return seg[6:], true
+		}
+		i += 2 + n
+	}
+	return nil, true
+}
+
+// pngExif returns the eXIf chunk of a png, which counts only before IDAT
+func pngExif(data []byte) []byte {
+	for i := 8; i+8 <= len(data); { // chunks start after the signature
+		n := int(binary.BigEndian.Uint32(data[i:]))
+		kind := string(data[i+4 : i+8])
+		if kind == "IDAT" || kind == "IEND" || n < 0 || n > len(data)-i-12 { // n < 0 when int is 32 bits
+			return nil
+		}
+		if kind == "eXIf" {
+			return data[i+8 : i+8+n]
+		}
+		i += 12 + n // length, type, data, crc
+	}
+	return nil
+}
+
+// webpExif returns the EXIF chunk of an extended webp, without the header some writers put in front
+func webpExif(data []byte) []byte {
+	if len(data) < 12 || string(data[:4]) != "RIFF" || string(data[8:12]) != "WEBP" {
+		return nil
+	}
+	for i := 12; i+8 <= len(data); {
+		n := int(binary.LittleEndian.Uint32(data[i+4:]))
+		if n < 0 || n > len(data)-i-8 { // n < 0 when int is 32 bits
+			return nil
+		}
+		if string(data[i:i+4]) == "EXIF" {
+			return bytes.TrimPrefix(data[i+8:i+8+n], []byte("Exif\x00\x00"))
+		}
+		i += 8 + n + n%2 // chunks are padded to an even size
+	}
+	return nil
+}
+
+// exifTags holds the EXIF tags that change how big a browser shows a picture; zero means absent
+type exifTags struct {
+	orientation             int // 1 to 8
+	pixelWidth, pixelHeight int // PixelXDimension and PixelYDimension
+}
+
+// readExif reads the orientation from IFD0 of a TIFF structure, and the pixel dimensions from the Exif
+// IFD it points to
+func readExif(tiff []byte) (tags exifTags) {
+	if len(tiff) < 8 {
+		return tags
+	}
+	var order binary.ByteOrder
+	switch string(tiff[:2]) {
+	case "II":
+		order = binary.LittleEndian
+	case "MM":
+		order = binary.BigEndian
+	default:
+		return tags
+	}
+	// value returns a single SHORT or LONG held in the value field of an entry, or 0. Browsers read
+	// the orientation only as a single SHORT, so shortOnly leaves a LONG out.
+	value := func(entry []byte, shortOnly bool) int {
+		if order.Uint32(entry[4:]) != 1 {
+			return 0
+		}
+		switch typ := order.Uint16(entry[2:]); {
+		case typ == 3: // SHORT
+			return int(order.Uint16(entry[8:]))
+		case typ == 4 && !shortOnly: // LONG
+			return int(order.Uint32(entry[8:]) & 0x7fffffff) // fits int on 32 bits
+		}
+		return 0
+	}
+	// entries calls fn for each 12-byte entry of the IFD at the given offset
+	entries := func(offset int, fn func(tag uint16, entry []byte)) {
+		if offset < 8 || offset > len(tiff)-2 {
+			return
+		}
+		for e := range int(order.Uint16(tiff[offset:])) {
+			at := offset + 2 + e*12
+			if at+12 > len(tiff) {
+				return
+			}
+			fn(order.Uint16(tiff[at:]), tiff[at:at+12])
+		}
+	}
+	exifIFD := 0
+	entries(int(order.Uint32(tiff[4:8])&0x7fffffff), func(tag uint16, entry []byte) {
+		switch tag {
+		case 0x0112: // orientation
+			if v := value(entry, true); v >= 1 && v <= 8 {
+				tags.orientation = v
+			}
+		case 0x8769: // pointer to the Exif IFD
+			exifIFD = value(entry, false)
+		}
+	})
+	entries(exifIFD, func(tag uint16, entry []byte) {
+		switch tag {
+		case 0xa002:
+			tags.pixelWidth = value(entry, false)
+		case 0xa003:
+			tags.pixelHeight = value(entry, false)
+		}
+	})
+	return tags
 }
 
 // maxImagePixels caps the declared pixel count of an image before any raster decode
