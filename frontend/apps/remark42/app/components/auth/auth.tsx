@@ -1,12 +1,14 @@
 import clsx from 'clsx';
 import type { JSX } from 'preact';
 import { h, Fragment } from 'preact';
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useLayoutEffect } from 'preact/hooks';
 import { useAppDispatch } from 'store';
 
 import { useIntl } from 'common/intl';
 import { signin } from 'store/user/actions';
-import { getUser } from 'common/api';
+import { getSignedInUser, getUser } from 'common/api';
+import { getCookie } from 'common/cookies';
+import { XSRF_COOKIE } from 'common/fetcher';
 import type { User } from 'common/types';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
@@ -14,6 +16,7 @@ import { CrossIcon } from 'components/icons/cross';
 import { TextareaAutosize } from 'components/textarea-autosize';
 import { Spinner } from 'components/spinner/spinner';
 import { ArrowIcon } from 'components/icons/arrow';
+import { RequestError } from 'utils/errorUtils';
 
 import { Button } from './components/button';
 import { OAuth } from './components/oauth';
@@ -41,6 +44,7 @@ export function Auth() {
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
   const emailRef = useRef('');
   const isVerifyingRef = useRef(false);
+  const isSignedInRef = useRef(false);
   const dispatch = useAppDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
@@ -56,6 +60,59 @@ export function Auth() {
 
   // Errors
   const [errorMessage, setError] = useErrorMessage();
+
+  // the link in the email signs the browser in on a page of its own, and this frame shares that page's
+  // cookies wherever the browser lets it. A new XSRF cookie is the sign it happened: reading the cookie
+  // costs no request, so the user is loaded only once it has changed. A browser keeps a hidden tab's
+  // timers slow, so the check also runs when the reader comes back to it. A layout effect starts
+  // watching as the step renders, so a cookie set at once is still seen as new
+  useLayoutEffect(() => {
+    if (view !== 'token') {
+      return undefined;
+    }
+
+    let seen = getCookie(XSRF_COOKIE);
+
+    async function check() {
+      const current = getCookie(XSRF_COOKIE);
+
+      if (!current || current === seen || isVerifyingRef.current || isSignedInRef.current) {
+        return;
+      }
+
+      const previous = seen;
+
+      // a cookie that does not lead to a user is not looked at again
+      seen = current;
+      isVerifyingRef.current = true;
+
+      try {
+        const user = await getSignedInUser();
+
+        isSignedInRef.current = true;
+        dispatch(signin(user));
+      } catch (e) {
+        // a refusal is the answer for this cookie, and the token from the email still works. A request
+        // that did not get through, on the network or at the rate limit, is made again on the next check
+        if (!(e instanceof RequestError && (e.code === 401 || e.code === 403))) {
+          seen = previous;
+        }
+      } finally {
+        isVerifyingRef.current = false;
+      }
+    }
+
+    const timer = window.setInterval(check, 1000);
+
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [view, dispatch]);
 
   function handleClickSingIn(evt: Event) {
     evt.preventDefault();
@@ -122,7 +179,7 @@ export function Auth() {
    * state that disables the form is set a render later than the events that can ask twice
    */
   async function verifyToken(token: string) {
-    if (isVerifyingRef.current) {
+    if (isVerifyingRef.current || isSignedInRef.current) {
       return;
     }
 
@@ -146,6 +203,7 @@ export function Auth() {
         }
       }
 
+      isSignedInRef.current = true;
       dispatch(signin(user));
     } finally {
       isVerifyingRef.current = false;

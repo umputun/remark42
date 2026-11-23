@@ -13,10 +13,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
+	"github.com/go-pkgz/auth/v2/provider"
 	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
@@ -554,7 +556,8 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 // carry a user::address handshake signed with the same key: this one, which expires in 30 minutes and proves
 // the reader holds the address now; the unsubscribe link in every reply email, which has no provider and
 // lasts a century; and the email login confirmation, whose user part the requester chooses and whose
-// provider is the login's. parseHandshake accepts each token only where it is meant to be used.
+// provider is the login's, opened by the sign-in link page. parseHandshake accepts each token only where it
+// is meant to be used.
 const emailSubscribeProvider = "email-subscribe"
 
 // emailSubscribeCtrl confirms an email subscription from the link in the confirmation email, with no
@@ -634,6 +637,185 @@ func (s *private) emailSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	rest.HTMLResponse(w, http.StatusOK, page)
 }
 
+// emailLoginProvider is the name the email login is registered under in the authenticator
+const emailLoginProvider = "email"
+
+// emailLoginCtrl serves the sign-in link of the email login message, GET /email/login.html?tkn=token.
+// GET shows whom the link signs in and a button, so a mail scanner fetching the link signs nobody in.
+// POST signs this browser in. The token goes to the email login provider in-process, which keeps the
+// one-use record and the checks of the token where they are for a token pasted into the comments.
+// Only the token made for the link is taken here, so the link cannot use up the one to paste.
+func (s *private) emailLoginCtrl(w http.ResponseWriter, r *http.Request) {
+	// as on the subscription page: one button posting back to itself and a script posting it in place,
+	// nothing may frame the page, and the token in its address must not leave in a Referer
+	nonce := rand.Text()
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; form-action 'self'; "+
+		"script-src 'nonce-"+nonce+"'; connect-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none';")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+
+	tkn := r.URL.Query().Get("tkn")
+	if tkn == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
+		return
+	}
+	claims, userName, address, herr := s.parseHandshake(tkn, emailLoginProvider)
+	if herr != nil {
+		details := "this sign-in link is not valid, ask for a new email from the comments"
+		if errors.Is(herr.err, errHandshakeExpired) {
+			details = "this sign-in link has expired, ask for a new email from the comments"
+		}
+		rest.SendErrorHTML(w, r, herr.status, herr.err, details, rest.ErrInternal)
+		return
+	}
+	if claims.Handshake.State != provider.VerifLinkTokenState || len(claims.Audience) != 1 || claims.Audience[0] == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("not a sign-in link token"),
+			"this sign-in link is not valid, ask for a new email from the comments", rest.ErrInternal)
+		return
+	}
+	page := emailLoginPage{User: userName, Site: claims.Audience[0], Nonce: nonce}
+	// the id the email login gives the address, which is how a session tells it was opened by this login
+	userID := emailLoginProvider + "_" + token.HashID(sha1.New(), address) //nolint:gosec // the auth library's own id scheme
+
+	// a browser this link has signed in already, by a reload or a second press, is told so
+	page.SignedIn = s.hasSession(r, userID, userName, page.Site)
+	if r.Method != http.MethodPost || page.SignedIn {
+		s.renderEmailLoginPage(w, page)
+		return
+	}
+
+	signedIn, err := s.redeemEmailLogin(w, r, tkn, claims.SessionOnly)
+	if errors.Is(err, errBlockedSession) {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("user %s is blocked", userID), "user is blocked", rest.ErrInternal)
+		return
+	}
+	if err != nil {
+		rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "can't sign in", rest.ErrInternal)
+		return
+	}
+	if !signedIn {
+		// the page reads "<error>: <details>."
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("this sign-in link was already used or has expired"),
+			"ask for a new email from the comments", rest.ErrInternal)
+		return
+	}
+	log.Printf("[DEBUG] signed in %s from the email link", userID)
+	page.SignedIn = true
+	s.renderEmailLoginPage(w, page)
+}
+
+// emailLoginPage is what the sign-in link page shows
+type emailLoginPage struct {
+	User     string
+	Site     string
+	Nonce    string
+	SignedIn bool
+}
+
+func (s *private) renderEmailLoginPage(w http.ResponseWriter, page emailLoginPage) {
+	html, err := rest.RenderTemplate("login", "email_login.html.tmpl", page)
+	if err != nil {
+		log.Printf("[WARN] can't make email login page, %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	rest.HTMLResponse(w, http.StatusOK, html)
+}
+
+// hasSession tells whether the request carries a session cookie of the given user, under the given name, on the
+// site. A session under another name does not count, so the link can still sign in with the name it was asked
+// for. The cookie is read directly: TokenService().Get wants the XSRF header the page has no way to send, and
+// that header guards actions taken with a session, while this only tells the reader they are signed in already.
+// A token past its short expiry still counts: the cookie outlives it, and the next request of the
+// comments renews it. That token may be older than a block, so the block is read from the store
+func (s *private) hasSession(r *http.Request, userID, userName, siteID string) bool {
+	c, err := r.Cookie(s.authenticator.TokenService().JWTCookieName)
+	if err != nil {
+		return false
+	}
+	claims, err := s.authenticator.TokenService().Parse(c.Value)
+	if err != nil || claims.User == nil || claims.User.BoolAttr("blocked") {
+		return false
+	}
+	return claims.User.ID == userID && claims.User.Name == userName &&
+		slices.Equal(claims.Audience, jwt.ClaimStrings{siteID}) &&
+		!s.dataService.IsBlocked(siteID, userID)
+}
+
+// errBlockedSession is what redeemEmailLogin reports for a session the provider issued marked as blocked,
+// for a blocked user or a restricted name, which every request made with it would be refused for
+var errBlockedSession = errors.New("blocked session")
+
+// redeemEmailLogin hands the token to the email login provider as if it were pasted into the comments,
+// and passes on the session cookies the provider sets. It reports false when the provider refused the
+// token, which it does for a token used once already. sessionOnly is the choice made when the email was
+// asked for, which the provider reads from the request that redeems the token
+func (s *private) redeemEmailLogin(w http.ResponseWriter, r *http.Request, tkn string, sessionOnly bool) (bool, error) {
+	p, err := s.authenticator.Provider(emailLoginProvider)
+	if err != nil {
+		return false, fmt.Errorf("email login is not enabled: %w", err)
+	}
+	// the provider reads the token from the query parameter it removes from its logged requests
+	inner := r.Clone(r.Context())
+	inner.Method = http.MethodGet
+	inner.Body = http.NoBody
+	inner.ContentLength = 0
+	query := url.Values{"token": {tkn}}
+	if sessionOnly {
+		query.Set("session", "1")
+	}
+	inner.URL = &url.URL{Path: "/auth/" + emailLoginProvider + "/login", RawQuery: query.Encode()}
+	inner.RequestURI = inner.URL.RequestURI()
+
+	resp := &capturedResponse{header: http.Header{}}
+	p.LoginHandler(resp, inner)
+	// a refusal of the token is the provider's 4xx; a 5xx is its own failure, such as an avatar store it
+	// could not write, and must not read as a used link
+	if resp.status >= http.StatusInternalServerError {
+		return false, fmt.Errorf("email login failed with status %d", resp.status)
+	}
+	// a confirmation made with a "from" address answers with a redirect to it, which this page replaces
+	if resp.status != http.StatusOK && resp.status != http.StatusSeeOther {
+		return false, nil
+	}
+	// the provider issues a session for a blocked user too, marked so that it is refused everywhere; the
+	// page would say "signed in" over a session that signs in nothing
+	for _, c := range (&http.Response{Header: resp.header}).Cookies() {
+		if c.Name != s.authenticator.TokenService().JWTCookieName {
+			continue
+		}
+		claims, err := s.authenticator.TokenService().Parse(c.Value)
+		if err != nil {
+			return false, fmt.Errorf("can't read the issued session: %w", err)
+		}
+		if claims.User != nil && claims.User.BoolAttr("blocked") {
+			return false, errBlockedSession
+		}
+	}
+	for _, c := range resp.header.Values("Set-Cookie") {
+		w.Header().Add("Set-Cookie", c)
+	}
+	return true, nil
+}
+
+// capturedResponse keeps the status and headers of a response that is not sent, and drops its body
+type capturedResponse struct {
+	header http.Header
+	status int
+}
+
+func (c *capturedResponse) Header() http.Header { return c.header }
+
+func (c *capturedResponse) WriteHeader(code int) {
+	if c.status == 0 {
+		c.status = code
+	}
+}
+
+func (c *capturedResponse) Write(b []byte) (int, error) {
+	c.WriteHeader(http.StatusOK)
+	return len(b), nil
+}
+
 // handshakeError is a failure to read the handshake from a confirmation token,
 // with the response status and details to report it with
 type handshakeError struct {
@@ -645,11 +827,13 @@ type handshakeError struct {
 // errHandshakeExpired is the error parseHandshake reports for an expired token
 var errHandshakeExpired = errors.New("expired")
 
-// parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl or for the email unsubscribe link,
-// and returns its claims with the user ID and address from its handshake, which is user.ID + "::" + address.
-// The token must have been made by provider: emailSubscribeProvider for a confirmation, empty for an unsubscribe
-// link. A token without a handshake, such as a login token, or made for another use is rejected as invalid.
-func (s *private) parseHandshake(tkn, provider string) (claims token.Claims, userID, address string, herr *handshakeError) {
+// parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl, for the email unsubscribe link
+// or by the email login, and returns its claims with the two parts of its handshake: the user ID and the address,
+// or for an email login token the name the reader gave and the address. The token's provider must be
+// providerName: emailSubscribeProvider for a confirmation, emailLoginProvider for a sign-in link, empty for an
+// unsubscribe link. A token without a handshake, such as a session token, or made for another use is rejected
+// as invalid.
+func (s *private) parseHandshake(tkn, providerName string) (claims token.Claims, userID, address string, herr *handshakeError) {
 	claims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
 		return token.Claims{}, "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
@@ -669,7 +853,7 @@ func (s *private) parseHandshake(tkn, provider string) (claims token.Claims, use
 	if claims.AuthProvider != nil {
 		tokenProvider = claims.AuthProvider.Name
 	}
-	if tokenProvider != provider {
+	if tokenProvider != providerName {
 		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("token made for another use"), details: "invalid handshake token"}
 	}
 	return claims, elems[0], elems[1], nil

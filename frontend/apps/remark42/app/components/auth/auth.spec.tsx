@@ -224,9 +224,11 @@ describe('<Auth/>', () => {
 
     expect(screen.getByText('Back')).toHaveClass('auth-back-button');
     expect(screen.getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(screen.getByPlaceholderText('Paste the token from the email')).toHaveClass('auth-token-textarea');
+    expect(screen.getByPlaceholderText('Paste the token from the email, or click the link in it')).toHaveClass(
+      'auth-token-textarea'
+    );
 
-    fireEvent.change(screen.getByPlaceholderText('Paste the token from the email'), {
+    fireEvent.change(screen.getByPlaceholderText('Paste the token from the email, or click the link in it'), {
       target: { value: 'token' },
     });
 
@@ -366,9 +368,13 @@ describe('<Auth/>', () => {
 
     expect(getByText('Back')).toHaveClass('auth-back-button');
     expect(getByTitle('Close sign-in dropdown')).toHaveClass('auth-close-button');
-    expect(getByPlaceholderText('Paste the token from the email')).toHaveClass('auth-token-textarea');
+    expect(getByPlaceholderText('Paste the token from the email, or click the link in it')).toHaveClass(
+      'auth-token-textarea'
+    );
 
-    fireEvent.change(getByPlaceholderText('Paste the token from the email'), { target: { value: 'token' } });
+    fireEvent.change(getByPlaceholderText('Paste the token from the email, or click the link in it'), {
+      target: { value: 'token' },
+    });
     fireEvent.click(getByText('Confirm'));
     await waitFor(() => expect(utils.getTokenInvalidReason).toHaveBeenCalled());
 
@@ -456,7 +462,9 @@ describe('<Auth/>', () => {
       typeInto('Email address', 'email@email.com');
       fireEvent.click(screen.getByText('Confirm'));
       await waitFor(() => expect(emailSignin).toHaveBeenCalled());
-      expect(screen.getByPlaceholderText('Paste the token from the email')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('Paste the token from the email, or click the link in it')
+      ).toBeInTheDocument();
 
       leave();
       expect(screen.getByDisplayValue('email')).toBeChecked();
@@ -482,12 +490,14 @@ describe('<Auth/>', () => {
       await waitFor(() => expect(emailSignin).toHaveBeenCalled());
       fireEvent.click(screen.getByLabelText('anonym'));
       await act(async () => sent());
-      expect(screen.getByPlaceholderText('Paste the token from the email')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('Paste the token from the email, or click the link in it')
+      ).toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Back'));
       expect(screen.getByDisplayValue('email')).toBeChecked();
       fireEvent.click(screen.getByText('Confirm'));
-      await screen.findByPlaceholderText('Paste the token from the email');
+      await screen.findByPlaceholderText('Paste the token from the email, or click the link in it');
       fireEvent.click(screen.getByTitle('Close sign-in dropdown'));
       fireEvent.click(screen.getByText('Sign in'));
 
@@ -496,7 +506,7 @@ describe('<Auth/>', () => {
   });
 
   describe('token pasted into the field', () => {
-    const TOKEN_PLACEHOLDER = 'Paste the token from the email';
+    const TOKEN_PLACEHOLDER = 'Paste the token from the email, or click the link in it';
 
     /** What the fetcher throws for a token the server refuses: a 403 is reported by its status alone */
     const REFUSAL_TEXT = "You don't have permission to do this.";
@@ -614,6 +624,141 @@ describe('<Auth/>', () => {
 
     // the token is spent by the request that signs in, and the user is loaded by a second one.
     // When only the second fails, the same token is refused from then on
+    describe('sign-in link opened in this browser', () => {
+      function setXsrfCookie(value: string) {
+        document.cookie = `XSRF-TOKEN=${value}; path=/`;
+      }
+
+      afterEach(() => {
+        document.cookie = 'XSRF-TOKEN=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      });
+
+      function spyOnSignedInUser() {
+        return jest.spyOn(commonApi, 'getSignedInUser').mockReset();
+      }
+
+      // a hidden tab's timers are slowed down, so coming back to it has to be enough
+      it('leaves the token step when the link has signed the browser in', async () => {
+        const verify = spyOnVerify();
+        const reader = { id: 'email_1', name: 'username' } as User;
+        const getSignedInUser = spyOnSignedInUser().mockImplementation(async () => reader);
+        const signin = spyOnSignin();
+        spyOnReloadComments();
+        setXsrfCookie('before');
+        await openTokenStep();
+
+        setXsrfCookie('after');
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        // shorter than the timer's period, so only the event can have done it
+        await waitFor(() => expect(signin).toHaveBeenCalledWith(reader), { timeout: 500 });
+        expect(getSignedInUser).toHaveBeenCalledTimes(1);
+        expect(verify).not.toHaveBeenCalled();
+        // the session may be another account's, opened from another tab
+        expect(utils.persistEmail).not.toHaveBeenCalled();
+      });
+
+      it('notices the sign-in on its own while the tab is open', async () => {
+        spyOnVerify();
+        const getSignedInUser = spyOnSignedInUser().mockImplementation(async () => ({}) as User);
+        const signin = spyOnSignin();
+        spyOnReloadComments();
+        await openTokenStep();
+
+        setXsrfCookie('after');
+
+        await waitFor(() => expect(signin).toHaveBeenCalledTimes(1), { timeout: 3000 });
+        expect(getSignedInUser).toHaveBeenCalledTimes(1);
+      });
+
+      it('sends nothing while the cookie stays as it was', async () => {
+        spyOnVerify();
+        const getSignedInUser = spyOnSignedInUser();
+        setXsrfCookie('before');
+        await openTokenStep();
+
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('focus'));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        expect(getSignedInUser).not.toHaveBeenCalled();
+      });
+
+      it('asks once about a cookie that does not lead to a user', async () => {
+        spyOnVerify();
+        const getSignedInUser = spyOnSignedInUser().mockRejectedValue(new RequestError('unauthorized', 401));
+        const signin = spyOnSignin();
+        await openTokenStep();
+
+        setXsrfCookie('after');
+        document.dispatchEvent(new Event('visibilitychange'));
+        await waitFor(() => expect(getSignedInUser).toHaveBeenCalledTimes(1), { timeout: 500 });
+        window.dispatchEvent(new Event('focus'));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        expect(getSignedInUser).toHaveBeenCalledTimes(1);
+        expect(signin).not.toHaveBeenCalled();
+        expect(screen.getByPlaceholderText(TOKEN_PLACEHOLDER)).toBeInTheDocument();
+      });
+
+      it('asks again when the question about the cookie did not get through', async () => {
+        spyOnVerify();
+        const reader = { id: 'email_1', name: 'username' } as User;
+        const getSignedInUser = spyOnSignedInUser()
+          .mockRejectedValueOnce(new RequestError('Too many requests', 429))
+          .mockImplementation(async () => reader);
+        const signin = spyOnSignin();
+        spyOnReloadComments();
+        await openTokenStep();
+
+        setXsrfCookie('after');
+        document.dispatchEvent(new Event('visibilitychange'));
+        await waitFor(() => expect(getSignedInUser).toHaveBeenCalledTimes(1), { timeout: 500 });
+
+        await waitFor(() => expect(signin).toHaveBeenCalledWith(reader), { timeout: 3000 });
+        expect(getSignedInUser).toHaveBeenCalledTimes(2);
+      });
+
+      it('stops watching once the reader goes back from the token step', async () => {
+        spyOnVerify();
+        const getSignedInUser = spyOnSignedInUser();
+        await openTokenStep();
+
+        fireEvent.click(screen.getByText('Back'));
+        setXsrfCookie('after');
+        document.dispatchEvent(new Event('visibilitychange'));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        expect(getSignedInUser).not.toHaveBeenCalled();
+      });
+
+      it('signs in once when a pasted token and the link land together', async () => {
+        let finish: (user: User) => void = () => undefined;
+        const verify = spyOnVerify().mockImplementation(
+          () =>
+            new Promise<User>((resolve) => {
+              finish = resolve;
+            })
+        );
+        const getSignedInUser = spyOnSignedInUser().mockImplementation(async () => ({}) as User);
+        const signin = spyOnSignin();
+        spyOnReloadComments();
+        const field = await openTokenStep();
+
+        fireEvent.input(field, { target: { value: tokenExpiringIn(600) } });
+        setXsrfCookie('after');
+        document.dispatchEvent(new Event('visibilitychange'));
+        finish({} as User);
+        await waitFor(() => expect(signin).toHaveBeenCalledTimes(1));
+        document.dispatchEvent(new Event('visibilitychange'));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        expect(signin).toHaveBeenCalledTimes(1);
+        expect(verify).toHaveBeenCalledTimes(1);
+        expect(getSignedInUser).not.toHaveBeenCalled();
+      });
+    });
+
     it('signs in when the refused token is the one that opened the session', async () => {
       const verify = spyOnVerify().mockRejectedValue(refusal());
       const reader = { id: 'email_1', name: 'username' } as User;
