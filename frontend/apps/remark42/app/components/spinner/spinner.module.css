@@ -9,7 +9,7 @@
 
 .dark {
   border: 2px solid rgb(var(--shadow-color));
-  border-inline-end-color: rgb(var(--line-color));
+  border-inline-end-color: rgb(var(--secondary-text-color));
 }
 
 @keyframes spin {

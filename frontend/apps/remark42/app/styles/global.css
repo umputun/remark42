@@ -79,7 +79,7 @@ a {
 }
 
 .preloader {
-  color: rgb(var(--primary-background-color, 255, 255, 255));
+  color: rgb(var(--white-color, 255, 255, 255));
   position: relative;
   transform: translate3d(0, -10px, 0);
   animation-delay: -0.16s;

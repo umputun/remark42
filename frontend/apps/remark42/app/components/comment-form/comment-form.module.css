@@ -174,7 +174,7 @@
 
   & .actions {
     background: rgb(var(--secondary-background-color));
-    color: rgb(var(--secondary-text-color));
+    color: rgb(var(--primary-text-color));
   }
 
   & .error {
