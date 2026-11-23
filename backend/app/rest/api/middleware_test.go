@@ -15,6 +15,7 @@ import (
 	"github.com/go-pkgz/auth/v2/token"
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
+	"github.com/go-pkgz/rest/realip"
 	"github.com/go-pkgz/routegroup"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
@@ -133,6 +134,96 @@ func TestRealIPMiddleware(t *testing.T) {
 		assert.Equal(t, "garbage", addr, "unparseable peer left as-is, not overwritten")
 		assert.Empty(t, hdr, "forwarding header still stripped for a non-trusted peer")
 	})
+}
+
+// a trusted proxy's request carries headers the proxy wrote next to headers the client sent. The
+// address has to come from the former only: X-Real-IP as the proxy set it, or the entries the trusted
+// proxies appended to X-Forwarded-For. 8.8.8.8 and 9.9.9.9 stand for what a client forged.
+func TestRealIPMiddleware_TrustedPeerHeaders(t *testing.T) {
+	trusted, err := ParseTrustedProxies([]string{"172.16.0.0/12", "2001:db8::/32"})
+	require.NoError(t, err)
+
+	const proxyV4, proxyV6 = "172.18.0.18:5555", "[2001:db8::5]:5555"
+	tbl := []struct {
+		name     string
+		peer     string
+		xRealIP  string
+		xff      []string // one element per header line
+		cfIP     string
+		expected string
+	}{
+		{name: "public X-Real-IP set by the proxy, client entry ahead of the proxy's in X-Forwarded-For",
+			peer: proxyV4, xRealIP: "203.0.113.7", xff: []string{"8.8.8.8, 203.0.113.7"}, expected: "203.0.113.7"},
+		{name: "proxy sets X-Real-IP only and relays the client's X-Forwarded-For",
+			peer: proxyV4, xRealIP: "203.0.113.7", xff: []string{"8.8.8.8"}, cfIP: "9.9.9.9", expected: "203.0.113.7"},
+		{name: "X-Real-IP inside the trusted range, forged X-Forwarded-For",
+			peer: proxyV4, xRealIP: "172.18.0.1", xff: []string{"8.8.8.8, 172.18.0.1"}, expected: "172.18.0.1"},
+		{name: "X-Real-IP inside the trusted range, forged CF-Connecting-IP",
+			peer: proxyV4, xRealIP: "172.18.0.1", xff: []string{"172.18.0.1"}, cfIP: "9.9.9.9", expected: "172.18.0.1"},
+		{name: "private X-Real-IP outside the trusted range, forged X-Forwarded-For",
+			peer: proxyV4, xRealIP: "192.168.1.20", xff: []string{"8.8.8.8, 192.168.1.20"}, expected: "192.168.1.20"},
+		{name: "v4-mapped X-Real-IP is kept as the proxy wrote it",
+			peer: proxyV4, xRealIP: "::ffff:203.0.113.7", expected: "::ffff:203.0.113.7"},
+		{name: "no X-Real-IP, forged entry ahead of the proxy's in X-Forwarded-For",
+			peer: proxyV4, xff: []string{"8.8.8.8, 203.0.113.7"}, expected: "203.0.113.7"},
+		{name: "no X-Real-IP, forged CF-Connecting-IP",
+			peer: proxyV4, xff: []string{"203.0.113.7"}, cfIP: "9.9.9.9", expected: "203.0.113.7"},
+		{name: "no X-Real-IP, forged X-Forwarded-For on a line of its own ahead of the proxy's line",
+			peer: proxyV4, xff: []string{"8.8.8.8", "203.0.113.7"}, expected: "203.0.113.7"},
+		{name: "X-Real-IP that is not an address is passed over for X-Forwarded-For",
+			peer: proxyV4, xRealIP: "unknown", xff: []string{"8.8.8.8, 203.0.113.7"}, expected: "203.0.113.7"},
+		{name: "CF-Connecting-IP alone is not read",
+			peer: proxyV4, cfIP: "9.9.9.9", expected: "172.18.0.18"},
+		{name: "X-Forwarded-For through two trusted proxies",
+			peer: proxyV4, xff: []string{"8.8.8.8, 198.51.100.4, 172.18.0.7"}, expected: "198.51.100.4"},
+		{name: "X-Forwarded-For with trusted addresses only gives the leftmost",
+			peer: proxyV4, xff: []string{"172.18.0.9, 172.18.0.7"}, expected: "172.18.0.9"},
+		{name: "malformed entry at the end of X-Forwarded-For gives the proxy's address",
+			peer: proxyV4, xff: []string{"8.8.8.8, unknown"}, expected: "172.18.0.18"},
+		{name: "empty entry at the end of X-Forwarded-For gives the proxy's address",
+			peer: proxyV4, xff: []string{"8.8.8.8,"}, expected: "172.18.0.18"},
+		{name: "malformed entry behind a trusted one gives the proxy's address",
+			peer: proxyV4, xff: []string{"8.8.8.8, unknown, 172.18.0.7"}, expected: "172.18.0.18"},
+		{name: "v6 proxy and v6 addresses in X-Forwarded-For",
+			peer: proxyV6, xff: []string{"2001:4860:4860::8888, 2a00:1450:4001::1, 2001:db8::7"}, expected: "2a00:1450:4001::1"},
+		{name: "v6 proxy, X-Real-IP set by the proxy",
+			peer: proxyV6, xRealIP: "2a00:1450:4001::1", xff: []string{"8.8.8.8, 2a00:1450:4001::1"}, cfIP: "9.9.9.9",
+			expected: "2a00:1450:4001::1"},
+		{name: "untrusted peer sending all three headers is known by its socket address",
+			peer: "203.0.113.9:1234", xRealIP: "8.8.8.8", xff: []string{"8.8.8.8"}, cfIP: "9.9.9.9", expected: "203.0.113.9"},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var addr, downstream string
+			var left http.Header
+			next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				addr, left = r.RemoteAddr, r.Header.Clone()
+				// the request logger and anything else below resolve the address this way
+				var getErr error
+				downstream, getErr = realip.Get(r)
+				require.NoError(t, getErr)
+			})
+			req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+			req.RemoteAddr = tt.peer
+			if tt.xRealIP != "" {
+				req.Header.Set("X-Real-IP", tt.xRealIP)
+			}
+			for _, line := range tt.xff {
+				req.Header.Add("X-Forwarded-For", line)
+			}
+			if tt.cfIP != "" {
+				req.Header.Set("CF-Connecting-IP", tt.cfIP)
+			}
+			realIPMiddleware(trusted)(next).ServeHTTP(httptest.NewRecorder(), req)
+
+			assert.Equal(t, tt.expected, addr, "RemoteAddr the handlers see")
+			assert.Equal(t, tt.expected, downstream, "address resolved again below the middleware")
+			for _, h := range ipForwardingHeaders {
+				assert.Empty(t, left.Values(h), "%s is not passed on", h)
+			}
+		})
+	}
 }
 
 func TestParseTrustedProxies(t *testing.T) {

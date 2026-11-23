@@ -22,42 +22,64 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 )
 
-// ipForwardingHeaders are the request headers R.RealIP derives the client IP from.
+// ipForwardingHeaders are the request headers R.RealIP and realip.Get derive the client IP from.
 var ipForwardingHeaders = []string{"X-Real-IP", "X-Forwarded-For", "CF-Connecting-IP"}
 
-// realIPMiddleware derives the client IP from forwarding headers (X-Real-IP / X-Forwarded-For /
-// CF-Connecting-IP) via R.RealIP, but honors those headers only for requests whose direct peer
-// is one of the trusted proxies. For any other peer it drops those headers and pins RemoteAddr to
-// the real socket IP, so an untrusted client can't spoof the IP that per-IP controls (rate limiting,
-// vote dedup, comment IP, anonymous id) and the request log key on.
+// realIPMiddleware sets RemoteAddr to the client IP that per-IP controls (rate limiting, vote dedup,
+// comment IP, anonymous id) and the request log key on. With trusted proxies configured, the address
+// comes from the forwarding headers only when the direct peer is one of them, see forwardedClientIP;
+// any other peer is known by its socket IP. Either way the forwarding headers are dropped from the
+// request, so nothing downstream can resolve another address from a header the client sent.
 //
 // With no trusted proxies configured it falls back to trusting the headers from any client (the
 // historical behavior). That is spoofable by design, so operators running behind a reverse proxy
-// should set --trusted-proxy to the proxy's network — see the "trusted proxy" docs.
+// should set --trusted-proxy to the proxy's address — see the "trusted proxy" docs.
 func realIPMiddleware(trustedProxies []*net.IPNet) func(http.Handler) http.Handler {
 	if len(trustedProxies) == 0 {
 		return R.RealIP
 	}
 	return func(next http.Handler) http.Handler {
-		fromTrusted := R.RealIP(next) // rewrites RemoteAddr from the forwarding headers
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			peer := directPeerIP(r.RemoteAddr)
-			if peer != nil && cidrsContain(trustedProxies, peer) {
-				fromTrusted.ServeHTTP(w, r) // trusted proxy: honor the forwarding headers
-				return
+			if peer != nil {
+				r.RemoteAddr = peer.String() // bare IP, with the port stripped
+				if cidrsContain(trustedProxies, peer) {
+					r.RemoteAddr = forwardedClientIP(r, trustedProxies, peer)
+				}
 			}
-			// untrusted peer: drop the forwarding headers and pin RemoteAddr to the real socket IP,
-			// so nothing downstream can be fooled by a spoofed header (R.RealIP normalizes
-			// RemoteAddr to a bare IP for trusted peers; do the same here for consistency)
 			for _, h := range ipForwardingHeaders {
 				r.Header.Del(h)
-			}
-			if peer != nil {
-				r.RemoteAddr = peer.String()
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// forwardedClientIP returns the client IP a trusted proxy reports, reading only what a trusted proxy
+// wrote. X-Real-IP is taken as sent, private and trusted addresses included: the proxy sets it to the
+// address it accepted the connection from. Without it, X-Forwarded-For is read right to left while
+// each entry is a trusted proxy and the first other entry is the client; if every entry is trusted,
+// the leftmost one is. A malformed entry ends the walk at the peer, so a client can't lead it past
+// such an entry to a forged one. CF-Connecting-IP is not read, a proxy relays it from any client.
+func forwardedClientIP(r *http.Request, trustedProxies []*net.IPNet, peer net.IP) string {
+	if xRealIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); net.ParseIP(xRealIP) != nil {
+		return xRealIP
+	}
+	// a client can send the header on a line of its own, the lines are one list in the order received
+	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+	client := ""
+	for _, hop := range slices.Backward(hops) {
+		hop = strings.TrimSpace(hop)
+		ip := net.ParseIP(hop)
+		if ip == nil { // malformed or empty entry, or no header at all
+			return peer.String()
+		}
+		if !cidrsContain(trustedProxies, ip) {
+			return hop
+		}
+		client = hop
+	}
+	return client
 }
 
 // directPeerIP extracts the IP from a "host:port" (or bare host) RemoteAddr, or nil if unparseable.
