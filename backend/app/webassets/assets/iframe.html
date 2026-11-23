@@ -3,7 +3,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="modulepreload" href="remark.mjs" />
+    <!-- the bundle. A module script is fetched as soon as the parser meets the tag and runs only
+         once the whole document is parsed, so after the inline scripts in the body. Do not add a
+         preload link for it: with one, Safari 27.2 was seen to keep running the copy a tab already
+         holds, without asking the server whether it changed, which after an update pairs the old
+         script with the new stylesheet. The query string is for the tabs that hold such a copy
+         from a release that had the preload link: asked for under this address, the script was
+         fetched. The server ignores the query string and serves the same file -->
+    <script type="module" src="remark.mjs?v=1"></script>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <!-- every embed loads this same document, so crawlers must not index it as a page of its own;
          indexifembedded keeps the comments indexed as part of the page that embeds them -->
@@ -91,9 +98,10 @@
             remark_config.host_page_title = data.title;
           }
 
-          // the bundle has not registered its own listener yet: it is only inserted below, after
-          // `inited`, which is when the parent posts the current theme. Keep the latest one where
-          // remark.tsx reads it on start, and match color-scheme to the iframe element meanwhile
+          // the bundle has not registered its own listener yet: it runs only once this document
+          // is parsed, after `inited` below, which is when the parent posts the current theme. Keep
+          // the latest one where remark.tsx reads it on start, and match color-scheme to the iframe
+          // element meanwhile
           if (data.theme === 'light' || data.theme === 'dark') {
             remark_config.theme = data.theme;
             document.documentElement.style.colorScheme = data.theme;
@@ -118,17 +126,6 @@
               }, {});
 
       window.parent.postMessage({ inited: true }, '*');
-    </script>
-    <script>
-      (function (d) {
-        var r = d.head || d.body;
-        var s = d.createElement('script');
-        s.src = 'remark.mjs';
-        s.type = 'module';
-        s.async = true;
-        s.defer = true;
-        r.appendChild(s);
-      })(document);
     </script>
   </body>
 </html>

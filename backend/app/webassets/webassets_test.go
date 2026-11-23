@@ -125,6 +125,64 @@ func TestFS_IframeLang(t *testing.T) {
 	assert.Equal(t, "en", lang)
 }
 
+// TestFS_IframeLoadsBundle pins how the widget document loads its bundle: one module script in the
+// head and no preload link. With a preload link Safari 27.2 was seen to reuse the script a tab
+// already holds without asking the server whether it changed, so after an update a reader gets the
+// old script next to the new stylesheet. A module script without async runs after the document is parsed, which the
+// inline scripts in the body rely on: they define remark_config before the bundle reads it. The
+// query string is for a tab that holds such a copy from a release with the preload link: it went
+// on running that copy under the new document, and fetched the script when asked for it this way.
+func TestFS_IframeLoadsBundle(t *testing.T) {
+	f, err := FS.Open("iframe.html")
+	require.NoError(t, err)
+	defer f.Close()
+	doc, err := html.Parse(f)
+	require.NoError(t, err)
+
+	attr := func(n *html.Node, key string) (string, bool) {
+		for _, a := range n.Attr {
+			if a.Key == key {
+				return a.Val, true
+			}
+		}
+		return "", false
+	}
+
+	var bundles []*html.Node
+	var preloads []string
+	var walk func(n *html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch n.DataAtom {
+			case atom.Script:
+				if _, external := attr(n, "src"); external {
+					bundles = append(bundles, n)
+				}
+			case atom.Link:
+				if rel, _ := attr(n, "rel"); strings.Contains(strings.ToLower(rel), "preload") {
+					preloads = append(preloads, rel)
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(doc)
+
+	assert.Empty(t, preloads, "with a preload link Safari 27.2 reused the bundle without revalidating it")
+	require.Len(t, bundles, 1, "the document loads one script file, the bundle")
+	bundle := bundles[0]
+	src, _ := attr(bundle, "src")
+	assert.Equal(t, "remark.mjs?v=1", src, "without the query string a tab keeps the script it preloaded before")
+	kind, _ := attr(bundle, "type")
+	assert.Equal(t, "module", kind, "a classic script in the head would run before remark_config exists")
+	_, async := attr(bundle, "async")
+	assert.False(t, async, "an async module may run before the inline scripts in the body")
+	require.NotNil(t, bundle.Parent)
+	assert.Equal(t, atom.Head, bundle.Parent.DataAtom, "in the head the fetch starts with the stylesheet's")
+}
+
 // TestFS_SVGShape does the same for the images the widget loads by name: the ghost avatar and the
 // sign-in provider icons. A file that is not a whole SVG document shows as a broken image.
 func TestFS_SVGShape(t *testing.T) {
