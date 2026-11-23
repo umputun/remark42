@@ -49,6 +49,13 @@ const config = [
       '@typescript-eslint/no-array-constructor': 'error',
       '@typescript-eslint/no-useless-constructor': 'error',
       '@typescript-eslint/consistent-type-assertions': 'warn',
+      // a ts-ignore comment hides whatever error turns up on its line later, not only the one it
+      // was written for. An error that is expected is stated with ts-expect-error and a reason,
+      // and that comment fails the type check once the error is gone
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-ignore': true, 'ts-nocheck': true, 'ts-expect-error': 'allow-with-description' },
+      ],
       // babel strips types without a type checker, so an unmarked type-only import keeps its
       // module in the bundle; marking them is what lets `verbatimModuleSyntax` hold
       '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
