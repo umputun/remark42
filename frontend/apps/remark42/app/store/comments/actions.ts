@@ -156,11 +156,18 @@ const requestComments =
   };
 
 /**
+ * the pages a reload loads by itself while a thread that was on screen is missing from it. A thread
+ * deleted since never comes back, and the server tells no deleted thread from one further down, so
+ * past these pages the rest is left to Show more
+ */
+const MISSING_THREAD_PAGES = 2;
+
+/**
  * requests the loaded part of the thread again, and then the pages that bring back the threads it
  * no longer holds. Comments added to the loaded threads since take room in it, and a page stops
  * before a thread that does not fit; under the sorts by activity, score or controversy a loaded
- * thread can also move behind the unloaded ones. So pages follow while a thread that was on screen
- * is missing and the thread has more, which ends since every page adds threads or reaches the end
+ * thread can also move behind the unloaded ones. So up to MISSING_THREAD_PAGES pages follow while a
+ * thread that was on screen is missing and the thread has more
  */
 const requestLoadedPart =
   (withPreloader: boolean): StoreAction<Promise<Tree>> =>
@@ -183,7 +190,7 @@ const requestLoadedPart =
       const shown = new Set(topComments);
       return Array.from(onScreen).some((id) => !shown.has(id) && !allComments[id]?.hidden);
     };
-    while (request === threadRequests && isMissing()) {
+    for (let pages = 0; pages < MISSING_THREAD_PAGES && request === threadRequests && isMissing(); pages++) {
       // a page the reader asked for meanwhile may bring the missing threads back by itself
       await moreComments;
       if (request !== threadRequests || !isMissing()) break;

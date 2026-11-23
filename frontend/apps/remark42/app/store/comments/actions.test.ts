@@ -400,6 +400,24 @@ describe('Store comments actions', () => {
       expect(comments().page.countLeft).toBe(1);
     });
 
+    it('leaves the rest of the thread to Show more when a reload does not find a thread deleted since', async () => {
+      const { dispatch, getPostComments, comments } = setup();
+      getPostComments.mockResolvedValueOnce(tree([node('c1'), node('c2')], { count_left: 50, last_comment: 'c2' }));
+      await dispatch(fetchComments());
+      // c2 is deleted with no replies, so no answer has it, and every page leaves more to load
+      getPostComments.mockResolvedValueOnce(tree([node('c1'), node('c3')], { count_left: 49, last_comment: 'c3' }));
+      getPostComments.mockResolvedValueOnce(tree([node('c4')], { count_left: 48, last_comment: 'c4' }));
+      getPostComments.mockResolvedValueOnce(tree([node('c5')], { count_left: 47, last_comment: 'c5' }));
+      getPostComments.mockResolvedValue(tree([node('c6')], { count_left: 46, last_comment: 'c6' }));
+
+      await dispatch(reloadComments());
+
+      // the reload and two pages after it
+      expect(getPostComments).toHaveBeenCalledTimes(4);
+      expect(comments().topComments).toEqual(['c1', 'c3', 'c4', 'c5']);
+      expect(comments().page.countLeft).toBe(47);
+    });
+
     it('brings back a thread that moved behind the unloaded ones on a reload', async () => {
       const { dispatch, getPostComments, comments } = setup();
       getPostComments.mockResolvedValueOnce(tree([node('a'), node('b')], { count_left: 2, last_comment: 'b' }));
