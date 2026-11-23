@@ -399,9 +399,10 @@ func Test_validEmailAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim+see\u00a0evil.example.com@example.com"), http.StatusForbidden},
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(" victim@example.com"), http.StatusForbidden},
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim@example.com,other@example.com"), http.StatusForbidden},
-		// dots and hyphens are allowed, other spaces than the ordinary one and a space at either end are not
-		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+O.+Smith", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=a.b-c", http.StatusOK},
+		// hyphens are allowed; dots, other spaces than the ordinary one and a space at either end are not
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+Smith", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+O.+Smith", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=claim+your+prize+at+evil-site.com", http.StatusForbidden},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=a%09bc", http.StatusForbidden},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=abc+", http.StatusForbidden},
 	}

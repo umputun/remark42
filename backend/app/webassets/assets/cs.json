@@ -1,6 +1,7 @@
 {
   "auth.back": "Zpět",
   "auth.email-address": "Emailová adresa",
+  "auth.email-symbols-restriction": "Jméno musí mít 3 až 64 znaků a může obsahovat pouze písmena, čísla, podtržítka, spojovníky a mezery",
   "auth.loading": "Načítání...",
   "auth.no-providers": "Není k dispozici žádný způsob přihlášení. Možná ho vlastník webu zapomněl povolit?",
   "auth.oauth-button": "Přihlásit se pomocí {provider}",

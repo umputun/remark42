@@ -1,6 +1,7 @@
 {
   "auth.back": "Geri",
   "auth.email-address": "E-posta adresi",
+  "auth.email-symbols-restriction": "Ad 3 ile 64 karakter arasında olmalı ve yalnızca harf, rakam, alt çizgi, kısa çizgi ve boşluk içerebilir",
   "auth.loading": "Yükleniyor...",
   "auth.no-providers": "Kullanılabilir giriş yöntemi yok. Site sahibi etkinleştirmeyi unutmuş olabilir mi?",
   "auth.oauth-button": "{provider} ile Oturum Aç",

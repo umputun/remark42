@@ -1,6 +1,7 @@
 {
   "auth.back": "Indietro",
   "auth.email-address": "Indirizzo email",
+  "auth.email-symbols-restriction": "Il nome deve essere lungo da 3 a 64 caratteri e può contenere solo lettere, numeri, trattini bassi, trattini e spazi",
   "auth.loading": "Caricamento...",
   "auth.no-providers": "Nessun metodo di accesso disponibile. Forse il proprietario del sito ha dimenticato di abilitarlo?",
   "auth.oauth-button": "Accedi con {provider}",

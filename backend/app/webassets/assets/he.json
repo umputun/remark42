@@ -1,6 +1,7 @@
 {
   "auth.back": "חזרה",
   "auth.email-address": "כתובת אימייל",
+  "auth.email-symbols-restriction": "השם חייב להכיל 3 עד 64 תווים, ויכול להכיל רק אותיות, מספרים, קווים תחתונים, מקפים ורווחים",
   "auth.loading": "טוען...",
   "auth.no-providers": "אין שיטת התחברות זמינה. ייתכן שבעל האתר שכח להפעיל אותה?",
   "auth.oauth-button": "התחברות עם {provider}",

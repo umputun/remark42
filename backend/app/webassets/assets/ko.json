@@ -1,6 +1,7 @@
 {
   "auth.back": "뒤로",
   "auth.email-address": "이메일 주소",
+  "auth.email-symbols-restriction": "이름은 3~64자여야 하며 문자, 숫자, 밑줄, 하이픈, 공백만 사용할 수 있습니다",
   "auth.loading": "로딩 중...",
   "auth.no-providers": "사용 가능한 로그인 방법이 없습니다. 사이트 소유자가 활성화하는 것을 잊었을 수 있습니다.",
   "auth.oauth-button": "{provider}로 로그인하기",

@@ -134,6 +134,16 @@ func TestAuth_NameFieldAppliesItsPattern(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, mismatch, got, "patternMismatch for %q", name)
 	}
+
+	// the email tab takes no dot, since the name goes into a mail to an unconfirmed address
+	require.NoError(t, frame.Locator(`label[for="form-provider-email"]`).Click())
+	for name, mismatch := range map[string]bool{"Ann-Marie Smith": false, "evil-site.com": true} {
+		require.NoError(t, input.Clear())
+		require.NoError(t, input.PressSequentially(name))
+		got, err := input.Evaluate(`(el) => el.validity.patternMismatch`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, mismatch, got, "patternMismatch on the email tab for %q", name)
+	}
 }
 
 // TestAuth_EmailSignsIn drives the full email flow: request a code, read it back out of the
@@ -147,7 +157,7 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 
 	// the mailbox is per-run: mailpit keeps everything, and with the stack left up between
 	// runs a fixed address would let this test read a previous run's token
-	signInEmail(t, page, frame, "email.tester-1", fmt.Sprintf("email-tester-%s@example.com", runID))
+	signInEmail(t, page, frame, "email-tester-1", fmt.Sprintf("email-tester-%s@example.com", runID))
 }
 
 // signInEmail completes the email flow: ask for a code, read it out of the mail catcher, paste

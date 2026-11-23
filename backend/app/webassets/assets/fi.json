@@ -1,6 +1,7 @@
 {
   "auth.back": "Takaisin",
   "auth.email-address": "Sähköposti",
+  "auth.email-symbols-restriction": "Nimen on oltava 3–64 merkkiä pitkä, ja se saa sisältää vain kirjaimia, numeroita, alaviivoja, yhdysmerkkejä ja välilyöntejä",
   "auth.loading": "Ladataan...",
   "auth.no-providers": "Kirjautumistapaa ei ole saatavilla. Ehkä sivuston ylläpitäjä unohti ottaa sen käyttöön?",
   "auth.oauth-button": "Kirjaudu sisään palvelulla {provider}",

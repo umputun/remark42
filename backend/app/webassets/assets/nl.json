@@ -1,6 +1,7 @@
 {
   "auth.back": "Terug",
   "auth.email-address": "E-mailadres",
+  "auth.email-symbols-restriction": "Je naam moet 3 tot 64 tekens lang zijn en mag alleen letters, cijfers, onderstrepingstekens, koppeltekens en spaties bevatten",
   "auth.loading": "Laden...",
   "auth.no-providers": "Geen inlogmethode beschikbaar. Misschien is de eigenaar van de site vergeten deze in te schakelen?",
   "auth.oauth-button": "Inloggen met {provider}",

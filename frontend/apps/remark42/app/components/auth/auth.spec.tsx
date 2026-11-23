@@ -295,7 +295,7 @@ describe('<Auth/>', () => {
     '\u{20BB7}'.repeat(33),
     'Ж'.repeat(64),
   ])('should accept the name %s', (name) => {
-    StaticStore.config.auth_providers = ['email'];
+    StaticStore.config.auth_providers = ['anonymous'];
 
     render(<Auth />);
 
@@ -304,6 +304,27 @@ describe('<Auth/>', () => {
     fireEvent.change(input, { target: { value: name } });
 
     expect(input.validity.valid).toBe(true);
+  });
+
+  // the email sign-in name goes into a mail to an address nobody has confirmed yet, so it takes no dot
+  it.each`
+    name                 | mismatch
+    ${'a.b-c'}           | ${true}
+    ${'evil-site.com'}   | ${true}
+    ${'Ann-Marie Smith'} | ${false}
+  `('should check $name against the email rule', ({ name, mismatch }) => {
+    StaticStore.config.auth_providers = ['email'];
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: name } });
+
+    expect(input.validity.patternMismatch).toBe(mismatch);
+    expect(input.title).toBe(
+      'Name must be 3 to 64 characters long and may only contain letters, numbers, underscores, hyphens and spaces'
+    );
   });
 
   // pressing Enter submits without the blur that trims the field, and the server refuses a space at either end

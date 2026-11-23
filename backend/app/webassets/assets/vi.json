@@ -1,6 +1,7 @@
 {
   "auth.back": "Quay lại",
   "auth.email-address": "Địa chỉ email",
+  "auth.email-symbols-restriction": "Tên phải dài từ 3 đến 64 ký tự và chỉ được chứa chữ cái, số, dấu gạch dưới, dấu gạch nối và dấu cách",
   "auth.loading": "Đang tải...",
   "auth.no-providers": "Không có phương thức đăng nhập nào khả dụng. Có thể chủ trang web đã quên bật tính năng này?",
   "auth.oauth-button": "Đăng nhập với {provider}",

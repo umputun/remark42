@@ -1,6 +1,7 @@
 {
   "auth.back": "返回",
   "auth.email-address": "电子邮件地址",
+  "auth.email-symbols-restriction": "名称长度须为 3 到 64 个字符，且只能包含文字、数字、下划线、连字符和空格",
   "auth.loading": "加载中...",
   "auth.no-providers": "没有可用的登录方式。也许网站所有者忘记启用登录功能了？",
   "auth.oauth-button": "通过 {provider} 登录",

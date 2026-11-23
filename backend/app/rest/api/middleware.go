@@ -489,8 +489,9 @@ func validEmailAuth() func(http.Handler) http.Handler {
 			}
 
 			if u := r.URL.Query().Get("user"); u != "" {
-				// the same rule as anonymous login and the widget's sign-in form
-				if store.CheckUserName(u) != nil {
+				// the rule of anonymous login, without dots: the name goes into the confirmation mail to an
+				// address nobody has confirmed yet, where a dotted name can be a domain a mail client links
+				if store.CheckUserName(u) != nil || strings.Contains(u, ".") {
 					log.Printf("[WARN] suspicious user rejected: %s", store.MaskForLog(u))
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
