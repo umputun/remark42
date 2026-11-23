@@ -5,6 +5,7 @@ package e2e
 import (
 	"math"
 	"regexp"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,7 +35,10 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(engine+"/"+tc.name, func(t *testing.T) {
 				page := newPageOn(t, browserFor(t, engine))
-				require.NoError(t, page.Route(regexp.MustCompile(`remark\.m?js$`), func(route playwright.Route) {
+				// the document asks for the bundle with a query string
+				var blocked atomic.Bool
+				require.NoError(t, page.Route(regexp.MustCompile(`remark\.m?js(\?|$)`), func(route playwright.Route) {
+					blocked.Store(true)
 					if err := route.Abort(); err != nil {
 						t.Errorf("abort widget bundle: %v", err)
 					}
@@ -42,6 +46,8 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 
 				_, err := page.Goto(probeURL + "/web/iframe.html" + tc.query)
 				require.NoError(t, err)
+				require.True(t, blocked.Load(), "the bundle was not held back, so the assertions below "+
+					"would read what the bundle set and not what the inline script did")
 
 				inline, err := page.Evaluate("() => document.documentElement.style.colorScheme")
 				require.NoError(t, err)
