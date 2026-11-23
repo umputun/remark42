@@ -94,6 +94,7 @@ class AuthPanelComponent extends Component<Props, State> {
           defaultMessage="Enable third-party cookies to log in, or open comments in"
         />{' '}
         <a
+          className={styles.textLink}
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
           rel="noreferrer"
