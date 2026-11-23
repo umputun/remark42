@@ -1413,6 +1413,9 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		}
 		audience := c.Audience[0]
 
+		if s.SubscribersOnly {
+			updatePaidSub(c.User, time.Now())
+		}
 		c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
 		c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
 		var err error
@@ -1496,6 +1499,25 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		UseGravatar:         true,
 		AudSecrets:          s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// updatePaidSub limits the paid status Patreon reports at a sign-in to rest.PaidSubPeriod, for subscribers-only
+// mode. It has to run before the claims updater sets any attribute of its own: a user without the "blocked"
+// attribute comes straight from the provider at a sign-in, the only time Patreon is asked, and the end of
+// the paid status is counted from then. Every token remark42 has made carries that attribute, so a refresh
+// keeps the end it finds, and a paid status that has ended or has no end, as in a token from before this
+// limit, is dropped until the next sign-in with Patreon
+func updatePaidSub(u *token.User, now time.Time) {
+	if !u.IsPaidSub() {
+		return
+	}
+	if _, refresh := u.Attributes["blocked"]; !refresh {
+		rest.SetPaidSubUntil(u, now.Add(rest.PaidSubPeriod))
+		return
+	}
+	if !rest.PaidSubActive(*u, now) {
+		u.SetPaidSub(false)
+	}
 }
 
 // tokenExpired reports whether the auth middleware takes the token of these claims for an expired

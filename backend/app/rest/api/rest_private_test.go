@@ -821,6 +821,7 @@ func TestRest_SavePictureSubscribersOnly(t *testing.T) {
 	t.Run("subscriber", func(t *testing.T) {
 		subscriber := token.User{ID: "provider1_subscriber", Name: "subscriber"}
 		subscriber.SetPaidSub(true)
+		rest.SetPaidSubUntil(&subscriber, time.Now().Add(time.Hour))
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)), User: &subscriber})
 		require.NoError(t, err)

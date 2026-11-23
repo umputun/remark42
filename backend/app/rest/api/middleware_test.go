@@ -19,6 +19,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark42/backend/app/rest"
 )
 
 // routes() wraps bounded routes with the enforcing rest.Timeout and deliberately leaves the
@@ -323,8 +325,15 @@ func TestRest_securityHeaders(t *testing.T) {
 }
 
 func TestRest_subscribersOnly(t *testing.T) {
-	paidSubUser := &token.User{}
-	paidSubUser.SetPaidSub(true)
+	// paidUser is a paid subscriber whose paid status ends at until, or has no end when it is zero
+	paidUser := func(until time.Time) token.User {
+		u := token.User{}
+		u.SetPaidSub(true)
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(&u, until)
+		}
+		return u
+	}
 
 	tbl := []struct {
 		subsOnly bool
@@ -336,7 +345,10 @@ func TestRest_subscribersOnly(t *testing.T) {
 		{true, token.User{}, true, http.StatusForbidden},
 		{false, token.User{}, false, http.StatusOK},
 		{false, token.User{}, true, http.StatusOK},
-		{true, *paidSubUser, true, http.StatusOK},
+		{true, paidUser(time.Now().Add(time.Hour)), true, http.StatusOK},
+		{true, paidUser(time.Now().Add(-time.Second)), true, http.StatusForbidden},
+		{true, paidUser(time.Time{}), true, http.StatusForbidden},
+		{false, paidUser(time.Time{}), true, http.StatusOK},
 	}
 
 	for i, tt := range tbl {
