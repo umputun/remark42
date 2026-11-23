@@ -5,7 +5,7 @@
        the published image is built */ -}}
 {{- $date := false -}}
 {{- with .File -}}
-  {{- with index (site.Data.lastmod | default dict) .Path }}{{ $date = time.AsTime . }}{{ end -}}
+  {{- with index (hugo.Data.lastmod | default dict) .Path }}{{ $date = time.AsTime . }}{{ end -}}
 {{- end -}}
 {{- /* the committer date, as the script writes: .Lastmod would give the author date */ -}}
 {{- if not $date }}{{ with .GitInfo }}{{ $date = .CommitDate }}{{ end }}{{ end -}}
