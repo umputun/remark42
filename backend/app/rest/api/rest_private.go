@@ -397,11 +397,12 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	}
 
 	claims := token.Claims{
-		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address, State: emailSubscribeState},
-		Audience:  jwt.ClaimStrings{subscribe.Site},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: user.ID + "::" + subscribe.Address},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{subscribe.Site},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	}
 
 	tkn, err := s.authenticator.TokenService().Token(claims)
@@ -502,9 +503,15 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	_, userID, address, herr := s.parseHandshake(confirm.Token)
+	claims, userID, address, herr := s.parseHandshake(confirm.Token, emailSubscribeProvider)
 	if herr != nil {
 		rest.SendErrorJSON(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	siteID := verifiedSite(r, confirm.Site)
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 	if userID != user.ID {
@@ -512,14 +519,15 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 			"invalid handshake token", rest.ErrInternal)
 		return
 	}
-	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
+	s.setEmail(w, r, user.ID, siteID, address)
 }
 
-// emailSubscribeState marks the handshake of a token made by sendEmailConfirmationCtrl. Other tokens carry
-// a user::address handshake signed with the same key: the unsubscribe link in every reply email, and the
-// email login confirmation, whose user part the requester chooses. Without a session to compare the user
-// with, the marker is what limits emailSubscribeCtrl to the tokens meant for it.
-const emailSubscribeState = "email-subscribe"
+// emailSubscribeProvider is the provider name in a token made by sendEmailConfirmationCtrl. Three tokens
+// carry a user::address handshake signed with the same key: this one, which expires in 30 minutes and proves
+// the reader holds the address now; the unsubscribe link in every reply email, which has no provider and
+// lasts a century; and the email login confirmation, whose user part the requester chooses and whose
+// provider is the login's. parseHandshake accepts each token only where it is meant to be used.
+const emailSubscribeProvider = "email-subscribe"
 
 // emailSubscribeCtrl confirms an email subscription from the link in the confirmation email, with no
 // session: the token proves the reader holds the address, and it names the user who asked for it and the
@@ -540,7 +548,7 @@ func (s *private) emailSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	claims, userID, address, herr := s.parseHandshake(tkn)
+	claims, userID, address, herr := s.parseHandshake(tkn, emailSubscribeProvider)
 	if herr != nil {
 		details := herr.details
 		if errors.Is(herr.err, errHandshakeExpired) {
@@ -549,12 +557,12 @@ func (s *private) emailSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorHTML(w, r, herr.status, herr.err, details, rest.ErrInternal)
 		return
 	}
-	if claims.Handshake.State != emailSubscribeState || len(claims.Audience) != 1 || claims.Audience[0] == "" {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("not a subscription confirmation token"),
+	siteID := tokenSite(claims)
+	if siteID == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("no site in token"),
 			"invalid confirmation token", rest.ErrInternal)
 		return
 	}
-	siteID := claims.Audience[0]
 	// the session check refuses a blocked user on the paste path, and there is no session here
 	if s.dataService.IsBlocked(siteID, userID) {
 		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("user %s is blocked", userID), "user is blocked", rest.ErrInternal)
@@ -611,8 +619,9 @@ var errHandshakeExpired = errors.New("expired")
 
 // parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl or for the email unsubscribe link,
 // and returns its claims with the user ID and address from its handshake, which is user.ID + "::" + address.
-// A token without a handshake, such as a login token, is rejected as invalid.
-func (s *private) parseHandshake(tkn string) (claims token.Claims, userID, address string, herr *handshakeError) {
+// The token must have been made by provider: emailSubscribeProvider for a confirmation, empty for an unsubscribe
+// link. A token without a handshake, such as a login token, or made for another use is rejected as invalid.
+func (s *private) parseHandshake(tkn, provider string) (claims token.Claims, userID, address string, herr *handshakeError) {
 	claims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
 		return token.Claims{}, "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
@@ -628,7 +637,24 @@ func (s *private) parseHandshake(tkn string) (claims token.Claims, userID, addre
 		// the handshake carries the address, so it is not echoed into the error
 		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
 	}
+	tokenProvider := ""
+	if claims.AuthProvider != nil {
+		tokenProvider = claims.AuthProvider.Name
+	}
+	if tokenProvider != provider {
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("token made for another use"), details: "invalid handshake token"}
+	}
 	return claims, elems[0], elems[1], nil
+}
+
+// tokenSite returns the site a confirmation or unsubscribe token was issued for, or an empty string when
+// the token names no site or several. Users have the same ID on every site of a server, so a token from
+// one site must not act on another
+func tokenSite(claims token.Claims) string {
+	if len(claims.Audience) != 1 {
+		return ""
+	}
+	return claims.Audience[0]
 }
 
 // verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
@@ -676,9 +702,15 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	siteID := r.URL.Query().Get("site")
 
-	_, userID, address, herr := s.parseHandshake(tkn)
+	claims, userID, address, herr := s.parseHandshake(tkn, "")
 	if herr != nil {
 		rest.SendErrorHTML(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	// the page has no session to check the site against, and every link carries the site of its token
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 
@@ -688,12 +720,12 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		// as it's only used to check if we're trying to set to the same value it's already set to
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
-	if existingAddress == "" {
-		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
-		return
-	}
+	// one answer whether the user has no address or another one: a link mailed to the author of a comment
+	// further up a thread named the author of the comment replied to until the recipient was named in it,
+	// and such a link must not tell its holder whether that other user is subscribed
 	if address != existingAddress {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("user is not subscribed with this address"),
+			"this address is not subscribed", rest.ErrInternal)
 		return
 	}
 
@@ -704,13 +736,13 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// clean User.Email from the token, if user has the token
-	claims, _, err := s.authenticator.TokenService().Get(r)
+	session, _, err := s.authenticator.TokenService().Get(r)
 	if err != nil {
 		log.Printf("[DEBUG] unsubscribed user doesn't have valid JWT token to update %s, %v", userID, err)
 	}
-	if claims.User != nil && claims.User.Email != "" {
-		claims.User.Email = ""
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+	if session.User != nil && session.User.Email != "" {
+		session.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, session); err != nil {
 			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}

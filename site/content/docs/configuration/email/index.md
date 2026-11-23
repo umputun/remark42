@@ -288,7 +288,7 @@ Sent when a user subscribes to email notifications for a comment thread.
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `{{.User}}` | string | Username |
+| `{{.User}}` | string | Username, reduced to letters, digits, underscores and single spaces, at most 64 characters |
 | `{{.Token}}` | string | Confirmation token |
 | `{{.Email}}` | string | Recipient email address |
 | `{{.Site}}` | string | Site name |

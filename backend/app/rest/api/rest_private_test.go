@@ -1637,17 +1637,21 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 
 	srv.privRest.telegramService = &mockTelegram{site: "remark42"}
 
-	// issue good token
+	// issue a good confirmation token, and the token of the unsubscribe link, which has the same
+	// handshake and no provider
 	claims := token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{"remark42"},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	}
-	tkn, err := srv.Authenticator.TokenService().Token(claims)
+	goodToken, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
-	goodToken := tkn
+	claims.AuthProvider = nil
+	unsubscribeToken, err := srv.Authenticator.TokenService().Token(claims)
+	require.NoError(t, err)
 
 	var testData = []struct {
 		description  string
@@ -1677,8 +1681,11 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 		{description: "set user email, token is good, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK, cookieEmail: "good@example.com"},
 		{description: "unsubscribe user, no token", url: "/email/unsubscribe.html?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest},
 		{description: "unsubscribe user, wrong token", url: "/email/unsubscribe.html?site=remark42&tkn=jwt", method: http.MethodGet, responseCode: http.StatusForbidden},
-		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusOK},
-		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusConflict},
+		{description: "set user email, unsubscribe token", url: "/api/v1/email/confirm?site=remark42", method: http.MethodPost, responseCode: http.StatusBadRequest, body: fmt.Sprintf(`{"site":"remark42","token":%q}`, unsubscribeToken)},
+		{description: "set user email, unsubscribe token, old query param", url: fmt.Sprintf("/api/v1/email/confirm?site=remark42&tkn=%s", unsubscribeToken), method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "unsubscribe user, confirmation token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", goodToken), method: http.MethodPost, responseCode: http.StatusBadRequest},
+		{description: "unsubscribe user, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", unsubscribeToken), method: http.MethodPost, responseCode: http.StatusOK},
+		{description: "unsubscribe user second time, good token", url: fmt.Sprintf("/email/unsubscribe.html?site=remark42&tkn=%s", unsubscribeToken), method: http.MethodPost, responseCode: http.StatusConflict},
 		{description: "issue delete request without auth", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusUnauthorized, noAuth: true},
 		{description: "issue delete request without site_id", url: "/api/v1/telegram", method: http.MethodDelete, responseCode: http.StatusForbidden},
 		{description: "delete non-existent user telegram", url: "/api/v1/telegram?site=remark42", method: http.MethodDelete, responseCode: http.StatusOK},
@@ -2697,11 +2704,12 @@ func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 	defer teardown()
 
 	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "someone_else::good@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: "someone_else::good@example.com"},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{"remark42"},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	})
 	require.NoError(t, err)
 
@@ -2751,11 +2759,12 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 	defer teardown()
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{"remark42"},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	})
 	require.NoError(t, err)
 
@@ -2807,11 +2816,12 @@ func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
 	}
 	expired := func(email string) string { return userToken(email, time.Now().Add(-time.Minute)) }
 	confirmation, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::new@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: "provider1_dev::new@example.com"},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{"remark42"},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	})
 	require.NoError(t, err)
 
@@ -2875,11 +2885,12 @@ func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 	defer teardown()
 
 	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "admin::admin@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: "admin::admin@example.com"},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{"remark42"},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	})
 	require.NoError(t, err)
 
@@ -3202,7 +3213,12 @@ func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
 		require.NoError(t, err)
 		return tkn
 	}
-	subscribeHandshake := func(id string) *token.Handshake { return &token.Handshake{ID: id, State: emailSubscribeState} }
+	// the claims of a confirmation token, as sendEmailConfirmationCtrl makes it
+	subscribeClaims := func(id string, aud ...string) token.Claims {
+		return token.Claims{Handshake: &token.Handshake{ID: id}, AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider}, Audience: aud}
+	}
+	expired := subscribeClaims("provider1_dev::bad@example.com", "remark42")
+	expired.ExpiresAt = jwt.NewNumericDate(time.Now().Add(-1 * time.Minute))
 
 	tbl := []struct {
 		name, tkn, details string
@@ -3211,21 +3227,20 @@ func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
 		{name: "no token", code: http.StatusBadRequest, details: "token parameter is required"},
 		{name: "not a token", tkn: "jwt", code: http.StatusForbidden, details: "failed to verify confirmation token"},
 		{name: "expired", code: http.StatusForbidden, details: "the confirmation link has expired",
-			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev::bad@example.com"), Audience: jwt.ClaimStrings{"remark42"},
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute))})},
-		{name: "unsubscribe token", code: http.StatusBadRequest, details: "invalid confirmation token",
+			tkn: mint(expired)},
+		{name: "unsubscribe token", code: http.StatusBadRequest, details: "invalid handshake token",
 			tkn: mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::bad@example.com"}, Audience: jwt.ClaimStrings{"remark42"},
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(100 * 365 * 24 * time.Hour))})},
-		{name: "email login token", code: http.StatusBadRequest, details: "invalid confirmation token",
+		{name: "email login token", code: http.StatusBadRequest, details: "invalid handshake token",
 			tkn: mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::bad@example.com"}, Audience: jwt.ClaimStrings{"remark42"},
 				SessionOnly: true, AuthProvider: &token.AuthProvider{Name: "email"}})},
 		{name: "session token", tkn: devToken, code: http.StatusBadRequest, details: "invalid handshake token"},
 		{name: "two audiences", code: http.StatusBadRequest, details: "invalid confirmation token",
-			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev::bad@example.com"), Audience: jwt.ClaimStrings{"remark42", "other"}})},
+			tkn: mint(subscribeClaims("provider1_dev::bad@example.com", "remark42", "other"))},
 		{name: "malformed handshake", code: http.StatusBadRequest, details: "invalid handshake token",
-			tkn: mint(token.Claims{Handshake: subscribeHandshake("provider1_dev"), Audience: jwt.ClaimStrings{"remark42"}})},
+			tkn: mint(subscribeClaims("provider1_dev", "remark42"))},
 		{name: "blocked user", code: http.StatusForbidden, details: "user is blocked",
-			tkn: mint(token.Claims{Handshake: subscribeHandshake("blocked_user::bad@example.com"), Audience: jwt.ClaimStrings{"remark42"}})},
+			tkn: mint(subscribeClaims("blocked_user::bad@example.com", "remark42"))},
 	}
 	require.NoError(t, srv.DataService.SetBlock("remark42", "blocked_user", true, 0))
 
@@ -3252,4 +3267,213 @@ func TestRest_EmailSubscribeLinkRejects(t *testing.T) {
 			}
 		})
 	}
+}
+
+// the token of the unsubscribe link is mailed with every reply and lasts a century, so it does not confirm
+// the address it names, while the confirmation token sent on subscribe does, and does not unsubscribe
+func TestRest_EmailConfirmWithUnsubscribeToken(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	confirm := func(tkn string) (int, string) {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+			strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+		require.NoError(t, err)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+	userEmail := func() string {
+		email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+		require.NoError(t, err)
+		return email
+	}
+
+	unsubscribeTkn := subscribedUserToken(t, srv)
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+unsubscribeTkn)
+	require.Equal(t, http.StatusOK, code, body)
+
+	code, body = confirm(unsubscribeTkn)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.Empty(t, userEmail(), "the unsubscribe token subscribed the address back")
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42",
+		strings.NewReader(`{"site":"remark42","address":"good@example.com"}`))
+	require.NoError(t, err)
+	req.Header.Add("X-JWT", devToken)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
+	confirmTkn := mockDestination.GetVerify()[0].Token
+
+	code, body = confirm(confirmTkn)
+	assert.Equal(t, http.StatusOK, code, body)
+	assert.Equal(t, "good@example.com", userEmail())
+
+	body, code = get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+confirmTkn)
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.Equal(t, "good@example.com", userEmail(), "the confirmation token unsubscribed the address")
+}
+
+// the unsubscribe page gives one answer to a link that does not match the stored address, whether the user
+// has no address or another one, and takes no email login token, whose user part the requester chooses
+func TestRest_EmailUnsubscribeTellsNothingAboutAnotherUser(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mint := func(c token.Claims) string {
+		c.Audience = jwt.ClaimStrings{"remark42"}
+		c.ExpiresAt = jwt.NewNumericDate(time.Now().Add(10 * time.Minute))
+		c.NotBefore = jwt.NewNumericDate(time.Now().Add(-1 * time.Minute))
+		c.Issuer = "remark42"
+		tkn, err := srv.Authenticator.TokenService().Token(c)
+		require.NoError(t, err)
+		return tkn
+	}
+	// a link naming provider1_dev with an address that is not theirs, and an email login token asked for with
+	// provider1_dev as the user name and the requester's own address
+	link := mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::other@example.com"}})
+	login := mint(token.Claims{Handshake: &token.Handshake{ID: "provider1_dev::other@example.com"},
+		AuthProvider: &token.AuthProvider{Name: "email"}})
+
+	answers := func() (linkBody, loginBody string) {
+		body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+link)
+		assert.Equal(t, http.StatusConflict, code, body)
+		linkBody = body
+		body, code = get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+login)
+		assert.Equal(t, http.StatusBadRequest, code, body)
+		return linkBody, body
+	}
+
+	notSubscribedLink, notSubscribedLogin := answers()
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	require.NoError(t, err)
+	subscribedLink, subscribedLogin := answers()
+	assert.Equal(t, notSubscribedLink, subscribedLink, "the link tells whether the user is subscribed")
+	assert.Equal(t, notSubscribedLogin, subscribedLogin, "the login token tells whether the user is subscribed")
+
+	email, err := srv.DataService.GetUserEmail("remark42", "provider1_dev")
+	require.NoError(t, err)
+	assert.Equal(t, "good@example.com", email, "the address of the user is kept")
+}
+
+// confirmation and unsubscribe tokens are issued for one site, kept in the token's audience, and are refused
+// for another site: the unsubscribe page needs no session, so nothing else ties the link to its site, and a
+// user has the same ID on every site of a server
+func TestRest_EmailTokenOfAnotherSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		require.NoError(t, srv.DataService.Engine.Close())
+		dir := t.TempDir()
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(dir, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(dir, "other.db"), SiteID: "other"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+	})
+	defer teardown()
+
+	siteToken := func(provider *token.AuthProvider, site ...string) string {
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+			Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
+			AuthProvider: provider,
+			Audience:     site,
+			ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			Issuer:       "remark42",
+		})
+		require.NoError(t, err)
+		return tkn
+	}
+	userEmail := func(site string) string {
+		email, err := srv.DataService.GetUserEmail(site, "provider1_dev")
+		require.NoError(t, err)
+		return email
+	}
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	confirm := func(tkn string) int {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
+			strings.NewReader(fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn)))
+		require.NoError(t, err)
+		req.Header.Add("X-JWT", devToken)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// the session belongs to remark42, the confirmation token was issued on the other site or on both
+	subscribe := &token.AuthProvider{Name: emailSubscribeProvider}
+	assert.Equal(t, http.StatusForbidden, confirm(siteToken(subscribe, "other")), "confirm with the token of another site")
+	assert.Equal(t, http.StatusForbidden, confirm(siteToken(subscribe, "remark42", "other")), "confirm with a token of two sites")
+	assert.Empty(t, userEmail("remark42"), "email set by a token of another site")
+
+	// the user is subscribed on both sites, the unsubscribe link comes from a mail of remark42
+	for _, site := range []string{"remark42", "other"} {
+		_, err := srv.DataService.SetUserEmail(site, "provider1_dev", "good@example.com")
+		require.NoError(t, err)
+	}
+	tkn := siteToken(nil, "remark42")
+	for _, site := range []string{"other", ""} {
+		body, code := get(t, ts.URL+"/email/unsubscribe.html?site="+site+"&tkn="+tkn)
+		assert.Equal(t, http.StatusForbidden, code, "unsubscribe on site %q with the link of remark42: %s", site, body)
+	}
+	assert.Equal(t, "good@example.com", userEmail("other"), "subscription on the other site is kept")
+	assert.Equal(t, "good@example.com", userEmail("remark42"), "subscription is kept")
+
+	body, code := get(t, ts.URL+"/email/unsubscribe.html?site=remark42&tkn="+tkn)
+	assert.Equal(t, http.StatusOK, code, body)
+	assert.Empty(t, userEmail("remark42"), "unsubscribed on the site of the link")
+	assert.Equal(t, "good@example.com", userEmail("other"), "subscription on the other site is kept")
+}
+
+// the basic-auth admin may name the site in the body only; the confirmation token is issued for that site,
+// and the confirmation for the same site accepts it
+func TestRest_EmailConfirmationTokenForSiteInBody(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	mockDestination := &fakeDestination{}
+	srv.privRest.notifyService = notify.NewService(srv.DataService, 1, mockDestination)
+	defer srv.privRest.notifyService.Close()
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	send := func(url, body, tkn string) (int, string) {
+		req, err := http.NewRequest(http.MethodPost, ts.URL+url, strings.NewReader(body))
+		require.NoError(t, err)
+		req.SetBasicAuth("admin", "password")
+		if tkn != "" {
+			req.Header.Add("X-JWT", tkn) // setEmail reads the token of the request to update it
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	code, body := send("/api/v1/email/subscribe", `{"site":"remark42","address":"admin@example.com"}`, "")
+	require.Equal(t, http.StatusOK, code, body)
+	waitForCount(t, 1, func() int { return len(mockDestination.GetVerify()) })
+	tkn := mockDestination.GetVerify()[0].Token
+
+	code, body = send("/api/v1/email/confirm", fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn), tkn)
+	assert.Equal(t, http.StatusOK, code, body)
+	email, err := srv.DataService.GetUserEmail("remark42", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "admin@example.com", email)
 }
