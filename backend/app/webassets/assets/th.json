@@ -10,7 +10,7 @@
   "auth.signin": "เข้าสู่ระบบ",
   "auth.signout": "ออกจากระบบ",
   "auth.submit": "ยืนยัน",
-  "auth.symbols-restriction": "ชื่อมีได้เฉพาะตัวอักษร ตัวเลข ขีดล่าง และช่องว่าง",
+  "auth.symbols-restriction": "ชื่อต้องมีความยาว 3 ถึง 64 อักขระ และมีได้เฉพาะตัวอักษร ตัวเลข ขีดล่าง จุด ยัติภังค์ และช่องว่าง",
   "auth.telegram-check": "ตรวจสอบ",
   "auth.telegram-link": "ด้วยลิ้งก์",
   "auth.telegram-message-1": "เปิดเทเลแกรม",

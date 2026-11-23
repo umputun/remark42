@@ -10,7 +10,7 @@
   "auth.signin": "Kirjaudu sisään",
   "auth.signout": "Kirjaudu ulos",
   "auth.submit": "Vahvista",
-  "auth.symbols-restriction": "Nimi saa sisältää vain kirjaimia, numeroita, alaviivoja ja välilyöntejä",
+  "auth.symbols-restriction": "Nimen on oltava 3–64 merkkiä pitkä, ja se saa sisältää vain kirjaimia, numeroita, alaviivoja, pisteitä, yhdysmerkkejä ja välilyöntejä",
   "auth.telegram-check": "Tarkista",
   "auth.telegram-link": "linkistä",
   "auth.telegram-message-1": "Avaa Telegram",

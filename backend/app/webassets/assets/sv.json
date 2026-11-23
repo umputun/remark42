@@ -10,7 +10,7 @@
   "auth.signin": "Logga in",
   "auth.signout": "Logga ut",
   "auth.submit": "Bekräfta",
-  "auth.symbols-restriction": "Namnet får endast innehålla bokstäver, siffror, understreck och mellanslag",
+  "auth.symbols-restriction": "Namnet måste vara 3 till 64 tecken långt och får endast innehålla bokstäver, siffror, understreck, punkter, bindestreck och mellanslag",
   "auth.telegram-check": "Kontrollera",
   "auth.telegram-link": "via länken",
   "auth.telegram-message-1": "Öppna Telegram",

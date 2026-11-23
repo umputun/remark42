@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,5 +42,48 @@ func TestUser_HashIP(t *testing.T) {
 		u = User{IP: tt.ip}
 		u.HashIP("123456")
 		assert.Equal(t, tt.hash2, u.IP, "case #%d", i)
+	}
+}
+
+func TestCheckUserName(t *testing.T) {
+	tbl := []struct {
+		name string
+		ok   bool
+	}{
+		{"abc", true},
+		{"Ева", true},
+		{"user_1", true},
+		{"Ann-Marie O. Smith", true},
+		{"a.b-c", true},
+		{"Раз_Два  Три_34567", true},
+		{strings.Repeat("Я", 33), true}, // 66 bytes
+		{strings.Repeat("Ж", 64), true},
+		{strings.Repeat("x", 64), true},
+		{"ab", false},
+		{"Ян", false}, // 4 bytes
+		{strings.Repeat("Ж", 65), false},
+		{strings.Repeat("x", 65), false},
+		{" abc", false},
+		{"abc ", false},
+		{"   ", false},
+		{"a\tbc", false},
+		{"\tabc", false},
+		{"abc\n", false},
+		{"Ева Ли", false},
+		{"山田　太郎", false},
+		{"**blah", false},
+		{"someone@example.com", false},
+		{"a|bc", false},
+		{"", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckUserName(tt.name)
+			if tt.ok {
+				assert.NoError(t, err)
+				return
+			}
+			assert.Error(t, err)
+		})
 	}
 }

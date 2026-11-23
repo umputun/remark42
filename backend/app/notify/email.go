@@ -102,9 +102,10 @@ func emailSafeHTML(commentHTML string) template.HTML {
 var reNotVerificationName = regexp.MustCompile(`[^\p{L}\p{M}\d_]+`)
 
 // verificationUserName reduces a display name to letters with their combining marks, digits, underscores
-// and single spaces, at most 64 characters, as the email login accepts for a user name. The verification
-// message goes to an address nobody has confirmed yet, and most login providers let users choose a free-text
-// name, which as it is could carry a message and a link of the user's choice to anyone
+// and single spaces, at most 64 characters. The verification message goes to an address nobody has confirmed
+// yet, and most login providers let users choose a free-text name, which as it is could carry a message and
+// a link of the user's choice to anyone. Dots and hyphens, which a name typed at sign-in may have, are
+// dropped too, so no domain name survives for a mail client to turn into a link
 func verificationUserName(name string) string {
 	name = strings.TrimSpace(reNotVerificationName.ReplaceAllString(name, " "))
 	if runes := []rune(name); len(runes) > 64 {

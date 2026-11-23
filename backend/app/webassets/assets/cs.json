@@ -10,7 +10,7 @@
   "auth.signin": "Přihlásit se",
   "auth.signout": "Odhlásit se",
   "auth.submit": "Potvrdit",
-  "auth.symbols-restriction": "Jméno může obsahovat pouze písmena, čísla, podtržítka a mezery",
+  "auth.symbols-restriction": "Jméno musí mít 3 až 64 znaků a může obsahovat pouze písmena, čísla, podtržítka, tečky, spojovníky a mezery",
   "auth.telegram-check": "Zkontrolovat",
   "auth.telegram-link": "pomocí odkazu",
   "auth.telegram-message-1": "Otevřete Telegram",

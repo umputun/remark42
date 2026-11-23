@@ -10,7 +10,7 @@
   "auth.signin": "Вход",
   "auth.signout": "Изход",
   "auth.submit": "Потвърди",
-  "auth.symbols-restriction": "Името може да съдържа само букви, цифри, подчертавки и интервали",
+  "auth.symbols-restriction": "Името трябва да е от 3 до 64 знака и може да съдържа само букви, цифри, подчертавки, точки, тирета и интервали",
   "auth.telegram-check": "Провери",
   "auth.telegram-link": "чрез връзката",
   "auth.telegram-message-1": "Отворете Telegram",

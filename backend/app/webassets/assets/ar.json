@@ -10,7 +10,7 @@
   "auth.signin": "دخول",
   "auth.signout": "خروج",
   "auth.submit": "تأكيد",
-  "auth.symbols-restriction": "يمكن أن يحتوي الاسم على حروف وأرقام وشرطات سفلية ومسافات فقط",
+  "auth.symbols-restriction": "يجب أن يتكون الاسم من 3 إلى 64 حرفًا، ويمكن أن يحتوي على حروف وأرقام وشرطات سفلية ونقاط وشرطات ومسافات فقط",
   "auth.telegram-check": "تأكد",
   "auth.telegram-link": "عبر الرابط",
   "auth.telegram-message-1": "افتح تيليجرام",

@@ -10,7 +10,7 @@
   "auth.signin": "サインイン",
   "auth.signout": "ログアウト",
   "auth.submit": "確認",
-  "auth.symbols-restriction": "名前に使用できるのは、文字、数字、アンダースコア、スペースのみです",
+  "auth.symbols-restriction": "名前は3〜64文字で、使用できるのは文字、数字、アンダースコア、ピリオド、ハイフン、スペースのみです",
   "auth.telegram-check": "チェック",
   "auth.telegram-link": "リンクから",
   "auth.telegram-message-1": "テレグラムを",

@@ -10,7 +10,7 @@
   "auth.signin": "登入",
   "auth.signout": "登出",
   "auth.submit": "確認",
-  "auth.symbols-restriction": "名稱只能包含文字、數字、底線和空格",
+  "auth.symbols-restriction": "名稱長度須為 3 到 64 個字元，且只能包含文字、數字、底線、句點、連字號和空格",
   "auth.telegram-check": "驗證",
   "auth.telegram-link": "此連結",
   "auth.telegram-message-1": "透過",

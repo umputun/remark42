@@ -10,7 +10,7 @@
   "auth.signin": "Giriş yap",
   "auth.signout": "Çıkış yap",
   "auth.submit": "Onayla",
-  "auth.symbols-restriction": "Ad yalnızca harf, rakam, alt çizgi ve boşluk içerebilir",
+  "auth.symbols-restriction": "Ad 3 ile 64 karakter arasında olmalı ve yalnızca harf, rakam, alt çizgi, nokta, kısa çizgi ve boşluk içerebilir",
   "auth.telegram-check": "Kontrol et",
   "auth.telegram-link": "bağlantıdan açın",
   "auth.telegram-message-1": "Telegram’ı",

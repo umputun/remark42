@@ -10,7 +10,7 @@
   "auth.signin": "ورود",
   "auth.signout": "خروج",
   "auth.submit": "تأیید",
-  "auth.symbols-restriction": "نام فقط می‌تواند شامل حروف، اعداد، زیرخط و فاصله باشد",
+  "auth.symbols-restriction": "نام باید بین ۳ تا ۶۴ نویسه باشد و فقط می‌تواند شامل حروف، اعداد، زیرخط، نقطه، خط تیره و فاصله باشد",
   "auth.telegram-check": "بررسی",
   "auth.telegram-link": "از طریق لینک",
   "auth.telegram-message-1": "تلگرام را",

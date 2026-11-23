@@ -15,7 +15,8 @@ export const messages = defineMessages<string>({
   },
   usernameRestriction: {
     id: 'auth.symbols-restriction',
-    defaultMessage: 'Name may only contain letters, numbers, underscores and spaces',
+    defaultMessage:
+      'Name must be 3 to 64 characters long and may only contain letters, numbers, underscores, dots, hyphens and spaces',
   },
   emailAddress: {
     id: 'auth.email-address',

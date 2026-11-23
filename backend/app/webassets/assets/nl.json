@@ -10,7 +10,7 @@
   "auth.signin": "Inloggen",
   "auth.signout": "Uitloggen",
   "auth.submit": "Bevestigen",
-  "auth.symbols-restriction": "Je naam mag alleen letters, cijfers, onderstrepingstekens en spaties bevatten",
+  "auth.symbols-restriction": "Je naam moet 3 tot 64 tekens lang zijn en mag alleen letters, cijfers, onderstrepingstekens, punten, koppeltekens en spaties bevatten",
   "auth.telegram-check": "Controleren",
   "auth.telegram-link": "via deze link",
   "auth.telegram-message-1": "Open Telegram",

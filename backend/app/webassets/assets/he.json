@@ -10,7 +10,7 @@
   "auth.signin": "התחברות",
   "auth.signout": "התנתקות",
   "auth.submit": "אישור",
-  "auth.symbols-restriction": "השם יכול להכיל רק אותיות, מספרים, קווים תחתונים ורווחים",
+  "auth.symbols-restriction": "השם חייב להכיל 3 עד 64 תווים, ויכול להכיל רק אותיות, מספרים, קווים תחתונים, נקודות, מקפים ורווחים",
   "auth.telegram-check": "בדיקה",
   "auth.telegram-link": "בקישור",
   "auth.telegram-message-1": "יש לפתוח את טלגרם",

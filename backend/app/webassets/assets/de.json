@@ -10,7 +10,7 @@
   "auth.signin": "Einloggen",
   "auth.signout": "Abmelden",
   "auth.submit": "Bestätigen",
-  "auth.symbols-restriction": "Der Name darf nur Buchstaben, Zahlen, Unterstriche und Leerzeichen enthalten",
+  "auth.symbols-restriction": "Der Name muss 3 bis 64 Zeichen lang sein und darf nur Buchstaben, Zahlen, Unterstriche, Punkte, Bindestriche und Leerzeichen enthalten",
   "auth.telegram-check": "Überprüfen",
   "auth.telegram-link": "über den Link",
   "auth.telegram-message-1": "Öffnen Sie Telegram",

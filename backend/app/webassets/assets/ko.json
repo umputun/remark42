@@ -10,7 +10,7 @@
   "auth.signin": "로그인",
   "auth.signout": "로그아웃",
   "auth.submit": "확인",
-  "auth.symbols-restriction": "이름에는 문자, 숫자, 밑줄, 공백만 사용할 수 있습니다",
+  "auth.symbols-restriction": "이름은 3~64자여야 하며 문자, 숫자, 밑줄, 마침표, 하이픈, 공백만 사용할 수 있습니다",
   "auth.telegram-check": "확인",
   "auth.telegram-link": "링크로",
   "auth.telegram-message-1": "텔레그램을",

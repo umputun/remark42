@@ -10,7 +10,7 @@
   "auth.signin": "Se connecter",
   "auth.signout": "Se déconnecter",
   "auth.submit": "Valider",
-  "auth.symbols-restriction": "Le nom ne doit contenir que des lettres, des chiffres, des tirets bas et des espaces.",
+  "auth.symbols-restriction": "Le nom doit comporter de 3 à 64 caractères et ne contenir que des lettres, des chiffres, des tirets bas, des points, des traits d'union et des espaces.",
   "auth.telegram-check": "Vérifier",
   "auth.telegram-link": "en suivant le lien",
   "auth.telegram-message-1": "Ouvrez Telegram",

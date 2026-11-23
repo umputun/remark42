@@ -10,7 +10,7 @@
   "auth.signin": "Увійти",
   "auth.signout": "Вийти",
   "auth.submit": "Підтвердити",
-  "auth.symbols-restriction": "Ім’я може містити лише літери, цифри, знаки підкреслення та пробіли",
+  "auth.symbols-restriction": "Ім’я має містити від 3 до 64 символів: лише літери, цифри, знаки підкреслення, крапки, дефіси та пробіли",
   "auth.telegram-check": "Перевірити",
   "auth.telegram-link": "за посиланням",
   "auth.telegram-message-1": "Відкрийте Telegram",

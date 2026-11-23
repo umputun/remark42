@@ -10,7 +10,7 @@
   "auth.signin": "Đăng nhập",
   "auth.signout": "Thoát",
   "auth.submit": "Xác nhận",
-  "auth.symbols-restriction": "Tên chỉ được chứa chữ cái, số, dấu gạch dưới và dấu cách",
+  "auth.symbols-restriction": "Tên phải dài từ 3 đến 64 ký tự và chỉ được chứa chữ cái, số, dấu gạch dưới, dấu chấm, dấu gạch nối và dấu cách",
   "auth.telegram-check": "Kiểm tra",
   "auth.telegram-link": "qua liên kết",
   "auth.telegram-message-1": "Mở Telegram",

@@ -4,8 +4,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" // nolint
 	"encoding/hex"
+	"errors"
 	"hash"
 	"regexp"
+	"strings"
+	"unicode/utf8"
 )
 
 // User holds user-related info
@@ -23,6 +26,26 @@ type User struct {
 }
 
 var reValidSha = regexp.MustCompile("^[a-fA-F0-9]{40}$")
+
+// reUserName matches a user name made of letters, ASCII digits, underscores, dots, hyphens and ordinary spaces.
+// The widget's sign-in form checks the same characters (the pattern of the username input in auth.tsx)
+var reUserName = regexp.MustCompile(`^[\p{L}\d_. -]+$`)
+
+// CheckUserName checks a name typed at anonymous or email sign-in: 3 to 64 characters, each a letter,
+// an ASCII digit, an underscore, a dot, a hyphen or an ordinary space, and no space at either end.
+// The error says which part of the rule the name breaks, without repeating the name
+func CheckUserName(name string) error {
+	if strings.HasPrefix(name, " ") || strings.HasSuffix(name, " ") {
+		return errors.New("name starts or ends with a space")
+	}
+	if n := utf8.RuneCountInString(name); n < 3 || n > 64 {
+		return errors.New("name should be 3 to 64 characters long")
+	}
+	if !reUserName.MatchString(name) {
+		return errors.New("name should have letters, digits, underscores, dots, hyphens and spaces only")
+	}
+	return nil
+}
 
 // HashIP replace IP field with hashed hmac
 func (u *User) HashIP(secret string) {
