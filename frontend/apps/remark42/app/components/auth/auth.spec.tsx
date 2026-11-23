@@ -264,7 +264,14 @@ describe('<Auth/>', () => {
     expect(emailSignin).not.toHaveBeenCalled();
   });
 
-  it.each(['abc', 'Ева Ли', 'user_1'])('should accept the name %s', (name) => {
+  // the server counts code points of the trimmed name, so the form counts the same way: UTF-16 code
+  // units would let a two-letter name with a supplementary-plane letter through and cut a long one
+  it.each([
+    ['ab ', 'two characters and a space'],
+    [' ab', 'a space and two characters'],
+    ['\u{20BB7}田', 'two characters, one outside the Basic Multilingual Plane'],
+    ['a'.repeat(65), '65 characters'],
+  ])('should refuse the name %j, %s', (name) => {
     StaticStore.config.auth_providers = ['email'];
 
     render(<Auth />);
@@ -273,7 +280,74 @@ describe('<Auth/>', () => {
     const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
     fireEvent.change(input, { target: { value: name } });
 
+    expect(input.validity.patternMismatch).toBe(true);
+  });
+
+  it.each([
+    'abc',
+    'Ева Ли',
+    'user_1',
+    'a.b-c',
+    'Ann-Marie O. Smith',
+    ' abc ',
+    'abc\u00a0',
+    '\u3000abc',
+    '\u{20BB7}'.repeat(33),
+    'Ж'.repeat(64),
+  ])('should accept the name %s', (name) => {
+    StaticStore.config.auth_providers = ['anonymous'];
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: name } });
+
     expect(input.validity.valid).toBe(true);
+  });
+
+  // the email sign-in name goes into a mail to an address nobody has confirmed yet, so it takes no dot
+  it.each`
+    name                 | mismatch
+    ${'a.b-c'}           | ${true}
+    ${'evil-site.com'}   | ${true}
+    ${'Ann-Marie Smith'} | ${false}
+  `('should check $name against the email rule', ({ name, mismatch }) => {
+    StaticStore.config.auth_providers = ['email'];
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    const input = screen.getByPlaceholderText('Name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: name } });
+
+    expect(input.validity.patternMismatch).toBe(mismatch);
+    expect(input.title).toBe(
+      'Name must be 3 to 64 characters long and may only contain letters, numbers, underscores, hyphens and spaces'
+    );
+  });
+
+  // pressing Enter submits without the blur that trims the field, and the server refuses a space at either end
+  it.each`
+    provider       | signin
+    ${'email'}     | ${'emailSignin'}
+    ${'anonymous'} | ${'anonymousSignin'}
+  `('should send the $provider name without spaces at either end', async ({ provider, signin }) => {
+    StaticStore.config.auth_providers = [provider];
+    const spy = jest.spyOn(api, signin).mockImplementationOnce(async () => ({}) as User);
+    spy.mockClear();
+
+    render(<Auth />);
+
+    fireEvent.click(screen.getByText('Sign in'));
+    fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: ' user name ' } });
+    if (provider === 'email') {
+      fireEvent.change(screen.getByPlaceholderText('Email address'), { target: { value: 'email@email.com' } });
+    }
+    fireEvent.click(screen.getByText('Confirm'));
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0]).toContain('user name');
   });
 
   it('should show validation error for token', async () => {

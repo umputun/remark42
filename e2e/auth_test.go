@@ -86,12 +86,64 @@ func TestAuth_AnonymousSignsIn(t *testing.T) {
 	page := newPage(t)
 	frame := openThread(t, page)
 
-	signInAnon(t, page, frame, "anontester")
+	// a dot and a hyphen, which the form's pattern accepts only when the hyphen is escaped for
+	// the v flag browsers compile it with
+	signInAnon(t, page, frame, "anon.tester-1")
 	assertSignedIn(t, page, frame)
 
 	name, err := frame.Locator(`[title="Open your profile"]`).InnerText()
 	require.NoError(t, err)
-	assert.Contains(t, name, "anontester")
+	assert.Contains(t, name, "anon.tester-1")
+}
+
+// TestAuth_NameFieldAppliesItsPattern checks the browser compiles the name field's pattern. A
+// browser compiles it with the v flag, under which a bare hyphen in a class is a syntax error, and
+// a pattern that does not compile is ignored: every name is then valid, and the ones the server
+// refuses come back as a bare 403. jsdom compiles it differently, so only a browser can tell
+func TestAuth_NameFieldAppliesItsPattern(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	require.NoError(t, frame.Locator(".auth-button").Click())
+	waitVisible(t, frame.Locator(".auth-dropdown"))
+	tab := frame.Locator(`label[for="form-provider-anonymous"]`)
+	if n, err := tab.Count(); err == nil && n > 0 {
+		require.NoError(t, tab.Click())
+	}
+	input := frame.Locator(".auth-input-username")
+
+	cases := map[string]bool{
+		"Ann-Marie O. Smith":             false,
+		"abc\u00a0":                      false, // trimmed on submit
+		strings.Repeat("\U00020BB7", 33): false, // 66 UTF-16 code units, 33 characters as the server counts them
+		"Ева\u00a0Ли":                    true,
+		"a*b":                            true,
+		"ab ":                            true,
+		"\U00020BB7田":                    true,
+	}
+	// typed key by key, so a length cap on the field would cut the name and show here
+	for name, mismatch := range cases {
+		require.NoError(t, input.Clear())
+		require.NoError(t, input.PressSequentially(name))
+		value, err := input.InputValue()
+		require.NoError(t, err)
+		assert.Equal(t, name, value, "the field kept only part of %q", name)
+		got, err := input.Evaluate(`(el) => el.validity.patternMismatch`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, mismatch, got, "patternMismatch for %q", name)
+	}
+
+	// the email tab takes no dot, since the name goes into a mail to an unconfirmed address
+	require.NoError(t, frame.Locator(`label[for="form-provider-email"]`).Click())
+	for name, mismatch := range map[string]bool{"Ann-Marie Smith": false, "evil-site.com": true} {
+		require.NoError(t, input.Clear())
+		require.NoError(t, input.PressSequentially(name))
+		got, err := input.Evaluate(`(el) => el.validity.patternMismatch`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, mismatch, got, "patternMismatch on the email tab for %q", name)
+	}
 }
 
 // TestAuth_EmailSignsIn drives the full email flow: request a code, read it back out of the
@@ -105,7 +157,7 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 
 	// the mailbox is per-run: mailpit keeps everything, and with the stack left up between
 	// runs a fixed address would let this test read a previous run's token
-	signInEmail(t, page, frame, "emailtester", fmt.Sprintf("email-tester-%s@example.com", runID))
+	signInEmail(t, page, frame, "email-tester-1", fmt.Sprintf("email-tester-%s@example.com", runID))
 }
 
 // signInEmail completes the email flow: ask for a code, read it out of the mail catcher, paste

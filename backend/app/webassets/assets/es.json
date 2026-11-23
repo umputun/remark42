@@ -1,6 +1,7 @@
 {
   "auth.back": "Regresar",
   "auth.email-address": "Correo electrónico",
+  "auth.email-symbols-restriction": "El nombre debe tener entre 3 y 64 caracteres y solo puede contener letras, números, guiones bajos, guiones y espacios",
   "auth.loading": "Cargando...",
   "auth.no-providers": "No hay ningún método disponible para iniciar sesión. ¿Quizás el propietario del sitio olvidó habilitarlo?",
   "auth.oauth-button": "Iniciar sesión con {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Iniciar sesión",
   "auth.signout": "¿Cerrar sesión?",
   "auth.submit": "Confirmar",
-  "auth.symbols-restriction": "El nombre solo puede contener letras, números, guiones bajos y espacios",
+  "auth.symbols-restriction": "El nombre debe tener entre 3 y 64 caracteres y solo puede contener letras, números, guiones bajos, puntos, guiones y espacios",
   "auth.telegram-check": "Verificar",
   "auth.telegram-link": "haciendo clic aquí",
   "auth.telegram-message-1": "Abre Telegram",

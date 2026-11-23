@@ -1,6 +1,7 @@
 {
   "auth.back": "Back",
   "auth.email-address": "Email address",
+  "auth.email-symbols-restriction": "Name must be 3 to 64 characters long and may only contain letters, numbers, underscores, hyphens and spaces",
   "auth.loading": "Loading...",
   "auth.no-providers": "No sign-in method available. Perhaps the site owner forgot to enable it?",
   "auth.oauth-button": "Sign in with {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Sign in",
   "auth.signout": "Sign out",
   "auth.submit": "Confirm",
-  "auth.symbols-restriction": "Name may only contain letters, numbers, underscores and spaces",
+  "auth.symbols-restriction": "Name must be 3 to 64 characters long and may only contain letters, numbers, underscores, dots, hyphens and spaces",
   "auth.telegram-check": "Check",
   "auth.telegram-link": "using this link",
   "auth.telegram-message-1": "Open Telegram",

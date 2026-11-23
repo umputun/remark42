@@ -1,6 +1,7 @@
 {
   "auth.back": "Anterior",
   "auth.email-address": "Endereço de email",
+  "auth.email-symbols-restriction": "O nome deve ter de 3 a 64 caracteres e pode conter apenas letras, números, sublinhados, hífens e espaços",
   "auth.loading": "Carregando...",
   "auth.no-providers": "Nenhum método de login disponível. Talvez o proprietário do site tenha se esquecido de ativá-lo?",
   "auth.oauth-button": "Entrar com {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Entrar",
   "auth.signout": "Fazer logout",
   "auth.submit": "Confirmar",
-  "auth.symbols-restriction": "O nome pode conter apenas letras, números, sublinhados e espaços",
+  "auth.symbols-restriction": "O nome deve ter de 3 a 64 caracteres e pode conter apenas letras, números, sublinhados, pontos, hífens e espaços",
   "auth.telegram-check": "Verificar",
   "auth.telegram-link": "pelo link",
   "auth.telegram-message-1": "Abra o Telegram",

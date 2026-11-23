@@ -1,6 +1,7 @@
 {
   "auth.back": "Retour",
   "auth.email-address": "Adresse e-mail",
+  "auth.email-symbols-restriction": "Le nom doit comporter de 3 à 64 caractères et ne contenir que des lettres, des chiffres, des tirets bas, des traits d'union et des espaces.",
   "auth.loading": "Chargement...",
   "auth.no-providers": "Aucun mode de connexion disponible. Le propriétaire du site a peut-être oublié de l'activer ?",
   "auth.oauth-button": "Se connecter avec {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Se connecter",
   "auth.signout": "Se déconnecter",
   "auth.submit": "Valider",
-  "auth.symbols-restriction": "Le nom ne doit contenir que des lettres, des chiffres, des tirets bas et des espaces.",
+  "auth.symbols-restriction": "Le nom doit comporter de 3 à 64 caractères et ne contenir que des lettres, des chiffres, des tirets bas, des points, des traits d'union et des espaces.",
   "auth.telegram-check": "Vérifier",
   "auth.telegram-link": "en suivant le lien",
   "auth.telegram-message-1": "Ouvrez Telegram",

@@ -1,6 +1,7 @@
 {
   "auth.back": "Powrót",
   "auth.email-address": "Adres email",
+  "auth.email-symbols-restriction": "Imię musi mieć od 3 do 64 znaków i może zawierać tylko litery, cyfry, podkreślenia, łączniki i spacje",
   "auth.loading": "Ładuję...",
   "auth.no-providers": "Brak dostępnych metod logowania. Być może właściciel witryny zapomniał je włączyć?",
   "auth.oauth-button": "Zaloguj się korzystając z {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Zaloguj się",
   "auth.signout": "Wyloguj",
   "auth.submit": "Potwierdź",
-  "auth.symbols-restriction": "Imię może zawierać tylko litery, cyfry, podkreślenia i spacje",
+  "auth.symbols-restriction": "Imię musi mieć od 3 do 64 znaków i może zawierać tylko litery, cyfry, podkreślenia, kropki, łączniki i spacje",
   "auth.telegram-check": "Sprawdź",
   "auth.telegram-link": "za pomocą linku",
   "auth.telegram-message-1": "Otwórz Telegram",

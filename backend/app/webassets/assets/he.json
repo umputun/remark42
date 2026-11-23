@@ -1,6 +1,7 @@
 {
   "auth.back": "חזרה",
   "auth.email-address": "כתובת אימייל",
+  "auth.email-symbols-restriction": "השם חייב להכיל 3 עד 64 תווים, ויכול להכיל רק אותיות, מספרים, קווים תחתונים, מקפים ורווחים",
   "auth.loading": "טוען...",
   "auth.no-providers": "אין שיטת התחברות זמינה. ייתכן שבעל האתר שכח להפעיל אותה?",
   "auth.oauth-button": "התחברות עם {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "התחברות",
   "auth.signout": "התנתקות",
   "auth.submit": "אישור",
-  "auth.symbols-restriction": "השם יכול להכיל רק אותיות, מספרים, קווים תחתונים ורווחים",
+  "auth.symbols-restriction": "השם חייב להכיל 3 עד 64 תווים, ויכול להכיל רק אותיות, מספרים, קווים תחתונים, נקודות, מקפים ורווחים",
   "auth.telegram-check": "בדיקה",
   "auth.telegram-link": "בקישור",
   "auth.telegram-message-1": "יש לפתוח את טלגרם",

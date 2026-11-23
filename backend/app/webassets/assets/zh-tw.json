@@ -1,6 +1,7 @@
 {
   "auth.back": "返回",
   "auth.email-address": "電子郵件地址",
+  "auth.email-symbols-restriction": "名稱長度須為 3 到 64 個字元，且只能包含文字、數字、底線、連字號和空格",
   "auth.loading": "載入中...",
   "auth.no-providers": "沒有可用的登入方式。也許網站擁有者忘記啟用登入功能了？",
   "auth.oauth-button": "透過 {provider} 登入",
@@ -10,7 +11,7 @@
   "auth.signin": "登入",
   "auth.signout": "登出",
   "auth.submit": "確認",
-  "auth.symbols-restriction": "名稱只能包含文字、數字、底線和空格",
+  "auth.symbols-restriction": "名稱長度須為 3 到 64 個字元，且只能包含文字、數字、底線、句點、連字號和空格",
   "auth.telegram-check": "驗證",
   "auth.telegram-link": "此連結",
   "auth.telegram-message-1": "透過",

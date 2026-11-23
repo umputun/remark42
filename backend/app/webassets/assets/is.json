@@ -1,6 +1,7 @@
 {
   "auth.back": "Til baka",
   "auth.email-address": "Netfang",
+  "auth.email-symbols-restriction": "Nafn verður að vera 3 til 64 stafir og má aðeins innihalda bókstafi, tölustafi, undirstrik, bandstrik og bil",
   "auth.loading": "Hleð...",
   "auth.no-providers": "Enginn innskráningarmáti í boði. Kannski gleymdi eigandi síðunnar að virkja hann?",
   "auth.oauth-button": "Skrá inn með {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Skrá inn",
   "auth.signout": "Skrá út",
   "auth.submit": "Staðfesta",
-  "auth.symbols-restriction": "Nafn má aðeins innihalda bókstafi, tölustafi, undirstrik og bil",
+  "auth.symbols-restriction": "Nafn verður að vera 3 til 64 stafir og má aðeins innihalda bókstafi, tölustafi, undirstrik, punkta, bandstrik og bil",
   "auth.telegram-check": "Athuga",
   "auth.telegram-link": "með hlekknum",
   "auth.telegram-message-1": "Opna Telegram",

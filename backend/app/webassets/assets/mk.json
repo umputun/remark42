@@ -1,6 +1,7 @@
 {
   "auth.back": "Назад",
   "auth.email-address": "Е-пошта",
+  "auth.email-symbols-restriction": "Името мора да има од 3 до 64 знаци и може да содржи само букви, бројки, долни црти, цртички и празни места",
   "auth.loading": "Се вчитува...",
   "auth.no-providers": "Нема достапен начин за најава. Можеби сопственикот на сајтот заборавил да го овозможи?",
   "auth.oauth-button": "Најава со {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Најава",
   "auth.signout": "Одјава",
   "auth.submit": "Потврди",
-  "auth.symbols-restriction": "Името може да содржи само букви, бројки, долни црти и празни места",
+  "auth.symbols-restriction": "Името мора да има од 3 до 64 знаци и може да содржи само букви, бројки, долни црти, точки, цртички и празни места",
   "auth.telegram-check": "Провери",
   "auth.telegram-link": "преку линкот",
   "auth.telegram-message-1": "Отвори Telegram",

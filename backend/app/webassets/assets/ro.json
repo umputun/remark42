@@ -1,6 +1,7 @@
 {
   "auth.back": "Înapoi",
   "auth.email-address": "Adresă de email",
+  "auth.email-symbols-restriction": "Numele trebuie să aibă între 3 și 64 de caractere și poate conține doar litere, cifre, liniuțe de subliniere, cratime și spații",
   "auth.loading": "Se încarcă...",
   "auth.no-providers": "Nu există nicio metodă de autentificare disponibilă. Poate că proprietarul site-ului a uitat să o activeze?",
   "auth.oauth-button": "Autentifică-te cu {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Autentificare",
   "auth.signout": "Deconectare",
   "auth.submit": "Confirmă",
-  "auth.symbols-restriction": "Numele poate conține doar litere, cifre, liniuțe de subliniere și spații",
+  "auth.symbols-restriction": "Numele trebuie să aibă între 3 și 64 de caractere și poate conține doar litere, cifre, liniuțe de subliniere, puncte, cratime și spații",
   "auth.telegram-check": "Verifică",
   "auth.telegram-link": "prin link",
   "auth.telegram-message-1": "Deschide Telegram",

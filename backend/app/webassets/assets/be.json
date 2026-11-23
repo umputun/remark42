@@ -1,6 +1,7 @@
 {
   "auth.back": "Назад",
   "auth.email-address": "Email адрас",
+  "auth.email-symbols-restriction": "Імя павінна мець ад 3 да 64 сімвалаў і можа змяшчаць толькі літары, лічбы, знакі падкрэслівання, злучкі і прабелы",
   "auth.loading": "Загрузка...",
   "auth.no-providers": "Няма даступнага спосабу ўваходу. Магчыма, уладальнік сайта забыўся яго ўключыць?",
   "auth.oauth-button": "Увайсці праз {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Увайсці",
   "auth.signout": "Выйсці",
   "auth.submit": "Пацвердзіць",
-  "auth.symbols-restriction": "Імя можа змяшчаць толькі літары, лічбы, знакі падкрэслівання і прабелы",
+  "auth.symbols-restriction": "Імя павінна мець ад 3 да 64 сімвалаў і можа змяшчаць толькі літары, лічбы, знакі падкрэслівання, кропкі, злучкі і прабелы",
   "auth.telegram-check": "Праверыць",
   "auth.telegram-link": "па спасылцы",
   "auth.telegram-message-1": "Адкрыйце Telegram",

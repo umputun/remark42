@@ -235,6 +235,32 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
+// checkAnonymousName counts characters, not bytes, and takes the dots, hyphens and spaces email sign-in takes
+func TestCheckAnonymousName(t *testing.T) {
+	tbl := []struct {
+		name string
+		ok   bool
+	}{
+		{"blah123", true},
+		{"a.b-c", true},
+		{"Ann-Marie O. Smith", true},
+		{strings.Repeat("Я", 33), true},
+		{strings.Repeat("Ж", 64), true},
+		{"Ян", false},
+		{strings.Repeat("Ж", 65), false},
+		{"\tabc", false},
+		{"abc\u00a0", false},
+		{"a\tbc", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := checkAnonymousName(tt.name, "")
+			require.NoError(t, err)
+			assert.Equal(t, tt.ok, ok)
+		})
+	}
+}
+
 // TestServerCommand_AnonymousUserID signs in through the anonymous provider and reads the user ID out
 // of the issued token. The ID is shown with every comment, and so is the name, so the ID must not be
 // computable from the name and the client address without the shared secret.

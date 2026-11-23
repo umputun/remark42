@@ -199,7 +199,9 @@ If your site runs an OAuth2 server, the [Custom OAuth2 Provider](#custom-oauth2-
 
 Optionally, anonymous access can be turned on. In this case, an extra `anonymous` provider will allow logins without any social login with any name satisfying two conditions:
 
-- the name is 3 to 64 bytes long: a Latin letter, digit, underscore or space takes one byte, most other letters two or three
-- the name contains only letters, digits, underscores and spaces, with no space at the start or end
+- the name is 3 to 64 characters long
+- the name contains only letters, ASCII digits, underscores, dots, hyphens and ordinary spaces, with no space at the start or end
+
+Email sign-in accepts the same names, except that the name cannot contain a dot.
 
 An anonymous user is the name together with the client address the sign-in came from (see [Trusted proxies and client IP](/docs/configuration/parameters/#trusted-proxies-and-client-ip)). The same name signed in from another address is another user, who cannot edit the comments posted earlier. Anonymous users cannot upload pictures, subscribe to replies or request deletion of their data, and they can vote only when both `ANON_VOTE` and `VOTES_IP` are enabled.

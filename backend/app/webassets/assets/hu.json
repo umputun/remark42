@@ -1,6 +1,7 @@
 {
   "auth.back": "Vissza",
   "auth.email-address": "E-mail-cím",
+  "auth.email-symbols-restriction": "A névnek 3–64 karakter hosszúnak kell lennie, és csak betűket, számokat, aláhúzásjeleket, kötőjeleket és szóközöket tartalmazhat",
   "auth.loading": "Betöltés...",
   "auth.no-providers": "Nincs elérhető bejelentkezési mód. Lehet, hogy a webhely tulajdonosa elfelejtette engedélyezni?",
   "auth.oauth-button": "Bejelentkezés ezzel: {provider}",
@@ -10,7 +11,7 @@
   "auth.signin": "Bejelentkezés",
   "auth.signout": "Kijelentkezés",
   "auth.submit": "Megerősítés",
-  "auth.symbols-restriction": "A név csak betűket, számokat, aláhúzásjeleket és szóközöket tartalmazhat",
+  "auth.symbols-restriction": "A névnek 3–64 karakter hosszúnak kell lennie, és csak betűket, számokat, aláhúzásjeleket, pontokat, kötőjeleket és szóközöket tartalmazhat",
   "auth.telegram-check": "Ellenőrzés",
   "auth.telegram-link": "a hivatkozással",
   "auth.telegram-message-1": "Nyissa meg a Telegramot",

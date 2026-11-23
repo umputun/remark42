@@ -33,6 +33,9 @@ import {
 import inputStyles from 'components/input/input.module.css';
 import styles from './auth.module.css';
 
+const USERNAME_PATTERN = String.raw`\s*[\p{L}\d_.\-][\p{L}\d _.\-]{1,62}[\p{L}\d_.\-]\s*`;
+const EMAIL_USERNAME_PATTERN = String.raw`\s*[\p{L}\d_\-][\p{L}\d _\-]{1,62}[\p{L}\d_\-]\s*`;
+
 export function Auth() {
   const intl = useIntl();
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
@@ -194,7 +197,8 @@ export function Auth() {
     try {
       switch (view) {
         case 'anonymous': {
-          const username = data.get('username') as string;
+          // the field is trimmed on blur, which pressing Enter skips, and the server refuses a space at either end
+          const username = (data.get('username') as string).trim();
           const user = await anonymousSignin(username);
 
           dispatch(signin(user));
@@ -202,7 +206,7 @@ export function Auth() {
         }
         case 'email': {
           const email = data.get('email') as string;
-          const username = data.get('username') as string;
+          const username = (data.get('username') as string).trim();
 
           emailRef.current = email;
 
@@ -410,9 +414,14 @@ export function Auth() {
                         className="auth-input-username"
                         required
                         name="username"
-                        minLength={3}
-                        pattern="[\p{L}\d _]+"
-                        title={intl.formatMessage(messages.usernameRestriction)}
+                        // 3 to 64 characters once trimmed, counted in code points as the server counts
+                        // them; minLength would count UTF-16 code units and miss a space at either end.
+                        // \s is the whitespace trim() removes on blur and on submit. Email sign-in takes
+                        // no dot, as the name goes into a mail to an address nobody has confirmed yet
+                        pattern={view === 'email' ? EMAIL_USERNAME_PATTERN : USERNAME_PATTERN}
+                        title={intl.formatMessage(
+                          view === 'email' ? messages.emailUsernameRestriction : messages.usernameRestriction
+                        )}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
                         value={username}

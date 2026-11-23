@@ -1,6 +1,7 @@
 {
   "auth.back": "戻る",
   "auth.email-address": "メールアドレス",
+  "auth.email-symbols-restriction": "名前は3〜64文字で、使用できるのは文字、数字、アンダースコア、ハイフン、スペースのみです",
   "auth.loading": "読み込んでいます…",
   "auth.no-providers": "利用可能なサインイン方法がありません。サイトの管理者が有効にするのを忘れている可能性があります。",
   "auth.oauth-button": "{provider} でサインイン",
@@ -10,7 +11,7 @@
   "auth.signin": "サインイン",
   "auth.signout": "ログアウト",
   "auth.submit": "確認",
-  "auth.symbols-restriction": "名前に使用できるのは、文字、数字、アンダースコア、スペースのみです",
+  "auth.symbols-restriction": "名前は3〜64文字で、使用できるのは文字、数字、アンダースコア、ピリオド、ハイフン、スペースのみです",
   "auth.telegram-check": "チェック",
   "auth.telegram-link": "リンクから",
   "auth.telegram-message-1": "テレグラムを",

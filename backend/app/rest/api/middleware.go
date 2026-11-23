@@ -477,8 +477,6 @@ func isPlainEmail(s string) bool {
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {
 
-	// at least 3 characters, as the widget's sign-in form and anonymous login require, and at most 64
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{3,64}$`)
 	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_.-]{1,64}$`)
 
 	return func(h http.Handler) http.Handler {
@@ -491,7 +489,9 @@ func validEmailAuth() func(http.Handler) http.Handler {
 			}
 
 			if u := r.URL.Query().Get("user"); u != "" {
-				if !reUser.MatchString(u) {
+				// the rule of anonymous login, without dots: the name goes into the confirmation mail to an
+				// address nobody has confirmed yet, where a dotted name can be a domain a mail client links
+				if store.CheckUserName(u) != nil || strings.Contains(u, ".") {
 					log.Printf("[WARN] suspicious user rejected: %s", store.MaskForLog(u))
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return

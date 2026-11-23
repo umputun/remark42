@@ -1230,29 +1230,11 @@ func anonymousUserID(secret string) func(user string, r *http.Request) string {
 	}
 }
 
-var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
-
-// checkAnonymousName accepts a name for anonymous login: 3 to 64 letters, digits, underscores and spaces,
-// with no space at either end. A rejected name is logged through the mask, as an email address can be typed here
-func checkAnonymousName(user, _ string) (ok bool, err error) {
-	// don't allow anon with space prefix or suffix
-	if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
-		log.Printf("[WARN] name %q has space as a suffix or prefix", store.MaskForLog(user))
-		return false, nil
-	}
-
-	user = strings.TrimSpace(user)
-	if len(user) < 3 {
-		log.Printf("[WARN] name %q is too short, should be at least 3 characters", store.MaskForLog(user))
-		return false, nil
-	}
-	if len(user) > 64 {
-		log.Printf("[WARN] name %q is too long, should be up to 64 characters", store.MaskForLog(user))
-		return false, nil
-	}
-
-	if !isValidAnonName(user) {
-		log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", store.MaskForLog(user))
+// checkAnonymousName accepts a name for anonymous login by the rule of store.CheckUserName. A rejected name
+// is logged through the mask, as an email address can be typed here
+func checkAnonymousName(user, _ string) (bool, error) {
+	if err := store.CheckUserName(user); err != nil {
+		log.Printf("[WARN] anonymous login refused for %q: %v", store.MaskForLog(user), err)
 		return false, nil
 	}
 	return true, nil

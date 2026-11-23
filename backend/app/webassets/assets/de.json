@@ -1,6 +1,7 @@
 {
   "auth.back": "Zurück",
   "auth.email-address": "E-Mail-Adresse",
+  "auth.email-symbols-restriction": "Der Name muss 3 bis 64 Zeichen lang sein und darf nur Buchstaben, Zahlen, Unterstriche, Bindestriche und Leerzeichen enthalten",
   "auth.loading": "Wird geladen ...",
   "auth.no-providers": "Keine Anmeldemethode verfügbar. Vielleicht hat der Betreiber der Website vergessen, sie zu aktivieren?",
   "auth.oauth-button": "Mit {provider} anmelden",
@@ -10,7 +11,7 @@
   "auth.signin": "Einloggen",
   "auth.signout": "Abmelden",
   "auth.submit": "Bestätigen",
-  "auth.symbols-restriction": "Der Name darf nur Buchstaben, Zahlen, Unterstriche und Leerzeichen enthalten",
+  "auth.symbols-restriction": "Der Name muss 3 bis 64 Zeichen lang sein und darf nur Buchstaben, Zahlen, Unterstriche, Punkte, Bindestriche und Leerzeichen enthalten",
   "auth.telegram-check": "Überprüfen",
   "auth.telegram-link": "über den Link",
   "auth.telegram-message-1": "Öffnen Sie Telegram",

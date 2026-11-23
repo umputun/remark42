@@ -377,7 +377,7 @@ func Test_validEmailAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someone+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Евгений+Умпутун", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=12", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=..blah+blah", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=**blah+blah", http.StatusForbidden},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
 		{"/auth/twitter/login?site=remark42&address=umputun%40example.com&user=..blah+blah", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun%40example.com", http.StatusOK},
@@ -399,6 +399,12 @@ func Test_validEmailAuth(t *testing.T) {
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim+see\u00a0evil.example.com@example.com"), http.StatusForbidden},
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(" victim@example.com"), http.StatusForbidden},
 		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim@example.com,other@example.com"), http.StatusForbidden},
+		// hyphens are allowed; dots, other spaces than the ordinary one and a space at either end are not
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+Smith", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+O.+Smith", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=claim+your+prize+at+evil-site.com", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=a%09bc", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=abc+", http.StatusForbidden},
 	}
 
 	for i, tt := range tbl {
