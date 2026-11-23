@@ -40,11 +40,14 @@ const reloadCommentsForReader = (): StoreAction => (dispatch) => {
   });
 };
 
-export function signout(cleanSession = true): StoreAction<Promise<void>> {
+/**
+ * Ends the session and then shows the reader as signed out. The same for the button above the
+ * comments and for a sign-out asked for in the profile: the profile is a document of its own, which
+ * is removed as it closes, and it leaves the request to this one
+ */
+export function signout(): StoreAction<Promise<void>> {
   return async (dispatch) => {
-    if (cleanSession) {
-      await logout();
-    }
+    await logout();
     resetPersistedEmail();
     dispatch(setUser());
     dispatch(unsetCommentMode());

@@ -106,6 +106,24 @@ export function closeProfile() {
   });
 }
 
+/**
+ * Takes an open profile away at once, with the widget it belongs to. Left on the page it would
+ * have nobody to talk to: its sign-out is a message to that widget, and so is its close button
+ */
+export function removeProfile() {
+  window.removeEventListener('keydown', handleKeydown);
+
+  if (!iframe?.isConnected) {
+    return;
+  }
+
+  removeIframe();
+  if (root) {
+    setStyles(root, styles.rootHidden);
+  }
+  document.body.style.removeProperty('overflow');
+}
+
 const styles = {
   root: {
     display: 'none',

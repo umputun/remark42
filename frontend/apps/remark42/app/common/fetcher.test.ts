@@ -216,8 +216,10 @@ describe('fetcher', () => {
       await expect(apiFetcher.get(apiUri)).rejects.toEqual(new RequestError('Please sign in to do this.', 401));
 
       // Verify cookies were cleared
-      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(JWT_COOKIE_NAME);
-      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(XSRF_COOKIE);
+      // in the one form this document addresses: a 401 is not a sign-out, and the cookie a
+      // same-site frame holds in the other form may still be a session
+      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(JWT_COOKIE_NAME, false);
+      expect(cookies.clearAuthCookie).toHaveBeenCalledWith(XSRF_COOKIE, false);
 
       // Verify that subsequent requests don't include the JWT header
       mockFetch({ headers });

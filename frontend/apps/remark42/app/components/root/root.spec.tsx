@@ -4,6 +4,7 @@ import { waitFor } from '@testing-library/preact';
 import { render } from 'tests/utils';
 import * as api from 'common/api';
 import * as postMessage from 'utils/post-message';
+import * as authApi from 'components/auth/auth.api';
 import type { Comment, User } from 'common/types';
 import type { StoreState } from 'store';
 
@@ -72,6 +73,22 @@ describe('<ConnectedRoot />', () => {
     resolveUser(null);
 
     await waitFor(() => expect(updateIframeHeight).toHaveBeenCalled());
+  });
+
+  it('signs the reader out when the profile asks for it', async () => {
+    jest.spyOn(api, 'getUser').mockImplementation(async () => null);
+    jest.spyOn(api, 'getPostComments').mockImplementation(() => new Promise(() => undefined));
+    jest.spyOn(postMessage, 'updateIframeHeight').mockImplementation(() => undefined);
+    const logout = jest.spyOn(authApi, 'logout').mockImplementation(async () => undefined);
+
+    render(<ConnectedRoot />, stateStub);
+
+    // the page passes the profile's message on. The profile has ended nothing: its frame is
+    // removed as it closes, so the logout request has to come from this document
+    window.dispatchEvent(new MessageEvent('message', { data: { signout: true }, source: window.parent }));
+
+    // the roots of the tests above still listen, so the count is not one
+    await waitFor(() => expect(logout).toHaveBeenCalled());
   });
 
   it('falls back to reporting iframe height when the user fetch hangs', () => {

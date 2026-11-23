@@ -2,7 +2,7 @@ import { NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config'
 import { parseMessage, postMessageToIframe } from 'utils/post-message';
 import { createIframe } from 'utils/create-iframe';
 import type { Theme } from 'common/types';
-import { closeProfile, openProfile, ownsWindow } from 'profile';
+import { closeProfile, openProfile, ownsWindow, removeProfile } from 'profile';
 
 // marks the iframe this module owns, so a second createInstance reuses it instead of adopting
 // whatever the integrator left in the root as a loading placeholder
@@ -195,6 +195,7 @@ function createInstance(config: typeof window.remark_config) {
     }
 
     iframe.remove();
+    removeProfile();
   }
 
   // TODO: These do not appear in Chrome DevTools

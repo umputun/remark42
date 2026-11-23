@@ -149,12 +149,16 @@ const createFetcher = (baseUrl: string = ''): Methods => {
   } as Methods;
 };
 
-/** Forgets the session this document holds: the in-memory JWT and the auth cookies it can reach */
-export function dropSession(): void {
+/**
+ * Forgets the session this document holds: the in-memory JWT and the auth cookies it can reach.
+ * @param bothForms Clear the cookies in the form this context does not address as well, see
+ * `clearAuthCookie`. For a sign-out, which has to hold whatever the backend answered
+ */
+export function dropSession(bothForms = false): void {
   activeJwtToken = undefined;
   activeJwtStaleAt = Infinity;
-  clearAuthCookie(JWT_COOKIE_NAME);
-  clearAuthCookie(XSRF_COOKIE);
+  clearAuthCookie(JWT_COOKIE_NAME, bothForms);
+  clearAuthCookie(XSRF_COOKIE, bothForms);
 }
 
 export const apiFetcher = createFetcher(`${BASE_URL}${API_BASE}`);

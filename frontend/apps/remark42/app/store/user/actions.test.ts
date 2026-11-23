@@ -6,6 +6,7 @@ import type { User } from 'common/types';
 import { LS_HIDDEN_USERS_KEY } from 'common/constants';
 import { COMMENTS_PATCH, COMMENTS_SET } from 'store/comments/types';
 import { POST_INFO_SET } from 'store/post-info/types';
+import { apiFetcher, JWT_HEADER } from 'common/fetcher';
 
 import INITIAL_STORE from './__stubs__/comments-store.json';
 import {
@@ -162,5 +163,61 @@ describe('store user actions', () => {
     await waitFor(() => expect(logged).toHaveBeenCalledWith('Remark42: failed to reload comments', failure));
     // read once the failure has been handled, so a handler that cleared the user would show
     expect(store.getActions()).toEqual([{ type: USER_SET, user: { id: '1' } }]);
+  });
+
+  test('signout shows the reader as signed out and reloads the comments only once the logout is answered', async () => {
+    const store = mockStore({ ...INITIAL_STORE, hiddenUsers: {} });
+    fetchMock.resetMocks();
+    // a token delivered as a header is what the fetcher keeps in memory and sends back
+    jest.spyOn(window, 'atob').mockReturnValueOnce(JSON.stringify({ jti: 'jti' }));
+    fetchMock.mockResponseOnce('{}', {
+      headers: { [JWT_HEADER]: 'held.jwt.token', 'Content-Type': 'application/json' },
+    });
+    await apiFetcher.get('/anything');
+    fetchMock.mockClear();
+
+    let answerLogout: (response: Response) => void = () => undefined;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          answerLogout = resolve;
+        })
+    );
+    fetchMock.mockResponse('{}', { headers: { 'Content-Type': 'application/json' } });
+
+    const done = store.dispatch(signout());
+    const requests = () =>
+      fetchMock.mock.calls.map(([url, init]) => ({
+        url: String(url),
+        jwt: (init?.headers as Record<string, string>)[JWT_HEADER],
+      }));
+
+    // this ordering is what a sign-out asked for in the profile relies on as well, now that it
+    // runs this action: comments reloaded ahead of the logout are answered with a renewed session
+    await waitFor(() => expect(requests()).toHaveLength(1));
+    expect(requests()[0].url).toContain('/auth/logout');
+    expect(requests()[0].jwt).toBe('held.jwt.token');
+    expect(store.getActions()).toEqual([]);
+
+    answerLogout(new Response('', { status: 200 }));
+    await done;
+
+    expect(store.getActions()).toContainEqual({ type: USER_SET, user: null });
+    // and nothing after the logout is signed as the reader
+    expect(requests().length).toBeGreaterThan(1);
+    expect(
+      requests()
+        .slice(1)
+        .map((r) => r.jwt)
+    ).toEqual(
+      requests()
+        .slice(1)
+        .map(() => undefined)
+    );
+    expect(
+      requests()
+        .slice(1)
+        .some((r) => r.url.includes('/auth/logout'))
+    ).toBe(false);
   });
 });

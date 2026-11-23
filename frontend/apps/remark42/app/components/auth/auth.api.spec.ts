@@ -3,7 +3,16 @@ import { apiFetcher, JWT_HEADER } from 'common/fetcher';
 import { user } from '__stubs__/user';
 import { RequestError } from 'utils/errorUtils';
 
-import { anonymousSignin, logout, oauthSignin, verifyEmailSignin, verifyTelegramSignin } from './auth.api';
+import * as cookies from 'common/cookies';
+
+import {
+  anonymousSignin,
+  logout,
+  oauthSignin,
+  verifyEmailSignin,
+  verifyTelegramSignin,
+  LOGOUT_RETRY_DELAY_MS,
+} from './auth.api';
 
 /**
  * The OAuth flow has no message from the popup to listen for: the popup closes itself and the
@@ -184,5 +193,75 @@ describe('logout', () => {
     await apiFetcher.get('/anything');
     const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
     expect((init?.headers as Record<string, string>)[JWT_HEADER]).toBeUndefined();
+  });
+
+  /** the logout requests sent so far */
+  function logoutRequests() {
+    return fetchMock.mock.calls.filter(([url]) => String(url).includes('/auth/logout')).length;
+  }
+
+  it.each([
+    ['never arrived', () => fetchMock.mockRejectOnce(new TypeError('Failed to fetch'))],
+    ['was turned away by the rate limit', () => fetchMock.mockResponseOnce('', { status: 429 })],
+  ])('sends the request once more when it %s', async (_, fail) => {
+    jest.useFakeTimers();
+    try {
+      fail();
+      fetchMock.mockResponseOnce('', { status: 200 });
+      let resolved = false;
+      const pending = logout().then(() => {
+        resolved = true;
+      });
+
+      // the backend takes two requests a second on these routes, so the repeat waits
+      await jest.advanceTimersByTimeAsync(LOGOUT_RETRY_DELAY_MS - 1);
+      expect(logoutRequests()).toBe(1);
+      expect(resolved).toBe(false);
+
+      await jest.advanceTimersByTimeAsync(1);
+      await pending;
+      expect(logoutRequests()).toBe(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('gives up after the second failure, and still resolves', async () => {
+    jest.useFakeTimers();
+    try {
+      const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+      fetchMock.mockReject(new TypeError('Failed to fetch'));
+      const pending = logout();
+
+      await jest.advanceTimersByTimeAsync(LOGOUT_RETRY_DELAY_MS);
+      await expect(pending).resolves.toBeUndefined();
+      await jest.advanceTimersByTimeAsync(10 * LOGOUT_RETRY_DELAY_MS);
+      expect(logoutRequests()).toBe(2);
+      // with no answer from the server, what script can clear is all that ends the session here
+      expect(clear).toHaveBeenCalledWith('XSRF-TOKEN', true);
+      expect(clear).toHaveBeenCalledWith('JWT', true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([401, 403])('does not repeat a sign-out the server refused with %d', async (status) => {
+    fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status });
+
+    await logout();
+
+    expect(logoutRequests()).toBe(1);
+  });
+
+  it('clears the cookies in both forms, whatever became of the request', async () => {
+    const clear = jest.spyOn(cookies, 'clearAuthCookie').mockImplementation(jest.fn());
+    fetchMock.mockResponseOnce(JSON.stringify({ error: 'logout not allowed' }), { status: 403 });
+
+    await logout();
+
+    // a frame on another host of the page's site holds the backend's XSRF cookie in both forms,
+    // and the one left behind would go on signing this widget's requests
+    expect(clear).toHaveBeenCalledWith('XSRF-TOKEN', true);
+    expect(clear).toHaveBeenCalledWith('JWT', true);
   });
 });

@@ -225,8 +225,9 @@ export class Root extends Component<Props, State> {
 
     // the theme is applied, store included, by the listener in remark.tsx, which is in place
     // before this component mounts
+    // the profile asking for a sign-out. Nothing has been ended yet: the request is made here
     if (data.signout === true) {
-      this.props.signout(false);
+      this.props.signout();
     }
   };
 
