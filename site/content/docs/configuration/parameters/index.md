@@ -222,7 +222,7 @@ Two conditions must **both** hold to be safe:
 **2. Your proxy must set the IP itself.** Trusting a proxy is not enough if the proxy relays what the client sent. Because Remark42 reads `X-Real-IP` first, the proxy must **set** `X-Real-IP` to the real connecting client and overwrite any client value. A proxy that only _appends_ to `X-Forwarded-For` (Traefik, most cloud ALBs, k8s ingress, HAProxy defaults) or that derives `X-Real-IP` from a client-controlled `X-Forwarded-For` leaves the visitor in control of the reported IP **even through a trusted proxy**:
 
 - **nginx** — safe with the [manual's](../../manuals/nginx/) `proxy_set_header X-Real-IP $remote_addr;` (overwrites any client value).
-- **Reproxy** — sets `X-Real-IP`, but derives it from an incoming `X-Forwarded-For` when present, so a directly-exposed Reproxy still lets a client choose it; front it with something that strips client `X-Forwarded-For`, or don't rely on it for per-IP controls.
+- **Reproxy** — by default sets `X-Real-IP` to the address of the connection and overwrites any client value. Behind another proxy, set Reproxy's `TRUSTED_PROXIES` to that proxy's address and have the proxy append the client address to `X-Forwarded-For`, or every visitor arrives from the proxy's address.
 - **Cloudflare** — does **not** set `X-Real-IP`, and a client-supplied `X-Real-IP` wins over `CF-Connecting-IP`; add a Cloudflare Transform Rule that sets `X-Real-IP` from `CF-Connecting-IP` and clears any inbound `X-Real-IP` / `X-Forwarded-For`.
 
 **Recommended `--trusted-proxy` per deployment:**
@@ -251,7 +251,7 @@ Caveats:
 - **IPv6.** CIDRs are matched by family — `172.16.0.0/12` (or `0.0.0.0/0`) never matches an IPv6 peer. If your proxy reaches Remark42 over IPv6 (dual-stack / IPv6-enabled Docker), add the IPv6 network too, or every visitor collapses onto the proxy's IP and gets over-throttled.
 - **Don't publish Remark42's own port** when trusting a Docker range. If Remark42's port is exposed to the host, external traffic is SNAT'd to the Docker gateway (inside `172.16.0.0/12`) and appears trusted — re-opening the bypass. Publish only the proxy.
 - `0.0.0.0/0` trusts everyone and re-opens the bypass; too narrow a range over-throttles real visitors. The request log holds only a hash of the client address, so look up the proxy's network on the proxy side, for example with `docker network inspect <network>` for Docker Compose.
-- **Private client addresses.** A forwarded address from a private, shared (`100.64.0.0/10`), link-local or loopback range is skipped, and the next forwarded address is tried; the proxy's own address is used only when none is left. On an intranet, or behind a VPN that gives visitors such addresses, every visitor is attributed to the proxy and shares one rate limit.
+- **Private client addresses.** A forwarded address from a private, shared (`100.64.0.0/10`), link-local or loopback range is skipped, and the next forwarded address is tried; the proxy's own address is used only when none is left. On an intranet, or behind a VPN that gives visitors such addresses, every visitor is attributed to the proxy and shares one rate limit. If the proxy passes on a `CF-Connecting-IP` or `X-Forwarded-For` the visitor sent, as nginx with `$proxy_add_x_forwarded_for` and Reproxy do, such a visitor can choose its address instead.
 
 ### Deprecated parameters
 
