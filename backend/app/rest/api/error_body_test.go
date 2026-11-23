@@ -11,11 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-pkgz/auth/v2/token"
 	"github.com/go-pkgz/lgr"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -205,11 +202,7 @@ func TestAdmin_DeleteMeRequestAvatarErrorBody(t *testing.T) {
 	require.NoError(t, err)
 	avatarFile := blockAvatarRemoval(t, srv)
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
-			Attributes: map[string]any{"delete_me": true}}})
-	require.NoError(t, err)
+	tkn := deleteMeToken(t, srv, "remark42", "user1", "https://demo.remark42.com/api/v1/avatar/pic.image")
 	body, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, "", adminPasswd)
 	e := decodeError(t, body)
 

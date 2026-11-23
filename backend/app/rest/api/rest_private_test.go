@@ -1330,19 +1330,8 @@ func TestRest_EmailAndTelegram(t *testing.T) {
 
 	// issue a good confirmation token, and the token of the unsubscribe link, which has the same
 	// handshake and no provider
-	claims := token.Claims{
-		Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
-		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
-		Audience:     jwt.ClaimStrings{"remark42"},
-		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:       "remark42",
-	}
-	goodToken, err := srv.Authenticator.TokenService().Token(claims)
-	require.NoError(t, err)
-	claims.AuthProvider = nil
-	unsubscribeToken, err := srv.Authenticator.TokenService().Token(claims)
-	require.NoError(t, err)
+	goodToken := handshakeToken(t, srv, "provider1_dev::good@example.com", emailSubscribeProvider)
+	unsubscribeToken := handshakeToken(t, srv, "provider1_dev::good@example.com", "")
 
 	var testData = []struct {
 		description  string
@@ -2145,15 +2134,7 @@ func TestExtractIP(t *testing.T) {
 func TestRest_EmailTokensWithoutHandshake(t *testing.T) {
 	ts, srv := startupT(t)
 
-	otherUserTkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake:    &token.Handshake{ID: "someone_else::good@example.com"},
-		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
-		Audience:     jwt.ClaimStrings{"remark42"},
-		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:       "remark42",
-	})
-	require.NoError(t, err)
+	otherUserTkn := handshakeToken(t, srv, "someone_else::good@example.com", emailSubscribeProvider)
 
 	tbl := []struct {
 		name, method, url, body string
@@ -2186,15 +2167,7 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 		srv.DataService.Engine = b
 	})
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake:    &token.Handshake{ID: "provider1_dev::good@example.com"},
-		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
-		Audience:     jwt.ClaimStrings{"remark42"},
-		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:       "remark42",
-	})
-	require.NoError(t, err)
+	tkn := handshakeToken(t, srv, "provider1_dev::good@example.com", emailSubscribeProvider)
 
 	send := func(url, body string) int {
 		_, code := call(t, http.MethodPost, ts.URL+url, body, devToken)
@@ -2203,7 +2176,7 @@ func TestRest_EmailSubscribeUsesVerifiedSite(t *testing.T) {
 
 	// the session belongs to remark42; the body names the other site.
 	// The address is already confirmed on the verified site, so subscribing to it again conflicts
-	_, err = srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
+	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusConflict, send("/api/v1/email/subscribe?site=remark42", `{"site":"other","address":"good@example.com"}`),
 		"subscribe checks the verified site")
@@ -2227,23 +2200,15 @@ func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
 
 	userToken := func(email string, expires time.Time) string {
 		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-			RegisteredClaims: jwt.RegisteredClaims{ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
-				Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(expires)},
+			ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
+			Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(expires),
 			User: &token.User{ID: "provider1_dev", Name: "developer one", Email: email},
 		})
 		require.NoError(t, err)
 		return tkn
 	}
 	expired := func(email string) string { return userToken(email, time.Now().Add(-time.Minute)) }
-	confirmation, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake:    &token.Handshake{ID: "provider1_dev::new@example.com"},
-		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
-		Audience:     jwt.ClaimStrings{"remark42"},
-		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:       "remark42",
-	})
-	require.NoError(t, err)
+	confirmation := handshakeToken(t, srv, "provider1_dev::new@example.com", emailSubscribeProvider)
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
@@ -2303,15 +2268,7 @@ func TestRest_EmailChangeKeepsTheRenewedToken(t *testing.T) {
 func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 	ts, srv := startupT(t)
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake:    &token.Handshake{ID: "admin::admin@example.com"},
-		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
-		Audience:     jwt.ClaimStrings{"remark42"},
-		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:       "remark42",
-	})
-	require.NoError(t, err)
+	tkn := handshakeToken(t, srv, "admin::admin@example.com", emailSubscribeProvider)
 
 	client := http.Client{}
 	defer client.CloseIdleConnections()
@@ -2349,14 +2306,7 @@ func TestRest_EmailWithAdminPasswordAndTokenWithoutUser(t *testing.T) {
 func TestRest_EmailMalformedHandshakeHidesAddress(t *testing.T) {
 	ts, srv := startupT(t)
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::secret@example.com::extra"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
-	})
-	require.NoError(t, err)
+	tkn := handshakeToken(t, srv, "provider1_dev::secret@example.com::extra", "")
 
 	b, code := call(t, http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
 		fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn), devToken)
@@ -2374,14 +2324,7 @@ func TestRest_EmailHandshakeWithEmptyPart(t *testing.T) {
 
 	for _, hs := range []string{"provider1_dev::", "::good@example.com"} {
 		t.Run(hs, func(t *testing.T) {
-			tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-				Handshake: &token.Handshake{ID: hs},
-				Audience:  jwt.ClaimStrings{"remark42"},
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
-				NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-				Issuer:    "remark42",
-			})
-			require.NoError(t, err)
+			tkn := handshakeToken(t, srv, hs, "")
 
 			b, code := call(t, http.MethodPost, ts.URL+"/api/v1/email/confirm?site=remark42",
 				fmt.Sprintf(`{"site":"remark42","token":%q}`, tkn), devToken)
@@ -2398,13 +2341,25 @@ func subscribedUserToken(t *testing.T, srv *Rest) string {
 	t.Helper()
 	_, err := srv.DataService.SetUserEmail("remark42", "provider1_dev", "good@example.com")
 	require.NoError(t, err)
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::good@example.com"},
+	return handshakeToken(t, srv, "provider1_dev::good@example.com", "")
+}
+
+// handshakeToken signs a token for site remark42 with the user::address handshake id. With the
+// provider emailSubscribeProvider it is the confirmation token sendEmailConfirmationCtrl sends, with
+// no provider the token of the unsubscribe link
+func handshakeToken(t *testing.T, srv *Rest, id, provider string) string {
+	t.Helper()
+	claims := token.Claims{
+		Handshake: &token.Handshake{ID: id},
 		Audience:  jwt.ClaimStrings{"remark42"},
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		Issuer:    "remark42",
-	})
+	}
+	if provider != "" {
+		claims.AuthProvider = &token.AuthProvider{Name: provider}
+	}
+	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
 	return tkn
 }

@@ -250,12 +250,7 @@ func TestAdmin_DeleteCommentPictures(t *testing.T) {
 // every route that deletes a user's comments removes the pictures used in them and keeps those of other users
 func TestAdmin_DeleteUserPictures(t *testing.T) {
 	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) (method, url string) {
-		claims := token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-			User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}}}
-		tkn, err := srv.Authenticator.TokenService().Token(claims)
-		require.NoError(t, err)
-		return http.MethodGet, tsURL + "/api/v1/admin/deleteme?token=" + tkn
+		return http.MethodGet, tsURL + "/api/v1/admin/deleteme?token=" + deleteMeToken(t, srv, "remark42", "user1", "")
 	}
 	tbl := []struct {
 		name  string
@@ -401,11 +396,7 @@ func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 	require.NoError(t, os.MkdirAll(avatarFile, 0o700))
 	require.NoError(t, os.WriteFile(avatarFile+"/child", []byte("x"), 0o600))
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
-			Attributes: map[string]any{"delete_me": true}}})
-	require.NoError(t, err)
+	tkn := deleteMeToken(t, srv, "remark42", "user1", "https://demo.remark42.com/api/v1/avatar/pic.image")
 	_, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, "", adminPasswd)
 	assert.Equal(t, http.StatusInternalServerError, code, "avatar-store failure surfaces")
 	assert.Empty(t, findText(), "cached comments flushed after the deletion")
@@ -957,27 +948,11 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test@example.org", email, "new email for user1 is readable")
 
-	claims := token.Claims{
-		SessionOnly: true,
-		Audience:    jwt.ClaimStrings{"remark42"},
-		ID:          "1234567",
-		Issuer:      "remark42",
-		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User: &token.User{
-			ID:      "user1",
-			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image", // production-shaped URL: removal must path.Base it to the avatar id
-			Attributes: map[string]any{
-				"delete_me": true,
-			},
-		},
-	}
-
 	require.NoError(t, os.MkdirAll(testAvatarDir(srv)+"/42", 0o700))
 	require.NoError(t, os.WriteFile(testAvatarDir(srv)+"/42/pic.image", []byte("some image data"), 0o600))
 
-	tkn, err := srv.Authenticator.TokenService().Token(claims)
-	assert.NoError(t, err)
+	// production-shaped picture URL: removal must path.Base it to the avatar id
+	tkn := deleteMeToken(t, srv, "remark42", "user1", "https://demo.remark42.com/api/v1/avatar/pic.image")
 
 	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
 	assert.Equal(t, http.StatusOK, code)
@@ -1036,16 +1011,7 @@ func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
 	_, err := srv.DataService.Create(c)
 	require.NoError(t, err)
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		SessionOnly: true,
-		Audience:    jwt.ClaimStrings{"other"},
-		ID:          "3456789",
-		Issuer:      "remark42",
-		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User:        &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
-	})
-	require.NoError(t, err)
+	tkn := deleteMeToken(t, srv, "other", "user1", "")
 
 	// adminUmputunToken is a session for remark42
 	_, code := call(t, http.MethodGet,
@@ -1072,24 +1038,7 @@ func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
 	_, err := srv.DataService.Create(c1)
 	require.NoError(t, err)
 
-	claims := token.Claims{
-		SessionOnly: true,
-		Audience:    jwt.ClaimStrings{"remark42"},
-		ID:          "2345678",
-		Issuer:      "remark42",
-		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User: &token.User{
-			ID:      "user3",
-			Picture: "missing.image", // no avatar file exists for this picture in the store
-			Attributes: map[string]any{
-				"delete_me": true,
-			},
-		},
-	}
-
-	tkn, err := srv.Authenticator.TokenService().Token(claims)
-	require.NoError(t, err)
+	tkn := deleteMeToken(t, srv, "remark42", "user3", "missing.image") // no avatar file exists for this picture in the store
 
 	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
 	assert.Equal(t, http.StatusOK, code, "a missing avatar must not fail the deletion")
@@ -1113,27 +1062,24 @@ func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
 	require.NoError(t, os.MkdirAll(testAvatarDir(srv)+"/42/pic.image", 0o700))
 	require.NoError(t, os.WriteFile(testAvatarDir(srv)+"/42/pic.image/child", []byte("x"), 0o600))
 
-	claims := token.Claims{
-		SessionOnly: true,
-		Audience:    jwt.ClaimStrings{"remark42"},
-		ID:          "4567890",
-		Issuer:      "remark42",
-		NotBefore:   jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		ExpiresAt:   jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		User: &token.User{
-			ID:      "user5",
-			Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
-			Attributes: map[string]any{
-				"delete_me": true,
-			},
-		},
-	}
-
-	tkn, err := srv.Authenticator.TokenService().Token(claims)
-	require.NoError(t, err)
+	tkn := deleteMeToken(t, srv, "remark42", "user5", "https://demo.remark42.com/api/v1/avatar/pic.image")
 
 	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
 	assert.Equal(t, http.StatusInternalServerError, code, "a real avatar-store failure must surface, not be swallowed")
+}
+
+// deleteMeToken signs the token of the link deleteMeCtrl sends to delete the data of userID on site
+func deleteMeToken(t *testing.T, srv *Rest, site, userID, picture string) string {
+	t.Helper()
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Audience:  jwt.ClaimStrings{site},
+		Issuer:    "remark42",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		User:      &token.User{ID: userID, Picture: picture, Attributes: map[string]any{"delete_me": true}},
+	})
+	require.NoError(t, err)
+	return tkn
 }
 
 func TestAvatarIDFromPicture(t *testing.T) {
@@ -1257,14 +1203,7 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 func TestAdmin_DeleteMeRequestTokenWithoutUser(t *testing.T) {
 	ts, srv := startupT(t)
 
-	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
-		Handshake: &token.Handshake{ID: "provider1_dev::me@example.com"},
-		Audience:  jwt.ClaimStrings{"remark42"},
-		Issuer:    "remark42",
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-	})
-	require.NoError(t, err)
+	tkn := handshakeToken(t, srv, "provider1_dev::me@example.com", "")
 
 	body, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
 	assert.Equal(t, http.StatusForbidden, code, body)
