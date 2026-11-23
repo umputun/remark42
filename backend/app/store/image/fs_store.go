@@ -53,7 +53,8 @@ func (f *FileSystem) Save(id string, img []byte) error {
 	return nil
 }
 
-// Commit file stored in staging location by moving it to permanent location
+// Commit file stored in staging location by moving it to permanent location. An image already committed and
+// no longer in staging is left as it is, as a comment's images are submitted again after a restart.
 func (f *FileSystem) Commit(id string) error {
 	if err := f.checkID(id); err != nil {
 		return err
@@ -68,12 +69,18 @@ func (f *FileSystem) Commit(id string) error {
 	}
 
 	if err := os.Rename(stagingImage, permImage); err != nil {
+		if _, stagingErr := os.Stat(stagingImage); errors.Is(stagingErr, fs.ErrNotExist) {
+			if _, permErr := os.Stat(permImage); permErr == nil {
+				return nil
+			}
+		}
 		return fmt.Errorf("failed to commit image %s: %w", id, err)
 	}
 	return nil
 }
 
-// ResetCleanupTimer resets cleanup timer for the image
+// ResetCleanupTimer resets cleanup timer for the image. An image already committed has no timer, so it is
+// left as it is: a graceful stop commits the images of comments that can still be edited after the restart.
 func (f *FileSystem) ResetCleanupTimer(id string) error {
 	if err := f.checkID(id); err != nil {
 		return err
@@ -81,6 +88,9 @@ func (f *FileSystem) ResetCleanupTimer(id string) error {
 	file := f.location(f.Staging, id)
 	_, err := os.Stat(file)
 	if err != nil {
+		if _, permErr := os.Stat(f.location(f.Location, id)); errors.Is(err, fs.ErrNotExist) && permErr == nil {
+			return nil
+		}
 		return fmt.Errorf("can't get image stats for %s: %w", id, err)
 	}
 	// we don't need to update access time (second arg),

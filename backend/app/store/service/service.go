@@ -232,25 +232,37 @@ func (s *DataStore) DeleteUserDetail(siteID, userID string, detail engine.UserDe
 	})
 }
 
-// ResubmitStagingImages retrieves timestamp of the oldest image in staging and
-// calls s.submitImages on all comments newer than it
+// ResubmitStagingImages commits the images of comments posted before a restart. An image gets its staging
+// time from its upload, from the submit of its comment right after the comment is posted, and from previews
+// and uploads while the comment is edited, so its comment is at most one edit window older than it. The
+// comments posted from two edit windows before the oldest staged image on are gone through, the second
+// window covering a submit that resets the time just as its comment's window ends. Comments still in their
+// edit window are gone through as well, staged images or not: an edit after the restart can add an image,
+// and their submit commits the text as it is once the window ends.
+// Images of a comment whose edit window is over are committed right away: a submit would move their
+// staging time to now, and should the server stop before the commit, they would be out of that range on
+// the next start.
 func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	info, err := s.ImageService.Info()
 	if err != nil {
 		return err
 	}
-	ts := info.FirstStagingImageTS
-	if ts.IsZero() {
-		return nil
+	since := time.Now().Add(-s.EditDuration)
+	if ts := info.FirstStagingImageTS; !ts.IsZero() && ts.Add(-2*s.EditDuration).Before(since) {
+		since = ts.Add(-2 * s.EditDuration)
 	}
 	var errs []error
 	for _, site := range sites {
 		locator := store.Locator{SiteID: site}
-		comments, err := s.FindSince(locator, "time", store.User{}, ts)
+		comments, err := s.FindSince(locator, "time", store.User{}, since)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("problem finding comments for site %s: %w", site, err))
 		}
 		for _, c := range comments {
+			if time.Since(c.Timestamp) >= s.EditDuration {
+				s.commitImages(c)
+				continue
+			}
 			s.submitImages(c)
 		}
 	}
@@ -259,10 +271,26 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
 func (s *DataStore) submitImages(comment store.Comment) {
+	if comment.Imported {
+		s.commitImages(comment)
+		return
+	}
+	s.ImageService.Submit(s.imageIDsFn(comment))
+}
+
+// commitImages commits all images from the comment uploaded to remark42 right away
+func (s *DataStore) commitImages(comment store.Comment) {
+	if err := s.ImageService.Commit(s.imageIDsFn(comment)); err != nil {
+		log.Printf("[WARN] failed to commit comment's images: %v", err)
+	}
+}
+
+// imageIDsFn returns a func listing the ids of images uploaded to remark42 in the comment's current text
+func (s *DataStore) imageIDsFn(comment store.Comment) func() []string {
 	// idsFn waits in the image submit queue for the edit window, so it keeps only what it needs to read
 	// the comment again, not the comment with its text
 	locator, commentID := comment.Locator, comment.ID
-	idsFn := func() []string { // get all ids from comment's text
+	return func() []string { // get all ids from comment's text
 		// this can be called after last edit, we have to retrieve fresh comment
 		cc, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 		if err != nil {
@@ -274,17 +302,6 @@ func (s *DataStore) submitImages(comment store.Comment) {
 			log.Printf("[DEBUG] image ids extracted from %s - %+v", commentID, imgIDs)
 		}
 		return imgIDs
-	}
-
-	var err error
-	if comment.Imported {
-		err = s.ImageService.Commit(idsFn)
-	} else {
-		s.ImageService.Submit(idsFn)
-	}
-
-	if err != nil {
-		log.Printf("[WARN] failed to commit comment's images: %v", err)
 	}
 }
 
