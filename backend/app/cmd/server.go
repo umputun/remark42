@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/big"
 	"net"
 	"net/http"
 	"net/url"
@@ -489,18 +490,77 @@ var reservedCustomProviderNames = []string{
 
 var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
-	sourceID := cmp.Or(data.Value(cfg.IDField), data.Value(cfg.EmailField), data.Value(cfg.NameField), data.Value(cfg.PictureField))
-	if sourceID == "" {
-		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
-		payload, err := json.Marshal(data)
-		if err != nil {
-			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
-		} else {
-			sourceID = string(payload)
-		}
+// customProviderSourceID returns the value identifying a user at the custom OAuth2 provider: what
+// the user info holds in the configured id field, or the email when it holds nothing there, which
+// keeps the ids of users of a provider set up without an id field. With neither it returns an empty
+// string. A name or a picture never stands in: its owner can change it and two users can have the
+// same one, so a user identified by it is whoever claims that value. An email identifies a user
+// only as well as the provider checks it, so its use is logged. Only a string with something in it
+// is an email: false, 0 or [] sent for a missing one would be the id of every account without one.
+// raw is the user info as the provider sent it and data the same decoded. An id sent as a whole
+// number too large for a float64 to hold exactly is taken from raw, with all its digits.
+func customProviderSourceID(data provider.UserData, raw []byte, cfg CustomAuthGroup) string {
+	if id := cmp.Or(customProviderLargeInt(raw, cfg.IDField), data.Value(cfg.IDField)); id != "" {
+		return id
 	}
-	return sourceID
+	email, _ := data[cfg.EmailField].(string)
+	if strings.TrimSpace(email) == "" {
+		return ""
+	}
+	// no advice to set the id field here: a user identified by the email gets a new id when it is set
+	log.Printf("[WARN] custom oauth provider returned no value in the id field %q, user identified by the email field %q",
+		cfg.IDField, cfg.EmailField)
+	return email
+}
+
+// maxExactFloatInt is 2^53: every whole number up to it, of either sign, is a float64 of its own,
+// and above it several share one
+var maxExactFloatInt = new(big.Int).Lsh(big.NewInt(1), 53)
+
+// customProviderLargeInt returns the digits of a top-level field of the user info when the provider
+// sent it as a whole number beyond 2^53, and an empty string for anything else. The user info is
+// decoded with numbers as float64, where such numbers lose their last digits, so that adjacent
+// ids of different users read as one. A number within the exact range is left to the decoded value,
+// formatted as it always was, 1345027 as "1.345027e+06": users keep the id that format gave them.
+func customProviderLargeInt(raw []byte, field string) string {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return ""
+	}
+	// only a plain integer literal parses here, a string comes with its quotes
+	n, ok := new(big.Int).SetString(string(fields[field]), 10)
+	if !ok || n.CmpAbs(maxExactFloatInt) <= 0 {
+		return ""
+	}
+	return n.String()
+}
+
+// customProviderUser maps the user info of the custom OAuth2 provider to a user: raw is what the
+// provider sent and data the same decoded. The id is the provider name and the sha1 of the value
+// identifying the user at the provider. That value is always hashed, also when it looks like a sha1
+// digest already: token.HashID returns such a value as it is, and a user whose identifier at the
+// provider spells the hash of another user's would get that user's id.
+//
+// User info with neither a value in the id field nor an email gives a user without an id, whom
+// customAvatarSaver refuses to sign in.
+func customProviderUser(name string, data provider.UserData, raw []byte, cfg CustomAuthGroup) token.User {
+	sourceID := customProviderSourceID(data, raw, cfg)
+	if sourceID == "" {
+		log.Printf("[WARN] custom oauth provider returned no value in the id field %q and no email in %q, sign-in refused: "+
+			"set AUTH_CUSTOM_ID_FIELD to the user info field that identifies a user", cfg.IDField, cfg.EmailField)
+		return token.User{}
+	}
+	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(sourceID))) //nolint:gosec // stable id, not a secret
+	user := token.User{
+		ID:      name + "_" + hashID,
+		Name:    data.Value(cfg.NameField),
+		Picture: data.Value(cfg.PictureField),
+		Email:   data.Value(cfg.EmailField),
+	}
+	if user.Name == "" {
+		user.Name = "noname_" + hashID[:4]
+	}
+	return user
 }
 
 func (c CustomAuthGroup) isConfigured() bool {
@@ -1081,28 +1141,31 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, erro
 			return 0, fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 
-		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+		// registered as a handler of our own making and not with AddCustomProvider, which gives the
+		// provider the avatar proxy as it is: the proxy requests any address the user info names as
+		// the picture. The other parameters are the ones getAuthenticator gives the authenticator,
+		// which hands them to the providers it makes itself
+		params := provider.Params{
+			URL:                  s.authURL(),
+			JwtService:           authenticator.TokenService(),
+			Issuer:               authIssuer,
+			AvatarSaver:          customAvatarSaver{proxy: authenticator.AvatarProxy()},
+			Cid:                  s.Auth.Custom.CID,
+			Csecret:              s.Auth.Custom.CSEC,
+			L:                    authLogger(),
+			AllowedRedirectHosts: s.allowedRedirectHosts(),
+		}
+		authenticator.AddCustomHandler(provider.NewCustom(customName, params, provider.CustomHandlerOpt{
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  s.Auth.Custom.AuthURL,
 				TokenURL: s.Auth.Custom.TokenURL,
 			},
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
-			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				sourceID := customProviderSourceID(data, s.Auth.Custom)
-				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
-				user := token.User{
-					ID:      customName + "_" + hashID,
-					Name:    data.Value(s.Auth.Custom.NameField),
-					Picture: data.Value(s.Auth.Custom.PictureField),
-					Email:   data.Value(s.Auth.Custom.EmailField),
-				}
-				if user.Name == "" {
-					user.Name = "noname_" + hashID[:4]
-				}
-				return user
+			MapUserFn: func(data provider.UserData, raw []byte) token.User {
+				return customProviderUser(customName, data, raw, s.Auth.Custom)
 			},
-		})
+		}))
 	}
 
 	if s.Auth.Dev {
@@ -1401,6 +1464,28 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
+// authIssuer is the issuer of the tokens the authenticator and its providers sign
+const authIssuer = "remark42"
+
+// authURL returns the address the authenticator and its providers build their own links from
+func (s *ServerCommand) authURL() string {
+	return strings.TrimSuffix(s.RemarkURL, "/")
+}
+
+// allowedRedirectHosts returns the hosts a sign-in may send the user back to, besides the host of
+// RemarkURL itself
+func (s *ServerCommand) allowedRedirectHosts() token.AllowedHosts {
+	return token.AllowedHostsFunc(func() ([]string, error) {
+		return s.getAllowedRedirectHosts(), nil
+	})
+}
+
+// authLogger returns the logger of the authenticator and its providers. Their error lines carry
+// the request url, which holds the address during email sign-in, so every line is masked
+func authLogger() rest.MaskedLog {
+	return rest.MaskedLog{L: log.Default()}
+}
+
 // getAuthenticator creates new authenticator service, which doesn't have any auth providers enabled
 func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) *auth.Service {
 	// claimsUpd sets what the store and the options say about a user, on a new token and on a refresh
@@ -1438,8 +1523,8 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 	}
 
 	return auth.NewService(auth.Opts{
-		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
-		Issuer:         "remark42",
+		URL:            s.authURL(),
+		Issuer:         authIssuer,
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SendJWTHeader:  s.Auth.SendJWTHeader,
@@ -1448,9 +1533,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
 		// post-auth redirects to RemarkURL's own host plus any configured
 		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
-		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
-			return s.getAllowedRedirectHosts(), nil
-		}),
+		AllowedRedirectHosts: s.allowedRedirectHosts(),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
@@ -1492,7 +1575,7 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		AvatarResizeLimit:   s.Avatar.RszLmt,
 		AvatarIdenticonSize: s.Avatar.IdenticonSize,
 		AvatarRoutePath:     api.AvatarRoutePath,
-		Logger:              rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
+		Logger:              authLogger(),
 		RefreshCache:        authRefreshCache,
 		UseGravatar:         true,
 		AudSecrets:          s.Admin.RPC.SecretPerSite,

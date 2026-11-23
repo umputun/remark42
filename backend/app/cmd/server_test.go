@@ -506,12 +506,30 @@ func TestIsValidCustomProviderName(t *testing.T) {
 func TestCustomProviderSourceID(t *testing.T) {
 	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
 
-	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
-	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
-	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
-	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
-	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
-	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, "0", customProviderSourceID(provider.UserData{"sub": float64(0)}, nil, cfg))
+
+	// the email stands in for a missing id, and nothing else does
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com", "name": "alice",
+		"picture": "https://example.com/avatar.png", "id": float64(1), "login": "alice"}, nil, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"sub": "", "email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, " a@example.com ", customProviderSourceID(provider.UserData{"email": " a@example.com "}, nil, cfg), "as sent")
+	assert.Empty(t, customProviderSourceID(provider.UserData{"name": "alice", "picture": "https://example.com/avatar.png",
+		"id": float64(1), "login": "alice"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": nil, "name": "alice"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": "", "email": "", "name": "alice"}, nil, cfg))
+	for _, notEmail := range []any{nil, " ", false, float64(0), []any{}, map[string]any{}} {
+		assert.Empty(t, customProviderSourceID(provider.UserData{"email": notEmail, "name": "alice"}, nil, cfg), "email %#v", notEmail)
+	}
+	assert.Empty(t, customProviderSourceID(provider.UserData{}, nil, cfg))
+
+	cfg.IDField = "id"
+	assert.Equal(t, "1", customProviderSourceID(provider.UserData{"sub": "user-1", "id": float64(1)}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": "user-1", "name": "alice"}, nil, cfg))
+
+	cfg.EmailField = "mail"
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"mail": "a@example.com", "email": "b@example.com"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"email": "b@example.com"}, nil, cfg))
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
