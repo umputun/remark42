@@ -25,4 +25,4 @@ Administrators are defined by `admin.shared.id` / `$ADMIN_SHARED_ID` and get the
 
 7. **Verify a user.** Administrators see a grey mark next to the name of every user who is not verified; clicking it verifies the user, and clicking the blue mark of a verified user removes the verification.
 
-Blocking, unblocking, deleting, pinning, unpinning and verifying ask for confirmation first.
+Blocking, unblocking, deleting, pinning, unpinning and verifying ask for confirmation first. **Disable comments** and **Enable comments** do not ask for confirmation.
