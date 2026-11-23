@@ -30,6 +30,47 @@ import (
 	"github.com/umputun/remark42/backend/app/store/image"
 )
 
+func TestService_ReplyDepth(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	loc := store.Locator{URL: "https://radio-t.com/depth", SiteID: "radio-t"}
+
+	// a top-level comment and five replies, each answering the one before
+	chain := make([]store.Comment, 0, 6)
+	pid := ""
+	for i := range 6 {
+		c := store.Comment{ID: fmt.Sprintf("depth-%d", i), ParentID: pid, Text: "chain", Locator: loc,
+			User: store.User{ID: "user1", Name: "user name"}, Timestamp: time.Now()}
+		_, err := eng.Create(c)
+		require.NoError(t, err)
+		chain = append(chain, c)
+		pid = c.ID
+	}
+
+	for i, c := range chain {
+		depth, err := b.ReplyDepth(loc, c, 100)
+		require.NoError(t, err)
+		assert.Equal(t, i, depth, "depth of %s", c.ID)
+	}
+
+	// the count stops at the limit, having read one stored comment a step and nothing else
+	counted := engine.InterfaceMock{GetFunc: eng.Get}
+	b.Engine = &counted
+	depth, err := b.ReplyDepth(loc, chain[5], 3)
+	require.NoError(t, err)
+	assert.Equal(t, 3, depth)
+	assert.Len(t, counted.GetCalls(), 3)
+	assert.Empty(t, counted.FlagCalls())
+	b.Engine = eng
+
+	// a comment above that can't be read leaves the depth unknown
+	orphan := store.Comment{ID: "orphan", ParentID: "missing", Locator: loc}
+	_, err = b.ReplyDepth(loc, orphan, 100)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't read comment missing above orphan")
+}
+
 func TestService_CreateFromEmpty(t *testing.T) {
 	ks := admin.NewStaticKeyStore("secret 123")
 	eng, teardown := prepStoreEngine(t)
