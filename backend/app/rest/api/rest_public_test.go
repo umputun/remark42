@@ -68,54 +68,40 @@ func TestRest_PingNoSignature(t *testing.T) {
 func TestRest_Preview(t *testing.T) {
 	ts, srv := startupT(t)
 
-	resp, err := post(t, ts.URL+"/api/v1/preview", `{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, "<p>test 123</p>\n", string(b))
+	b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		`{"text": "test 123", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "<p>test 123</p>\n", b)
 
-	resp, err = post(t, ts.URL+"/api/v1/preview", "bad")
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	_, code = call(t, http.MethodPost, ts.URL+"/api/v1/preview", "bad", adminPasswd)
+	assert.Equal(t, http.StatusBadRequest, code)
 
-	resp, err = post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, `{"code":20,"details":"can't load picture from the comment","error":"image not found"}`+"\n", string(b))
+	b, code = call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL), adminPasswd)
+	assert.Equal(t, http.StatusBadRequest, code)
+	assert.Equal(t, `{"code":20,"details":"can't load picture from the comment","error":"image not found"}`+"\n", b)
 
 	// test quotes with and without smartypants
-	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, "<p>«quoted» text</p>\n", string(b))
+	b, code = call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		`{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "<p>«quoted» text</p>\n", b)
 
 	srv.privRest.disableFancyTextFormatting = true
-	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, "<p>&#34;quoted&#34; text</p>\n", string(b))
+	b, code = call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		`{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
+	assert.Equal(t, "<p>&#34;quoted&#34; text</p>\n", b)
 }
 
 func TestRest_PreviewWithWrongImage(t *testing.T) {
 	ts, srv := startupT(t)
 	logs := captureLog(t)
 
-	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
-	require.NoError(t, err)
-	body, e := readErrorResponse(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	body, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL), adminPasswd)
+	e := decodeError(t, body)
+	assert.Equal(t, http.StatusBadRequest, code)
 	assert.Equal(t, errorResponse{Error: "image not found", Details: "can't load picture from the comment", Code: 20}, e,
 		"the store error is replaced in the body")
 	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
@@ -155,11 +141,8 @@ BKT
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.ReplaceAll(j, "\n", "\\n")
 
-	resp, err := post(t, ts.URL+"/api/v1/preview", j)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
+	b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview", j, adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t,
 		`<h1>h1</h1>
 <pre class="chroma"><code><span class="line"><span class="cl"><span class="k">func</span> <span class="n">TestRest_Preview</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
@@ -167,8 +150,7 @@ BKT
 </span></span><span class="line"><span class="cl">  <span class="n">require</span><span class="o">.</span><span class="n">NotNil</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">srv</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
 </span></span></code></pre>`,
-		string(b))
-	assert.NoError(t, resp.Body.Close())
+		b)
 }
 
 func TestRest_PreviewCode(t *testing.T) {
@@ -182,24 +164,17 @@ BKT
 	j := fmt.Sprintf(`{"text": %q, "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, text)
 	j = strings.ReplaceAll(j, "\n", "\\n")
 
-	resp, err := post(t, ts.URL+"/api/v1/preview", j)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
+	b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview", j, adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, `<pre class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="nx">aa</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span><span class="w">
-</span></span></span></code></pre>`, string(b))
-	assert.NoError(t, resp.Body.Close())
+</span></span></span></code></pre>`, b)
 }
 
 func TestRest_Find(t *testing.T) {
 	ts, _ := startupT(t)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, http.StatusOK, code)
-	comments := commentsWithInfo{}
-	err := json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1", "", "")
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -213,11 +188,8 @@ func TestRest_Find(t *testing.T) {
 	assert.NotEqual(t, id1, id2)
 
 	// get sorted by +time
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time", "", "")
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
@@ -229,9 +201,9 @@ func TestRest_Find(t *testing.T) {
 	assert.True(t, comments.Info.FirstTS.Before(comments.Info.LastTS))
 
 	// get sorted by -time
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time")
+	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time")
 	assert.Equal(t, http.StatusOK, code)
-	err = json.Unmarshal([]byte(res), &comments)
+	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[1].ID)
@@ -264,10 +236,7 @@ func TestRest_FindFlushedForURLWithKeySeparator(t *testing.T) {
 	const post = "https://radio-t.com/blah@@1"
 	findURL := ts.URL + "/api/v1/find?site=remark42&format=plain&url=" + post
 	count := func() int {
-		res, code := get(t, findURL)
-		require.Equal(t, http.StatusOK, code)
-		comments := commentsWithInfo{}
-		require.NoError(t, json.Unmarshal([]byte(res), &comments))
+		comments := callJSON[commentsWithInfo](t, http.MethodGet, findURL, "", "")
 		return len(comments.Comments)
 	}
 
@@ -322,15 +291,8 @@ func TestRest_FindReadOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	// set post to read-only
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
+	call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah1&ro=1", ts.URL), "", adminPasswd)
 
 	tree := treeWithInfo{}
 	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&format=tree")
@@ -429,11 +391,8 @@ func TestRest_FindListsPinnedCommentsOnFirstPage(t *testing.T) {
 func TestRest_FindUserView(t *testing.T) {
 	ts, srv := startupT(t)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user")
-	assert.Equal(t, http.StatusOK, code)
-	comments := commentsWithInfo{}
-	err := json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&view=user", "", "")
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 
 	c1 := store.Comment{Text: "test test #1", ParentID: "",
@@ -447,11 +406,8 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.NotEqual(t, id1, id2)
 
 	// get sorted by +time with view=user
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user", "", "")
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, id1, comments.Comments[0].ID)
 	assert.Equal(t, id2, comments.Comments[1].ID)
@@ -460,15 +416,12 @@ func TestRest_FindUserView(t *testing.T) {
 	assert.Equal(t, "", comments.Comments[0].Text)
 	assert.Equal(t, "", comments.Comments[1].Text)
 
-	err = srv.DataService.Delete(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
+	err := srv.DataService.Delete(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}, id1, store.SoftDelete)
 	assert.NoError(t, err)
 	srv.Cache.Flush(cache.FlusherRequest{})
 
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=+time&view=user", "", "")
 	require.Equal(t, 1, len(comments.Comments), "1 comment left")
 	assert.Equal(t, id2, comments.Comments[0].ID)
 }
@@ -486,16 +439,7 @@ func TestRest_LastVoteIsPerUser(t *testing.T) {
 	id := addComment(t, store.Comment{Text: "vote target", Locator: store.Locator{SiteID: "remark42", URL: postURL}}, ts)
 
 	voteSeenBy := func(tkn string) (vote, score int) {
-		r, e := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
-		require.NoError(t, e)
-		rr, e := sendReq(r, tkn)
-		require.NoError(t, e)
-		body, e := io.ReadAll(rr.Body)
-		require.NoError(t, e)
-		require.NoError(t, rr.Body.Close())
-		require.Equal(t, http.StatusOK, rr.StatusCode, string(body))
-		comments := []store.Comment{}
-		require.NoError(t, json.Unmarshal(body, &comments))
+		comments := callJSON[[]store.Comment](t, http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", "", tkn)
 		require.Len(t, comments, 1)
 		require.Equal(t, id, comments[0].ID)
 		return comments[0].Vote, comments[0].Score
@@ -514,13 +458,9 @@ func TestRest_LastVoteIsPerUser(t *testing.T) {
 	feed()
 	feedMisses := atomic.LoadInt64(&lru.Misses)
 
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=%s&vote=1", ts.URL, id, postURL), http.NoBody)
-	require.NoError(t, err)
-	resp, err := sendReq(req, dev2Token)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=%s&vote=1", ts.URL, id, postURL), "", dev2Token)
+	require.Equal(t, http.StatusOK, code)
 
 	vote, score = voteSeenBy(dev2Token)
 	assert.Equal(t, 1, vote, "the voter sees their vote right after casting it")
@@ -540,15 +480,7 @@ func TestRest_LastVoteIsPerUser(t *testing.T) {
 
 	// a new comment still refreshes the cached last comments of every user
 	addComment(t, store.Comment{Text: "another one", Locator: store.Locator{SiteID: "remark42", URL: postURL + "-2"}}, ts)
-	r, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", http.NoBody)
-	require.NoError(t, err)
-	rr, err := sendReq(r, dev2Token)
-	require.NoError(t, err)
-	body, err := io.ReadAll(rr.Body)
-	require.NoError(t, err)
-	require.NoError(t, rr.Body.Close())
-	comments := []store.Comment{}
-	require.NoError(t, json.Unmarshal(body, &comments))
+	comments := callJSON[[]store.Comment](t, http.MethodGet, ts.URL+"/api/v1/last/5?site=remark42", "", dev2Token)
 	assert.Len(t, comments, 2, "a new comment reaches the voter's cached last comments")
 }
 
@@ -573,35 +505,23 @@ func TestRest_Last(t *testing.T) {
 	ts2 := time.Now().UnixNano() / 1000000
 	id2 := addComment(t, c2, ts)
 
-	res, code = get(t, ts.URL+"/api/v1/last/2?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	comments := []store.Comment{}
-	err := json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[[]store.Comment](t, http.MethodGet, ts.URL+"/api/v1/last/2?site=remark42", "", "")
 	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
-	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts1))
-	assert.Equal(t, http.StatusOK, code)
-	comments = []store.Comment{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[[]store.Comment](t, http.MethodGet, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts1), "", "")
 	require.Equal(t, 2, len(comments), "should have 2 comments")
 	assert.Equal(t, id1, comments[1].ID)
 	assert.Equal(t, id2, comments[0].ID)
 
-	res, code = get(t, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts2))
-	assert.Equal(t, http.StatusOK, code)
-	comments = []store.Comment{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[[]store.Comment](t, http.MethodGet, fmt.Sprintf("%s/api/v1/last/2?site=remark42&since=%d", ts.URL, ts2), "", "")
 	require.Equal(t, 1, len(comments), "should have 1 comments")
 	assert.Equal(t, id2, comments[0].ID)
 
 	res, code = get(t, ts.URL+"/api/v1/last/5?site=remark42")
 	assert.Equal(t, http.StatusOK, code)
-	err = json.Unmarshal([]byte(res), &comments)
+	err := json.Unmarshal([]byte(res), &comments)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(comments), "should have 3 comments")
 
@@ -992,11 +912,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 func TestRest_UserInfo(t *testing.T) {
 	ts, _ := startupT(t)
 
-	body, code := getWithDevAuth(t, ts.URL+"/api/v1/user?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	user := store.User{}
-	err := json.Unmarshal([]byte(body), &user)
-	assert.NoError(t, err)
+	user := callJSON[store.User](t, http.MethodGet, ts.URL+"/api/v1/user?site=remark42", "", devToken)
 	assert.Equal(t, store.User{Name: "developer one", ID: "provider1_dev", Picture: "http://example.com/pic.png",
 		IP: "127.0.0.1", SiteID: "remark42"}, user)
 }
@@ -1015,16 +931,12 @@ func TestRest_Count(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
-	body, code := get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, http.StatusOK, code)
-	j := R.JSON{}
-	err := json.Unmarshal([]byte(body), &j)
-	assert.NoError(t, err)
+	j := callJSON[R.JSON](t, http.MethodGet, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah1", "", "")
 	assert.Equal(t, 3.0, j["count"])
 
-	body, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
+	body, code := get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah2")
 	assert.Equal(t, http.StatusOK, code)
-	err = json.Unmarshal([]byte(body), &j)
+	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, 2.0, j["count"])
 
@@ -1046,24 +958,12 @@ func TestRest_Counts(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-
-	j := []store.PostInfo{}
-	err = json.Unmarshal(body, &j)
-	assert.NoError(t, err)
+	j := callJSON[[]store.PostInfo](t, http.MethodPost, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah1","https://radio-t.com/blah2"]`, adminPasswd)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah1", Count: 3},
 		{URL: "https://radio-t.com/blah2", Count: 2}}, j)
 
-	resp, err = post(t, ts.URL+"/api/v1/counts?site=radio-XXX", `{}`)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.NoError(t, resp.Body.Close())
+	_, code := call(t, http.MethodPost, ts.URL+"/api/v1/counts?site=radio-XXX", `{}`, adminPasswd)
+	assert.Equal(t, http.StatusBadRequest, code)
 }
 
 func TestRest_List(t *testing.T) {
@@ -1080,17 +980,13 @@ func TestRest_List(t *testing.T) {
 	addComment(t, c2, ts)
 	addComment(t, c2, ts)
 
-	body, code := get(t, ts.URL+"/api/v1/list?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	pi := []store.PostInfo{}
-	err := json.Unmarshal([]byte(body), &pi)
-	assert.NoError(t, err)
+	pi := callJSON[[]store.PostInfo](t, http.MethodGet, ts.URL+"/api/v1/list?site=remark42", "", "")
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
 	assert.Equal(t, "https://radio-t.com/blah1", pi[1].URL)
 	assert.Equal(t, 3, pi[1].Count)
 
-	_, code = get(t, ts.URL+"/api/v1/list?site=remark42-BLAH")
+	_, code := get(t, ts.URL+"/api/v1/list?site=remark42-BLAH")
 	assert.Equal(t, http.StatusBadRequest, code)
 }
 
@@ -1112,11 +1008,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 	addComment(t, c3, ts)
 	addComment(t, c3, ts)
 
-	body, code := get(t, ts.URL+"/api/v1/list?site=remark42&skip=1&limit=2")
-	assert.Equal(t, http.StatusOK, code)
-	pi := []store.PostInfo{}
-	err := json.Unmarshal([]byte(body), &pi)
-	assert.NoError(t, err)
+	pi := callJSON[[]store.PostInfo](t, http.MethodGet, ts.URL+"/api/v1/list?site=remark42&skip=1&limit=2", "", "")
 	require.Equal(t, 2, len(pi))
 	assert.Equal(t, "https://radio-t.com/blah2", pi[0].URL)
 	assert.Equal(t, 2, pi[0].Count)
@@ -1127,11 +1019,7 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 func TestRest_Config(t *testing.T) {
 	ts, _ := startupT(t)
 
-	body, code := get(t, ts.URL+"/api/v1/config?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	j := R.JSON{}
-	err := json.Unmarshal([]byte(body), &j)
-	assert.NoError(t, err)
+	j := callJSON[R.JSON](t, http.MethodGet, ts.URL+"/api/v1/config?site=remark42", "", "")
 	assert.Equal(t, 300.0, j["edit_duration"])
 	assert.EqualValues(t, []any{"a1", "a2"}, j["admins"])
 	assert.Equal(t, "admin@remark-42.com", j["admin_email"])
@@ -1215,17 +1103,12 @@ func TestRest_Info(t *testing.T) {
 	_, err = srv.DataService.Create(c3)
 	require.NoError(t, err)
 
-	body, code := get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah1")
-	assert.Equal(t, http.StatusOK, code)
-
-	info := store.PostInfo{}
-	err = json.Unmarshal([]byte(body), &info)
-	assert.NoError(t, err)
+	info := callJSON[store.PostInfo](t, http.MethodGet, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah1", "", "")
 	exp := store.PostInfo{URL: "https://radio-t.com/blah1", Count: 3,
 		FirstTS: time.Date(2018, 5, 27, 1, 14, 10, 0, time.Local), LastTS: time.Date(2018, 5, 27, 1, 14, 25, 0, time.Local)}
 	assert.Equal(t, exp, info)
 
-	_, code = get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah-no")
+	_, code := get(t, ts.URL+"/api/v1/info?site=remark42&url=https://radio-t.com/blah-no")
 	assert.Equal(t, http.StatusBadRequest, code)
 	_, code = get(t, ts.URL+"/api/v1/info?site=remark42-no&url=https://radio-t.com/blah-no")
 	assert.Equal(t, http.StatusBadRequest, code)
@@ -1269,16 +1152,8 @@ func TestRest_LoadPictureRejectsPathTraversal(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
-			require.NoError(t, err)
-			resp, err := http.DefaultClient.Do(req)
-			require.NoError(t, err)
-			defer func() { _ = resp.Body.Close() }()
-
-			assert.Equal(t, c.wantStatus, resp.StatusCode)
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			s := string(body)
+			s, code := call(t, http.MethodGet, ts.URL+c.path, "", "")
+			assert.Equal(t, c.wantStatus, code)
 			assert.NotContains(t, s, "..", "error body must not echo traversal marker")
 			assert.NotContains(t, s, "remark.db", "error body must not echo attacker-supplied filename")
 			assert.NotContains(t, s, "no such file", "error body must not leak filesystem state")
@@ -1308,16 +1183,8 @@ func TestRest_LoadPictureRejectsControlCharsInSegment(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
-			require.NoError(t, err)
-			resp, err := http.DefaultClient.Do(req)
-			require.NoError(t, err)
-			defer func() { _ = resp.Body.Close() }()
-
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			s := string(body)
+			s, code := call(t, http.MethodGet, ts.URL+c.path, "", "")
+			assert.Equal(t, http.StatusBadRequest, code)
 			assert.Contains(t, s, "invalid picture id", "must reject as invalid input, not fall through to storage")
 			assert.NotContains(t, s, "no such file", "must not reach the filesystem")
 		})
@@ -1590,7 +1457,7 @@ func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
 	require.NoError(t, err)
 
 	// fetch reads every open route that returns comments of site2 and collects the ip of each
-	fetch := func(t *testing.T, setAuth func(r *http.Request)) map[string]string {
+	fetch := func(t *testing.T, auth string) map[string]string {
 		t.Helper()
 		res := map[string]string{}
 		routes := map[string]string{
@@ -1600,28 +1467,21 @@ func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
 			"comments": "/api/v1/comments?site=site2&user=u1",
 		}
 		for name, path := range routes {
-			req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
-			require.NoError(t, err)
-			setAuth(req)
-			resp, err := sendReq(req, "")
-			require.NoError(t, err)
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err)
-			require.NoError(t, resp.Body.Close())
-			require.Equal(t, http.StatusOK, resp.StatusCode, "%s: %s", name, body)
+			body, code := call(t, http.MethodGet, ts.URL+path, "", auth)
+			require.Equal(t, http.StatusOK, code, "%s: %s", name, body)
 
 			var cc []store.Comment
 			switch name {
 			case "find", "comments":
 				var wrapped struct{ Comments []store.Comment }
-				require.NoError(t, json.Unmarshal(body, &wrapped), name)
+				require.NoError(t, json.Unmarshal([]byte(body), &wrapped), name)
 				cc = wrapped.Comments
 			case "id":
 				var c store.Comment
-				require.NoError(t, json.Unmarshal(body, &c), name)
+				require.NoError(t, json.Unmarshal([]byte(body), &c), name)
 				cc = []store.Comment{c}
 			case "last":
-				require.NoError(t, json.Unmarshal(body, &cc), name)
+				require.NoError(t, json.Unmarshal([]byte(body), &cc), name)
 			}
 			require.Len(t, cc, 1, name)
 			require.Equal(t, id, cc[0].ID, name)
@@ -1636,34 +1496,27 @@ func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
 
 	t.Run("admin of the other site", func(t *testing.T) {
 		tkn := siteToken("remark42", "github_one")
-		req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", http.NoBody)
-		require.NoError(t, err)
-		resp, err := sendReq(req, tkn)
-		require.NoError(t, err)
-		var u store.User
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&u))
-		require.NoError(t, resp.Body.Close())
+		u := callJSON[store.User](t, http.MethodGet, ts.URL+"/api/v1/user?site=remark42", "", tkn)
 		require.True(t, u.Admin, "the token is accepted and carries the admin flag")
 
-		assert.Equal(t, allRoutes(""), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+		assert.Equal(t, allRoutes(""), fetch(t, tkn))
 	})
 
 	t.Run("admin of the site", func(t *testing.T) {
 		tkn := siteToken("site2", "github_two")
-		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+		assert.Equal(t, allRoutes(ipHash), fetch(t, tkn))
 	})
 
 	t.Run("admin of both sites, signed in to the other", func(t *testing.T) {
 		tkn := siteToken("remark42", "github_both")
-		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }),
-			"admin of site2 by the store, though the token is for remark42")
+		assert.Equal(t, allRoutes(ipHash), fetch(t, tkn), "admin of site2 by the store, though the token is for remark42")
 	})
 
 	t.Run("basic-auth admin", func(t *testing.T) {
-		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.SetBasicAuth("admin", "password") }))
+		assert.Equal(t, allRoutes(ipHash), fetch(t, adminPasswd))
 	})
 
 	t.Run("anonymous reader", func(t *testing.T) {
-		assert.Equal(t, allRoutes(""), fetch(t, func(*http.Request) {}))
+		assert.Equal(t, allRoutes(""), fetch(t, ""))
 	})
 }

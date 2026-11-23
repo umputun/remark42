@@ -915,6 +915,50 @@ func fakeAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// adminPasswd as the credentials of call sends the admin password as basic auth, instead of a token
+const adminPasswd = "basic:password"
+
+// call sends a request with body, empty for none, and returns the body and status of the answer.
+// cred is empty for an anonymous request, adminPasswd for the admin password, and a JWT otherwise
+func call(t *testing.T, method, url, body, cred string) (respBody string, code int) {
+	t.Helper()
+	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	require.NoError(t, err)
+	if passwd, ok := strings.CutPrefix(cred, "basic:"); ok {
+		req.SetBasicAuth("admin", passwd)
+	} else if cred != "" {
+		req.Header.Set("X-JWT", cred)
+	}
+	// the outer bound of a wait: some calls import or export a site, which takes a while on a loaded runner
+	client := http.Client{Timeout: waitTimeout}
+	defer client.CloseIdleConnections()
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return string(b), resp.StatusCode
+}
+
+// callJSON is call for a request that has to answer 200, with the JSON of the answer decoded
+func callJSON[T any](t *testing.T, method, url, body, cred string) (res T) {
+	t.Helper()
+	respBody, code := call(t, method, url, body, cred)
+	require.Equal(t, http.StatusOK, code, respBody)
+	require.NoError(t, json.Unmarshal([]byte(respBody), &res), respBody)
+	return res
+}
+
+// callAdminOnly checks that the route refuses an anonymous and a regular user, then calls it with cred
+func callAdminOnly(t *testing.T, method, url, cred string) (respBody string, code int) {
+	t.Helper()
+	_, code = call(t, method, url, "", "")
+	assert.Equal(t, http.StatusUnauthorized, code, "anonymous user refused")
+	_, code = call(t, method, url, "", devToken)
+	assert.Equal(t, http.StatusForbidden, code, "regular user refused")
+	return call(t, method, url, "", cred)
+}
+
 func get(t *testing.T, url string) (response string, statusCode int) {
 	r, err := http.Get(url)
 	require.NoError(t, err)
@@ -924,6 +968,8 @@ func get(t *testing.T, url string) (response string, statusCode int) {
 	return string(body), r.StatusCode
 }
 
+// sendReq sends r with tkn, if any, as the X-JWT header. It is for a request with headers of its own
+// or an answer whose headers are checked; call covers the rest
 func sendReq(r *http.Request, tkn string) (*http.Response, error) {
 	client := http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
@@ -933,78 +979,19 @@ func sendReq(r *http.Request, tkn string) (*http.Response, error) {
 	return client.Do(r)
 }
 
-func getWithDevAuth(t *testing.T, url string) (body string, code int) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("GET", url, http.NoBody)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	r, err := client.Do(req)
-	require.NoError(t, err)
-	b, err := io.ReadAll(r.Body)
-	assert.NoError(t, err)
-	require.NoError(t, r.Body.Close())
-	return string(b), r.StatusCode
-}
-
-func getWithDev2Auth(t *testing.T, url string) (body string, code int) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("GET", url, http.NoBody)
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", dev2Token)
-	r, err := client.Do(req)
-	require.NoError(t, err)
-	b, err := io.ReadAll(r.Body)
-	assert.NoError(t, err)
-	require.NoError(t, r.Body.Close())
-	return string(b), r.StatusCode
-}
-
-func getWithAdminAuth(t *testing.T, url string) (response string, statusCode int) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("GET", url, http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	r, err := client.Do(req)
-	require.NoError(t, err)
-	body, err := io.ReadAll(r.Body)
-	assert.NoError(t, err)
-	require.NoError(t, r.Body.Close())
-	return string(body), r.StatusCode
-}
-func post(t *testing.T, url, body string) (*http.Response, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	return client.Do(req)
-}
-
 func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server) (id string, created time.Time) {
 	b, err := json.Marshal(c)
 	require.NoError(t, err, "can't marshal comment %+v", c)
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
 	postURL := ts.URL + "/api/v1/comment"
 	if c.Locator.SiteID != "" {
 		postURL += "?site=" + c.Locator.SiteID
 	}
-	req, err := http.NewRequest("POST", postURL, bytes.NewBuffer(b))
-	require.NoError(t, err)
-	req.Header.Add("X-JWT", devToken)
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
-	b, err = io.ReadAll(resp.Body)
-	require.NoError(t, resp.Body.Close())
-	require.NoError(t, err)
+	body, code := call(t, http.MethodPost, postURL, string(b), devToken)
+	require.Equal(t, http.StatusCreated, code)
 
 	crResp := R.JSON{}
-	err = json.Unmarshal(b, &crResp)
+	err = json.Unmarshal([]byte(body), &crResp)
 	require.NoError(t, err)
 	created, err = time.Parse(time.RFC3339, crResp["time"].(string))
 	require.NoError(t, err)
@@ -1014,18 +1001,6 @@ func addCommentGetCreatedTime(t *testing.T, c store.Comment, ts *httptest.Server
 func addComment(t *testing.T, c store.Comment, ts *httptest.Server) string {
 	id, _ := addCommentGetCreatedTime(t, c, ts)
 	return id
-}
-
-func requireAdminOnly(t *testing.T, req *http.Request) {
-	resp, err := sendReq(req, "") // no-auth user
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-	resp, err = sendReq(req, devToken) // non-admin user
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 // chooseUnusedPort asks the kernel for a free port from the ephemeral range, which makes a

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -43,41 +42,21 @@ func TestAdmin_Delete(t *testing.T) {
 	addComment(t, c2, ts)
 
 	// check last comments
-	res, code := get(t, ts.URL+"/api/v1/last/2?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	comments := []store.Comment{}
-	err := json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[[]store.Comment](t, http.MethodGet, ts.URL+"/api/v1/last/2?site=remark42", "", "")
 	assert.Equal(t, 2, len(comments), "should have 2 comments")
 
 	// check multi count
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	bb, err := io.ReadAll(resp.Body)
-	assert.NoError(t, resp.Body.Close())
-	assert.NoError(t, err)
-	j := []store.PostInfo{}
-	err = json.Unmarshal(bb, &j)
-	assert.NoError(t, err)
+	j := callJSON[[]store.PostInfo](t, http.MethodPost, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`, adminPasswd)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 2},
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 
 	// delete a comment
-	req, err := http.NewRequest(http.MethodDelete,
-		fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), http.NoBody)
-	require.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err = sendReq(req, adminUmputunToken)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, code := getWithDevAuth(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
+	_, code := callAdminOnly(t, http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/comment/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1),
+		adminUmputunToken)
 	assert.Equal(t, http.StatusOK, code)
-	cr := store.Comment{}
-	err = json.Unmarshal([]byte(body), &cr)
-	assert.NoError(t, err)
+
+	cr := callJSON[store.Comment](t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), "", devToken)
 	assert.Equal(t, "", cr.Text)
 	assert.True(t, cr.Deleted)
 
@@ -99,24 +78,12 @@ func TestAdmin_Delete(t *testing.T) {
 	}, waitTimeout, httpPoll)
 
 	// check count updated
-	res, code = get(t, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah")
-	assert.Equal(t, http.StatusOK, code)
-	b := map[string]any{}
-	err = json.Unmarshal([]byte(res), &b)
-	assert.NoError(t, err)
+	b := callJSON[map[string]any](t, http.MethodGet, ts.URL+"/api/v1/count?site=remark42&url=https://radio-t.com/blah", "", "")
 	t.Logf("%#v", b)
 	assert.Equal(t, 1.0, b["count"], "should report 1 comments")
 
 	// check multi count updated
-	resp, err = post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	bb, err = io.ReadAll(resp.Body)
-	assert.NoError(t, resp.Body.Close())
-	assert.NoError(t, err)
-	j = []store.PostInfo{}
-	err = json.Unmarshal(bb, &j)
-	assert.NoError(t, err)
+	j = callJSON[[]store.PostInfo](t, http.MethodPost, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah","https://radio-t.com/blah2"]`, adminPasswd)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1},
 		{URL: "https://radio-t.com/blah2", Count: 0}}, j)
 }
@@ -148,20 +115,12 @@ func TestAdmin_Title(t *testing.T) {
 	id1 := addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL), http.NoBody)
-	assert.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := callAdminOnly(t, http.MethodPut, fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL),
+		adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 
-	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL))
-	require.Equal(t, http.StatusOK, code)
-	cr := store.Comment{}
-	err = json.Unmarshal([]byte(body), &cr)
-	assert.NoError(t, err)
+	cr := callJSON[store.Comment](t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id1, tss.URL), "", "")
 	assert.Equal(t, "post1 blah 123", cr.PostTitle)
 }
 
@@ -194,20 +153,14 @@ func TestAdmin_TitleKeptWhenPageFails(t *testing.T) {
 	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
 
 	for _, id := range ids {
-		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL), http.NoBody)
-		require.NoError(t, err)
-		resp, err := sendReq(req, adminUmputunToken)
-		require.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "title of comment %s not updated", id)
+		_, code := call(t, http.MethodPut,
+			fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL), "", adminUmputunToken)
+		assert.Equal(t, http.StatusInternalServerError, code, "title of comment %s not updated", id)
 	}
 
 	for _, id := range ids {
-		body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL))
-		require.Equal(t, http.StatusOK, code)
-		cr := store.Comment{}
-		require.NoError(t, json.Unmarshal([]byte(body), &cr))
+		cr := callJSON[store.Comment](t, http.MethodGet,
+			fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL), "", "")
 		assert.Equal(t, "post1 blah 123", cr.PostTitle, "title of comment %s kept", id)
 	}
 }
@@ -230,20 +183,13 @@ func TestAdmin_DeleteUser(t *testing.T) {
 	_, err = srv.DataService.Create(c3)
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42", ts.URL, "id2"), http.NoBody)
-	assert.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err := sendReq(req, adminUmputunToken)
-	assert.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := callAdminOnly(t, http.MethodDelete, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42", ts.URL, "id2"),
+		adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 
 	// all 3 comments here, but for id2 they deleted
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	cmntWithInfo := commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &cmntWithInfo)
-	assert.NoError(t, err)
+	cmntWithInfo := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 3, len(cmntWithInfo.Comments), "should have 3 comment")
 
 	// id1 comment untouched
@@ -290,15 +236,11 @@ func TestAdmin_DeleteCommentPictures(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/comment/c1?site=remark42&url=https://radio-t.com/blah", http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := sendReq(req, "")
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := call(t, http.MethodDelete,
+		ts.URL+"/api/v1/admin/comment/c1?site=remark42&url=https://radio-t.com/blah", "", adminPasswd)
+	require.Equal(t, http.StatusOK, code)
 
-	_, err = fs.Load("user1/own.png")
+	_, err := fs.Load("user1/own.png")
 	assert.Error(t, err, "the author's own upload removed")
 	data, err := fs.Load("user2/other.png")
 	require.NoError(t, err, "another user's upload kept, though the deleted comment showed it")
@@ -307,30 +249,24 @@ func TestAdmin_DeleteCommentPictures(t *testing.T) {
 
 // every route that deletes a user's comments removes the pictures used in them and keeps those of other users
 func TestAdmin_DeleteUserPictures(t *testing.T) {
-	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) *http.Request {
+	deleteMeReq := func(t *testing.T, srv *Rest, tsURL string) (method, url string) {
 		claims := token.Claims{Audience: jwt.ClaimStrings{"remark42"}, Issuer: "remark42",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}}}
 		tkn, err := srv.Authenticator.TokenService().Token(claims)
 		require.NoError(t, err)
-		req, err := http.NewRequest(http.MethodGet, tsURL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
-		require.NoError(t, err)
-		return req
+		return http.MethodGet, tsURL + "/api/v1/admin/deleteme?token=" + tkn
 	}
 	tbl := []struct {
 		name  string
-		reqFn func(t *testing.T, srv *Rest, tsURL string) *http.Request
+		reqFn func(t *testing.T, srv *Rest, tsURL string) (method, url string)
 	}{
-		{name: "admin delete user", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
-			req, err := http.NewRequest(http.MethodDelete, tsURL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
-			require.NoError(t, err)
-			return req
+		{name: "admin delete user", reqFn: func(_ *testing.T, _ *Rest, tsURL string) (method, url string) {
+			return http.MethodDelete, tsURL + "/api/v1/admin/user/user1?site=remark42"
 		}},
 		{name: "delete me", reqFn: deleteMeReq},
-		{name: "permanent block", reqFn: func(t *testing.T, _ *Rest, tsURL string) *http.Request {
-			req, err := http.NewRequest(http.MethodPut, tsURL+"/api/v1/admin/user/user1?site=remark42&block=1", http.NoBody)
-			require.NoError(t, err)
-			return req
+		{name: "permanent block", reqFn: func(_ *testing.T, _ *Rest, tsURL string) (method, url string) {
+			return http.MethodPut, tsURL + "/api/v1/admin/user/user1?site=remark42&block=1"
 		}},
 	}
 	for _, tt := range tbl {
@@ -364,14 +300,11 @@ func TestAdmin_DeleteUserPictures(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			req := tt.reqFn(t, srv, ts.URL)
-			req.SetBasicAuth("admin", "password")
-			resp, err := sendReq(req, "")
-			require.NoError(t, err)
-			require.NoError(t, resp.Body.Close())
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			method, url := tt.reqFn(t, srv, ts.URL)
+			_, code := call(t, method, url, "", adminPasswd)
+			require.Equal(t, http.StatusOK, code)
 
-			_, err = fs.Load("user1/own.png")
+			_, err := fs.Load("user1/own.png")
 			assert.Error(t, err, "picture from the deleted user's comment removed")
 			data, err := fs.Load("user2/other.png")
 			require.NoError(t, err, "another user's upload kept, though the deleted user's comment showed it")
@@ -395,13 +328,8 @@ func TestAdmin_DeleteUserAvatar(t *testing.T) {
 			_, err := srv.DataService.Create(c)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
-			require.NoError(t, err)
-			req.SetBasicAuth("admin", "password")
-			resp, err := sendReq(req, "")
-			require.NoError(t, err)
-			require.NoError(t, resp.Body.Close())
-			assert.Equal(t, http.StatusOK, resp.StatusCode, "a missing avatar does not fail the deletion")
+			_, code := call(t, http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", "", adminPasswd)
+			assert.Equal(t, http.StatusOK, code, "a missing avatar does not fail the deletion")
 			assert.NoFileExists(t, avatarFile, "user's avatar removed on admin user deletion")
 		})
 	}
@@ -420,21 +348,14 @@ func TestAdmin_DeleteUserAvatarRemoveError(t *testing.T) {
 	require.NoError(t, err)
 
 	findText := func() string {
-		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
-		require.Equal(t, http.StatusOK, code)
-		cmnts := commentsWithInfo{}
-		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		cmnts := callJSON[commentsWithInfo](t, http.MethodGet,
+			ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah", "", "")
 		require.Len(t, cmnts.Comments, 1)
 		return cmnts.Comments[0].Text
 	}
 	deleteUser := func() int {
-		req, e := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
-		require.NoError(t, e)
-		req.SetBasicAuth("admin", "password")
-		resp, e := sendReq(req, "")
-		require.NoError(t, e)
-		require.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		_, code := call(t, http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", "", adminPasswd)
+		return code
 	}
 	require.Contains(t, findText(), "test test #1") // cached from here on
 
@@ -468,10 +389,8 @@ func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 	require.NoError(t, err)
 
 	findText := func() string {
-		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
-		require.Equal(t, http.StatusOK, code)
-		cmnts := commentsWithInfo{}
-		require.NoError(t, json.Unmarshal([]byte(res), &cmnts))
+		cmnts := callJSON[commentsWithInfo](t, http.MethodGet,
+			ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah", "", "")
 		require.Len(t, cmnts.Comments, 1)
 		return cmnts.Comments[0].Text
 	}
@@ -487,13 +406,8 @@ func TestAdmin_DeleteMeRequestAvatarRemoveErrorFlushesCache(t *testing.T) {
 		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
 			Attributes: map[string]any{"delete_me": true}}})
 	require.NoError(t, err)
-	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := sendReq(req, "")
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "avatar-store failure surfaces")
+	_, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, "", adminPasswd)
+	assert.Equal(t, http.StatusInternalServerError, code, "avatar-store failure surfaces")
 	assert.Empty(t, findText(), "cached comments flushed after the deletion")
 }
 
@@ -509,36 +423,22 @@ func TestAdmin_Pin(t *testing.T) {
 	addComment(t, c2, ts)
 
 	pin := func(val int) int {
-		client := http.Client{}
-		defer client.CloseIdleConnections()
-		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/admin/pin/%s?site=remark42&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val), http.NoBody)
-		assert.NoError(t, err)
-		requireAdminOnly(t, req)
-		req.SetBasicAuth("admin", "password")
-		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		_, code := callAdminOnly(t, http.MethodPut, fmt.Sprintf("%s/api/v1/admin/pin/%s?site=remark42&url=https://radio-t.com/blah&pin=%d", ts.URL, id1, val),
+			adminPasswd)
+		return code
 	}
 
 	code := pin(1)
 	assert.Equal(t, http.StatusOK, code)
 
-	body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, http.StatusOK, code)
-	cr := store.Comment{}
-	err := json.Unmarshal([]byte(body), &cr)
-	assert.NoError(t, err)
+	cr := callJSON[store.Comment](t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), "", "")
 	assert.True(t, cr.Pin)
 
 	code = pin(-1)
 	assert.Equal(t, http.StatusOK, code)
-	body, code = get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1))
-	assert.Equal(t, http.StatusOK, code)
-	cr = store.Comment{}
-	err = json.Unmarshal([]byte(body), &cr)
-	assert.NoError(t, err)
+	cr = callJSON[store.Comment](t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=https://radio-t.com/blah", ts.URL, id1), "", "")
 	assert.False(t, cr.Pin)
 }
 
@@ -555,12 +455,9 @@ func TestAdmin_PinFlushesLastComments(t *testing.T) {
 	require.Contains(t, res, "test test #1", "the comment is in the last comments, and they are cached")
 	require.NotContains(t, res, `"pin":true`)
 
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/pin/"+id+"?site=remark42&url=https://radio-t.com/blah&pin=1", http.NoBody)
-	require.NoError(t, err)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code = call(t, http.MethodPut,
+		ts.URL+"/api/v1/admin/pin/"+id+"?site=remark42&url=https://radio-t.com/blah&pin=1", "", adminUmputunToken)
+	require.Equal(t, http.StatusOK, code)
 
 	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
 	require.Equal(t, http.StatusOK, code)
@@ -582,20 +479,13 @@ func TestAdmin_Block(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	block := func(val int, ttl string) (code int, body []byte) {
+	block := func(val int, ttl string) (code int, body string) {
 		url := fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", val)
 		if ttl != "" {
 			url = url + "&ttl=" + ttl
 		}
-		req, err := http.NewRequest(http.MethodPut, url, http.NoBody)
-		assert.NoError(t, err)
-		requireAdminOnly(t, req)
-		resp, err := sendReq(req, adminUmputunToken)
-		require.NoError(t, err)
-		body, err = io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-		return resp.StatusCode, body
+		body, code = callAdminOnly(t, http.MethodPut, url, adminUmputunToken)
+		return code, body
 	}
 
 	makeTwoComments()
@@ -604,7 +494,7 @@ func TestAdmin_Block(t *testing.T) {
 	code, body := block(1, "")
 	require.Equal(t, http.StatusOK, code)
 	j := R.JSON{}
-	err := json.Unmarshal(body, &j)
+	err := json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, "user1", j["user_id"])
 	assert.Equal(t, true, j["block"])
@@ -614,29 +504,15 @@ func TestAdmin_Block(t *testing.T) {
 	assert.False(t, srv.DataService.IsBlocked("remark42", "user2"))
 
 	// get last to confirm one comment deleted
-	bodyStr, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
-	assert.Equal(t, http.StatusOK, code)
-	pi := []store.PostInfo{}
-	assert.NoError(t, json.Unmarshal([]byte(bodyStr), &pi))
+	pi := callJSON[[]store.PostInfo](t, http.MethodGet, ts.URL+"/api/v1/last/10?site=remark42", "", "")
 	assert.Equal(t, 1, len(pi), "last status updated, one comment left")
 
 	// check if count call has one comment left
-	resp, err := post(t, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah"]`)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	body, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	pi = []store.PostInfo{}
-	err = json.Unmarshal(body, &pi)
-	assert.NoError(t, err)
+	pi = callJSON[[]store.PostInfo](t, http.MethodPost, ts.URL+"/api/v1/counts?site=remark42", `["https://radio-t.com/blah"]`, adminPasswd)
 	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/blah", Count: 1}}, pi)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments := commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "", comments.Comments[0].Text, "permanent block clear comment")
 	assert.True(t, comments.Comments[0].Deleted, "permanent block set deleted comment's status")
@@ -644,7 +520,7 @@ func TestAdmin_Block(t *testing.T) {
 	// unblock
 	code, body = block(-1, "")
 	require.Equal(t, http.StatusOK, code)
-	err = json.Unmarshal(body, &j)
+	err = json.Unmarshal([]byte(body), &j)
 	assert.NoError(t, err)
 	assert.Equal(t, false, j["block"])
 
@@ -656,11 +532,8 @@ func TestAdmin_Block(t *testing.T) {
 	require.True(t, srv.DataService.IsBlocked("remark42", "user1"), "user1 blocked with ttl")
 
 	// get as regular user
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 4, len(comments.Comments), "should have 4 comments")
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "comment not removed and not cleared")
 	assert.False(t, comments.Comments[2].Deleted, "not deleted")
@@ -674,11 +547,8 @@ func TestAdmin_Block(t *testing.T) {
 		return !srv.DataService.IsBlocked("remark42", "user1")
 	}, waitTimeout, pollInterval, "block with ttl did not expire")
 
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 4, len(comments.Comments), "should have 4 comments")
 	assert.Equal(t, "test test #1", comments.Comments[2].Text, "restored")
 	assert.False(t, comments.Comments[2].Deleted)
@@ -692,14 +562,9 @@ func TestAdmin_Block(t *testing.T) {
 // in the 10 req/s limiter of the admin routes.
 func putBlockUser(t *testing.T, tsURL, userID, query string) (code int, body string) {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&%s", tsURL, userID, query), http.NoBody)
-	require.NoError(t, err)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	b, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	return resp.StatusCode, string(b)
+	body, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&%s", tsURL, userID, query), "", adminUmputunToken)
+	return code, body
 }
 
 func TestAdmin_BlockRejectsBadTTL(t *testing.T) {
@@ -802,32 +667,16 @@ func TestAdmin_BlockedList(t *testing.T) {
 	assert.NoError(t, err)
 
 	// block user1
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", 1), http.NoBody)
-	assert.NoError(t, err)
-	res, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, res.Body.Close())
-	assert.Equal(t, http.StatusOK, res.StatusCode)
+	_, code := call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d", ts.URL, "user1", 1), "", adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 
 	// block user2 for long enough that the "two users blocked" check below cannot race the ttl
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=1h", ts.URL, "user2", 1), http.NoBody)
-	assert.NoError(t, err)
-	res, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, res.Body.Close())
-	assert.Equal(t, http.StatusOK, res.StatusCode)
+	_, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=1h", ts.URL, "user2", 1), "", adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 
-	req, err = http.NewRequest("GET", ts.URL+"/api/v1/admin/blocked?site=remark42", http.NoBody)
-	require.NoError(t, err)
-	res, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	users := []store.BlockedUser{}
-	err = json.NewDecoder(res.Body).Decode(&users)
-	assert.NoError(t, err)
-	require.NoError(t, res.Body.Close())
+	users := callJSON[[]store.BlockedUser](t, http.MethodGet, ts.URL+"/api/v1/admin/blocked?site=remark42", "", adminUmputunToken)
 	require.Equal(t, 2, len(users), "two users blocked")
 	assert.Equal(t, "user1", users[0].ID)
 	assert.Equal(t, "user1 name", users[0].Name)
@@ -837,13 +686,9 @@ func TestAdmin_BlockedList(t *testing.T) {
 
 	// re-block user2 with a short ttl and wait for it to lapse, so the lapse is observed
 	// independently of the check above
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), http.NoBody)
-	require.NoError(t, err)
-	res, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, res.Body.Close())
-	require.Equal(t, http.StatusOK, res.StatusCode)
+	_, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&block=%d&ttl=150ms", ts.URL, "user2", 1), "", adminUmputunToken)
+	require.Equal(t, http.StatusOK, code)
 
 	// the closure runs off the test goroutine and asserts on the CollectT it is handed, never on t
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -881,17 +726,11 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.False(t, info.ReadOnly)
 
 	// set post to read-only
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	resp, err := sendReq(req, "") // non-admin user
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	roURL := fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL)
+	_, code := call(t, http.MethodPut, roURL, "", "") // anonymous user
+	assert.Equal(t, http.StatusUnauthorized, code)
+	_, code = call(t, http.MethodPut, roURL, "", adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
@@ -901,21 +740,13 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err := json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site=remark42", bytes.NewBuffer(b))
-	require.NoError(t, err)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	_, code = call(t, http.MethodPost, ts.URL+"/api/v1/comment?site=remark42", string(b), adminUmputunToken)
+	assert.Equal(t, http.StatusForbidden, code)
 
 	// reset post's read-only
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), "", adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.False(t, info.ReadOnly)
@@ -925,45 +756,30 @@ func TestAdmin_ReadOnly(t *testing.T) {
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
-	req, err = http.NewRequest("POST", ts.URL+"/api/v1/comment?site="+c.Locator.SiteID, bytes.NewBuffer(b))
-	require.NoError(t, err)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	_, code = call(t, http.MethodPost, ts.URL+"/api/v1/comment?site="+c.Locator.SiteID, string(b), adminUmputunToken)
+	assert.Equal(t, http.StatusCreated, code)
 }
 
 func TestAdmin_ReadOnlyNoComments(t *testing.T) {
 	ts, srv := startupT(t)
 
 	// set post to read-only
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	_, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
+	_, code := callAdminOnly(t, http.MethodPut, fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL),
+		adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
+	_, err := srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.Error(t, err)
 
 	// test format "tree"
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&format=tree")
-	assert.Equal(t, http.StatusOK, code)
-	comments := commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&format=tree", "", "")
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 	assert.True(t, comments.Info.ReadOnly)
 	t.Logf("%+v", comments)
 
 	// test format "plain"
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah", "", "")
 	assert.Equal(t, 0, len(comments.Comments), "should have 0 comments")
 	assert.True(t, comments.Info.ReadOnly)
 	t.Logf("%+v", comments)
@@ -983,26 +799,17 @@ func TestAdmin_ReadOnlyWithAge(t *testing.T) {
 	assert.True(t, info.ReadOnly, "ro by age")
 
 	// set post to read-only
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := callAdminOnly(t, http.MethodPut, fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=1", ts.URL),
+		adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
 
 	// reset post's read-only
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	_, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/readonly?site=remark42&url=https://radio-t.com/blah&ro=0", ts.URL), "", adminUmputunToken)
+	assert.Equal(t, http.StatusForbidden, code)
 	info, err = srv.DataService.Info(store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}, 0)
 	assert.NoError(t, err)
 	assert.True(t, info.ReadOnly)
@@ -1023,41 +830,26 @@ func TestAdmin_Verify(t *testing.T) {
 	verified := srv.DataService.IsVerified("remark42", "user1")
 	assert.False(t, verified)
 
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=1", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	requireAdminOnly(t, req)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := callAdminOnly(t, http.MethodPut, fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=1", ts.URL),
+		adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.True(t, verified)
 
-	res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments := commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments := callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.True(t, comments.Comments[0].User.Verified)
 
-	req, err = http.NewRequest(http.MethodPut,
-		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=0", ts.URL), http.NoBody)
-	assert.NoError(t, err)
-	resp, err = sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code = call(t, http.MethodPut,
+		fmt.Sprintf("%s/api/v1/admin/verify/user1?site=remark42&verified=0", ts.URL), "", adminUmputunToken)
+	assert.Equal(t, http.StatusOK, code)
 	verified = srv.DataService.IsVerified("remark42", "user1")
 	assert.False(t, verified)
 
-	res, code = get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time")
-	assert.Equal(t, http.StatusOK, code)
-	comments = commentsWithInfo{}
-	err = json.Unmarshal([]byte(res), &comments)
-	assert.NoError(t, err)
+	comments = callJSON[commentsWithInfo](t, http.MethodGet,
+		ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/blah&sort=+time", "", "")
 	require.Equal(t, 2, len(comments.Comments), "should have 2 comments")
 	assert.Equal(t, "test test #1", comments.Comments[0].Text)
 	assert.False(t, comments.Comments[0].User.Verified)
@@ -1079,12 +871,8 @@ func TestAdmin_VerifyFlushesLastComments(t *testing.T) {
 	require.Equal(t, http.StatusOK, code)
 	require.Contains(t, res, `"verified":true`, "the user is verified in the last comments, and they are cached")
 
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/verify/user1?site=remark42&verified=0", http.NoBody)
-	require.NoError(t, err)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code = call(t, http.MethodPut, ts.URL+"/api/v1/admin/verify/user1?site=remark42&verified=0", "", adminUmputunToken)
+	require.Equal(t, http.StatusOK, code)
 
 	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
 	require.Equal(t, http.StatusOK, code)
@@ -1102,7 +890,7 @@ func TestAdmin_ExportStream(t *testing.T) {
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/export?site=remark42&mode=stream")
+	body, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/export?site=remark42&mode=stream", "", adminPasswd)
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, 3, strings.Count(body, "\n"))
 	assert.Equal(t, 2, strings.Count(body, "\"text\""))
@@ -1120,9 +908,14 @@ func TestAdmin_ExportFile(t *testing.T) {
 	addComment(t, c1, ts)
 	addComment(t, c2, ts)
 
-	req, err := http.NewRequest("GET", ts.URL+"/api/v1/admin/export?site=remark42&mode=file", http.NoBody)
+	// the admin answer is read here for its headers, so the refusals are checked one by one
+	exportURL := ts.URL + "/api/v1/admin/export?site=remark42&mode=file"
+	_, code := call(t, http.MethodGet, exportURL, "", "")
+	assert.Equal(t, http.StatusUnauthorized, code, "anonymous user refused")
+	_, code = call(t, http.MethodGet, exportURL, "", devToken)
+	assert.Equal(t, http.StatusForbidden, code, "regular user refused")
+	req, err := http.NewRequest(http.MethodGet, exportURL, http.NoBody)
 	require.NoError(t, err)
-	requireAdminOnly(t, req)
 	resp, err := sendReq(req, adminUmputunToken)
 	require.NoError(t, err)
 
@@ -1186,16 +979,8 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.NoError(t, err)
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	assert.NoError(t, err)
-
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
 
 	_, err = srv.DataService.User("remark42", "user1", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user1 in store")
@@ -1225,15 +1010,8 @@ func TestAdmin_DeleteMeRequestRejectsExpiredToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusForbidden, code)
 
 	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
 	require.NoError(t, err)
@@ -1270,26 +1048,16 @@ func TestAdmin_DeleteMeRequestRejectsOtherSite(t *testing.T) {
 	require.NoError(t, err)
 
 	// adminUmputunToken is a session for remark42
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?site=remark42&token=%s", ts.URL, tkn), http.NoBody)
-	require.NoError(t, err)
-	resp, err := sendReq(req, adminUmputunToken)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	_, code := call(t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/admin/deleteme?site=remark42&token=%s", ts.URL, tkn), "", adminUmputunToken)
+	assert.Equal(t, http.StatusForbidden, code)
 	comments, err := srv.DataService.User("other", "user1", 0, 0, store.User{})
 	require.NoError(t, err)
 	assert.Len(t, comments, 1, "the other site's data is untouched")
 
 	// the basic-auth admin administers every site and processes it when naming that site
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?site=other&token=%s", ts.URL, tkn), http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	_, code = call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?site=other&token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusOK, code)
 	_, err = srv.DataService.User("other", "user1", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user1 in store")
 }
@@ -1323,15 +1091,8 @@ func TestAdmin_DeleteMeRequestMissingAvatar(t *testing.T) {
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "a missing avatar must not fail the deletion")
+	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusOK, code, "a missing avatar must not fail the deletion")
 
 	_, err = srv.DataService.User("remark42", "user3", 0, 0, store.User{})
 	assert.EqualError(t, err, "no comments for user user3 in store", "user3 comments should be deleted")
@@ -1371,15 +1132,8 @@ func TestAdmin_DeleteMeRequestAvatarRemoveError(t *testing.T) {
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	require.NoError(t, err)
 
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "a real avatar-store failure must surface, not be swallowed")
+	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusInternalServerError, code, "a real avatar-store failure must surface, not be swallowed")
 }
 
 func TestAvatarIDFromPicture(t *testing.T) {
@@ -1418,15 +1172,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// try with bad token
-	client := http.Client{}
-	defer client.CloseIdleConnections()
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, "bad token"), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := client.Do(req)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	_, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, "bad token"), "", adminPasswd)
+	assert.Equal(t, http.StatusBadRequest, code)
 
 	// try with bad auth
 	claims := token.Claims{
@@ -1446,13 +1193,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 
 	tkn, err := srv.Authenticator.TokenService().Token(claims)
 	assert.NoError(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "bad-password")
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "the delete-me token in the query is not a session")
+	_, code = call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", "basic:bad-password")
+	assert.Equal(t, http.StatusUnauthorized, code, "the delete-me token in the query is not a session")
 
 	// unknown user: deletion is idempotent, so a valid (signed) delete_me token for a user with
 	// no stored data is a no-op success rather than an error
@@ -1460,13 +1202,8 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	badClaimsUser.User.ID = "no-such-id"
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsUser)
 	assert.NoError(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusOK, resp.StatusCode, resp.Status)
+	b, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusOK, code, b)
 	badClaimsUser.User.ID = "provider1_user1"
 
 	// try without deleteme flag
@@ -1474,16 +1211,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", false)
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsWithoutDeleteMe)
 	assert.NoError(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t, string(b), "can't use provided token")
+	b, code = call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusForbidden, code)
+	assert.Contains(t, b, "can't use provided token")
 	badClaimsWithoutDeleteMe.User.SetBoolAttr("delete_me", true)
 
 	// try with wrong audience
@@ -1491,16 +1221,9 @@ func TestAdmin_DeleteMeRequestFailed(t *testing.T) {
 	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42", "something else"}
 	tkn, err = srv.Authenticator.TokenService().Token(badClaimsMultipleAudience)
 	assert.NoError(t, err)
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
-	assert.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err = io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t, string(b), "can't process token, claims.Audience expected to be a single element but it's not")
+	b, code = call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
+	assert.Equal(t, http.StatusBadRequest, code)
+	assert.Contains(t, b, "can't process token, claims.Audience expected to be a single element but it's not")
 	badClaimsMultipleAudience.Audience = jwt.ClaimStrings{"remark42"}
 }
 
@@ -1517,19 +1240,16 @@ func TestAdmin_GetUserInfo(t *testing.T) {
 	_, err = srv.DataService.Create(c2)
 	assert.NoError(t, err)
 
-	body, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah",
-		ts.URL))
-	assert.Equal(t, http.StatusOK, code)
-	u := store.User{}
-	err = json.Unmarshal([]byte(body), &u)
-	assert.NoError(t, err)
+	u := callJSON[store.User](t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah",
+		ts.URL), "", adminPasswd)
 	assert.Equal(t, store.User{Name: "user1 name", ID: "user1", Picture: "", IP: "823688dafca7393d24c871a2da98a84d8732e927",
 		Admin: false, Blocked: false, Verified: false}, u)
 
-	_, code = get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah", ts.URL))
+	_, code := get(t, fmt.Sprintf("%s/api/v1/admin/user/user1?site=remark42&url=https://radio-t.com/blah", ts.URL))
 	assert.Equal(t, http.StatusUnauthorized, code, "no auth")
 
-	_, code = getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/user/userX?site=remark42&url=https://radio-t.com/blah", ts.URL))
+	_, code = call(t, http.MethodGet,
+		fmt.Sprintf("%s/api/v1/admin/user/userX?site=remark42&url=https://radio-t.com/blah", ts.URL), "", adminPasswd)
 	assert.Equal(t, http.StatusBadRequest, code, "no info about user")
 }
 
@@ -1546,7 +1266,7 @@ func TestAdmin_DeleteMeRequestTokenWithoutUser(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body, code := getWithAdminAuth(t, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn))
+	body, code := call(t, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), "", adminPasswd)
 	assert.Equal(t, http.StatusForbidden, code, body)
 }
 
@@ -1567,7 +1287,7 @@ func TestAdmin_GetUserInfoEmptyWithoutError(t *testing.T) {
 		srv.DataService.Engine = emptyUserFinder{Interface: srv.DataService.Engine}
 	})
 
-	body, code := getWithAdminAuth(t, ts.URL+"/api/v1/admin/user/nobody?site=remark42")
+	body, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/user/nobody?site=remark42", "", adminPasswd)
 	assert.Equal(t, http.StatusBadRequest, code, body)
 	assert.Contains(t, body, "no comments for user nobody")
 }

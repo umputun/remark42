@@ -44,8 +44,14 @@ func readErrorResponse(t *testing.T, resp *http.Response) (body string, e errorR
 	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.NoError(t, json.Unmarshal(b, &e), string(b))
-	return string(b), e
+	return string(b), decodeError(t, string(b))
+}
+
+// decodeError decodes the error an answer of the api carries in body
+func decodeError(t *testing.T, body string) (e errorResponse) {
+	t.Helper()
+	require.NoError(t, json.Unmarshal([]byte(body), &e), body)
+	return e
 }
 
 // serverDir is the directory a server started by startupT keeps its files in
@@ -154,23 +160,14 @@ func TestRest_VoteSameIP(t *testing.T) {
 	id := addComment(t, store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
 
-	vote := func(tkn string) *http.Response {
-		req, err := http.NewRequest(http.MethodPut,
-			fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=1", ts.URL, id), http.NoBody)
-		require.NoError(t, err)
-		resp, err := sendReq(req, tkn)
-		require.NoError(t, err)
-		return resp
-	}
-
-	resp := vote(dev2Token)
-	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusOK, resp.StatusCode, "first vote from the address accepted")
+	voteURL := fmt.Sprintf("%s/api/v1/vote/%s?site=remark42&url=https://radio-t.com/blah&vote=1", ts.URL, id)
+	_, code := call(t, http.MethodPut, voteURL, "", dev2Token)
+	require.Equal(t, http.StatusOK, code, "first vote from the address accepted")
 
 	// another user from the same address
-	resp = vote(emailUserToken)
-	body, e := readErrorResponse(t, resp)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	body, code := call(t, http.MethodPut, voteURL, "", emailUserToken)
+	e := decodeError(t, body)
+	assert.Equal(t, http.StatusBadRequest, code)
 	assert.Equal(t, errorResponse{Error: "the same ip already voted for " + id, Details: "can't vote for comment",
 		Code: 14}, e, "rejected as a repeated vote, with no address hash")
 	secret, err := srv.DataService.AdminStore.Key("remark42")
@@ -188,14 +185,10 @@ func TestAdmin_DeleteUserAvatarErrorBody(t *testing.T) {
 	require.NoError(t, err)
 	avatarFile := blockAvatarRemoval(t, srv)
 
-	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := sendReq(req, "")
-	require.NoError(t, err)
-	body, e := readErrorResponse(t, resp)
+	body, code := call(t, http.MethodDelete, ts.URL+"/api/v1/admin/user/user1?site=remark42", "", adminPasswd)
+	e := decodeError(t, body)
 
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, code)
 	assert.Equal(t, errorResponse{Error: "avatar store error", Details: "can't delete user's avatar", Code: 0}, e,
 		"the store error is replaced in the body")
 	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
@@ -217,14 +210,10 @@ func TestAdmin_DeleteMeRequestAvatarErrorBody(t *testing.T) {
 		User: &token.User{ID: "user1", Picture: "https://demo.remark42.com/api/v1/avatar/pic.image",
 			Attributes: map[string]any{"delete_me": true}}})
 	require.NoError(t, err)
-	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, http.NoBody)
-	require.NoError(t, err)
-	req.SetBasicAuth("admin", "password")
-	resp, err := sendReq(req, "")
-	require.NoError(t, err)
-	body, e := readErrorResponse(t, resp)
+	body, code := call(t, http.MethodGet, ts.URL+"/api/v1/admin/deleteme?token="+tkn, "", adminPasswd)
+	e := decodeError(t, body)
 
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, code)
 	assert.Equal(t, errorResponse{Error: "avatar store error", Details: "can't delete user's avatar", Code: 0}, e,
 		"the store error is replaced in the body")
 	assert.NotContains(t, body, serverDir(srv), "no server path in the body")

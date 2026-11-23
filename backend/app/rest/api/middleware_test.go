@@ -658,18 +658,9 @@ func Test_withoutQueryParam(t *testing.T) {
 func TestRest_QueryTokenIgnored(t *testing.T) {
 	ts, _ := startupT(t)
 
-	client := http.Client{Timeout: 5 * time.Second}
-	defer client.CloseIdleConnections()
 	status := func(t *testing.T, path, headerToken string) int {
-		req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
-		require.NoError(t, err)
-		if headerToken != "" {
-			req.Header.Set("X-JWT", headerToken)
-		}
-		resp, err := client.Do(req)
-		require.NoError(t, err)
-		require.NoError(t, resp.Body.Close())
-		return resp.StatusCode
+		_, code := call(t, http.MethodGet, ts.URL+path, "", headerToken)
+		return code
 	}
 
 	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42", devToken), "the token is good in the header")
