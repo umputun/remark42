@@ -5,42 +5,87 @@ import type { Comment, Node } from 'common/types';
  *
  * Kept apart from utils.ts so they can be tested without a bundler: the rest of that module reads
  * localStorage at import time, which is enough to make the whole file unimportable outside a
- * browser however pure these three are.
+ * browser however pure they are.
  */
 
 /**
+ * Calls `fn` for every node of the tree, a comment before the replies to it and the replies in
+ * their order.
+ *
+ * The nodes still to visit are kept in a list. A function calling itself for the replies would need
+ * a call stack as deep as the longest chain of replies, and a chain of a few thousand replies, each
+ * answering the one before, is deeper than the stack.
+ */
+export function walkTree(tree: Node[], fn: (node: Node) => void): void {
+  // the next node to visit is the last one
+  const pending = tree.slice().reverse();
+
+  while (pending.length > 0) {
+    const node = pending.pop() as Node;
+
+    fn(node);
+    if (!node.replies) continue;
+    for (let i = node.replies.length - 1; i >= 0; i--) {
+      pending.push(node.replies[i]);
+    }
+  }
+}
+
+/** a list of replies being filtered: what it held, how far it was read and what is kept so far */
+interface Filtering {
+  nodes: Node[];
+  next: number;
+  kept: Node[];
+  changed: boolean;
+}
+
+/**
  * Filters tree node
+ *
+ * Like `walkTree` it keeps its place in a list of its own instead of calling itself: the lists
+ * being filtered, the tree's own first and the one being read last.
  */
 export function filterTree(tree: Node[], fn: (node: Node) => boolean): Node[] {
-  let filtered = false;
-  const newTree = tree.reduce<Node[]>((tree, node) => {
-    if (!fn(node)) {
-      filtered = true;
-      return tree;
+  const lists: Filtering[] = [{ nodes: tree, next: 0, kept: [], changed: false }];
+
+  for (;;) {
+    const list = lists[lists.length - 1];
+
+    if (list.next < list.nodes.length) {
+      const node = list.nodes[list.next++];
+
+      if (!fn(node)) {
+        list.changed = true;
+      } else if (!node.replies) {
+        list.kept.push(node);
+      } else {
+        lists.push({ nodes: node.replies, next: 0, kept: [], changed: false });
+      }
+      continue;
     }
-    const newNode: Node = !node.replies ? node : { ...node, replies: filterTree(node.replies, fn) };
-    if (newNode !== node) {
-      filtered = true;
-    }
-    tree.push(newNode);
-    return tree;
-  }, []);
-  if (!filtered) return tree;
-  return newTree;
+
+    // the list is read to its end. It stays the same array when nothing in it was dropped or rebuilt
+    const filtered = list.changed ? list.kept : list.nodes;
+
+    lists.pop();
+    if (lists.length === 0) return filtered;
+
+    // these were the replies to the node its parent list read last, which is rebuilt around them
+    const parent = lists[lists.length - 1];
+
+    parent.kept.push({ ...parent.nodes[parent.next - 1], replies: filtered });
+    parent.changed = true;
+  }
 }
 
 export function findPinnedComments(thread: Node): Comment[] {
-  let result: Comment[] = [];
+  const result: Comment[] = [];
 
-  if (thread.comment.pin) {
-    result = result.concat(thread.comment);
-  }
-
-  if (thread.replies) {
-    result = result.concat(
-      thread.replies.reduce((acc: Comment[], thread: Node) => acc.concat(findPinnedComments(thread)), [])
-    );
-  }
+  walkTree([thread], ({ comment }) => {
+    if (comment.pin) {
+      result.push(comment);
+    }
+  });
 
   return result;
 }
@@ -54,10 +99,13 @@ export function getPinnedComments(threads: Node[]): Comment[] {
  * only those `fn` accepts
  */
 export function countComments(tree: Node[], fn: (comment: Comment) => boolean = () => true): number {
-  return tree.reduce(
-    (count, node) => count + (fn(node.comment) ? 1 : 0) + (node.replies ? countComments(node.replies, fn) : 0),
-    0
-  );
+  let count = 0;
+
+  walkTree(tree, ({ comment }) => {
+    if (fn(comment)) count++;
+  });
+
+  return count;
 }
 
 /**

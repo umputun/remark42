@@ -13,6 +13,20 @@ function ids(nodes: Node[]): string[] {
   return nodes.map((n) => n.comment.id);
 }
 
+/** a comment `c0` and `length` replies, each answering the one before it; the last one can be pinned */
+function chain(length: number, pinLast = false): Node {
+  let thread = node(`c${length}`, undefined, pinLast);
+
+  for (let i = length - 1; i >= 0; i--) {
+    thread = node(`c${i}`, [thread]);
+  }
+
+  return thread;
+}
+
+/** far more replies, one under another, than a function calling itself for each has stack for */
+const DEEP = 20000;
+
 /**
  * filterTree is what hides a blocked user's comments, and it hides their replies' parents' place
  * in the thread along with them, so it has to walk the whole tree instead of the roots.
@@ -93,6 +107,23 @@ describe('filterTree', () => {
       tree
     );
   });
+
+  it('filters a chain of replies longer than the stack is deep', () => {
+    const tree = [chain(DEEP)];
+    const filtered = filterTree(tree, (n) => n.comment.id !== `c${DEEP}`);
+
+    let last = filtered[0];
+    let length = 0;
+    while (last.replies?.length) {
+      last = last.replies[0];
+      length++;
+    }
+
+    // the last reply is gone, and the one it answered is left with an empty list of replies
+    assert.equal(length, DEEP - 1);
+    assert.equal(last.comment.id, `c${DEEP - 1}`);
+    assert.deepEqual(last.replies, []);
+  });
 });
 
 /**
@@ -128,6 +159,22 @@ describe('findPinnedComments', () => {
       ['a', 'a1']
     );
   });
+
+  it('returns the replies to one comment before the replies to the next', () => {
+    const thread = node('a', [node('a1', [node('a1x', undefined, true)], true), node('a2', undefined, true)]);
+
+    assert.deepEqual(
+      findPinnedComments(thread).map((c) => c.id),
+      ['a1', 'a1x', 'a2']
+    );
+  });
+
+  it('finds a pin at the end of a chain of replies longer than the stack is deep', () => {
+    assert.deepEqual(
+      findPinnedComments(chain(DEEP, true)).map((c) => c.id),
+      [`c${DEEP}`]
+    );
+  });
 });
 
 describe('getPinnedComments', () => {
@@ -153,6 +200,19 @@ describe('countComments', () => {
 
   it('counts an empty tree as none', () => {
     assert.equal(countComments([]), 0);
+  });
+
+  it('counts only the comments the predicate accepts, at every depth', () => {
+    const tree = [node('a', [node('b', [node('c', undefined, true)]), node('d')]), node('e', undefined, true)];
+
+    assert.equal(
+      countComments(tree, (comment) => !comment.pin),
+      3
+    );
+  });
+
+  it('counts a chain of replies longer than the stack is deep', () => {
+    assert.equal(countComments([chain(DEEP)]), DEEP + 1);
   });
 });
 
