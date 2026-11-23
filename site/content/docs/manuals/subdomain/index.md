@@ -8,7 +8,7 @@ All documentation examples show configurations with remark42 on its own subdomai
 
 - In the frontend configuration, set `host: 'https://example.com/remark42'` in `remark_config`. The embed snippet loads the widget from that address, here `https://example.com/remark42/web/embed.mjs`.
 
-- The backend `REMARK_URL` parameter will be `https://example.com/remark42`. Set `ALLOWED_HOSTS="'self'"` to allow embedding only from the same origin. Set `AUTH_SAME_SITE=lax`: an OAuth provider sends the reader back to the callback URL below from its own site, a browser does not send a `strict` cookie with that cross-site request, and the sign-in fails with `failed to get token`.
+- The backend `REMARK_URL` parameter will be `https://example.com/remark42`. Set `ALLOWED_HOSTS` to `'self'` to allow embedding only from the same origin. Set `AUTH_SAME_SITE=lax`: an OAuth provider sends the reader back to the callback URL below from its own site, a browser does not send a `strict` cookie with that cross-site request, and the sign-in fails with `failed to get token`. Apple returns the reader with a cross-site POST, which carries no `lax` cookie either, so with Apple sign-in enabled set `AUTH_SAME_SITE=none` instead.
 
 - And you also need to slightly modify the callback URL for the social media login APIs:
   - Facebook Valid OAuth Redirect URIs: `https://example.com/remark42/auth/facebook/callback`
@@ -19,7 +19,7 @@ All documentation examples show configurations with remark42 on its own subdomai
 
 Both Nginx and Caddy configuration below rely on remark42 available on hostname `remark42`, which is achieved by having `container_name: remark42` in Docker Compose configuration file.
 
-Example `docker-compose.yml`, to which you add the `ALLOWED_HOSTS` and `AUTH_SAME_SITE` settings above and at least one sign-in provider; without a provider, readers cannot sign in to comment:
+Example `docker-compose.yml` with the settings above, to which you add at least one sign-in provider; without a provider, readers cannot sign in to comment:
 
 ```yaml
 services:
@@ -32,6 +32,8 @@ services:
       - SITE=<site_ID>
       - SECRET=<secret>
       - ADMIN_SHARED_ID=<shared_id>
+      - ALLOWED_HOSTS='self'
+      - AUTH_SAME_SITE=lax
     volumes:
       - ./data:/srv/var
     logging:
