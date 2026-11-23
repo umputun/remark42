@@ -1795,6 +1795,45 @@ func (f *fakeDestination) GetVerify() []notify.VerificationRequest {
 	return slices.Clone(f.verifications)
 }
 
+// TestRest_EmailSubscribeTakesOnlyBareAddress checks what the subscription accepts as an address.
+// The value ends up in the confirmation mail and in the mailto destination the mailer reads it from
+func TestRest_EmailSubscribeTakesOnlyBareAddress(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name    string
+		address string
+		status  int
+	}{
+		{name: "display name", address: `"unlock it at https://evil.example.com" <good@example.com>`, status: http.StatusBadRequest},
+		{name: "comment", address: "good@example.com (comment)", status: http.StatusBadRequest},
+		{name: "two addresses", address: "good@example.com,other@example.com", status: http.StatusBadRequest},
+		{name: "sender and subject of its own", address: "good@example.com?from=support%40bank.example.com&subject=Your+account+is+locked&x=",
+			status: http.StatusBadRequest},
+		{name: "address the mailer can't take", address: "first#last@example.com", status: http.StatusBadRequest},
+		{name: "as typed, with spaces around it", address: " good@example.com ", status: http.StatusOK},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(map[string]string{"site": "remark42", "address": tt.address})
+			require.NoError(t, err)
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/email/subscribe?site=remark42", bytes.NewReader(body))
+			require.NoError(t, err)
+			resp, err := sendReq(req, devToken)
+			require.NoError(t, err)
+			respBody, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, tt.status, resp.StatusCode, string(respBody))
+			if tt.status == http.StatusOK {
+				assert.Contains(t, string(respBody), `"address":"good@example.com"`, "the address without the spaces")
+			}
+		})
+	}
+}
+
 func TestRest_EmailNotification(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()

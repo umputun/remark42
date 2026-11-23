@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -359,21 +360,33 @@ func Test_validEmailAuth(t *testing.T) {
 		req    string
 		status int
 	}{
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone", http.StatusOK},
-		{"/auth/email/login?site=site-with-dash_and_underscore-and.dot&address=umputun%example.com&user=someone", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone+blah", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Евгений+Умпутун", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=12", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
-		{"/auth/twitter/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=site-with-dash_and_underscore-and.dot&address=umputun%40example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someone+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Евгений+Умпутун", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=12", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=..blah+blah", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
+		{"/auth/twitter/login?site=remark42&address=umputun%40example.com&user=..blah+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun+example.com&user=someone", http.StatusForbidden},
-		{"/auth/email/login?site=bad!site&address=umputun%example.com&user=someone", http.StatusForbidden},
-		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=bad!site&address=umputun%40example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%40example.com&user=someone", http.StatusForbidden},
 		// three characters is the shortest name the widget's sign-in form accepts
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=abc", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Ева", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=abc", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ева", http.StatusOK},
+		// an address and nothing else
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("first#last?x@example.com"), http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=Some.User%2Btag%40sub.example.com", http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("пользователь@example.com"), http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`"unlock it at https://evil.example.com" <victim@example.com>`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`Your account is locked <victim@example.com>`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`victim@example.com (unlock at evil.example.com)`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`unlock at evil.example.com: victim@example.com;`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`"free text"@example.com`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim+see\u00a0evil.example.com@example.com"), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(" victim@example.com"), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim@example.com,other@example.com"), http.StatusForbidden},
 	}
 
 	for i, tt := range tbl {
@@ -385,6 +398,70 @@ func Test_validEmailAuth(t *testing.T) {
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
 			assert.NoError(t, resp.Body.Close())
+		})
+	}
+}
+
+func Test_isPlainEmail(t *testing.T) {
+	for _, s := range []string{"a@example.com", "Some.User+tag@sub.example.com", "пользователь@example.com", "a?b#c@example.com"} {
+		assert.True(t, isPlainEmail(s), s)
+	}
+	for _, s := range []string{
+		"", "example.com", "a@", `"Some User" <a@example.com>`, "Some User <a@example.com>", "<a@example.com>",
+		"a@example.com (comment)", "group: a@example.com;", `"free text"@example.com`, " a@example.com", "a@example.com ",
+		"a@example.com,b@example.com", "a\u00a0b@example.com", "a\u202eb@example.com", "a@example.com\r\nBcc: b@example.com",
+	} {
+		assert.False(t, isPlainEmail(s), "%q", s)
+	}
+}
+
+func Test_singleAuthPath(t *testing.T) {
+	registered := func(name string) bool { return name == "email" || name == "github" }
+
+	tbl := []struct {
+		path   string
+		status int
+	}{
+		{"/auth/status", http.StatusOK},
+		{"/auth/user", http.StatusOK},
+		{"/auth/list", http.StatusOK},
+		{"/auth/logout", http.StatusOK},
+		{"/auth/email/login", http.StatusOK},
+		{"/auth/github/login", http.StatusOK},
+		{"/auth/github/callback", http.StatusOK},
+		// in front of an endpoint
+		{"/auth/x/email/login", http.StatusNotFound},
+		{"/auth/1/2/email/login", http.StatusNotFound},
+		{"/auth/x%2Femail/login", http.StatusNotFound},
+		{"/auth/email%2Flogin/login", http.StatusNotFound},
+		{"/auth/x/status", http.StatusNotFound},
+		{"/auth/x/list", http.StatusNotFound},
+		{"/auth/x/logout", http.StatusNotFound},
+		// a provider in front of a call that has none
+		{"/auth/email/status", http.StatusNotFound},
+		{"/auth/email/user", http.StatusNotFound},
+		{"/auth/github/list", http.StatusNotFound},
+		{"/auth/github/logout", http.StatusNotFound},
+		// a provider's call without the provider, which the handler would read from the mount point
+		{"/auth/login", http.StatusNotFound},
+		{"/auth/callback", http.StatusNotFound},
+		// after an endpoint
+		{"/auth/email/login/", http.StatusNotFound},
+		{"/auth/status/", http.StatusNotFound},
+		// no endpoint
+		{"/auth/", http.StatusNotFound},
+		{"/auth/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/email/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/twitter/login", http.StatusNotFound}, // not registered
+		{"/auth/EMAIL/login", http.StatusNotFound},   // the handler matches the name exactly too
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "http://example.com"+tt.path+"?site=remark42", http.NoBody)
+			w := httptest.NewRecorder()
+			singleAuthPath(registered)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+			assert.Equal(t, tt.status, w.Code)
 		})
 	}
 }

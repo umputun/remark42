@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
@@ -419,6 +420,58 @@ func rejectEmbedded(next http.Handler) http.Handler {
 	})
 }
 
+// authRoutePrefix is where the auth handler is mounted
+const authRoutePrefix = "/auth/"
+
+// the calls the auth handler answers: authActions without a provider in the path and
+// providerAuthActions for a provider
+var (
+	authActions         = []string{"list", "logout", "status", "user"}
+	providerAuthActions = []string{"login", "callback"}
+)
+
+// singleAuthPath is a middleware for the auth routes that leaves every endpoint of the auth handler
+// one path. The handler takes the action from the last element of the path and the provider from
+// the one before it, whatever stands in front of them, so it answers /auth/x/email/login as the
+// email sign-in and /auth/email/status as /auth/status. The rate limiter counts requests by path
+// and validEmailAuth compares the path, so each such path had a limit of its own and skipped the
+// check. Only /auth/<action> for the four calls without a provider and /auth/<provider>/<action>
+// for a registered provider's sign-in and callback pass, anything else gets 404. The path checked
+// is the decoded one, which the handler, the limiter and validEmailAuth read, so an encoded slash
+// makes no difference.
+func singleAuthPath(registered func(provider string) bool) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			elems := strings.Split(strings.TrimPrefix(r.URL.Path, authRoutePrefix), "/")
+			known := false
+			switch len(elems) {
+			case 1:
+				known = slices.Contains(authActions, elems[0])
+			case 2:
+				known = registered(elems[0]) && slices.Contains(providerAuthActions, elems[1])
+			}
+			if !known {
+				http.NotFound(w, r)
+				return
+			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// isPlainEmail reports whether s is an email address and nothing else. net/mail parses a mailbox
+// the way a mail header writes it, so it also takes a display name, a comment, a group and a
+// quoted local part, and the free text of those would end up in the mail sent to the address
+func isPlainEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return false
+	}
+	// net/mail lets any non-ASCII rune into an address, spaces and invisible ones included
+	return !strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) })
+}
+
 // validEmailAuth is a middleware for auth endpoints for email method.
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {
@@ -430,7 +483,7 @@ func validEmailAuth() func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if r.URL.Path != "/auth/email/login" {
+			if r.URL.Path != authRoutePrefix+"email/login" {
 				// not email login, skip the check
 				h.ServeHTTP(w, r)
 				return
@@ -447,6 +500,11 @@ func validEmailAuth() func(http.Handler) http.Handler {
 			if a := r.URL.Query().Get("address"); a != "" {
 				if _, err := mail.ParseAddress(a); err != nil {
 					log.Printf("[WARN] suspicious address rejected: %s", store.MaskForLog(err.Error())) // it can quote the input
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+				if !isPlainEmail(a) {
+					log.Print("[WARN] suspicious address rejected: more than an address")
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
