@@ -33,7 +33,7 @@ const config = {
     '<rootDir>/app/__stubs__/static-config.ts',
   ],
   collectCoverageFrom: [
-    'app/**/*.{ts,tsx}',
+    'app/**/*.{js,ts,tsx}',
     // jest excludes a file it ran as a test from coverage, but these it never runs, so without
     // this they are counted as source that nothing covers and drag the whole figure down. their
     // own coverage is reported by the node run in the unit CI job

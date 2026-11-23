@@ -41,10 +41,9 @@ export type CommentProps = {
   /**
    * "main" view used in main case,
    * "pinned" view used in pinned block,
-   * "user" is for user comments widget,
-   * "preview" is for last comments page
+   * "user" is for user comments widget
    */
-  view: 'main' | 'pinned' | 'user' | 'preview';
+  view: 'main' | 'pinned' | 'user';
   /** defines whether comment should have reply/edit actions */
   disabled?: boolean;
   collapsed?: boolean;
@@ -338,12 +337,7 @@ export class Comment extends Component<CommentProps, State> {
 
     const o = {
       ...props.data,
-      text:
-        props.view === 'preview'
-          ? getTextSnippet(props.data.text)
-          : props.data.delete
-            ? intl.formatMessage(messages.deletedComment)
-            : props.data.text,
+      text: props.data.delete ? intl.formatMessage(messages.deletedComment) : props.data.text,
       time: new Date(props.data.time),
       orig: props.data.orig,
       user: props.data.user,
@@ -353,23 +347,18 @@ export class Comment extends Component<CommentProps, State> {
     const isUseless =
       !!props.isUserBanned ||
       !!props.data.delete ||
-      (props.view !== 'preview' &&
-        props.data.score < StaticStore.config.low_score &&
-        !props.data.pin &&
-        !props.disabled);
+      (props.data.score < StaticStore.config.low_score && !props.data.pin && !props.disabled);
 
     let viewClass: string | undefined;
     if (props.view === 'main' || props.view === 'pinned') {
       viewClass = props.data.user.admin ? styles.viewAdmin : undefined;
     } else if (props.view === 'user') {
       viewClass = styles.viewUser;
-    } else if (props.view === 'preview') {
-      viewClass = styles.viewPreview;
     }
 
     const rootClassName = clsx(
       styles.root,
-      props.view !== 'preview' && (props.theme === 'dark' ? styles.themeDark : styles.themeLight),
+      props.theme === 'dark' ? styles.themeDark : styles.themeLight,
       viewClass,
       isUseless && styles.useless,
       props.view === 'main' && isReplying && styles.replying,
@@ -378,36 +367,6 @@ export class Comment extends Component<CommentProps, State> {
       props.collapsed && styles.collapsed,
       props.mix
     );
-
-    if (props.view === 'preview') {
-      return (
-        <article className={rootClassName}>
-          <div className={styles.body}>
-            {!!o.title && (
-              <div className={styles.title}>
-                <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-                  {o.title}
-                </a>
-              </div>
-            )}
-            <div className={styles.info} data-nosnippet>
-              {!!o.title && o.user.name}
-
-              {!o.title && (
-                <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.username}>
-                  {o.user.name}
-                </a>
-              )}
-            </div>{' '}
-            {/* the snippet is the comment's plain text with its entities decoded: parsed as HTML it
-                would turn markup a commenter wrote as text into elements */}
-            <div className={clsx(styles.text, 'raw-content')} dir="auto">
-              {o.text}
-            </div>
-          </div>
-        </article>
-      );
-    }
 
     if (this.state.renderDummy && !props.editMode) {
       const [width, height] = this.base
@@ -596,18 +555,6 @@ export class Comment extends Component<CommentProps, State> {
       </article>
     );
   }
-}
-
-function getTextSnippet(html: string) {
-  const LENGTH = 100;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html.replace('</p><p>', ' ');
-
-  // the div is never rendered, and for such an element innerText is defined as its textContent
-  const result = tmp.textContent || '';
-  const snippet = result.substring(0, LENGTH);
-
-  return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
 function getLocalDatetime(intl: IntlShape, date: Date) {

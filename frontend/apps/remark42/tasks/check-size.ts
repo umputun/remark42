@@ -11,8 +11,8 @@ export const BUDGETS: Budget[] = [
   { file: 'embed.mjs', limit: 2_500 },
   { file: 'remark.mjs', limit: 60_000 },
   { file: 'remark.css', limit: 11_000 },
-  { file: 'last-comments.mjs', limit: 20_000 },
-  { file: 'last-comments.css', limit: 6_000 },
+  { file: 'last-comments.mjs', limit: 2_500 },
+  { file: 'last-comments.css', limit: 3_500 },
   { file: 'deleteme.mjs', limit: 9_500 },
 ];
 

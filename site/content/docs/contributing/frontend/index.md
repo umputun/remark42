@@ -87,6 +87,7 @@ Run `pnpm build` inside `./frontend/apps/remark42`, and result files will be sav
 ## Code Style
 
 - The project uses TypeScript to analyze code statically
+- The `last-comments` entry, `app/last-comments.js` with `app/components/list-comments/list-comments.js`, is plain JavaScript that imports no package. Its types are JSDoc comments, checked by the same `pnpm type-check`, and it builds its elements with the DOM API
 - The project uses Eslint and Stylelint to check the frontend code. You can manually run via `pnpm lint`
 - `pnpm format` reformats the code with prettier, and `pnpm lint` runs in CI on every pull request
 - If you want IDE integration, you need Eslint and Stylelint plugins to be installed. Eslint reads `eslint.config.mjs` from the directory it is run in, so point your editor at the app directory: for VSCode, `"eslint.workingDirectories": ["frontend/apps/remark42"]`
@@ -100,6 +101,7 @@ Run `pnpm build` inside `./frontend/apps/remark42`, and result files will be sav
 ## Imports
 
 - Imports for TypeScript, JavaScript files should be without extension: `./index`, not `./index.ts`
+- The exceptions are the `*.unit.test.ts` files and the plain JavaScript entry: their imports are relative and name the extension, as in `./common/direction.ts`
 - If the file resides in the same directory or subdirectory, the import should be relative: `./types/something`
 - Otherwise, it should be imported by absolute path relative to the `app` folder like `common/types` which maps to `./app/common/types.ts` in the build, tsconfig, and Jest
 - The extension rule and the alias rule above are reversed inside the dependency-free test layer described under Testing, and in any module it imports: node's ESM resolver refuses an extensionless specifier and knows nothing of the alias, so those files write `./types.ts` in full and never `common/…`. The build, Jest and `tsc` all resolve the explicit relative form too, which is why the exception costs nothing outside those files. It applies to value imports only; a type-only import erases before either runtime sees it, and keeps the ordinary style

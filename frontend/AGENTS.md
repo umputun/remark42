@@ -48,8 +48,8 @@ The widget is built by the go program in `frontend/build`, which calls esbuild t
 server, which keeps its build in memory), and so do the Dockerfile and
 `scripts/prepare-release-assets.sh`. There is no bundler configuration in JavaScript: the entries,
 the browser floor and the CSS handling are all in `build.go`, each with the reason beside it. The
-build needs go and the six runtime packages in `node_modules`, which it bundles; nothing else pnpm
-installs takes part in it. `build_test.go` builds a small fixture app, so the builder's own tests
+build needs go and the six runtime packages in `node_modules`, which it bundles into `remark.mjs`;
+nothing else pnpm installs takes part in it. `build_test.go` builds a small fixture app, so the builder's own tests
 need nothing installed.
 
 Four things in `build.go` are easy to undo by accident:
@@ -80,6 +80,27 @@ nothing strips them.
 imports resolve from, `verbatimModuleSyntax`, and from `target` that class fields are assigned in
 the constructor. The build does not type check: `pnpm type-check` does, as its own CI job, in the
 Dockerfile's test step and in `release.yml`.
+
+## `last-comments` is plain JavaScript and imports no package
+
+The widget is moving off its runtime packages one entry at a time, and `last-comments` is the first
+to have none: `app/last-comments.js` and `app/components/list-comments/list-comments.js` build the
+list with the DOM API. What holds it there:
+
+- `entries` in `frontend/build/build.go` marks the entries that may bundle from `node_modules`,
+  which is `remark` alone. `refusePackages` fails the build when any other entry reaches a file
+  there, in its script or its stylesheet, so `pnpm build` and the Docker build go red on a package
+  import. The size budget of `last-comments.mjs` in `tasks/check-size.ts` is set close above its
+  size for the same reason.
+- The files are `.js` with types in JSDoc comments. `tsconfig.json` has `allowJs` and `checkJs`, so
+  `pnpm type-check` checks them like the rest, and `pnpm lint` and `pnpm format` cover `.js` already.
+- They import the helpers the rest of the widget uses (`common/constants.config.ts`,
+  `common/direction.ts`, `common/fetcher-core.ts`, `utils/loadLocale.ts`), by relative path with the
+  extension. A helper may be imported there only while it reaches no package itself.
+- Whatever a commenter or a page supplied is set with `textContent`. The comment's HTML is parsed
+  in a `<template>`, which loads none of its images, and only its text is used.
+- Its tests are in the e2e suite, `e2e/widgets_test.go`: the list is a few elements written into a
+  host page, which a browser test covers whole.
 
 ## Type-only imports have to say so
 

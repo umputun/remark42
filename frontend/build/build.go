@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -18,19 +20,21 @@ import (
 // one script named after the entry, with the styles they reach in a stylesheet of the same name.
 // remark and last-comments start with the custom properties, so those come first in their
 // stylesheets and every rule after them can read one.
+//
+// packages says an entry may bundle what is installed in node_modules. Only remark does: it renders
+// preact components, so a development build also loads preact/debug into it, ahead of everything
+// else, for the Preact DevTools extension. The other entries are written without packages, and a
+// build in which one of them reaches into node_modules fails.
 var entries = []struct {
-	name    string
-	imports []string
+	name     string
+	imports  []string
+	packages bool
 }{
 	{name: "embed", imports: []string{"./app/embed.ts"}},
 	{name: "deleteme", imports: []string{"./app/deleteme.ts"}},
-	{name: "last-comments", imports: []string{"./app/styles/custom-properties.css", "./app/last-comments.tsx"}},
-	{name: "remark", imports: []string{"./app/styles/custom-properties.css", "./app/remark.tsx"}},
+	{name: "last-comments", imports: []string{"./app/styles/custom-properties.css", "./app/last-comments.js"}},
+	{name: "remark", imports: []string{"./app/styles/custom-properties.css", "./app/remark.tsx"}, packages: true},
 }
-
-// rendersPreact names the entries that render components, which are the ones a development build
-// loads preact/debug into, ahead of everything else, for the Preact DevTools extension
-var rendersPreact = map[string]bool{"last-comments": true, "remark": true}
 
 // engines is the oldest version of each browser the scripts and styles are written down to. It is
 // what the query "defaults, not IE 11, not samsung 12" resolved to when the build moved off
@@ -176,6 +180,8 @@ func options(appDir string, dev bool, names *moduleNames) api.BuildOptions {
 		Sourcemap:         sourcemap,
 		LogLevel:          api.LogLevelWarning,
 		Write:             false,
+		// read by refusePackages
+		Metafile: true,
 	}
 }
 
@@ -194,7 +200,7 @@ func entryPlugin(appDir string, dev bool) api.Plugin {
 						if e.name != args.Path {
 							continue
 						}
-						contents := entrySource(e.imports, dev && rendersPreact[e.name])
+						contents := entrySource(e.imports, dev && e.packages)
 						return api.OnLoadResult{Contents: &contents, ResolveDir: appDir, Loader: api.LoaderJS}, nil
 					}
 					return api.OnLoadResult{}, fmt.Errorf("unknown entry %q", args.Path)
@@ -261,6 +267,9 @@ func compile(appDir string, dev bool) (map[string][]byte, error) {
 		// esbuild has printed each error with its location already
 		return nil, fmt.Errorf("build failed with %d error(s)", len(result.Errors))
 	}
+	if err := refusePackages(result.Metafile); err != nil {
+		return nil, err
+	}
 
 	files, err := outputs(opts.Outdir, result.OutputFiles)
 	if err != nil || dev {
@@ -270,6 +279,43 @@ func compile(appDir string, dev bool) (map[string][]byte, error) {
 		return nil, err
 	}
 	return files, minifyScripts(files)
+}
+
+// refusePackages fails a build in which an entry written without packages bundles a file from
+// node_modules, in its script or in its stylesheet. metafile is esbuild's description of the
+// build, which lists the files that went into each output.
+func refusePackages(metafile string) error {
+	var built struct {
+		Outputs map[string]struct {
+			Inputs map[string]json.RawMessage `json:"inputs"`
+		} `json:"outputs"`
+	}
+	if err := json.Unmarshal([]byte(metafile), &built); err != nil {
+		return fmt.Errorf("reading what the build bundled: %w", err)
+	}
+
+	allowed := map[string]bool{}
+	for _, e := range entries {
+		allowed[e.name] = e.packages
+	}
+
+	var found []string
+	for output, described := range built.Outputs {
+		entry := strings.TrimSuffix(path.Base(output), path.Ext(output))
+		if strings.HasSuffix(output, ".map") || allowed[entry] {
+			continue
+		}
+		for input := range described.Inputs {
+			if slices.Contains(strings.Split(input, "/"), "node_modules") {
+				found = append(found, fmt.Sprintf("%s bundles %s", path.Base(output), input))
+			}
+		}
+	}
+	if len(found) == 0 {
+		return nil
+	}
+	sort.Strings(found)
+	return fmt.Errorf("an entry written without packages reaches into node_modules: %s", strings.Join(found, "; "))
 }
 
 // outputs indexes what a build produced by file name

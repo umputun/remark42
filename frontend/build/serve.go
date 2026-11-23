@@ -58,20 +58,7 @@ func serve(appDir, assetsDir, addr string, backend *url.URL) error {
 
 	opts := options(appDir, true, nil)
 	opts.LogLevel = api.LogLevelInfo
-	opts.Plugins = append(opts.Plugins, api.Plugin{
-		Name: "serve",
-		Setup: func(build api.PluginBuild) {
-			build.OnEnd(func(result *api.BuildResult) (api.OnEndResult, error) {
-				if len(result.Errors) > 0 {
-					latest.take(nil, true)
-					return api.OnEndResult{}, nil
-				}
-				files, err := outputs(opts.Outdir, result.OutputFiles)
-				latest.take(files, err != nil)
-				return api.OnEndResult{}, err
-			})
-		},
-	})
+	opts.Plugins = append(opts.Plugins, servePlugin(latest, opts.Outdir))
 
 	ctx, ctxErr := api.Context(opts)
 	if ctxErr != nil {
@@ -87,6 +74,39 @@ func serve(appDir, assetsDir, addr string, backend *url.URL) error {
 	log.Printf("widget on http://%s/web/, API from %s", addr, backend)
 	srv := &http.Server{Addr: addr, Handler: devHandler(latest, assetsDir, backend), ReadHeaderTimeout: 10 * time.Second}
 	return srv.ListenAndServe()
+}
+
+// servePlugin hands each finished development build to latest, which keeps the last one that may
+// be served
+func servePlugin(latest *built, outDir string) api.Plugin {
+	return api.Plugin{
+		Name: "serve",
+		Setup: func(build api.PluginBuild) {
+			build.OnEnd(func(result *api.BuildResult) (api.OnEndResult, error) {
+				files, err := devOutputs(outDir, result)
+				latest.take(files, err != nil)
+				if errors.Is(err, errBuildFailed) {
+					// esbuild has printed its own errors
+					return api.OnEndResult{}, nil
+				}
+				return api.OnEndResult{}, err
+			})
+		},
+	}
+}
+
+// errBuildFailed stands for the errors esbuild reported about a build
+var errBuildFailed = errors.New("the build failed")
+
+// devOutputs is what a development rebuild has to serve, or why it serves nothing new
+func devOutputs(outDir string, result *api.BuildResult) (map[string][]byte, error) {
+	if len(result.Errors) > 0 {
+		return nil, errBuildFailed
+	}
+	if err := refusePackages(result.Metafile); err != nil {
+		return nil, err
+	}
+	return outputs(outDir, result.OutputFiles)
 }
 
 // devHandler routes the development server's requests
