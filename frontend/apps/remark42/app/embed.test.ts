@@ -164,6 +164,34 @@ describe('embed', () => {
     scrollTo.mockRestore();
   });
 
+  it('ignores a message with no source after the host page removed the widget', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    iframe.style.height = '100px';
+
+    // a host page that drops the root without destroy() leaves the listener attached, and a frame
+    // removed right after posting delivers a message with no source. Browsers give an iframe
+    // outside the page no contentWindow; jsdom keeps it, so it is taken away here
+    root.remove();
+    Object.defineProperty(iframe, 'contentWindow', { value: null });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { height: 9000, scrollTo: 5000, profile: { id: 'anyone', name: 'any text' } },
+        source: null,
+      })
+    );
+    jest.advanceTimersToNextFrame();
+    jest.advanceTimersToNextFrame();
+
+    expect(iframe.style.height).toBe('100px');
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.querySelectorAll('iframe')).toHaveLength(0);
+
+    scrollTo.mockRestore();
+  });
+
   it('drops a scroll still waiting for its frames when the widget is destroyed', async () => {
     const root = await mount();
     const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
