@@ -54,7 +54,6 @@
           try {
             var name = JSON.parse(window.name);
             var colors = name.__colors__;
-            var font = name.__font__;
             var root = document.documentElement;
             if (colors) {
               for (var color in colors) {
@@ -64,9 +63,6 @@
                 }
                 root.style.setProperty(color, colors[color]);
               }
-            }
-            if (font) {
-              root.style.setProperty('--font-family', font);
             }
           } catch (e) {}
         }

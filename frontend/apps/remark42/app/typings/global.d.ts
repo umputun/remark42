@@ -47,9 +47,6 @@ type RemarkConfig = {
   simple_view?: boolean;
   // Optional, 'false' by default. Hides footer with signature and links to Remark42.
   no_footer?: boolean;
-  // Optional, 'system-ui' by default. A string containing the fonts being used, delimited by commas for
-  // alternative fonts if the first one doesn't exist on the system.
-  __font__?: string;
   // Optional. Overrides CSS custom properties on the widget's own document, e.g.
   // { '--primary-color': '0, 100, 200', '--font-family': 'Georgia' }. Only properties the widget's
   // own stylesheets already declare have any effect. Read once at load time (via the iframe's

@@ -92,7 +92,7 @@
 
 .editAvatarHint {
   display: block;
-  color: var(--color13);
+  color: rgb(var(--lighter-text-color));
 }
 
 .content {

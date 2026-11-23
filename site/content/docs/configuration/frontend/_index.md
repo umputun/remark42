@@ -27,9 +27,7 @@ aliases:
 - **`show_rss_subscription`**`: boolean` (optional, `true` by default) – enables RSS subscription feature in interface
 - **`simple_view`**`: boolean` (optional, `false` by default) – simplifies the comment form, hiding the formatting toolbar and the preview button; `false` does not disable `SIMPLE_VIEW` enabled on the backend
 - **`no_footer`**`: boolean` (optional, `false` by default) – hides footer with signature and links to Remark42
-- **`custom_properties`**`: object` (optional) – CSS custom properties for the widget, see [Matching your site's font](#matching-your-sites-font)
-- **`__font__`**`: string` (optional, `system-ui` by default) - a string containing the fonts being used for the iframe module, delimited by commas for alternative fonts if the first one doesn't exist on the system.
-- **`__colors__`**`: {'--primary-color': 'r, g, b', '--primary-text-color': 'r, g, b', .., '--shadow-color': 'r, g, b, a'}` (optional) - An object containing different rgb values for changing the interface colors for the iframe module, and an rgba value for changing the shadows. Many of these settings will be overwritten by using the dark theme, so this is mainly to be used with the light theme as the base setting. Colors not included in the object will have their default values. Note that interface elements might change their default color group in the future, so any changes made here are likely to break with future updates. Previous versions included numbered colors as well (e.g. --color11), but these have been replaced with the named colors.
+- **`custom_properties`**`: object` (optional) – CSS custom properties for the widget, see [Matching your site's font](#matching-your-sites-font) and [Changing the widget's colors](#changing-the-widgets-colors)
 
 Configuration example:
 
@@ -50,29 +48,9 @@ Configuration example:
 		show_rss_subscription: false,
 		simple_view: true,
 		no_footer: false,
-		__font__: 'Comic Sans MS, Comic Sans, Chalkboard SE, Comic Neue, sans-serif',
-		__colors__: {
-		  '--primary-background-color': '0, 0, 255',
-			'--secondary-background-color': '255, 0, 0',
-			'--primary-color': '255, 255, 0',
-			'--primary-brighter-color': '255, 255, 0',
-			'--primary-text-color': '255, 255, 255',
-			'--secondary-text-color': '255, 255, 0',
-			'--inverse-text-color': '255, 0, 0',
-			'--lighter-text-color': '255, 255, 255',
-			'--line-color': '0, 0, 0',
-			'--line-brighter-color': '0, 0, 0',
-			'--deactivated-color': '255, 0, 0',
-			'--highlight-color': '255, 0, 255',
-			'--selection-color': '255, 255, 0',
-			'--downvote-color': '255, 0, 0',
-			'--upvote-color': '0, 255, 0',
-			'--verified-color': '0, 0, 255',
-			'--ghost-color': '0, 0, 0',
-			'--white-color': '255, 255, 255',
-			'--error-color': '255, 0, 0',
-			'--error-background': '255, 255, 0',
-			'--shadow-color': '0, 0, 0, 0.5'
+		custom_properties: {
+			'--font-family': 'Georgia, serif',
+			'--primary-color': '0, 100, 200'
 		}
 	}
 </script>
@@ -148,6 +126,50 @@ though — `--font-size`, for example, isn't wired to anything: most components 
 font-size instead of reading a variable, so setting it has no visible effect. Even a property that
 does work today isn't guaranteed to keep working, or keep meaning the same thing, in a future
 version. Treat anything beyond `--font-family` as unsupported and best-effort, not a documented API.
+
+#### Changing the widget's colors
+
+`custom_properties` also takes the color variables the widget's stylesheets read. Each value is a
+comma-separated `r, g, b` triplet without `rgb()` around it; `--shadow-color` takes a fourth
+component, the opacity:
+
+```js
+var remark_config = {
+	host: "REMARK_URL",
+	site_id: "YOUR_SITE_ID",
+	custom_properties: {
+		"--primary-color": "0, 100, 200",
+		"--primary-brighter-color": "0, 120, 230",
+		"--shadow-color": "0, 0, 0, 0.2",
+	},
+}
+```
+
+The variables are `--primary-color`, `--primary-brighter-color`, `--primary-text-color`,
+`--secondary-text-color`, `--inverse-text-color`, `--lighter-text-color`, `--deactivated-color`,
+`--primary-background-color`, `--secondary-background-color`, `--highlight-color`,
+`--selection-color`, `--shadow-color`, `--line-color`, `--line-brighter-color`, `--upvote-color`,
+`--downvote-color`, `--verified-color`, `--ghost-color`, `--error-color`, `--error-background` and
+`--white-color`. Their default values are in
+[`custom-properties.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/custom-properties.css).
+A variable left out keeps its default. In the light theme four of them start from darker values, set
+on `:root.light` in
+[`global.css`](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/app/styles/global.css)
+so text reads on white: `--primary-color`, `--primary-brighter-color`, `--lighter-text-color` and
+`--deactivated-color`. A value passed here replaces those too, so check its contrast on white.
+
+`custom_properties` reaches the comments widget only. The last comments widget renders into your
+page and keeps the defaults, and the counter takes its styling from your page.
+
+The dark theme sets eleven of them again: `--primary-color`, `--primary-brighter-color`,
+`--primary-text-color`, `--secondary-text-color`, `--primary-background-color`,
+`--secondary-background-color`, `--highlight-color`, `--line-color`, `--line-brighter-color`,
+`--error-color` and `--error-background`. A value passed for one of these applies in the light theme
+only; the other variables apply in both themes.
+
+The note above covers the colors too: which element reads which variable can change between
+versions. The numbered variables, `--color0` to `--color48`, were replaced by the named ones and
+have no effect.
 
 
 ### Locales

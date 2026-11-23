@@ -27,14 +27,14 @@ func TestConfig_ColorsReachTheWidget(t *testing.T) {
 
 	page := newPage(t)
 	stubSignedOut(t, page)
-	embedConfig(t, page, map[string]any{"__colors__": map[string]any{"--color15": "rgb(1, 2, 3)"}})
+	embedConfig(t, page, map[string]any{"__colors__": map[string]any{"--primary-color": "1, 2, 3"}})
 	widget(t, page)
 
 	value, err := page.FrameLocator("#remark42 iframe").Locator(":root").Evaluate(
-		`(el) => getComputedStyle(el).getPropertyValue('--color15').trim()`, nil,
+		`(el) => getComputedStyle(el).getPropertyValue('--primary-color').trim()`, nil,
 		playwright.LocatorEvaluateOptions{Timeout: new(float64(waitTimeout.Milliseconds()))})
 	require.NoError(t, err)
-	assert.Equal(t, "rgb(1, 2, 3)", value, "the colors an integrator sets never reached the widget document")
+	assert.Equal(t, "1, 2, 3", value, "the colors an integrator sets never reached the widget document")
 }
 
 // TestConfig_CustomPropertiesReachTheWidget covers custom_properties, the plainly-named
@@ -66,25 +66,32 @@ func TestConfig_CustomPropertiesReachTheWidget(t *testing.T) {
 
 // TestConfig_ThemeDecidesTheTextColors covers the colors text is rendered in. The light theme has
 // its own, dark enough to read on white, keyed on a class of the widget document's root element;
-// the dark theme keeps the lighter ones. A color an integrator passes in custom_properties is an
-// inline style on that same element and has to win over both. Nothing but a browser can check
-// this: the unit tests never load a stylesheet
+// the dark theme has the ones custom-properties.css sets on .dark. A color an integrator passes in
+// custom_properties is an inline style on the root element, so it wins over the light theme's. It
+// does not reach the dark theme for a property .dark sets again, --primary-color among them: .dark
+// is on the body, below the root. Links and the sign-in button read the same property. Nothing but
+// a browser can check this: the unit tests never load a stylesheet
 func TestConfig_ThemeDecidesTheTextColors(t *testing.T) {
 	t.Parallel()
 
 	tbl := []struct {
-		name         string
-		config       map[string]any
-		link, button string
+		name                string
+		config              map[string]any
+		link, button, label string
 	}{
-		{name: "light", config: map[string]any{"theme": "light"}, link: "rgb(0, 117, 117)", button: "rgb(0, 117, 117)"},
-		{name: "dark", config: map[string]any{"theme": "dark"}, link: "rgb(0, 170, 170)", button: "rgb(0, 153, 153)"},
-		{name: "an integrator's link color in light",
-			config: map[string]any{"theme": "light", "custom_properties": map[string]any{"--color9": "rgb(1, 2, 3)"}},
-			link:   "rgb(1, 2, 3)", button: "rgb(0, 117, 117)"},
-		{name: "an integrator's link color in dark",
-			config: map[string]any{"theme": "dark", "custom_properties": map[string]any{"--color9": "rgb(1, 2, 3)"}},
-			link:   "rgb(1, 2, 3)", button: "rgb(0, 153, 153)"},
+		{name: "light", config: map[string]any{"theme": "light"},
+			link: "rgb(0, 117, 117)", button: "rgb(0, 117, 117)", label: "rgb(255, 255, 255)"},
+		{name: "dark", config: map[string]any{"theme": "dark"},
+			link: "rgb(0, 153, 153)", button: "rgb(0, 153, 153)", label: "rgb(255, 255, 255)"},
+		{name: "an integrator's primary color in light",
+			config: map[string]any{"theme": "light", "custom_properties": map[string]any{"--primary-color": "1, 2, 3"}},
+			link:   "rgb(1, 2, 3)", button: "rgb(1, 2, 3)", label: "rgb(255, 255, 255)"},
+		// --inverse-text-color is not among the properties .dark sets again, so it shows that the
+		// dark theme still takes an integrator's value where it has none of its own
+		{name: "an integrator's colors in dark",
+			config: map[string]any{"theme": "dark", "custom_properties": map[string]any{
+				"--primary-color": "1, 2, 3", "--inverse-text-color": "4, 5, 6"}},
+			link: "rgb(0, 153, 153)", button: "rgb(0, 153, 153)", label: "rgb(4, 5, 6)"},
 	}
 
 	for _, tt := range tbl {
@@ -107,6 +114,7 @@ func TestConfig_ThemeDecidesTheTextColors(t *testing.T) {
 
 			assert.Equal(t, tt.link, color(`a[href="markdown-help.html"]`, "color"), "the link under the comment form")
 			assert.Equal(t, tt.button, color(".auth-button", "backgroundColor"), "the fill of the sign-in button")
+			assert.Equal(t, tt.label, color(".auth-button", "color"), "the label of the sign-in button")
 		})
 	}
 }

@@ -3,12 +3,10 @@
    into its host page too. remark.tsx sets the class on the root element; a value a site passes in
    custom_properties is an inline style on that element and still wins */
 :root.light {
-  --color9: #007575;
-  --color15: #007575;
-  --color13: #6a6a6a;
   --primary-color: 0, 117, 117;
   --primary-brighter-color: 0, 128, 128;
-  --secondary-darker-text-color: 106, 106, 106;
+  --lighter-text-color: 106, 106, 106;
+  --deactivated-color: 106, 106, 106;
 }
 
 body {

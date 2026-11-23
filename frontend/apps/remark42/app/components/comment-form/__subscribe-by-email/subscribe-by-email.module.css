@@ -52,7 +52,7 @@
 }
 
 .themeDark .tokenInput {
-  background-color: var(--color22);
+  background-color: rgb(var(--secondary-background-color));
   color: rgb(var(--white-color), 0.8);
 }
 
