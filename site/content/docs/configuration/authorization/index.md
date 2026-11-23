@@ -118,6 +118,8 @@ For more details refer to the [Yandex ID documentation](https://yandex.com/dev/i
 3. In the field **Redirect URIs** enter the correct URI constructed as domain + `/auth/patreon/callback`, i.e., `https://remark42.mysite.com/auth/patreon/callback`
 4. Expand client details and note the **Client ID** and **Client Secret**. Those will be used as `AUTH_PATREON_CID` and `AUTH_PATREON_CSEC`
 
+With `SUBSCRIBERS_ONLY` set, only paid Patreon subscribers can comment. Patreon reports whether a user pays only at the sign-in, so the paid status counts for two weeks from the sign-in with Patreon; after that the user signs in with Patreon again to keep commenting, and a user who no longer pays loses access then. A session from before an upgrade to this behaviour, or from before `SUBSCRIBERS_ONLY` was set, has no such period and counts as unpaid until the next sign-in with Patreon.
+
 ### Discord
 
 1. Click on **New Application** to create Oauth client https://discord.com/developers/applications

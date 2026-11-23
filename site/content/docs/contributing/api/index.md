@@ -14,7 +14,7 @@ Calls marked _auth required_ and all admin calls need `site` in the query, and i
 
 Anonymous users get 403 from the email and Telegram subscription calls, `POST /api/v1/deleteme` and `POST /api/v1/picture`, and from `PUT /api/v1/vote/{id}` unless both `ANON_VOTE` and `VOTES_IP` are set.
 
-With `SUBSCRIBERS_ONLY` set, creating, editing and previewing comments, voting, uploading a picture, `POST /api/v1/deleteme` and the email and Telegram subscription calls get 403 for anyone who is not a paid Patreon subscriber, the Basic-auth admin included.
+With `SUBSCRIBERS_ONLY` set, creating, editing and previewing comments, voting, uploading a picture, `POST /api/v1/deleteme` and the email and Telegram subscription calls get 403 for anyone who is not a paid Patreon subscriber, the Basic-auth admin included. The paid status counts for two weeks from the sign-in with Patreon.
 
 ## Errors and limits
 

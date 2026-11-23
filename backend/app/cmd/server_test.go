@@ -48,6 +48,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 )
 
@@ -1171,6 +1172,176 @@ func TestServerApp_BlockEndsSessionWithExpiredToken(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, status, "email user under a restricted name, %s", body)
 	status, body = getUser("id-4", expiredToken("id-4", token.User{ID: "email_5678", Name: "somebody"}))
 	assert.Equal(t, http.StatusOK, status, "email user under another name, %s", body)
+}
+
+func TestUpdatePaidSub(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	// user returns a Patreon user as the claims updater gets it: without the "blocked" attribute straight
+	// from the provider at a sign-in, with it on a refresh
+	user := func(paid, refresh bool, until time.Time) *token.User {
+		u := &token.User{ID: "patreon_1234", Name: "subscriber"}
+		u.SetPaidSub(paid)
+		if refresh {
+			u.SetBoolAttr("blocked", false)
+		}
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(u, until)
+		}
+		return u
+	}
+
+	tbl := []struct {
+		name     string
+		user     *token.User
+		paid     bool
+		paidTill time.Time // zero for no paid status
+	}{
+		{name: "sign-in as a subscriber", user: user(true, false, time.Time{}), paid: true, paidTill: now.Add(14 * 24 * time.Hour)},
+		{name: "sign-in again restarts the period", user: user(true, false, now.Add(-time.Hour)), paid: true,
+			paidTill: now.Add(14 * 24 * time.Hour)},
+		{name: "sign-in without a subscription", user: user(false, false, time.Time{})},
+		{name: "refresh within the period keeps its end", user: user(true, true, now.Add(time.Hour)), paid: true, paidTill: now.Add(time.Hour)},
+		{name: "refresh at the end", user: user(true, true, now)},
+		{name: "refresh after the end", user: user(true, true, now.Add(-time.Hour))},
+		{name: "refresh of a token without an end", user: user(true, true, time.Time{})},
+		{name: "refresh without a subscription", user: user(false, true, time.Time{})},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			updatePaidSub(tt.user, now)
+			assert.Equal(t, tt.paid, tt.user.IsPaidSub(), "paid status")
+			if tt.paidTill.IsZero() {
+				assert.False(t, rest.PaidSubActive(*tt.user, now), "no paid status running")
+				return
+			}
+			assert.True(t, rest.PaidSubActive(*tt.user, tt.paidTill.Add(-time.Second)), "paid status runs until its end")
+			assert.False(t, rest.PaidSubActive(*tt.user, tt.paidTill), "and stops there")
+		})
+	}
+}
+
+// TestServerApp_PatreonPaidStatusPeriod covers the paid status in subscribers-only mode, which Patreon
+// reports at the sign-in only: it counts for two weeks from then, also for a client that keeps sending a
+// session cookie from before and never stores the refreshed one
+func TestServerApp_PatreonPaidStatusPeriod(t *testing.T) {
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.SubscribersOnly = true
+		o.UpdateLimit = 100
+		return o
+	})
+
+	// paidToken signs a Patreon subscriber's session token, issued and refreshed by remark42 before, so
+	// with the "blocked" attribute; until is the end of the paid status, none when zero
+	paidToken := func(id string, expires, until time.Time) string {
+		t.Helper()
+		u := token.User{ID: "patreon_" + id, Name: "subscriber " + id}
+		u.SetPaidSub(true)
+		u.SetBoolAttr("blocked", false)
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(&u, until)
+		}
+		return signRawToken(t, token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{ID: id, Audience: jwt.ClaimStrings{"remark"}, Issuer: "remark42",
+				ExpiresAt: jwt.NewNumericDate(expires), NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Hour))},
+			User: &u,
+		})
+	}
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	// preview asks for a comment preview, which subscribers-only mode keeps for subscribers, as a client
+	// that never stores the refreshed cookie, and returns the session token the response sets, if any
+	preview := func(id, tkn string) (status int, refreshed string) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/api/v1/preview?site=remark", app.Port),
+			strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/1/", "site": "remark"}}`))
+		require.NoError(t, err)
+		req.AddCookie(&http.Cookie{Name: "JWT", Value: tkn})
+		req.Header.Set("X-XSRF-TOKEN", id)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		for _, c := range resp.Cookies() {
+			if c.Name == "JWT" {
+				refreshed = c.Value
+			}
+		}
+		return resp.StatusCode, refreshed
+	}
+
+	expired, valid := time.Now().Add(-time.Minute), time.Now().Add(5*time.Minute)
+	day := 24 * time.Hour
+
+	// refreshedUnpaid checks that the response refreshed the cookie into one without a paid status
+	refreshedUnpaid := func(refreshed, msg string) {
+		t.Helper()
+		require.NotEmpty(t, refreshed, "%s: the expired cookie is refreshed", msg)
+		claims, err := app.restSrv.Authenticator.TokenService().Parse(refreshed)
+		require.NoError(t, err)
+		assert.False(t, claims.User.IsPaidSub(), "%s: the refreshed cookie has no paid status", msg)
+	}
+
+	// a subscriber's cookie from before the limit names no end and is refreshed as unpaid, however often it
+	// comes: the first request refreshes the cookie, the others get the refresh from the cache and no new cookie
+	beforeLimit := paidToken("1", expired, time.Time{})
+	status, refreshed := preview("1", beforeLimit)
+	assert.Equal(t, http.StatusForbidden, status, "cookie from before the limit")
+	refreshedUnpaid(refreshed, "cookie from before the limit")
+	for i := range 2 {
+		status, _ = preview("1", beforeLimit)
+		assert.Equal(t, http.StatusForbidden, status, "cookie from before the limit sent again, request %d", i+2)
+	}
+
+	status, refreshed = preview("2", paidToken("2", expired, time.Now().Add(-day)))
+	assert.Equal(t, http.StatusForbidden, status, "expired cookie whose paid status ended a day ago")
+	refreshedUnpaid(refreshed, "expired cookie whose paid status ended a day ago")
+
+	running := time.Now().Add(day).Truncate(time.Second)
+	status, refreshed = preview("3", paidToken("3", expired, running))
+	require.Equal(t, http.StatusOK, status, "expired cookie whose paid status runs for another day")
+	require.NotEmpty(t, refreshed, "the expired cookie is refreshed")
+	claims, err := app.restSrv.Authenticator.TokenService().Parse(refreshed)
+	require.NoError(t, err)
+	assert.True(t, rest.PaidSubActive(*claims.User, running.Add(-time.Second)), "the refresh keeps the end it found")
+	assert.False(t, rest.PaidSubActive(*claims.User, running), "and does not move it")
+
+	// an unexpired token is not refreshed, the end of its paid status is checked against the clock
+	status, _ = preview("4", paidToken("4", valid, time.Now().Add(-time.Second)))
+	assert.Equal(t, http.StatusForbidden, status, "token whose paid status ended while it was valid")
+	status, _ = preview("5", paidToken("5", valid, time.Now().Add(day)))
+	assert.Equal(t, http.StatusOK, status, "token whose paid status runs")
+
+	// a sign-in: the token service gets the user as the provider made it, without remark42's attributes
+	signIn := token.User{ID: "patreon_6", Name: "subscriber 6"}
+	signIn.SetPaidSub(true)
+	tkn, err := app.restSrv.Authenticator.TokenService().Token(token.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}, ExpiresAt: jwt.NewNumericDate(valid)},
+		User:             &signIn,
+	})
+	require.NoError(t, err)
+	claims, err = app.restSrv.Authenticator.TokenService().Parse(tkn)
+	require.NoError(t, err)
+	assert.True(t, rest.PaidSubActive(*claims.User, time.Now().Add(14*day-time.Minute)), "paid status for two weeks from the sign-in")
+	assert.False(t, rest.PaidSubActive(*claims.User, time.Now().Add(14*day+time.Minute)), "and no longer")
+}
+
+// TestServerApp_PatreonPaidStatusWithoutSubscribersOnly covers an instance without subscribers-only mode,
+// which sets no end to the paid status and leaves it as Patreon reported it
+func TestServerApp_PatreonPaidStatusWithoutSubscribersOnly(t *testing.T) {
+	app := startServerApp(t, nil)
+	u := token.User{ID: "patreon_1", Name: "subscriber"}
+	u.SetPaidSub(true)
+	u.SetBoolAttr("blocked", false)
+	tkn, err := app.restSrv.Authenticator.TokenService().Token(token.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}, ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+		User:             &u,
+	})
+	require.NoError(t, err)
+	claims, err := app.restSrv.Authenticator.TokenService().Parse(tkn)
+	require.NoError(t, err)
+	assert.True(t, claims.User.IsPaidSub(), "paid status kept on a refresh")
+	assert.False(t, rest.PaidSubActive(*claims.User, time.Now()), "with no end set")
 }
 
 func TestTokenExpired(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
+	"github.com/go-pkgz/auth/v2/token"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -316,17 +317,17 @@ func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string
 	}
 }
 
-// subscribersOnly is a middleware rejecting non-paid_sub users
+// subscribersOnly is a middleware rejecting users without a paid status that is still running
 func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if enable {
-				user, err := rest.GetUserInfo(r)
+				user, err := token.GetUserInfo(r)
 				if err != nil {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
-				if !user.PaidSub {
+				if !rest.PaidSubActive(user, time.Now()) {
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
