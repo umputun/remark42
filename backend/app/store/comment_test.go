@@ -102,6 +102,10 @@ func TestComment_Sanitize(t *testing.T) {
 			inp: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw">@marcsheep</a> <a href="https://t.co/ULnVpG8w55">pic.twitter.com/ULnVpG8w55</a></p>&mdash; Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw">November 9, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`, PostTitle: "Twitter quote"},
 			out: Comment{Text: `<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Silicon iMac Concept<a href="https://t.co/7ga95QxVXn" rel="nofollow ugc">https://t.co/7ga95QxVXn</a> by <a href="https://twitter.com/marcsheep?ref_src=twsrc%5Etfw" rel="nofollow ugc">@marcsheep</a> <a href="https://t.co/ULnVpG8w55" rel="nofollow ugc">pic.twitter.com/ULnVpG8w55</a></p>— Andreas Storm (@avstorm) <a href="https://twitter.com/avstorm/status/1325693387798933504?ref_src=twsrc%5Etfw" rel="nofollow ugc">November 9, 2020</a></blockquote> `, PostTitle: "Twitter quote"},
 		},
+		{
+			inp: Comment{Text: `<img src="https://example.com/a.png" width="600" height="300" class="sized" loading="lazy"/> <img src="https://example.com/b.png" class="big"/>`},
+			out: Comment{Text: `<img src="https://example.com/a.png" width="600" height="300" class="sized" loading="lazy"/> <img src="https://example.com/b.png"/>`},
+		},
 	}
 
 	for n, tt := range tbl {

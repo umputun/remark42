@@ -145,6 +145,8 @@ func newCommentPolicy() *bluemonday.Policy {
 		"|mo|o|ow|p|c|ch|cm|cp|cpf|c1|cs|g|gd|ge|gr|gh|gi|go|gp|gs|gu|gt|gl)$"
 	p.AllowAttrs("class").Matching(regexp.MustCompile(codeSpanClassRegex)).OnElements("span")
 	p.AllowAttrs("loading").Matching(regexp.MustCompile("^(lazy|eager)$")).OnElements("img")
+	// image.SetSizes marks an image it gave width and height to, so the widget can size it by them
+	p.AllowAttrs("class").Matching(regexp.MustCompile("^sized$")).OnElements("img")
 	return p
 }
 
