@@ -454,7 +454,6 @@ describe('<Comment />', () => {
       p.user!.id = '100';
       p.data.user.id = '100';
       p.editMode = CommentMode.Edit;
-      // @ts-ignore - CommentForm prop is optional on CommentProps
       p.CommentForm = CommentForm;
       Object.assign(p.data, {
         id: '101',
