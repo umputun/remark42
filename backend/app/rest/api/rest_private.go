@@ -676,14 +676,10 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		return
 	}
 
-	// update User.Email field
-	claims, _, err := s.authenticator.TokenService().Get(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
-	if claims.User != nil {
+	// update User.Email field of the session token. The admin password signs in without one, and a token
+	// without a user, such as a handshake token sent along with that password, has no email to update
+	claims, ok := s.sessionClaims(r)
+	if ok && claims.User != nil {
 		claims.User.Email = address
 		if err = s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
@@ -767,20 +763,28 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
-	// clean User.Email from the token
-	claims, _, err := s.authenticator.TokenService().Get(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-	if claims.User != nil && claims.User.Email != "" {
+	// clean User.Email from the session token, if the request has one
+	claims, ok := s.sessionClaims(r)
+	if ok && claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
-		if err = s.setTokenClaims(w, claims); err != nil {
+		if err := s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
 	}
 	R.RenderJSON(w, R.JSON{"deleted": true})
+}
+
+// sessionClaims returns the claims of the token the request carries, and false when it carries none. The auth
+// middleware also accepts the admin password, which needs no token, and the change the caller made is already
+// stored by then, so the caller has only the token left to update and skips it
+func (s *private) sessionClaims(r *http.Request) (token.Claims, bool) {
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		log.Printf("[DEBUG] no session token to update: %v", err)
+		return token.Claims{}, false
+	}
+	return claims, true
 }
 
 // setTokenClaims writes changed claims back to the client, for a handler behind the auth middleware.
