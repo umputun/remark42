@@ -191,10 +191,10 @@ func (s *private) handlePremoderation(comment store.Comment, user store.User) (s
 	// if previous comments were approved and the strategy is "first" approve other comments by default
 	switch s.premoderation {
 	case PremoderationFirst:
-		prevComments, err := s.dataService.User(user.SiteID, user.ID, 100, 0, user) // FIXME: check the usage of limit/skip
+		prevComments, err := s.dataService.User(user.SiteID, user.ID, 100, 0, user) // ! todo: check the usage of limit/skip
 		if err != nil {
-			if strings.Contains(err.Error(), "no comments") { // it seems we error out if we don't have comments for the user
-				comment.PendingApproval = true // this is the first message for this user
+			if errors.Is(err, engine.ErrNoUserComments) { // this is the first message for this user
+				comment.PendingApproval = true
 				return comment, nil
 			}
 			return store.Comment{}, fmt.Errorf("error accessing user's comments: %s", err.Error())
