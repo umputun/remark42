@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"html"
 	"html/template"
 	"regexp"
 	"slices"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/net/html"
 )
 
 // Comment represents a single comment with optional reference to its parent
@@ -194,4 +194,30 @@ func (c *Comment) escapeHTMLWithSome(inp string) string {
 func (c *Comment) SanitizeText(inp string) string {
 	clean := bluemonday.StrictPolicy().Sanitize(inp)
 	return strings.TrimSpace(c.escapeHTMLWithSome(clean))
+}
+
+// ContainsLinks checks if in the original version of the comments are present HTLM <a> tags
+func (c *Comment) ContainsLinks() (bool, error) {
+	doc, err := html.Parse(strings.NewReader(c.Orig))
+	if err != nil {
+		fmt.Errorf("[WARN] can't parse comment. Assuming it contains links, %w", err)
+		return true, err
+	}
+	var containsLink bool
+	var processComment func(n *html.Node)
+	processComment = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, attr := range n.Attr {
+				if attr.Key == "href" {
+					containsLink = true
+					break
+				}
+			}
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			processComment(child)
+		}
+	}
+	processComment(doc)
+	return containsLink, nil
 }

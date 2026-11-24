@@ -40,13 +40,17 @@ const (
 	PremoderationFirst Premoderation = "first"
 	// PremoderationAll requires all messages to be approved
 	PremoderationAll Premoderation = "all"
+	// PremoderationLinks requires all messages that contain links are not from admin or verified users need to be approved
+	PremoderationLinks Premoderation = "links"
 )
 
 // NewPremoderationStrategy matches the provided string with available premoderations strategies.
-// Defaults to PremoderationFirst
+// Defaults to PremoderationLinks
 func NewPremoderationStrategy(str string) (Premoderation, error) {
 	switch strings.ToLower(strings.TrimSpace(str)) {
-	case string(PremoderationFirst), "":
+	case string(PremoderationLinks), "":
+		return PremoderationLinks, nil
+	case string(PremoderationFirst):
 		return PremoderationFirst, nil
 	case string(PremoderationAll):
 		return PremoderationAll, nil
@@ -452,6 +456,7 @@ func (s *Rest) controllerGroups() (public, private, admin, rss) {
 		authenticator: s.Authenticator,
 		readOnlyAge:   s.ReadOnlyAge,
 		premoderation: s.Premoderation,
+		notifyService: s.NotifyService,
 	}
 
 	rssGrp := rss{

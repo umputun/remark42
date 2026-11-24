@@ -190,6 +190,22 @@ func (s *private) handlePremoderation(comment store.Comment, user store.User) (s
 
 	// if previous comments were approved and the strategy is "first" approve other comments by default
 	switch s.premoderation {
+	case PremoderationLinks:
+		if comment.User.Admin || comment.User.Verified {
+			comment.PendingApproval = false
+			return comment, nil
+		}
+
+		hasLink, err := comment.ContainsLinks()
+		if err != nil {
+			return store.Comment{}, err
+		}
+
+		if hasLink {
+			comment.PendingApproval = true
+			return comment, nil
+		}
+
 	case PremoderationFirst:
 		prevComments, err := s.dataService.User(user.SiteID, user.ID, 100, 0, user) // ! todo: check the usage of limit/skip
 		if err != nil {
