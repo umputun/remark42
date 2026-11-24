@@ -67,6 +67,9 @@ func NewWebhook(params WebhookParams) (*Webhook, error) {
 func (w *Webhook) Send(ctx context.Context, req Request) error {
 	log.Printf("[DEBUG] send webhook notification, comment id %s", req.Comment.ID)
 	var payload bytes.Buffer
+	if req.Comment.PendingApproval {
+		req.Comment.Text = "comment is pending approval"
+	}
 	err := w.template.Execute(&payload, req.Comment)
 	if err != nil {
 		return fmt.Errorf("unable to compile webhook template: %w", err)

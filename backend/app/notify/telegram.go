@@ -66,6 +66,11 @@ func (t *Telegram) Send(ctx context.Context, req Request) error {
 		}
 	}
 
+	// skip user notification
+	if req.Comment.PendingApproval {
+		return errors.Join(errs...)
+	}
+
 	if t.UserNotifications {
 		for _, user := range req.Telegrams {
 			err := t.Telegram.Send(ctx, fmt.Sprintf("telegram:%s?parseMode=HTML", user), msg)
@@ -91,7 +96,11 @@ func (t *Telegram) buildMessage(req Request) string {
 		msg += fmt.Sprintf(` -> <a href=%q>%s</a>`, html.EscapeString(commentURLPrefix+req.parent.ID), ntf.EscapeTelegramText(req.parent.User.Name))
 	}
 
-	msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
+	if req.Comment.PendingApproval {
+		msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML("comment is pending approval"), commentTextLengthLimit))
+	} else {
+		msg += fmt.Sprintf("\n\n%s", pruneHTML(ntf.TelegramSupportedHTML(req.Comment.Text), commentTextLengthLimit))
+	}
 
 	if req.Comment.ParentID != "" {
 		msg += fmt.Sprintf("\n\n\"<i>%s</i>\"", pruneHTML(ntf.TelegramSupportedHTML(req.parent.Text), commentTextLengthLimit))

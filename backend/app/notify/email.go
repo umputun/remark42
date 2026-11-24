@@ -163,6 +163,9 @@ func (e *Email) Send(ctx context.Context, req Request) error {
 	var errs []error
 
 	for _, email := range req.Emails {
+		if req.Comment.PendingApproval {
+			continue
+		}
 		err := e.buildAndSendMessage(ctx, req, email, false)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("problem sending user email notification to %q: %w", email, err))
@@ -263,7 +266,11 @@ func (e *Email) buildMessageFromRequest(req Request, email string, forAdmin bool
 	subject := "New reply to your comment"
 	if forAdmin {
 		subject = "New comment to your site"
+		if req.Comment.PendingApproval {
+			subject = fmt.Sprintf("%s is pending approval", subject)
+		}
 	}
+
 	if req.Comment.PostTitle != "" {
 		subject += fmt.Sprintf(" for %q", req.Comment.PostTitle)
 	}

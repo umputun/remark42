@@ -14,6 +14,7 @@ import (
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 
+	"github.com/umputun/remark42/backend/app/notify"
 	"github.com/umputun/remark42/backend/app/rest"
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/engine"
@@ -27,6 +28,7 @@ type admin struct {
 	readOnlyAge   int
 	migrator      *Migrator
 	premoderation Premoderation
+	notifyService *notify.Service
 }
 
 type adminStore interface {
@@ -319,6 +321,7 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	// if we use the "ApproveFirst" strategy we need to approve all pending comments once one is approved
 	case PremoderationFirst:
 		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, true)
+		// ! todo what about the new links mode?
 	default:
 		comment, err = a.dataService.ApproveComments(locator, id, approveStatus, false)
 	}
@@ -326,6 +329,10 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't approve comment", rest.ErrInternal)
 		return
+	}
+
+	if a.notifyService != nil {
+		a.notifyService.Submit(notify.Request{Comment: comment})
 	}
 
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))

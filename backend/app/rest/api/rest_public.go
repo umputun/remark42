@@ -104,12 +104,12 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch s.premoderation {
-		case PremoderationFirst, PremoderationAll:
+		case PremoderationNone:
+		default:
 			if !user.Admin {
 				log.Printf("[DEBUG] premoderation enabled (%s) and user is not admin. Hiding comments", s.premoderation)
 				comments = filterComments(comments, func(c store.Comment) bool { return !c.PendingApproval || c.User.ID == user.ID })
 			}
-		default:
 		}
 
 		comments = s.applyView(comments, view)
