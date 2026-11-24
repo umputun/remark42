@@ -55,7 +55,7 @@ export type CommentProps = {
   getPreview?: typeof getPreview;
   uploadImage?: typeof uploadImage;
   intl: IntlShape;
-  approved?: boolean;
+  pendingApproval?: boolean;
 } & Partial<typeof boundActions>;
 
 export interface State {
@@ -242,8 +242,8 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleApproveComment = () => {
-    // TODO: maybe align with updateComment???
-    this.props.approveComment!(this.props.data.id, this.props.data.text, !this.props.data.approved);
+    // TODO: maybe align with updateComment??? CHECK what happens if pendingApproval is undefined
+    this.props.approveComment!(this.props.data.id, this.props.data.text, !this.props.data.pendingApproval);
     // this.props.setReplyEditState!({ id: this.props.data.id, state: CommentMode.None });
   };
 
@@ -402,8 +402,8 @@ export class Comment extends Component<CommentProps, State> {
         className={rootClassName}
         id={props.disabled ? undefined : `${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}
         style={{
-          border: !this.props.data.approved && this.props.user?.admin ? '1px solid red' : '',
-          padding: !this.props.data.approved && this.props.user?.admin ? '5px' : '',
+          border: this.props.data.pendingApproval && this.props.user?.admin ? '1px solid red' : '',
+          padding: this.props.data.pendingApproval && this.props.user?.admin ? '5px' : '',
         }}
       >
         {props.view === 'user' && o.title && (
@@ -508,7 +508,7 @@ export class Comment extends Component<CommentProps, State> {
               admin={isAdmin}
               pinned={props.data.pin}
               copied={state.isCopied}
-              approved={this.props.data.approved}
+              pendingApproval={this.props.data.pendingApproval}
               editing={isEditing}
               replying={isReplying}
               editable={

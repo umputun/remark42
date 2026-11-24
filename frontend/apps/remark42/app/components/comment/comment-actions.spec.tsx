@@ -11,7 +11,7 @@ function getProps(): Props {
     admin: false,
     currentUser: false,
     copied: false,
-    approved: true,
+    pendingApproval: true,
     bannedUser: false,
     readOnly: false,
     editing: false,

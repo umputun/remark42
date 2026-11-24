@@ -57,7 +57,7 @@ export const approveComment =
   (id: Comment['id'], text: string, approved: boolean): StoreAction<Promise<void>> =>
   async (dispatch) => {
     const comment = await api.approveComment({ id, text, approved });
-    dispatch(patchComment({ ...comment, approved: comment.approved }));
+    dispatch(patchComment({ ...comment, pendingApproval: comment.pendingApproval }));
   };
 
 /** edits comment in tree */
