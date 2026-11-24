@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/net/html"
 	nethtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -316,11 +317,11 @@ func (c *Comment) Snippet(limit int) string {
 	if limit <= 0 {
 		limit = snippetLen
 	}
-	cleanText := html.UnescapeString(bluemonday.StrictPolicy().Sanitize(spaceBlocks(c.Text)))
+	cleanText := nethtml.UnescapeString(bluemonday.StrictPolicy().Sanitize(spaceBlocks(c.Text)))
 	cleanText = strings.Join(strings.Fields(cleanText), " ") // dropped tags leave runs of spaces and newlines
 	size := len([]rune(cleanText))
 	if size < limit {
-		return html.EscapeString(cleanText)
+		return nethtml.EscapeString(cleanText)
 	}
 	snippet := []rune(cleanText)[:limit]
 	// go back in snippet and found the first space
@@ -332,9 +333,9 @@ func (c *Comment) Snippet(limit int) string {
 	}
 	// don't add a space if comment is just a one single word which has been truncated.
 	if len(snippet) == limit {
-		return html.EscapeString(string(snippet)) + "..."
+		return nethtml.EscapeString(string(snippet)) + "..."
 	}
-	return html.EscapeString(string(snippet)) + " ..."
+	return nethtml.EscapeString(string(snippet)) + " ..."
 }
 
 // snippetBreaks are the elements whose start and end separate words: with their tags dropped,
@@ -391,7 +392,7 @@ func (c *Comment) SanitizeAsURL(inp string) string {
 // sanitizeURL makes one pass of the href filter over the url
 func sanitizeURL(inp string) string {
 	// quoted as html, not with %q: go escapes (\\, \u200b) don't exist in html and would end up in the url
-	h := `<a href="` + html.EscapeString(inp) + `">`
+	h := `<a href="` + nethtml.EscapeString(inp) + `">`
 	clean := urlPolicy.Sanitize(h)
 	if match := reHref.FindStringSubmatch(clean); len(match) > 1 {
 		// bluemonday trims spaces before parsing only, trim the ones left at the end after an empty fragment is dropped
@@ -416,7 +417,7 @@ func (c *Comment) SanitizeText(inp string) string {
 
 // ContainsLinks checks if in the original version of the comments are present HTLM <a> tags
 func (c *Comment) ContainsLinks() (bool, error) {
-	doc, err := html.Parse(strings.NewReader(c.Orig))
+	doc, err := nethtml.Parse(strings.NewReader(c.Orig))
 	if err != nil {
 		fmt.Errorf("[WARN] can't parse comment. Assuming it contains links, %w", err)
 		return true, err
@@ -424,7 +425,7 @@ func (c *Comment) ContainsLinks() (bool, error) {
 	var containsLink bool
 	var processComment func(n *html.Node)
 	processComment = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
+		if n.Type == nethtml.ElementNode && n.Data == "a" {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					containsLink = true
