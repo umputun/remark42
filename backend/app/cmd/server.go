@@ -135,6 +135,8 @@ type ServerCommand struct {
 		} `group:"email" namespace:"email" env-namespace:"EMAIL"`
 	} `group:"auth" namespace:"auth" env-namespace:"AUTH"`
 
+	Premoderation string `long:"premoderation" env:"PREMODERATION" description:"use comments premoderation. Possible values: 'none', 'first', 'all', 'links'"`
+
 	CommonOpts
 }
 
