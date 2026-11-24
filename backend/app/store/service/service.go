@@ -511,7 +511,6 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 		return comment, err
 	}
 
-	log.Printf("[INFO] editing comment, %v", comment)
 	if err = editAllowed(comment); err != nil { //nolint gocritic
 		return comment, err
 	}
@@ -664,6 +663,10 @@ func (s *DataStore) ApproveComments(locator store.Locator, commentID string, app
 
 	// grab the user and all his messages
 	user := comment.User
+	// ! todo we might need to pass an empty locator to grab comments across posts
+	if approvePrevious {
+		locator.URL = ""
+	}
 	comments, err := s.Find(locator, "-time", user)
 	if err != nil {
 		return comment, err

@@ -312,7 +312,6 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	locator := store.Locator{SiteID: r.URL.Query().Get("site"), URL: r.URL.Query().Get("url")}
 	approveStatus := r.URL.Query().Get("approve") == "1"
-	log.Printf("[INFO] approving comment %s, approval: %s", id, approveStatus)
 
 	var comment store.Comment
 	var err error
@@ -330,6 +329,5 @@ func (a *admin) approveCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope))
-	log.Printf("[INFO] returning comment %+v", comment)
 	R.RenderJSON(w, R.JSON{"id": id, "locator": locator, "approved": !comment.PendingApproval})
 }
