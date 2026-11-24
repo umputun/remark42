@@ -2,10 +2,14 @@ package api
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
+	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -62,6 +66,62 @@ func (w webFiles) open(name string) (fs.File, error) {
 		return nil, err
 	}
 	return w.embedded.Open(name)
+}
+
+// webFingerprint returns the digest of the file a /web request is answered with, read from the
+// sources before substitution, so the validator changes whenever the bytes do: a file edited in the
+// web root, or a frontend embedded by another build under the same version. Neither has anything
+// else to tell it by, since embedded files carry no modification time and two builds of one commit
+// have equal sizes. A request no file answers gets an empty fingerprint.
+func webFingerprint(files fs.FS) func(*http.Request) string {
+	return func(r *http.Request) string {
+		if strings.HasSuffix(r.URL.Path, "/") && r.URL.Path != "/web/" {
+			// the handler answers these with 404, and cleaning the path would find a file for them
+			return ""
+		}
+		name := strings.TrimPrefix(path.Clean("/"+strings.TrimPrefix(r.URL.Path, "/web")), "/")
+		if name == "" {
+			// the file server answers the directory itself with its index page
+			name = "index.html"
+		}
+		f, err := files.Open(name)
+		if err != nil {
+			return ""
+		}
+		defer f.Close()
+		if info, err := f.Stat(); err != nil || info.IsDir() {
+			return ""
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return ""
+		}
+		return hex.EncodeToString(h.Sum(nil))
+	}
+}
+
+// webContentTypes fixes the type of the files under /web that a browser refuses or mishandles when
+// the type is wrong. Without it the file server asks mime.TypeByExtension, which takes the operating
+// system's table over Go's own: a Windows registry entry or a line in /etc/mime.types mapping .mjs to
+// text/plain stops the widget from loading, since browsers run a module script only with a
+// JavaScript type, and /web is served with nosniff, which blocks scripts and stylesheets of any
+// other type. Images other than SVG are left to mime, as browsers render them whatever the type.
+var webContentTypes = map[string]string{
+	".html": "text/html; charset=utf-8",
+	".js":   "text/javascript; charset=utf-8",
+	".mjs":  "text/javascript; charset=utf-8",
+	".css":  "text/css; charset=utf-8",
+	".svg":  "image/svg+xml",
+}
+
+// webContentType returns the type to serve the /web path with, or an empty string to leave it to
+// the file server. A path ending in a slash is answered with the directory's index.html, or with a
+// listing, which is HTML too.
+func webContentType(urlPath string) string {
+	if strings.HasSuffix(urlPath, "/") {
+		return webContentTypes[".html"]
+	}
+	return webContentTypes[strings.ToLower(path.Ext(urlPath))]
 }
 
 // emptyFS stands in for a frontend source that could not be opened, so a misconfigured one serves

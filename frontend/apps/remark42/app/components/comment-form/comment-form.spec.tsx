@@ -32,7 +32,6 @@ function setup(overrideProps: Partial<Props> = {}, overrideConfig: Partial<(type
     id: '1',
     ...overrideProps,
   } as Props;
-  // @ts-ignore
   const CommentFormWithIntl = () => <CommentForm {...props} intl={useIntl()} />;
 
   return render(<CommentFormWithIntl />);
@@ -70,7 +69,7 @@ describe('<CommentForm />', () => {
       updatePersistedComments('1', 'asd');
       const updateJsonItemSpy = jest.spyOn(localStorageModule, 'updateJsonItem');
 
-      setup();
+      setup({ user });
       fireEvent.submit(screen.getByTestId('textarea_1'));
       await waitFor(() => {
         expect(updateJsonItemSpy).toHaveBeenCalled();
@@ -87,7 +86,7 @@ describe('<CommentForm />', () => {
 
     async function submit() {
       const onSubmit = jest.fn(() => Promise.resolve());
-      setup({ onSubmit });
+      setup({ onSubmit, user });
       fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: 'hello' } });
       fireEvent.submit(screen.getByTestId('textarea_1'));
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
@@ -100,11 +99,40 @@ describe('<CommentForm />', () => {
       expect(await submit()).toHaveBeenCalledWith('hello', 'A post on the host page');
     });
 
-    // a widget opened on its own has only the placeholder from iframe.ejs, which names no page.
+    // a widget opened on its own has only the placeholder from iframe.html, which names no page.
     // an empty title is what makes the backend read the real one from the page
     it("sends no title when no host page posted one, not the widget's own", async () => {
       document.title = 'Comments';
       expect(await submit()).toHaveBeenCalledWith('hello', '');
+    });
+  });
+
+  describe('sending', () => {
+    function typed(overrideProps: Partial<Props> = {}) {
+      const onSubmit = jest.fn(() => Promise.resolve());
+
+      setup({ onSubmit, ...overrideProps });
+      fireEvent.input(screen.getByTestId('textarea_1'), { target: { value: 'hello' } });
+
+      return onSubmit;
+    }
+
+    it('sends on ctrl+enter for a signed-in reader', async () => {
+      const onSubmit = typed({ user });
+
+      fireEvent.keyDown(screen.getByTestId('textarea_1'), { keyCode: 13, ctrlKey: true });
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('hello', ''));
+    });
+
+    it('asks a guest to sign in on ctrl+enter and sends nothing', () => {
+      const onSubmit = typed();
+
+      fireEvent.keyDown(screen.getByTestId('textarea_1'), { keyCode: 13, ctrlKey: true });
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent('Please sign in to do this.');
+      expect(screen.getByTestId('textarea_1')).toHaveValue('hello');
     });
   });
 

@@ -2,10 +2,10 @@
 
 `memory_store` illustrates how to make a custom storage plugin for remark42.
 
-In order to run remark42 with memory_store copy provided `compose-dev-memstore.yml` to the root directory and run:
+In order to run remark42 with memory_store, run from the repository root:
 
-1. `docker compose -f compose-dev-memstore.yml build`
-1. `docker compose -f compose-dev-memstore.yml up`
+1. `docker compose -f backend/_example/memory_store/compose-dev-memstore.yml build`
+1. `docker compose -f backend/_example/memory_store/compose-dev-memstore.yml up`
 
 As usual, demo site will run on http://127.0.0.1:8080/web/
 

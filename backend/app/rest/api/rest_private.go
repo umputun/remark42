@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -56,6 +57,7 @@ type privStore interface {
 	EditComment(locator store.Locator, commentID string, req service.EditRequest) (comment store.Comment, err error)
 	Vote(req service.VoteReq) (comment store.Comment, err error)
 	Get(locator store.Locator, commentID string, user store.User) (store.Comment, error)
+	ReplyDepth(locator store.Locator, comment store.Comment, limit int) (int, error)
 	User(siteID, userID string, limit, skip int, user store.User) ([]store.Comment, error)
 	GetUserEmail(siteID, userID string) (string, error)
 	SetUserEmail(siteID, userID, value string) (string, error)
@@ -93,12 +95,17 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		err := s.imageService.ResetCleanupTimer(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("image not found"), "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
 	rest.HTMLResponse(w, http.StatusOK, comment.Text)
 }
+
+// maxReplyDepth is how many replies can stand one under another below a top-level comment. The tree of
+// a post goes out as nested JSON, a level of nesting for every reply in such a chain, and the encoder
+// refuses nesting past a limit of its own; discussions stay far below either number.
+const maxReplyDepth = 500
 
 // POST /comment - adds comment, resets all immutable fields
 func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +138,7 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	for _, id := range s.imageService.ExtractNonProxiedPictures(comment.Text) {
 		_, err := s.imageService.Load(id)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't load picture from the comment", rest.ErrImgNotFound)
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("image not found"), "can't load picture from the comment", rest.ErrImgNotFound)
 			return
 		}
 	}
@@ -147,6 +154,30 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// a reply must answer a comment on the same post: the comments tree is built by following parents
+	// from the top-level comments, so a reply to anything else would be stored and counted but never shown.
+	// A deleted parent stays in the store and can still be answered.
+	if comment.ParentID != "" {
+		parent, err := s.dataService.Get(comment.Locator, comment.ParentID, store.User{})
+		if err != nil {
+			rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, fmt.Errorf("parent comment not found"),
+				"can't find parent comment", rest.ErrCommentNotFound)
+			return
+		}
+		depth, err := s.dataService.ReplyDepth(comment.Locator, parent, maxReplyDepth)
+		if err != nil {
+			rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("can't read the thread"),
+				"can't check reply depth", rest.ErrInternal)
+			return
+		}
+		if depth >= maxReplyDepth {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest,
+				fmt.Errorf("a reply can be at most %d replies below a top-level comment", maxReplyDepth),
+				"invalid comment", rest.ErrCommentValidation)
+			return
+		}
+	}
+
 	comment, err := s.handlePremoderation(comment, user)
 	if err != nil {
 		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "error handling premoderation", rest.ErrPremoderationFailure)
@@ -154,6 +185,10 @@ func (s *private) createCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, err := s.dataService.Create(comment)
+	if errors.Is(err, service.ErrUserBlocked) { // the author got blocked during the title fetch in Create
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "user blocked", rest.ErrUserBlocked)
+		return
+	}
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
@@ -262,17 +297,39 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	editReq := service.EditRequest{
-		Text:    s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting),
-		Orig:    edit.Text,
-		Summary: edit.Summary,
-		Delete:  edit.Delete,
-		Admin:   user.Admin,
+	// a token issued before the block is still accepted until it is refreshed, so check the block here,
+	// as creating a comment and voting do. Deleting one's own comment stays allowed.
+	if !edit.Delete && s.dataService.IsBlocked(locator.SiteID, user.ID) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "user blocked", rest.ErrUserBlocked)
+		return
 	}
 
-	res, err := s.dataService.EditComment(locator, id, editReq)
+	// a closed post takes no new text, as it takes no new comments. An admin's edit keeps working,
+	// and deleting one's own comment stays allowed.
+	if !edit.Delete && !user.Admin && s.isReadOnly(locator) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("rejected"), "old post, read-only", rest.ErrReadOnly)
+		return
+	}
+
+	// the new text is held to the rules of a new comment; a delete carries no text and is not checked
+	if !edit.Delete {
+		edited := currComment
+		edited.Orig = edit.Text
+		edited.User = user // the stored name was sanitized and can be empty where the signed-in one is not
+		if err = s.dataService.ValidateComment(&edited); err != nil {
+			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+			return
+		}
+	}
+
+	editReq := service.EditRequest{Orig: edit.Text, Summary: edit.Summary, Delete: edit.Delete, Admin: user.Admin}
+	if !edit.Delete { // a delete stores no text, so whatever text it carries is not rendered
+		editReq.Text = s.commentFormatter.FormatText(edit.Text, s.disableFancyTextFormatting)
+	}
+
+	_, err = s.dataService.EditComment(locator, id, editReq)
 	if errors.Is(err, service.ErrRestrictedWordsFound) {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentValidation)
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "invalid comment", rest.ErrCommentRestrictWords)
 		return
 	}
 
@@ -283,6 +340,13 @@ func (s *private) updateCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.SiteID, locator.URL, lastCommentsScope, user.ID))
+
+	// answer with what a read returns: the record EditComment hands back is the stored one
+	res, err := s.dataService.Get(locator, id, rest.GetUserOrEmpty(r))
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't load updated comment", rest.ErrInternal)
+		return
+	}
 	R.RenderJSON(w, res)
 }
 
@@ -384,6 +448,15 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 			fmt.Errorf("missing parameter"), "address parameter is required", rest.ErrInternal)
 		return
 	}
+	// the widget sends the field as it was typed
+	subscribe.Address = strings.TrimSpace(subscribe.Address)
+	// "?" and "#" can be part of an address, but the notification mails take their recipient as a
+	// mailto URL, where either of the two ends it, and are not sent to such an address
+	if !isPlainEmail(subscribe.Address) || strings.ContainsAny(subscribe.Address, "?#") {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest,
+			fmt.Errorf("not an email address"), "address parameter has to be an email address and nothing else", rest.ErrInternal)
+		return
+	}
 	subscribe.Site = verifiedSite(r, subscribe.Site)
 	existingAddress, getErr := s.dataService.GetUserEmail(subscribe.Site, user.ID)
 	if getErr != nil {
@@ -408,11 +481,12 @@ func (s *private) sendEmailConfirmationCtrl(w http.ResponseWriter, r *http.Reque
 	}
 
 	claims := token.Claims{
-		Handshake: &token.Handshake{ID: user.ID + "::" + subscribe.Address},
-		Audience:  jwt.ClaimStrings{r.URL.Query().Get("site")},
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
-		Issuer:    "remark42",
+		Handshake:    &token.Handshake{ID: user.ID + "::" + subscribe.Address},
+		AuthProvider: &token.AuthProvider{Name: emailSubscribeProvider},
+		Audience:     jwt.ClaimStrings{subscribe.Site},
+		ExpiresAt:    jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+		NotBefore:    jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		Issuer:       "remark42",
 	}
 
 	tkn, err := s.authenticator.TokenService().Token(claims)
@@ -513,9 +587,15 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
 		return
 	}
-	userID, address, herr := s.parseHandshake(confirm.Token)
+	claims, userID, address, herr := s.parseHandshake(confirm.Token, emailSubscribeProvider)
 	if herr != nil {
 		rest.SendErrorJSON(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	siteID := verifiedSite(r, confirm.Site)
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 	if userID != user.ID {
@@ -523,7 +603,91 @@ func (s *private) setConfirmedEmailCtrl(w http.ResponseWriter, r *http.Request) 
 			"invalid handshake token", rest.ErrInternal)
 		return
 	}
-	s.setEmail(w, r, user.ID, verifiedSite(r, confirm.Site), address)
+	s.setEmail(w, r, user.ID, siteID, address)
+}
+
+// emailSubscribeProvider is the provider name in a token made by sendEmailConfirmationCtrl. Three tokens
+// carry a user::address handshake signed with the same key: this one, which expires in 30 minutes and proves
+// the reader holds the address now; the unsubscribe link in every reply email, which has no provider and
+// lasts a century; and the email login confirmation, whose user part the requester chooses and whose
+// provider is the login's. parseHandshake accepts each token only where it is meant to be used.
+const emailSubscribeProvider = "email-subscribe"
+
+// emailSubscribeCtrl confirms an email subscription from the link in the confirmation email, with no
+// session: the token proves the reader holds the address, and it names the user who asked for it and the
+// site. GET only shows the page with the confirm button, as mail scanners fetch links on their own; POST
+// from that button stores the address.
+// GET/POST /email/subscribe.html?tkn=jwt
+func (s *private) emailSubscribeCtrl(w http.ResponseWriter, r *http.Request) {
+	// the global policy forbids forms and scripts, and this page is one button posting back to itself,
+	// with a script that posts it in place so the tab can close itself afterwards. Nothing may frame
+	// it, and the token in its address must not leave in a Referer
+	nonce := rand.Text()
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; form-action 'self'; "+
+		"script-src 'nonce-"+nonce+"'; connect-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none';")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+
+	tkn := r.URL.Query().Get("tkn")
+	if tkn == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("missing parameter"), "token parameter is required", rest.ErrInternal)
+		return
+	}
+	claims, userID, address, herr := s.parseHandshake(tkn, emailSubscribeProvider)
+	if herr != nil {
+		details := herr.details
+		if errors.Is(herr.err, errHandshakeExpired) {
+			details = "the confirmation link has expired, subscribe again from the comment form"
+		}
+		rest.SendErrorHTML(w, r, herr.status, herr.err, details, rest.ErrInternal)
+		return
+	}
+	siteID := tokenSite(claims)
+	if siteID == "" {
+		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("no site in token"),
+			"invalid confirmation token", rest.ErrInternal)
+		return
+	}
+	// the session check refuses a blocked user on the paste path, and there is no session here
+	if s.dataService.IsBlocked(siteID, userID) {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("user %s is blocked", userID), "user is blocked", rest.ErrInternal)
+		return
+	}
+	// the link works for whoever holds it until it expires, so an older link, such as one sent to a
+	// mistyped address, must not replace an address confirmed since. Unsubscribing removes the stored
+	// address, after which the link works
+	current, err := s.dataService.GetUserEmail(siteID, userID)
+	if err != nil {
+		rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "can't read email for user", rest.ErrInternal)
+		return
+	}
+	if current != "" && current != address {
+		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("another address is confirmed for user %s", userID),
+			"a different email address is already confirmed, unsubscribe in the comment form and open this link again to use this one",
+			rest.ErrInternal)
+		return
+	}
+
+	confirmed := false
+	if r.Method == http.MethodPost {
+		log.Printf("[DEBUG] set email for user %s from the confirmation link", userID)
+		if _, err = s.dataService.SetUserEmail(siteID, userID, address); err != nil {
+			rest.SendErrorHTML(w, r, http.StatusBadRequest, err, "can't set email for user", rest.ErrInternal)
+			return
+		}
+		confirmed = true
+	}
+
+	page, err := rest.RenderTemplate("subscribe", "email_subscribe.html.tmpl", struct {
+		Site      string
+		Confirmed bool
+		Nonce     string
+	}{Site: siteID, Confirmed: confirmed, Nonce: nonce})
+	if err != nil {
+		log.Printf("[WARN] can't make subscribe page, %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	rest.HTMLResponse(w, http.StatusOK, page)
 }
 
 // handshakeError is a failure to read the handshake from a confirmation token,
@@ -534,26 +698,47 @@ type handshakeError struct {
 	details string
 }
 
+// errHandshakeExpired is the error parseHandshake reports for an expired token
+var errHandshakeExpired = errors.New("expired")
+
 // parseHandshake verifies a confirmation token made by sendEmailConfirmationCtrl or for the email unsubscribe link,
-// and returns the user ID and address from its handshake, which is user.ID + "::" + address.
-// A token without a handshake, such as a login token, is rejected as invalid.
-func (s *private) parseHandshake(tkn string) (userID, address string, herr *handshakeError) {
+// and returns its claims with the user ID and address from its handshake, which is user.ID + "::" + address.
+// The token must have been made by provider: emailSubscribeProvider for a confirmation, empty for an unsubscribe
+// link. A token without a handshake, such as a login token, or made for another use is rejected as invalid.
+func (s *private) parseHandshake(tkn, provider string) (claims token.Claims, userID, address string, herr *handshakeError) {
 	claims, err := s.authenticator.TokenService().Parse(tkn)
 	if err != nil {
-		return "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusForbidden, err: err, details: "failed to verify confirmation token"}
 	}
 	if s.authenticator.TokenService().IsExpired(claims) {
-		return "", "", &handshakeError{status: http.StatusForbidden, err: fmt.Errorf("expired"), details: "failed to verify confirmation token"}
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusForbidden, err: errHandshakeExpired, details: "failed to verify confirmation token"}
 	}
 	if claims.Handshake == nil {
-		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("no handshake in token"), details: "invalid handshake token"}
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("no handshake in token"), details: "invalid handshake token"}
 	}
 	elems := strings.Split(claims.Handshake.ID, "::")
 	if len(elems) != 2 || elems[0] == "" || elems[1] == "" {
 		// the handshake carries the address, so it is not echoed into the error
-		return "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("malformed handshake"), details: "invalid handshake token"}
 	}
-	return elems[0], elems[1], nil
+	tokenProvider := ""
+	if claims.AuthProvider != nil {
+		tokenProvider = claims.AuthProvider.Name
+	}
+	if tokenProvider != provider {
+		return token.Claims{}, "", "", &handshakeError{status: http.StatusBadRequest, err: fmt.Errorf("token made for another use"), details: "invalid handshake token"}
+	}
+	return claims, elems[0], elems[1], nil
+}
+
+// tokenSite returns the site a confirmation or unsubscribe token was issued for, or an empty string when
+// the token names no site or several. Users have the same ID on every site of a server, so a token from
+// one site must not act on another
+func tokenSite(claims token.Claims) string {
+	if len(claims.Audience) != 1 {
+		return ""
+	}
+	return claims.Audience[0]
 }
 
 // verifiedSite returns the site from the query, which matchSiteID has checked against the user's site.
@@ -575,16 +760,12 @@ func (s *private) setEmail(w http.ResponseWriter, r *http.Request, userID, siteI
 		return
 	}
 
-	// update User.Email field
-	claims, _, err := s.authenticator.TokenService().Get(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-	// a token without a user, such as a handshake token sent along with the admin password, has no email to update
-	if claims.User != nil {
+	// update User.Email field of the session token. The admin password signs in without one, and a token
+	// without a user, such as a handshake token sent along with that password, has no email to update
+	claims, ok := s.sessionClaims(r)
+	if ok && claims.User != nil {
 		claims.User.Email = address
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		if err = s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
@@ -601,9 +782,15 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	siteID := r.URL.Query().Get("site")
 
-	userID, address, herr := s.parseHandshake(tkn)
+	claims, userID, address, herr := s.parseHandshake(tkn, "")
 	if herr != nil {
 		rest.SendErrorHTML(w, r, herr.status, herr.err, herr.details, rest.ErrInternal)
+		return
+	}
+	// the page has no session to check the site against, and every link carries the site of its token
+	if site := tokenSite(claims); site == "" || site != siteID {
+		rest.SendErrorHTML(w, r, http.StatusForbidden, fmt.Errorf("token issued for another site"),
+			"can't use provided token for this site", rest.ErrInternal)
 		return
 	}
 
@@ -613,12 +800,12 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		// as it's only used to check if we're trying to set to the same value it's already set to
 		log.Printf("[WARN] can't read email for %s, %v", userID, err)
 	}
-	if existingAddress == "" {
-		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("user is not subscribed"), "user does not have active email subscription", rest.ErrInternal)
-		return
-	}
+	// one answer whether the user has no address or another one: a link mailed to the author of a comment
+	// further up a thread named the author of the comment replied to until the recipient was named in it,
+	// and such a link must not tell its holder whether that other user is subscribed
 	if address != existingAddress {
-		rest.SendErrorHTML(w, r, http.StatusBadRequest, fmt.Errorf("wrong email unsubscription"), "email address in request does not match known for this user", rest.ErrInternal)
+		rest.SendErrorHTML(w, r, http.StatusConflict, fmt.Errorf("user is not subscribed with this address"),
+			"this address is not subscribed", rest.ErrInternal)
 		return
 	}
 
@@ -629,13 +816,13 @@ func (s *private) emailUnsubscribeCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// clean User.Email from the token, if user has the token
-	claims, _, err := s.authenticator.TokenService().Get(r)
+	session, _, err := s.authenticator.TokenService().Get(r)
 	if err != nil {
 		log.Printf("[DEBUG] unsubscribed user doesn't have valid JWT token to update %s, %v", userID, err)
 	}
-	if claims.User != nil && claims.User.Email != "" {
-		claims.User.Email = ""
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+	if session.User != nil && session.User.Email != "" {
+		session.User.Email = ""
+		if _, err = s.authenticator.TokenService().Set(w, session); err != nil {
 			rest.SendErrorHTML(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
@@ -660,20 +847,41 @@ func (s *private) deleteEmailCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't delete email for user", rest.ErrInternal)
 		return
 	}
-	// clean User.Email from the token
-	claims, _, err := s.authenticator.TokenService().Get(r)
-	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusForbidden, err, "failed to verify confirmation token", rest.ErrInternal)
-		return
-	}
-	if claims.User != nil && claims.User.Email != "" {
+	// clean User.Email from the session token, if the request has one
+	claims, ok := s.sessionClaims(r)
+	if ok && claims.User != nil && claims.User.Email != "" {
 		claims.User.Email = ""
-		if _, err = s.authenticator.TokenService().Set(w, claims); err != nil {
+		if err := s.setTokenClaims(w, claims); err != nil {
 			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "failed to set token", rest.ErrInternal)
 			return
 		}
 	}
 	R.RenderJSON(w, R.JSON{"deleted": true})
+}
+
+// sessionClaims returns the claims of the token the request carries, and false when it carries none. The auth
+// middleware also accepts the admin password, which needs no token, and the change the caller made is already
+// stored by then, so the caller has only the token left to update and skips it
+func (s *private) sessionClaims(r *http.Request) (token.Claims, bool) {
+	claims, _, err := s.authenticator.TokenService().Get(r)
+	if err != nil {
+		log.Printf("[DEBUG] no session token to update: %v", err)
+		return token.Claims{}, false
+	}
+	return claims, true
+}
+
+// setTokenClaims writes changed claims back to the client, for a handler behind the auth middleware.
+// The claims are read off the request, and the token there may be an expired one the middleware renewed
+// a moment ago. Set keeps an ExpiresAt it is given, so writing such claims as they are would replace the
+// renewed token, in the cookie and in the X-JWT header, with one that has expired already. An expired
+// token therefore gets a new lifetime here, as the middleware gave it; one still valid keeps its own.
+func (s *private) setTokenClaims(w http.ResponseWriter, claims token.Claims) error {
+	if s.authenticator.TokenService().IsExpired(claims) {
+		claims.ExpiresAt = nil
+	}
+	_, err := s.authenticator.TokenService().Set(w, claims)
+	return err
 }
 
 // DELETE /telegram?site=siteID - removes user's telegram
@@ -807,8 +1015,8 @@ func isNoUserComments(err error) bool {
 	return errors.Is(err, engine.ErrNoUserComments) || strings.Contains(err.Error(), engine.ErrNoUserComments.Error())
 }
 
-// POST /deleteme?site_id=site - requesting delete of all user info
-// makes jwt with user info and sends it back as a part of json response
+// POST /deleteme?site=siteID - deletes nothing itself: makes a deletion request token for the user, valid for
+// three months and not usable for login, and returns it with the link to the page where an admin carries it out
 func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 	siteID := r.URL.Query().Get("site")
@@ -839,7 +1047,7 @@ func (s *private) deleteMeCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"site": siteID, "user_id": user.ID, "token": tokenStr, "link": link})
 }
 
-// POST /image - save image with form request
+// POST /picture - saves the image from the "file" field of a multipart form and returns its id
 func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	user := rest.MustGetUserInfo(r)
 
@@ -848,20 +1056,23 @@ func (s *private) savePictureCtrl(w http.ResponseWriter, r *http.Request) {
 	// so ParseMultipartForm cannot read more than that regardless of the in-memory threshold.
 	// The 5 MB argument is the soft threshold above which the form is spilled to disk.
 	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil { //nolint:gosec // bounded by MaxBytesReader above
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't parse multipart form", rest.ErrDecode)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("upload storage error")),
+			"can't parse multipart form", rest.ErrDecode)
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't get image file from the request", rest.ErrInternal)
+		// a part over the in-memory limit is read back from a temp file, whose error names its path
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("upload storage error")),
+			"can't get image file from the request", rest.ErrInternal)
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	id, err := s.imageService.Save(user.ID, file)
 	if err != nil {
-		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't save image", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusBadRequest, err, imageRejection(err), "can't save image", rest.ErrInternal)
 		return
 	}
 
@@ -886,4 +1097,25 @@ func extractIP(remoteAddr string) string {
 		return remoteAddr // already a bare IP (no port)
 	}
 	return ip
+}
+
+// imageRejection returns err when the image service rejected the upload itself, as too large, not an image or
+// malformed, since API users tell those cases apart by the text. Any other error comes from the image store and
+// can name a file on the server, so a fixed error is returned in its place
+func imageRejection(err error) error {
+	for _, prefix := range []string{"can't load image: file is too large", "can't load image: file format not allowed",
+		"image rejected: "} {
+		if strings.HasPrefix(err.Error(), prefix) {
+			return err
+		}
+	}
+	return fmt.Errorf("image store error")
+}
+
+// withoutPath returns err, or replacement when err carries a file system path, as the errors of temp files do
+func withoutPath(err, replacement error) error {
+	if _, ok := errors.AsType[*fs.PathError](err); ok {
+		return replacement
+	}
+	return err
 }

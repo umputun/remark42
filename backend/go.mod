@@ -15,14 +15,12 @@ require (
 	github.com/go-pkgz/repeater/v2 v2.2.0
 	github.com/go-pkgz/rest v1.24.0
 	github.com/go-pkgz/routegroup v1.6.2
-	github.com/go-pkgz/syncs v1.3.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/kyokomi/emoji/v2 v2.2.14
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/rs/xid v1.6.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/stretchr/testify v1.12.1

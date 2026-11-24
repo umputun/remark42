@@ -5,6 +5,7 @@ package e2e
 import (
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mxschmitt/playwright-go"
@@ -71,7 +72,6 @@ func TestEmbed_DestroyRemovesTheWidgetAndCreateInstanceBringsItBack(t *testing.T
 	widget(t, page)
 
 	// destroy takes the iframe out of the page, and the widget document goes with it
-	snapshotJSCoverage(t, page)
 	_, err := page.Evaluate(`() => window.REMARK42.destroy()`)
 	require.NoError(t, err)
 
@@ -131,7 +131,7 @@ func TestEmbed_ThemeChangedWhileLoadingReachesTheWidget(t *testing.T) {
 		afterInited bool
 	}{
 		{"before the document loads", regexp.MustCompile(`/web/iframe\.html`), false},
-		{"before the bundle runs", regexp.MustCompile(`remark\.m?js$`), true},
+		{"before the bundle runs", regexp.MustCompile(`remark\.m?js(\?|$)`), true},
 	}
 
 	for _, tc := range cases {
@@ -143,7 +143,9 @@ func TestEmbed_ThemeChangedWhileLoadingReachesTheWidget(t *testing.T) {
 			var releaseOnce sync.Once
 			releaseAll := func() { releaseOnce.Do(func() { close(release) }) }
 			t.Cleanup(releaseAll)
+			var held atomic.Bool
 			require.NoError(t, page.Route(tc.hold, func(route playwright.Route) {
+				held.Store(true)
 				// off the handler, so a held request does not hold up the others
 				go func() {
 					<-release
@@ -160,6 +162,10 @@ func TestEmbed_ThemeChangedWhileLoadingReachesTheWidget(t *testing.T) {
 					return err == nil && v == "visible"
 				})
 			}
+
+			// without this the case passes on a pattern that matches nothing: the widget then loads
+			// before the change and takes it through its own listener
+			eventually(t, waitTimeout, "the request this case holds was never made", held.Load)
 
 			_, err := page.Evaluate(`() => window.REMARK42.changeTheme('dark')`)
 			require.NoError(t, err)

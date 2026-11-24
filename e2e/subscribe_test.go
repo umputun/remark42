@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"testing"
+	"time"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
@@ -155,6 +157,82 @@ func TestSubscribe_BackFromTheTokenStepKeepsThePanelOpen(t *testing.T) {
 	// the assertion the case exists for: the panel is still open, showing the email step again
 	waitVisible(t, frame.Locator(`div[role="listbox"]`))
 	waitVisible(t, email)
+}
+
+// TestSubscribe_ConfirmByLink confirms the subscription from the link in the message, opened in a
+// browser context with no session, the way a reader opening the mail on another device would. The
+// page must ask before it subscribes, since mail scanners fetch links on their own.
+//
+// Not parallel: the dev user's subscription is shared with the other cases here, and a parallel one
+// clearing it between the click and the reload would fail this for nothing it did.
+func TestSubscribe_ConfirmByLink(t *testing.T) {
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	address := fmt.Sprintf("linked-%s-%d@example.com", runID, os.Getpid())
+	frame, email := openEmailStep(t, page)
+	require.NoError(t, email.Fill(address))
+	submitEmail(t, page, frame)
+	// the token step tells the reader about the link too, and its field must be there now for its
+	// absence after the link to mean anything
+	tokenField := frame.Locator(`textarea[placeholder="Paste the token from the email, or click the link in it"]`)
+	waitVisible(t, tokenField)
+
+	// the reader goes to the mailbox, often by clicking somewhere on the page first. The host page
+	// forwards that click as clickOutside, and the panel waiting for the token stays open: if it
+	// closed, the switch to the subscribed state checked below would never show
+	require.NoError(t, page.Mouse().Click(5, 5))
+
+	// the link as the message carries it, so a wrong REMARK_URL prefix fails here too
+	link := regexp.MustCompile(regexp.QuoteMeta(baseURL) + `/email/subscribe\.html\?tkn=[A-Za-z0-9._-]+`).
+		FindString(mailpitMessage(t, address))
+	require.NotEmpty(t, link, "no confirmation link in the message")
+
+	// opened the way a mail client opens it: a click on a link that opens a new tab, in a browser
+	// with no session. That tab starts with one history entry, which is what lets it close itself
+	mail := newPage(t)
+	require.NoError(t, mail.SetContent(`<a id="link" target="_blank" rel="noopener" href="`+link+`">confirm</a>`))
+	reader, err := mail.Context().ExpectPage(func() error { return mail.Locator("#link").Click() })
+	require.NoError(t, err, "the link opened no tab")
+	confirm := reader.Locator(`button:text-is("Confirm subscription")`)
+	waitVisible(t, confirm)
+
+	// opening the page alone subscribed nobody
+	status, body := pageFetch(t, page, http.MethodGet, baseURL+"/api/v1/email?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, body)
+	assert.NotContains(t, body, address, "opening the link subscribed before the button was pressed")
+
+	// posted in place, the page is still the tab's only history entry, so the browser lets it close
+	// itself. A form post would add a second entry and leave it open. The listener goes on before the
+	// click: the page closes half a second after the answer, and a close is not replayed to a later one
+	closed := make(chan struct{})
+	reader.OnClose(func(playwright.Page) { close(closed) })
+	require.NoError(t, confirm.Click())
+	select {
+	case <-closed:
+	case <-time.After(waitTimeout):
+		t.Fatal("the confirmation page did not close itself")
+	}
+
+	status, body = pageFetch(t, page, http.MethodGet, baseURL+"/api/v1/email?site=remark", nil)
+	require.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, address, "the confirm button did not subscribe")
+
+	// the panel still waiting for a token notices the subscription on its own, with no reload
+	waitVisible(t, frame.Locator(`text=You have subscribed to email updates`))
+	waitVisible(t, frame.Locator(`button:text-is("Unsubscribe")`))
+	tokenFields, err := tokenField.Count()
+	require.NoError(t, err)
+	assert.Zero(t, tokenFields, "the token field is still open")
+
+	// done waiting, the panel closes on a click outside again, which also shows the click above
+	// reached the widget
+	require.NoError(t, page.Mouse().Click(5, 5))
+	waitHidden(t, frame.Locator(`button:text-is("Unsubscribe")`), "a click outside no longer closes the panel")
+
+	status, body = pageFetch(t, page, http.MethodDelete, baseURL+"/api/v1/email?site=remark", nil)
+	assert.Equal(t, http.StatusOK, status, "could not clear the subscription: %s", body)
 }
 
 // openEmailStep clears the dev user's email subscription, reloads, opens the subscription panel and

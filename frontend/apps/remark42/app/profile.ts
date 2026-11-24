@@ -3,6 +3,8 @@ import { setAttributes, setStyles } from 'utils/set-dom-props';
 import { createIframe } from 'utils/create-iframe';
 import type { Profile } from 'common/types';
 
+const PROFILE_TITLE = 'Profile | Remark42';
+
 let root: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
 
@@ -31,10 +33,12 @@ function createFragment(params: Profile & Record<string, string | unknown>) {
     styles: styles.iframe,
     onReveal: () => created.isConnected && created.focus(),
   });
+  // the comments iframe carries the generic title; this one is told apart from it
+  setAttributes(created, { title: PROFILE_TITLE });
   iframe = created;
 
   if (!root) {
-    root = createElement('div', styles.root);
+    root = createElement('div', styles.root, { role: 'dialog', 'aria-label': PROFILE_TITLE });
     document.body.appendChild(root);
   }
 
@@ -100,6 +104,24 @@ export function closeProfile() {
     removeIframe();
     document.body.style.removeProperty('overflow');
   });
+}
+
+/**
+ * Takes an open profile away at once, with the widget it belongs to. Left on the page it would
+ * have nobody to talk to: its sign-out is a message to that widget, and so is its close button
+ */
+export function removeProfile() {
+  window.removeEventListener('keydown', handleKeydown);
+
+  if (!iframe?.isConnected) {
+    return;
+  }
+
+  removeIframe();
+  if (root) {
+    setStyles(root, styles.rootHidden);
+  }
+  document.body.style.removeProperty('overflow');
 }
 
 const styles = {

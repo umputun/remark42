@@ -10,13 +10,16 @@
 # sources in this repository, and leaving it out let an edited stub run behind a stack the guard
 # had just accepted.
 #
+# .dockerignore decides what goes into the image, and the compose files configure the instances
+# the suite talks to, so an edit to either is a different stack too.
+#
 # Tracked content is covered exactly; an untracked file changes the digest when it appears,
 # by name, but later edits to it do not.
 set -eu
 
 cd "$(dirname "$0")/.."
 
-sources="backend frontend Dockerfile docker-init.sh e2e/telegramstub"
+sources="backend frontend Dockerfile docker-init.sh .dockerignore compose-e2e-test.yml compose-e2e-coverage.yml e2e/telegramstub"
 
 if command -v sha256sum >/dev/null 2>&1; then
 	sha256=sha256sum
@@ -29,16 +32,16 @@ fi
 	# Hash the files on disk, not HEAD plus a diff: staging or committing the same
 	# content must not invalidate a running stack. Skip deleted files, including
 	# staged deletions, so committing their removal leaves the stamp unchanged too.
+	# One process hashes each batch xargs hands over, so a busy machine still computes the
+	# stamp well inside the time the suite allows it (dockerTimeout in e2e/webfiles_test.go).
 	# shellcheck disable=SC2016 # expand $file in the child shell
 	git ls-files -z -- $sources | xargs -0 sh -c '
-		sha256=$1
-		shift
 		for file do
 			if [ -f "$file" ]; then
-				$sha256 "$file"
+				printf "%s\0" "$file"
 			fi
 		done
-	' sh "$sha256"
+	' sh | xargs -0 -r $sha256
 	# Only untracked names belong here; porcelain also records index state.
 	git ls-files --others --exclude-standard -z -- $sources
 	# an instrumented build is a different binary from the same sources, so it has to be a

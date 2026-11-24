@@ -6,7 +6,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,8 +16,11 @@ import (
 	"github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/umputun/remark42/backend/app/rest"
 )
 
 // routes() wraps bounded routes with the enforcing rest.Timeout and deliberately leaves the
@@ -195,34 +200,58 @@ func TestRest_rejectAnonUser(t *testing.T) {
 }
 
 func TestRest_cacheControl(t *testing.T) {
-	tbl := []struct {
-		url     string
-		version string
-		exp     time.Duration
-		etag    string
-		maxAge  int
-	}{
-		{"http://example.com/foo", "v1", time.Hour, "b433be1ea19edaee9dc92ca4b895b6bdf3c058cb", 3600},
-		{"http://example.com/foo2", "v1", 10 * time.Hour, "6d8466aef3246c1057452561acddf7ad9d0d99e0", 36000},
-		{"http://example.com/foo", "v2", time.Hour, "481700c52aab0dfbca99f3ffc2a4fbb27884c114", 3600},
-		{"https://example.com/foo", "v2", time.Hour, "bebd4f1b87f474792c4e75e5affe31fbf67f5778", 3600},
+	serve := func(exp time.Duration, version, url, content, ifNoneMatch string) (int, http.Header) {
+		req := httptest.NewRequest("GET", url, http.NoBody)
+		if ifNoneMatch != "" {
+			req.Header.Set("If-None-Match", ifNoneMatch)
+		}
+		w := httptest.NewRecorder()
+		fingerprint := func(*http.Request) string { return content }
+		cacheControl(exp, version, fingerprint)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+		resp := w.Result()
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header
+	}
+	etagOf := func(version, url, content string) string {
+		_, h := serve(time.Hour, version, url, content, "")
+		return h.Get("Etag")
 	}
 
-	for i, tt := range tbl {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			req := httptest.NewRequest("GET", tt.url, http.NoBody)
-			w := httptest.NewRecorder()
+	t.Run("cache-control carries the expiration", func(t *testing.T) {
+		for _, exp := range []time.Duration{time.Hour, 10 * time.Hour} {
+			_, h := serve(exp, "v1", "http://example.com/foo", "a", "")
+			assert.Equal(t, "max-age="+strconv.Itoa(int(exp.Seconds()))+", no-cache", h.Get("Cache-Control"))
+		}
+	})
 
-			h := cacheControl(tt.exp, tt.version)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-			h.ServeHTTP(w, req)
-			resp := w.Result()
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.NoError(t, resp.Body.Close())
-			t.Logf("%+v", resp.Header)
-			assert.Equal(t, `"`+tt.etag+`"`, resp.Header.Get("Etag"))
-			assert.Equal(t, `max-age=`+strconv.Itoa(int(tt.exp.Seconds()))+", no-cache", resp.Header.Get("Cache-Control"))
-		})
-	}
+	t.Run("each input changes the etag", func(t *testing.T) {
+		base := etagOf("v1", "http://example.com/foo", "a")
+		require.NotEmpty(t, base)
+		for name, other := range map[string]string{
+			"version": etagOf("v2", "http://example.com/foo", "a"),
+			"url":     etagOf("v1", "http://example.com/foo2", "a"),
+			"scheme":  etagOf("v1", "https://example.com/foo", "a"),
+			"content": etagOf("v1", "http://example.com/foo", "b"),
+		} {
+			assert.NotEqual(t, base, other, name)
+		}
+		assert.Equal(t, base, etagOf("v1", "http://example.com/foo", "a"), "same inputs, same etag")
+	})
+
+	t.Run("a matching etag answers 304, a stale one passes through", func(t *testing.T) {
+		etag := etagOf("v1", "http://example.com/foo", "a")
+		code, _ := serve(time.Hour, "v1", "http://example.com/foo", "a", etag)
+		assert.Equal(t, http.StatusNotModified, code)
+		code, _ = serve(time.Hour, "v1", "http://example.com/foo", "b", etag)
+		assert.Equal(t, http.StatusOK, code)
+	})
+
+	t.Run("nothing to fingerprint, no etag and no 304", func(t *testing.T) {
+		code, h := serve(time.Hour, "v1", "http://example.com/foo", "", `"anything"`)
+		assert.Equal(t, http.StatusOK, code)
+		assert.Empty(t, h.Get("Etag"))
+		assert.Equal(t, "max-age=3600, no-cache", h.Get("Cache-Control"))
+	})
 }
 
 // TestRest_apiCSP locks in that /api/v1/* responses get a strict default-src 'none'
@@ -296,8 +325,15 @@ func TestRest_securityHeaders(t *testing.T) {
 }
 
 func TestRest_subscribersOnly(t *testing.T) {
-	paidSubUser := &token.User{}
-	paidSubUser.SetPaidSub(true)
+	// paidUser is a paid subscriber whose paid status ends at until, or has no end when it is zero
+	paidUser := func(until time.Time) token.User {
+		u := token.User{}
+		u.SetPaidSub(true)
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(&u, until)
+		}
+		return u
+	}
 
 	tbl := []struct {
 		subsOnly bool
@@ -309,7 +345,10 @@ func TestRest_subscribersOnly(t *testing.T) {
 		{true, token.User{}, true, http.StatusForbidden},
 		{false, token.User{}, false, http.StatusOK},
 		{false, token.User{}, true, http.StatusOK},
-		{true, *paidSubUser, true, http.StatusOK},
+		{true, paidUser(time.Now().Add(time.Hour)), true, http.StatusOK},
+		{true, paidUser(time.Now().Add(-time.Second)), true, http.StatusForbidden},
+		{true, paidUser(time.Time{}), true, http.StatusForbidden},
+		{false, paidUser(time.Time{}), true, http.StatusOK},
 	}
 
 	for i, tt := range tbl {
@@ -333,18 +372,39 @@ func Test_validEmailAuth(t *testing.T) {
 		req    string
 		status int
 	}{
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone", http.StatusOK},
-		{"/auth/email/login?site=site-with-dash_and_underscore-and.dot&address=umputun%example.com&user=someone", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someone+blah", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=Евгений+Умпутун", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=12", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusForbidden},
-		{"/auth/email/login?site=remark42&address=umputun%example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
-		{"/auth/twitter/login?site=remark42&address=umputun%example.com&user=..blah+blah", http.StatusOK},
-		{"/auth/email/login?site=remark42&address=umputun%example.com", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=site-with-dash_and_underscore-and.dot&address=umputun%40example.com&user=someone", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someone+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Евгений+Умпутун", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=12", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=**blah+blah", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=someonelooong+loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong", http.StatusForbidden},
+		{"/auth/twitter/login?site=remark42&address=umputun%40example.com&user=..blah+blah", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com", http.StatusOK},
 		{"/auth/email/login?site=remark42&address=umputun+example.com&user=someone", http.StatusForbidden},
-		{"/auth/email/login?site=bad!site&address=umputun%example.com&user=someone", http.StatusForbidden},
-		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=bad!site&address=umputun%40example.com&user=someone", http.StatusForbidden},
+		{"/auth/email/login?site=loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongsite&address=umputun%40example.com&user=someone", http.StatusForbidden},
+		// three characters is the shortest name the widget's sign-in form accepts
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=abc", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ева", http.StatusOK},
+		// an address and nothing else
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("first#last?x@example.com"), http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=Some.User%2Btag%40sub.example.com", http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("пользователь@example.com"), http.StatusOK},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`"unlock it at https://evil.example.com" <victim@example.com>`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`Your account is locked <victim@example.com>`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`victim@example.com (unlock at evil.example.com)`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`unlock at evil.example.com: victim@example.com;`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(`"free text"@example.com`), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim+see\u00a0evil.example.com@example.com"), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape(" victim@example.com"), http.StatusForbidden},
+		{"/auth/email/login?site=remark42&user=someone&address=" + url.QueryEscape("victim@example.com,other@example.com"), http.StatusForbidden},
+		// hyphens are allowed; dots, other spaces than the ordinary one and a space at either end are not
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+Smith", http.StatusOK},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=Ann-Marie+O.+Smith", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=claim+your+prize+at+evil-site.com", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=a%09bc", http.StatusForbidden},
+		{"/auth/email/login?site=remark42&address=umputun%40example.com&user=abc+", http.StatusForbidden},
 	}
 
 	for i, tt := range tbl {
@@ -356,6 +416,70 @@ func Test_validEmailAuth(t *testing.T) {
 			resp := w.Result()
 			assert.Equal(t, tt.status, resp.StatusCode)
 			assert.NoError(t, resp.Body.Close())
+		})
+	}
+}
+
+func Test_isPlainEmail(t *testing.T) {
+	for _, s := range []string{"a@example.com", "Some.User+tag@sub.example.com", "пользователь@example.com", "a?b#c@example.com"} {
+		assert.True(t, isPlainEmail(s), s)
+	}
+	for _, s := range []string{
+		"", "example.com", "a@", `"Some User" <a@example.com>`, "Some User <a@example.com>", "<a@example.com>",
+		"a@example.com (comment)", "group: a@example.com;", `"free text"@example.com`, " a@example.com", "a@example.com ",
+		"a@example.com,b@example.com", "a\u00a0b@example.com", "a\u202eb@example.com", "a@example.com\r\nBcc: b@example.com",
+	} {
+		assert.False(t, isPlainEmail(s), "%q", s)
+	}
+}
+
+func Test_singleAuthPath(t *testing.T) {
+	registered := func(name string) bool { return name == "email" || name == "github" }
+
+	tbl := []struct {
+		path   string
+		status int
+	}{
+		{"/auth/status", http.StatusOK},
+		{"/auth/user", http.StatusOK},
+		{"/auth/list", http.StatusOK},
+		{"/auth/logout", http.StatusOK},
+		{"/auth/email/login", http.StatusOK},
+		{"/auth/github/login", http.StatusOK},
+		{"/auth/github/callback", http.StatusOK},
+		// in front of an endpoint
+		{"/auth/x/email/login", http.StatusNotFound},
+		{"/auth/1/2/email/login", http.StatusNotFound},
+		{"/auth/x%2Femail/login", http.StatusNotFound},
+		{"/auth/email%2Flogin/login", http.StatusNotFound},
+		{"/auth/x/status", http.StatusNotFound},
+		{"/auth/x/list", http.StatusNotFound},
+		{"/auth/x/logout", http.StatusNotFound},
+		// a provider in front of a call that has none
+		{"/auth/email/status", http.StatusNotFound},
+		{"/auth/email/user", http.StatusNotFound},
+		{"/auth/github/list", http.StatusNotFound},
+		{"/auth/github/logout", http.StatusNotFound},
+		// a provider's call without the provider, which the handler would read from the mount point
+		{"/auth/login", http.StatusNotFound},
+		{"/auth/callback", http.StatusNotFound},
+		// after an endpoint
+		{"/auth/email/login/", http.StatusNotFound},
+		{"/auth/status/", http.StatusNotFound},
+		// no endpoint
+		{"/auth/", http.StatusNotFound},
+		{"/auth/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/email/nothing-of-the-kind", http.StatusNotFound},
+		{"/auth/twitter/login", http.StatusNotFound}, // not registered
+		{"/auth/EMAIL/login", http.StatusNotFound},   // the handler matches the name exactly too
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "http://example.com"+tt.path+"?site=remark42", http.NoBody)
+			w := httptest.NewRecorder()
+			singleAuthPath(registered)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(w, req)
+			assert.Equal(t, tt.status, w.Code)
 		})
 	}
 }
@@ -471,6 +595,162 @@ func TestRest_rejectCrossSiteBasicAuth(t *testing.T) {
 	}
 }
 
+func TestRest_rejectEmbedded(t *testing.T) {
+	cases := []struct {
+		name string
+		dest string
+		want int
+	}{
+		{name: "no header, as a command-line client sends", dest: "", want: http.StatusOK},
+		{name: "a call from script", dest: "empty", want: http.StatusOK},
+		{name: "a page or a sign-in window", dest: "document", want: http.StatusOK},
+		{name: "an image", dest: "image", want: http.StatusForbidden},
+		{name: "a script", dest: "script", want: http.StatusForbidden},
+		{name: "a stylesheet", dest: "style", want: http.StatusForbidden},
+		{name: "a frame", dest: "iframe", want: http.StatusForbidden},
+		{name: "a value no browser sends", dest: "Document", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			reached := false
+			h := rejectEmbedded(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				reached = true
+				w.WriteHeader(http.StatusOK)
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/auth/logout", http.NoBody)
+			if c.dest != "" {
+				req.Header.Set("Sec-Fetch-Dest", c.dest)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			assert.Equal(t, c.want, rec.Code)
+			assert.Equal(t, c.want == http.StatusOK, reached, "the handler runs only for a request let through")
+		})
+	}
+}
+
+func Test_withoutQueryParam(t *testing.T) {
+	cases := []struct{ name, query, want string }{
+		{name: "nothing to remove", query: "site=remark&url=https://example.com/post?a=1", want: "site=remark&url=https://example.com/post?a=1"},
+		{name: "removed from the end", query: "site=remark&jwt=abc.def.ghi", want: "site=remark"},
+		{name: "removed from the middle, the rest untouched", query: "b=2&jwt=abc&a=%D1%8F+1", want: "b=2&a=%D1%8F+1"},
+		{name: "the only parameter", query: "jwt=abc", want: ""},
+		{name: "every occurrence", query: "jwt=abc&site=remark&jwt=def", want: "site=remark"},
+		{name: "without a value", query: "jwt&site=remark", want: "site=remark"},
+		{name: "the name written escaped", query: "%6Awt=abc&site=remark", want: "site=remark"},
+		{name: "another name that contains it", query: "jwt2=abc&xjwt=def", want: "jwt2=abc&xjwt=def"},
+		{name: "the name as a value", query: "sort=jwt", want: "sort=jwt"},
+		{name: "a name that can't be unescaped stays", query: "%zz=1&jwt=abc", want: "%zz=1"},
+		{name: "empty pairs around it stay", query: "&&jwt=abc&&a=1&", want: "&&&a=1&"},
+		{name: "two in a row at the start", query: "jwt=a&jwt=b&site=remark", want: "site=remark"},
+		{name: "nothing else left but an empty pair", query: "jwt=abc&", want: ""},
+		{name: "an empty pair ahead of it stays", query: "&jwt=a&b=1", want: "&b=1"},
+		{name: "an empty query", query: "", want: ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, withoutQueryParam(c.query, QueryTokenParam))
+		})
+	}
+}
+
+// a token in the query must not authenticate a request, and must not get in the way of one that
+// carries its token where it belongs
+func TestRest_QueryTokenIgnored(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 5 * time.Second}
+	defer client.CloseIdleConnections()
+	status := func(t *testing.T, path, headerToken string) int {
+		req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
+		require.NoError(t, err)
+		if headerToken != "" {
+			req.Header.Set("X-JWT", headerToken)
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42", devToken), "the token is good in the header")
+	assert.Equal(t, http.StatusUnauthorized, status(t, "/api/v1/user?site=remark42&jwt="+devToken, ""),
+		"the same token in the query signs nobody in")
+	assert.Equal(t, http.StatusOK, status(t, "/api/v1/user?site=remark42&jwt=not.a.token", devToken),
+		"a token in the query does not replace the one in the header")
+}
+
+// the sign-in and sign-out routes set and expire the session cookies on a plain GET, so they must
+// not answer a request the browser makes for an image
+func TestRest_AuthRefusesEmbeddedRequests(t *testing.T) {
+	const login = "/auth/anonymous/login?user=reader&passwd=x&aud=remark42"
+	cases := []struct {
+		name, path, dest string
+		want             int
+		cookies          bool // the answer sets or expires the session cookies
+	}{
+		{name: "sign-in from script", path: login, dest: "empty", want: http.StatusOK, cookies: true},
+		{name: "sign-in as an image", path: login, dest: "image", want: http.StatusForbidden},
+		{name: "sign-out from script", path: "/auth/logout", dest: "empty", want: http.StatusOK, cookies: true},
+		{name: "sign-out from a page", path: "/auth/logout", dest: "document", want: http.StatusOK, cookies: true},
+		{name: "sign-out by a client that sends no fetch metadata", path: "/auth/logout", want: http.StatusOK, cookies: true},
+		{name: "sign-out as an image", path: "/auth/logout", dest: "image", want: http.StatusForbidden},
+		{name: "sign-out as an image, named after a provider", path: "/auth/anonymous/logout", dest: "image", want: http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// a server each: the auth routes take two requests a second from an address
+			ts, _, teardown := startupT(t)
+			defer teardown()
+
+			req, err := http.NewRequest(http.MethodGet, ts.URL+c.path, http.NoBody)
+			require.NoError(t, err)
+			if c.dest != "" {
+				req.Header.Set("Sec-Fetch-Dest", c.dest)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			assert.Equal(t, c.want, resp.StatusCode)
+			if c.cookies {
+				assert.NotEmpty(t, resp.Header.Values("Set-Cookie"))
+			} else {
+				assert.Empty(t, resp.Header.Values("Set-Cookie"), "a refused request must not touch the session")
+			}
+		})
+	}
+}
+
+// requests refused as embedded do not count against the two a second the auth routes take from
+// an address, so they cannot use up the allowance of the reader's own sign-out
+func TestRest_AuthRefusalsAreNotRateLimited(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	// the status, and the header the limiter puts on every request that reaches it
+	get := func(dest string) (status int, limit string) {
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/auth/logout", http.NoBody)
+		require.NoError(t, err)
+		req.Header.Set("Sec-Fetch-Dest", dest)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header.Get("X-Rate-Limit-Limit")
+	}
+
+	for range 5 {
+		status, limit := get("image")
+		assert.Equal(t, http.StatusForbidden, status)
+		assert.Empty(t, limit, "a refused request must not reach the limiter")
+	}
+	status, limit := get("empty")
+	assert.Equal(t, http.StatusOK, status)
+	assert.NotEmpty(t, limit, "a request let through is limited as before")
+}
+
 func TestCorsMiddleware(t *testing.T) {
 	h := corsMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -509,5 +789,297 @@ func TestCorsMiddleware(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
 		assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+	})
+}
+
+func TestRecoverer_MasksAddressInURL(t *testing.T) {
+	var lines []string
+	l := lgr.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+	h := recoverer(l)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("oops") }))
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/auth/email/login?address=user@example.com&site=remark42", http.NoBody))
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	require.Len(t, lines, 2, "the recovery line and the stack trace")
+	assert.Contains(t, lines[0], "request panic for /auth/email/login?address=********&site=remark42")
+	assert.Contains(t, lines[0], "oops")
+	assert.NotContains(t, strings.Join(lines, "\n"), "user@example.com", "the address stays out of the log")
+	assert.Contains(t, lines[1], "TestRecoverer_MasksAddressInURL", "the stack trace names the panicking code")
+}
+
+func TestPanicLog_LeavesStackTraceAlone(t *testing.T) {
+	var lines []string
+	l := lgr.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+
+	// a module path holds a run the mask would take for an address
+	const stack = "goroutine 1 [running]:\n/go/pkg/mod/github.com/foo/bar@v1.2.3/x.go:12 +0x1d"
+	panicLog{l: l}.Logf(stack)
+	assert.Equal(t, []string{stack}, lines)
+}
+
+// TestPartitionedAuthCookies covers the middleware on its own: which Set-Cookie lines gain a
+// partitioned copy, where the copy goes, and that a request without the header is answered as before.
+func TestPartitionedAuthCookies(t *testing.T) {
+	const (
+		jwtLine      = "JWT=tkn; Path=/; Max-Age=720000; HttpOnly; Secure; SameSite=Lax"
+		jwtCopy      = "JWT=tkn; Path=/; Max-Age=720000; HttpOnly; Secure; SameSite=None; Partitioned"
+		xsrfLine     = "XSRF-TOKEN=id; Path=/; Max-Age=720000; Secure; SameSite=Lax"
+		xsrfCopy     = "XSRF-TOKEN=id; Path=/; Max-Age=720000; Secure; SameSite=None; Partitioned"
+		otherLine    = "other=v; Path=/"
+		expiredLine  = "JWT=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly"
+		expiredCopy  = "JWT=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; Secure; SameSite=None; Partitioned"
+		partitionedL = "JWT=tkn; Path=/; HttpOnly; Secure; SameSite=None; Partitioned"
+	)
+	signIn := func(w http.ResponseWriter, _ *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "JWT", Value: "tkn", Path: "/", MaxAge: 720000, HttpOnly: true,
+			Secure: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: "XSRF-TOKEN", Value: "id", Path: "/", MaxAge: 720000,
+			Secure: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: "other", Value: "v", Path: "/"})
+	}
+	expire := func(w http.ResponseWriter, _ *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "JWT", Path: "/", MaxAge: -1, Expires: time.Unix(0, 0), HttpOnly: true})
+	}
+
+	tbl := []struct {
+		name    string
+		header  string
+		noIssue bool // the server issues no partitioned pair, which is header mode switched off
+		handler http.HandlerFunc
+		want    []string
+	}{
+		{name: "header and a body written without a status", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				_, _ = w.Write([]byte("ok"))
+			},
+			// each copy goes before its original, so a browser that reads both lines as one cookie
+			// keeps the original
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and an explicit status", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusUnauthorized)
+			},
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and a flush before anything is written", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				assert.NoError(t, http.NewResponseController(w).Flush())
+			},
+			want: []string{jwtCopy, jwtLine, xsrfCopy, xsrfLine, otherLine}},
+		{name: "header and a handler that writes nothing", header: "1", handler: signIn,
+			// net/http sends the headers itself here and never calls the writer, so there is no
+			// moment to add the copies at. no handler setting an auth cookie ends this way
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied as an expiry", header: "1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
+		{name: "a cookie that is partitioned already is left alone", header: "1",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				http.SetCookie(w, &http.Cookie{Name: "JWT", Value: "tkn", Path: "/", HttpOnly: true, Secure: true,
+					SameSite: http.SameSiteNoneMode, Partitioned: true})
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{partitionedL}},
+		{name: "no header", header: "",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "a header with another value is not the request", header: "true",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied without the header too", header: "",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
+		{name: "no pair is issued where the server issues none, header or not", header: "1", noIssue: true,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				signIn(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{jwtLine, xsrfLine, otherLine}},
+		{name: "an expiry is copied where the server issues no pair", header: "", noIssue: true,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expire(w, r)
+				w.WriteHeader(http.StatusOK)
+			},
+			want: []string{expiredCopy, expiredLine}},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+			if tt.header != "" {
+				req.Header.Set(partitionedCookieHeader, tt.header)
+			}
+			rec := httptest.NewRecorder()
+			partitionedAuthCookies(!tt.noIssue, "JWT", "XSRF-TOKEN")(tt.handler).ServeHTTP(rec, req)
+			assert.Equal(t, tt.want, rec.Result().Header.Values("Set-Cookie"))
+		})
+	}
+}
+
+// TestRest_ThirdPartyFrameCookies drives the real routes, since the middleware is only worth
+// anything where the auth library writes its cookies: at sign-in, when the auth middleware renews an
+// expired token on an api route, and at sign-out. A widget framed by another host has to be handed a
+// partitioned pair at each of them, and nobody else's response may change.
+func TestRest_ThirdPartyFrameCookies(t *testing.T) {
+	// what a case reads of an answer; the body is closed where the request is made
+	type response struct {
+		status int
+		header http.Header
+	}
+	headerMode := func(srv *Rest) { srv.SendJWTHeader = true }
+	// the lines for one cookie name, in the order they were sent
+	lines := func(resp response, name string) (res []string) {
+		for _, line := range resp.header.Values("Set-Cookie") {
+			if strings.HasPrefix(line, name+"=") {
+				res = append(res, line)
+			}
+		}
+		return res
+	}
+	get := func(t *testing.T, url string, headers map[string]string) response {
+		req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+		require.NoError(t, err)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return response{status: resp.StatusCode, header: resp.Header}
+	}
+	assertBothForms := func(t *testing.T, resp response) {
+		for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+			got := lines(resp, name)
+			require.Len(t, got, 2, "%s has to be set twice, partitioned and as before: %v", name, got)
+			assert.Contains(t, got[0], "; Partitioned", "the partitioned %s comes first", name)
+			assert.Contains(t, got[0], "; SameSite=None")
+			assert.Contains(t, got[0], "; Secure")
+			assert.NotContains(t, got[1], "Partitioned", "the %s set as before stays as it was", name)
+		}
+	}
+	assertOneForm := func(t *testing.T, resp response) {
+		for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+			got := lines(resp, name)
+			require.Len(t, got, 1, "%s is set once: %v", name, got)
+			assert.NotContains(t, got[0], "Partitioned")
+		}
+	}
+	const login = "/auth/anonymous/login?user=reader&passwd=x&aud=remark42"
+	frame := map[string]string{partitionedCookieHeader: "1"}
+
+	t.Run("sign-in from a third-party frame", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("renewal on an api route from a third-party frame", func(t *testing.T) {
+		ts, srv, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		// expired but validly signed, which is what the auth middleware renews for a cookie
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+			ID: "xsrf-id", Audience: jwt.ClaimStrings{"remark42"},
+			Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+			User: &token.User{ID: "anonymous_reader", Name: "reader"},
+		})
+		require.NoError(t, err)
+
+		resp := get(t, ts.URL+"/api/v1/user?site=remark42", map[string]string{
+			partitionedCookieHeader: "1", "Cookie": "JWT=" + tkn, "X-XSRF-TOKEN": "xsrf-id"})
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("sign-out from a third-party frame", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+"/auth/logout", frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+		for _, line := range lines(resp, "JWT") {
+			assert.Contains(t, line, "Max-Age=0", "both forms have to be expired, or one outlives the sign-out")
+		}
+	})
+
+	t.Run("sign-in without the header", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, nil)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
+
+	t.Run("sign-out without the header", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode)
+		defer teardown()
+
+		// remark42's own page signing out a reader whose widget, framed by another host of the
+		// same site, was given the partitioned pair: that pair is sent here as well
+		resp := get(t, ts.URL+"/auth/logout", nil)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertBothForms(t, resp)
+	})
+
+	t.Run("sign-out with header mode off", func(t *testing.T) {
+		ts, _, teardown := startupT(t)
+		defer teardown()
+
+		// a reader given the partitioned pair while header mode was on still holds it. its JWT is
+		// HttpOnly, so unless this response expires it, it outlives the sign-out and is sent ahead
+		// of the next session's cookie
+		for _, headers := range []map[string]string{frame, nil} {
+			resp := get(t, ts.URL+"/auth/logout", headers)
+			require.Equal(t, http.StatusOK, resp.status)
+			assertBothForms(t, resp)
+			for _, name := range []string{"JWT", "XSRF-TOKEN"} {
+				for _, line := range lines(resp, name) {
+					assert.Contains(t, line, "Max-Age=0", "both forms of %s have to be expired", name)
+				}
+			}
+		}
+	})
+
+	t.Run("sign-in with header mode off", func(t *testing.T) {
+		ts, _, teardown := startupT(t)
+		defer teardown()
+
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+	})
+
+	t.Run("served over http", func(t *testing.T) {
+		ts, _, teardown := startupT(t, headerMode, func(srv *Rest) { srv.RemarkURL = "http://demo.remark42.com" })
+		defer teardown()
+
+		// a partitioned cookie has to be Secure, and a browser refuses a Secure cookie over http
+		resp := get(t, ts.URL+login, frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
+
+		resp = get(t, ts.URL+"/auth/logout", frame)
+		require.Equal(t, http.StatusOK, resp.status)
+		assertOneForm(t, resp)
 	})
 }

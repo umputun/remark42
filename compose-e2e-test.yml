@@ -9,6 +9,25 @@
 # secret, dev oauth2 and an admin shared id, and `go test` can start it unattended, so it
 # must not be reachable from the network. the suite only ever talks to 127.0.0.1.
 
+# the readiness probe every remark42 instance on plain http answers
+x-ping: &ping
+  test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
+  interval: 2s
+  timeout: 3s
+  retries: 30
+
+# an extra instance running the image the first service builds, for the services that need
+# nothing else from the stack
+x-instance: &instance
+  image: ghcr.io/umputun/remark42:dev
+  # these services have no build of their own, so without this a pull could substitute the
+  # published image for the one built from this checkout
+  pull_policy: never
+  # only needs the image the first service builds, not a running one
+  depends_on:
+    remark42:
+      condition: service_started
+
 services:
   remark42:
     build:
@@ -66,24 +85,13 @@ services:
     depends_on:
       mailpit:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # a second instance whose edit window expires almost immediately, so the expired-edit
   # path can be exercised without holding a test open for the default five minutes
   remark42-shortedit:
-    image: ghcr.io/umputun/remark42:dev
+    <<: *instance
     container_name: "remark42-e2e-shortedit"
-    # this service has no build of its own, so without this a pull could substitute the
-    # published image for the one built from this checkout
-    pull_policy: never
-    # only needs the image the first service builds, not a running one
-    depends_on:
-      remark42:
-        condition: service_started
 
     ports:
       - "127.0.0.1:8081:8080"
@@ -101,11 +109,7 @@ services:
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-shortedit-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # ADMIN_EDIT gives admins an unlimited edit window, which #1986 reported the frontend ignoring.
   # a separate instance because the setting is global and removes the countdown the ordinary
@@ -143,21 +147,13 @@ services:
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-adminedit-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # AUTH_SEND_JWT_HEADER moves the token out of the cookie and into a header the frontend has to
   # keep for itself, which #1877 reported losing on every reload
   remark42-jwtheader:
-    image: ghcr.io/umputun/remark42:dev
+    <<: *instance
     container_name: "remark42-e2e-jwtheader"
-    pull_policy: never
-    depends_on:
-      remark42:
-        condition: service_started
 
     ports:
       - "127.0.0.1:8083:8080"
@@ -167,14 +163,14 @@ services:
       - SECRET=12345
       - AUTH_ANON=true
       - AUTH_SEND_JWT_HEADER=true
+      # short, so a case can outlive the token the widget holds in memory without waiting out the
+      # default five minutes. the backend refuses that token in a header once it has expired and
+      # renews only the one in the cookie, which is what a session in this mode has to survive
+      - AUTH_TTL_JWT=15s
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-jwtheader-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # answers as the Telegram bot API, so the auth flow that ends inside Telegram becomes drivable.
   # the provider's configurable base url directs both authentication and notifications here
@@ -223,21 +219,13 @@ services:
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-telegram-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # no auth provider at all, which #1456 reported rendering as a widget with nothing to say. it
   # cannot be a setting on another instance: the absence is the configuration
   remark42-noauth:
-    image: ghcr.io/umputun/remark42:dev
+    <<: *instance
     container_name: "remark42-e2e-noauth"
-    pull_policy: never
-    depends_on:
-      remark42:
-        condition: service_started
 
     ports:
       - "127.0.0.1:8085:8080"
@@ -252,22 +240,14 @@ services:
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-noauth-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # anonymous voting, which the default configuration refuses: rest_private.go turns down a vote
   # from an anonymous user unless ANON_VOTE is set, and it only works alongside VOTES_IP, which
   # is what scopes it
   remark42-anonvote:
-    image: ghcr.io/umputun/remark42:dev
+    <<: *instance
     container_name: "remark42-e2e-anonvote"
-    pull_policy: never
-    depends_on:
-      remark42:
-        condition: service_started
 
     ports:
       - "127.0.0.1:8086:8080"
@@ -281,11 +261,7 @@ services:
       - UPDATE_LIMIT=100
     volumes:
       - remark42-e2e-anonvote-var:/srv/var
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/ping"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    healthcheck: *ping
 
   # a page on an origin the widget is not served from, which is the separate-domain setup the
   # manuals describe and the one readers actually hit problems with. every other host page in the
@@ -330,13 +306,14 @@ services:
       # the widget is embedded from another origin here, so its cookies have to survive a
       # third-party frame; this is the setting that decides whether they do
       - AUTH_SAME_SITE=none
-      # and the token arrives in a header, so the widget writes the cookies itself through
-      # setAuthCookie. Without this the client-side writer never runs on any https page in the
-      # stack, and every assertion about the attributes it chooses is vacuous
+      # and this is what gives the framed widget cookies it can keep: the backend repeats its
+      # pair in the partitioned form for it. Without it that does not happen on any https page in
+      # the stack, and every assertion about those cookies is vacuous
       - AUTH_SEND_JWT_HEADER=true
       # email as well as anonymous, so the flow most operators run off-domain is measured here
-      # and not inferred from the anonymous one. the writer keys off the X-JWT header rather than
-      # off the provider, which is exactly the assumption a case signing in by email checks
+      # and not inferred from the anonymous one. the partitioned pair is added to whichever
+      # response sets the cookies, whatever the provider, which is exactly the assumption a case
+      # signing in by email checks
       - AUTH_EMAIL_ENABLE=true
       - AUTH_EMAIL_FROM=remark42@example.com
       - SMTP_HOST=mailpit

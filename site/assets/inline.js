@@ -21,6 +21,9 @@ function applyVersion(tag) {
 		document.querySelectorAll('[data-remark42-version]').forEach((el) => {
 			el.textContent = tag
 			el.hidden = false
+			// the link's name has to hold the text it shows, or voice control cannot find it by that text
+			const link = el.closest('a')
+			if (link) link.setAttribute('aria-label', tag + ', {{ site.Title }} releases on GitHub')
 		})
 	}
 	if (document.readyState === 'loading') {

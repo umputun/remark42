@@ -2,7 +2,7 @@ import { NODE_ID, COMMENT_NODE_CLASSNAME_PREFIX } from 'common/constants.config'
 import { parseMessage, postMessageToIframe } from 'utils/post-message';
 import { createIframe } from 'utils/create-iframe';
 import type { Theme } from 'common/types';
-import { closeProfile, openProfile, ownsWindow } from 'profile';
+import { closeProfile, openProfile, ownsWindow, removeProfile } from 'profile';
 
 // marks the iframe this module owns, so a second createInstance reuses it instead of adopting
 // whatever the integrator left in the root as a loading placeholder
@@ -24,9 +24,14 @@ function init() {
   window.REMARK42 = window.REMARK42 || {};
   window.REMARK42.createInstance = createInstance;
 
-  createInstance(window.remark_config);
-
-  window.dispatchEvent(new Event('REMARK42::ready'));
+  // a single-page site loads this script once, often on a route without the comments node, and
+  // waits for the event to call createInstance itself later, so it goes out even when this first
+  // call throws
+  try {
+    createInstance(window.remark_config);
+  } finally {
+    window.dispatchEvent(new Event('REMARK42::ready'));
+  }
 }
 
 function createInstance(config: typeof window.remark_config) {
@@ -73,8 +78,11 @@ function createInstance(config: typeof window.remark_config) {
   function handleReceiveMessage(event: MessageEvent): void {
     // only the frames this module created. window.parent is reachable by every frame on the page,
     // an advertisement among them, and the handler below resizes the widget, scrolls the page and
-    // opens the profile overlay, so an unchecked sender can drive all three
-    if (event.source !== iframe.contentWindow && !ownsWindow(event.source)) {
+    // opens the profile overlay, so an unchecked sender can drive all three. A message whose
+    // sender was removed before delivery has no source, and the iframe has no contentWindow once
+    // the host page drops the root without destroy(), which leaves this listener attached. No
+    // source on both sides is not a match
+    if (event.source === null || (event.source !== iframe.contentWindow && !ownsWindow(event.source))) {
       return;
     }
 
@@ -85,7 +93,23 @@ function createInstance(config: typeof window.remark_config) {
     }
 
     if (typeof data.scrollTo === 'number') {
-      window.scrollTo(window.pageXOffset, data.scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
+      const { scrollTo } = data;
+      const scroll = () => {
+        // destroy() may have removed the iframe in the frames this waits for
+        if (iframe.isConnected) {
+          window.scrollTo(window.pageXOffset, scrollTo + iframe.getBoundingClientRect().top + window.pageYOffset);
+        }
+      };
+
+      // the frame posts its new height just before this. Scrolling in the frame that applies it
+      // counts everything below the iframe as shifted once the scroll brings it into view, the
+      // page footer when the comment is near the end, so one frame is drawn at the new height
+      // first. A hidden tab draws no frames, and a link opened in the background scrolls at once
+      if (document.visibilityState === 'hidden') {
+        scroll();
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(scroll));
+      }
     }
 
     if (typeof data.profile === 'object') {
@@ -174,6 +198,7 @@ function createInstance(config: typeof window.remark_config) {
     }
 
     iframe.remove();
+    removeProfile();
   }
 
   // TODO: These do not appear in Chrome DevTools

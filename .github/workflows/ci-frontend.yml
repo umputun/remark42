@@ -6,12 +6,18 @@ on:
       - master
     paths:
       - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/setup-go/**"
       - "frontend/**"
+      # the message catalogs, which the translation check and the tests read
+      - "backend/app/webassets/assets/*.json"
       - "!**.md"
   pull_request:
     paths:
       - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/setup-go/**"
       - "frontend/**"
+      # the message catalogs, which the translation check and the tests read
+      - "backend/app/webassets/assets/*.json"
       - "!**.md"
 
 jobs:
@@ -30,25 +36,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6.1.1
-        with:
-          version: 10.10.0
-          run_install: false
-
       - name: Install node
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: "pnpm"
-          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: ./frontend/apps/remark42
-
+      # no pnpm install, as in the unit job: extraction and the check are node scripts with no
+      # dependencies, and the missing install is what keeps them that way. these are the
+      # translation:extract and translation:check scripts of package.json, repeated here
       - name: Translations check
-        run: pnpm translation-check
+        run: |
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ./tasks/extract-messages.ts
+          node ./tasks/checkTranslation.js
         working-directory: ./frontend/apps/remark42
 
   type-check:
@@ -129,9 +128,6 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      pull-requests: write
-    env:
-      CI_JOB_NUMBER: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -144,12 +140,59 @@ jobs:
           version: 10.10.0
           run_install: false
 
-      - name: Check bundle size
-        uses: andresz1/size-limit-action@94bc357df29c36c8f8d50ea497c3e225c3c95d1d
+      # no matrix here, so the check keeps the name "Size limit"
+      - name: Install node
+        uses: actions/setup-node@v7
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          directory: ./frontend/apps/remark42
-          package_manager: pnpm
+          node-version: 24
+          cache: "pnpm"
+          cache-dependency-path: frontend/apps/remark42/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ./frontend/apps/remark42
+
+      # the widget is compiled by the go program in frontend/build, which `pnpm build` runs
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          go-mod: frontend/build/go.mod
+          cache-dependency-path: frontend/build/go.sum
+
+      # the budgets live in tasks/check-size.ts; the check prints each file's gzipped size against
+      # its budget and fails when one is over or missing
+      - name: Check bundle size
+        run: pnpm size-check
+        working-directory: ./frontend/apps/remark42
+
+  builder:
+    name: Builder tests & lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: ./.github/actions/setup-go
+        with:
+          go-mod: frontend/build/go.mod
+          cache-dependency-path: frontend/build/go.sum
+
+      # the tests build a fixture app of their own, so nothing has to be installed for them
+      - name: Test
+        run: go test -race -count 1 ./...
+        working-directory: ./frontend/build
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          working-directory: frontend/build
+          args: --config ../../backend/.golangci.yml
 
   unit:
     name: Dependency-free unit tests
@@ -179,7 +222,7 @@ jobs:
       # nothing, so on its own it cannot tell a renamed suffix from a passing run
       - name: Run unit tests
         run: |
-          count=$(find app -name '*.unit.test.ts' | wc -l)
+          count=$(find app tasks -name '*.unit.test.ts' | wc -l)
           if [ "$count" -eq 0 ]; then
             echo "no *.unit.test.ts files matched; the suffix or the layout has moved"
             exit 1
@@ -188,7 +231,7 @@ jobs:
           node --test --experimental-test-coverage \
             --test-reporter=lcov --test-reporter-destination=./coverage/lcov.info \
             --test-reporter=spec --test-reporter-destination=stdout \
-            "app/**/*.unit.test.ts"
+            "app/**/*.unit.test.ts" "tasks/**/*.unit.test.ts"
         working-directory: ./frontend/apps/remark42
 
       # the modules this layer covers are reached by jest only indirectly, and some not at all,
@@ -198,10 +241,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          # both paths are resolved from working-directory above, so they must be relative to it:
+          # the path is resolved from working-directory above, so it must be relative to it:
           # repeating the prefix doubles it, the file is never found, and the upload survives only
           # on codecov's own search
-          codecov_yml_path: ./codecov.yml
           files: ./coverage/lcov.info
           flags: unit
 
@@ -246,4 +288,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           working-directory: ./frontend/apps/remark42
-          codecov_yml_path: ./codecov.yml

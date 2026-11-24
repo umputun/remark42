@@ -1,5 +1,5 @@
 # compose file for local development
-# starts backend on 8080 with basic auth "dev:password" and Dev oauth2 provider on port 8084
+# starts backend on 8080 with basic auth "admin:password" and Dev oauth2 provider on port 8084
 # UI on http://127.0.0.1:8080/web
 #
 # build remark42 docker image - docker compose -f compose-dev-backend.yml build
@@ -58,7 +58,8 @@ services:
       - ANON_VOTE=true
       - VOTES_IP=true
       - AUTH_EMAIL_ENABLE=true
-      - AUTH_TELEGRAM=true
+      # Telegram sign-in needs a working bot token in TELEGRAM_TOKEN; without one the server does not start
+      # - AUTH_TELEGRAM=true
       - AUTH_ANON=true
       - AUTH_GOOGLE_CID=1111
       - AUTH_GOOGLE_CSEC=1111

@@ -6,7 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Depado/bfchroma/v2"
+	"github.com/alecthomas/chroma/v2/formatters/html"
+	bf "github.com/russross/blackfriday/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockConverter struct{}
@@ -56,6 +60,54 @@ func TestFormatter_FormatText(t *testing.T) {
 			assert.Equal(t, tt.out, f.FormatText(tt.in, raw))
 		})
 	}
+}
+
+func TestFormatter_FormatTextPanic(t *testing.T) {
+	// the lexers of these languages and the markdown parser itself panic on such text
+	tbl := []struct {
+		name, in, out string
+	}{
+		{"yang", "```yang\n/* /*\n```", "<pre><code class=\"language-yang\">/* /*\n</code></pre>\n"},
+		{"spade", "```spade\nstruct 'a\n```", "<pre><code class=\"language-spade\">struct &#39;a\n</code></pre>\n"},
+		{"psl", "```psl\n#WARN\n```", "<pre><code class=\"language-psl\">#WARN\n</code></pre>\n"},
+		{"raku pod", "```raku\n=begin pod\n```", "<pre><code class=\"language-raku\">=begin pod\n</code></pre>\n"},
+		{"raku comment", "```raku\n#`[\n```", "<pre><code class=\"language-raku\">#`[\n</code></pre>\n"},
+		{
+			"text around code", "before **b**\n\n```yang\n/* /*\n```\n\n```go\nx := 1\n```\n\nafter",
+			"<p>before <strong>b</strong></p>\n\n<pre><code class=\"language-yang\">/* /*\n</code></pre>\n" +
+				`<pre class="chroma"><code><span class="line"><span class="cl"><span class="nx">x</span><span class="w"> </span>` +
+				`<span class="o">:=</span><span class="w"> </span><span class="mi">1</span><span class="w">` + "\n" +
+				"</span></span></span></code></pre>\n<p>after</p>\n",
+		},
+		{"link reference", "[0]:<", "<p>[0]:&lt;</p>\n"},
+		{"link reference with text", "<b>some</b> **text**\n[0]:<", "<p>&lt;b&gt;some&lt;/b&gt; **text**<br/>\n[0]:&lt;</p>\n"},
+	}
+	f := NewCommentFormatter()
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			var out string
+			require.NotPanics(t, func() { out = f.FormatText(tt.in, false) })
+			assert.Equal(t, tt.out, out)
+		})
+	}
+}
+
+// panicsAtEnd writes the start of a highlighted block and panics where the block ends
+type panicsAtEnd struct{}
+
+func (panicsAtEnd) Start(bool, string) string { return "<pre>written before the panic" }
+func (panicsAtEnd) End(bool) string           { panic("highlighting failed halfway") }
+
+func TestFormatter_plainCodeOnPanicWritesNothingHalfway(t *testing.T) {
+	base := bf.NewHTMLRenderer(bf.HTMLRendererParameters{})
+	rend := plainCodeOnPanic{bfchroma.NewRenderer(bfchroma.Extend(base),
+		bfchroma.ChromaOptions(html.WithClasses(true), html.WithPreWrapper(panicsAtEnd{})))}
+	var res string
+	require.NotPanics(t, func() {
+		res = string(bf.Run([]byte("```go\nx := 1\n```\n"), bf.WithExtensions(bf.FencedCode), bf.WithRenderer(rend)))
+	})
+	assert.Equal(t, "<pre><code class=\"language-go\">x := 1\n</code></pre>\n", res,
+		"the block is plain, with nothing of the highlighting that failed halfway")
 }
 
 func TestFormatter_FormatTextNoConverter(t *testing.T) {

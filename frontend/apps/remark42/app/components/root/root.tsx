@@ -19,7 +19,7 @@ import {
   unhideUser,
   signout,
 } from 'store/user/actions';
-import { fetchComments, addComment, updateComment } from 'store/comments/actions';
+import { fetchComments, loadMoreComments, addComment, updateComment } from 'store/comments/actions';
 import { setCommentsReadOnlyState } from 'store/post-info/actions';
 
 // TODO: make this button as default for all cases and replace current `components/Button`
@@ -36,6 +36,7 @@ import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { bindActions } from 'utils/actionBinder';
 import { postMessageToParent, parseMessage, isFromParent, updateIframeHeight } from 'utils/post-message';
 import { useActions } from 'hooks/useAction';
+import { RevealedComments } from 'components/root/in-view/in-view';
 import { setCollapse } from 'store/thread/actions';
 
 import styles from './root.module.css';
@@ -53,6 +54,7 @@ const mapStateToProps = (state: StoreState) => ({
   ),
   collapsedThreads: state.collapsedThreads,
   topComments: state.comments.topComments,
+  countLeft: state.comments.page.countLeft,
   pinnedComments: state.comments.pinnedComments.map((id) => state.comments.allComments[id]).filter((c) => !c.hidden),
   theme: state.theme,
   info: state.info,
@@ -64,6 +66,7 @@ const mapStateToProps = (state: StoreState) => ({
 
 const boundActions = bindActions({
   fetchComments,
+  loadMoreComments,
   fetchUser,
   fetchBlockedUsers,
   setCommentsReadOnlyState,
@@ -83,7 +86,9 @@ interface State {
   isUserLoading: boolean;
   isSettingsVisible: boolean;
   commentsShown: number;
+  isLoadingMore: boolean;
   wasSomeoneUnblocked: boolean;
+  revealedComments: ReadonlySet<string>;
 }
 
 const messages = defineMessages({
@@ -102,13 +107,31 @@ const getCollapsedParent = (hash: string, childToParentComments: Record<string, 
   return id;
 };
 
+/**
+ * Comments around the given one, in the order they appear: as many each way as the screen could
+ * hold, counting each as half the height of a placeholder so that short comments still fill it.
+ */
+const getCommentsAround = (comment: Element): Set<string> => {
+  const all = Array.from(document.querySelectorAll(`article[id^="${COMMENT_NODE_CLASSNAME_PREFIX}"]`));
+  const index = all.indexOf(comment);
+  const reach = Math.ceil(window.screen.height / 50);
+
+  return new Set(
+    all
+      .slice(Math.max(0, index - reach), index + reach + 1)
+      .map((node) => node.id.slice(COMMENT_NODE_CLASSNAME_PREFIX.length))
+  );
+};
+
 /** main component fr main comments widget */
 export class Root extends Component<Props, State> {
   state = {
     isUserLoading: true,
     commentsShown: maxShownComments,
+    isLoadingMore: false,
     wasSomeoneUnblocked: false,
     isSettingsVisible: false,
+    revealedComments: new Set<string>(),
   };
 
   heightObserver: ResizeObserver | null = null;
@@ -150,7 +173,8 @@ export class Root extends Component<Props, State> {
     this.heightObserver?.disconnect();
   }
 
-  checkUrlHash = (e: Event & { newURL: string }) => {
+  /** `restLoaded` is set when the thread was loaded to its end for this link, which happens once */
+  checkUrlHash = (e?: Event & { newURL: string }, restLoaded = false) => {
     const hash = e ? `#${e.newURL.split('#')[1]}` : window.location.hash;
 
     if (hash.indexOf(`#${COMMENT_NODE_CLASSNAME_PREFIX}`) === 0) {
@@ -158,6 +182,15 @@ export class Root extends Component<Props, State> {
 
       if (!document.querySelector(hash)) {
         const id = getCollapsedParent(hash, this.props.childToParentComments);
+        if (!restLoaded && this.props.topComments.indexOf(id) === -1 && this.props.countLeft > 0) {
+          // the comment is on a page not loaded yet: the rest of the thread comes first, and then the
+          // link is followed again from the location, which holds the same hash
+          this.props.loadMoreComments({ rest: true }).then(
+            () => this.checkUrlHash(undefined, true),
+            (err: unknown) => console.error('Remark42: failed to load the linked comment', err)
+          );
+          return;
+        }
         const indexHash = this.props.topComments.findIndex((item) => item === id);
         const multiplierCollapsed = Math.ceil(indexHash / MAX_SHOWN_ROOT_COMMENTS);
         this.setState(
@@ -173,14 +206,28 @@ export class Root extends Component<Props, State> {
   };
 
   toMessage = (hash: string) => {
-    const comment = document.querySelector(hash);
-    if (comment) {
+    const target = document.querySelector(hash);
+    if (!target) {
+      return;
+    }
+
+    // comments out of view are placeholders that grow once they come into view, and the frame
+    // reports its height only while it is on screen. Scrolled to placeholder positions on a page
+    // still sized for the preloader, the host page stops short with its footer in view and then
+    // grows under the reader. So the comments the reader will see are rendered first, and the
+    // height they take goes out before the position, both measured now.
+    this.setState({ revealedComments: getCommentsAround(target) }, () => {
+      const comment = document.querySelector(hash);
+      if (!comment) {
+        return;
+      }
+      updateIframeHeight();
       postMessageToParent({ scrollTo: comment.getBoundingClientRect().top });
       comment.classList.add('comment_highlighting');
       setTimeout(() => {
         comment.classList.remove('comment_highlighting');
       }, 5e3);
-    }
+    });
   };
 
   onMessage = (event: MessageEvent) => {
@@ -192,8 +239,9 @@ export class Root extends Component<Props, State> {
 
     // the theme is applied, store included, by the listener in remark.tsx, which is in place
     // before this component mounts
+    // the profile asking for a sign-out. Nothing has been ended yet: the request is made here
     if (data.signout === true) {
-      this.props.signout(false);
+      this.props.signout();
     }
   };
 
@@ -207,7 +255,7 @@ export class Root extends Component<Props, State> {
   onBlockedUsersHide = async () => {
     // if someone was unblocked let's reload comments
     if (this.state.wasSomeoneUnblocked) {
-      this.props.fetchComments();
+      this.props.fetchComments({ keepLoaded: true });
     }
     this.setState({
       wasSomeoneUnblocked: false,
@@ -219,13 +267,28 @@ export class Root extends Component<Props, State> {
     this.setState({ wasSomeoneUnblocked: true });
   };
 
+  /** reveals the loaded threads that are hidden, and once there are none, loads the next page */
   showMore = () => {
-    this.setState({
-      commentsShown: this.state.commentsShown + MAX_SHOWN_ROOT_COMMENTS,
-    });
+    const { commentsShown } = this.state;
+    const loaded = this.props.topComments.length;
+
+    if (IS_MOBILE && commentsShown < loaded) {
+      this.setState({ commentsShown: commentsShown + MAX_SHOWN_ROOT_COMMENTS });
+      return;
+    }
+
+    this.setState({ isLoadingMore: true });
+    this.props
+      .loadMoreComments()
+      .then(
+        () => this.setState({ commentsShown: Math.max(commentsShown, loaded) + MAX_SHOWN_ROOT_COMMENTS }),
+        // the button stays for another try
+        (err: unknown) => console.error('Remark42: failed to load more comments', err)
+      )
+      .finally(() => this.setState({ isLoadingMore: false }));
   };
 
-  render(props: Props, { isUserLoading, commentsShown, isSettingsVisible }: State) {
+  render(props: Props, { isUserLoading, commentsShown, isLoadingMore, isSettingsVisible, revealedComments }: State) {
     if (isUserLoading) {
       return <Preloader className={styles.preloader} />;
     }
@@ -293,15 +356,19 @@ export class Root extends Component<Props, State> {
                   ))}
                 </div>
               )}
-              <div className={styles.sortPicker}>
+              <div className={styles.sortPicker} data-nosnippet>
                 <SortPicker />
               </div>
-              <Comments
-                commentsShown={commentsShown}
-                isLoading={props.isCommentsLoading}
-                topComments={props.topComments}
-                showMore={this.showMore}
-              />
+              <RevealedComments.Provider value={revealedComments}>
+                <Comments
+                  commentsShown={commentsShown}
+                  isLoading={props.isCommentsLoading}
+                  isLoadingMore={isLoadingMore}
+                  topComments={props.topComments}
+                  countLeft={props.countLeft}
+                  showMore={this.showMore}
+                />
+              </RevealedComments.Provider>
             </>
           )}
         </div>
@@ -312,26 +379,37 @@ export class Root extends Component<Props, State> {
 
 interface CommentsProps {
   isLoading: boolean;
+  isLoadingMore: boolean;
   topComments: string[];
+  /** comments on the server after the loaded ones */
+  countLeft: number;
   commentsShown: number;
   showMore(): void;
 }
-function Comments({ isLoading, topComments, commentsShown, showMore }: CommentsProps) {
-  const renderComments =
-    IS_MOBILE && commentsShown < topComments.length ? topComments.slice(0, commentsShown) : topComments;
-  const isShowMoreButtonVisible = IS_MOBILE && commentsShown < topComments.length;
+function Comments({ isLoading, isLoadingMore, topComments, countLeft, commentsShown, showMore }: CommentsProps) {
+  const hasHiddenComments = IS_MOBILE && commentsShown < topComments.length;
+  const renderComments = hasHiddenComments ? topComments.slice(0, commentsShown) : topComments;
+  const isShowMoreButtonVisible = hasHiddenComments || countLeft > 0;
 
   return (
-    <div className={styles.threads} role="list">
+    <div className={styles.threads}>
       {isLoading ? (
         <Preloader className={styles.preloader} />
       ) : (
         <>
-          {topComments.length > 0 &&
-            renderComments.map((id) => <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />)}
+          {renderComments.length > 0 && (
+            // the list holds the threads only: the preloader and the button below are not its items
+            <div role="list">
+              {renderComments.map((id) => (
+                <Thread key={`thread-${id}`} id={id} level={0} getPreview={getPreview} />
+              ))}
+            </div>
+          )}
           {isShowMoreButtonVisible && (
-            <Button className={styles.moreComments} onClick={showMore}>
-              <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+            <Button className={styles.moreComments} onClick={showMore} disabled={isLoadingMore}>
+              <span data-nosnippet>
+                <FormattedMessage id="root.show-more" defaultMessage="Show more" />
+              </span>
             </Button>
           )}
         </>
@@ -360,11 +438,13 @@ export function ConnectedRoot() {
       <Root {...props} {...actions} intl={intl} />
       {!noFooter && (
         <p className={styles.copyright} role="contentinfo">
-          <FormattedMessage
-            id="root.powered-by"
-            defaultMessage="Powered by <a>Remark42</a>"
-            values={{ a: CopyrightLink }}
-          />
+          <span data-nosnippet>
+            <FormattedMessage
+              id="root.powered-by"
+              defaultMessage="Powered by <a>Remark42</a>"
+              values={{ a: CopyrightLink }}
+            />
+          </span>
         </p>
       )}
     </div>

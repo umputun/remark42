@@ -2,16 +2,15 @@ package migrator
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"slices"
+	"sync"
 	"sync/atomic"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/go-pkgz/syncs"
 
 	"github.com/umputun/remark42/backend/app/store"
 	"github.com/umputun/remark42/backend/app/store/service"
@@ -57,6 +56,9 @@ func (n *Native) Export(w io.Writer, siteID string) (size int, err error) {
 
 		for _, comment := range comments {
 			comment.VotedIPs = nil // voters' IP hashes stay out of backups, as before
+			if comment.Deleted {
+				comment.PostTitle = "" // a comment deleted before deletes cleared the title still holds it
+			}
 			buf := &bytes.Buffer{}
 			enc := json.NewEncoder(buf)
 			enc.SetEscapeHTML(false)
@@ -157,7 +159,9 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 	if n.Concurrent > 0 {
 		concurrent = n.Concurrent
 	}
-	grp := syncs.NewSizedGroup(concurrent, syncs.Preemptive)
+	// a slot is taken before a record's write starts, so reading waits while all writers are busy
+	slots := make(chan struct{}, concurrent)
+	var wg sync.WaitGroup
 
 	for {
 		// read each record as raw JSON first: the decoder can't move past a syntax error or a truncated record
@@ -176,16 +180,25 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 			log.Printf("[WARN] can't decode comment record %d, %s", total, err)
 			continue
 		}
+		// the site was cleared for siteID only, so a comment recorded for another site, as in a backup
+		// restored under the wrong site ID, would land in a site nobody cleared and whose cache nobody flushes
+		if comment.Locator.SiteID != siteID {
+			atomic.AddInt64(&failed, 1)
+			log.Printf("[WARN] comment %s belongs to site %q, not %q, skipped", comment.ID, comment.Locator.SiteID, siteID)
+			continue
+		}
 		comment.Imported = true
 		// exports made by earlier versions stored the blocked status of the time inside comments;
 		// it is kept in the users metadata, and leaving it in the comment marks the user blocked forever
 		comment.User.Blocked = false
 
 		// write comments in parallel
-		grp.Go(func(context.Context) {
+		slots <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-slots }()
 			if _, e := n.DataStore.Create(comment); e != nil {
 				atomic.AddInt64(&failed, 1)
-				log.Printf("[WARN] can't write %+v to store, %s", comment, e)
+				log.Printf("[WARN] can't write comment %s on %s to store, %s", comment.ID, comment.Locator.URL, e)
 				return
 			}
 			num := atomic.AddInt64(&comments, 1)
@@ -195,7 +208,7 @@ func (n *Native) Import(reader io.Reader, siteID string) (size int, err error) {
 		})
 	}
 
-	grp.Wait()
+	wg.Wait()
 	log.Printf("[INFO] imported %d comments from %d records", comments, total)
 
 	// metas are restored even when some comments failed, so blocks, verified users, read-only posts

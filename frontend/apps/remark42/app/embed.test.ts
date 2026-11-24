@@ -1,5 +1,3 @@
-process.env.REMARK_NODE = 'remark42';
-
 const MARKER = 'data-remark42-iframe';
 const MARKED = `iframe[${MARKER}]`;
 
@@ -39,6 +37,23 @@ describe('embed', () => {
 
     expect(root.querySelectorAll('iframe')).toHaveLength(2);
     expect(root.querySelectorAll(`:scope > ${MARKED}`)).toHaveLength(1);
+  });
+
+  it('dispatches REMARK42::ready on a page without the root node', async () => {
+    // a single-page site loads the script on a route without comments and waits for the event to
+    // call createInstance once a route with the node is shown
+    document.body.innerHTML = '';
+    jest.resetModules();
+    // earlier tests leave createInstance on the shared window; the listener must find this import's own
+    Reflect.deleteProperty(window, 'REMARK42');
+    const ready = jest.fn(() => typeof window.REMARK42?.createInstance);
+    window.addEventListener('REMARK42::ready', ready);
+
+    await expect(import('./embed')).rejects.toThrow("Remark42: Can't find root node.");
+
+    window.removeEventListener('REMARK42::ready', ready);
+    expect(ready).toHaveBeenCalledTimes(1);
+    expect(ready).toHaveReturnedWith('function');
   });
 
   it('reuses its own iframe on a second createInstance', async () => {
@@ -95,6 +110,26 @@ describe('embed', () => {
     expect(resized).toBe(false);
   });
 
+  it('takes an open profile away on destroy, with the widget its sign-out is addressed to', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+
+    window.dispatchEvent(
+      new MessageEvent('message', { data: { profile: { id: 'reader', current: '1' } }, source: iframe.contentWindow })
+    );
+    expect(document.querySelectorAll('iframe')).toHaveLength(2);
+    expect(document.body.style.overflow).toBe('hidden');
+    // the dimmed layer over the whole page that the profile's frame sits in
+    const overlay = document.querySelector('iframe[src*="page=profile"]')!.parentElement!;
+    expect(overlay.style.display).toBe('block');
+
+    window.REMARK42.destroy!();
+
+    expect(document.querySelectorAll('iframe')).toHaveLength(0);
+    expect(overlay.style.display).toBe('none');
+    expect(document.body.style.overflow).toBe('');
+  });
+
   it('resizes for its own iframe', async () => {
     const root = await mount();
     const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
@@ -102,6 +137,87 @@ describe('embed', () => {
     window.dispatchEvent(new MessageEvent('message', { data: { height: 500 }, source: iframe.contentWindow }));
 
     expect(iframe.style.height).toBe('500px');
+  });
+
+  it('scrolls to a comment only after a frame is drawn at the height sent with it', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    jest.spyOn(iframe, 'getBoundingClientRect').mockReturnValue({ top: 150 } as DOMRect);
+
+    // scrolling in the frame that applies the height counts the page footer as shifted when the
+    // scroll brings it into view, which it does for a comment near the end of the thread
+    window.dispatchEvent(new MessageEvent('message', { data: { height: 5000 }, source: iframe.contentWindow }));
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+
+    expect(iframe.style.height).toBe('5000px');
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    jest.advanceTimersToNextFrame();
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    jest.advanceTimersToNextFrame();
+    // the position is within the iframe, so the page adds where the iframe is
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(0, 850);
+
+    scrollTo.mockRestore();
+  });
+
+  it('ignores a message with no source after the host page removed the widget', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    iframe.style.height = '100px';
+
+    // a host page that drops the root without destroy() leaves the listener attached, and a frame
+    // removed right after posting delivers a message with no source. Browsers give an iframe
+    // outside the page no contentWindow; jsdom keeps it, so it is taken away here
+    root.remove();
+    Object.defineProperty(iframe, 'contentWindow', { value: null });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { height: 9000, scrollTo: 5000, profile: { id: 'anyone', name: 'any text' } },
+        source: null,
+      })
+    );
+    jest.advanceTimersToNextFrame();
+    jest.advanceTimersToNextFrame();
+
+    expect(iframe.style.height).toBe('100px');
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.querySelectorAll('iframe')).toHaveLength(0);
+
+    scrollTo.mockRestore();
+  });
+
+  it('drops a scroll still waiting for its frames when the widget is destroyed', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+    window.REMARK42.destroy!();
+    jest.advanceTimersByTime(100);
+
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    scrollTo.mockRestore();
+  });
+
+  it('scrolls to a comment at once in a hidden tab, which draws no frames', async () => {
+    const root = await mount();
+    const iframe = root.querySelector<HTMLIFrameElement>(MARKED)!;
+    const scrollTo = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    const visibility = jest.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+
+    window.dispatchEvent(new MessageEvent('message', { data: { scrollTo: 700 }, source: iframe.contentWindow }));
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+
+    visibility.mockRestore();
+    scrollTo.mockRestore();
   });
 
   it('ignores a message from a frame it does not own', async () => {
@@ -121,6 +237,9 @@ describe('embed', () => {
         source: foreign.contentWindow,
       })
     );
+
+    // the page scrolls a couple of frames after the message, so let those pass before looking
+    jest.advanceTimersByTime(100);
 
     expect(iframe.style.height).toBe('100px');
     expect(scrollTo).not.toHaveBeenCalled();

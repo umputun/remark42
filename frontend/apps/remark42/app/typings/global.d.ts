@@ -2,20 +2,24 @@ import 'jest-fetch-mock';
 import type { Sorting, Theme } from 'common/types';
 
 type RemarkConfig = {
-  // Hostname of Remark42 server, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
+  // URL of Remark42 server including the scheme, same as REMARK_URL in backend config, e.g. "https://demo.remark42.com".
+  // Without it the widget uses the REMARK_URL of the server that served the script.
   host?: string;
   // The SITE that you passed to Remark42 instance on start of backend.
   site_id: string;
   // Optional, 'window.location.origin + window.location.pathname' by default.
-  // URL to the page with comments, it is used as unique identificator for comments thread
+  // URL to the page with comments, it is used as unique identifier for comments thread
   //
   // Note that if you use query parameters as significant part of URL(the one that actually changes content on page)
   // you will have to configure URL manually to keep query params, as 'window.location.origin + window.location.pathname'
-  // doesn't contain query params and hash. For example, default URL for 'https://example/com/example-post?id=1#hash'
-  // would be 'https://example/com/example-post'
+  // doesn't contain query params and hash. For example, default URL for 'https://example.com/example-post?id=1#hash'
+  // would be 'https://example.com/example-post'. Everything from '#' on is dropped, also from a url set here.
   url?: string;
   // Optional, '10' by default. Initial number of top-level comments shown on mobile; each "show more" adds 10 more.
   max_shown_comments?: number;
+  // Optional, '100' by default. How many comments the widget loads at a time; a top-level comment always comes
+  // with all its replies, and "Show more" loads the next ones. '0' loads the whole thread at once.
+  comments_page_size?: number;
   // Optional, '15' by default. Maximum number of comments in the last comments widget.
   max_last_comments?: number;
   // Optional, '-active' by default. Comment order for a reader who has not picked one in the sort picker.
@@ -25,17 +29,15 @@ type RemarkConfig = {
   // Optional, 'document.title' by default. Title for current comments page.
   page_title?: string;
   // Not for the host page to set. The host page's title as the embed script last posted it,
-  // kept by iframe.ejs inside the widget document.
+  // kept by iframe.html inside the widget document.
   host_page_title?: string;
   // Optional, 'en' by default. Interface localization.
   locale?: string;
-  // Optional, 'true' by default. Enables email subscription feature in interface when enable it from backend side,
-  // if you set this param in 'false' you will get notifications email notifications as admin but your users
-  // won't have interface for subscription
+  // Optional, 'true' by default. Shows the email subscription control when email notifications for users are
+  // enabled on the backend; 'false' hides it from readers and does not affect admin notifications.
   show_email_subscription?: boolean;
-  // Optional, 'true' by default. Enables telegram subscription feature in interface when enable it from backend side,
-  // if you set this param in 'false' you will get telegram notifications as admin but your users
-  // won't have interface for subscription
+  // Optional, 'true' by default. Shows the Telegram subscription control when Telegram notifications for users
+  // are enabled on the backend; 'false' hides it from readers and does not affect admin notifications.
   show_telegram_subscription?: boolean;
   // Optional, 'true' by default. Enables RSS subscription feature in interface.
   show_rss_subscription?: boolean;
@@ -58,7 +60,6 @@ type RemarkConfig = {
 
 declare global {
   interface Window {
-    __REDUX_DEVTOOLS_EXTENSION_COMPOSE__?: typeof compose;
     /** only for dev env */
     ReduxStore: typeof store;
     remark_config: RemarkConfig;

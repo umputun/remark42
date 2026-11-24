@@ -18,7 +18,18 @@ import { clearAuthCookie } from './cookies';
 
 export const getConfig = (): Promise<Config> => apiFetcher.get('/config');
 
-export const getPostComments = (sort: Sorting) => apiFetcher.get<Tree>('/find', { url, sort, format: 'tree' });
+/**
+ * Requests the thread as a tree. `limit` asks for whole top-level threads up to that many comments,
+ * `offsetId` for the ones after the given top-level comment; without either the whole thread comes.
+ */
+export const getPostComments = (sort: Sorting, { limit, offsetId }: { limit?: number; offsetId?: string } = {}) =>
+  apiFetcher.get<Tree>('/find', {
+    url,
+    sort,
+    format: 'tree',
+    limit: limit || undefined,
+    offset_id: offsetId || undefined,
+  });
 
 export const getUserComments = (
   userId: User['id'],
@@ -137,6 +148,11 @@ export const emailVerificationForSubscribe = (emailAddress: string): Promise<Ema
  * @param token confirmation token from email
  */
 export const emailConfirmationForSubscribe = (token: string) => apiFetcher.post('/email/confirm', {}, { token });
+
+/**
+ * The address the signed-in user is subscribed with, empty when there is none
+ */
+export const getEmailSubscription = (): Promise<{ user: User; address: string }> => apiFetcher.get('/email');
 
 /**
  * Decline current subscription to updates

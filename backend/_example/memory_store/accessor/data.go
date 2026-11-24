@@ -18,36 +18,32 @@ import (
 
 const lastLimit = 1000
 
-// MemData implements in-memory data store
+// MemData implements in-memory data store.
+// User flags and details are kept per site, as the bolt engine keeps them in the site's own db.
 type MemData struct {
-	posts     map[string][]store.Comment // key is siteID
-	metaUsers map[string]metaUser        // key is userID
-	metaPosts map[store.Locator]metaPost // key is post's locator
-	mu        sync.RWMutex
+	posts    map[string][]store.Comment          // key is siteID
+	verified map[siteUser]struct{}               // verified users
+	blocked  map[siteUser]time.Time              // blocked users, value is the time the block ends
+	details  map[siteUser]engine.UserDetailEntry // users with at least one detail set
+	readOnly map[store.Locator]struct{}          // posts made read-only by hand
+	mu       sync.RWMutex
 }
 
-type metaPost struct {
-	PostURL  string
-	SiteID   string
-	ReadOnly bool
-}
-
-type metaUser struct {
-	UserID       string
-	SiteID       string
-	Verified     bool
-	Blocked      bool
-	BlockedUntil time.Time
-	Details      engine.UserDetailEntry
+// siteUser is the key of a user's flags and details on a site
+type siteUser struct {
+	siteID string
+	userID string
 }
 
 // NewMemData makes in-memory engine.
 func NewMemData() *MemData {
 
 	result := &MemData{
-		posts:     map[string][]store.Comment{},
-		metaUsers: map[string]metaUser{},
-		metaPosts: map[store.Locator]metaPost{},
+		posts:    map[string][]store.Comment{},
+		verified: map[siteUser]struct{}{},
+		blocked:  map[siteUser]time.Time{},
+		details:  map[siteUser]engine.UserDetailEntry{},
+		readOnly: map[store.Locator]struct{}{},
 	}
 	return result
 }
@@ -55,7 +51,8 @@ func NewMemData() *MemData {
 // Create new comment
 func (m *MemData) Create(comment store.Comment) (commentID string, err error) {
 
-	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro {
+	// an imported comment is written whatever the post's state, as in the bolt engine
+	if ro, e := m.Flag(engine.FlagRequest{Flag: engine.ReadOnly, Locator: comment.Locator}); e == nil && ro && !comment.Imported {
 		return "", fmt.Errorf("post %s is read-only", comment.Locator.URL)
 	}
 
@@ -170,18 +167,9 @@ func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error)
 	res = []store.PostInfo{}
 
 	if req.Locator.URL != "" { // post info
-		comments := m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
-			return c.Locator == req.Locator
-		})
-		if len(comments) == 0 {
+		info, ok := m.postInfos(req.Locator.SiteID)[req.Locator]
+		if !ok {
 			return nil, fmt.Errorf("not found")
-		}
-		info := store.PostInfo{
-			URL:      req.Locator.URL,
-			Count:    len(comments),
-			ReadOnly: false,
-			FirstTS:  comments[0].Timestamp.UTC(),
-			LastTS:   comments[len(comments)-1].Timestamp.UTC(),
 		}
 		// set read-only from age and manual bucket
 		info.ReadOnly = req.ReadOnlyAge > 0 && !info.FirstTS.IsZero() &&
@@ -201,19 +189,7 @@ func (m *MemData) Info(req engine.InfoRequest) (res []store.PostInfo, err error)
 			req.Skip = 0
 		}
 
-		infoAll := map[store.Locator]store.PostInfo{}
-		for _, c := range m.posts[req.Locator.SiteID] {
-			var info store.PostInfo
-			var ok bool
-			if info, ok = infoAll[c.Locator]; !ok {
-				info = store.PostInfo{URL: c.Locator.URL, FirstTS: c.Timestamp.UTC()}
-			}
-			info.Count++
-			info.LastTS = c.Timestamp.UTC()
-			infoAll[c.Locator] = info
-		}
-
-		for _, v := range infoAll {
+		for _, v := range m.postInfos(req.Locator.SiteID) {
 			res = append(res, v)
 		}
 		sort.Slice(res, func(i, j int) bool {
@@ -245,7 +221,7 @@ func (m *MemData) Flag(req engine.FlagRequest) (val bool, err error) {
 		return m.checkFlag(req), nil
 	}
 	// write flag value
-	return m.setFlag(req)
+	return m.setFlag(req), nil
 }
 
 // ListFlags get list of flagged keys, like blocked & verified user
@@ -256,19 +232,18 @@ func (m *MemData) ListFlags(req engine.FlagRequest) (res []any, err error) {
 
 	res = []any{}
 
+	// users are listed by id, as the bolt engine lists its bucket keys
 	switch req.Flag {
 	case engine.Verified:
-		for _, u := range m.metaUsers {
-			if u.SiteID == req.Locator.SiteID && u.Verified {
-				res = append(res, u.UserID)
-			}
+		for _, id := range siteUserIDs(m.verified, req.Locator.SiteID) {
+			res = append(res, id)
 		}
 		return res, nil
 
 	case engine.Blocked:
-		for _, u := range m.metaUsers {
-			if u.SiteID == req.Locator.SiteID && u.Blocked && u.BlockedUntil.After(time.Now()) {
-				res = append(res, store.BlockedUser{ID: u.UserID, Until: u.BlockedUntil})
+		for _, id := range siteUserIDs(m.blocked, req.Locator.SiteID) {
+			if until := m.blocked[siteUser{siteID: req.Locator.SiteID, userID: id}]; until.After(time.Now()) {
+				res = append(res, store.BlockedUser{ID: id, Name: m.userName(req.Locator.SiteID, id), Until: until})
 			}
 		}
 		return res, nil
@@ -323,8 +298,9 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 		return m.deleteComment(req.Locator, req.CommentID, req.DeleteMode)
 
 	case req.Locator.SiteID != "" && req.UserID != "" && req.CommentID == "" && req.UserDetail == "": // delete user
+		// already deleted comments too, a hard delete has to clear the user's name and id in them
 		comments := m.match(m.posts[req.Locator.SiteID], func(c store.Comment) bool {
-			return c.User.ID == req.UserID && !c.Deleted
+			return c.User.ID == req.UserID
 		})
 		for _, c := range comments {
 			if e := m.deleteComment(c.Locator, c.ID, req.DeleteMode); e != nil {
@@ -335,10 +311,14 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 		return nil
 
 	case req.Locator.SiteID != "" && req.Locator.URL == "" && req.CommentID == "" && req.UserID == "" && req.UserDetail == "": // delete site
-		if _, ok := m.posts[req.Locator.SiteID]; !ok {
-			return fmt.Errorf("not found")
-		}
+		// a site with no comments is cleared as well: a backup restore starts with this, also into an empty engine
 		m.posts[req.Locator.SiteID] = []store.Comment{}
+		// user details go with the site, flags stay, as in the bolt engine
+		for k := range m.details {
+			if k.siteID == req.Locator.SiteID {
+				delete(m.details, k)
+			}
+		}
 		return nil
 	}
 
@@ -346,16 +326,14 @@ func (m *MemData) Delete(req engine.DeleteRequest) error {
 }
 
 func (m *MemData) deleteComment(loc store.Locator, id string, mode store.DeleteMode) error {
-
-	comments := m.match(m.posts[loc.SiteID], func(c store.Comment) bool {
-		return c.Locator == loc && c.ID == id
-	})
-	if len(comments) == 0 {
-		return fmt.Errorf("not found")
+	comments := m.posts[loc.SiteID]
+	for i := range comments {
+		if comments[i].Locator == loc && comments[i].ID == id {
+			comments[i].SetDeleted(mode)
+			return nil
+		}
 	}
-
-	comments[0].SetDeleted(mode)
-	return m.updateComment(comments[0])
+	return fmt.Errorf("not found")
 }
 
 // Close store
@@ -364,170 +342,148 @@ func (m *MemData) Close() error {
 }
 
 func (m *MemData) checkFlag(req engine.FlagRequest) (val bool) {
+	key := siteUser{siteID: req.Locator.SiteID, userID: req.UserID}
 	switch req.Flag {
 	case engine.Blocked:
-		if meta, ok := m.metaUsers[req.UserID]; ok {
-			if meta.SiteID != req.Locator.SiteID {
-				return false
-			}
-			return meta.Blocked && meta.BlockedUntil.After(time.Now())
-		}
+		until, ok := m.blocked[key]
+		return ok && until.After(time.Now())
 	case engine.Verified:
-		if meta, ok := m.metaUsers[req.UserID]; ok {
-			if meta.SiteID != req.Locator.SiteID {
-				return false
-			}
-			return meta.Verified
-		}
+		_, ok := m.verified[key]
+		return ok
 	case engine.ReadOnly:
-		if meta, ok := m.metaPosts[req.Locator]; ok {
-			return meta.ReadOnly
-		}
+		_, ok := m.readOnly[req.Locator]
+		return ok
 	}
 	return false
 }
 
-// userMeta returns the stored meta of the user on the site, or a new one, so a flag change keeps the other fields
-func (m *MemData) userMeta(userID, siteID string) metaUser {
-	if meta, ok := m.metaUsers[userID]; ok && meta.SiteID == siteID {
-		return meta
-	}
-	return metaUser{UserID: userID, SiteID: siteID, Details: engine.UserDetailEntry{UserID: userID}}
-}
-
-func (m *MemData) setFlag(req engine.FlagRequest) (res bool, err error) {
-
+func (m *MemData) setFlag(req engine.FlagRequest) bool {
 	status := req.Update == engine.FlagTrue
+	key := siteUser{siteID: req.Locator.SiteID, userID: req.UserID}
 
 	switch req.Flag {
-
 	case engine.Blocked:
-		until := time.Time{}
-		if status {
-			until = time.Now().AddDate(100, 0, 0) // permanent is 100years
-			if req.TTL > 0 {
-				until = time.Now().Add(req.TTL)
-			}
+		if !status {
+			delete(m.blocked, key)
+			break
 		}
-		meta := m.userMeta(req.UserID, req.Locator.SiteID)
-		meta.Blocked = status
-		meta.BlockedUntil = until
-		m.metaUsers[req.UserID] = meta
-
+		until := time.Now().AddDate(100, 0, 0) // permanent is 100years
+		if req.TTL > 0 {
+			until = time.Now().Add(req.TTL)
+		}
+		m.blocked[key] = until
 	case engine.Verified:
-		meta := m.userMeta(req.UserID, req.Locator.SiteID)
-		meta.Verified = status
-		m.metaUsers[req.UserID] = meta
-
+		setMember(m.verified, key, status)
 	case engine.ReadOnly:
-		info, ok := m.metaPosts[req.Locator]
-		if !ok {
-			info.SiteID = req.Locator.SiteID
-			info.PostURL = req.Locator.URL
+		setMember(m.readOnly, req.Locator, status)
+	}
+	return status
+}
+
+// setMember adds key to the set or removes it from the set
+func setMember[K comparable](set map[K]struct{}, key K, add bool) {
+	if add {
+		set[key] = struct{}{}
+		return
+	}
+	delete(set, key)
+}
+
+// siteUserIDs returns the sorted ids of the site's users in the map
+func siteUserIDs[V any](users map[siteUser]V, siteID string) []string {
+	ids := []string{}
+	for k := range users {
+		if k.siteID == siteID {
+			ids = append(ids, k.userID)
 		}
-		info.ReadOnly = status
-		m.metaPosts[req.Locator] = info
 	}
-	if err != nil {
-		return false, fmt.Errorf("failed to set flag %+v: %w", req, err)
+	sort.Strings(ids)
+	return ids
+}
+
+// userName returns the user's name from the user's latest comment on the site, deleted ones included,
+// as the bolt engine does: they are often all a blocked user has left
+func (m *MemData) userName(siteID, userID string) (name string) {
+	var latest time.Time
+	for _, c := range m.posts[siteID] {
+		if c.User.ID == userID && !c.Timestamp.Before(latest) {
+			latest, name = c.Timestamp, c.User.Name
+		}
 	}
-	return status, nil
+	return name
 }
 
 // getUserDetail returns UserDetailEntry with requested userDetail (omitting other details)
-// as an only element of the slice.
+// as an only element of the slice, or nil if the user has no details.
 func (m *MemData) getUserDetail(req engine.UserDetailRequest) []engine.UserDetailEntry {
-	if meta, ok := m.metaUsers[req.UserID]; ok {
-		if meta.SiteID != req.Locator.SiteID {
-			return []engine.UserDetailEntry{}
-		}
+	if entry, ok := m.details[siteUser{siteID: req.Locator.SiteID, userID: req.UserID}]; ok {
 		switch req.Detail {
 		case engine.UserEmail:
-			return []engine.UserDetailEntry{{UserID: req.UserID, Email: meta.Details.Email}}
+			return []engine.UserDetailEntry{{UserID: req.UserID, Email: entry.Email}}
 		case engine.UserTelegram:
-			return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: meta.Details.Telegram}}
+			return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: entry.Telegram}}
 		}
 	}
 
-	return []engine.UserDetailEntry{}
+	return nil
 }
 
-// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an onlyIps
-// element of the slice in case of success
+// setUserDetail sets requested userDetail, returning complete updated UserDetailEntry as an only
+// element of the slice
 func (m *MemData) setUserDetail(req engine.UserDetailRequest) []engine.UserDetailEntry {
-	var entry metaUser
-	if meta, ok := m.metaUsers[req.UserID]; ok {
-		if meta.SiteID != req.Locator.SiteID {
-			return []engine.UserDetailEntry{}
-		}
-		entry = meta
-	}
-
-	if entry == (metaUser{}) {
-		entry = metaUser{
-			UserID:  req.UserID,
-			SiteID:  req.Locator.SiteID,
-			Details: engine.UserDetailEntry{UserID: req.UserID},
-		}
-	}
+	key := siteUser{siteID: req.Locator.SiteID, userID: req.UserID}
+	entry := m.details[key]
+	entry.UserID = req.UserID
 
 	switch req.Detail {
 	case engine.UserEmail:
-		entry.Details.Email = req.Update
-		m.metaUsers[req.UserID] = entry
-		return []engine.UserDetailEntry{{UserID: req.UserID, Email: req.Update}}
+		entry.Email = req.Update
 	case engine.UserTelegram:
-		entry.Details.Telegram = req.Update
-		m.metaUsers[req.UserID] = entry
-		return []engine.UserDetailEntry{{UserID: req.UserID, Telegram: req.Update}}
+		entry.Telegram = req.Update
 	}
 
-	return []engine.UserDetailEntry{}
+	m.details[key] = entry
+	return []engine.UserDetailEntry{entry}
 }
 
-// listDetails lists all available users details for given siteID
+// listDetails lists all available users details for given siteID, sorted by user id
 func (m *MemData) listDetails(loc store.Locator) []engine.UserDetailEntry {
 	var res []engine.UserDetailEntry
-	for _, u := range m.metaUsers {
-		if u.SiteID == loc.SiteID {
-			res = append(res, u.Details)
+	for k, entry := range m.details {
+		if k.siteID == loc.SiteID {
+			res = append(res, entry)
 		}
 	}
+	sort.Slice(res, func(i, j int) bool { return res[i].UserID < res[j].UserID })
 	return res
 }
 
 // deleteUserDetail deletes requested UserDetail or whole UserDetailEntry,
 // deletion of the absent entry doesn't produce error.
-// Trying to delete user with wrong siteID doesn't to anything and doesn't produce error.
 func (m *MemData) deleteUserDetail(locator store.Locator, userID string, userDetail engine.UserDetail) {
-	var entry metaUser
-	if meta, ok := m.metaUsers[userID]; ok {
-		if meta.SiteID != locator.SiteID {
-			return
-		}
-		entry = meta
-	}
-
-	if entry == (metaUser{}) || entry.Details == (engine.UserDetailEntry{}) {
+	key := siteUser{siteID: locator.SiteID, userID: userID}
+	entry, ok := m.details[key]
+	if !ok {
 		// absent entry means that we should not do anything
 		return
 	}
 
 	switch userDetail {
 	case engine.UserEmail:
-		entry.Details.Email = ""
+		entry.Email = ""
 	case engine.UserTelegram:
-		entry.Details.Telegram = ""
+		entry.Telegram = ""
 	case engine.AllUserDetails:
-		entry.Details = engine.UserDetailEntry{UserID: userID}
+		entry = engine.UserDetailEntry{UserID: userID}
 	}
 
-	if entry.Details == (engine.UserDetailEntry{UserID: userID}) {
-		// no user details are stored, empty details entry altogether
-		entry.Details = engine.UserDetailEntry{}
+	if entry == (engine.UserDetailEntry{UserID: userID}) {
+		// no user details are left, drop the entry
+		delete(m.details, key)
+		return
 	}
 
-	m.metaUsers[userID] = entry
+	m.details[key] = entry
 }
 
 func (m *MemData) get(loc store.Locator, commentID string) (store.Comment, error) {
@@ -546,18 +502,39 @@ func (m *MemData) updateComment(comment store.Comment) error {
 		if c.ID != comment.ID || c.Locator != comment.Locator {
 			continue
 		}
-		c.Text = comment.Text
-		c.Orig = comment.Orig
-		c.Score = comment.Score
-		c.Votes = comment.Votes
-		c.Pin = comment.Pin
-		c.Deleted = comment.Deleted
-		c.User = comment.User
-		comments[i] = c
-		m.posts[comment.Locator.SiteID] = comments
+		if c.Deleted { // the caller's copy can be older than the delete
+			return fmt.Errorf("comment %s is deleted", comment.ID)
+		}
+		// keep the immutable fields and replace the others, as the bolt engine does
+		comment.ParentID, comment.Timestamp, comment.User = c.ParentID, c.Timestamp, c.User
+		comments[i] = comment
 		return nil
 	}
 	return fmt.Errorf("not found")
+}
+
+// postInfos returns the info of every post of the site, counted as the bolt engine counts it: deleted comments
+// are not counted, and first and last are the earliest and latest comments, whatever order they were created in
+func (m *MemData) postInfos(siteID string) map[store.Locator]store.PostInfo {
+	res := map[store.Locator]store.PostInfo{}
+	for _, c := range m.posts[siteID] {
+		ts := c.Timestamp.UTC()
+		info, ok := res[c.Locator]
+		if !ok {
+			info = store.PostInfo{URL: c.Locator.URL, FirstTS: ts, LastTS: ts}
+		}
+		if !c.Deleted {
+			info.Count++
+		}
+		if ts.Before(info.FirstTS) {
+			info.FirstTS = ts
+		}
+		if ts.After(info.LastTS) {
+			info.LastTS = ts
+		}
+		res[c.Locator] = info
+	}
+	return res
 }
 
 func (m *MemData) match(comments []store.Comment, fn func(c store.Comment) bool) (res []store.Comment) {

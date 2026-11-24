@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -192,6 +193,51 @@ func TestServer_RssWithReply(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
+// the quote of the parent comment in a reply's item is text: markup in the parent can't close the quote
+// or leave a tag open over what follows the item
+func TestServer_RssReplyQuotesParentAsText(t *testing.T) {
+	ts, rst, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, parent, quote string
+	}{
+		{
+			name:   "stray end tag stays inside the quote",
+			parent: `<p>nice post</blockquote></p><p>see <a href="https://example.com">this</a> &amp; &lt;that&gt;</p>`,
+			quote:  "<blockquote><p>nice post see this &amp; &lt;that&gt;</p></blockquote>",
+		},
+		{
+			name:   "cut does not fall inside a tag",
+			parent: `<p>picture <img src="https://example.com/p.png" alt="` + strings.Repeat("long ", 80) + `"/></p>`,
+			quote:  "<blockquote><p>picture</p></blockquote>",
+		},
+		{
+			name:   "long text is shortened",
+			parent: "<p>" + strings.Repeat("<em>word</em> ", 80) + "</p>",
+			quote:  "<blockquote><p>" + strings.Repeat("word ", 60) + "...</p></blockquote>",
+		},
+	}
+
+	for i, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{URL: fmt.Sprintf("https://radio-t.com/blah%d", i), SiteID: "remark42"}
+			parent := store.Comment{ID: "parent", Text: tt.parent, Locator: locator, Timestamp: time.Now(),
+				User: store.User{ID: "u1", Name: "developer one"}}
+			reply := store.Comment{ID: "reply", ParentID: "parent", Text: "<p>reply</p>", Locator: locator,
+				Timestamp: time.Now().Add(time.Millisecond), User: store.User{ID: "u2", Name: "developer two"}}
+			_, err := rst.DataService.Create(parent)
+			require.NoError(t, err)
+			_, err = rst.DataService.Create(reply)
+			require.NoError(t, err)
+
+			res, code := get(t, ts.URL+"/api/v1/rss/post?site=remark42&url="+locator.URL)
+			assert.Equal(t, http.StatusOK, code)
+			assert.Contains(t, res, "<description>"+html.EscapeString(reply.Text+tt.quote)+"</description>")
+		})
+	}
+}
+
 func TestServer_RssReplies(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -281,6 +327,30 @@ func TestServer_RssReplies(t *testing.T) {
 
 	_, code = get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42-bad")
 	assert.Equal(t, http.StatusBadRequest, code)
+}
+
+func TestServer_RssRepliesWithOrphanReply(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	base, _ := rssPubTime()
+	loc := store.Locator{URL: "https://radio-t.com/blah1", SiteID: "remark42"}
+	for _, c := range []store.Comment{
+		{ID: "comment-1", Text: "c1", Timestamp: base, Locator: loc, User: store.User{ID: "user1", Name: "user1"}},
+		{ID: "comment-2", Text: "reply to c1 from user2", ParentID: "comment-1", Timestamp: base.Add(time.Millisecond),
+			Locator: loc, User: store.User{ID: "user2", Name: "user2"}},
+		// a reply to a comment that is not in the store, as one stored before parents were checked
+		{ID: "comment-3", Text: "reply to a missing comment", ParentID: "missing", Timestamp: base.Add(2 * time.Millisecond),
+			Locator: loc, User: store.User{ID: "user3", Name: "user3"}},
+	} {
+		_, err := srv.DataService.Create(c)
+		require.NoError(t, err)
+	}
+
+	res, code := get(t, ts.URL+"/api/v1/rss/reply?user=user1&site=remark42")
+	require.Equal(t, http.StatusOK, code, "a reply to a missing comment does not fail the feed of another user")
+	assert.Contains(t, res, "<guid>comment-2</guid>")
+	assert.NotContains(t, res, "comment-3")
 }
 
 // clean formatting, i.e. multiple spaces, \t, \n

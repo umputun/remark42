@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { authHeaders, clockSkewMs, jwtPayload, requestBody, requestURL } from './fetcher-core.ts';
+import {
+  authHeaders,
+  clockSkewMs,
+  frameHeaders,
+  jwtLifetimeMs,
+  jwtPayload,
+  requestBody,
+  requestURL,
+  sameOrigin,
+} from './fetcher-core.ts';
 
 /**
  * base64url is not base64: `-` stands in for `+` and `_` for `/`. The payload below is chosen to
@@ -211,5 +220,77 @@ describe('authHeaders', () => {
 
   it('omits both for empty values', () => {
     assert.deepEqual(authHeaders('', ''), {});
+  });
+});
+
+describe('jwtLifetimeMs', () => {
+  it('is the distance between the two claims, in milliseconds', () => {
+    assert.equal(jwtLifetimeMs({ iat: 1000, exp: 1300 }), 300000);
+  });
+
+  // null means "this token does not say", and the fetcher then keeps sending it as it always did
+  it('is null without an issue time', () => {
+    assert.equal(jwtLifetimeMs({ exp: 1300 }), null);
+  });
+
+  it('is null without an expiry', () => {
+    assert.equal(jwtLifetimeMs({ iat: 1000 }), null);
+  });
+
+  // the backend writes such a token when it sets new claims on one that has expired. null would
+  // read as "never expires" and the token would be sent for the rest of the page's life
+  it('is negative, not null, for a token that had expired when it was issued', () => {
+    assert.equal(jwtLifetimeMs({ iat: 1300, exp: 1000 }), -300000);
+  });
+
+  it('is zero for a token that expires as it is issued', () => {
+    assert.equal(jwtLifetimeMs({ iat: 1300, exp: 1300 }), 0);
+  });
+
+  it('is null for claims that are not numbers', () => {
+    assert.equal(jwtLifetimeMs({ iat: '1000', exp: '1300' }), null);
+  });
+
+  it('is null for a payload that could not be decoded', () => {
+    assert.equal(jwtLifetimeMs(null), null);
+  });
+});
+
+describe('frameHeaders', () => {
+  it('asks for partitioned cookies from a third-party frame over https', () => {
+    assert.deepEqual(frameHeaders(true, true, true), { 'X-Remark42-Partitioned-Cookie': '1' });
+  });
+
+  // a partitioned cookie has to be Secure, so over http the backend has nothing to add
+  it('sends nothing from a third-party frame over http', () => {
+    assert.deepEqual(frameHeaders(true, false, true), {});
+  });
+
+  it('sends nothing when the widget and the page share a host', () => {
+    assert.deepEqual(frameHeaders(false, true, true), {});
+    assert.deepEqual(frameHeaders(false, false, true), {});
+  });
+
+  // the last-comments widget runs on a host page and calls the api across origins. when that page
+  // is itself framed by another host, the header would turn its request into a preflighted one,
+  // and the backend's CORS list does not carry it
+  it('sends nothing from a document that is not on the api origin', () => {
+    assert.deepEqual(frameHeaders(true, true, false), {});
+  });
+});
+
+describe('sameOrigin', () => {
+  it('holds for a url under the origin', () => {
+    assert.equal(sameOrigin('https://remark42.example.com/sub', 'https://remark42.example.com'), true);
+  });
+
+  it('tells hosts, ports and schemes apart', () => {
+    assert.equal(sameOrigin('https://remark42.example.com', 'https://blog.example.com'), false);
+    assert.equal(sameOrigin('https://remark42.example.com:8443', 'https://remark42.example.com'), false);
+    assert.equal(sameOrigin('http://remark42.example.com', 'https://remark42.example.com'), false);
+  });
+
+  it('is false for a url that cannot be parsed', () => {
+    assert.equal(sameOrigin('not a url', 'https://remark42.example.com'), false);
   });
 });

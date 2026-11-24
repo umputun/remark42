@@ -6,13 +6,19 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // reproduces the unsalted anonymous ID the server must no longer issue
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"image/png"
 	"io"
+	"mime/multipart"
+	"mime/quotedprintable"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
+	"net/textproto"
 	"net/url"
 	"os"
 	"path"
@@ -20,13 +26,17 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-pkgz/auth/v2"
 	"github.com/go-pkgz/auth/v2/avatar"
 	"github.com/go-pkgz/auth/v2/provider"
+	"github.com/go-pkgz/auth/v2/provider/sender"
 	"github.com/go-pkgz/auth/v2/token"
 	log "github.com/go-pkgz/lgr"
 	"github.com/golang-jwt/jwt/v5"
@@ -38,6 +48,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/remark42/backend/app/notify"
+	"github.com/umputun/remark42/backend/app/rest"
+	"github.com/umputun/remark42/backend/app/store"
 )
 
 const (
@@ -223,6 +235,32 @@ func TestServerApp_AnonMode(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
+// checkAnonymousName counts characters, not bytes, and takes the dots, hyphens and spaces email sign-in takes
+func TestCheckAnonymousName(t *testing.T) {
+	tbl := []struct {
+		name string
+		ok   bool
+	}{
+		{"blah123", true},
+		{"a.b-c", true},
+		{"Ann-Marie O. Smith", true},
+		{strings.Repeat("Я", 33), true},
+		{strings.Repeat("Ж", 64), true},
+		{"Ян", false},
+		{strings.Repeat("Ж", 65), false},
+		{"\tabc", false},
+		{"abc\u00a0", false},
+		{"a\tbc", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := checkAnonymousName(tt.name, "")
+			require.NoError(t, err)
+			assert.Equal(t, tt.ok, ok)
+		})
+	}
+}
+
 // TestServerCommand_AnonymousUserID signs in through the anonymous provider and reads the user ID out
 // of the issued token. The ID is shown with every comment, and so is the name, so the ID must not be
 // computable from the name and the client address without the shared secret.
@@ -237,7 +275,8 @@ func TestServerCommand_AnonymousUserID(t *testing.T) {
 			URL:          "https://demo.remark42.com",
 			SecretReader: token.SecretFunc(func(string) (string, error) { return "jwt-secret", nil }),
 		})
-		require.NoError(t, s.addAuthProviders(authenticator))
+		_, err = s.addAuthProviders(authenticator)
+		require.NoError(t, err)
 		authHandler, _ := authenticator.Handlers()
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/anonymous/login?aud=remark&user="+url.QueryEscape(name), http.NoBody)
@@ -269,6 +308,40 @@ func TestServerCommand_AnonymousUserID(t *testing.T) {
 	assert.NotEqual(t, id, login(t, "secret", "blah123", "203.0.113.6"), "another address gets another ID")
 	assert.NotEqual(t, login(t, "secret", "abc1", "2.3.4.5"), login(t, "secret", "abc", "12.3.4.5"),
 		"name and address must not run together")
+}
+
+// TestServerCommand_AddAuthProvidersCount checks the count that decides the "no auth providers defined"
+// warning. Email and anonymous sign-in need no OAuth2 provider, so a setup with only them must not warn.
+func TestServerCommand_AddAuthProvidersCount(t *testing.T) {
+	tbl := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{name: "nothing enabled", args: nil, want: 0},
+		{name: "email only", args: []string{"--auth.email.enable"}, want: 1},
+		{name: "anonymous only", args: []string{"--auth.anon"}, want: 1},
+		{name: "email and anonymous", args: []string{"--auth.email.enable", "--auth.anon"}, want: 2},
+		{name: "oauth2 and anonymous", args: []string{"--auth.github.cid=cid", "--auth.github.csec=csec", "--auth.anon"}, want: 2},
+		{name: "telegram only", args: []string{"--auth.telegram", "--telegram.token=token"}, want: 1},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			s := ServerCommand{}
+			s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "secret"})
+			_, err := flags.NewParser(&s, flags.Default).ParseArgs(tt.args)
+			require.NoError(t, err)
+			authenticator := auth.NewService(auth.Opts{
+				URL:          "https://demo.remark42.com",
+				SecretReader: token.SecretFunc(func(string) (string, error) { return "jwt-secret", nil }),
+			})
+			_, err = s.makeTelegramAuth(authenticator) // registered before the others, as newServerApp does
+			require.NoError(t, err)
+			got, err := s.addAuthProviders(authenticator)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got, "providers counted for %v", tt.args)
+		})
+	}
 }
 
 func getAuthFromCookie(t *testing.T, app *serverApp, resp *http.Response) (tkn string, claims token.Claims) {
@@ -460,12 +533,30 @@ func TestIsValidCustomProviderName(t *testing.T) {
 func TestCustomProviderSourceID(t *testing.T) {
 	cfg := CustomAuthGroup{IDField: "sub", EmailField: "email", NameField: "name", PictureField: "picture"}
 
-	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, cfg))
-	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com"}, cfg))
-	assert.Equal(t, "alice", customProviderSourceID(provider.UserData{"name": "alice"}, cfg))
-	assert.Equal(t, "https://example.com/avatar.png", customProviderSourceID(provider.UserData{"picture": "https://example.com/avatar.png"}, cfg))
-	assert.Equal(t, `{"login":"alice"}`, customProviderSourceID(provider.UserData{"login": "alice"}, cfg))
-	assert.Equal(t, "{}", customProviderSourceID(provider.UserData{}, cfg))
+	assert.Equal(t, "user-1", customProviderSourceID(provider.UserData{"sub": "user-1", "email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, "0", customProviderSourceID(provider.UserData{"sub": float64(0)}, nil, cfg))
+
+	// the email stands in for a missing id, and nothing else does
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"email": "a@example.com", "name": "alice",
+		"picture": "https://example.com/avatar.png", "id": float64(1), "login": "alice"}, nil, cfg))
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"sub": "", "email": "a@example.com"}, nil, cfg))
+	assert.Equal(t, " a@example.com ", customProviderSourceID(provider.UserData{"email": " a@example.com "}, nil, cfg), "as sent")
+	assert.Empty(t, customProviderSourceID(provider.UserData{"name": "alice", "picture": "https://example.com/avatar.png",
+		"id": float64(1), "login": "alice"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": nil, "name": "alice"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": "", "email": "", "name": "alice"}, nil, cfg))
+	for _, notEmail := range []any{nil, " ", false, float64(0), []any{}, map[string]any{}} {
+		assert.Empty(t, customProviderSourceID(provider.UserData{"email": notEmail, "name": "alice"}, nil, cfg), "email %#v", notEmail)
+	}
+	assert.Empty(t, customProviderSourceID(provider.UserData{}, nil, cfg))
+
+	cfg.IDField = "id"
+	assert.Equal(t, "1", customProviderSourceID(provider.UserData{"sub": "user-1", "id": float64(1)}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"sub": "user-1", "name": "alice"}, nil, cfg))
+
+	cfg.EmailField = "mail"
+	assert.Equal(t, "a@example.com", customProviderSourceID(provider.UserData{"mail": "a@example.com", "email": "b@example.com"}, nil, cfg))
+	assert.Empty(t, customProviderSourceID(provider.UserData{"email": "b@example.com"}, nil, cfg))
 }
 
 func TestServerApp_InvalidCustomOAuthProviderName(t *testing.T) {
@@ -515,6 +606,123 @@ func TestServerApp_Shutdown(t *testing.T) {
 		t.Fatal("server app did not stop after context cancel")
 	}
 	app.Wait()
+}
+
+// TestServerApp_ShutdownCommitsPictures checks a picture of a comment still in its edit window is
+// committed when the server stops, before the data store the commit reads the comment from is closed
+func TestServerApp_ShutdownCommitsPictures(t *testing.T) {
+	dir := t.TempDir()
+	images, staging := filepath.Join(dir, "images"), filepath.Join(dir, "staging")
+	app, ctx, cancel := prepServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Image.FS.Path, o.Image.FS.Staging, o.Image.FS.Partitions = images, staging, 0 // pictures at <dir>/<user>/<id>
+		o.EditDuration = time.Hour // the edit window outlasts the test, so only the shutdown commits
+		return o
+	})
+	errCh := make(chan error, 1)
+	go func() { errCh <- app.run(ctx) }()
+	defer cancel()
+	waitForHTTPServerStart(t, app.Port)
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	pic, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+	body := &bytes.Buffer{}
+	mw := multipart.NewWriter(body)
+	fw, err := mw.CreateFormFile("file", "pic.png")
+	require.NoError(t, err)
+	_, err = fw.Write(pic)
+	require.NoError(t, err)
+	require.NoError(t, mw.Close())
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/picture", app.Port), body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	var uploaded struct{ ID string }
+	err = json.NewDecoder(resp.Body).Decode(&uploaded)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, uploaded.ID)
+
+	text := fmt.Sprintf("![pic](%s/api/v1/picture/%s)", app.RemarkURL, uploaded.ID)
+	commentJSON, err := json.Marshal(map[string]any{"text": text, "locator": map[string]string{"url": "https://radio-t.com/blah1", "site": "remark"}})
+	require.NoError(t, err)
+	req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/api/v1/comment?site=remark", app.Port), bytes.NewReader(commentJSON))
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	cancel()
+	select {
+	case err = <-errCh:
+		require.NoError(t, err)
+	case <-time.After(serverStopTimeout):
+		t.Fatal("server app did not stop after context cancel")
+	}
+	app.Wait()
+
+	_, err = os.Stat(filepath.Join(images, uploaded.ID))
+	assert.NoError(t, err, "picture committed")
+	_, err = os.Stat(filepath.Join(staging, uploaded.ID))
+	assert.True(t, os.IsNotExist(err), "picture moved out of staging, %v", err)
+}
+
+func TestServerApp_ActivateBackupStopWaitsForExport(t *testing.T) {
+	loc := t.TempDir()
+	exp := &endlessExporter{started: make(chan struct{})}
+	app := &serverApp{ServerCommand: &ServerCommand{Sites: []string{"site1"}, BackupLocation: loc, MaxBackupFiles: 3},
+		exporter: exp}
+	stop := app.activateBackup(t.Context())
+	defer stop()
+
+	select {
+	case <-exp.started: // the backup at start is running
+	case <-time.After(serverStartTimeout):
+		t.Fatal("the backup at start did not begin")
+	}
+	stop()
+	assert.True(t, exp.stopped.Load(), "stop returns only after the export in progress has ended")
+	ff, err := os.ReadDir(loc)
+	require.NoError(t, err)
+	assert.Empty(t, ff, "the stopped export leaves no file behind")
+}
+
+func TestWaitGroupTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var wg sync.WaitGroup
+		release := make(chan struct{})
+		wg.Go(func() { <-release })
+
+		start := time.Now()
+		assert.False(t, waitGroupTimeout(&wg, backupStopWait), "gives up on a group that does not finish")
+		assert.Equal(t, backupStopWait, time.Since(start), "after the whole wait")
+
+		close(release)
+		assert.True(t, waitGroupTimeout(&wg, backupStopWait), "a finished group is reported at once")
+	})
+}
+
+// endlessExporter writes until a write fails, the way an export of a large site outlasts a shutdown
+type endlessExporter struct {
+	started chan struct{}
+	stopped atomic.Bool
+}
+
+func (e *endlessExporter) Export(w io.Writer, _ string) (int, error) {
+	close(e.started)
+	for {
+		if _, err := w.Write([]byte("comment\n")); err != nil {
+			e.stopped.Store(true)
+			return 0, err
+		}
+		time.Sleep(time.Millisecond) // keeps the gzip stream small while the test stops the backup
+	}
 }
 
 // TestServerApp_ClaimsUpd covers the hook the authenticator runs on every token mint, refresh
@@ -700,8 +908,6 @@ func TestServerApp_DeprecatedArgs(t *testing.T) {
 			{Old: "notify.telegram.token", New: "telegram.token", Version: "1.9"},
 			{Old: "notify.telegram.timeout", New: "telegram.timeout", Version: "1.9"},
 			{Old: "notify.telegram.api", New: "telegram.api-url", Version: "1.9"},
-			{Old: "auth.twitter.cid", Version: "1.14"},
-			{Old: "auth.twitter.csec", Version: "1.14"},
 		},
 		deprecatedFlags)
 	assert.Equal(t, "smtp.example.org", s.SMTP.Host)
@@ -904,12 +1110,359 @@ func TestServerAuthHooks(t *testing.T) {
 	}
 
 	// block user github_dev as admin
-	status, body = do(http.MethodPut, "/api/v1/admin/user/github_dev?site=remark&block=1&ttl=10d", "", "admin")
+	status, body = do(http.MethodPut, "/api/v1/admin/user/github_dev?site=remark&block=1&ttl=240h", "", "admin")
 	assert.Equal(t, http.StatusOK, status, "user github_dev blocked, %s", body)
 
 	// try add a comment with blocked user
 	status, body = do(http.MethodPost, addComment, comment("https://radio-t.com/blah1"), tk)
 	assert.Equal(t, http.StatusForbidden, status, "blocked user can't post, %s", body)
+}
+
+// TestServerApp_BlockEndsSessionWithExpiredToken covers a session cookie kept from before a block.
+// The token in a cookie is refreshed when it has expired, and the block shows up only in the
+// refreshed claims, so a request with the old cookie has to be refused on those
+func TestServerApp_BlockEndsSessionWithExpiredToken(t *testing.T) {
+	app := startServerApp(t, nil)
+
+	// expiredToken signs a session token of the user that expired a minute ago, with id as its xsrf
+	// token. It is signed as it is: the token service would bring the claims up to date first, and
+	// the token has to say what one issued before the block or the restriction says
+	expiredToken := func(id string, user token.User) string {
+		t.Helper()
+		return signRawToken(t, token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ID:        id,
+				Audience:  jwt.ClaimStrings{"remark"},
+				Issuer:    "remark42",
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+			},
+			User: &user,
+		})
+	}
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	// getUser asks who the cookie's user is, as a client that never stores the refreshed cookie
+	getUser := func(id, tkn string) (status int, body string) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%d/api/v1/user?site=remark", app.Port), http.NoBody)
+		require.NoError(t, err)
+		req.AddCookie(&http.Cookie{Name: "JWT", Value: tkn})
+		req.Header.Set("X-XSRF-TOKEN", id)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, string(b)
+	}
+
+	dev := token.User{ID: "github_dev", Name: "developer one"}
+	refreshedBefore, neverRefreshed := expiredToken("id-1", dev), expiredToken("id-2", dev)
+
+	status, body := getUser("id-1", refreshedBefore)
+	require.Equal(t, http.StatusOK, status, "expired token of a user who is not blocked is refreshed, %s", body)
+	status, body = getUser("id-1", refreshedBefore)
+	require.Equal(t, http.StatusOK, status, "and once more, from the refresh cache, %s", body)
+	_, cached := app.authRefreshCache.Get(refreshedBefore)
+	require.True(t, cached, "the refresh of the first cookie is cached")
+	_, cached = app.authRefreshCache.Get(neverRefreshed)
+	require.False(t, cached, "the second cookie has not been refreshed")
+
+	req, err := http.NewRequest(http.MethodPut,
+		fmt.Sprintf("http://localhost:%d/api/v1/admin/user/github_dev?site=remark&block=1&ttl=240h", app.Port), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode, "user github_dev blocked")
+
+	status, body = getUser("id-1", refreshedBefore)
+	assert.Equal(t, http.StatusUnauthorized, status, "cookie refreshed before the block, its refresh still cached, %s", body)
+	status, body = getUser("id-2", neverRefreshed)
+	assert.Equal(t, http.StatusUnauthorized, status, "cookie not seen since before the block, %s", body)
+	status, body = getUser("id-2", neverRefreshed)
+	assert.Equal(t, http.StatusUnauthorized, status, "the same cookie sent again, %s", body)
+
+	// a token that says blocked stays refused, whatever the store says now, as it is before it expires
+	wasBlocked := token.User{ID: "github_other", Name: "developer two"}
+	wasBlocked.SetBoolAttr("blocked", true)
+	status, body = getUser("id-5", expiredToken("id-5", wasBlocked))
+	assert.Equal(t, http.StatusUnauthorized, status, "expired token issued during a block, the user not blocked any more, %s", body)
+
+	// a name restricted after the cookie was issued is marked as blocked at the refresh only
+	status, body = getUser("id-3", expiredToken("id-3", token.User{ID: "email_1234", Name: "Umputun"}))
+	assert.Equal(t, http.StatusUnauthorized, status, "email user under a restricted name, %s", body)
+	status, body = getUser("id-4", expiredToken("id-4", token.User{ID: "email_5678", Name: "somebody"}))
+	assert.Equal(t, http.StatusOK, status, "email user under another name, %s", body)
+}
+
+func TestUpdatePaidSub(t *testing.T) {
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	// user returns a Patreon user as the claims updater gets it: without the "blocked" attribute straight
+	// from the provider at a sign-in, with it on a refresh
+	user := func(paid, refresh bool, until time.Time) *token.User {
+		u := &token.User{ID: "patreon_1234", Name: "subscriber"}
+		u.SetPaidSub(paid)
+		if refresh {
+			u.SetBoolAttr("blocked", false)
+		}
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(u, until)
+		}
+		return u
+	}
+
+	tbl := []struct {
+		name     string
+		user     *token.User
+		paid     bool
+		paidTill time.Time // zero for no paid status
+	}{
+		{name: "sign-in as a subscriber", user: user(true, false, time.Time{}), paid: true, paidTill: now.Add(14 * 24 * time.Hour)},
+		{name: "sign-in again restarts the period", user: user(true, false, now.Add(-time.Hour)), paid: true,
+			paidTill: now.Add(14 * 24 * time.Hour)},
+		{name: "sign-in without a subscription", user: user(false, false, time.Time{})},
+		{name: "refresh within the period keeps its end", user: user(true, true, now.Add(time.Hour)), paid: true, paidTill: now.Add(time.Hour)},
+		{name: "refresh at the end", user: user(true, true, now)},
+		{name: "refresh after the end", user: user(true, true, now.Add(-time.Hour))},
+		{name: "refresh of a token without an end", user: user(true, true, time.Time{})},
+		{name: "refresh without a subscription", user: user(false, true, time.Time{})},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			updatePaidSub(tt.user, now)
+			assert.Equal(t, tt.paid, tt.user.IsPaidSub(), "paid status")
+			if tt.paidTill.IsZero() {
+				assert.False(t, rest.PaidSubActive(*tt.user, now), "no paid status running")
+				return
+			}
+			assert.True(t, rest.PaidSubActive(*tt.user, tt.paidTill.Add(-time.Second)), "paid status runs until its end")
+			assert.False(t, rest.PaidSubActive(*tt.user, tt.paidTill), "and stops there")
+		})
+	}
+}
+
+// TestServerApp_PatreonPaidStatusPeriod covers the paid status in subscribers-only mode, which Patreon
+// reports at the sign-in only: it counts for two weeks from then, also for a client that keeps sending a
+// session cookie from before and never stores the refreshed one
+func TestServerApp_PatreonPaidStatusPeriod(t *testing.T) {
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.SubscribersOnly = true
+		o.UpdateLimit = 100
+		return o
+	})
+
+	// paidToken signs a Patreon subscriber's session token, issued and refreshed by remark42 before, so
+	// with the "blocked" attribute; until is the end of the paid status, none when zero
+	paidToken := func(id string, expires, until time.Time) string {
+		t.Helper()
+		u := token.User{ID: "patreon_" + id, Name: "subscriber " + id}
+		u.SetPaidSub(true)
+		u.SetBoolAttr("blocked", false)
+		if !until.IsZero() {
+			rest.SetPaidSubUntil(&u, until)
+		}
+		return signRawToken(t, token.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{ID: id, Audience: jwt.ClaimStrings{"remark"}, Issuer: "remark42",
+				ExpiresAt: jwt.NewNumericDate(expires), NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Hour))},
+			User: &u,
+		})
+	}
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+
+	// preview asks for a comment preview, which subscribers-only mode keeps for subscribers, as a client
+	// that never stores the refreshed cookie, and returns the session token the response sets, if any
+	preview := func(id, tkn string) (status int, refreshed string) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/api/v1/preview?site=remark", app.Port),
+			strings.NewReader(`{"text": "test 123", "locator":{"url": "https://radio-t.com/p/1/", "site": "remark"}}`))
+		require.NoError(t, err)
+		req.AddCookie(&http.Cookie{Name: "JWT", Value: tkn})
+		req.Header.Set("X-XSRF-TOKEN", id)
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		for _, c := range resp.Cookies() {
+			if c.Name == "JWT" {
+				refreshed = c.Value
+			}
+		}
+		return resp.StatusCode, refreshed
+	}
+
+	expired, valid := time.Now().Add(-time.Minute), time.Now().Add(5*time.Minute)
+	day := 24 * time.Hour
+
+	// refreshedUnpaid checks that the response refreshed the cookie into one without a paid status
+	refreshedUnpaid := func(refreshed, msg string) {
+		t.Helper()
+		require.NotEmpty(t, refreshed, "%s: the expired cookie is refreshed", msg)
+		claims, err := app.restSrv.Authenticator.TokenService().Parse(refreshed)
+		require.NoError(t, err)
+		assert.False(t, claims.User.IsPaidSub(), "%s: the refreshed cookie has no paid status", msg)
+	}
+
+	// a subscriber's cookie from before the limit names no end and is refreshed as unpaid, however often it
+	// comes: the first request refreshes the cookie, the others get the refresh from the cache and no new cookie
+	beforeLimit := paidToken("1", expired, time.Time{})
+	status, refreshed := preview("1", beforeLimit)
+	assert.Equal(t, http.StatusForbidden, status, "cookie from before the limit")
+	refreshedUnpaid(refreshed, "cookie from before the limit")
+	for i := range 2 {
+		status, _ = preview("1", beforeLimit)
+		assert.Equal(t, http.StatusForbidden, status, "cookie from before the limit sent again, request %d", i+2)
+	}
+
+	status, refreshed = preview("2", paidToken("2", expired, time.Now().Add(-day)))
+	assert.Equal(t, http.StatusForbidden, status, "expired cookie whose paid status ended a day ago")
+	refreshedUnpaid(refreshed, "expired cookie whose paid status ended a day ago")
+
+	running := time.Now().Add(day).Truncate(time.Second)
+	status, refreshed = preview("3", paidToken("3", expired, running))
+	require.Equal(t, http.StatusOK, status, "expired cookie whose paid status runs for another day")
+	require.NotEmpty(t, refreshed, "the expired cookie is refreshed")
+	claims, err := app.restSrv.Authenticator.TokenService().Parse(refreshed)
+	require.NoError(t, err)
+	assert.True(t, rest.PaidSubActive(*claims.User, running.Add(-time.Second)), "the refresh keeps the end it found")
+	assert.False(t, rest.PaidSubActive(*claims.User, running), "and does not move it")
+
+	// an unexpired token is not refreshed, the end of its paid status is checked against the clock
+	status, _ = preview("4", paidToken("4", valid, time.Now().Add(-time.Second)))
+	assert.Equal(t, http.StatusForbidden, status, "token whose paid status ended while it was valid")
+	status, _ = preview("5", paidToken("5", valid, time.Now().Add(day)))
+	assert.Equal(t, http.StatusOK, status, "token whose paid status runs")
+
+	// a sign-in: the token service gets the user as the provider made it, without remark42's attributes
+	signIn := token.User{ID: "patreon_6", Name: "subscriber 6"}
+	signIn.SetPaidSub(true)
+	tkn, err := app.restSrv.Authenticator.TokenService().Token(token.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}, ExpiresAt: jwt.NewNumericDate(valid)},
+		User:             &signIn,
+	})
+	require.NoError(t, err)
+	claims, err = app.restSrv.Authenticator.TokenService().Parse(tkn)
+	require.NoError(t, err)
+	assert.True(t, rest.PaidSubActive(*claims.User, time.Now().Add(14*day-time.Minute)), "paid status for two weeks from the sign-in")
+	assert.False(t, rest.PaidSubActive(*claims.User, time.Now().Add(14*day+time.Minute)), "and no longer")
+}
+
+// TestServerApp_PatreonPaidStatusWithoutSubscribersOnly covers an instance without subscribers-only mode,
+// which sets no end to the paid status and leaves it as Patreon reported it
+func TestServerApp_PatreonPaidStatusWithoutSubscribersOnly(t *testing.T) {
+	app := startServerApp(t, nil)
+	u := token.User{ID: "patreon_1", Name: "subscriber"}
+	u.SetPaidSub(true)
+	u.SetBoolAttr("blocked", false)
+	tkn, err := app.restSrv.Authenticator.TokenService().Token(token.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Audience: jwt.ClaimStrings{"remark"}, ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+		User:             &u,
+	})
+	require.NoError(t, err)
+	claims, err := app.restSrv.Authenticator.TokenService().Parse(tkn)
+	require.NoError(t, err)
+	assert.True(t, claims.User.IsPaidSub(), "paid status kept on a refresh")
+	assert.False(t, rest.PaidSubActive(*claims.User, time.Now()), "with no end set")
+}
+
+func TestTokenExpired(t *testing.T) {
+	claims := func(exp *jwt.NumericDate) token.Claims {
+		return token.Claims{RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: exp}, User: &token.User{ID: "user"}}
+	}
+	svc := token.NewService(token.Opts{SecretReader: token.SecretFunc(func(string) (string, error) { return "secret", nil })})
+
+	for name, c := range map[string]token.Claims{
+		"expired":   claims(jwt.NewNumericDate(time.Now().Add(-time.Minute))),
+		"valid":     claims(jwt.NewNumericDate(time.Now().Add(time.Minute))),
+		"no expiry": claims(nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, svc.IsExpired(c), tokenExpired(c), "the same answer as the token service gives")
+		})
+	}
+	assert.True(t, tokenExpired(claims(jwt.NewNumericDate(time.Now().Add(-time.Minute)))))
+	assert.False(t, tokenExpired(claims(jwt.NewNumericDate(time.Now().Add(time.Minute)))))
+	assert.False(t, tokenExpired(claims(nil)))
+}
+
+// a token in the query is not read at all, so a URL that carries one, requested by a reader's
+// browser with that reader's cookies, can neither sign the reader out nor stand in for a session
+func TestServerApp_QueryTokenIgnored(t *testing.T) {
+	app := startServerApp(t, nil)
+
+	tkService := app.restSrv.Authenticator.TokenService()
+	tkService.TokenDuration = time.Hour
+	sessionToken := func(id, tokenID string) string {
+		tk, err := tkService.Token(token.Claims{
+			ID:        tokenID,
+			Audience:  jwt.ClaimStrings{"remark"},
+			Issuer:    "remark",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+			User:      &token.User{ID: id, Name: id},
+		})
+		require.NoError(t, err)
+		return tk
+	}
+	reader, commenter := sessionToken("github_reader", "reader-token-id"), sessionToken("github_commenter", "commenter-token-id")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	// do sends a request with the given headers and returns the status, the Set-Cookie lines and the body
+	do := func(method, path string, headers map[string]string) (int, []string, string) {
+		t.Helper()
+		req, err := http.NewRequest(method, fmt.Sprintf("http://localhost:%d%s", app.Port, path), http.NoBody)
+		require.NoError(t, err)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode, resp.Header.Values("Set-Cookie"), string(b)
+	}
+
+	// the commenter's delete-me token is signed like a session and rejected by the validator
+	status, _, body := do(http.MethodPost, "/api/v1/deleteme?site=remark", map[string]string{"X-JWT": commenter})
+	require.Equal(t, http.StatusOK, status, body)
+	deleteMe := struct {
+		Token string `json:"token"`
+	}{}
+	require.NoError(t, json.Unmarshal([]byte(body), &deleteMe))
+	require.NotEmpty(t, deleteMe.Token)
+
+	// the reader's browser, asked for a URL that somebody else wrote
+	asReader := map[string]string{"Cookie": "JWT=" + reader + "; XSRF-TOKEN=reader-token-id", "X-XSRF-TOKEN": "reader-token-id"}
+
+	status, cookies, body := do(http.MethodGet, "/api/v1/user?site=remark", asReader)
+	require.Equal(t, http.StatusOK, status, body)
+	require.Contains(t, body, "github_reader")
+	require.Empty(t, cookies)
+
+	for _, path := range []string{"/api/v1/config?site=remark", "/api/v1/user?site=remark"} {
+		status, cookies, body = do(http.MethodGet, path+"&jwt="+deleteMe.Token, asReader)
+		assert.Equal(t, http.StatusOK, status, "%s: %s", path, body)
+		assert.Empty(t, cookies, "%s: a rejected token in the query must not expire the reader's cookies", path)
+	}
+
+	status, _, body = do(http.MethodGet, "/api/v1/user?site=remark&jwt="+commenter, asReader)
+	assert.Equal(t, http.StatusOK, status, body)
+	assert.Contains(t, body, "github_reader", "the reader stays the reader, whatever token the URL carries")
+
+	status, _, body = do(http.MethodGet, "/api/v1/user?site=remark&jwt="+commenter, nil)
+	assert.Equal(t, http.StatusUnauthorized, status, "a token in the query is not a session, %s", body)
+
+	// the sign-out of an OAuth provider wants the session it ends, and a token in the URL is not one
+	status, cookies, body = do(http.MethodGet, "/auth/logout?jwt="+commenter, map[string]string{"Cookie": asReader["Cookie"]})
+	assert.Equal(t, http.StatusForbidden, status, body)
+	assert.Empty(t, cookies, "a sign-out request without the reader's XSRF header must not end the session")
 }
 
 func TestServerCommand_parseSameSite(t *testing.T) {
@@ -1026,6 +1579,8 @@ func Test_splitAtCommas(t *testing.T) {
 			[]string{"Access-Control-Allow-Headers:\"DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type\"", "header123:val", "foo:\"bar1,bar2\""},
 		},
 		{"", []string{}},
+		{"   ", []string{}},
+		{"vv1, ,vv2", []string{"vv1", "", "vv2"}},
 	}
 
 	for i, tt := range tbl {
@@ -1290,6 +1845,58 @@ func TestMain(m *testing.M) {
 	)
 }
 
+func TestServerApp_ClearSecretEnv(t *testing.T) {
+	s := ServerCommand{}
+	s.SetCommon(CommonOpts{RemarkURL: "https://demo.remark42.com", SharedSecret: "123456"})
+	p := flags.NewParser(&s, flags.Default)
+
+	// every option whose variable holds a credential, found from the flag definitions, so a new one
+	// is checked without being added here. the webhook headers have no env tag, they are read in code
+	isSecret := func(name string) bool {
+		for _, suffix := range []string{"_CSEC", "_KID", "_TOKEN", "_PASSWD", "_PASSWORD"} {
+			if strings.HasSuffix(name, suffix) {
+				return true
+			}
+		}
+		return name == "SECRET"
+	}
+	secrets := []string{"SECRET", "NOTIFY_WEBHOOK_HEADERS"}
+	var walk func(g *flags.Group)
+	walk = func(g *flags.Group) {
+		for _, opt := range g.Options() {
+			if name := opt.EnvKeyWithNamespace(); isSecret(name) {
+				secrets = append(secrets, name)
+			}
+		}
+		for _, sub := range g.Groups() {
+			walk(sub)
+		}
+	}
+	walk(p.Group)
+	require.Contains(t, secrets, "STORE_RPC_AUTH_PASSWD", "the walk reaches nested groups")
+
+	for _, name := range secrets {
+		t.Setenv(name, "x")
+	}
+	t.Setenv("NOTIFY_WEBHOOK_HEADERS", `Authorization:Bearer abc,X-List:"a,b"`)
+	_, err := p.ParseArgs([]string{"--notify.admins=webhook"})
+	require.NoError(t, err)
+
+	s.clearSecretEnv()
+	for _, name := range secrets {
+		_, ok := os.LookupEnv(name)
+		assert.False(t, ok, "%s is cleared from the environment", name)
+	}
+	assert.Equal(t, []string{"Authorization:Bearer abc", `X-List:"a,b"`}, s.Notify.Webhook.Headers,
+		"the webhook headers are kept in the options")
+
+	// the headers are parsed whether or not the webhook is enabled, so a blank value must not stop the start
+	blank := ServerCommand{}
+	t.Setenv("NOTIFY_WEBHOOK_HEADERS", " ")
+	require.NotPanics(t, blank.clearSecretEnv)
+	assert.Empty(t, blank.Notify.Webhook.Headers)
+}
+
 func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 	// the test is about the defaults, so the caller's environment must not supply cache options
 	for _, name := range []string{"CACHE_TYPE", "CACHE_MAX_ITEMS", "CACHE_MAX_VALUE", "CACHE_MAX_SIZE"} {
@@ -1317,6 +1924,22 @@ func TestServerApp_MakeCacheKeepsLargeValuesByDefault(t *testing.T) {
 	assert.Equal(t, 1, loads, "a 300 KB value must be served from cache with default limits")
 }
 
+func TestNewEmailSender_MasksRecipientInLog(t *testing.T) {
+	var lines []string
+	l := log.Func(func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) })
+	sndr := newEmailSender(sender.EmailParams{Host: "127.0.0.1", Port: 1, TimeOut: time.Second}, l)
+
+	// the debug line is written before the connection is tried, so the send itself may fail
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	require.Error(t, sndr.SendContext(ctx, "user@example.com", "sign-in link"))
+
+	require.NotEmpty(t, lines, "the sender logs the send")
+	logged := strings.Join(lines, "\n")
+	assert.NotContains(t, logged, "user@example.com", "the recipient's address stays out of the log")
+	assert.Contains(t, logged, "message to ********", "the send is still logged, with the address masked")
+}
+
 func TestServerCommand_identiconSize(t *testing.T) {
 	tbl := []struct {
 		name string
@@ -1333,12 +1956,12 @@ func TestServerCommand_identiconSize(t *testing.T) {
 			_, err := flags.NewParser(&cmd, flags.Default).ParseArgs(append([]string{"--admin-passwd=password", "--site=remark"}, tt.args...))
 			require.NoError(t, err)
 
-			store := avatar.NewLocalFS(t.TempDir())
-			authenticator := cmd.getAuthenticator(nil, store, nil, nil)
+			avatars := avatar.NewLocalFS(t.TempDir())
+			authenticator := cmd.getAuthenticator(nil, avatars, nil, nil)
 			avatarURL, err := authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
 			require.NoError(t, err)
 
-			r, _, err := store.Get(path.Base(avatarURL))
+			r, _, err := avatars.Get(path.Base(avatarURL))
 			require.NoError(t, err)
 			defer r.Close()
 			cfg, err := png.DecodeConfig(r)
@@ -1444,11 +2067,144 @@ func TestServerApp_WebhookUsesConfiguredTimeout(t *testing.T) {
 	assert.Equal(t, 17*time.Second, wh.Timeout, "NOTIFY_WEBHOOK_TIMEOUT reaches the webhook")
 }
 
+// TestServerCommand_makeNotifyDestinationsBrokenWebhookKeepsOthers covers a webhook that cannot be built:
+// it is reported, and Slack and email, including users' reply notifications, are still set up
+func TestServerCommand_makeNotifyDestinationsBrokenWebhookKeepsOthers(t *testing.T) {
+	tbl := []struct {
+		name, url, template, wantErr string
+	}{
+		{name: "no url", wantErr: "webhook URL is required"},
+		{name: "bad template", url: "http://127.0.0.1/hook", template: "{{.Text", wantErr: "unable to parse webhook template"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{}
+			cmd.Notify.Admins = []string{"webhook", "slack", "email"}
+			cmd.Notify.Users = []string{"email"}
+			cmd.Admin.Shared.Email = []string{"admin@example.com"}
+			cmd.Notify.Webhook.URL = tt.url
+			cmd.Notify.Webhook.Template = tt.template
+
+			destinations, err := cmd.makeNotifyDestinations(nil)
+			require.ErrorContains(t, err, tt.wantErr)
+			var slack, email int
+			for _, d := range destinations {
+				switch d.(type) {
+				case *notify.Slack:
+					slack++
+				case *notify.Email:
+					email++
+				default:
+					t.Errorf("unexpected destination %T", d)
+				}
+			}
+			assert.Equal(t, 1, slack, "slack is set up despite the webhook error")
+			assert.Equal(t, 1, email, "email is set up despite the webhook error")
+		})
+	}
+}
+
+// TestServerCommand_makeNotifyDestinationsAdminEmailMissing covers NOTIFY_ADMINS=email with no address to
+// send to: the default admin@ address of ADMIN_SHARED_EMAIL is not used for notifications, so the start-up
+// reports it, and the email destination is still built for users' reply notifications
+func TestServerCommand_makeNotifyDestinationsAdminEmailMissing(t *testing.T) {
+	tbl := []struct {
+		name       string
+		emails     []string
+		wantAdmins []string
+		wantErr    bool
+	}{
+		{name: "not set", emails: nil, wantErr: true},
+		{name: "empty env value", emails: []string{""}, wantErr: true},
+		{name: "blank values", emails: []string{" ", ""}, wantErr: true},
+		{name: "set", emails: []string{"a@example.com", "b@example.com"}, wantAdmins: []string{"a@example.com", "b@example.com"}},
+		{name: "set with a blank", emails: []string{"a@example.com", " "}, wantAdmins: []string{"a@example.com"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := ServerCommand{
+				RemarkURL: "https://remark42.example.com"}
+			cmd.Notify.Admins = []string{"email"}
+			cmd.Admin.Shared.Email = tt.emails
+
+			destinations, err := cmd.makeNotifyDestinations(nil)
+			if tt.wantErr {
+				require.EqualError(t, err, "admin email notifications are on, but --admin.shared.email (ADMIN_SHARED_EMAIL) "+
+					"has no address, so no admin is notified by email")
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, destinations, 1)
+			e, ok := destinations[0].(*notify.Email)
+			require.True(t, ok, "email destination, got %T", destinations[0])
+			assert.Equal(t, tt.wantAdmins, e.AdminEmails, "admin copies go to the configured addresses only")
+		})
+	}
+
+	t.Run("user notifications only", func(t *testing.T) {
+		cmd := ServerCommand{}
+		cmd.Notify.Users = []string{"email"}
+		_, err := cmd.makeNotifyDestinations(nil)
+		require.NoError(t, err, "no admin address is needed without admin email notifications")
+	})
+}
+
+// TestServerCommand_makeNotifyDestinationsAvatarURLs covers the pictures in notification emails: the email
+// shows only avatars of this instance, so it must know the prefix the avatar proxy makes pictures with and
+// the root route that pictures stored by older versions point to
+func TestServerCommand_makeNotifyDestinationsAvatarURLs(t *testing.T) {
+	cmd := ServerCommand{RemarkURL: "https://remark42.example.com/"} // a picture URL has no double slash
+	cmd.Notify.Users = []string{"email"}
+	authenticator := cmd.getAuthenticator(nil, avatar.NewLocalFS(t.TempDir()), nil, nil)
+
+	destinations, err := cmd.makeNotifyDestinations(authenticator)
+	require.NoError(t, err)
+	require.Len(t, destinations, 1)
+	e, ok := destinations[0].(*notify.Email)
+	require.True(t, ok, "email destination, got %T", destinations[0])
+
+	picture, err := authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		strings.TrimSuffix(picture, path.Base(picture)), // where the avatar proxy makes pictures
+		"https://remark42.example.com/avatar/",          // where pictures stored by older versions point
+	}, e.AvatarURLs)
+
+	// a host name that is not ASCII: the picture is stored through the URL sanitizer, which escapes the name
+	cmd = ServerCommand{RemarkURL: "https://комменты.example.com"}
+	cmd.Notify.Users = []string{"email"}
+	authenticator = cmd.getAuthenticator(nil, avatar.NewLocalFS(t.TempDir()), nil, nil)
+	destinations, err = cmd.makeNotifyDestinations(authenticator)
+	require.NoError(t, err)
+	require.Len(t, destinations, 1)
+	e, ok = destinations[0].(*notify.Email)
+	require.True(t, ok)
+	picture, err = authenticator.AvatarProxy().Put(token.User{ID: "anonymous_1", Name: "anon"}, nil)
+	require.NoError(t, err)
+	c := store.Comment{User: store.User{ID: "anonymous_1", Name: "anon", Picture: picture}}
+	c.Sanitize()
+	require.NotEqual(t, picture, c.User.Picture, "the stored picture has the host name escaped")
+	assert.Contains(t, e.AvatarURLs, strings.TrimSuffix(picture, path.Base(picture)), "the picture as the proxy makes it")
+	assert.Contains(t, e.AvatarURLs, strings.TrimSuffix(c.User.Picture, path.Base(c.User.Picture)), "the picture as stored")
+}
+
+func TestServerCommand_makeTelegramNotifyNoChannel(t *testing.T) {
+	cmd := ServerCommand{}
+	cmd.Notify.Admins = []string{"telegram"}
+	cmd.Telegram.Token = "token"
+	_, err := cmd.makeTelegramNotify()
+	require.EqualError(t, err, "--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work",
+		"the error names a flag that exists")
+}
+
 // TestServerApp_UnsubscribeTokenIsNotALogin covers the token in unsubscribe links: it names the user
 // and their email, is signed with the shared secret and is valid for a century, so the email login
 // must not accept it in place of a confirmation token it issued itself.
 func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
-	app := startServerApp(t, nil)
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.Admin.Shared.Email = []string{"admin@example.org"} // admin email notifications are on in the shared setup
+		return o
+	})
 	port := app.Port
 
 	destinations, err := app.makeNotifyDestinations(app.authenticator)
@@ -1471,6 +2227,211 @@ func TestServerApp_UnsubscribeTokenIsNotALogin(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "an unsubscribe token is not a login, %s", body)
 	for _, c := range resp.Cookies() {
 		assert.NotEqual(t, "JWT", c.Name, "no session from an unsubscribe token")
+	}
+}
+
+// TestServerApp_UnsubscribeLinkPerRecipient follows a reply notification from the notifier through the
+// mail sent to every subscriber up the thread to the unsubscribe link in it. A reply reaches the authors
+// of all the comments above it, so each mail's link must name its own recipient, or the handler finds
+// another user's address in it and refuses to unsubscribe anyone.
+func TestServerApp_UnsubscribeLinkPerRecipient(t *testing.T) {
+	smtpSrv := startSMTPCapture(t) // before the app, so it is closed after the app stops
+	app := startServerApp(t, func(o ServerCommand) ServerCommand {
+		o.SMTP.Host, o.SMTP.Port = "127.0.0.1", smtpSrv.port()
+		o.SMTP.Username, o.SMTP.Password = "", "" // the capture server offers no AUTH
+		o.Admin.Shared.Email = []string{"admin@example.org"}
+		return o
+	})
+
+	// thread a <- b <- c, the authors of a and b subscribed, c's reply is the one notified about
+	locator := store.Locator{SiteID: "remark", URL: "https://example.org/post"}
+	create := func(userID, parentID string) store.Comment {
+		id, err := app.dataService.Create(store.Comment{Locator: locator, ParentID: parentID, PostTitle: "post",
+			Text: "comment of " + userID, User: store.User{ID: userID, Name: userID}})
+		require.NoError(t, err)
+		c, err := app.dataService.Get(locator, id, store.User{})
+		require.NoError(t, err)
+		return c
+	}
+	a := create("email_a", "")
+	b := create("email_b", a.ID)
+	c := create("email_c", b.ID)
+	for user, address := range map[string]string{"email_a": "a@example.org", "email_b": "b@example.org"} {
+		_, err := app.dataService.SetUserEmail("remark", user, address)
+		require.NoError(t, err)
+	}
+
+	app.notifyService.Submit(notify.Request{Comment: c})
+	require.Eventually(t, func() bool { return len(smtpSrv.messages()) == 3 }, serverStartTimeout, serverStartPoll,
+		"mail to a, b and the admin")
+
+	links := map[string]string{}
+	for _, m := range smtpSrv.messages() {
+		require.Len(t, m.to, 1, "one recipient per mail")
+		header, body := readMail(t, m.data)
+		if m.to[0] == "admin@example.org" {
+			assert.Empty(t, header.Get("List-Unsubscribe"), "no unsubscribe header in the admin's mail")
+			assert.NotContains(t, body, "unsubscribe.html", "no unsubscribe link in the admin's mail")
+			continue
+		}
+		link := strings.TrimSuffix(strings.TrimPrefix(header.Get("List-Unsubscribe"), "<"), ">")
+		require.NotEmpty(t, link, "unsubscribe header in the mail to %s", m.to[0])
+		assert.Contains(t, body, `href="`+link+`"`, "the link in the text of the mail to %s is the one in its header", m.to[0])
+		links[m.to[0]] = link
+	}
+	require.Len(t, links, 2, "mail to a and b, none to c, who wrote the reply")
+
+	// each link names its own recipient
+	handshake := func(link string) string {
+		u, err := url.Parse(link)
+		require.NoError(t, err)
+		claims, err := app.authenticator.TokenService().Parse(u.Query().Get("tkn"))
+		require.NoError(t, err)
+		require.NotNil(t, claims.Handshake)
+		return claims.Handshake.ID
+	}
+	assert.Equal(t, "email_a::a@example.org", handshake(links["a@example.org"]), "a's link names a")
+	assert.Equal(t, "email_b::b@example.org", handshake(links["b@example.org"]), "b's link names b")
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	local := func(link string) string { // the links point at the configured remark URL, the test server is local
+		u, err := url.Parse(link)
+		require.NoError(t, err)
+		return fmt.Sprintf("http://localhost:%d%s", app.Port, u.RequestURI())
+	}
+	email := func(user string) string {
+		address, err := app.dataService.GetUserEmail("remark", user)
+		require.NoError(t, err)
+		return address
+	}
+
+	// a, who wrote the root comment, follows the link from the mail and is unsubscribed, b is not
+	resp, err := client.Get(local(links["a@example.org"]))
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "a's link unsubscribes a: %s", body)
+	assert.Empty(t, email("email_a"), "a unsubscribed")
+	assert.Equal(t, "b@example.org", email("email_b"), "b still subscribed")
+
+	// b, the direct parent, unsubscribes the way a mail client does it from the header, with a one-click POST
+	resp, err = client.Post(local(links["b@example.org"]), "application/x-www-form-urlencoded",
+		strings.NewReader("List-Unsubscribe=One-Click"))
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "b's link unsubscribes b: %s", body)
+	assert.Empty(t, email("email_b"), "b unsubscribed")
+}
+
+// readMail returns the headers of a mail as sent and its text, decoded from quoted-printable and HTML
+func readMail(t *testing.T, data []byte) (header mail.Header, text string) {
+	t.Helper()
+	m, err := mail.ReadMessage(bytes.NewReader(data))
+	require.NoError(t, err)
+	body, err := io.ReadAll(quotedprintable.NewReader(m.Body))
+	require.NoError(t, err)
+	return m.Header, html.UnescapeString(string(body))
+}
+
+// smtpCapture is an SMTP server on a loopback port which accepts every mail and keeps it
+type smtpCapture struct {
+	ln    net.Listener
+	wg    sync.WaitGroup
+	mu    sync.Mutex
+	conns map[net.Conn]struct{}
+	mails []capturedMail
+}
+
+type capturedMail struct {
+	to   []string
+	data []byte
+}
+
+// startSMTPCapture starts an smtpCapture, stopped when the test ends
+func startSMTPCapture(t *testing.T) *smtpCapture {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	s := &smtpCapture{ln: ln, conns: map[net.Conn]struct{}{}}
+	s.wg.Go(func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			s.mu.Lock()
+			s.conns[conn] = struct{}{}
+			s.mu.Unlock()
+			s.wg.Go(func() { s.serve(conn) })
+		}
+	})
+	t.Cleanup(func() {
+		_ = ln.Close()
+		s.mu.Lock()
+		for conn := range s.conns {
+			_ = conn.Close()
+		}
+		s.mu.Unlock()
+		s.wg.Wait()
+	})
+	return s
+}
+
+func (s *smtpCapture) port() int { return s.ln.Addr().(*net.TCPAddr).Port }
+
+func (s *smtpCapture) messages() []capturedMail {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.mails)
+}
+
+// serve answers one SMTP session with the replies net/smtp needs to deliver a mail without AUTH or TLS
+func (s *smtpCapture) serve(conn net.Conn) {
+	defer func() {
+		s.mu.Lock()
+		delete(s.conns, conn)
+		s.mu.Unlock()
+		_ = conn.Close()
+	}()
+	tp := textproto.NewConn(conn)
+	if tp.PrintfLine("220 localhost ESMTP") != nil {
+		return
+	}
+	var m capturedMail
+	for {
+		line, err := tp.ReadLine()
+		if err != nil {
+			return
+		}
+		verb, arg, _ := strings.Cut(line, " ")
+		reply := "250 ok"
+		switch strings.ToUpper(verb) {
+		case "MAIL":
+			m = capturedMail{}
+		case "RCPT":
+			_, addr, _ := strings.Cut(arg, ":")
+			m.to = append(m.to, strings.Trim(addr, "<> "))
+		case "DATA":
+			if tp.PrintfLine("354 go ahead") != nil {
+				return
+			}
+			if m.data, err = tp.ReadDotBytes(); err != nil {
+				return
+			}
+			s.mu.Lock()
+			s.mails = append(s.mails, m)
+			s.mu.Unlock()
+		case "QUIT":
+			_ = tp.PrintfLine("221 bye")
+			return
+		}
+		if tp.PrintfLine("%s", reply) != nil {
+			return
+		}
 	}
 }
 

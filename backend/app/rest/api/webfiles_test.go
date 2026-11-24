@@ -3,6 +3,7 @@ package api
 import (
 	"io"
 	"io/fs"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -441,4 +442,153 @@ func TestRest_FileServerEtagVariesWithTheDemoSite(t *testing.T) {
 	first := etagFor("old")
 	require.NotEmpty(t, first)
 	assert.NotEqual(t, first, etagFor("new"), "a different demo site has to change the validator")
+}
+
+// revalidate asks for path with the validator a browser holds and reports the status, the body and
+// the validator the server answers with
+func revalidate(t *testing.T, url, etag string) (code int, body, newEtag string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+	require.NoError(t, err)
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return resp.StatusCode, string(b), resp.Header.Get("Etag")
+}
+
+// TestRest_FileServerEtagFollowsTheWebRootFile covers the customisation the documentation offers:
+// an operator puts a privacy.html of their own into the web root, or edits it later, under the
+// same binary. Cache-Control is no-cache, so a browser that has the page revalidates every time; if
+// the validator ignores the file, it gets 304 and keeps showing the old page until the version
+// changes. An unchanged file has to keep answering 304, or the validator does nothing at all.
+func TestRest_FileServerEtagFollowsTheWebRootFile(t *testing.T) {
+	webRoot := t.TempDir()
+	page := filepath.Join(webRoot, "privacy.html")
+	require.NoError(t, os.WriteFile(page, []byte("old policy"), 0o600))
+
+	router := routegroup.New(http.NewServeMux())
+	addFileServer(router, fstest.MapFS{}, webRoot, "test-version", "https://remark.example.com", "")
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+	url := ts.URL + "/web/privacy.html"
+
+	code, body, etag := revalidate(t, url, "")
+	require.Equal(t, http.StatusOK, code)
+	require.Equal(t, "old policy", body)
+	require.NotEmpty(t, etag)
+
+	code, _, _ = revalidate(t, url, etag)
+	assert.Equal(t, http.StatusNotModified, code, "an unchanged file keeps its validator")
+
+	// same length, so nothing but the bytes tells the two apart
+	require.NoError(t, os.WriteFile(page, []byte("new policy"), 0o600))
+
+	code, body, newEtag := revalidate(t, url, etag)
+	assert.Equal(t, http.StatusOK, code, "the browser holds the old page and has to get the new one")
+	assert.Equal(t, "new policy", body)
+	assert.NotEqual(t, etag, newEtag)
+}
+
+// TestWebFingerprint covers the name resolution: the fingerprint has to come from the file the
+// file server answers with, which for the directory is its index page and for a legacy .js name
+// the .mjs sibling, and there is none where no file answers
+func TestWebFingerprint(t *testing.T) {
+	files := webFiles{
+		frontend: fstest.MapFS{
+			"index.html":    {Data: []byte("index")},
+			"remark.mjs":    {Data: []byte("bundle")},
+			"sub/page.html": {Data: []byte("nested")},
+		},
+		embedded: fstest.MapFS{"privacy.html": {Data: []byte("policy")}},
+	}
+	fingerprint := webFingerprint(files)
+	of := func(p string) string {
+		return fingerprint(httptest.NewRequest(http.MethodGet, p, http.NoBody))
+	}
+
+	assert.Equal(t, of("/web/index.html"), of("/web/"), "the directory is answered with its index page")
+	assert.Equal(t, of("/web/remark.mjs"), of("/web/remark.js"), "a legacy .js name is answered with the .mjs")
+	assert.NotEmpty(t, of("/web/privacy.html"), "the embedded assets are fingerprinted too")
+	assert.NotEqual(t, of("/web/index.html"), of("/web/remark.mjs"))
+	assert.Empty(t, of("/web/missing.html"))
+	assert.Empty(t, of("/web/sub/"), "a directory other than the root has no file to fingerprint")
+	assert.Empty(t, of("/web/remark.mjs/"), "the handler answers a trailing slash with 404, whatever the name")
+	assert.Equal(t, of("/web/index.html"), of("/web/sub/../index.html"), "the path is cleaned the way the file server cleans it")
+}
+
+// TestRest_FileServerEtagFollowsTheEmbeddedBuild is the same case for the frontend embedded in the
+// binary: two builds stamped with the same version, as a local or a dev build is, serve different
+// bytes under one name. Embedded files carry no modification time and builds of one commit have
+// equal sizes, so only the bytes can tell them apart.
+func TestRest_FileServerEtagFollowsTheEmbeddedBuild(t *testing.T) {
+	etagFor := func(bundle string) string {
+		router := routegroup.New(http.NewServeMux())
+		addFileServer(router, fstest.MapFS{"remark.mjs": {Data: []byte(bundle)}}, filepath.Join(t.TempDir(), "absent"),
+			"test-version", "https://remark.example.com", "")
+		ts := httptest.NewServer(router)
+		defer ts.Close()
+		code, _, etag := revalidate(t, ts.URL+"/web/remark.mjs", "")
+		require.Equal(t, http.StatusOK, code)
+		require.NotEmpty(t, etag)
+		return etag
+	}
+
+	assert.NotEqual(t, etagFor("build one"), etagFor("build two"))
+}
+
+// TestRest_FileServerContentTypeIgnoresTheOSTable covers an operating system whose table maps the
+// served extensions to text/plain, as a Windows registry entry or a line in /etc/mime.types can. The
+// file server asks that table, and a widget bundle served as text/plain does not run. The table is
+// process-global, so it is poisoned for this test only and restored after; nothing in this package
+// runs in parallel.
+func TestRest_FileServerContentTypeIgnoresTheOSTable(t *testing.T) {
+	for _, ext := range []string{".html", ".js", ".mjs", ".css", ".svg"} {
+		orig := mime.TypeByExtension(ext)
+		require.NotEmpty(t, orig, "go's own table has %s, so there is a type to restore", ext)
+		require.NoError(t, mime.AddExtensionType(ext, "text/plain"))
+		t.Cleanup(func() { require.NoError(t, mime.AddExtensionType(ext, orig)) })
+		require.Equal(t, "text/plain; charset=utf-8", mime.TypeByExtension(ext), "the table has to be poisoned for %s, or the test proves nothing", ext)
+	}
+
+	frontend := fstest.MapFS{
+		"remark.mjs":  {Data: []byte("export {}")},
+		"embed.mjs":   {Data: []byte("(function(){})()")},
+		"remark.css":  {Data: []byte("body{}")},
+		"iframe.html": {Data: []byte("<!doctype html>")},
+	}
+	router := routegroup.New(http.NewServeMux())
+	addFileServer(router, frontend, filepath.Join(t.TempDir(), "absent"), "test-version", "https://remark.example.com", "")
+
+	tbl := []struct {
+		name, path, want string
+	}{
+		{name: "module bundle from the frontend build", path: "/web/remark.mjs", want: "text/javascript; charset=utf-8"},
+		{name: "legacy js name served from the mjs file", path: "/web/embed.js", want: "text/javascript; charset=utf-8"},
+		{name: "hand-written script from the embedded assets", path: "/web/counter.mjs", want: "text/javascript; charset=utf-8"},
+		{name: "stylesheet", path: "/web/remark.css", want: "text/css; charset=utf-8"},
+		{name: "widget document", path: "/web/iframe.html", want: "text/html; charset=utf-8"},
+		{name: "embedded page", path: "/web/privacy.html", want: "text/html; charset=utf-8"},
+		{name: "demo page at the root", path: "/web/", want: "text/html; charset=utf-8"},
+		{name: "embedded svg icon", path: "/web/github-dark.svg", want: "image/svg+xml"},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, tt.path, http.NoBody))
+			require.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, tt.want, w.Header().Get("Content-Type"))
+		})
+	}
+
+	t.Run("a missing script is answered as a plain error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/web/absent.mjs", http.NoBody))
+		require.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
+	})
 }

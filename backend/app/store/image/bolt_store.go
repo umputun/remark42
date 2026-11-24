@@ -20,8 +20,7 @@ const insertTimeBktName = "insertTimestamps"
 // It uses 3 buckets to manage images data.
 // Two buckets contains image data (staged and committed images). Third bucket holds insertion timestamps.
 type Bolt struct {
-	fileName string
-	db       *bolt.DB
+	db *bolt.DB
 }
 
 // NewBoltStorage create bolt image store
@@ -32,24 +31,17 @@ func NewBoltStorage(fileName string, options bolt.Options) (*Bolt, error) {
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		if _, e := tx.CreateBucketIfNotExists([]byte(imagesBktName)); e != nil {
-			return fmt.Errorf("failed to create top level bucket %s: %w", imagesBktName, e)
-		}
-		if _, e := tx.CreateBucketIfNotExists([]byte(imagesStagedBktName)); e != nil {
-			return fmt.Errorf("failed to create top level bucket %s: %w", imagesStagedBktName, e)
-		}
-		if _, e := tx.CreateBucketIfNotExists([]byte(insertTimeBktName)); e != nil {
-			return fmt.Errorf("failed to create top level bucket %s: %w", insertTimeBktName, e)
+		for _, name := range []string{imagesBktName, imagesStagedBktName, insertTimeBktName} {
+			if _, e := tx.CreateBucketIfNotExists([]byte(name)); e != nil {
+				return fmt.Errorf("failed to create top level bucket %s: %w", name, e)
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize boltdb db %q buckets: %w", fileName, err)
 	}
-	return &Bolt{
-		db:       db,
-		fileName: fileName,
-	}, nil
+	return &Bolt{db: db}, nil
 }
 
 // Save saves image for given id to staging bucket in DB
@@ -58,23 +50,21 @@ func (b *Bolt) Save(id string, img []byte) error {
 		if err := tx.Bucket([]byte(imagesStagedBktName)).Put([]byte(id), img); err != nil {
 			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
 		}
-		tsBuf := &bytes.Buffer{}
-		if err := binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
-			return fmt.Errorf("can't serialize timestamp for %s: %w", id, err)
-		}
-		if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
-			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
-		}
-		return nil
+		return putTS(tx, id, time.Now())
 	})
 }
 
 // Commit file stored in staging bucket by copying it to permanent bucket
-// Data from staging bucket not removed immediately, but would be removed on Cleanup
+// Data from staging bucket not removed immediately, but would be removed on Cleanup.
+// An image already committed and removed from staging is left as it is, as a comment's images are
+// submitted again after a restart.
 func (b *Bolt) Commit(id string) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		data := tx.Bucket([]byte(imagesStagedBktName)).Get([]byte(id))
 		if data == nil {
+			if tx.Bucket([]byte(imagesBktName)).Get([]byte(id)) != nil {
+				return nil
+			}
 			return fmt.Errorf("failed to commit %s, not found in staging", id)
 		}
 		err := tx.Bucket([]byte(imagesBktName)).Put([]byte(id), data)
@@ -87,16 +77,7 @@ func (b *Bolt) Commit(id string) error {
 
 // ResetCleanupTimer resets cleanup timer for the image
 func (b *Bolt) ResetCleanupTimer(id string) error {
-	return b.db.Update(func(tx *bolt.Tx) error {
-		tsBuf := &bytes.Buffer{}
-		if err := binary.Write(tsBuf, binary.LittleEndian, time.Now().UnixNano()); err != nil {
-			return fmt.Errorf("can't serialize timestamp for %s: %w", id, err)
-		}
-		if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), tsBuf.Bytes()); err != nil {
-			return fmt.Errorf("can't put to bucket with %s: %w", id, err)
-		}
-		return nil
-	})
+	return b.db.Update(func(tx *bolt.Tx) error { return putTS(tx, id, time.Now()) })
 }
 
 // Load image from DB
@@ -141,13 +122,12 @@ func (b *Bolt) Cleanup(_ context.Context, ttl time.Duration) error {
 		var idsToRemove [][]byte
 
 		for id, tsData := c.First(); id != nil; id, tsData = c.Next() {
-			var ts int64
-			err := binary.Read(bytes.NewReader(tsData), binary.LittleEndian, &ts)
+			ts, err := readTS(id, tsData)
 			if err != nil {
-				return fmt.Errorf("failed to deserialize timestamp for %s: %w", id, err)
+				return err
 			}
 
-			age := time.Since(time.Unix(0, ts))
+			age := time.Since(ts)
 
 			if age > ttl {
 				log.Printf("[INFO] remove staging image %s, age %v", id, age)
@@ -176,13 +156,10 @@ func (b *Bolt) Info() (StoreInfo, error) {
 		c := tx.Bucket([]byte(insertTimeBktName)).Cursor()
 
 		for id, tsData := c.First(); id != nil; id, tsData = c.Next() {
-			var createdRaw int64
-			err := binary.Read(bytes.NewReader(tsData), binary.LittleEndian, &createdRaw)
+			created, err := readTS(id, tsData)
 			if err != nil {
-				return fmt.Errorf("failed to deserialize timestamp for %s: %w", id, err)
+				return err
 			}
-
-			created := time.Unix(0, createdRaw)
 			if ts.IsZero() || created.Before(ts) {
 				ts = created
 			}
@@ -193,4 +170,25 @@ func (b *Bolt) Info() (StoreInfo, error) {
 		return StoreInfo{}, fmt.Errorf("problem retrieving first timestamp from staging images: %w", err)
 	}
 	return StoreInfo{FirstStagingImageTS: ts}, nil
+}
+
+// putTS records ts as the insertion time of id, eight bytes of little-endian Unix nanoseconds
+func putTS(tx *bolt.Tx, id string, ts time.Time) error {
+	data, err := binary.Append(nil, binary.LittleEndian, ts.UnixNano())
+	if err != nil {
+		return fmt.Errorf("can't serialize timestamp for %s: %w", id, err)
+	}
+	if err := tx.Bucket([]byte(insertTimeBktName)).Put([]byte(id), data); err != nil {
+		return fmt.Errorf("can't put to bucket with %s: %w", id, err)
+	}
+	return nil
+}
+
+// readTS decodes the insertion time of id written by putTS
+func readTS(id, data []byte) (time.Time, error) {
+	var ns int64
+	if _, err := binary.Decode(data, binary.LittleEndian, &ns); err != nil {
+		return time.Time{}, fmt.Errorf("failed to deserialize timestamp for %s: %w", id, err)
+	}
+	return time.Unix(0, ns), nil
 }

@@ -6,7 +6,7 @@ import { FormattedMessage, defineMessages } from 'common/intl';
 import type { User, Theme, Image } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import * as settings from 'common/settings';
-import { extractErrorMessageFromResponse } from 'utils/errorUtils';
+import { errorMessages, extractErrorMessageFromResponse } from 'utils/errorUtils';
 import { isUserAnonymous } from 'utils/isUserAnonymous';
 import { sleep } from 'utils/sleep';
 import { replaceSelection } from 'utils/replaceSelection';
@@ -159,6 +159,13 @@ export class CommentForm extends Component<Props, State> {
     if (e) e.preventDefault();
 
     if (!text || !text.trim()) return;
+    // the Send button is rendered for a signed-in reader only, while the keyboard shortcut works
+    // in a guest's form too. The widget can show a guest while the browser still holds a session,
+    // and the server would then accept the comment
+    if (!this.props.user) {
+      this.setState({ isErrorShown: true, errorMessage: this.props.intl.formatMessage(errorMessages[401]) });
+      return;
+    }
     if (text === this.props.value) {
       this.props.onCancel && this.props.onCancel();
       this.setState({ preview: null, text: '' });
@@ -437,108 +444,112 @@ export class CommentForm extends Component<Props, State> {
     const isSimpleView = StaticStore.config.simple_view;
 
     return (
-      <form
-        className={clsx(
-          styles.root,
-          theme === 'dark' ? styles.themeDark : styles.themeLight,
-          (!mode || mode === 'reply') && styles.typeReply,
-          isSimpleView && styles.simple,
-          mix
-        )}
-        onSubmit={this.send}
-        aria-label={intl.formatMessage(messages.newComment)}
-        onDragOver={this.onDragOver}
-        onDrop={this.onDrop}
-        data-testid={`commentform_${this.props.id}`}
-      >
-        {!isSimpleView && (
-          <div className={styles.controlPanel} data-testid="markdown-toolbar">
-            <MarkdownToolbar
-              intl={intl}
-              allowUpload={Boolean(uploadImage)}
-              uploadImages={this.uploadImages}
-              textareaId={this.textareaId}
-            />
-          </div>
-        )}
-        <div className={styles.fieldWrapper}>
-          <TextExpander>
-            <TextareaAutosize
-              id={this.textareaId}
-              textareaRef={this.textareaRef}
-              onPaste={this.onPaste}
-              className={styles.field}
-              placeholder={placeholderMessage}
-              value={text}
-              onInput={this.onInput}
-              onKeyDown={this.onKeyDown}
-              disabled={isDisabled}
-              autofocus={!!autofocus}
-              spellcheck={true}
-              dir="auto"
-            />
-          </TextExpander>
-          {charactersLeft < 100 && <span className={styles.counter}>{charactersLeft}</span>}
-        </div>
-
-        {(isErrorShown || !!errorMessage) &&
-          (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
-            <p className={styles.error} role="alert" key={e}>
-              {e}
-            </p>
-          ))}
-
-        <div className={styles.actions}>
-          {user ? (
-            <>
-              <div>
-                {!isSimpleView && (
-                  <Button
-                    kind="secondary"
-                    theme={theme}
-                    size="large"
-                    className={styles.button}
-                    disabled={isDisabled}
-                    onClick={this.getPreview}
-                  >
-                    <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
-                  </Button>
-                )}
-                <Button kind="primary" size="large" className={styles.button} type="submit" disabled={isDisabled}>
-                  {label}
-                </Button>
-              </div>
-
-              {mode === 'main' && (
-                <div className={styles.rss}>
-                  {this.renderMarkdownTip()}
-                  {this.renderSubscribeButtons()}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <Auth />
-              {this.renderMarkdownTip()}
-            </>
+      // the form's labels, buttons and hints are the widget's words, which Google is not to show in
+      // a snippet of the host page. It reads data-nosnippet on a div, span or section only
+      <div data-nosnippet>
+        <form
+          className={clsx(
+            styles.root,
+            theme === 'dark' ? styles.themeDark : styles.themeLight,
+            (!mode || mode === 'reply') && styles.typeReply,
+            isSimpleView && styles.simple,
+            mix
           )}
-        </div>
-
-        {
-          // TODO: it can be more elegant;
-          // for example it can render full comment component here (or above textarea on mobile)
-          !!preview && (
-            <div className={styles.previewWrapper}>
-              <div
-                className={clsx(styles.preview, 'raw-content')}
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{ __html: preview }}
-                dir="auto"
+          onSubmit={this.send}
+          aria-label={intl.formatMessage(messages.newComment)}
+          onDragOver={this.onDragOver}
+          onDrop={this.onDrop}
+          data-testid={`commentform_${this.props.id}`}
+        >
+          {!isSimpleView && (
+            <div className={styles.controlPanel} data-testid="markdown-toolbar">
+              <MarkdownToolbar
+                intl={intl}
+                allowUpload={Boolean(uploadImage)}
+                uploadImages={this.uploadImages}
+                textareaId={this.textareaId}
               />
             </div>
-          )
-        }
-      </form>
+          )}
+          <div className={styles.fieldWrapper}>
+            <TextExpander>
+              <TextareaAutosize
+                id={this.textareaId}
+                textareaRef={this.textareaRef}
+                onPaste={this.onPaste}
+                className={styles.field}
+                placeholder={placeholderMessage}
+                value={text}
+                onInput={this.onInput}
+                onKeyDown={this.onKeyDown}
+                disabled={isDisabled}
+                autofocus={!!autofocus}
+                spellcheck={true}
+                dir="auto"
+              />
+            </TextExpander>
+            {charactersLeft < 100 && <span className={styles.counter}>{charactersLeft}</span>}
+          </div>
+
+          {(isErrorShown || !!errorMessage) &&
+            (errorMessage || intl.formatMessage(messages.unexpectedError)).split('\n').map((e) => (
+              <p className={styles.error} role="alert" key={e}>
+                {e}
+              </p>
+            ))}
+
+          <div className={styles.actions}>
+            {user ? (
+              <>
+                <div>
+                  {!isSimpleView && (
+                    <Button
+                      kind="secondary"
+                      theme={theme}
+                      size="large"
+                      className={styles.button}
+                      disabled={isDisabled}
+                      onClick={this.getPreview}
+                    >
+                      <FormattedMessage id="commentForm.preview" defaultMessage="Preview" />
+                    </Button>
+                  )}
+                  <Button kind="primary" size="large" className={styles.button} type="submit" disabled={isDisabled}>
+                    {label}
+                  </Button>
+                </div>
+
+                {mode === 'main' && (
+                  <div className={styles.rss}>
+                    {this.renderMarkdownTip()}
+                    {this.renderSubscribeButtons()}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Auth />
+                {this.renderMarkdownTip()}
+              </>
+            )}
+          </div>
+
+          {
+            // TODO: it can be more elegant;
+            // for example it can render full comment component here (or above textarea on mobile)
+            !!preview && (
+              <div className={styles.previewWrapper}>
+                <div
+                  className={clsx(styles.preview, 'raw-content')}
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: preview }}
+                  dir="auto"
+                />
+              </div>
+            )
+          }
+        </form>
+      </div>
     );
   }
 }

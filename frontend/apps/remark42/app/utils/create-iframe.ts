@@ -37,7 +37,7 @@ export function createIframe({ __colors__, custom_properties, styles, onReveal, 
 
   setAttributes(iframe, {
     src: `${BASE_URL}/web/iframe.html?${query}`,
-    // wire format stays __colors__ - only iframe.ejs reads this, and it never sees the
+    // wire format stays __colors__ - only iframe.html reads this, and it never sees the
     // public config names above. custom_properties wins on a key both set.
     name: JSON.stringify({ __colors__: { ...__colors__, ...custom_properties } }),
     tabindex: '0',
@@ -74,7 +74,9 @@ function hideUntilInited(iframe: HTMLIFrameElement, onReveal?: () => void) {
   }
 
   function handleMessage(event: MessageEvent) {
-    if (event.source === iframe.contentWindow && parseMessage(event).inited === true) {
+    // a message whose sender is gone has no source, and an iframe outside the page has no
+    // contentWindow. No source on both sides is not a match
+    if (event.source !== null && event.source === iframe.contentWindow && parseMessage(event).inited === true) {
       reveal();
     }
   }

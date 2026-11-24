@@ -129,6 +129,14 @@ const lastCommentsScope = "last"
 // per-user vote data, so a vote does not also drop the feeds
 const lastVotesScope = "last-votes"
 
+// avatars are served at two routes: AvatarRoutePath, where the avatar proxy makes user pictures, and
+// LegacyAvatarRoutePath at the root, where pictures stored by older versions point
+const (
+	apiRoutePath          = "/api/v1"
+	LegacyAvatarRoutePath = "/avatar"
+	AvatarRoutePath       = apiRoutePath + LegacyAvatarRoutePath
+)
+
 type commentsWithInfo struct {
 	Comments []store.Comment `json:"comments"`
 	Info     store.PostInfo  `json:"info"`
@@ -137,6 +145,9 @@ type commentsWithInfo struct {
 type treeWithInfo struct {
 	*service.Tree
 	Info store.PostInfo `json:"info"`
+	// the pinned comments of the whole post, set on the first page of a limited tree only, so that
+	// a pin on a later page is shown before the page holding it is loaded
+	Pinned []store.Comment `json:"pinned,omitempty"`
 }
 
 // Run the lister and request's router, activate rest server
@@ -233,13 +244,20 @@ func (s *Rest) makeHTTPServer(address string, port int, router http.Handler) *ht
 	}
 }
 
+// authProviderRegistered reports whether the authenticator has a sign-in provider of that name
+func (s *Rest) authProviderRegistered(name string) bool {
+	_, err := s.Authenticator.Provider(name)
+	return err == nil
+}
+
 func (s *Rest) routes() http.Handler {
 	if s.openRouteLimiter == 0 {
 		// set the default open route limiter. Just a safety measure as it should be set by Run method anyway
 		s.openRouteLimiter = openRouteLimiter
 	}
 	router := routegroup.New(http.NewServeMux())
-	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), R.Recoverer(log.Default()))
+	router.Use(R.Throttle(1000), realIPMiddleware(s.TrustedProxies), recoverer(log.Default()))
+	router.Use(ignoreQueryToken) // ahead of everything that authenticates a request
 	router.Use(securityHeadersMiddleware(s.ExternalImageProxy, s.AllowedAncestors))
 	if !s.DisableSignature {
 		router.Use(R.AppInfo("remark42", "umputun", s.Version))
@@ -261,26 +279,41 @@ func (s *Rest) routes() http.Handler {
 
 	authHandler, avatarHandler := s.Authenticator.Handlers()
 
+	// on the two groups where the auth library writes its cookies: sign-in and sign-out under
+	// /auth, renewal and reset by the auth middleware under /api/v1
+	authCookies := func(next http.Handler) http.Handler { return next }
+	if strings.HasPrefix(s.RemarkURL, "https://") {
+		// a partitioned cookie has to be Secure, so there is nothing to add over http. the names
+		// are the auth library's defaults, which the server does not override. the partitioned
+		// pair is issued in header mode only, and expired at sign-out in either mode, for a reader
+		// who was given one before the mode was switched off
+		authCookies = partitionedAuthCookies(s.SendJWTHeader, "JWT", "XSRF-TOKEN")
+	}
+
 	router.Route(func(r *routegroup.Bundle) {
+		r.Use(authCookies)
 		r.Use(R.Timeout(5 * time.Second))
-		r.Use(logInfoWithBody, rateLimiter(2), R.NoCache)
+		// sign-in and sign-out are not for an image or another embedded resource. Refused ahead of
+		// the limiter, so such requests do not use up what it allows the reader's own. singleAuthPath
+		// also goes ahead of the limiter and of validEmailAuth, which both go by the path
+		r.Use(logInfoWithBody, rejectEmbedded, singleAuthPath(s.authProviderRegistered), rateLimiter(2), R.NoCache)
 		r.Use(validEmailAuth()) // reject suspicious email logins
-		r.Handle("/auth/", authHandler)
+		r.Handle(authRoutePrefix, authHandler)
 	})
 
 	// avatars are served at the root, where pictures stored by older versions point, and under the api
 	avatarRoutes := func(r *routegroup.Bundle) {
 		r.Use(R.Timeout(5 * time.Second))
 		r.Use(rateLimiter(100))
-		r.Handle("/avatar/", avatarHandler)
+		r.Handle(LegacyAvatarRoutePath+"/", avatarHandler)
 	}
 	router.Route(avatarRoutes)
 
 	authMiddleware := s.Authenticator.Middleware()
 
 	// api routes
-	rapi := router.Mount("/api/v1")
-	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth)
+	rapi := router.Mount(apiRoutePath)
+	rapi.Use(apiCSPMiddleware, s.rejectCrossSiteBasicAuth, authCookies)
 
 	rapi.Group().Route(avatarRoutes)
 
@@ -334,6 +367,9 @@ func (s *Rest) routes() http.Handler {
 		rauth.Group().Route(func(r *routegroup.Bundle) {
 			r.Use(R.Timeout(30 * time.Second))
 			r.HandleFunc("GET /user", s.privRest.userInfoCtrl)
+			// a read, which the comment form repeats while it waits for the confirmation link. Under the
+			// update limit it would share a bucket with DELETE /email and refuse the reader's Unsubscribe
+			r.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		})
 	})
 
@@ -371,7 +407,8 @@ func (s *Rest) routes() http.Handler {
 		radmin.HandleFunc("GET /wait", s.adminRest.migrator.waitCtrl)
 	})
 
-	// protected routes, throttled to 10/s by default, controlled by external UpdateLimiter param
+	// protected routes, throttled per client address to UpdateLimiter requests a second, 10 if it is not set;
+	// the server sets it from --update-limit, 0.5 by default
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
@@ -386,7 +423,6 @@ func (s *Rest) routes() http.Handler {
 			rauth.With(rejectAnonUser).HandleFunc("PUT /vote/{id}", s.privRest.voteCtrl)
 		}
 		rauth.With(rejectAnonUser).HandleFunc("POST /deleteme", s.privRest.deleteMeCtrl)
-		rauth.With(rejectAnonUser).HandleFunc("GET /email", s.privRest.getEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/subscribe", s.privRest.sendEmailConfirmationCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("POST /email/confirm", s.privRest.setConfirmedEmailCtrl)
 		rauth.With(rejectAnonUser).HandleFunc("DELETE /email", s.privRest.deleteEmailCtrl)
@@ -398,7 +434,7 @@ func (s *Rest) routes() http.Handler {
 	rapi.Group().Route(func(rauth *routegroup.Bundle) {
 		rauth.Use(R.Timeout(10 * time.Second))
 		rauth.Use(rateLimiter(s.updateLimiter()))
-		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID)
+		rauth.Use(authMiddleware.Auth, rejectAnonUser, matchSiteID, subscribersOnly(s.SubscribersOnly))
 		rauth.Use(logger.New(reqLog, logger.Prefix("[DEBUG]"), logger.IPfn(ipFn)).Handler)
 		rauth.HandleFunc("POST /picture", s.privRest.savePictureCtrl)
 	})
@@ -410,6 +446,8 @@ func (s *Rest) routes() http.Handler {
 		rroot.HandleFunc("GET /robots.txt", s.pubRest.robotsCtrl)
 		rroot.With(rejectHead("GET, POST")).HandleFunc("GET /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
 		rroot.HandleFunc("POST /email/unsubscribe.html", s.privRest.emailUnsubscribeCtrl)
+		rroot.HandleFunc("GET /email/subscribe.html", s.privRest.emailSubscribeCtrl)
+		rroot.HandleFunc("POST /email/subscribe.html", s.privRest.emailSubscribeCtrl)
 	})
 
 	// file server for /web: the frontend build first, then the assets embedded in the binary.
@@ -552,8 +590,9 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 
 	// wrapped rather than substituted once at startup: the disk root can change under a running
 	// server, and the docker image has already substituted its copy, where this is a no-op
+	files := webFiles{frontend: frontendFS, embedded: webassets.FS}
 	sources := templatedFS{
-		fs:        webFiles{frontend: frontendFS, embedded: webassets.FS},
+		fs:        files,
 		remarkURL: remarkURL,
 		siteID:    siteID,
 	}
@@ -562,16 +601,21 @@ func addFileServer(r *routegroup.Bundle, embeddedFrontend fs.FS, webRoot, versio
 
 	r.With(rateLimiter(20),
 		R.Timeout(10*time.Second),
-		// the served body now depends on remarkURL and the demo site, so both have to be part of the
-		// validator. Without them an operator who corrects REMARK_URL or SITE and restarts the same
-		// binary keeps getting 304 on revalidation, and the client keeps the old page for good,
-		// since no-cache means it revalidates rather than aging out
-		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID),
+		// the validator covers everything the served body depends on: the file's bytes, and remarkURL
+		// and the demo site substituted into them. Without any one of them an operator who edits a file
+		// in the web root, or corrects REMARK_URL or SITE, and restarts the same binary keeps getting
+		// 304 on revalidation, and the client keeps the old page for good, since no-cache means it
+		// revalidates rather than aging out
+		cacheControl(time.Hour, version+":"+remarkURL+":"+siteID, webFingerprint(files)),
 	).HandleFunc("GET /web/", func(w http.ResponseWriter, r *http.Request) {
 		// don't show dirs, just serve files
 		if strings.HasSuffix(r.URL.Path, "/") && len(r.URL.Path) > 1 && r.URL.Path != ("/web/") {
 			http.NotFound(w, r)
 			return
+		}
+		// the file server keeps a type that is already set, so this one wins over the operating system's table
+		if ct := webContentType(r.URL.Path); ct != "" {
+			w.Header().Set("Content-Type", ct)
 		}
 		webFS.ServeHTTP(w, r)
 	})

@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/assert"
@@ -82,12 +86,64 @@ func TestAuth_AnonymousSignsIn(t *testing.T) {
 	page := newPage(t)
 	frame := openThread(t, page)
 
-	signInAnon(t, page, frame, "anontester")
+	// a dot and a hyphen, which the form's pattern accepts only when the hyphen is escaped for
+	// the v flag browsers compile it with
+	signInAnon(t, page, frame, "anon.tester-1")
 	assertSignedIn(t, page, frame)
 
 	name, err := frame.Locator(`[title="Open your profile"]`).InnerText()
 	require.NoError(t, err)
-	assert.Contains(t, name, "anontester")
+	assert.Contains(t, name, "anon.tester-1")
+}
+
+// TestAuth_NameFieldAppliesItsPattern checks the browser compiles the name field's pattern. A
+// browser compiles it with the v flag, under which a bare hyphen in a class is a syntax error, and
+// a pattern that does not compile is ignored: every name is then valid, and the ones the server
+// refuses come back as a bare 403. jsdom compiles it differently, so only a browser can tell
+func TestAuth_NameFieldAppliesItsPattern(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	require.NoError(t, frame.Locator(".auth-button").Click())
+	waitVisible(t, frame.Locator(".auth-dropdown"))
+	tab := frame.Locator(`label[for="form-provider-anonymous"]`)
+	if n, err := tab.Count(); err == nil && n > 0 {
+		require.NoError(t, tab.Click())
+	}
+	input := frame.Locator(".auth-input-username")
+
+	cases := map[string]bool{
+		"Ann-Marie O. Smith":             false,
+		"abc\u00a0":                      false, // trimmed on submit
+		strings.Repeat("\U00020BB7", 33): false, // 66 UTF-16 code units, 33 characters as the server counts them
+		"Ева\u00a0Ли":                    true,
+		"a*b":                            true,
+		"ab ":                            true,
+		"\U00020BB7田":                    true,
+	}
+	// typed key by key, so a length cap on the field would cut the name and show here
+	for name, mismatch := range cases {
+		require.NoError(t, input.Clear())
+		require.NoError(t, input.PressSequentially(name))
+		value, err := input.InputValue()
+		require.NoError(t, err)
+		assert.Equal(t, name, value, "the field kept only part of %q", name)
+		got, err := input.Evaluate(`(el) => el.validity.patternMismatch`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, mismatch, got, "patternMismatch for %q", name)
+	}
+
+	// the email tab takes no dot, since the name goes into a mail to an unconfirmed address
+	require.NoError(t, frame.Locator(`label[for="form-provider-email"]`).Click())
+	for name, mismatch := range map[string]bool{"Ann-Marie Smith": false, "evil-site.com": true} {
+		require.NoError(t, input.Clear())
+		require.NoError(t, input.PressSequentially(name))
+		got, err := input.Evaluate(`(el) => el.validity.patternMismatch`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, mismatch, got, "patternMismatch on the email tab for %q", name)
+	}
 }
 
 // TestAuth_EmailSignsIn drives the full email flow: request a code, read it back out of the
@@ -101,11 +157,12 @@ func TestAuth_EmailSignsIn(t *testing.T) {
 
 	// the mailbox is per-run: mailpit keeps everything, and with the stack left up between
 	// runs a fixed address would let this test read a previous run's token
-	signInEmail(t, page, frame, "emailtester", fmt.Sprintf("email-tester-%s@example.com", runID))
+	signInEmail(t, page, frame, "email-tester-1", fmt.Sprintf("email-tester-%s@example.com", runID))
 }
 
-// signInEmail completes the email flow: ask for a code, read it out of the mail catcher, submit
-// it. The address decides the user id, sha1 of it, so a case needing a known id picks the address
+// signInEmail completes the email flow: ask for a code, read it out of the mail catcher, paste
+// it. The field signs in by itself once it holds a token, so nothing presses the submit button.
+// The address decides the user id, sha1 of it, so a case needing a known id picks the address
 func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocator, username, address string) {
 	t.Helper()
 
@@ -127,7 +184,6 @@ func signInEmail(t *testing.T, page playwright.Page, frame playwright.FrameLocat
 
 	token := verificationToken(t, mailpitMessage(t, address))
 	require.NoError(t, frame.Locator(".auth-token-textarea").Fill(token))
-	require.NoError(t, frame.Locator(".auth-submit").Click())
 
 	assertSignedIn(t, page, frame)
 }
@@ -188,6 +244,107 @@ func TestAuth_SignOutEndsTheSession(t *testing.T) {
 	waitVisible(t, frame.Locator(".auth-button"))
 	waitHidden(t, frame.Locator(`[title="Sign out"]`),
 		"the panel signed out but the session survived the reload, so the cookie was never cleared")
+}
+
+// TestAuth_SignOutTakesTheEditControlsAway covers the reader changing under a mounted thread.
+// Signing out loads the comments again in place, so the comment the reader has just posted is the
+// same component before and after, and it has to stop offering an edit it would be refused. No
+// reload in between: a reload renders the comment anew and shows nothing of this
+func TestAuth_SignOutTakesTheEditControlsAway(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInAnon(t, page, frame, "editthensignout")
+
+	text := "mine until I sign out " + runID
+	postComment(t, frame, text)
+	edit := actions(frame, text).Locator(`button:has-text("Edit")`)
+	waitVisible(t, edit)
+
+	pauseForAuthLimit()
+	require.NoError(t, frame.Locator(`[title="Sign out"]`).Click())
+	waitVisible(t, frame.Locator(".auth-button"))
+
+	waitHidden(t, edit, "the comment still offers Edit to a reader who has signed out")
+	waitHidden(t, actions(frame, text).Locator(`[role="timer"]`),
+		"the comment still counts an edit window down for a reader who has signed out")
+	// the comment itself is still there, so the controls are gone and not the thread
+	waitVisible(t, comment(frame, text))
+}
+
+// TestAuth_CommentPostedRightAfterSigningInStays covers the reload the widget makes for a reader
+// who has just signed in. The thread stays usable while that request is out, so a comment can be
+// posted before its response arrives, and the response shows the thread as the server had it
+// before the post. The widget has to leave such a response out and ask again, or the comment goes
+// off the list until the page is reloaded.
+//
+// The response is fetched when the widget asks for it and handed over only after the post. Holding
+// the request itself would let it reach the server after the comment did, and then the response
+// would have the comment in it.
+func TestAuth_CommentPostedRightAfterSigningInStays(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+
+	// only the first load made after signing in is held: the one before it has to render the thread,
+	// and the one after it is the widget asking again
+	var armed atomic.Bool
+	var loads atomic.Int32
+	var fetchErr error
+	fetched := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseHeld := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseHeld)
+	require.NoError(t, page.Route("**/api/v1/find?**", func(route playwright.Route) {
+		if !armed.Load() || loads.Add(1) > 1 {
+			// fails only once the page is gone, which the assertions report on their own
+			_ = route.Fallback()
+			return
+		}
+		// off the handler, so the held response does not hold up the other requests
+		go func() {
+			// the fetch is made outside the browser, which is the only place the stack's name resolves
+			resp, err := route.Fetch(playwright.RouteFetchOptions{
+				URL: new(strings.Replace(route.Request().URL(), baseURL, probeURL, 1)),
+			})
+			fetchErr = err
+			close(fetched)
+			<-release
+			if err != nil {
+				_ = route.Abort()
+				return
+			}
+			_ = route.Fulfill(playwright.RouteFulfillOptions{Response: resp})
+		}()
+	}))
+
+	armed.Store(true)
+	signInAnon(t, page, frame, "postsatonce")
+	select {
+	case <-fetched:
+	case <-time.After(waitTimeout):
+		t.Fatal("signing in did not load the comments again")
+	}
+	require.NoError(t, fetchErr, "the load made after signing in could not be fetched")
+
+	text := "posted while the thread loads again " + runID
+	postComment(t, frame, text)
+	releaseHeld()
+
+	// the held response has been dealt with once the widget either asks again or takes it, and
+	// taking it is what removes the comment
+	posted := comment(frame, text)
+	eventually(t, waitTimeout, "the widget neither asked for the comments again nor took the held response", func() bool {
+		n, err := posted.Count()
+		return loads.Load() > 1 || (err == nil && n == 0)
+	})
+	n, err := posted.Count()
+	require.NoError(t, err)
+	require.Equal(t, 1, n, "the comment posted while the thread was loading again went off the list "+
+		"when the older response arrived")
 }
 
 // TestAuth_HostPageMessageDoesNotCloseTheDropdown covers #2139. Every message reaching the widget
@@ -254,7 +411,6 @@ func TestAuth_SessionSurvivesATransientStatusFailure(t *testing.T) {
 		fulfillJSON(t, route, http.StatusInternalServerError, `{"error":"failed"}`)
 	}))
 
-	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.Reload()
 	require.NoError(t, err)

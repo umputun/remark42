@@ -61,7 +61,8 @@ func (a *admin) deleteCommentCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"id": id, "locator": locator})
 }
 
-// DELETE /user/{userid}?site=side-id - delete all user comments for requested userid
+// DELETE /user/{userid}?site=siteID - removes the user's avatar, hard-deletes all their comments and the
+// pictures they uploaded that no other user's comment on those pages uses, and drops their stored details
 func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
@@ -79,7 +80,8 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[WARN] can't get comments of user %s on site %s to find the avatar, %v", userID, siteID, err)
 	}
 	if err = a.removeAvatar(picture, userID, siteID); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("avatar store error"),
+			"can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 
@@ -91,7 +93,8 @@ func (a *admin) deleteUserCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID})
 }
 
-// GET /user/{userid}?site=side-id - get user info for requested userid
+// GET /user/{userid}?site=siteID - returns the user from their latest comment that is not deleted, with the
+// blocked and verified flags as the data service sets them on a read, 400 if there is none
 func (a *admin) getUserInfoCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
@@ -122,6 +125,12 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	// a token without a user, such as an email confirmation token, can't carry the delete_me attribute
 	if claims.User == nil {
 		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("no user in token"), "can't use provided token", rest.ErrNoAccess)
+		return
+	}
+
+	// Parse accepts an expired token, so the link deleteMeCtrl issues for three months is checked here
+	if claims.ExpiresAt == nil || claims.ExpiresAt.Before(time.Now()) {
+		rest.SendErrorJSON(w, r, http.StatusForbidden, fmt.Errorf("token expired"), "can't use provided token", rest.ErrNoAccess)
 		return
 	}
 
@@ -162,7 +171,8 @@ func (a *admin) deleteMeRequestCtrl(w http.ResponseWriter, r *http.Request) {
 	a.cache.Flush(cache.Flusher(audience).Scopes(audience, claims.User.ID, lastCommentsScope))
 
 	if err = a.removeAvatar(claims.User.Picture, claims.User.ID, audience); err != nil {
-		rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't delete user's avatar", rest.ErrInternal)
+		rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, fmt.Errorf("avatar store error"),
+			"can't delete user's avatar", rest.ErrInternal)
 		return
 	}
 
@@ -198,17 +208,20 @@ func avatarIDFromPicture(picture string) string {
 	return ""
 }
 
-// PUT /user/{userid}?site=side-id&block=1&ttl=7d - block or unblock user
+// PUT /user/{userid}?site=site-id&block=1&ttl=168h - block (block=1) or unblock user.
+// ttl is an optional Go duration with units up to hours, such as 30m or 168h. Without it, or with 0,
+// the block is permanent and the user's comments are deleted. A ttl that does not parse, or is
+// negative, is rejected with 400 and nothing is changed.
 func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userid")
 	siteID := r.URL.Query().Get("site")
 	blockStatus := r.URL.Query().Get("block") == "1"
 
-	ttl := time.Duration(0) // unlimited duration by default
-	if ttlParam := r.URL.Query().Get("ttl"); ttlParam != "" {
-		if d, err := time.ParseDuration(ttlParam); err == nil {
-			ttl = d
-		}
+	ttl, err := parseBlockTTL(r.URL.Query().Get("ttl"))
+	if err != nil {
+		rest.SendErrorJSON(w, r, http.StatusBadRequest, err,
+			"invalid ttl, expected a duration such as 30m or 168h, or no ttl for a permanent block", rest.ErrDecode)
+		return
 	}
 
 	if err := a.dataService.SetBlock(siteID, userID, blockStatus, ttl); err != nil {
@@ -224,6 +237,26 @@ func (a *admin) setBlockCtrl(w http.ResponseWriter, r *http.Request) {
 	}
 	a.cache.Flush(cache.Flusher(siteID).Scopes(userID, siteID, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"user_id": userID, "site_id": siteID, "block": blockStatus})
+}
+
+// parseBlockTTL returns the block duration for the ttl query parameter, 0 meaning permanent.
+// An empty value is permanent, and so is the literal "undefined", which the widget up to v1.16
+// sent for its "Permanently" choice. A value that does not parse, a day unit such as 7d included,
+// is an error and not a permanent block: a permanent block also deletes the user's comments, so a
+// mistyped ttl must not turn into one. A negative value is an error too, since the store would
+// keep it as a permanent block while the comments stay.
+func parseBlockTTL(ttlParam string) (time.Duration, error) {
+	if ttlParam == "" || ttlParam == "undefined" {
+		return 0, nil
+	}
+	ttl, err := time.ParseDuration(ttlParam)
+	if err != nil {
+		return 0, fmt.Errorf("can't parse ttl %q: %w", ttlParam, err)
+	}
+	if ttl < 0 {
+		return 0, fmt.Errorf("negative ttl %q", ttlParam)
+	}
+	return ttl, nil
 }
 
 // GET /blocked?site=siteID - list blocked users
@@ -305,7 +338,7 @@ func (a *admin) setPinCtrl(w http.ResponseWriter, r *http.Request) {
 		rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "can't set pin status", rest.ErrActionRejected)
 		return
 	}
-	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL))
+	a.cache.Flush(cache.Flusher(locator.SiteID).Scopes(locator.URL, lastCommentsScope))
 	R.RenderJSON(w, R.JSON{"id": commentID, "locator": locator, "pin": pinStatus})
 }
 

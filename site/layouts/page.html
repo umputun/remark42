@@ -4,7 +4,7 @@
     <h1 class="page__title" id="{{ .Title | anchorize }}">{{ .Title }}</h1>
     {{ with .Description }}<p class="page__description">{{ . }}</p>{{ end }}
   </header>
-  <div class="prose">{{ .Content }}</div>
+  <div class="prose">{{ partial "content.html" . }}</div>
   {{- if eq .Layout "demo" }}{{ partial "demo-widget.html" . }}{{ end }}
 </article>
 {{ end }}

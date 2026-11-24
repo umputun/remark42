@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUrlMapper_URL(t *testing.T) {
@@ -43,6 +44,26 @@ https://radio-t.com/p/2018/09/22/podcast-616/?with_query=1 https://www.radio-t.c
 	assert.Equal(t, "https://anysite.com/p/1", mapper.URL("http://anysite.com/p/1"))
 	assert.Equal(t, "https://anysite.com/", mapper.URL("http://anysite.com/"))
 	assert.Equal(t, "https://notexist", mapper.URL("https://notexist"))
+}
+
+func TestUrlMapper_URLPrefersLongestPrefix(t *testing.T) {
+	rules := strings.NewReader(`
+https://a.com/* https://x.com/*
+https://a.com/blog/* https://y.com/*
+`)
+	mapper, err := NewURLMapper(rules)
+	require.NoError(t, err)
+
+	// the rules sit in a map, so a mapper that picks by iteration order is right only some of the time
+	for range 200 {
+		require.Equal(t, "https://y.com/1", mapper.URL("https://a.com/blog/1"), "the longer prefix wins")
+		require.Equal(t, "https://x.com/about", mapper.URL("https://a.com/about"))
+	}
+
+	// a bare asterisk is a prefix rule for every url
+	mapper, err = NewURLMapper(strings.NewReader("* https://z.com/*"))
+	require.NoError(t, err)
+	assert.Equal(t, "https://z.com/https://a.com/1", mapper.URL("https://a.com/1"))
 }
 
 func TestUrlMapper_New(t *testing.T) {

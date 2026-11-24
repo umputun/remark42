@@ -1,5 +1,7 @@
 {
   "comments": {
+    "page": { "countLeft": 0, "lastComment": "", "loaded": 0, "undeleted": 0 },
+    "topComments": [],
     "allComments": [
       {
         "id": "1",

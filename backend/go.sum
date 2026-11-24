@@ -60,8 +60,6 @@ github.com/go-pkgz/rest v1.24.0 h1:GAUCgx7U8xCOC2OynLjhCRMhtnMQH4d1mTdKpQyX2yI=
 github.com/go-pkgz/rest v1.24.0/go.mod h1:dl3EWiuFB4hRTo2Sknj6UrQGFRAYvANK6/NyW8qQPxc=
 github.com/go-pkgz/routegroup v1.6.2 h1:17c4xrooyIDFjPKEAEnWLZ7BDMVdgfvKpS17o8UbnFY=
 github.com/go-pkgz/routegroup v1.6.2/go.mod h1:Pmu04fhgWhRtBMIJ8HXppnnzOPjnL/IEPBIdO2zmeqg=
-github.com/go-pkgz/syncs v1.3.4 h1:5IJ+dsjThlBto8c913FlXHyzJtvmO5lxh7qkBfGd7s4=
-github.com/go-pkgz/syncs v1.3.4/go.mod h1:lAp+w+qbRm6+pwINcfc9BVK+4F4NEoERYditsF1uENA=
 github.com/go-test/deep v1.1.2 h1:JUuyv17rKrqYfLFnP9A4Yh6hw0635ugB93bMg2bwuDQ=
 github.com/go-test/deep v1.1.2/go.mod h1:lwVFiFFWPjydTsV3xGJ/YTQsnWwi8zxBFM+gOVcwINE=
 github.com/golang-jwt/jwt/v5 v5.3.1 h1:kYf81DTWFe7t+1VvL7eS+jKFVWaUnK9cB1qbwn63YCY=
@@ -114,8 +112,6 @@ github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZV
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d h1:l3+2LWCbVxn5itfvXAfH9n4YL9jh8l1g5zcncbIc1cs=
 github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d/go.mod h1:TbpErkob6SY7cyozRVSGoB3OlO2qOAgVN8O3KAJ4fMI=
-github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
-github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=

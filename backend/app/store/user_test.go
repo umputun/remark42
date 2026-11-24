@@ -1,8 +1,7 @@
 package store
 
 import (
-	"crypto/sha1"
-	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,21 +45,45 @@ func TestUser_HashIP(t *testing.T) {
 	}
 }
 
-func TestUser_HashFailed(t *testing.T) {
-	r := hashWithFallback(mockHash{}, "123456789")
-	assert.Equal(t, "995dc9bbdf1939fa", r)
-
-	r = hashWithFallback(mockHash{}, "995dc9bbdf1939fa")
-	assert.Equal(t, "995dc9bbdf1939fa", r)
-
-	r = hashWithFallback(sha1.New(), "123456789")
-	assert.Equal(t, "f7c3bc1d808e04732adf679965ccc34ca7ae3441", r)
+func TestCheckUserName(t *testing.T) {
+	tbl := []struct {
+		name string
+		ok   bool
+	}{
+		{"abc", true},
+		{"Ева", true},
+		{"user_1", true},
+		{"Ann-Marie O. Smith", true},
+		{"a.b-c", true},
+		{"Раз_Два  Три_34567", true},
+		{strings.Repeat("Я", 33), true}, // 66 bytes
+		{strings.Repeat("Ж", 64), true},
+		{strings.Repeat("x", 64), true},
+		{"ab", false},
+		{"Ян", false}, // 4 bytes
+		{strings.Repeat("Ж", 65), false},
+		{strings.Repeat("x", 65), false},
+		{" abc", false},
+		{"abc ", false},
+		{"   ", false},
+		{"a\tbc", false},
+		{"\tabc", false},
+		{"abc\n", false},
+		{"Ева Ли", false},
+		{"山田　太郎", false},
+		{"**blah", false},
+		{"someone@example.com", false},
+		{"a|bc", false},
+		{"", false},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckUserName(tt.name)
+			if tt.ok {
+				assert.NoError(t, err)
+				return
+			}
+			assert.Error(t, err)
+		})
+	}
 }
-
-type mockHash struct{}
-
-func (mock mockHash) Sum(_ []byte) []byte               { return nil }
-func (mock mockHash) Reset()                            {}
-func (mock mockHash) Size() int                         { return 0 }
-func (mock mockHash) BlockSize() int                    { return 0 }
-func (mock mockHash) Write(_ []byte) (n int, err error) { return 0, fmt.Errorf("error") }

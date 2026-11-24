@@ -10,7 +10,7 @@ interface StaticStoreType {
 /**
  * Represent store of values that and will not change, or doesn't need reactivity
  *
- * Initialized once at webpack's entry points (i.e remark.tsx)
+ * Initialized once at the build's entry points (i.e remark.tsx)
  */
 export const StaticStore: StaticStoreType = {
   config: {

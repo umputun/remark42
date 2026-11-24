@@ -41,10 +41,9 @@ export type CommentProps = {
   /**
    * "main" view used in main case,
    * "pinned" view used in pinned block,
-   * "user" is for user comments widget,
-   * "preview" is for last comments page
+   * "user" is for user comments widget
    */
-  view: 'main' | 'pinned' | 'user' | 'preview';
+  view: 'main' | 'pinned' | 'user';
   /** defines whether comment should have reply/edit actions */
   disabled?: boolean;
   collapsed?: boolean;
@@ -104,17 +103,21 @@ export class Comment extends Component<CommentProps, State> {
       newState.renderDummy = false;
     }
 
-    // set comment edit timer
-    if (this.isCurrentUser()) {
-      if (this.isAdmin() && StaticStore.config.admin_edit) {
-        newState.editDeadline = Infinity;
-      } else {
-        const editDuration = StaticStore.config.edit_duration;
-        const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
-        const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
+    // set comment edit timer. The reader is taken from the props the state is computed for and
+    // not from the current ones: a comment stays mounted while the reader signs in or out, and
+    // that is exactly when the two differ. Whoever does not own the comment has no timer
+    const isOwn = props.user !== null && props.data.user.id === props.user?.id;
 
-        newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
-      }
+    if (!isOwn) {
+      newState.editDeadline = undefined;
+    } else if (props.user?.admin && StaticStore.config.admin_edit) {
+      newState.editDeadline = Infinity;
+    } else {
+      const editDuration = StaticStore.config.edit_duration;
+      const timeDiff = StaticStore.serverClientTimeDiffMs || 0;
+      const editDeadline = new Date(props.data.time).getTime() + timeDiff + editDuration * 1000;
+
+      newState.editDeadline = editDeadline > Date.now() ? editDeadline : undefined;
     }
 
     return newState;
@@ -136,7 +139,36 @@ export class Comment extends Component<CommentProps, State> {
   componentDidMount() {
     // eslint-disable-next-line react/no-did-mount-set-state
     this.setState({ initial: false });
+    this.watchEditDeadline();
   }
+
+  componentDidUpdate(_prevProps: CommentProps, prevState: State) {
+    if (prevState.editDeadline !== this.state.editDeadline) {
+      this.watchEditDeadline();
+    }
+  }
+
+  componentWillUnmount() {
+    window.clearTimeout(this.editDeadlineTimer);
+  }
+
+  editDeadlineTimer?: number;
+
+  /**
+   * Clears the edit deadline when it passes. The countdown next to Edit does the same, but it is
+   * not shown wherever Edit is not, and the author's Delete must still go when the window ends
+   */
+  watchEditDeadline = () => {
+    window.clearTimeout(this.editDeadlineTimer);
+    const deadline: number | undefined = this.state.editDeadline;
+    if (deadline === undefined || !Number.isFinite(deadline)) return;
+
+    // a delay past 2^31-1 ms fires at once, so a longer window is waited out in steps
+    this.editDeadlineTimer = window.setTimeout(
+      () => (Date.now() < deadline ? this.watchEditDeadline() : this.setState({ editDeadline: undefined })),
+      Math.min(deadline - Date.now(), 2 ** 31 - 1)
+    );
+  };
 
   toggleReplying = () => {
     const { editMode, setReplyEditState, data } = this.props;
@@ -151,7 +183,10 @@ export class Comment extends Component<CommentProps, State> {
   };
 
   toggleUserInfoVisibility = () => {
-    const profile: Profile = { ...this.props.data.user };
+    // the page embedding the widget receives this message, so it carries the fields the profile
+    // shows and nothing else of the record, which for an admin holds the commenter's IP hash
+    const { id, name, picture } = this.props.data.user;
+    const profile: Profile = { id, name, picture };
 
     if (this.props.user?.id === profile.id) {
       profile.current = '1';
@@ -309,12 +344,7 @@ export class Comment extends Component<CommentProps, State> {
 
     const o = {
       ...props.data,
-      text:
-        props.view === 'preview'
-          ? getTextSnippet(props.data.text)
-          : props.data.delete
-            ? intl.formatMessage(messages.deletedComment)
-            : props.data.text,
+      text: props.data.delete ? intl.formatMessage(messages.deletedComment) : props.data.text,
       time: new Date(props.data.time),
       orig: props.data.orig,
       user: props.data.user,
@@ -324,23 +354,18 @@ export class Comment extends Component<CommentProps, State> {
     const isUseless =
       !!props.isUserBanned ||
       !!props.data.delete ||
-      (props.view !== 'preview' &&
-        props.data.score < StaticStore.config.low_score &&
-        !props.data.pin &&
-        !props.disabled);
+      (props.data.score < StaticStore.config.low_score && !props.data.pin && !props.disabled);
 
     let viewClass: string | undefined;
     if (props.view === 'main' || props.view === 'pinned') {
       viewClass = props.data.user.admin ? styles.viewAdmin : undefined;
     } else if (props.view === 'user') {
       viewClass = styles.viewUser;
-    } else if (props.view === 'preview') {
-      viewClass = styles.viewPreview;
     }
 
     const rootClassName = clsx(
       styles.root,
-      props.view !== 'preview' && (props.theme === 'dark' ? styles.themeDark : styles.themeLight),
+      props.theme === 'dark' ? styles.themeDark : styles.themeLight,
       viewClass,
       isUseless && styles.useless,
       props.view === 'main' && isReplying && styles.replying,
@@ -349,37 +374,6 @@ export class Comment extends Component<CommentProps, State> {
       props.collapsed && styles.collapsed,
       props.mix
     );
-
-    if (props.view === 'preview') {
-      return (
-        <article className={rootClassName}>
-          <div className={styles.body}>
-            {!!o.title && (
-              <div className={styles.title}>
-                <a className={styles.titleLink} href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`}>
-                  {o.title}
-                </a>
-              </div>
-            )}
-            <div className={styles.info}>
-              {!!o.title && o.user.name}
-
-              {!o.title && (
-                <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.username}>
-                  {o.user.name}
-                </a>
-              )}
-            </div>{' '}
-            <div
-              className={clsx(styles.text, 'raw-content')}
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: o.text }}
-              dir="auto"
-            />
-          </div>
-        </article>
-      );
-    }
 
     if (this.state.renderDummy && !props.editMode) {
       const [width, height] = this.base
@@ -413,10 +407,10 @@ export class Comment extends Component<CommentProps, State> {
             </a>
           </div>
         )}
-        <div className={styles.info}>
+        <div className={styles.info} data-nosnippet>
           {props.view !== 'user' && !props.collapsed && (
             <div className={styles.avatar}>
-              <Avatar url={o.user.picture} identicon={isUserAnonymous(o.user)} />
+              <Avatar url={o.user.picture} size={24} identicon={isUserAnonymous(o.user)} />
             </div>
           )}
 
@@ -452,7 +446,9 @@ export class Comment extends Component<CommentProps, State> {
           </div>
 
           <a href={`${o.locator.url}#${COMMENT_NODE_CLASSNAME_PREFIX}${o.id}`} className={styles.time}>
-            {getLocalDatetime(this.props.intl, o.time)}
+            <time dateTime={Number.isNaN(o.time.getTime()) ? undefined : o.time.toISOString()}>
+              {getLocalDatetime(this.props.intl, o.time)}
+            </time>
           </a>
 
           {!!props.level && props.level > 0 && props.view === 'main' && (
@@ -500,6 +496,8 @@ export class Comment extends Component<CommentProps, State> {
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: o.text }}
               dir="auto"
+              // a deleted comment shows the widget's own sentence in place of its text
+              data-nosnippet={props.data.delete || undefined}
             />
           )}
 
@@ -513,7 +511,10 @@ export class Comment extends Component<CommentProps, State> {
               replying={isReplying}
               editable={
                 state.editDeadline !== undefined &&
-                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit))
+                (props.repliesCount === 0 || (isAdmin && StaticStore.config.admin_edit)) &&
+                // the server refuses a commenter's edit on a read-only post; an admin's still goes through.
+                // An editor already open keeps its Cancel
+                (!props.post_info?.read_only || isAdmin || isEditing)
               }
               editDeadline={state.editDeadline}
               readOnly={props.post_info?.read_only}
@@ -570,17 +571,6 @@ export class Comment extends Component<CommentProps, State> {
       </article>
     );
   }
-}
-
-function getTextSnippet(html: string) {
-  const LENGTH = 100;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html.replace('</p><p>', ' ');
-
-  const result = tmp.innerText || '';
-  const snippet = result.substring(0, LENGTH);
-
-  return snippet.length === LENGTH && result.length !== LENGTH ? `${snippet}...` : snippet;
 }
 
 function getLocalDatetime(intl: IntlShape, date: Date) {

@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	"github.com/google/uuid"
 	bf "github.com/russross/blackfriday/v2"
@@ -45,13 +44,14 @@ type DataStore struct {
 	scopedLocks struct {
 		sync.Mutex
 		sync.Once
-		locks map[string]sync.Locker
+		locks map[string]*scopedLock
 	}
+}
 
-	repliesCache struct {
-		lcw.LoadingCache[struct{}]
-		once sync.Once
-	}
+// scopedLock is a lock for a single scope with the number of callers holding or waiting for it
+type scopedLock struct {
+	sync.Mutex
+	refs int
 }
 
 // UserMetaData keeps info about user flags and details
@@ -82,18 +82,26 @@ var nonAdminUser = store.User{}
 // ErrRestrictedWordsFound returned in case comment text contains restricted words
 var ErrRestrictedWordsFound = fmt.Errorf("comment contains restricted words")
 
+// ErrUserBlocked returned by Create when the author of a new comment is blocked
+var ErrUserBlocked = errors.New("user blocked")
+
 // Create prepares comment and forward to Interface.Create
 func (s *DataStore) Create(comment store.Comment) (commentID string, err error) {
 	if comment, err = s.prepareNewComment(comment); err != nil {
 		return "", fmt.Errorf("failed to prepare comment: %w", err)
 	}
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+	// restricted words are checked on new comments only, an import brings back what the site already had
+	if !comment.Imported && s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
 		return "", ErrRestrictedWordsFound
 	}
 
-	func() { // keep input title and set to extracted if missing
-		if s.TitleExtractor == nil || comment.PostTitle != "" {
+	if comment.Deleted { // only an import brings one, and one deleted before titles were cleared still has its title
+		comment.PostTitle = ""
+	}
+
+	func() { // keep input title and set to extracted if missing; a deleted comment has no title to show
+		if s.TitleExtractor == nil || comment.PostTitle != "" || comment.Deleted {
 			return
 		}
 		title, e := s.TitleExtractor.Get(comment.Locator.URL)
@@ -103,6 +111,12 @@ func (s *DataStore) Create(comment store.Comment) (commentID string, err error) 
 		}
 		comment.PostTitle = title
 	}()
+
+	// the author may have been blocked while the page title was fetched, which can take seconds,
+	// and the block removes their comments stored so far. An import brings back what the site had
+	if !comment.Imported && s.IsBlocked(comment.Locator.SiteID, comment.User.ID) {
+		return "", ErrUserBlocked
+	}
 
 	commentID, err = s.Engine.Create(comment)
 	s.submitImages(comment)
@@ -164,6 +178,23 @@ func (s *DataStore) Get(locator store.Locator, commentID string, user store.User
 	return s.alterComment(c, user), nil
 }
 
+// ReplyDepth returns how many comments stand above the comment in its thread, 0 for a top-level one,
+// counting no further than limit. It reads only the stored comments, one per step, since nothing but
+// their parent ids is needed. A comment above it that can't be read is an error, as the depth is then
+// unknown.
+func (s *DataStore) ReplyDepth(locator store.Locator, comment store.Comment, limit int) (int, error) {
+	depth := 0
+	for comment.ParentID != "" && depth < limit {
+		parent, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: comment.ParentID})
+		if err != nil {
+			return depth, fmt.Errorf("can't read comment %s above %s: %w", comment.ParentID, comment.ID, err)
+		}
+		comment = parent
+		depth++
+	}
+	return depth, nil
+}
+
 // Put updates comment, mutable parts only
 func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 	comment.Locator = locator
@@ -172,68 +203,41 @@ func (s *DataStore) Put(locator store.Locator, comment store.Comment) error {
 
 // GetUserEmail gets user email
 func (s *DataStore) GetUserEmail(siteID, userID string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserEmail,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Email, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserEmail, "")
+	return entry.Email, err
 }
 
 // SetUserEmail sets user email
 func (s *DataStore) SetUserEmail(siteID, userID, value string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserEmail,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-		Update:  value,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Email, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserEmail, value)
+	return entry.Email, err
 }
 
 // GetUserTelegram gets user telegram
 func (s *DataStore) GetUserTelegram(siteID, userID string) (string, error) {
-	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserTelegram,
-		Locator: store.Locator{SiteID: siteID},
-		UserID:  userID,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(res) == 1 {
-		return res[0].Telegram, nil
-	}
-	return "", nil
+	entry, err := s.userDetail(siteID, userID, engine.UserTelegram, "")
+	return entry.Telegram, err
 }
 
 // SetUserTelegram sets user telegram
 func (s *DataStore) SetUserTelegram(siteID, userID, value string) (string, error) {
+	entry, err := s.userDetail(siteID, userID, engine.UserTelegram, value)
+	return entry.Telegram, err
+}
+
+// userDetail gets the user's detail, or sets it when update is not empty.
+// It returns an empty entry when the engine has none or more than one
+func (s *DataStore) userDetail(siteID, userID string, detail engine.UserDetail, update string) (engine.UserDetailEntry, error) {
 	res, err := s.Engine.UserDetail(engine.UserDetailRequest{
-		Detail:  engine.UserTelegram,
+		Detail:  detail,
 		Locator: store.Locator{SiteID: siteID},
 		UserID:  userID,
-		Update:  value,
+		Update:  update,
 	})
-	if err != nil {
-		return "", err
+	if err != nil || len(res) != 1 {
+		return engine.UserDetailEntry{}, err
 	}
-	if len(res) == 1 {
-		return res[0].Telegram, nil
-	}
-	return "", nil
+	return res[0], nil
 }
 
 // DeleteUserDetail deletes user detail
@@ -245,25 +249,37 @@ func (s *DataStore) DeleteUserDetail(siteID, userID string, detail engine.UserDe
 	})
 }
 
-// ResubmitStagingImages retrieves timestamp of the oldest image in staging and
-// calls s.submitImages on all comments newer than it
+// ResubmitStagingImages commits the images of comments posted before a restart. An image gets its staging
+// time from its upload, from the submit of its comment right after the comment is posted, and from previews
+// and uploads while the comment is edited, so its comment is at most one edit window older than it. The
+// comments posted from two edit windows before the oldest staged image on are gone through, the second
+// window covering a submit that resets the time just as its comment's window ends. Comments still in their
+// edit window are gone through as well, staged images or not: an edit after the restart can add an image,
+// and their submit commits the text as it is once the window ends.
+// Images of a comment whose edit window is over are committed right away: a submit would move their
+// staging time to now, and should the server stop before the commit, they would be out of that range on
+// the next start.
 func (s *DataStore) ResubmitStagingImages(sites []string) error {
 	info, err := s.ImageService.Info()
 	if err != nil {
 		return err
 	}
-	ts := info.FirstStagingImageTS
-	if ts.IsZero() {
-		return nil
+	since := time.Now().Add(-s.EditDuration)
+	if ts := info.FirstStagingImageTS; !ts.IsZero() && ts.Add(-2*s.EditDuration).Before(since) {
+		since = ts.Add(-2 * s.EditDuration)
 	}
 	var errs []error
 	for _, site := range sites {
 		locator := store.Locator{SiteID: site}
-		comments, err := s.FindSince(locator, "time", store.User{}, ts)
+		comments, err := s.FindSince(locator, "time", store.User{}, since)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("problem finding comments for site %s: %w", site, err))
 		}
 		for _, c := range comments {
+			if time.Since(c.Timestamp) >= s.EditDuration {
+				s.commitImages(c)
+				continue
+			}
 			s.submitImages(c)
 		}
 	}
@@ -272,29 +288,37 @@ func (s *DataStore) ResubmitStagingImages(sites []string) error {
 
 // submitImages initiated delayed commit of all images from the comment uploaded to remark42
 func (s *DataStore) submitImages(comment store.Comment) {
-	idsFn := func() []string { // get all ids from comment's text
+	if comment.Imported {
+		s.commitImages(comment)
+		return
+	}
+	s.ImageService.Submit(s.imageIDsFn(comment))
+}
+
+// commitImages commits all images from the comment uploaded to remark42 right away
+func (s *DataStore) commitImages(comment store.Comment) {
+	if err := s.ImageService.Commit(s.imageIDsFn(comment)); err != nil {
+		log.Printf("[WARN] failed to commit comment's images: %v", err)
+	}
+}
+
+// imageIDsFn returns a func listing the ids of images uploaded to remark42 in the comment's current text
+func (s *DataStore) imageIDsFn(comment store.Comment) func() []string {
+	// idsFn waits in the image submit queue for the edit window, so it keeps only what it needs to read
+	// the comment again, not the comment with its text
+	locator, commentID := comment.Locator, comment.ID
+	return func() []string { // get all ids from comment's text
 		// this can be called after last edit, we have to retrieve fresh comment
-		cc, err := s.Engine.Get(engine.GetRequest{Locator: comment.Locator, CommentID: comment.ID})
+		cc, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 		if err != nil {
-			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", comment.ID, err)
+			log.Printf("[WARN] can't get comment's %s text for image extraction, %v", commentID, err)
 			return nil
 		}
 		imgIDs := s.ImageService.ExtractPictures(cc.Text)
 		if len(imgIDs) > 0 {
-			log.Printf("[DEBUG] image ids extracted from %s - %+v", comment.ID, imgIDs)
+			log.Printf("[DEBUG] image ids extracted from %s - %+v", commentID, imgIDs)
 		}
 		return imgIDs
-	}
-
-	var err error
-	if comment.Imported {
-		err = s.ImageService.Commit(idsFn)
-	} else {
-		s.ImageService.Submit(idsFn)
-	}
-
-	if err != nil {
-		log.Printf("[WARN] failed to commit comment's images: %v", err)
 	}
 }
 
@@ -329,6 +353,9 @@ func (s *DataStore) DeleteAll(siteID string) error {
 
 // SetPin pin/un-pin comment as special
 func (s *DataStore) SetPin(locator store.Locator, commentID string, status bool) error {
+	unlock := s.lockScope(locator.URL) // the whole comment is written back, see EditComment
+	defer unlock()
+
 	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
 	if err != nil {
 		return err
@@ -349,9 +376,8 @@ type VoteReq struct {
 
 // Vote for comment by id and locator
 func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
-	cLock := s.getScopedLocks(req.Locator.URL) // get lock for URL scope
-	cLock.Lock()                               // prevents race on voting
-	defer cLock.Unlock()
+	unlock := s.lockScope(req.Locator.URL) // lock URL scope, prevents race on voting
+	defer unlock()
 
 	comment, err = s.Engine.Get(engine.GetRequest{Locator: req.Locator, CommentID: req.CommentID})
 	if err != nil {
@@ -377,7 +403,7 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	}
 	userIPHash := store.HashValue(req.UserIP, secret)
 	if s.isSameIPVote(req, userIPHash, comment) {
-		return comment, fmt.Errorf("the same ip %s already voted for %s", userIPHash, req.CommentID)
+		return comment, fmt.Errorf("the same ip already voted for %s", req.CommentID)
 	}
 
 	maxVotes := s.MaxVotes // 0 value allowed and treated as "no votes allowed"
@@ -402,16 +428,16 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 		}
 	}
 
-	// add ip hash to voted ip map
 	if comment.VotedIPs == nil {
 		comment.VotedIPs = map[string]store.VotedIPInfo{}
 	}
-	comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: now, Value: req.Val}
-
-	// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 	if voted && v != req.Val {
+		// reset vote if user changed to opposite. Effectively it is "forget about prev votes" to allow "+ - -" or "- + +" corrections
 		delete(comment.Votes, req.UserID)
-		delete(comment.VotedIPs, userIPHash)
+		forgetVoteAddress(comment.VotedIPs, req.UserID, userIPHash, v)
+	} else {
+		// add ip hash to voted ip map
+		comment.VotedIPs[userIPHash] = store.VotedIPInfo{Timestamp: now, Value: req.Val, UserID: req.UserID}
 	}
 
 	// add to voted map if first vote
@@ -444,15 +470,36 @@ func (s *DataStore) Vote(req VoteReq) (comment store.Comment, err error) {
 	return comment, s.Engine.Update(comment)
 }
 
+// forgetVoteAddress drops the address record of the vote userID takes back, a vote of direction val. The address
+// that vote came from is free again, and only that one: the record of another user's vote stays, whatever address
+// the change comes from. A record stored before records named their voter is taken for the user's own when no
+// record names the user, it is the one of the request's address ipHash and it holds a vote of that direction
+func forgetVoteAddress(votedIPs map[string]store.VotedIPInfo, userID, ipHash string, val bool) {
+	named := false
+	for hash, rec := range votedIPs {
+		if rec.UserID == userID {
+			delete(votedIPs, hash)
+			named = true
+		}
+	}
+	if rec, ok := votedIPs[ipHash]; ok && !named && rec.UserID == "" && rec.Value == val {
+		delete(votedIPs, ipHash)
+	}
+}
+
 func (s *DataStore) isSameIPVote(req VoteReq, userIPHash string, comment store.Comment) bool {
 	if req.UserIP == "" || !s.RestrictSameIPVotes.Enabled {
 		return false
 	}
 
+	// a user taking their own vote back adds no vote from the address
+	if _, voted := comment.Votes[req.UserID]; voted {
+		return false
+	}
+
+	// a vote recorded for the address counts whatever its direction: an opposite vote of another user could be
+	// changed afterwards, and the address would then stand behind two votes in the same direction
 	if v, ipFound := comment.VotedIPs[userIPHash]; ipFound {
-		if v.Value != req.Val {
-			return false // opposite direction vote allowed
-		}
 		return !s.sameIPVoteExpired(v, time.Now())
 	}
 	return false
@@ -491,6 +538,46 @@ type EditRequest struct {
 
 // EditComment to edit text and update Edit info
 func (s *DataStore) EditComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, err error) {
+	comment, res, err := s.editComment(locator, commentID, req)
+
+	// the admin store, which may be a remote one, is told with the post unlocked, and also when the write failed
+	if res.notify {
+		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, res.event); e != nil {
+			what := "update"
+			if req.Delete {
+				what = "delete"
+			}
+			log.Printf("[WARN] failed to send %s event, %s", what, e)
+		}
+	}
+	if err != nil {
+		return comment, err
+	}
+
+	// the pictures go with the post unlocked as well, finding them reads every comment of the author on the site
+	newText := comment.Text
+	if req.Delete {
+		newText = ""
+	}
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, res.oldText, newText)
+	return comment, nil
+}
+
+// editResult is what editComment leaves for EditComment to do once the post is unlocked
+type editResult struct {
+	oldText string          // text before the change, to find the pictures the change removed
+	event   admin.EventType // event for the admin store
+	notify  bool            // the request got as far as its event
+}
+
+// editComment makes the edit or the delete of EditComment. It holds the lock of the post, the one Vote, SetPin and
+// SetTitle take. Each of them reads a comment and writes all of it back, so without the lock a vote or a pin made
+// between the read and the write of an edit would be lost, and so would an edit made between the read and the
+// write of a vote.
+func (s *DataStore) editComment(locator store.Locator, commentID string, req EditRequest) (comment store.Comment, res editResult, err error) {
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+
 	editAllowed := func(comment store.Comment) error {
 		if req.Admin && s.AdminEdits {
 			return nil
@@ -508,82 +595,54 @@ func (s *DataStore) EditComment(locator store.Locator, commentID string, req Edi
 	}
 
 	if comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); err != nil {
-		return comment, err
+		return comment, res, err
 	}
 
 	if err = editAllowed(comment); err != nil { //nolint gocritic
-		return comment, err
+		return comment, res, err
+	}
+
+	// a soft-deleted comment keeps its author, who must not be able to write text back into it,
+	// admin edits included; a repeated delete request is still accepted
+	if comment.Deleted && !req.Delete {
+		return comment, res, fmt.Errorf("deleted comment can't be edited, %s", commentID)
 	}
 
 	if req.Delete { // delete request
-		if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvDelete); e != nil {
-			log.Printf("[WARN] failed to send delete event, %s", e)
-		}
-		// clean up the comment and its parent from cache, so that
-		// after cleaning up the child, parent won't be stuck non-deletable till cache expires
-		if s.repliesCache.LoadingCache != nil {
-			s.repliesCache.Delete(commentID)
-			s.repliesCache.Delete(comment.ParentID)
-		}
+		res = editResult{oldText: comment.Text, event: admin.EvDelete, notify: true}
 		comment.Deleted = true
 		delReq := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: store.SoftDelete}
-		return comment, s.Engine.Delete(delReq)
+		return comment, res, s.Engine.Delete(delReq)
 	}
 
-	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, req.Text) {
-		return comment, ErrRestrictedWordsFound
-	}
-
+	res.oldText = comment.Text
 	comment.Text = req.Text
 	comment.Orig = req.Orig
 	comment.Edit = &store.Edit{Timestamp: time.Now(), Summary: req.Summary}
 	comment.Locator = locator
 	comment.Sanitize()
 
-	if e := s.AdminStore.OnEvent(comment.Locator.SiteID, admin.EvUpdate); e != nil {
-		log.Printf("[WARN] failed to send update event, %s", e)
+	// match the sanitized text, as Create does, because this is the text to store and show
+	if s.RestrictedWordsMatcher != nil && s.RestrictedWordsMatcher.Match(comment.Locator.SiteID, comment.Text) {
+		return comment, res, ErrRestrictedWordsFound
 	}
 
-	err = s.Engine.Update(comment)
-	return comment, err
+	res.event, res.notify = admin.EvUpdate, true
+	return comment, res, s.Engine.Update(comment)
 }
 
-// HasReplies checks if there is any reply to the comments
-// Loads last maxLastCommentsReply comments and compare parent id to the comment's id
-// Comments with replies cached for 5 minutes
+// HasReplies checks if there is any reply to the comment among the comments of its post
 func (s *DataStore) HasReplies(comment store.Comment) bool {
-	s.repliesCache.once.Do(func() {
-		// default expiration time of 5 minutes and cleanup time of 2.5 minutes
-		o := lcw.NewOpts[struct{}]()
-		s.repliesCache.LoadingCache, _ = lcw.NewExpirableCache[struct{}](o.TTL(5 * time.Minute))
-	})
-
-	if _, found := s.repliesCache.Peek(comment.ID); found {
-		return true
-	}
-
-	req := engine.FindRequest{Locator: store.Locator{SiteID: comment.Locator.SiteID}, Limit: maxLastCommentsReply}
-	comments, err := s.Engine.Find(req)
+	comments, err := s.Engine.Find(engine.FindRequest{Locator: comment.Locator})
 	if err != nil {
-		log.Printf("[WARN] can't get last comments for reply check, %v", err)
+		log.Printf("[WARN] can't get comments for reply check, %v", err)
 		return false
 	}
-
-	for _, c := range comments {
-		if c.ParentID != "" && !c.Deleted {
-			if c.ParentID == comment.ID {
-				// when this code is reached, key "comment.ID" is not in cache.
-				// calling cache.Get on it will put it in cache with 5 minutes TTL.
-				// we call it with empty struct as value as we care about keys and not values.
-				_, _ = s.repliesCache.Get(comment.ID, func() (struct{}, error) { return struct{}{}, nil })
-				return true
-			}
-		}
-	}
-	return false
+	return slices.ContainsFunc(comments, func(c store.Comment) bool { return c.ParentID == comment.ID && !c.Deleted })
 }
 
-// UserReplies returns list of all comments replied to given user
+// UserReplies returns list of all comments replied to given user. It looks for them among the site's
+// last maxLastCommentsReply comments, a number the engine caps (bolt returns at most 1000)
 func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.Duration) ([]store.Comment, string, error) {
 	comments, e := s.Last(siteID, maxLastCommentsReply, time.Time{}, nonAdminUser)
 	if e != nil {
@@ -598,15 +657,20 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 	}
 
 	// collect replies
+	postIDs := map[string]map[string]bool{} // comment IDs of the posts read by parentMissing, by post URL
 	for _, c := range comments {
-		if len(replies) > limit || time.Since(c.Timestamp) > duration {
+		if len(replies) >= limit || time.Since(c.Timestamp) > duration {
 			break
 		}
 
 		if c.ParentID != "" && !c.Deleted && c.User.ID != userID { // not interested in replies to yourself
 			var pc store.Comment
 			if pc, e = s.Get(c.Locator, c.ParentID, nonAdminUser); e != nil {
-				return nil, "", fmt.Errorf("can't get parent comment: %w", e)
+				if !s.parentMissing(c, postIDs) {
+					return nil, "", fmt.Errorf("can't get parent comment: %w", e)
+				}
+				log.Printf("[DEBUG] skip reply %s to missing comment %s", c.ID, c.ParentID)
+				continue
 			}
 			if pc.User.ID == userID {
 				if userName == "" { // the user's own comments may all be deleted; a deleted one keeps the name
@@ -620,6 +684,25 @@ func (s *DataStore) UserReplies(siteID, userID string, limit int, duration time.
 	return replies, userName, nil
 }
 
+// parentMissing reports whether the post of the reply was read and has no comment with the reply's ParentID,
+// as for a reply stored before parents were checked. Get doesn't tell a missing comment from a failed read.
+// A post is read once per postIDs, which keeps the comment IDs of the posts read so far by post URL
+func (s *DataStore) parentMissing(reply store.Comment, postIDs map[string]map[string]bool) bool {
+	ids, ok := postIDs[reply.Locator.URL]
+	if !ok {
+		comments, err := s.Engine.Find(engine.FindRequest{Locator: reply.Locator})
+		if err != nil {
+			return false
+		}
+		ids = make(map[string]bool, len(comments))
+		for _, c := range comments {
+			ids[c.ID] = true
+		}
+		postIDs[reply.Locator.URL] = ids
+	}
+	return !ids[reply.ParentID]
+}
+
 // SetTitle puts title from the locator.URL page and overwrites any existing title
 func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment store.Comment, err error) {
 	if s.TitleExtractor == nil {
@@ -631,14 +714,32 @@ func (s *DataStore) SetTitle(locator store.Locator, commentID string) (comment s
 		return comment, err
 	}
 
+	if comment.Deleted { // the engine takes no update for a deleted comment, and a title run goes over every comment
+		return comment, nil
+	}
+
 	// set title, overwrite the current one
 	title, e := s.TitleExtractor.Get(comment.Locator.URL)
 	if e != nil {
 		return comment, e
 	}
+
+	// the page was fetched with the post unlocked, so the comment is read again under the lock: the whole
+	// comment is written back, and a vote, a pin or an edit made during the fetch has to stay, see EditComment
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+	if comment, err = s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); err != nil {
+		return comment, err
+	}
 	comment.PostTitle = title
 	comment.Locator = locator
-	err = s.Engine.Update(comment)
+	if err = s.Engine.Update(comment); err != nil {
+		// the engine refuses to update a deleted comment; one deleted while the page was fetched, or by a user
+		// deletion, which takes no post lock, between the read above and the update, is skipped
+		if stored, e := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID}); e == nil && stored.Deleted {
+			return stored, nil
+		}
+	}
 	return comment, err
 }
 
@@ -731,8 +832,12 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 	// while for storing the comment that flag is set based on user preference
 	mdExt, rend := store.GetMdExtensionsAndRenderer(false)
 	parser := bf.New(bf.WithRenderer(rend), bf.WithExtensions(bf.CommonExtensions), bf.WithExtensions(mdExt))
+	doc, err := parseMarkdown(parser, c.Orig)
+	if err != nil {
+		return err
+	}
 	var wrongLinkError error
-	parser.Parse([]byte(c.Orig)).Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
+	doc.Walk(func(node *bf.Node, _ bool) bf.WalkStatus {
 		if len(node.Destination) != 0 &&
 			(!strings.HasPrefix(string(node.Destination), "http://") && !strings.HasPrefix(string(node.Destination), "https://") && !strings.HasPrefix(string(node.Destination), "mailto:")) {
 			wrongLinkError = fmt.Errorf("links should start with mailto:, http:// or https://")
@@ -741,6 +846,17 @@ func (s *DataStore) ValidateComment(c *store.Comment) error {
 		return bf.GoToNext
 	})
 	return wrongLinkError
+}
+
+// parseMarkdown parses the comment text, the parser panics on some text, which is refused then
+func parseMarkdown(parser *bf.Markdown, txt string) (doc *bf.Node, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[WARN] can't parse comment text, %v", rec)
+			err = fmt.Errorf("can't parse comment text")
+		}
+	}()
+	return parser.Parse([]byte(txt)), nil
 }
 
 // IsAdmin checks if usesID in the list of admins
@@ -849,52 +965,31 @@ func (s *DataStore) Info(locator store.Locator, readonlyAge int) (store.PostInfo
 
 }
 
-// Delete comment by id
+// Delete comment by id. The pictures its author uploaded go with it once the engine has deleted it, unless another
+// comment still shows them, see deleteRemovedPictures
 func (s *DataStore) Delete(locator store.Locator, commentID string, mode store.DeleteMode) error {
 	if e := s.AdminStore.OnEvent(locator.SiteID, admin.EvDelete); e != nil {
 		log.Printf("[WARN] failed to send delete event, %s", e)
 	}
-	// get comment to learn its parent ID
-	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	comment, err := s.deleteComment(locator, commentID, mode)
 	if err != nil {
 		return err
 	}
-	// clean up the comment and its parent from cache, so that
-	// after cleaning up the child, parent won't be stuck non-deletable till cache expires
-	if s.repliesCache.LoadingCache != nil {
-		s.repliesCache.Delete(commentID)
-		s.repliesCache.Delete(comment.ParentID)
-	}
+	// the pictures go with the post unlocked, finding them reads every comment of the author on the site
+	s.deleteRemovedPictures(locator, commentID, comment.User.ID, comment.Text, "")
+	return nil
+}
 
-	// delete the author's own images from the comment if they are not reused elsewhere in comments to the same page
-	idsFn := func() []string { // get IDs of all images from the same URL to verify if image from deleted comment was reused
-		comments, e := s.Engine.Find(engine.FindRequest{Locator: locator})
-		if e != nil {
-			log.Printf("[WARN] can't get comments %s text for deleted comment image check, %v", comment.ID, e)
-			return nil
-		}
-		var imgIDs = []string{}
-		for _, cc := range comments {
-			// exclude the comment we are deleting
-			if cc.ID != commentID {
-				imgIDs = append(imgIDs, s.ImageService.ExtractPictures(cc.Text)...)
-			}
-		}
-		return imgIDs
+// deleteComment reads the comment, to learn its author and pictures, and deletes it, holding the lock of the post
+// that edits, votes, pins and title updates take, so the text read is the text deleted
+func (s *DataStore) deleteComment(locator store.Locator, commentID string, mode store.DeleteMode) (store.Comment, error) {
+	unlock := s.lockScope(locator.URL)
+	defer unlock()
+	comment, err := s.Engine.Get(engine.GetRequest{Locator: locator, CommentID: commentID})
+	if err != nil {
+		return comment, err
 	}
-	commentImgIDs := s.ownPictures(comment.User.ID, comment.Text)
-	pageImgIDs := idsFn()
-	for _, id := range commentImgIDs {
-		if !slices.Contains(pageImgIDs, id) {
-			if err := s.ImageService.Delete(id); err != nil {
-				log.Printf("[WARN] failed to delete image %s on comment %s deletion, %v", id, commentID, err)
-			}
-		}
-	}
-	log.Printf("[DEBUG] commentImgIDs: %v, pageImgIDs: %v", commentImgIDs, pageImgIDs)
-
-	req := engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode}
-	return s.Engine.Delete(req)
+	return comment, s.Engine.Delete(engine.DeleteRequest{Locator: locator, CommentID: commentID, DeleteMode: mode})
 }
 
 // DeleteUser removes all comments from user, along with the pictures used in them
@@ -926,20 +1021,69 @@ func (s *DataStore) ownPictures(userID, commentHTML string) []string {
 	return res
 }
 
-// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
-// those other users' comments to the same pages also use, the same check Delete makes for one comment
-func (s *DataStore) userPictures(siteID, userID string) []string {
-	userImgIDs := []string{}
-	pages := map[string]bool{}
+// deleteRemovedPictures deletes the pictures authorID uploaded that oldHTML shows and newHTML does not, once the
+// edit or delete of comment commentID is stored. A picture another comment on the same page shows stays, and
+// so does one any other comment of the author shows, on any page: the address of an upload can be pasted into
+// another comment. Other users' uploads and cached external images stay too. A picture still
+// waiting in staging is deleted there, and the delayed commit, which reads the comment's stored text, no longer
+// looks for it
+func (s *DataStore) deleteRemovedPictures(locator store.Locator, commentID, authorID, oldHTML, newHTML string) {
+	if s.ImageService == nil {
+		return
+	}
+	keep := s.ImageService.ExtractPictures(newHTML)
+	removed := []string{}
+	for _, id := range s.ownPictures(authorID, oldHTML) {
+		if !slices.Contains(keep, id) && !slices.Contains(removed, id) {
+			removed = append(removed, id)
+		}
+	}
+	if len(removed) == 0 {
+		return
+	}
+
+	comments, err := s.Engine.Find(engine.FindRequest{Locator: locator})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of %s for image cleanup of comment %s, %v", locator.URL, commentID, err)
+		return
+	}
+	// the comment's stored text counts as well: another edit of it may have been stored in the meantime
+	for _, c := range comments {
+		keep = append(keep, s.ImageService.ExtractPictures(c.Text)...)
+	}
+	if !slices.ContainsFunc(removed, func(id string) bool { return !slices.Contains(keep, id) }) {
+		return
+	}
+
+	err = s.eachUserComment(locator.SiteID, authorID, func(c store.Comment) {
+		keep = append(keep, s.ImageService.ExtractPictures(c.Text)...)
+	})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of user %s for image cleanup of comment %s, %v", authorID, commentID, err)
+		return
+	}
+	for _, id := range removed {
+		if slices.Contains(keep, id) {
+			continue
+		}
+		if err := s.ImageService.Delete(id); err != nil {
+			log.Printf("[WARN] failed to delete image %s removed from comment %s, %v", id, commentID, err)
+		}
+	}
+}
+
+// eachUserComment calls fn for every comment of the user on the site, reading them page by page and keeping
+// no page once it is passed on. It stops on a page with nothing new, as an engine may ignore Skip. A user with
+// no comments is not an error
+func (s *DataStore) eachUserComment(siteID, userID string, fn func(c store.Comment)) error {
 	seen := map[string]bool{}
-	// read the user's comments page by page; stop on a page with nothing new, as an engine may ignore Skip
 	for skip := 0; ; {
 		comments, err := s.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: siteID}, UserID: userID, Skip: skip})
-		if err != nil {
-			if !errors.Is(err, engine.ErrNoUserComments) {
-				log.Printf("[WARN] can't get comments of user %s for image cleanup, %v", userID, err)
-			}
+		if errors.Is(err, engine.ErrNoUserComments) {
 			return nil
+		}
+		if err != nil {
+			return err
 		}
 		added := 0
 		for _, c := range comments {
@@ -949,15 +1093,29 @@ func (s *DataStore) userPictures(siteID, userID string) []string {
 			}
 			seen[key] = true
 			added++
-			if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
-				userImgIDs = append(userImgIDs, ids...)
-				pages[c.Locator.URL] = true
-			}
+			fn(c)
 		}
 		if added == 0 {
-			break
+			return nil
 		}
 		skip += len(comments)
+	}
+}
+
+// userPictures returns IDs of the pictures the user uploaded and used in their comments, leaving out
+// those other users' comments to the same pages also use, the same check Delete makes for one comment
+func (s *DataStore) userPictures(siteID, userID string) []string {
+	userImgIDs := []string{}
+	pages := map[string]bool{}
+	err := s.eachUserComment(siteID, userID, func(c store.Comment) {
+		if ids := s.ownPictures(userID, c.Text); len(ids) > 0 {
+			userImgIDs = append(userImgIDs, ids...)
+			pages[c.Locator.URL] = true
+		}
+	})
+	if err != nil {
+		log.Printf("[WARN] can't get comments of user %s for image cleanup, %v", userID, err)
+		return nil
 	}
 	if len(userImgIDs) == 0 {
 		return nil
@@ -1086,7 +1244,9 @@ func (s *DataStore) SetMetas(siteID string, umetas []UserMetaData, pmetas []Post
 
 	// save users metas
 	for _, um := range umetas {
-		if um.Blocked.Status {
+		// a block that ran out before the restore is skipped: a negative TTL would make it permanent.
+		// a block without an end time stays permanent
+		if um.Blocked.Status && (um.Blocked.Until.IsZero() || um.Blocked.Until.After(time.Now())) {
 			errs = append(errs, s.SetBlock(siteID, um.ID, true, time.Until(um.Blocked.Until)))
 		}
 		if um.Verified {
@@ -1138,9 +1298,6 @@ func (s *DataStore) Last(siteID string, limit int, since time.Time, user store.U
 // Close store service
 func (s *DataStore) Close() error {
 	var errs []error
-	if s.repliesCache.LoadingCache != nil {
-		errs = append(errs, s.repliesCache.Close())
-	}
 	if s.TitleExtractor != nil {
 		errs = append(errs, s.TitleExtractor.Close())
 	}
@@ -1159,19 +1316,32 @@ func (s *DataStore) upsAndDowns(c store.Comment) (ups, downs int) {
 	return ups, downs
 }
 
-// getScopedLocks pull lock from the map if found or create a new one
-func (s *DataStore) getScopedLocks(id string) (lock sync.Locker) {
-	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]sync.Locker{} })
+// lockScope pulls lock from the map if found or creates a new one, locks it and returns the func to unlock it.
+// The lock stays in the map only while somebody holds or waits for it. The id is whatever the caller sent and
+// may not match any post, so keeping a lock for every id ever seen would grow the map without limit.
+func (s *DataStore) lockScope(id string) (unlock func()) {
+	s.scopedLocks.Do(func() { s.scopedLocks.locks = map[string]*scopedLock{} })
 
 	s.scopedLocks.Lock()
 	lock, ok := s.scopedLocks.locks[id]
 	if !ok {
-		lock = &sync.Mutex{}
+		lock = &scopedLock{}
 		s.scopedLocks.locks[id] = lock
 	}
+	lock.refs++
 	s.scopedLocks.Unlock()
 
-	return lock
+	lock.Lock()
+	return func() {
+		lock.Unlock()
+
+		s.scopedLocks.Lock()
+		lock.refs--
+		if lock.refs == 0 {
+			delete(s.scopedLocks.locks, id)
+		}
+		s.scopedLocks.Unlock()
+	}
 }
 
 func (s *DataStore) alterComments(cc []store.Comment, user store.User) (res []store.Comment) {
@@ -1201,58 +1371,74 @@ func (s *DataStore) alterCommentCached(c store.Comment, user store.User, flags *
 	}
 
 	// hide info from non-admins
-	if !user.Admin {
+	if !flags.admin(c.Locator.SiteID, user) {
 		c.User.IP = ""
 	}
 
 	c = s.prepVotes(c, user)
 	c.Locator.URL = c.SanitizeAsURL(c.Locator.URL) // urls prior to #927
 	c.PostTitle = c.SanitizeText(c.PostTitle)
+	if c.Deleted {
+		c.PostTitle = "" // comments deleted before SetDeleted cleared the title still hold it
+	}
+	c.SanitizeEditSummary() // summaries stored before edits cleaned them
+	c.MarkLinksUGC()        // links stored before they were marked ugc
 	return c
 }
 
 // userFlagCache memoises engine block/verified flag lookups by site and user within
 // a single listing, avoiding two engine.Flag calls per comment for repeated users.
+// It also keeps the viewer's admin status per site, see admin.
 type userFlagCache struct {
-	s         *DataStore
-	blockedM  map[flagKey]bool
-	verifiedM map[flagKey]bool
-}
-
-type flagKey struct {
-	siteID string
-	userID string
+	s      *DataStore
+	flags  map[engine.FlagRequest]bool // engine flag by flag, site and user
+	adminM map[string]bool             // viewer's admin status by site, for sites other than user.SiteID
 }
 
 func (s *DataStore) newUserFlagCache() *userFlagCache {
-	return &userFlagCache{s: s, blockedM: map[flagKey]bool{}, verifiedM: map[flagKey]bool{}}
+	return &userFlagCache{s: s, flags: map[engine.FlagRequest]bool{}, adminM: map[string]bool{}}
 }
 
-func (f *userFlagCache) blocked(siteID, userID string) bool {
-	key := flagKey{siteID: siteID, userID: userID}
-	if v, ok := f.blockedM[key]; ok {
-		return v
-	}
-	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Blocked, Locator: store.Locator{SiteID: siteID}, UserID: userID})
-	if err != nil {
-		// don't cache on error so a repeated user is retried, matching the
-		// pre-refactor per-comment behavior; treat this comment as not blocked
+// admin reports whether the viewer counts as an admin for a comment on siteID. The admin flag of a
+// signed-in user was set for the site the token was issued for, user.SiteID, while the open routes
+// accept that token for any site the instance serves. On another site the flag holds only if the
+// admin store lists the user for that site as well, which with the shared store is always the case.
+// A user with no site is the basic-auth admin, who is admin of every site
+func (f *userFlagCache) admin(siteID string, user store.User) bool {
+	if !user.Admin {
 		return false
 	}
-	f.blockedM[key] = v
+	if user.SiteID == "" || user.SiteID == siteID {
+		return true
+	}
+	if v, ok := f.adminM[siteID]; ok {
+		return v
+	}
+	v := f.s.IsAdmin(siteID, user.ID)
+	f.adminM[siteID] = v
 	return v
 }
 
+func (f *userFlagCache) blocked(siteID, userID string) bool {
+	return f.flag(engine.Blocked, siteID, userID)
+}
+
 func (f *userFlagCache) verified(siteID, userID string) bool {
-	key := flagKey{siteID: siteID, userID: userID}
-	if v, ok := f.verifiedM[key]; ok {
+	return f.flag(engine.Verified, siteID, userID)
+}
+
+func (f *userFlagCache) flag(flag engine.Flag, siteID, userID string) bool {
+	req := engine.FlagRequest{Flag: flag, Locator: store.Locator{SiteID: siteID}, UserID: userID}
+	if v, ok := f.flags[req]; ok {
 		return v
 	}
-	v, err := f.s.Engine.Flag(engine.FlagRequest{Flag: engine.Verified, Locator: store.Locator{SiteID: siteID}, UserID: userID})
+	v, err := f.s.Engine.Flag(req)
 	if err != nil {
-		return false // don't cache on error, retry on the next comment for this user
+		// don't cache on error so a repeated user is retried, matching the
+		// pre-refactor per-comment behavior; treat this comment as not flagged
+		return false
 	}
-	f.verifiedM[key] = v
+	f.flags[req] = v
 	return v
 }
 

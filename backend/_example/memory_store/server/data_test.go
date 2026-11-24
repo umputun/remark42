@@ -271,10 +271,13 @@ func TestRPC_userDetailHndl(t *testing.T) {
 	assert.NoError(t, err, "No error inserting entry expected")
 	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result)
 
-	// try to change existing entry with wrong SiteID
+	// details are kept per site, so setting one on another site makes a separate entry
 	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u2", Detail: engine.UserEmail, Update: "not_relevant"})
-	assert.NoError(t, err, "Updating existing entry with wrong SiteID doesn't produce error")
-	assert.ElementsMatch(t, []engine.UserDetailEntry{}, result, "Updating existing entry with wrong SiteID doesn't change anything")
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u2", Email: "not_relevant"}}, result, "the entry for the other site is stored and returned")
+	result, err = re.UserDetail(engine.UserDetailRequest{Locator: store.Locator{SiteID: "test-site"}, UserID: "u2", Detail: engine.UserEmail})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []engine.UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result, "the entry on test-site is unchanged")
 
 	// stateless tests without changing the state we set up before
 	var testData = []struct {

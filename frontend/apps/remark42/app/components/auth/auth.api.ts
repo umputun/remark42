@@ -3,6 +3,7 @@ import type { User } from 'common/types';
 import { authFetcher, dropSession } from 'common/fetcher';
 import { siteId } from 'common/settings';
 import { getSignedInUser, getUser } from 'common/api';
+import { RequestError } from 'utils/errorUtils';
 
 const EMAIL_SIGNIN_ENDPOINT = '/email/login';
 const TELEGRAM_SIGNIN_ENDPOINT = '/telegram/login';
@@ -134,14 +135,37 @@ export function verifyTelegramSignin(token: string): Promise<User> {
 }
 
 /**
+ * How long a sign-out request that failed waits before it is sent once more, in milliseconds. The
+ * backend takes two requests a second on its auth routes from one address and answers the rest
+ * with 429
+ */
+export const LOGOUT_RETRY_DELAY_MS = 1000;
+
+/** A sign-out the backend refused is its answer. Anything else did not reach the logout handler */
+function isRefused(e: unknown): boolean {
+  return e instanceof RequestError && (e.code === 401 || e.code === 403);
+}
+
+/**
  * Signs out, and forgets the session locally whatever the server answers. With the JWT sent as a
  * header, an expired token is refused with 403, and a fetcher that kept it would sign the reader
  * back in on the next page load. The refusal is not passed on either: callers clear the signed-in
- * state only once this resolves, and the credentials are gone by then
+ * state only once this resolves, and the credentials are gone by then.
+ *
+ * Only the backend can expire its HttpOnly cookie, so a request that failed, on the network or at
+ * the rate limit, is sent a second time. The cookie script can reach is cleared in both its forms
+ * whatever came of the request
  */
 export function logout(): Promise<void> {
-  return authFetcher
-    .get<void>('/logout')
+  const request = () => authFetcher.get<void>('/logout');
+
+  return request()
+    .catch((e) => {
+      if (isRefused(e)) {
+        return undefined;
+      }
+      return new Promise((resolve) => setTimeout(resolve, LOGOUT_RETRY_DELAY_MS)).then(request);
+    })
     .catch(() => undefined)
-    .finally(dropSession);
+    .finally(() => dropSession(true));
 }

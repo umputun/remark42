@@ -2,7 +2,7 @@
  * Maps a locale to its writing direction.
  *
  * The set below is every RTL locale this widget ships a catalogue for today (`ar`, `fa`, `he`);
- * add a code here when a new RTL catalogue is added under `app/locales/`. Anything else, known or
+ * add a code here when a new RTL catalogue is added to `backend/app/webassets/assets/`. Anything else, known or
  * not, defaults to `ltr` — there is no reliable way to derive direction from an arbitrary BCP 47
  * tag without a much larger locale database than this widget otherwise needs.
  */

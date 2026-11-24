@@ -14,7 +14,6 @@ import { postMessageToParent } from 'utils/post-message';
 import { Comment } from 'components/comment';
 import { Preloader } from 'components/preloader';
 import { SignOutIcon } from 'components/icons/signout';
-import { logout } from 'components/auth/auth.api';
 import { Spinner } from 'components/spinner/spinner';
 import { CrossIcon } from 'components/icons/cross';
 import { IconButton } from 'components/icon-button/icon-button';
@@ -27,10 +26,22 @@ import { Counter } from './components/counter';
 import styles from './profile.module.css';
 
 const COMMENTS_LIMIT = 10;
+// the page Gravatar's own documentation names for uploading and choosing an avatar; a signed-out
+// visitor is taken through the Gravatar login and returned to it
+const GRAVATAR_AVATARS_URL = 'https://gravatar.com/profile/avatars';
 
-async function signout() {
+/** Email sign-in is the only provider whose avatar is taken from Gravatar */
+function isEmailUser(id: string) {
+  return id.startsWith('email_');
+}
+
+/**
+ * Asks the widget to sign the reader out, and the page to close the profile. The page removes this
+ * frame on the message, and a logout request sent from here would go with it, so the request is
+ * the widget's to make: its document stays
+ */
+function signout() {
   postMessageToParent({ profile: null, signout: true });
-  await logout();
 }
 
 // TODO: rewrite hide user logic and bring button to user profile
@@ -84,15 +95,14 @@ export function Profile() {
     });
   }
 
-  async function handleClickLogout() {
+  function handleClickLogout() {
     setSigningOut(true);
-    await signout();
-    setSigningOut?.(false);
+    signout();
   }
 
   async function handleClickRequestRemoveData() {
     await requestDeletion();
-    await signout();
+    signout();
   }
 
   useEffect(() => {
@@ -193,7 +203,12 @@ export function Profile() {
       <aside className={clsx('profile-sidebar', isCurrent && 'profile_current', styles.sidebar)}>
         <header className={clsx('profile-header', styles.header)}>
           <div className={clsx('profile-avatar', styles.avatar)}>
-            <Avatar data-testid="avatar" url={user.picture} identicon={isUserAnonymous(user as unknown as User)} />
+            <Avatar
+              data-testid="avatar"
+              url={user.picture}
+              size={32}
+              identicon={isUserAnonymous(user as unknown as User)}
+            />
           </div>
           <div className={clsx('profile-content', styles.info)}>
             <div className={clsx('profile-title', styles.name)}>{user.name}</div>
@@ -210,6 +225,19 @@ export function Profile() {
             </button>
           )}
         </header>
+        {isCurrent && isEmailUser(user.id) && (
+          <p className={clsx('profile-edit-avatar', styles.editAvatar)}>
+            <a href={GRAVATAR_AVATARS_URL} target="_blank" rel="noopener noreferrer">
+              <FormattedMessage id="profile.edit-avatar" defaultMessage="Edit avatar" />
+            </a>
+            <span className={styles.editAvatarHint}>
+              <FormattedMessage
+                id="profile.edit-avatar-hint"
+                defaultMessage="The avatar comes from Gravatar for the email you sign in with. After changing it there, sign out and sign in again; a browser may still show the old one for up to a week."
+              />
+            </span>
+          </p>
+        )}
         <section className={clsx('profile-content', styles.content)}>
           {error && (
             <div className={styles.errorContent}>

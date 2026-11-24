@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 	"testing/synctest"
@@ -14,286 +13,162 @@ import (
 	"github.com/umputun/remark42/backend/app/store"
 )
 
-func TestBoltDB_CreateAndFind(t *testing.T) {
-	var b, teardown = prep(t)
+// What the engine does is checked by the shared set in enginetest, run by TestBoltDB_Engine.
+// The tests here cover what is particular to bolt: its error texts, its errors for an unknown site
+// or user where the memory engine returns nothing, and its storage format.
+
+func TestBoltDB_ErrorTexts(t *testing.T) {
+	b, teardown := prep(t)
 	defer teardown()
 
-	var bb Interface = b
-	_ = bb
+	_, err := b.Create(store.Comment{ID: "id-1", Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
+	assert.EqualError(t, err, "key id-1 already in store")
 
-	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text)
-	assert.Equal(t, "user1", res[0].User.ID)
-	t.Log(res[0].ID)
-
-	_, err = b.Create(store.Comment{ID: res[0].ID, Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}})
-	assert.Error(t, err)
-	assert.Equal(t, "key id-1 already in store", err.Error())
-
-	req = FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-bad"}, Sort: "time"}
-	_, err = b.Find(req)
-	assert.EqualError(t, err, `site "radio-t-bad" not found`)
-
-	assert.NoError(t, b.Close())
-}
-
-func TestBoltDB_CreateFailedReadOnly(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	comment := store.Comment{
-		ID:        "id-ro",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
-		Locator:   store.Locator{URL: "https://radio-t.com/ro", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-
-	flagReq := FlagRequest{Locator: comment.Locator, Flag: ReadOnly, Update: FlagTrue}
-	v, err := b.Flag(flagReq)
-	require.NoError(t, err)
-	assert.Equal(t, true, v)
-
-	_, err = b.Create(comment)
-	assert.Error(t, err)
-	assert.Equal(t, "post https://radio-t.com/ro is read-only", err.Error())
-
-	flagReq = FlagRequest{Locator: comment.Locator, Flag: ReadOnly, Update: FlagFalse}
-	v, err = b.Flag(flagReq)
-	require.NoError(t, err)
-	assert.Equal(t, false, v)
-
-	_, err = b.Create(comment)
-	assert.NoError(t, err)
-}
-
-func TestBoltDB_Get(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "2 records initially")
-
-	comment, err := b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[1].ID))
-	assert.NoError(t, err)
-	assert.Equal(t, "some text2", comment.Text)
-
-	comment, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, "1234567"))
-	assert.Error(t, err)
-
-	_, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "bad"}, res[1].ID))
-	assert.EqualError(t, err, `site "bad" not found`)
-}
-
-func TestBoltDB_Update(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res), "2 records initially")
-
-	comment := res[0]
-	comment.Text = "abc 123"
-	comment.Score = 100
-	err = b.Update(comment)
-	assert.NoError(t, err)
-
-	comment, err = b.Get(getReq(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID))
-	assert.NoError(t, err)
-	assert.Equal(t, "abc 123", comment.Text)
-	assert.Equal(t, res[0].ID, comment.ID)
-	assert.Equal(t, 100, comment.Score)
-
-	comment.Locator.SiteID = "bad"
-	err = b.Update(comment)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	comment.Locator.SiteID = "radio-t"
-	comment.Locator.URL = "https://radio-t.com-bad"
-	err = b.Update(comment)
+	err = b.Update(store.Comment{ID: "id-1", Locator: store.Locator{URL: "https://radio-t.com-bad", SiteID: "radio-t"}})
 	assert.EqualError(t, err, `no bucket https://radio-t.com-bad in store`)
+
+	err = b.Delete(DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}, CommentID: "id-1"})
+	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in store`)
 }
 
-func TestBoltDB_FindLast(t *testing.T) {
-	var b, teardown = prep(t)
+// TestBoltDB_UnknownSite checks that every request for a site the engine was not opened with fails,
+// and that a failed delete leaves the known site alone
+func TestBoltDB_UnknownSite(t *testing.T) {
+	b, teardown := prep(t)
 	defer teardown()
 
-	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
+	_, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail, Update: "value1"})
+	require.NoError(t, err)
 
-	req.Limit = 1
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
+	bad := store.Locator{URL: "https://radio-t.com", SiteID: "bad"}
+	badSite := store.Locator{SiteID: "bad"}
+	tbl := []struct {
+		name string
+		call func() error
+	}{
+		{"find post", func() error { _, e := b.Find(FindRequest{Locator: bad, Sort: "time"}); return e }},
+		{"find last", func() error { _, e := b.Find(FindRequest{Locator: badSite, Sort: "-time"}); return e }},
+		{"find for user", func() error {
+			_, e := b.Find(FindRequest{Locator: badSite, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1})
+			return e
+		}},
+		{"get", func() error { _, e := b.Get(getReq(bad, "id-1")); return e }},
+		{"update", func() error { return b.Update(store.Comment{ID: "id-1", Locator: bad}) }},
+		{"count post", func() error { _, e := b.Count(FindRequest{Locator: bad}); return e }},
+		{"count user", func() error { _, e := b.Count(FindRequest{Locator: badSite, UserID: "user1"}); return e }},
+		{"info list", func() error { _, e := b.Info(InfoRequest{Locator: badSite, Limit: 1, Skip: 1}); return e }},
+		{"block", func() error {
+			_, e := b.Flag(FlagRequest{Flag: Blocked, Locator: badSite, UserID: "user1", Update: FlagTrue})
+			return e
+		}},
+		{"read-only", func() error {
+			_, e := b.Flag(FlagRequest{Flag: ReadOnly, Locator: store.Locator{SiteID: "bad", URL: "url-1"}, Update: FlagFalse})
+			return e
+		}},
+		{"verify", func() error {
+			_, e := b.Flag(FlagRequest{Flag: Verified, Locator: badSite, UserID: "u1", Update: FlagTrue})
+			return e
+		}},
+		{"list verified", func() error { _, e := b.ListFlags(FlagRequest{Flag: Verified, Locator: badSite}); return e }},
+		{"list blocked", func() error { _, e := b.ListFlags(FlagRequest{Flag: Blocked, Locator: badSite}); return e }},
+		{"user detail", func() error {
+			res, e := b.UserDetail(UserDetailRequest{Locator: badSite, UserID: "u1", Detail: UserEmail})
+			assert.Nil(t, res)
+			return e
+		}},
+		{"all user details", func() error {
+			res, e := b.UserDetail(UserDetailRequest{Locator: badSite, Detail: AllUserDetails})
+			assert.Nil(t, res)
+			return e
+		}},
+		{"delete comment", func() error {
+			return b.Delete(DeleteRequest{Locator: bad, CommentID: "id-1", DeleteMode: store.SoftDelete})
+		}},
+		{"delete user detail", func() error {
+			return b.Delete(DeleteRequest{Locator: badSite, UserID: "user1", UserDetail: UserEmail})
+		}},
+		{"delete user", func() error { return b.Delete(DeleteRequest{Locator: badSite, UserID: "user1"}) }},
+		{"delete site", func() error { return b.Delete(DeleteRequest{Locator: badSite}) }},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.EqualError(t, tt.call(), `site "bad" not found`)
+		})
+	}
 
-	req.Locator.SiteID = "bad"
-	_, err = b.Find(req)
-	assert.EqualError(t, err, `site "bad" not found`)
+	val, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail})
+	require.NoError(t, err)
+	assert.Equal(t, []UserDetailEntry{{UserID: "user1", Email: "value1"}}, val, "the known site's detail is kept")
 }
 
-func TestBoltDB_FindLastSince(t *testing.T) {
-	var b, teardown = prep(t)
+// TestBoltDB_UnknownUser checks that a user with no comment reference in the site fails a user's find and count
+func TestBoltDB_UnknownUser(t *testing.T) {
+	b, teardown := prep(t)
 	defer teardown()
 
-	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.UTC)
-	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", Since: ts}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.UTC)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-}
-
-func TestBoltDB_FindInPostSince(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	ts := time.Date(2017, 12, 20, 15, 18, 21, 0, time.UTC)
-	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "-time", Since: ts}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res))
-	assert.Equal(t, "some text2", res[0].Text)
-
-	req.Since = time.Date(2017, 12, 20, 16, 18, 22, 0, time.UTC)
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-}
-
-func TestBoltDB_FindForUser(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 5}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
-
-	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, "some text2", res[0].Text, "sorted by -time")
-
-	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(res), "allow 1 comment")
-	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, res[0].Text, "second comment")
-
-	req = FindRequest{Locator: store.Locator{SiteID: "bad"}, Sort: "-time", UserID: "user1", Limit: 1, Skip: 1}
-	_, err = b.Find(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "userZ", Limit: 1, Skip: 1}
-	_, err = b.Find(req)
+	_, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "userZ", Limit: 1, Skip: 1})
 	assert.EqualError(t, err, `no comments for user userZ in store`)
+
+	_, err = b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "userZ"})
+	assert.EqualError(t, err, `no comments for user userZ in store for radio-t site`)
+
+	// a hard delete drops the user's references
+	require.NoError(t, b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.HardDelete}))
+	_, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
+	assert.EqualError(t, err, "no comments for user user1 in store")
 }
 
-func TestBoltDB_FindForUserPagination(t *testing.T) {
-	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
+func TestBoltDB_CountUserUnparsableRef(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	// a user's reference without the "!!" separator cannot be parsed and is passed over
+	require.NoError(t, b.dbs["radio-t"].Update(func(tx *bolt.Tx) error {
+		userBkt, e := b.getUserBucket(tx, "user1")
+		if e != nil {
+			return e
+		}
+		key := []byte(time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC).Format(tsNano))
+		return userBkt.Put(key, []byte("https://radio-t.com/no-separator"))
+	}))
+	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
+	c, err := b.Count(req)
 	require.NoError(t, err)
+	assert.Equal(t, 2, c, "unparsable reference is not counted")
+	req.Sort = "-time"
+	comments, err := b.Find(req)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-2", "id-1"}, commentIDs(comments))
+}
 
-	defer func() {
-		require.NoError(t, b.Close())
-	}()
+// TestBoltDB_FlagListBlockedExpires checks that a block ends once its TTL has passed. It stays per engine
+// because it moves the clock, which a synctest bubble can do here and the shared set can't do for an engine
+// behind a network.
+func TestBoltDB_FlagListBlockedExpires(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		b, teardown := prep(t)
+		defer teardown()
 
-	c := store.Comment{
-		Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		User:    store.User{ID: "user1", Name: "user name"},
-	}
+		for user, ttl := range map[string]time.Duration{"user1": 0, "user2": 150 * time.Millisecond} {
+			_, err := b.Flag(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: user, Update: FlagTrue, TTL: ttl})
+			require.NoError(t, err)
+		}
+		blocked := func() []any {
+			res, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
+			require.NoError(t, err)
+			return res
+		}
+		require.Len(t, blocked(), 2)
 
-	// write 200 comments
-	for i := range 200 {
-		c.ID = fmt.Sprintf("id-%d", i)
-		c.Text = fmt.Sprintf("text #%d", i)
-		c.Timestamp = time.Date(2017, 12, 20, 15, 18, i, 0, time.UTC)
-		_, err = b.Create(c)
+		time.Sleep(150 * time.Millisecond)
+		res := blocked()
+		require.Len(t, res, 1)
+		assert.Equal(t, "user1", res[0].(store.BlockedUser).ID)
+
+		stillBlocked, err := b.Flag(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user2"})
 		require.NoError(t, err)
-	}
-
-	// get all comments
-	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time", UserID: "user1"}
-	res, err := b.Find(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, len(res))
-	assert.Equal(t, "id-199", res[0].ID)
-
-	// seek 0, 5 comments
-	req.Limit = 5
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 5, len(res))
-	assert.Equal(t, "id-199", res[0].ID)
-	assert.Equal(t, "id-195", res[4].ID)
-
-	// seek 10, 3 comments
-	req.Skip, req.Limit = 10, 3
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 3, len(res))
-	assert.Equal(t, "id-189", res[0].ID)
-	assert.Equal(t, "id-187", res[2].ID)
-
-	// seek 195, ask 10 comments
-	req.Skip, req.Limit = 195, 10
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	require.Equal(t, 5, len(res))
-	assert.Equal(t, "id-4", res[0].ID)
-	assert.Equal(t, "id-0", res[4].ID)
-
-	// seek 255, ask 10 comments
-	req.Skip, req.Limit = 255, 10
-	res, err = b.Find(req)
-	assert.NoError(t, err)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(res))
-
-	// deleted comments take no place in a page and are not counted by skip
-	for _, id := range []string{"id-199", "id-197", "id-190"} {
-		require.NoError(t, b.Delete(DeleteRequest{Locator: c.Locator, CommentID: id, DeleteMode: store.SoftDelete}))
-	}
-	req.Skip, req.Limit = 0, 5
-	res, err = b.Find(req)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"id-198", "id-196", "id-195", "id-194", "id-193"}, commentIDs(res))
-	req.Skip, req.Limit = 5, 3
-	res, err = b.Find(req)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"id-192", "id-191", "id-189"}, commentIDs(res))
-	count, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	require.NoError(t, err)
-	assert.Equal(t, 197, count)
+		assert.False(t, stillBlocked, "a block that ran out does not block")
+	})
 }
 
 func commentIDs(comments []store.Comment) []string {
@@ -302,737 +177,6 @@ func commentIDs(comments []store.Comment) []string {
 		ids = append(ids, c.ID)
 	}
 	return ids
-}
-
-func TestBoltDB_CountPost(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	req := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}}
-	c, err := b.Count(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, c)
-
-	req = FindRequest{Locator: store.Locator{URL: "https://radio-t.com-xxx", SiteID: "radio-t"}}
-	c, err = b.Count(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c)
-
-	req = FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "bad"}}
-	_, err = b.Count(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-}
-
-func TestBoltDB_CountUser(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-
-	req := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
-	c, err := b.Count(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, c)
-
-	// a comment on another post counts, a deleted one does not
-	_, err = b.Create(store.Comment{ID: "id-3", Text: "some text3", Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC),
-		Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
-	require.NoError(t, err)
-	c, err = b.Count(req)
-	require.NoError(t, err)
-	assert.Equal(t, 3, c)
-	require.NoError(t, b.Delete(DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID: "id-1", DeleteMode: store.SoftDelete}))
-	c, err = b.Count(req)
-	require.NoError(t, err)
-	assert.Equal(t, 2, c, "soft-deleted comment is not counted")
-
-	// a page url with the reference delimiter in it makes an unparsable reference, which is passed over
-	_, err = b.Create(store.Comment{ID: "id-4", Text: "some text4", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
-		Locator: store.Locator{URL: "https://radio-t.com/a!!b", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
-	require.NoError(t, err)
-	c, err = b.Count(req)
-	require.NoError(t, err)
-	assert.Equal(t, 2, c, "unparsable reference is not counted")
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Sort: "-time"})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"id-3", "id-2"}, commentIDs(comments))
-
-	req = FindRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1"}
-	_, err = b.Count(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	req = FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "userZ"}
-	_, err = b.Count(req)
-	assert.EqualError(t, err, `no comments for user userZ in store for radio-t site`)
-}
-
-func TestBoltDB_InfoPost(t *testing.T) {
-	b, teardown := prep(t) // two comments for https://radio-t.com
-	defer teardown()
-
-	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, 18, minute, 0, time.UTC) }
-
-	// add one more for https://radio-t.com/2
-	comment := store.Comment{
-		ID:        "12345",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC),
-		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Create(comment)
-	assert.NoError(t, err)
-
-	req := InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err := b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24)}}, r)
-
-	req = InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24),
-		ReadOnly: true}}, r)
-
-	req = InfoRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, r)
-
-	req = InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/error", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	_, err = b.Info(req)
-	require.Error(t, err)
-
-	req = InfoRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t-error"}, ReadOnlyAge: 0}
-	_, err = b.Info(req)
-	require.Error(t, err)
-
-	fr := FlagRequest{Flag: ReadOnly, Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, Update: FlagTrue}
-	_, err = b.Flag(fr)
-	require.NoError(t, err)
-	req = InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 0}
-	r, err = b.Info(req)
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(24), LastTS: ts(24),
-		ReadOnly: true}}, r)
-}
-
-func TestBoltDB_InfoPostCreatedOutOfOrder(t *testing.T) {
-	// imports and backup restores create comments in any time order, deleted ones included
-	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test.db"), SiteID: "radio-t"})
-	require.NoError(t, err)
-	defer b.Close()
-
-	ts := func(minute int) time.Time { return time.Date(2017, 12, 20, 15, minute, 0, 0, time.UTC) }
-	mk := func(id, url string, minute int, deleted bool) {
-		c := store.Comment{ID: id, Text: "text", Timestamp: ts(minute), Locator: store.Locator{URL: url, SiteID: "radio-t"},
-			User: store.User{ID: "user1", Name: "user name"}}
-		if deleted {
-			c.SetDeleted(store.SoftDelete)
-		}
-		_, e := b.Create(c)
-		require.NoError(t, e)
-	}
-	mk("c1", "https://radio-t.com/1", 20, false)
-	mk("c2", "https://radio-t.com/1", 5, true)
-	mk("c3", "https://radio-t.com/1", 10, false)
-	mk("c4", "https://radio-t.com/1", 50, true)
-	mk("c5", "https://radio-t.com/1", 30, false)
-	mk("c6", "https://radio-t.com/2", 40, true)
-
-	r, err := b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/1", SiteID: "radio-t"}})
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/1", Count: 3, FirstTS: ts(5), LastTS: ts(50)}}, r,
-		"deleted comments are not counted, first and last are the earliest and latest comments, as on the site the backup came from")
-
-	r, err = b.Info(InfoRequest{Locator: store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"}, ReadOnlyAge: 10})
-	require.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 0, FirstTS: ts(40), LastTS: ts(40), ReadOnly: true}}, r,
-		"a post with only a deleted comment has no comments and keeps its age")
-}
-
-func TestBoltDB_InfoList(t *testing.T) {
-	b, teardown := prep(t) // two comments for https://radio-t.com
-	defer teardown()
-
-	// add one more for https://radio-t.com/2
-	comment := store.Comment{
-		ID:        "12345",
-		Text:      `some text, <a href="http://radio-t.com">link</a>`,
-		Timestamp: time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC),
-		Locator:   store.Locator{URL: "https://radio-t.com/2", SiteID: "radio-t"},
-		User:      store.User{ID: "user1", Name: "user name"},
-	}
-	_, err := b.Create(comment)
-	assert.NoError(t, err)
-
-	ts := func(sec int) time.Time { return time.Date(2017, 12, 20, 15, 18, sec, 0, time.UTC) }
-
-	req := InfoRequest{Locator: store.Locator{SiteID: "radio-t"}}
-	res, err := b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
-		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: -1, Skip: -1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)},
-		{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com/2", Count: 1, FirstTS: ts(22), LastTS: ts(22)}}, res)
-
-	req = InfoRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 1, Skip: 1}
-	res, err = b.Info(req)
-	assert.NoError(t, err)
-	assert.Equal(t, []store.PostInfo{{URL: "https://radio-t.com", Count: 2, FirstTS: ts(22), LastTS: ts(23)}}, res)
-
-	req = InfoRequest{Locator: store.Locator{SiteID: "bad"}, Limit: 1, Skip: 1}
-	_, err = b.Info(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-}
-
-func TestBolt_FlagBlockedUser(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	req := FlagRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"}
-	val, err := b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing blocked yet")
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Update: FlagTrue}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.True(t, val, "user1 blocked")
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Update: FlagTrue}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.True(t, val, "user1 still blocked")
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Update: FlagFalse}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	val, err = b.Flag(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
-	assert.NoError(t, err)
-	assert.False(t, val, "user1 unblocked")
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}, UserID: "user1", Update: FlagTrue}
-	_, err = b.Flag(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}, UserID: "userX", Update: FlagTrue}
-	_, err = b.Flag(req)
-	assert.NoError(t, err, "non-existing user can't be blocked")
-
-	req = FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t-bad"}, UserID: "user1"}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing blocked on wrong site")
-}
-
-func TestBolt_FlagReadOnlyPost(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	req := FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly}
-	val, err := b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing ro")
-
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly, Update: FlagTrue}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.Equal(t, true, val)
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.True(t, val, "url-1 ro")
-
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-2"}, Flag: ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "url-2 still writable")
-
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly, Update: FlagFalse}
-	_, err = b.Flag(req)
-	assert.NoError(t, err)
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t", URL: "url-1"}, Flag: ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "url-1 writable")
-
-	req = FlagRequest{Locator: store.Locator{SiteID: "bad", URL: "url-1"}, Flag: ReadOnly, Update: FlagFalse}
-	_, err = b.Flag(req)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	req = FlagRequest{Locator: store.Locator{SiteID: "radio-t-bad", URL: "url-1"}, Flag: ReadOnly}
-	val, err = b.Flag(req)
-	assert.NoError(t, err)
-	assert.False(t, val, "nothing ro on wrong site")
-}
-
-func TestBolt_FlagVerified(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	isVerified := func(site, user string) bool {
-		req := FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: site}, UserID: user}
-		v, err := b.Flag(req)
-		require.NoError(t, err)
-		return v
-	}
-
-	setVerified := func(site, user string, status FlagStatus) error {
-		req := FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: site}, UserID: user, Update: status}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	assert.False(t, isVerified("radio-t", "u1"), "nothing verified")
-
-	assert.NoError(t, setVerified("radio-t", "u1", FlagTrue))
-	assert.True(t, isVerified("radio-t", "u1"), "u1 verified")
-
-	assert.False(t, isVerified("radio-t", "u2"), "u2 still not verified")
-	assert.NoError(t, setVerified("radio-t", "u1", FlagFalse))
-	assert.False(t, isVerified("radio-t", "u1"), "u1 not verified anymore")
-
-	assert.EqualError(t, setVerified("bad", "u1", FlagTrue), `site "bad" not found`)
-	assert.NoError(t, setVerified("radio-t", "u1xyz", FlagFalse))
-
-	assert.False(t, isVerified("radio-t-bad", "u1"), "nothing verified on wrong site")
-
-	assert.NoError(t, setVerified("radio-t", "u1", FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u2", FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u3", FlagFalse))
-}
-
-func TestBolt_FlagListVerified(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	toIDs := func(inp []any) (res []string) {
-		res = make([]string, len(inp))
-		for i, v := range inp {
-			vv, ok := v.(string)
-			require.True(t, ok)
-			res[i] = vv
-		}
-		return res
-	}
-
-	setVerified := func(site, user string, status FlagStatus) error {
-		req := FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: site}, UserID: user, Update: status}
-		_, err := b.Flag(req)
-		return err
-	}
-
-	ids, err := b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	assert.Equal(t, []string{}, toIDs(ids), "verified list empty")
-
-	assert.NoError(t, setVerified("radio-t", "u1", FlagTrue))
-	assert.NoError(t, setVerified("radio-t", "u2", FlagTrue))
-	ids, err = b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t"}})
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"u1", "u2"}, toIDs(ids), "verified 2 ids")
-
-	_, err = b.ListFlags(FlagRequest{Flag: Verified, Locator: store.Locator{SiteID: "radio-t-bad"}})
-	assert.Error(t, err, "site \"radio-t-bad\" not found", "fail on wrong site")
-}
-
-func TestBolt_FlagListBlocked(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		b, teardown := prep(t)
-		defer teardown()
-
-		setBlocked := func(site, user string, status FlagStatus, ttl time.Duration) error {
-			req := FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: site}, UserID: user, Update: status, TTL: ttl}
-			_, err := b.Flag(req)
-			return err
-		}
-
-		toBlocked := func(inp []any) (res []store.BlockedUser) {
-			res = make([]store.BlockedUser, len(inp))
-			for i, v := range inp {
-				vv, ok := v.(store.BlockedUser)
-				require.True(t, ok)
-				res[i] = vv
-			}
-			return res
-		}
-		assert.NoError(t, setBlocked("radio-t", "user1", FlagTrue, 0))
-		assert.NoError(t, setBlocked("radio-t", "user2", FlagTrue, 150*time.Millisecond))
-		assert.NoError(t, setBlocked("radio-t", "user3", FlagFalse, 0))
-
-		vv, err := b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-		assert.NoError(t, err)
-
-		blockedList := toBlocked(vv)
-		require.Equal(t, 2, len(blockedList))
-		assert.Equal(t, "user1", blockedList[0].ID)
-		assert.Equal(t, "user2", blockedList[1].ID)
-		t.Logf("%+v", blockedList)
-
-		// check block expiration
-		time.Sleep(150 * time.Millisecond)
-		vv, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "radio-t"}})
-		assert.NoError(t, err)
-		blockedList = toBlocked(vv)
-		require.Equal(t, 1, len(blockedList))
-		assert.Equal(t, "user1", blockedList[0].ID)
-
-		_, err = b.ListFlags(FlagRequest{Flag: Blocked, Locator: store.Locator{SiteID: "bad"}})
-		assert.EqualError(t, err, `site "bad" not found`)
-	})
-}
-
-func TestBoltDB_UserDetail(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	// add two entries to DB before we start
-	result, err := b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail, Update: "test@example.com"})
-	assert.NoError(t, err, "No error inserting entry expected")
-	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}, result)
-	result, err = b.UserDetail(UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u2", Detail: UserEmail, Update: "other@example.com"})
-	assert.NoError(t, err, "No error inserting entry expected")
-	assert.ElementsMatch(t, []UserDetailEntry{{UserID: "u2", Email: "other@example.com"}}, result)
-
-	// stateless tests without changing the state we set up before
-	var testData = []struct {
-		req      UserDetailRequest
-		error    string
-		expected []UserDetailEntry
-	}{
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1", Detail: UserEmail},
-			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}}},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: UserEmail},
-			error: "userid cannot be empty in request for single detail"},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails, UserID: "u1"},
-			error: "unsupported request with userdetail all"},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "u1", Detail: UserEmail},
-			error: `site "bad" not found`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "u1xyz", Detail: UserEmail}},
-		{req: UserDetailRequest{Detail: UserEmail, Update: "new_value"},
-			error: `userid cannot be empty in request for single detail`},
-		{req: UserDetailRequest{Detail: UserDetail("bad")},
-			error: `unsupported detail "bad"`},
-		{req: UserDetailRequest{Update: "not_relevant", Detail: AllUserDetails},
-			error: `unsupported request with userdetail all`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "bad"}, Detail: AllUserDetails},
-			error: `site "bad" not found`},
-		{req: UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, Detail: AllUserDetails},
-			expected: []UserDetailEntry{{UserID: "u1", Email: "test@example.com"}, {UserID: "u2", Email: "other@example.com"}}},
-	}
-
-	for i, x := range testData {
-		result, err := b.UserDetail(x.req)
-		if x.error != "" {
-			assert.EqualError(t, err, x.error, "Error should match expected for case %d", i)
-		} else {
-			assert.NoError(t, err, "Error is not expected expected for case %d", i)
-		}
-		assert.ElementsMatch(t, x.expected, result, "Result should match expected for case %d", i)
-	}
-}
-
-func TestBoltDB_ListDetailsKeepsEntriesSeparate(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	loc := store.Locator{SiteID: "radio-t"}
-	_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u1", Detail: UserEmail, Update: "u1@example.com"})
-	require.NoError(t, err)
-	_, err = b.UserDetail(UserDetailRequest{Locator: loc, UserID: "u2", Detail: UserTelegram, Update: "u2_telegram"})
-	require.NoError(t, err)
-
-	// u2 has no email, so listing must not carry u1's email over into u2's entry
-	res, err := b.UserDetail(UserDetailRequest{Locator: loc, Detail: AllUserDetails})
-	require.NoError(t, err)
-	assert.Equal(t, []UserDetailEntry{{UserID: "u1", Email: "u1@example.com"}, {UserID: "u2", Telegram: "u2_telegram"}}, res)
-}
-
-func TestBolt_DeleteComment(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	reqReq := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(reqReq)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res), "initially 2 comments")
-
-	count, err := b.Count(reqReq)
-	require.NoError(t, err)
-	assert.Equal(t, 2, count, "count=2 initially")
-
-	delReq := DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID: res[0].ID, DeleteMode: store.SoftDelete}
-
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	res, err = b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "", res[0].Text)
-	assert.True(t, res[0].Deleted, "marked deleted")
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
-
-	// repeated deletion should not decrease comments count
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	assert.Equal(t, "some text2", res[1].Text)
-	assert.False(t, res[1].Deleted)
-
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 10})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(comments), "1 in last, 1 removed")
-
-	count, err = b.Count(reqReq)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count)
-
-	delReq.CommentID = "123456"
-	err = b.Delete(delReq)
-	assert.Error(t, err)
-
-	delReq.Locator.SiteID = "bad"
-	delReq.CommentID = res[0].ID
-	err = b.Delete(delReq)
-	assert.EqualError(t, err, `site "bad" not found`)
-
-	delReq.Locator = store.Locator{URL: "https://radio-t.com/bad", SiteID: "radio-t"}
-	err = b.Delete(delReq)
-	assert.EqualError(t, err, `no bucket https://radio-t.com/bad in store`)
-}
-
-func TestBolt_DeleteHard(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	reqReq := FindRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, Sort: "time"}
-	res, err := b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res), "initially 2 comments")
-
-	delReq := DeleteRequest{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID: res[0].ID, DeleteMode: store.HardDelete}
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	res, err = b.Find(reqReq)
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(res))
-	assert.Equal(t, "", res[0].Text)
-	assert.True(t, res[0].Deleted, "marked deleted")
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, res[0].User)
-}
-
-func TestBolt_DeleteAll(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	delReq := DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}}
-	err := b.Delete(delReq)
-	assert.NoError(t, err)
-
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Limit: 10})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
-
-	delReq = DeleteRequest{Locator: store.Locator{SiteID: "bad"}}
-	err = b.Delete(delReq)
-	assert.EqualError(t, err, `site "bad" not found`)
-}
-
-func TestBolt_DeleteUserDetail(t *testing.T) {
-	var (
-		createUser = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail, Update: "value1"}
-		readUser   = UserDetailRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Detail: UserEmail}
-		emailSet   = []UserDetailEntry{{UserID: "user1", Email: "value1"}}
-	)
-
-	b, teardown := prep(t)
-	defer teardown()
-
-	var testData = []struct {
-		delReq    DeleteRequest
-		detailReq UserDetailRequest
-		expected  []UserDetailEntry
-		err       string
-	}{
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
-			detailReq: createUser, expected: emailSet},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "bad"}, UserID: "user1", UserDetail: UserEmail},
-			detailReq: readUser, expected: emailSet, err: `site "bad" not found`},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: UserEmail},
-			detailReq: readUser},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
-			detailReq: createUser, expected: emailSet},
-		{delReq: DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", UserDetail: AllUserDetails},
-			detailReq: readUser},
-	}
-
-	for i, x := range testData {
-		err := b.Delete(x.delReq)
-		if x.err == "" {
-			require.NoError(t, err, "delete request #%d error", i)
-		} else {
-			require.EqualError(t, err, x.err, "delete request #%d error", i)
-		}
-
-		val, err := b.UserDetail(x.detailReq)
-		require.NoError(t, err, "user request #%d error", i)
-		require.Equal(t, x.expected, val, "user request #%d result", i)
-	}
-}
-
-func TestBoltAdmin_DeleteUserHard(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
-	assert.NoError(t, err)
-
-	// soft delete one comment
-	delReq := DeleteRequest{
-		Locator:    store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID:  comments[0].ID,
-		DeleteMode: store.SoftDelete,
-	}
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.HardDelete})
-	require.NoError(t, err)
-
-	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
-	assert.Equal(t, store.User{Name: "deleted", ID: "deleted", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-
-	c, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c, "0 count")
-
-	_, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.EqualError(t, err, "no comments for user user1 in store")
-
-	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
-
-	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t-bad"}, UserID: "user1"})
-	assert.EqualError(t, err, `site "radio-t-bad" not found`)
-}
-
-// TestBoltAdmin_DeleteUserHard_NoComments covers hard-deleting a user who has no comments
-// (and therefore no user bucket) — e.g. one who only logged in. This must succeed rather than
-// fail on the missing bucket, and must still remove any stored user details.
-func TestBoltAdmin_DeleteUserHard_NoComments(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	t.Run("login-only user with a detail but no comments", func(t *testing.T) {
-		const userID = "login-only-user"
-		loc := store.Locator{SiteID: "radio-t"}
-
-		// user logged in and has a stored detail, but never commented (no user bucket)
-		_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail, Update: "user@example.com"})
-		require.NoError(t, err)
-
-		err = b.Delete(DeleteRequest{Locator: loc, UserID: userID, DeleteMode: store.HardDelete})
-		require.NoError(t, err, "hard delete must not fail on a missing user bucket")
-
-		details, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail})
-		require.NoError(t, err)
-		assert.Empty(t, details, "stored user detail must be removed on hard delete")
-	})
-
-	t.Run("unknown user is a no-op", func(t *testing.T) {
-		err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "never-seen-user", DeleteMode: store.HardDelete})
-		assert.NoError(t, err, "hard-deleting an unknown user must not error")
-	})
-}
-
-// TestBoltAdmin_DeleteUserSoft_NoComments covers soft-deleting a user with no comments. As with the
-// hard path (and the existing soft path for users who do have comments) it cleans stored user
-// details and is a no-op for an unknown user.
-func TestBoltAdmin_DeleteUserSoft_NoComments(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	t.Run("login-only user with a detail but no comments", func(t *testing.T) {
-		const userID = "login-only-soft"
-		loc := store.Locator{SiteID: "radio-t"}
-
-		_, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail, Update: "user@example.com"})
-		require.NoError(t, err)
-
-		err = b.Delete(DeleteRequest{Locator: loc, UserID: userID, DeleteMode: store.SoftDelete})
-		require.NoError(t, err)
-
-		details, err := b.UserDetail(UserDetailRequest{Locator: loc, UserID: userID, Detail: UserEmail})
-		require.NoError(t, err)
-		assert.Empty(t, details, "soft delete cleans stored user details, consistent with the has-comments path")
-	})
-
-	t.Run("unknown user is a no-op", func(t *testing.T) {
-		err := b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "never-seen-soft", DeleteMode: store.SoftDelete})
-		assert.NoError(t, err, "soft-deleting an unknown user must not error")
-	})
-}
-
-func TestBoltAdmin_DeleteUserSoft(t *testing.T) {
-	b, teardown := prep(t)
-	defer teardown()
-
-	comments, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
-	assert.NoError(t, err)
-
-	// soft delete one comment
-	delReq := DeleteRequest{
-		Locator:    store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
-		CommentID:  comments[0].ID,
-		DeleteMode: store.SoftDelete,
-	}
-	err = b.Delete(delReq)
-	assert.NoError(t, err)
-
-	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", DeleteMode: store.SoftDelete})
-	require.NoError(t, err)
-
-	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}, Sort: "time"})
-	assert.NoError(t, err)
-	require.Equal(t, 2, len(comments), "2 comments with deleted info")
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[0].User)
-	assert.Equal(t, store.User{Name: "user name", ID: "user1", Picture: "", Admin: false, Blocked: false, IP: ""}, comments[1].User)
-
-	c, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, c, "0 count")
-
-	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Limit: 5})
-	assert.NoError(t, err, "no comments for user user1 in store")
-	assert.Empty(t, comments, "deleted comments are not listed for the user")
-
-	comments, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "time"})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(comments), "nothing left")
-
-	err = b.Delete(DeleteRequest{Locator: store.Locator{SiteID: "radio-t-bad"}, UserID: "user1"})
-	assert.EqualError(t, err, `site "radio-t-bad" not found`)
 }
 
 func TestBoltDB_ref(t *testing.T) {
@@ -1054,18 +198,46 @@ func TestBoltDB_ref(t *testing.T) {
 
 	_, _, err = b.parseRef([]byte("https://radio-t.com/2"))
 	assert.Error(t, err)
+
+	// the url may contain the separator or end with "!"; the id after the last separator is the comment's
+	for _, postURL := range []string{"https://radio-t.com/wow!!", "https://radio-t.com/a!!b", "https://radio-t.com/hello!",
+		"https://radio-t.com/hello!!!"} {
+		comment.Locator.URL = postURL
+		url, id, err = b.parseRef(b.makeRef(comment))
+		assert.NoError(t, err, postURL)
+		assert.Equal(t, postURL, url)
+		assert.Equal(t, "12345", id, postURL)
+	}
+}
+
+// a last-comments entry that cannot be parsed, or that points to a post which is not there, is passed over
+// and the other comments are still listed
+func TestBoltDB_LastSkipsUnreadableRef(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	// an entry without the separator, newer than every comment
+	require.NoError(t, b.dbs["radio-t"].Update(func(tx *bolt.Tx) error {
+		key := []byte(time.Date(2017, 12, 20, 15, 18, 30, 0, time.UTC).Format(tsNano))
+		return tx.Bucket([]byte(lastBucketName)).Put(key, []byte("https://radio-t.com/no-separator"))
+	}))
+	res, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"})
+	require.NoError(t, err, "unparsable entry")
+	assert.Equal(t, []string{"id-2", "id-1"}, commentIDs(res), "unparsable entry")
+
+	// an id kept as given, as an import does, with the separator in it: its entry reads back as a post that does
+	// not exist
+	_, err = b.Create(store.Comment{ID: "a!!b", Text: "some text", Timestamp: time.Date(2017, 12, 20, 15, 18, 25, 0, time.UTC),
+		Locator: store.Locator{URL: "https://radio-t.com/sep-in-id", SiteID: "radio-t"}, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	res, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"})
+	require.NoError(t, err, "entry for a missing post")
+	assert.Equal(t, []string{"id-2", "id-1"}, commentIDs(res), "entry for a missing post")
 }
 
 func TestBoltDB_NewFailed(t *testing.T) {
 	_, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: "/tmp/no-such-place/tmp.db", SiteID: "radio-t"})
 	assert.EqualError(t, err, "failed to make boltdb for /tmp/no-such-place/tmp.db: open /tmp/no-such-place/tmp.db: no such file or directory")
-}
-
-func TestBoltDB_DoubleClose(t *testing.T) {
-	var b, teardown = prep(t)
-	defer teardown()
-	assert.NoError(t, b.Close())
-	assert.NoError(t, b.Close(), "second call should not result in panic or errors")
 }
 
 // makes new boltdb, put two records
@@ -1105,4 +277,115 @@ func getReq(locator store.Locator, commentID string) GetRequest {
 		Locator:   locator,
 		CommentID: commentID,
 	}
+}
+
+// comments sharing a timestamp, as an import of data with one-second resolution makes them, each keep
+// their place in the site's last comments and in their author's list and count
+func TestBoltDB_SameTimestamp(t *testing.T) {
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, b.Close()) }()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
+	for _, c := range []struct {
+		id, url, user string
+		ts            time.Time
+	}{
+		{id: "id-1", url: "https://radio-t.com/1", user: "user1", ts: ts},
+		{id: "id-2", url: "https://radio-t.com/2", user: "user1", ts: ts},
+		{id: "id-3", url: "https://radio-t.com/1", user: "user2", ts: ts},
+		{id: "id-4", url: "https://radio-t.com/2", user: "user1", ts: ts.Add(time.Second)},
+	} {
+		_, err = b.Create(store.Comment{ID: c.id, Text: "text " + c.id, Timestamp: c.ts,
+			Locator: store.Locator{URL: c.url, SiteID: "radio-t"}, User: store.User{ID: c.user, Name: c.user}})
+		require.NoError(t, err)
+	}
+
+	last, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"id-1", "id-2", "id-3", "id-4"}, commentIDs(last), "last comments")
+
+	user1, err := b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Sort: "-time"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"id-1", "id-2", "id-4"}, commentIDs(user1), "user1 comments")
+	if len(user1) > 0 {
+		assert.Equal(t, "id-4", user1[0].ID, "newest first")
+	}
+
+	count, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
+	require.NoError(t, err)
+	assert.Equal(t, 3, count, "user1 count")
+
+	// since is exclusive: comments at exactly the since time stay out, as they do with one comment per timestamp
+	last, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Since: ts})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-4"}, commentIDs(last), "last comments since ts")
+	last, err = b.Find(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Since: ts.Add(-time.Nanosecond)})
+	require.NoError(t, err)
+	assert.Len(t, last, 4, "last comments since just before ts")
+
+	// the keys stay timestamps in the format older versions write; a taken one moves forward a nanosecond
+	keys := func(path ...string) (res []string) {
+		require.NoError(t, b.dbs["radio-t"].View(func(tx *bolt.Tx) error {
+			bkt := tx.Bucket([]byte(path[0]))
+			for _, p := range path[1:] {
+				bkt = bkt.Bucket([]byte(p))
+			}
+			return bkt.ForEach(func(k, _ []byte) error { res = append(res, string(k)); return nil })
+		}))
+		return res
+	}
+	assert.Equal(t, []string{"2017-12-20T15:18:22.000000000Z", "2017-12-20T15:18:22.000000001Z",
+		"2017-12-20T15:18:22.000000002Z", "2017-12-20T15:18:23.000000000Z"}, keys(lastBucketName))
+	assert.Equal(t, []string{"2017-12-20T15:18:22.000000000Z", "2017-12-20T15:18:22.000000001Z",
+		"2017-12-20T15:18:23.000000000Z"}, keys(userBucketName, "user1"))
+}
+
+// an index written by an earlier version, where a comment sharing another's timestamp overwrote its entry,
+// reads as before, and a comment created on top of it gets an entry of its own
+func TestBoltDB_SameTimestampOldIndex(t *testing.T) {
+	b, err := NewBoltDB(bolt.Options{}, BoltSite{FileName: filepath.Join(t.TempDir(), "test-remark.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, b.Close()) }()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
+	comment := func(id, url string) store.Comment {
+		return store.Comment{ID: id, Text: "text " + id, Timestamp: ts, Locator: store.Locator{URL: url, SiteID: "radio-t"},
+			User: store.User{ID: "user1", Name: "user1"}}
+	}
+	// what an earlier version stores for two comments with one timestamp: both comments, one index entry each
+	// in "last" and in the user's bucket, keyed by the timestamp and pointing to the comment saved second
+	require.NoError(t, b.dbs["radio-t"].Update(func(tx *bolt.Tx) error {
+		for _, c := range []store.Comment{comment("id-1", "https://radio-t.com/1"), comment("id-2", "https://radio-t.com/2")} {
+			postBkt, e := b.makePostBucket(tx, c.Locator.URL)
+			require.NoError(t, e)
+			require.NoError(t, b.save(postBkt, c.ID, c))
+		}
+		key, ref := []byte(ts.Format(tsNano)), []byte("https://radio-t.com/2!!id-2")
+		require.NoError(t, tx.Bucket([]byte(lastBucketName)).Put(key, ref))
+		userBkt, e := b.getUserBucket(tx, "user1")
+		require.NoError(t, e)
+		return userBkt.Put(key, ref)
+	}))
+
+	userReq := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1", Sort: "-time"}
+	lastReq := FindRequest{Locator: store.Locator{SiteID: "radio-t"}, Sort: "-time"}
+	user1, err := b.Find(userReq)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-2"}, commentIDs(user1), "the entry overwritten earlier stays lost")
+	last, err := b.Find(lastReq)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id-2"}, commentIDs(last))
+
+	_, err = b.Create(comment("id-3", "https://radio-t.com/1"))
+	require.NoError(t, err)
+	user1, err = b.Find(userReq)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"id-2", "id-3"}, commentIDs(user1))
+	last, err = b.Find(lastReq)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"id-2", "id-3"}, commentIDs(last))
+	count, err := b.Count(FindRequest{Locator: store.Locator{SiteID: "radio-t"}, UserID: "user1"})
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
 }

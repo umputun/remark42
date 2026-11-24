@@ -60,15 +60,19 @@ class AuthPanelComponent extends Component<Props, State> {
   };
 
   renderAuthorized = (user: User) => {
+    // the page embedding the widget receives the message below, so it carries the fields the
+    // profile shows and nothing else of the user record
+    const { id, name, picture } = user;
+
     return (
       <div className={styles.user}>
         <button
           className={styles.userButton}
-          onClick={() => postMessageToParent({ profile: { ...user, current: '1' } })}
+          onClick={() => postMessageToParent({ profile: { id, name, picture, current: '1' } })}
           title={this.props.intl.formatMessage(messages.openProfile)}
         >
           <div className={styles.userAvatar}>
-            <Avatar url={user.picture} identicon={isUserAnonymous(user)} />
+            <Avatar url={user.picture} size={20} identicon={isUserAnonymous(user)} />
           </div>
           {user.name}
         </button>{' '}
@@ -90,6 +94,7 @@ class AuthPanelComponent extends Component<Props, State> {
           defaultMessage="Enable third-party cookies to log in, or open comments in"
         />{' '}
         <a
+          className={styles.textLink}
           href={`${window.location.origin}/web/comments.html${window.location.search}`}
           target="_blank"
           rel="noreferrer"
@@ -152,7 +157,7 @@ class AuthPanelComponent extends Component<Props, State> {
     const isSettingsLabelVisible = Object.keys(this.props.hiddenUsers).length > 0 || isAdmin || isBlockedVisible;
 
     return (
-      <div className={styles.root}>
+      <div className={styles.root} data-nosnippet>
         <div className={styles.column}>{user ? this.renderAuthorized(user) : read_only && <Auth />}</div>
         {this.renderThirdPartyWarning()}
         {this.renderCookiesWarning()}

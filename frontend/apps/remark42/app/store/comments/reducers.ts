@@ -3,6 +3,9 @@ import { combineReducers } from 'redux';
 
 import type {
   COMMENTS_SET_ACTION,
+  COMMENTS_APPEND_PAGE_ACTION,
+  COMMENTS_PAGE_SET_ACTION,
+  CommentsPage,
   COMMENT_MODE_SET_ACTION,
   COMMENTS_APPEND_ACTION,
   COMMENTS_EDIT_ACTION,
@@ -13,6 +16,8 @@ import type {
 } from './types';
 import {
   COMMENTS_SET,
+  COMMENTS_APPEND_PAGE,
+  COMMENTS_PAGE_SET,
   COMMENT_MODE_SET,
   COMMENTS_APPEND,
   COMMENTS_EDIT,
@@ -24,12 +29,12 @@ import {
   COMMENT_PATCH,
 } from './types';
 import { getInitialSort } from './utils';
-import { getPinnedComments } from './comment-tree';
+import { getPinnedComments, walkTree } from './comment-tree';
 import { cmpRef } from 'utils/cmpRef';
 
 export const topComments = (
   state: Comment['id'][] = [],
-  action: COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION
+  action: COMMENTS_SET_ACTION | COMMENTS_APPEND_PAGE_ACTION | COMMENTS_APPEND_ACTION
 ): Comment['id'][] => {
   switch (action.type) {
     case COMMENTS_SET: {
@@ -37,6 +42,10 @@ export const topComments = (
         state,
         action.comments.map((x) => x.comment.id)
       );
+    }
+    case COMMENTS_APPEND_PAGE: {
+      if (action.comments.length === 0) return state;
+      return [...state, ...action.comments.map((x) => x.comment.id)];
     }
     case COMMENTS_APPEND: {
       if (action.comment.pid) return state;
@@ -48,27 +57,30 @@ export const topComments = (
 };
 
 const reduceChildIds = (c: Record<Comment['id'], Comment['id'][]>, x: Node): Record<Comment['id'], Comment['id'][]> => {
-  if (!x.replies) return c;
-  if (!c[x.comment.id]) {
-    c[x.comment.id] = [];
-  }
-  for (const reply of x.replies) {
-    c[x.comment.id].push(reply.comment.id);
-    if (reply.replies) {
-      reduceChildIds(c, reply);
+  walkTree([x], ({ comment, replies }) => {
+    if (!replies) return;
+    if (!c[comment.id]) {
+      c[comment.id] = [];
     }
-  }
+    for (const reply of replies) {
+      c[comment.id].push(reply.comment.id);
+    }
+  });
 
   return c;
 };
 
 export const childComments = (
   state: Record<Comment['id'], Comment['id'][]> = {},
-  action: COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION
+  action: COMMENTS_SET_ACTION | COMMENTS_APPEND_PAGE_ACTION | COMMENTS_APPEND_ACTION
 ): Record<Comment['id'], Comment['id'][]> => {
   switch (action.type) {
     case COMMENTS_SET: {
       return action.comments.reduce<Record<Comment['id'], Comment['id'][]>>(reduceChildIds, {});
+    }
+    case COMMENTS_APPEND_PAGE: {
+      if (action.comments.length === 0) return state;
+      return action.comments.reduce<Record<Comment['id'], Comment['id'][]>>(reduceChildIds, { ...state });
     }
     case COMMENTS_APPEND: {
       if (!action.comment.pid) return state;
@@ -79,33 +91,41 @@ export const childComments = (
   }
 };
 
-const cmpComment = (a: Comment | undefined, b: Comment): Comment => {
-  if (!a) return b;
-  if (a.id !== b.id) return b;
-  if (!a.edit) {
-    if (!b.edit) return a;
-    return b;
-  }
-  if (!b.edit) return b;
-  if (a.edit.time !== b.edit.time) return b;
-  return a;
-};
+// keeps the stored object when the fetched one carries the same data, so unchanged comments do not
+// rerender. The whole comment is compared and not only its edit time: a reader's own vote, the
+// score and the controversy change with no edit, and the thread fetched after signing in differs
+// from the one fetched before it in exactly those fields
+const cmpComment = (a: Comment | undefined, b: Comment): Comment => (a ? cmpRef(a, b) : b);
 
 const reduceComments = (c: Record<Comment['id'], Comment>, x: Node): Record<Comment['id'], Comment> => {
-  c[x.comment.id] = cmpComment(c[x.comment.id], x.comment);
-  if (x.replies) {
-    x.replies.reduce(reduceComments, c);
-  }
+  walkTree([x], ({ comment }) => {
+    c[comment.id] = cmpComment(c[comment.id], comment);
+  });
+
   return c;
 };
 
 export const allComments = (
   state: Record<Comment['id'], Comment> = {},
   action:
-    COMMENTS_SET_ACTION | COMMENTS_APPEND_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION | COMMENT_PATCH_ACTION
+    | COMMENTS_SET_ACTION
+    | COMMENTS_APPEND_PAGE_ACTION
+    | COMMENTS_APPEND_ACTION
+    | COMMENTS_EDIT_ACTION
+    | COMMENTS_PATCH_ACTION
+    | COMMENT_PATCH_ACTION
 ): Record<Comment['id'], Comment> => {
   switch (action.type) {
     case COMMENTS_SET: {
+      const next = action.comments.reduce<Record<Comment['id'], Comment>>(reduceComments, { ...state });
+      // a pin on a page not loaded yet is shown from the server's list until its page comes
+      for (const comment of action.pinned || []) {
+        next[comment.id] = cmpComment(next[comment.id], comment);
+      }
+      return next;
+    }
+    case COMMENTS_APPEND_PAGE: {
+      if (action.comments.length === 0) return state;
       return action.comments.reduce<Record<Comment['id'], Comment>>(reduceComments, { ...state });
     }
     case COMMENTS_APPEND:
@@ -151,11 +171,22 @@ export const activeComment = (
 
 export const pinnedComments = (
   state: Comment['id'][] = [],
-  action: COMMENTS_SET_ACTION | COMMENTS_EDIT_ACTION | COMMENTS_PATCH_ACTION | COMMENT_PATCH_ACTION
+  action:
+    | COMMENTS_SET_ACTION
+    | COMMENTS_APPEND_PAGE_ACTION
+    | COMMENTS_EDIT_ACTION
+    | COMMENTS_PATCH_ACTION
+    | COMMENT_PATCH_ACTION
 ): Comment['id'][] => {
   switch (action.type) {
     case COMMENTS_SET: {
-      return getPinnedComments(action.comments).map((x) => x.id);
+      return (action.pinned || getPinnedComments(action.comments)).map((x) => x.id);
+    }
+    case COMMENTS_APPEND_PAGE: {
+      const added = getPinnedComments(action.comments)
+        .map((x) => x.id)
+        .filter((id) => state.indexOf(id) === -1);
+      return added.length === 0 ? state : [...state, ...added];
     }
     case COMMENTS_EDIT: {
       const index = state.indexOf(action.comment.id);
@@ -198,6 +229,17 @@ function isFetching(state = false, action: COMMENTS_REQUEST_ACTIONS): boolean {
   }
 }
 
+const wholeThread: CommentsPage = { countLeft: 0, lastComment: '', loaded: 0, undeleted: 0 };
+
+function page(state: CommentsPage = wholeThread, action: COMMENTS_PAGE_SET_ACTION): CommentsPage {
+  switch (action.type) {
+    case COMMENTS_PAGE_SET:
+      return action.page;
+    default:
+      return state;
+  }
+}
+
 function sort(state: Sorting = getInitialSort(), action: COMMENTS_SET_SORT_ACTION): Sorting {
   switch (action.type) {
     case COMMENTS_SET_SORT:
@@ -210,6 +252,7 @@ function sort(state: Sorting = getInitialSort(), action: COMMENTS_SET_SORT_ACTIO
 export const comments = combineReducers({
   sort,
   isFetching,
+  page,
   topComments,
   childComments,
   allComments,

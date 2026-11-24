@@ -61,6 +61,30 @@ func TestBoltStore_LoadAfterSave(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// pictures saved under the 20-character ids of earlier versions load, commit and delete like new ones
+func TestBoltStore_OldAndNewIDs(t *testing.T) {
+	for _, id := range []string{"user1/dc0ctt0j3vck07oc07s0", "user1/" + guid()} {
+		t.Run(id, func(t *testing.T) {
+			svc, teardown := prepareBoltImageStorageTest(t)
+			defer teardown()
+
+			require.NoError(t, svc.Save(id, gopherPNGBytes()))
+			data, err := svc.Load(id)
+			require.NoError(t, err, "staged")
+			assert.Equal(t, gopherPNGBytes(), data)
+
+			require.NoError(t, svc.Commit(id))
+			data, err = svc.Load(id)
+			require.NoError(t, err, "committed")
+			assert.Equal(t, gopherPNGBytes(), data)
+
+			require.NoError(t, svc.Delete(id))
+			_, err = svc.Load(id)
+			assert.Error(t, err, "deleted")
+		})
+	}
+}
+
 func TestBoltStore_LoadedDataSurvivesLaterWrites(t *testing.T) {
 	svc, teardown := prepareBoltImageStorageTest(t)
 	defer teardown()
@@ -109,6 +133,24 @@ func TestBoltStore_LoadAfterDelete(t *testing.T) {
 
 	_, err = svc.Load(id)
 	assert.Error(t, err)
+}
+
+func TestBoltStore_CommitCommitted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		svc, teardown := prepareBoltImageStorageTest(t)
+		defer teardown()
+
+		id := "user1/test_img"
+		require.NoError(t, svc.Save(id, gopherPNGBytes()))
+		require.NoError(t, svc.Commit(id))
+		time.Sleep(time.Second)
+		require.NoError(t, svc.Cleanup(context.Background(), time.Millisecond)) // removes the staged copy
+		assertBoltImgNil(t, svc.db, imagesStagedBktName, id)
+
+		assert.NoError(t, svc.Commit(id), "committed image committed again")
+		assertBoltImgNotNil(t, svc.db, imagesBktName, id)
+		assert.Error(t, svc.Commit("user1/missing_img"), "image in neither bucket")
+	})
 }
 
 func TestBoltStore_Cleanup(t *testing.T) {
@@ -178,6 +220,35 @@ func TestBolt_Info(t *testing.T) {
 	info, err = svc.Info()
 	assert.NoError(t, err)
 	assert.False(t, info.FirstStagingImageTS.IsZero())
+}
+
+// TestBoltStore_InsertTimeBytes pins the stored insertion time to the bytes earlier versions wrote, so a
+// database made by one of them keeps the age of its staged images
+func TestBoltStore_InsertTimeBytes(t *testing.T) {
+	svc, teardown := prepareBoltImageStorageTest(t)
+	defer teardown()
+
+	ts := time.Date(2026, 11, 21, 10, 30, 15, 123456789, time.UTC)
+	// what binary.Write(buf, binary.LittleEndian, ts.UnixNano()) wrote for ts before putTS existed
+	stored := []byte{0x15, 0x33, 0xf6, 0x5a, 0xbe, 0x08, 0xea, 0x18}
+
+	require.NoError(t, svc.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte(insertTimeBktName)).Put([]byte("old"), stored)
+	}))
+	info, err := svc.Info()
+	require.NoError(t, err)
+	assert.Equal(t, ts, info.FirstStagingImageTS.UTC(), "Info reads the stored time")
+
+	require.NoError(t, svc.Cleanup(context.Background(), time.Since(ts)+time.Hour))
+	assertBoltImgNotNil(t, svc.db, insertTimeBktName, "old")
+	require.NoError(t, svc.Cleanup(context.Background(), time.Since(ts)-time.Hour))
+	assertBoltImgNil(t, svc.db, insertTimeBktName, "old")
+
+	require.NoError(t, svc.db.Update(func(tx *bolt.Tx) error { return putTS(tx, "new", ts) }))
+	checkBoltImgData(t, svc.db, insertTimeBktName, "new", func(data []byte) error {
+		assert.Equal(t, stored, data, "putTS writes the bytes earlier versions wrote")
+		return nil
+	})
 }
 
 func assertBoltImgNil(t *testing.T, db *bolt.DB, bucket, id string) {

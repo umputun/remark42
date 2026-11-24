@@ -18,7 +18,7 @@ import {
   USER_UNHIDE,
   USER_SUBSCRIPTION_SET,
 } from './types';
-import { fetchComments, unsetCommentMode } from '../comments/actions';
+import { reloadComments, unsetCommentMode } from '../comments/actions';
 import { COMMENTS_PATCH } from '../comments/types';
 import { resetPersistedEmail } from 'components/auth/auth.utils';
 
@@ -29,15 +29,29 @@ export function setUser(user: User | null = null): USER_SET_ACTION {
   };
 }
 
-export function signout(cleanSession = true): StoreAction<Promise<void>> {
+/**
+ * Loads the comments again for a reader who has just signed in or out, since votes and the
+ * actions offered on a comment depend on who reads it. Nothing waits for it: the reader has
+ * changed either way, and a failed request leaves the comments loaded before it on screen
+ */
+const reloadCommentsForReader = (): StoreAction => (dispatch) => {
+  dispatch(reloadComments()).catch((e: unknown) => {
+    console.error('Remark42: failed to reload comments', e);
+  });
+};
+
+/**
+ * Ends the session and then shows the reader as signed out. The same for the button above the
+ * comments and for a sign-out asked for in the profile: the profile is a document of its own, which
+ * is removed as it closes, and it leaves the request to this one
+ */
+export function signout(): StoreAction<Promise<void>> {
   return async (dispatch) => {
-    if (cleanSession) {
-      await logout();
-    }
+    await logout();
     resetPersistedEmail();
     dispatch(setUser());
     dispatch(unsetCommentMode());
-    dispatch(fetchComments());
+    dispatch(reloadCommentsForReader());
   };
 }
 
@@ -51,7 +65,7 @@ export const signin =
   (user: User): StoreAction<Promise<void>> =>
   async (dispatch) => {
     dispatch(setUser(user));
-    dispatch(fetchComments());
+    dispatch(reloadCommentsForReader());
   };
 
 export const fetchBlockedUsers = (): StoreAction<Promise<BlockedUser[]>> => async (dispatch) => {
@@ -85,7 +99,7 @@ export const unblockUser =
     const userComments = comments.filter((comment) => comment.user.id === id);
 
     if (!userComments.length) return;
-    const user = comments[0].user;
+    const user = userComments[0].user;
 
     dispatch({
       type: COMMENTS_PATCH,

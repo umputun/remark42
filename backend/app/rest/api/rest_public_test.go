@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,14 +19,19 @@ import (
 	"time"
 
 	"github.com/dlclark/regexp2/v2"
+	"github.com/go-pkgz/auth/v2/token"
 	cache "github.com/go-pkgz/lcw/v2"
 	R "github.com/go-pkgz/rest"
 	"github.com/go-pkgz/routegroup"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/umputun/remark42/backend/app/store"
+	adminstore "github.com/umputun/remark42/backend/app/store/admin"
+	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 	"github.com/umputun/remark42/backend/app/store/service"
 )
@@ -85,15 +91,7 @@ func TestRest_Preview(t *testing.T) {
 	b, err = io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t,
-		string(b),
-		`{"code":20,"details":"can't load picture from the comment",`+
-			`"error":"can't get image stats for dev_user/bad_picture: stat`,
-	)
-	assert.Contains(t,
-		string(b),
-		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
-	)
+	assert.Equal(t, `{"code":20,"details":"can't load picture from the comment","error":"image not found"}`+"\n", string(b))
 
 	// test quotes with and without smartypants
 	resp, err = post(t, ts.URL+"/api/v1/preview", `{"text": "\"quoted\" text", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`)
@@ -117,22 +115,33 @@ func TestRest_Preview(t *testing.T) {
 func TestRest_PreviewWithWrongImage(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
+	logs := captureLog(t)
 
 	resp, err := post(t, ts.URL+"/api/v1/preview", fmt.Sprintf(`{"text": "![non-existent.jpg](%s/api/v1/picture/dev_user/bad_picture)", "locator":{"url": "https://radio-t.com/blah1", "site": "radio-t"}}`, srv.RemarkURL))
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	body, e := readErrorResponse(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	b, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NoError(t, resp.Body.Close())
-	assert.Contains(t,
-		string(b),
-		`{"code":20,"details":"can't load picture from the comment",`+
-			`"error":"can't get image stats for dev_user/bad_picture: stat `,
-	)
-	assert.Contains(t,
-		string(b),
-		"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory\"}\n",
-	)
+	assert.Equal(t, errorResponse{Error: "image not found", Details: "can't load picture from the comment", Code: 20}, e,
+		"the store error is replaced in the body")
+	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
+	assert.Contains(t, logs.String(), serverDir(srv)+"/pics-remark42/staging/dev_user/62/bad_picture: no such file or directory",
+		"the store error, with the path, is still logged")
+}
+
+func TestRest_LoadMissingPicture(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+	logs := captureLog(t)
+
+	resp, err := http.Get(ts.URL + "/api/v1/picture/dev_user/missing_picture")
+	require.NoError(t, err)
+	body, _ := readErrorResponse(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
+	assert.Equal(t, `{"code":18,"details":"can't get image","error":"image not found"}`+"\n", body)
+	assert.NotContains(t, body, serverDir(srv), "no server path in the body")
+	assert.Contains(t, logs.String(), serverDir(srv)+"/pics-remark42/staging/dev_user/07/missing_picture: no such file or directory",
+		"the store error, with the path, is logged")
 }
 
 func TestRest_PreviewWithMD(t *testing.T) {
@@ -252,6 +261,34 @@ func TestRest_Find(t *testing.T) {
 	assert.False(t, tree.Info.ReadOnly, "post is fresh")
 }
 
+func TestRest_FindFlushedForURLWithKeySeparator(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) {
+		backend, err := cache.NewLruCache[[]byte]()
+		require.NoError(t, err)
+		lc := cache.NewScache[[]byte](backend)
+		t.Cleanup(func() { assert.NoError(t, lc.Close()) })
+		srv.Cache = lc
+	})
+	defer teardown()
+
+	// "@@" separates the parts of a cache key, so the page URL has to be escaped inside the key
+	// for a new comment to flush the cached /find response
+	const post = "https://radio-t.com/blah@@1"
+	findURL := ts.URL + "/api/v1/find?site=remark42&format=plain&url=" + post
+	count := func() int {
+		res, code := get(t, findURL)
+		require.Equal(t, http.StatusOK, code)
+		comments := commentsWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &comments))
+		return len(comments.Comments)
+	}
+
+	addComment(t, store.Comment{Text: "first", Locator: store.Locator{SiteID: "remark42", URL: post}}, ts)
+	require.Equal(t, 1, count())
+	addComment(t, store.Comment{Text: "second", Locator: store.Locator{SiteID: "remark42", URL: post}}, ts)
+	assert.Equal(t, 2, count(), "the new comment shows up, the cached response is gone")
+}
+
 func TestRest_FindAge(t *testing.T) {
 	ts, srv, teardown := startupT(t)
 	defer teardown()
@@ -324,6 +361,85 @@ func TestRest_FindReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://radio-t.com/blah2", tree.Info.URL)
 	assert.False(t, tree.Info.ReadOnly, "post is writable")
+}
+
+func TestRest_FindPagesOfImportedComments(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	// imported comments keep the IDs of the system they came from, which are not UUIDs
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/imported"}
+	start := time.Now().Add(-time.Hour)
+	for i, id := range []string{"1001", "1002", "1003"} {
+		_, err := srv.DataService.Create(store.Comment{ID: id, Text: "imported " + id, Locator: locator,
+			Timestamp: start.Add(time.Duration(i) * time.Minute), User: store.User{ID: "u1"}, Imported: true})
+		require.NoError(t, err)
+	}
+
+	find := func(params string) treeWithInfo {
+		t.Helper()
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/imported&format=tree&sort=+time&"+params)
+		require.Equal(t, http.StatusOK, code, res)
+		tree := treeWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &tree))
+		return tree
+	}
+
+	first := find("limit=1")
+	require.Len(t, first.Nodes, 1)
+	assert.Equal(t, "1001", first.Nodes[0].Comment.ID)
+	assert.Equal(t, "1001", first.Info.LastComment)
+	assert.Equal(t, 2, first.Info.CountLeft)
+
+	second := find("limit=1&offset_id=" + first.Info.LastComment)
+	require.Len(t, second.Nodes, 1)
+	assert.Equal(t, "1002", second.Nodes[0].Comment.ID, "the page after the imported comment")
+	assert.Equal(t, 1, second.Info.CountLeft)
+}
+
+func TestRest_FindListsPinnedCommentsOnFirstPage(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/pinned"}
+	start := time.Now().Add(-time.Hour)
+	ids := make([]string, 4)
+	for i := range ids {
+		id, err := srv.DataService.Create(store.Comment{Text: fmt.Sprintf("comment %d", i), Locator: locator,
+			Timestamp: start.Add(time.Duration(i) * time.Minute), User: store.User{ID: "u1"}})
+		require.NoError(t, err)
+		ids[i] = id
+	}
+	// a reply pinned on the last page, a top-level comment pinned on the first one, and a pinned
+	// comment deleted since, which no page shows
+	reply, err := srv.DataService.Create(store.Comment{Text: "reply", ParentID: ids[3], Locator: locator,
+		Timestamp: start.Add(10 * time.Minute), User: store.User{ID: "u1"}})
+	require.NoError(t, err)
+	require.NoError(t, srv.DataService.SetPin(locator, reply, true))
+	require.NoError(t, srv.DataService.SetPin(locator, ids[0], true))
+	require.NoError(t, srv.DataService.SetPin(locator, ids[1], true))
+	require.NoError(t, srv.DataService.Delete(locator, ids[1], store.SoftDelete))
+
+	find := func(params string) (treeWithInfo, string) {
+		t.Helper()
+		res, code := get(t, ts.URL+"/api/v1/find?site=remark42&url=https://radio-t.com/pinned&format=tree&sort=+time&"+params)
+		require.Equal(t, http.StatusOK, code, res)
+		tree := treeWithInfo{}
+		require.NoError(t, json.Unmarshal([]byte(res), &tree))
+		return tree, res
+	}
+
+	first, _ := find("limit=1")
+	require.Len(t, first.Nodes, 1)
+	assert.Equal(t, ids[0], first.Nodes[0].Comment.ID)
+	require.Len(t, first.Pinned, 2, "the pins of the whole post, without the deleted one")
+	assert.Equal(t, ids[0], first.Pinned[0].ID)
+	assert.Equal(t, reply, first.Pinned[1].ID)
+
+	_, body := find("limit=1&offset_id=" + first.Info.LastComment)
+	assert.NotContains(t, body, `"pinned"`, "later pages leave the list out")
+	_, body = find("")
+	assert.NotContains(t, body, `"pinned"`, "an unlimited tree is unchanged")
 }
 
 func TestRest_FindUserView(t *testing.T) {
@@ -462,9 +578,9 @@ func TestRest_Last(t *testing.T) {
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, "[]\n", res, "empty last should return empty list")
 
-	c1 := store.Comment{Text: "test test #1", ParentID: "p1",
+	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	// add 3 comments, with the clock pushed past a millisecond boundary in between so the two
@@ -533,9 +649,9 @@ func TestRest_FindUserComments(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
-	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+	c3 := store.Comment{Text: "test test #3",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah3"}}
 
 	// add 3 comments
@@ -634,6 +750,16 @@ func waitPastMillisecond(ts time.Time) {
 	time.Sleep(time.Until(next) + time.Microsecond) // a non-positive duration returns at once
 }
 
+// sinceAfter returns a value for the millisecond-precision "since" filter that falls between
+// something created at ts and whatever is created after the call: the millisecond following
+// ts's, which it waits out, so nothing is created in it. "since" keeps only what is strictly
+// after it, so the value separates the two even when a stored time sits exactly on a millisecond
+func sinceAfter(ts time.Time) string {
+	empty := ts.Truncate(time.Millisecond).Add(time.Millisecond)
+	waitPastMillisecond(empty)
+	return strconv.FormatInt(empty.UnixMilli(), 10)
+}
+
 func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	// test that comment counting is consistent between tree and plain formats
 	// the open-route limit is lifted so the subtests below can run back to back
@@ -663,55 +789,59 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	}
 
 	// adding initial comments (8 to test-url and 1 to another-url) and voting, and delete two of comments to the first post.
-	// each comment waits for the clock to pass the previous one's millisecond so the "since"
-	// filter, which has millisecond precision, can tell them apart
+	// sinceTS[i] is the "since" value that keeps comment i and drops every comment before it:
+	// the empty millisecond sinceAfter leaves between two comments. comment i's own millisecond
+	// would not do, since "since" is exclusive and drops comment i whenever its time sits exactly
+	// on that millisecond
 	ids := make([]string, 9)
 	timestamps := make([]time.Time, 9)
+	sinceTS := make([]string, 8)
 	c1 := store.Comment{Text: "top-level comment 1", Locator: commentLocator}
 	ids[0], timestamps[0] = addCommentGetCreatedTime(t, c1, ts)
+	sinceTS[0] = strconv.FormatInt(timestamps[0].Truncate(time.Millisecond).Add(-time.Millisecond).UnixMilli(), 10)
 	// #3 by score
 	setScore(commentLocator, ids[0], 1)
-	waitPastMillisecond(timestamps[0])
+	sinceTS[1] = sinceAfter(timestamps[0])
 
 	c2 := store.Comment{Text: "top-level comment 2", Locator: commentLocator}
 	ids[1], timestamps[1] = addCommentGetCreatedTime(t, c2, ts)
 	// #2 by score
 	setScore(commentLocator, ids[1], 2)
-	waitPastMillisecond(timestamps[1])
+	sinceTS[2] = sinceAfter(timestamps[1])
 
 	c3 := store.Comment{Text: "second-level comment 1", ParentID: ids[0], Locator: commentLocator}
 	ids[2], timestamps[2] = addCommentGetCreatedTime(t, c3, ts)
 	// #1 by score
 	setScore(commentLocator, ids[2], 10)
-	waitPastMillisecond(timestamps[2])
+	sinceTS[3] = sinceAfter(timestamps[2])
 
 	c4 := store.Comment{Text: "third-level comment 1", ParentID: ids[2], Locator: commentLocator}
 	ids[3], timestamps[3] = addCommentGetCreatedTime(t, c4, ts)
 	// #5 by score, #1 by controversy
 	setScore(commentLocator, ids[3], 4)
 	setScore(commentLocator, ids[3], -4)
-	waitPastMillisecond(timestamps[3])
+	sinceTS[4] = sinceAfter(timestamps[3])
 
 	c5 := store.Comment{Text: "second-level comment 2", ParentID: ids[1], Locator: commentLocator}
 	ids[4], timestamps[4] = addCommentGetCreatedTime(t, c5, ts)
 	// #5 by score, #2 by controversy
 	setScore(commentLocator, ids[4], 2)
 	setScore(commentLocator, ids[4], -3)
-	waitPastMillisecond(timestamps[4])
+	sinceTS[5] = sinceAfter(timestamps[4])
 
 	c6 := store.Comment{Text: "deleted third-level comment 2", ParentID: ids[4], Locator: commentLocator}
 	ids[5], timestamps[5] = addCommentGetCreatedTime(t, c6, ts)
 	// deleted later so not visible in site-wide requests
 	setScore(commentLocator, ids[5], 10)
 	setScore(commentLocator, ids[5], -10)
-	waitPastMillisecond(timestamps[5])
+	sinceTS[6] = sinceAfter(timestamps[5])
 
 	c7 := store.Comment{Text: "top-level comment 3", Locator: commentLocator}
 	ids[6], timestamps[6] = addCommentGetCreatedTime(t, c7, ts)
 	// #6 by score, #4 by controversy
 	setScore(commentLocator, ids[6], -3)
 	setScore(commentLocator, ids[6], 1)
-	waitPastMillisecond(timestamps[6])
+	sinceTS[7] = sinceAfter(timestamps[6])
 
 	c8 := store.Comment{Text: "deleted second-level comment 3", ParentID: ids[6], Locator: commentLocator}
 	ids[7], timestamps[7] = addCommentGetCreatedTime(t, c8, ts)
@@ -735,10 +865,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 	assert.NoError(t, srv.DataService.SetReadOnly(commentLocator, true))
 
 	sinceTenSecondsAgo := strconv.FormatInt(time.Now().Add(-time.Second*10).UnixNano()/1000000, 10)
-	sinceTS := make([]string, 9)
 	formattedTS := make([]string, 9)
 	for i, created := range timestamps {
-		sinceTS[i] = strconv.FormatInt(created.UnixNano()/1000000, 10)
 		formattedTS[i] = created.Format(time.RFC3339Nano)
 	}
 	t.Logf("last timestamp: %v", timestamps[7])
@@ -784,7 +912,8 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 
 		// test parameters limit, offset_id for format=plain
 		{"limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
-		{"offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		// an ID that names no comment starts from the beginning, whatever its form
+		{"offset_id=bad", `"info":{"count":7,"count_left":0,`},
 		{"limit=2", `"info":{"count":7,"count_left":5,"last_comment":"` + ids[1]},
 		{"limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
 		{"limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
@@ -827,7 +956,7 @@ func TestPublic_FindCommentsCtrl_ConsistentCount(t *testing.T) {
 
 		// test parameters limit, offset_id for format=tree
 		{"format=tree&limit=bad", `{"code":1,"details":"bad limit value","error":"strconv.Atoi: parsing \"bad\": invalid syntax"}`},
-		{"format=tree&offset_id=bad", `{"code":1,"details":"bad offset_id value","error":"invalid UUID length: 3"}`},
+		{"format=tree&offset_id=bad", `"info":{"count":7,"count_left":0,`},
 		{"format=tree&limit=2", `"info":{"count":7,"count_left":4,"last_comment":"` + ids[0]},
 		{"format=tree&limit=6", `"info":{"count":7,"count_left":1,"last_comment":"` + ids[6]},
 		{"format=tree&limit=7", `"info":{"count":7,"count_left":0,"last_comment":"` + ids[8]},
@@ -903,7 +1032,7 @@ func TestRest_Count(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -935,7 +1064,7 @@ func TestRest_Counts(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -970,7 +1099,7 @@ func TestRest_List(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -999,9 +1128,9 @@ func TestRest_ListWithSkipAndLimit(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
-	c3 := store.Comment{Text: "test test #3", ParentID: "p1",
+	c3 := store.Comment{Text: "test test #3",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah3"}}
 
 	addComment(t, c1, ts)
@@ -1400,7 +1529,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"anonymous": {
 			"remark42@@/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1411,7 +1540,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"user": {
 			"remark42@@provider1_dev!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@provider1_dev!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@provider1_dev!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@d-MjUIbzh-5nPHtWiotdc-diFIA=@@remark42",
 			"remark42@@/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1422,7 +1551,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"admin token": {
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!github_ef0f706a7!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!github_ef0f706a7!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1433,7 +1562,7 @@ func TestRest_CacheKeys(t *testing.T) {
 		"admin password": {
 			"remark42@@admin!!admin!!/api/v1/find?site=remark42&url=https://radio-t.com/blah1&sort=-time&format=tree@@remark42$$https://radio-t.com/blah1",
 			"remark42@@admin!!/api/v1/info?site=remark42&url=https://radio-t.com/blah1@@remark42$$https://radio-t.com/blah1",
-			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@last$$last-votes",
+			"remark42@@admin!!admin!!/api/v1/last/5?site=remark42@@remark42$$last$$last-votes",
 			"remark42@@admin!!admin!!/api/v1/comments?site=remark42&user=provider1_dev&limit=10@@provider1_dev$$remark42",
 			"remark42@@SKPdvPaTAAgSivcWZg7YK102dk8=@@remark42",
 			"remark42@@admin!!/api/v1/list?site=remark42&limit=10@@remark42",
@@ -1458,6 +1587,123 @@ func TestRest_CacheKeys(t *testing.T) {
 		}
 	}
 	assert.Equal(t, want, got)
+}
+
+// with an admin store that lists admins per site, a user can be admin of one site of the instance and
+// not of another. The open routes accept the token issued for the first site on every site, and the
+// token's admin flag must not reveal the other site's commenters' ip hashes
+func TestRest_AdminFlagAppliesToOwnSite(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) {
+		tmp := t.TempDir()
+		require.NoError(t, srv.DataService.Engine.Close())
+		b, err := engine.NewBoltDB(bolt.Options{},
+			engine.BoltSite{FileName: filepath.Join(tmp, "remark42.db"), SiteID: "remark42"},
+			engine.BoltSite{FileName: filepath.Join(tmp, "site2.db"), SiteID: "site2"})
+		require.NoError(t, err)
+		srv.DataService.Engine = b
+		srv.DataService.AdminStore = &adminstore.StoreMock{
+			KeyFunc:     func(string) (string, error) { return "123456", nil },
+			EnabledFunc: func(string) (bool, error) { return true, nil },
+			OnEventFunc: func(string, adminstore.EventType) error { return nil },
+			EmailFunc:   func(string) (string, error) { return "", nil },
+			AdminsFunc: func(siteID string) ([]string, error) {
+				return map[string][]string{"remark42": {"github_one", "github_both"}, "site2": {"github_two", "github_both"}}[siteID], nil
+			},
+		}
+	})
+	defer teardown()
+
+	siteToken := func(site, userID string) string {
+		u := token.User{ID: userID, Name: userID}
+		u.SetAdmin(true) // as the server's ClaimsUpd sets it for the token's site
+		tkn, err := srv.Authenticator.TokenService().Token(token.Claims{Audience: jwt.ClaimStrings{site},
+			Issuer: "remark42", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), User: &u})
+		require.NoError(t, err)
+		return tkn
+	}
+
+	postURL := "https://site2.example.com/post"
+	id, err := srv.DataService.Create(store.Comment{Text: "on site2", User: store.User{ID: "u1", Name: "u1", IP: "10.0.0.1"},
+		Locator: store.Locator{SiteID: "site2", URL: postURL}})
+	require.NoError(t, err)
+
+	// fetch reads every open route that returns comments of site2 and collects the ip of each
+	fetch := func(t *testing.T, setAuth func(r *http.Request)) map[string]string {
+		t.Helper()
+		res := map[string]string{}
+		routes := map[string]string{
+			"find":     "/api/v1/find?site=site2&format=plain&url=" + postURL,
+			"id":       "/api/v1/id/" + id + "?site=site2&url=" + postURL,
+			"last":     "/api/v1/last/10?site=site2",
+			"comments": "/api/v1/comments?site=site2&user=u1",
+		}
+		for name, path := range routes {
+			req, err := http.NewRequest(http.MethodGet, ts.URL+path, http.NoBody)
+			require.NoError(t, err)
+			setAuth(req)
+			resp, err := sendReq(req, "")
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode, "%s: %s", name, body)
+
+			var cc []store.Comment
+			switch name {
+			case "find", "comments":
+				var wrapped struct{ Comments []store.Comment }
+				require.NoError(t, json.Unmarshal(body, &wrapped), name)
+				cc = wrapped.Comments
+			case "id":
+				var c store.Comment
+				require.NoError(t, json.Unmarshal(body, &c), name)
+				cc = []store.Comment{c}
+			case "last":
+				require.NoError(t, json.Unmarshal(body, &cc), name)
+			}
+			require.Len(t, cc, 1, name)
+			require.Equal(t, id, cc[0].ID, name)
+			res[name] = cc[0].User.IP
+		}
+		return res
+	}
+	allRoutes := func(ip string) map[string]string {
+		return map[string]string{"find": ip, "id": ip, "last": ip, "comments": ip}
+	}
+	ipHash := store.HashValue("10.0.0.1", "123456")
+
+	t.Run("admin of the other site", func(t *testing.T) {
+		tkn := siteToken("remark42", "github_one")
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/user?site=remark42", http.NoBody)
+		require.NoError(t, err)
+		resp, err := sendReq(req, tkn)
+		require.NoError(t, err)
+		var u store.User
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&u))
+		require.NoError(t, resp.Body.Close())
+		require.True(t, u.Admin, "the token is accepted and carries the admin flag")
+
+		assert.Equal(t, allRoutes(""), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+	})
+
+	t.Run("admin of the site", func(t *testing.T) {
+		tkn := siteToken("site2", "github_two")
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }))
+	})
+
+	t.Run("admin of both sites, signed in to the other", func(t *testing.T) {
+		tkn := siteToken("remark42", "github_both")
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.Header.Set("X-JWT", tkn) }),
+			"admin of site2 by the store, though the token is for remark42")
+	})
+
+	t.Run("basic-auth admin", func(t *testing.T) {
+		assert.Equal(t, allRoutes(ipHash), fetch(t, func(r *http.Request) { r.SetBasicAuth("admin", "password") }))
+	})
+
+	t.Run("anonymous reader", func(t *testing.T) {
+		assert.Equal(t, allRoutes(""), fetch(t, func(*http.Request) {}))
+	})
 }
 
 func TestPremoderation(t *testing.T) {

@@ -88,6 +88,13 @@ func SendErrorJSON(w http.ResponseWriter, r *http.Request, httpStatusCode int, e
 	writeErrorJSON(w, httpStatusCode, err, details, errCode)
 }
 
+// SendErrorJSONAs is SendErrorJSON for an error whose text is for the server log only, such as one naming
+// a file on the server: err is logged in full and the body carries sent in its place
+func SendErrorJSONAs(w http.ResponseWriter, r *http.Request, httpStatusCode int, err, sent error, details string, errCode int) {
+	log.Printf("[WARN] %s", errDetailsMsg(r, httpStatusCode, err, details, errCode, 0))
+	writeErrorJSON(w, httpStatusCode, sent, details, errCode)
+}
+
 // SendErrorJSONFromHelper is SendErrorJSON for a helper which sends errors for its callers: the logged
 // source line is where the helper was called, not the line inside the helper
 func SendErrorJSONFromHelper(w http.ResponseWriter, r *http.Request, httpStatusCode int, err error, details string, errCode int) {

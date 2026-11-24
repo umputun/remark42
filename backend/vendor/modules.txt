@@ -83,9 +83,6 @@ github.com/go-pkgz/rest/realip
 # github.com/go-pkgz/routegroup v1.6.2
 ## explicit; go 1.23
 github.com/go-pkgz/routegroup
-# github.com/go-pkgz/syncs v1.3.4
-## explicit; go 1.22
-github.com/go-pkgz/syncs
 # github.com/golang-jwt/jwt/v5 v5.3.1
 ## explicit; go 1.21
 github.com/golang-jwt/jwt/v5
@@ -154,9 +151,6 @@ github.com/redis/go-redis/v9/push
 # github.com/rrivera/identicon v0.0.0-20240116195454-d5ba35832c0d
 ## explicit; go 1.21
 github.com/rrivera/identicon
-# github.com/rs/xid v1.6.0
-## explicit; go 1.16
-github.com/rs/xid
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2

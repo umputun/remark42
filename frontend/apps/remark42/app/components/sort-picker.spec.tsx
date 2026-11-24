@@ -18,6 +18,12 @@ describe('<SortPicker />', () => {
     expect(queryByText('Sort by')).toBeInTheDocument();
   });
 
+  it('should name the select', () => {
+    render(<SortPicker />, defaultState);
+
+    expect(screen.getByRole('combobox')).toHaveAccessibleName('Sort by');
+  });
+
   it('should render selected element', () => {
     render(<SortPicker />, { comments: { sort: '-active' } as StoreState['comments'] });
     expect(screen.getAllByText<HTMLOptionElement>('Recently updated')[1].selected).toBeTruthy();

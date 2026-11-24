@@ -1,3 +1,3 @@
 #!/bin/sh
 set -e
-/srv/remark42 restore $@
+/srv/remark42 restore "$@"

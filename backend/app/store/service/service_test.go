@@ -8,7 +8,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +29,47 @@ import (
 	"github.com/umputun/remark42/backend/app/store/engine"
 	"github.com/umputun/remark42/backend/app/store/image"
 )
+
+func TestService_ReplyDepth(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	loc := store.Locator{URL: "https://radio-t.com/depth", SiteID: "radio-t"}
+
+	// a top-level comment and five replies, each answering the one before
+	chain := make([]store.Comment, 0, 6)
+	pid := ""
+	for i := range 6 {
+		c := store.Comment{ID: fmt.Sprintf("depth-%d", i), ParentID: pid, Text: "chain", Locator: loc,
+			User: store.User{ID: "user1", Name: "user name"}, Timestamp: time.Now()}
+		_, err := eng.Create(c)
+		require.NoError(t, err)
+		chain = append(chain, c)
+		pid = c.ID
+	}
+
+	for i, c := range chain {
+		depth, err := b.ReplyDepth(loc, c, 100)
+		require.NoError(t, err)
+		assert.Equal(t, i, depth, "depth of %s", c.ID)
+	}
+
+	// the count stops at the limit, having read one stored comment a step and nothing else
+	counted := engine.InterfaceMock{GetFunc: eng.Get}
+	b.Engine = &counted
+	depth, err := b.ReplyDepth(loc, chain[5], 3)
+	require.NoError(t, err)
+	assert.Equal(t, 3, depth)
+	assert.Len(t, counted.GetCalls(), 3)
+	assert.Empty(t, counted.FlagCalls())
+	b.Engine = eng
+
+	// a comment above that can't be read leaves the depth unknown
+	orphan := store.Comment{ID: "orphan", ParentID: "missing", Locator: loc}
+	_, err = b.ReplyDepth(loc, orphan, 100)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't read comment missing above orphan")
+}
 
 func TestService_CreateFromEmpty(t *testing.T) {
 	ks := admin.NewStaticKeyStore("secret 123")
@@ -139,10 +182,16 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 
 	postPath := "/post/42"
 	postTitle := "Post Title 42"
+	var deletedPageReads atomic.Int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == postPath {
 			_, err := fmt.Fprintf(w, "<html><title>%s</title><body>...</body></html>", postTitle)
 			assert.NoError(t, err)
+			return
+		}
+		if r.URL.String() == "/post/of-deleted" {
+			deletedPageReads.Add(1)
+			_, _ = w.Write([]byte("<html><title>title of the page</title></html>"))
 			return
 		}
 		w.WriteHeader(404)
@@ -165,6 +214,26 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	t.Logf("%+v", res)
 	assert.Equal(t, postTitle, res.PostTitle)
 
+	// a deleted comment, which an import can bring, gets no title and its page is not read
+	deleted := comment
+	deleted.Deleted, deleted.Imported, deleted.Text = true, true, ""
+	deleted.Locator.URL = ts.URL + "/post/of-deleted"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle)
+	assert.Equal(t, int32(0), deletedPageReads.Load(), "the page of a deleted comment is not read")
+
+	// a backup can hold a comment deleted before a delete cleared the title; a restore drops that title
+	deleted.PostTitle = "title kept by an old delete"
+	id, err = b.Create(deleted)
+	require.NoError(t, err)
+	res, err = b.Engine.Get(getReq(deleted.Locator, id))
+	require.NoError(t, err)
+	assert.Empty(t, res.PostTitle, "a deleted comment is stored without the title it came with")
+	assert.Equal(t, int32(0), deletedPageReads.Load())
+
 	comment.PostTitle = "post blah"
 	id, err = b.Create(comment)
 	assert.NoError(t, err)
@@ -172,6 +241,72 @@ func TestService_CreateFromPartialWithTitle(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%+v", res)
 	assert.Equal(t, "post blah", res.PostTitle, "keep comment title")
+}
+
+func TestService_CreateBlockedDuringTitleFetch(t *testing.T) {
+	// the engine mock doesn't refuse blocked users itself, the block is set by the page while its title is fetched
+	var blocked atomic.Bool
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(req engine.FlagRequest) (bool, error) {
+			return req.Flag == engine.Blocked && req.UserID == "user" && blocked.Load(), nil
+		},
+		CreateFunc: func(comment store.Comment) (string, error) { return comment.ID, nil },
+		GetFunc: func(req engine.GetRequest) (store.Comment, error) {
+			return store.Comment{ID: req.CommentID, Text: `<img src="/images/user/pic.png"/>`}, nil
+		},
+		CloseFunc: func() error { return nil },
+	}
+	adminMock := admin.StoreMock{
+		KeyFunc:     func(string) (string, error) { return "secret 123", nil },
+		EnabledFunc: func(string) (bool, error) { return true, nil },
+		OnEventFunc: func(string, admin.EventType) error { return nil },
+	}
+	imgStore := image.StoreMock{
+		ResetCleanupTimerFunc: func(string) error { return nil },
+		CommitFunc:            func(string) error { return nil },
+	}
+	imgSvc := image.NewService(&imgStore, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	defer imgSvc.Close(context.Background())
+
+	var pageReads atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		pageReads.Add(1)
+		blocked.Store(true)
+		_, err := w.Write([]byte("<html><title>post title</title><body>...</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	b := DataStore{Engine: &engineMock, AdminStore: &adminMock, ImageService: imgSvc,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+
+	comment := store.Comment{
+		Text:    `text <img src="/images/user/pic.png"/>`,
+		User:    store.User{IP: "192.168.1.1", ID: "user", Name: "name"},
+		Locator: store.Locator{URL: ts.URL + "/post/1", SiteID: "radio-t"},
+	}
+	_, err := b.Create(comment)
+	require.ErrorIs(t, err, ErrUserBlocked)
+	assert.Equal(t, int32(1), pageReads.Load(), "the block was set during the title fetch")
+	assert.Empty(t, engineMock.CreateCalls(), "the comment is not stored")
+	assert.Empty(t, imgStore.ResetCleanupTimerCalls(), "pictures of the comment are not submitted")
+	assert.Empty(t, adminMock.OnEventCalls(), "no create event")
+
+	// another user's comment on the same page is stored, with its pictures and event
+	other := comment
+	other.User.ID = "user2"
+	_, err = b.Create(other)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 1)
+	assert.Len(t, imgStore.ResetCleanupTimerCalls(), 1)
+	assert.Len(t, adminMock.OnEventCalls(), 1)
+
+	// an import brings back comments of a blocked user
+	comment.Imported = true
+	_, err = b.Create(comment)
+	require.NoError(t, err)
+	assert.Len(t, engineMock.CreateCalls(), 2)
 }
 
 func TestService_Put(t *testing.T) {
@@ -272,6 +407,32 @@ func TestService_SetTitle(t *testing.T) {
 	defer bErr.Close()
 	_, err = bErr.SetTitle(store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}, id)
 	require.EqualError(t, err, "no title extractor")
+}
+
+func TestService_CreateOnUnreadablePage(t *testing.T) {
+	var hits atomic.Int32
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer tss.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+
+	locator := store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}
+	for i := range 3 {
+		id, err := b.Create(store.Comment{Text: fmt.Sprintf("text %d", i), Locator: locator,
+			User: store.User{IP: "192.168.1.1", ID: "user", Name: "name"}})
+		require.NoError(t, err, "comment %d stored although the page can't be read", i)
+		res, err := b.Engine.Get(getReq(locator, id))
+		require.NoError(t, err)
+		assert.Empty(t, res.PostTitle)
+	}
+	assert.Equal(t, int32(1), hits.Load(), "page requested once, the failure is cached")
 }
 
 func TestService_Vote(t *testing.T) {
@@ -505,6 +666,531 @@ func TestService_VoteConcurrent(t *testing.T) {
 	assert.Equal(t, 0.0, res[0].Controversy, "should have 0 controversy")
 }
 
+func TestService_VoteReleasesScopedLocks(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+
+	_, err := b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-1",
+		UserID: "user2", Val: true})
+	require.NoError(t, err)
+	assert.Empty(t, b.scopedLocks.locks, "lock of the voted post released")
+
+	// concurrent votes for posts which don't exist, each with its own url
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Go(func() {
+			_, e := b.Vote(VoteReq{Locator: store.Locator{URL: fmt.Sprintf("https://radio-t.com/no-such-post-%d", i),
+				SiteID: "radio-t"}, CommentID: "id-1", UserID: "user2", Val: true})
+			assert.Error(t, e)
+		})
+	}
+	wg.Wait()
+	assert.Empty(t, b.scopedLocks.locks, "no locks kept for unknown posts")
+}
+
+func TestService_lockScope(t *testing.T) {
+	b := DataStore{}
+	refs := func(id string) int {
+		b.scopedLocks.Lock()
+		defer b.scopedLocks.Unlock()
+		if lock, ok := b.scopedLocks.locks[id]; ok {
+			return lock.refs
+		}
+		return 0
+	}
+
+	unlock := b.lockScope("id1")
+	unlockOther := b.lockScope("id2") // another scope is not blocked
+	assert.Equal(t, 1, refs("id1"))
+	assert.Equal(t, 1, refs("id2"))
+
+	var acquired atomic.Bool
+	release, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		unlockWaiter := b.lockScope("id1")
+		acquired.Store(true)
+		<-release
+		unlockWaiter()
+	}()
+	require.Eventually(t, func() bool { return refs("id1") == 2 }, 30*time.Second, time.Millisecond,
+		"second caller waits for id1")
+	assert.False(t, acquired.Load(), "id1 is locked by the first caller")
+
+	unlockOther()
+	assert.Equal(t, 0, refs("id2"), "unused lock removed")
+	assert.Equal(t, 2, refs("id1"), "lock in use kept")
+
+	unlock()
+	require.Eventually(t, acquired.Load, 30*time.Second, time.Millisecond,
+		"second caller gets id1 after the first released it")
+	assert.Equal(t, 1, refs("id1"), "lock held by the second caller kept")
+
+	close(release)
+	<-done
+	assert.Empty(t, b.scopedLocks.locks, "all locks removed")
+}
+
+// heldGetEngine keeps the caller of one Get waiting after the comment is read, so a test can put another call
+// between the read and the write of the one that made it
+type heldGetEngine struct {
+	engine.Interface
+	holdCall int32         // which Get to hold, the first one if not set
+	calls    atomic.Int32  // Gets made so far
+	reading  chan struct{} // closed when the held Get has read the comment
+	release  chan struct{} // the held Get returns after this is closed
+}
+
+func (h *heldGetEngine) Get(req engine.GetRequest) (store.Comment, error) {
+	c, err := h.Interface.Get(req)
+	if h.calls.Add(1) == max(h.holdCall, 1) {
+		close(h.reading)
+		<-h.release
+	}
+	return c, err
+}
+
+// waitHeld waits for the held call to reach its hold, and fails the test when that call returns first or never
+// gets there
+func waitHeld(t *testing.T, reached <-chan struct{}, returned <-chan error, what string) {
+	t.Helper()
+	select {
+	case <-reached:
+	case err := <-returned:
+		require.FailNowf(t, what+": returned before it got there", "error: %v", err)
+	case <-time.After(30 * time.Second):
+		require.FailNow(t, what+": never got there")
+	}
+}
+
+// waitReturn waits for a call to return its error, and fails the test when it does not return
+func waitReturn(t *testing.T, returned <-chan error, what string) error {
+	t.Helper()
+	select {
+	case err := <-returned:
+		return err
+	case <-time.After(30 * time.Second):
+		require.FailNow(t, what+": did not return")
+		return nil
+	}
+}
+
+// postLockWaited reports whether somebody waits for the lock of the post while another holds it
+func postLockWaited(b *DataStore, postURL string) bool {
+	b.scopedLocks.Lock()
+	defer b.scopedLocks.Unlock()
+	lock, ok := b.scopedLocks.locks[postURL]
+	return ok && lock.refs == 2
+}
+
+// TestService_PostLockKeepsConcurrentChanges holds one change of a comment between its read and its write, makes
+// another change of the same comment meanwhile, and expects both to be stored. Each of them writes the whole
+// comment back, so the one that read first would undo the other if the lock of the post did not make it wait.
+func TestService_PostLockKeepsConcurrentChanges(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	edit := func(b *DataStore) error {
+		_, err := b.EditComment(locator, "id-1", EditRequest{Text: "edited", Orig: "edited", Summary: "fix"})
+		return err
+	}
+	vote := func(b *DataStore) error {
+		_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-1", UserID: "voter", Val: true})
+		return err
+	}
+	pin := func(b *DataStore) error { return b.SetPin(locator, "id-1", true) }
+	del := func(b *DataStore) error { // the author's delete
+		_, err := b.EditComment(locator, "id-1", EditRequest{Delete: true})
+		return err
+	}
+
+	edited := func(t *testing.T, c store.Comment) { assert.Equal(t, "edited", c.Text, "the edit is stored") }
+	voted := func(t *testing.T, c store.Comment) {
+		assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote is stored")
+		assert.Equal(t, 1, c.Score)
+	}
+	pinned := func(t *testing.T, c store.Comment) { assert.True(t, c.Pin, "the pin is stored") }
+	deleted := func(t *testing.T, c store.Comment) {
+		assert.True(t, c.Deleted, "the delete is stored")
+		assert.Empty(t, c.Text, "a deleted comment keeps no text")
+	}
+
+	tbl := []struct {
+		name          string
+		first, second func(b *DataStore) error
+		checks        []func(t *testing.T, c store.Comment)
+	}{
+		{"vote during an edit", edit, vote, []func(*testing.T, store.Comment){edited, voted}},
+		{"pin during an edit", edit, pin, []func(*testing.T, store.Comment){edited, pinned}},
+		{"edit during a vote", vote, edit, []func(*testing.T, store.Comment){edited, voted}},
+		{"edit during a pin", pin, edit, []func(*testing.T, store.Comment){edited, pinned}},
+		{"vote during a pin", pin, vote, []func(*testing.T, store.Comment){voted, pinned}},
+		{"author's delete during a vote", vote, del, []func(*testing.T, store.Comment){deleted}},
+		{"author's delete during a pin", pin, del, []func(*testing.T, store.Comment){deleted}},
+	}
+
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			held := &heldGetEngine{Interface: eng, reading: make(chan struct{}), release: make(chan struct{})}
+			b := DataStore{Engine: held, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+			defer b.Close()
+
+			var secondDone atomic.Bool
+			firstErr, secondErr := make(chan error, 1), make(chan error, 1)
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(held.release) }) }
+			defer release() // a failed wait must not leave the first call held
+
+			go func() { firstErr <- tt.first(&b) }()
+			// the first change has read the comment and has not written it yet
+			waitHeld(t, held.reading, firstErr, "first change reading the comment")
+			go func() {
+				secondErr <- tt.second(&b)
+				secondDone.Store(true)
+			}()
+
+			// with the lock the second change waits for the first one; without it the second one is stored
+			// right away and the first then writes over it
+			require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || secondDone.Load() },
+				30*time.Second, time.Millisecond, "second change neither waits for the lock nor completes")
+			release()
+			require.NoError(t, waitReturn(t, firstErr, "first change"))
+			require.NoError(t, waitReturn(t, secondErr, "second change"))
+
+			c, err := eng.Get(getReq(locator, "id-1"))
+			require.NoError(t, err)
+			for _, check := range tt.checks {
+				check(t, c)
+			}
+			assert.Empty(t, b.scopedLocks.locks, "the lock of the post is released")
+		})
+	}
+}
+
+// eventAdminStore reports the events sent to the admin store
+type eventAdminStore struct {
+	admin.Store
+	onEvent func(et admin.EventType)
+}
+
+func (a eventAdminStore) OnEvent(_ string, et admin.EventType) error {
+	a.onEvent(et)
+	return nil
+}
+
+// TestService_EditCommentEventSentUnlocked checks that an edit and a delete tell the admin store, which may be a
+// remote one, with the post unlocked, and that they still tell it when the write fails.
+func TestService_EditCommentEventSentUnlocked(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	tbl := []struct {
+		name     string
+		req      EditRequest
+		writeErr error
+		events   []admin.EventType
+	}{
+		{name: "edit", req: EditRequest{Text: "edited"}, events: []admin.EventType{admin.EvUpdate}},
+		{name: "delete", req: EditRequest{Delete: true}, events: []admin.EventType{admin.EvDelete}},
+		{name: "edit not stored", req: EditRequest{Text: "edited"}, writeErr: errors.New("write failed"),
+			events: []admin.EventType{admin.EvUpdate}},
+		{name: "delete not stored", req: EditRequest{Delete: true}, writeErr: errors.New("write failed"),
+			events: []admin.EventType{admin.EvDelete}},
+		{name: "deleted comment refused", req: EditRequest{Text: "edited"}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			stored := store.Comment{ID: "c1", Text: "text", Locator: locator, User: store.User{ID: "user1"},
+				Timestamp: time.Now(), Deleted: tt.name == "deleted comment refused"}
+			eng := engine.InterfaceMock{
+				GetFunc:    func(engine.GetRequest) (store.Comment, error) { return stored, nil },
+				FindFunc:   func(engine.FindRequest) ([]store.Comment, error) { return nil, nil },
+				UpdateFunc: func(store.Comment) error { return tt.writeErr },
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.writeErr },
+			}
+			b := DataStore{Engine: &eng, EditDuration: time.Hour}
+			var events []admin.EventType
+			b.AdminStore = eventAdminStore{Store: admin.NewStaticKeyStore("secret 123"), onEvent: func(et admin.EventType) {
+				events = append(events, et)
+				b.scopedLocks.Lock()
+				defer b.scopedLocks.Unlock()
+				assert.Empty(t, b.scopedLocks.locks, "the post is unlocked when the admin store is told")
+			}}
+
+			_, err := b.EditComment(locator, "c1", tt.req)
+			if tt.writeErr != nil || stored.Deleted {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.events, events)
+		})
+	}
+}
+
+// TestService_SetTitleKeepsConcurrentVote checks that a title update fetches the page with the post unlocked and
+// then writes the title into the comment as it is by then, not as it was before the fetch.
+func TestService_SetTitleKeepsConcurrentVote(t *testing.T) {
+	fetching, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	releaseFetch := func() { releaseOnce.Do(func() { close(release) }) }
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(fetching)
+		<-release
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	defer releaseFetch() // a failed wait must not leave the handler, and with it ts.Close, waiting
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	id, err := b.Engine.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	titleErr := make(chan error, 1)
+	go func() {
+		_, e := b.SetTitle(locator, id)
+		titleErr <- e
+	}()
+	// the comment is read and the page is being fetched
+	waitHeld(t, fetching, titleErr, "title update fetching the page")
+
+	voteErr := make(chan error, 1)
+	go func() {
+		_, e := b.Vote(VoteReq{Locator: locator, CommentID: id, UserID: "voter", Val: true})
+		voteErr <- e
+	}()
+	require.NoError(t, waitReturn(t, voteErr, "vote during the title fetch, the post must not be locked while the page is fetched"))
+
+	releaseFetch()
+	require.NoError(t, waitReturn(t, titleErr, "title update"))
+
+	c, err := eng.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, "post title", c.PostTitle)
+	assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote made during the fetch is stored")
+	assert.Equal(t, 1, c.Score)
+}
+
+// TestService_SetTitleWriteWaitsForPostLock holds a title update between its second read, made after the page is
+// fetched, and its write: a vote made then has to wait and be stored.
+func TestService_SetTitleWriteWaitsForPostLock(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	held := &heldGetEngine{Interface: eng, holdCall: 2, reading: make(chan struct{}), release: make(chan struct{})}
+	b := DataStore{Engine: held, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1,
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	id, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(held.release) }) }
+	defer release() // a failed wait must not leave the title update held
+
+	titleErr, voteErr := make(chan error, 1), make(chan error, 1)
+	var voteDone atomic.Bool
+	go func() {
+		_, e := b.SetTitle(locator, id)
+		titleErr <- e
+	}()
+	// the page is fetched and the comment is read again, not written yet
+	waitHeld(t, held.reading, titleErr, "title update reading the comment again after the fetch")
+	go func() {
+		_, e := b.Vote(VoteReq{Locator: locator, CommentID: id, UserID: "voter", Val: true})
+		voteErr <- e
+		voteDone.Store(true)
+	}()
+	require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || voteDone.Load() },
+		30*time.Second, time.Millisecond, "vote neither waits for the lock nor completes")
+	release()
+	require.NoError(t, waitReturn(t, titleErr, "title update"))
+	require.NoError(t, waitReturn(t, voteErr, "vote"))
+
+	c, err := eng.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, "post title", c.PostTitle)
+	assert.Equal(t, map[string]bool{"voter": true}, c.Votes, "the vote is stored")
+	assert.Equal(t, 1, c.Score)
+}
+
+// TestService_SetTitleSkipsCommentDeletedDuringFetch deletes the comment while its page is fetched: the title update
+// leaves it deleted and reports no error, as it does for a comment deleted before the fetch
+func TestService_SetTitleSkipsCommentDeletedDuringFetch(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	var locator store.Locator
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		assert.NoError(t, eng.Delete(engine.DeleteRequest{Locator: locator, CommentID: "id-title", DeleteMode: store.SoftDelete}))
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	locator = store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	_, err = b.SetTitle(locator, "id-title")
+	require.NoError(t, err, "a comment deleted during the fetch is skipped")
+
+	c, err := eng.Get(getReq(locator, "id-title"))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted, "the comment stays deleted")
+	assert.Empty(t, c.PostTitle)
+}
+
+// deleteBeforeUpdate deletes the comment in the engine right before the first update of it goes through, the way a
+// user deletion, which takes no post lock, can land between a read and an update
+type deleteBeforeUpdate struct {
+	engine.Interface
+	done atomic.Bool
+}
+
+func (d *deleteBeforeUpdate) Update(c store.Comment) error {
+	if d.done.CompareAndSwap(false, true) {
+		if err := d.Delete(engine.DeleteRequest{Locator: c.Locator, CommentID: c.ID, DeleteMode: store.SoftDelete}); err != nil {
+			return err
+		}
+	}
+	return d.Interface.Update(c)
+}
+
+// TestService_SetTitleSkipsCommentDeletedBeforeUpdate has the comment deleted between the title update's read after
+// the fetch and its write, as a user deletion can do: the update is refused and the title run sees no error
+func TestService_SetTitleSkipsCommentDeletedBeforeUpdate(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: &deleteBeforeUpdate{Interface: eng}, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	c, err := b.SetTitle(locator, "id-title")
+	require.NoError(t, err, "a comment deleted before the update is skipped")
+	assert.True(t, c.Deleted)
+
+	stored, err := eng.Get(getReq(locator, "id-title"))
+	require.NoError(t, err)
+	assert.True(t, stored.Deleted, "the comment stays deleted")
+	assert.Empty(t, stored.PostTitle)
+}
+
+// failingUpdate refuses every update of a comment with the same error, the way a failed write of the engine does
+type failingUpdate struct{ engine.Interface }
+
+func (failingUpdate) Update(store.Comment) error { return errors.New("update failed") }
+
+// TestService_SetTitleReturnsUpdateError checks that a refused write of a comment that is not deleted is still
+// reported, so a title run counts it as a failure
+func TestService_SetTitleReturnsUpdateError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<html><title>post title</title><body>text</body></html>"))
+	}))
+	defer ts.Close()
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: failingUpdate{Interface: eng}, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 30 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: ts.URL + "/post", SiteID: "radio-t"}
+	_, err := eng.Create(store.Comment{ID: "id-title", Text: "text", Locator: locator,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+
+	_, err = b.SetTitle(locator, "id-title")
+	require.EqualError(t, err, "update failed")
+}
+
+// heldDeleteEngine keeps the caller of Delete waiting before the engine deletes anything
+type heldDeleteEngine struct {
+	engine.Interface
+	deleting chan struct{} // closed when Delete is called
+	release  chan struct{} // Delete goes on after this is closed
+}
+
+func (h *heldDeleteEngine) Delete(req engine.DeleteRequest) error {
+	close(h.deleting)
+	<-h.release
+	return h.Interface.Delete(req)
+}
+
+// TestService_DeleteHoldsPostLock holds an admin's delete between reading the comment and deleting it while its
+// author edits a picture into it. The edit has to wait and then find the comment deleted; were it stored in
+// between, the delete would remove the pictures of the text it read and leave the new one behind.
+func TestService_DeleteHoldsPostLock(t *testing.T) {
+	for _, hold := range []string{"read", "engine delete"} {
+		t.Run("held at "+hold, func(t *testing.T) {
+			mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			locator := store.Locator{URL: "https://radio-t.com/post", SiteID: "radio-t"}
+			_, err := eng.Create(store.Comment{ID: "c1", Text: "text", Locator: locator, Timestamp: time.Now(),
+				User: store.User{ID: "user1", Name: "user name"}})
+			require.NoError(t, err)
+
+			// the delete is held at the read of the comment or right before the engine deletes it
+			reached, releaseCh := make(chan struct{}), make(chan struct{})
+			var wrapped engine.Interface = &heldGetEngine{Interface: eng, reading: reached, release: releaseCh}
+			if hold == "engine delete" {
+				wrapped = &heldDeleteEngine{Interface: eng, deleting: reached, release: releaseCh}
+			}
+			b := DataStore{Engine: wrapped, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"),
+				ImageService: imgSvc}
+			defer b.Close()
+
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(releaseCh) }) }
+			defer release() // a failed wait must not leave the delete held
+
+			deleteErr, editErr := make(chan error, 1), make(chan error, 1)
+			var editDone atomic.Bool
+			go func() { deleteErr <- b.Delete(locator, "c1", store.SoftDelete) }()
+			waitHeld(t, reached, deleteErr, "delete reaching its hold")
+			go func() {
+				_, e := b.EditComment(locator, "c1", EditRequest{Text: `text <img src="/images/user1/new.png"/>`})
+				editErr <- e
+				editDone.Store(true)
+			}()
+			require.Eventually(t, func() bool { return postLockWaited(&b, locator.URL) || editDone.Load() },
+				30*time.Second, time.Millisecond, "edit neither waits for the lock nor completes")
+			assert.False(t, editDone.Load(), "the edit waits for the delete")
+			release()
+			require.NoError(t, waitReturn(t, deleteErr, "delete"))
+			require.Error(t, waitReturn(t, editErr, "edit"), "the edit finds the comment deleted")
+
+			c, err := eng.Get(getReq(locator, "c1"))
+			require.NoError(t, err)
+			assert.True(t, c.Deleted)
+			assert.Empty(t, c.Text)
+			assert.Empty(t, deletedImages(mockStore), "no picture was ever stored in the comment")
+		})
+	}
+}
+
 func TestService_VotePositive(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -604,6 +1290,43 @@ func TestService_RestrictedWords(t *testing.T) {
 	id, err := b.Create(reply)
 	assert.EqualError(t, err, ErrRestrictedWordsFound.Error(), "should fail with RestrictedWordError")
 	assert.Empty(t, id)
+
+	// an import brings back comments the site already had, whatever words are restricted now
+	reply.Imported = true
+	id, err = b.Create(reply)
+	require.NoError(t, err)
+	assert.Equal(t, "c-1", id)
+}
+
+func TestService_EditCommentRestrictedWords(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		RestrictedWordsMatcher: NewRestrictedWordsMatcher(StaticRestrictedWordsLister{Words: []string{"restricted"}})}
+	defer b.Close()
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	// the sanitizer removes the markup of the last two, so the stored text would have the word as is
+	for _, text := range []string{"restricted word", "restr<b></b>icted word", "restr<!-- -->icted word",
+		"restr<script></script>icted word"} {
+		_, err := b.EditComment(locator, "id-2", EditRequest{Orig: "yyy", Text: text, Summary: "my edit"})
+		assert.EqualError(t, err, ErrRestrictedWordsFound.Error(), "should fail with RestrictedWordError for %q", text)
+
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		assert.Equal(t, "some text2", c.Text, "comment should not be changed by %q", text)
+		assert.Nil(t, c.Edit)
+	}
+
+	// the word only in what the sanitizer drops is not stored or shown, and a new comment with it is accepted
+	const dropped = `allowed <span data-x="restricted">word</span><script>restricted</script>`
+	_, err := b.Create(store.Comment{ID: "c-1", Text: dropped, Locator: locator, User: store.User{ID: "user2", Name: "user name 2"}})
+	require.NoError(t, err, "a new comment with the word only in dropped markup")
+	_, err = b.EditComment(locator, "id-2", EditRequest{Orig: "yyy", Text: dropped, Summary: "my edit"})
+	require.NoError(t, err, "an edit is matched on the text it stores, as a new comment is")
+	c, err := b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.Equal(t, "allowed <span>word</span>", c.Text)
 }
 
 func TestDataStore_AdminStoreErrors(t *testing.T) {
@@ -703,18 +1426,197 @@ func TestService_VoteSameIP(t *testing.T) {
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user3", UserIP: "123", Val: true})
-	assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
+	assert.EqualError(t, err, "the same ip already voted for id-2")
 	assert.Equal(t, 1, c.Score, "still have 1 score, rejected")
+
+	// another user on the same address is refused in the opposite direction too
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: false})
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+	assert.Equal(t, 1, c.Score, "still have 1 score, opposite vote of another user rejected")
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: false})
 	assert.NoError(t, err)
-	assert.Equal(t, 0, c.Score, "reset to 0 score, opposite vote allowed")
+	assert.Equal(t, 0, c.Score, "reset to 0 score, the user's own opposite vote allowed")
 
 	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 		UserID: "user2", UserIP: "123", Val: false})
 	assert.NoError(t, err)
 	assert.Equal(t, -1, c.Score, "set to -1 score, correction vote allowed")
+
+	c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
+		UserID: "user3", UserIP: "123", Val: true})
+	assert.EqualError(t, err, "the same ip already voted for id-2")
+	assert.Equal(t, -1, c.Score, "still have -1 score")
+}
+
+// several users on one address must not add up: each used to vote against the standing vote and then change
+// their vote, which freed the address for the next one
+func TestService_VoteSameIPManyUsers(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+	b.RestrictSameIPVotes.Enabled = true
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+
+	c, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: "user2", UserIP: "123", Val: true})
+	require.NoError(t, err)
+	require.Equal(t, 1, c.Score)
+
+	for _, user := range []string{"user3", "user4", "user5"} {
+		for _, val := range []bool{false, true, true} {
+			_, err = b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: user, UserIP: "123", Val: val})
+			assert.EqualError(t, err, "the same ip already voted for id-2", "%s, vote %v", user, val)
+		}
+	}
+
+	c, err = b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.Equal(t, 1, c.Score, "single vote from the ip")
+	assert.Equal(t, map[string]bool{"user2": true}, c.Votes)
+
+	// a user on another address is not affected
+	c, err = b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: "user6", UserIP: "456", Val: true})
+	require.NoError(t, err)
+	assert.Equal(t, 2, c.Score)
+}
+
+// the record of an address belongs to the vote it was written for: a user taking their vote back frees the address
+// of that vote only, whatever address the change comes from
+func TestService_VoteSameIPRecordBelongsToVoter(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	vote := func(b *DataStore, user, ip string, val bool) (store.Comment, error) {
+		return b.Vote(VoteReq{Locator: locator, CommentID: "id-2", UserID: user, UserIP: ip, Val: val})
+	}
+	prep := func(t *testing.T) *DataStore {
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+		b.RestrictSameIPVotes.Enabled = true
+		return b
+	}
+	const sameIP = "the same ip already voted for id-2"
+
+	t.Run("change from another address", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "456", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user3", "123", true)
+		require.NoError(t, err)
+
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "user2 takes the vote back from the address user3 voted from")
+		assert.Equal(t, 1, c.Score)
+
+		_, err = vote(b, "user4", "123", true)
+		assert.EqualError(t, err, sameIP, "the vote of user3 still stands for the address")
+		_, err = vote(b, "user2", "123", false)
+		assert.EqualError(t, err, sameIP, "user2 can't add a vote there either")
+
+		c, err = vote(b, "user5", "456", true)
+		require.NoError(t, err, "the address of the vote taken back is free")
+		assert.Equal(t, 2, c.Score)
+	})
+
+	t.Run("correction through another address", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user2", "456", false)
+		require.NoError(t, err)
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "the user's first address is free once the vote is taken back")
+		assert.Equal(t, -1, c.Score)
+	})
+
+	t.Run("record stored without its voter", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		require.Len(t, c.VotedIPs, 1)
+		for ipHash, rec := range c.VotedIPs { // as records were stored before they named the voter
+			require.Equal(t, "user2", rec.UserID)
+			rec.UserID = ""
+			c.VotedIPs[ipHash] = rec
+		}
+		require.NoError(t, b.Engine.Update(c))
+
+		_, err = vote(b, "user3", "123", false)
+		assert.EqualError(t, err, sameIP)
+		c, err = vote(b, "user2", "123", false)
+		require.NoError(t, err, "the user takes the vote back")
+		assert.Equal(t, 0, c.Score)
+		c, err = vote(b, "user2", "123", false)
+		require.NoError(t, err, "and votes the other way from the same address")
+		assert.Equal(t, -1, c.Score)
+	})
+
+	// stripVoters stores the records the way they were stored before they named the voter
+	stripVoters := func(t *testing.T, b *DataStore) {
+		c, err := b.Engine.Get(getReq(locator, "id-2"))
+		require.NoError(t, err)
+		for ipHash, rec := range c.VotedIPs {
+			rec.UserID = ""
+			c.VotedIPs[ipHash] = rec
+		}
+		require.NoError(t, b.Engine.Update(c))
+	}
+
+	t.Run("named record next to one stored without its voter", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "123", true)
+		require.NoError(t, err)
+		stripVoters(t, b)
+		_, err = vote(b, "user3", "456", true)
+		require.NoError(t, err)
+
+		c, err := vote(b, "user3", "123", false)
+		require.NoError(t, err, "user3 takes the vote back from the address of user2")
+		assert.Equal(t, 1, c.Score)
+		_, err = vote(b, "user4", "123", true)
+		assert.EqualError(t, err, sameIP, "the vote of user2 still stands for its address")
+		c, err = vote(b, "user5", "456", true)
+		require.NoError(t, err, "the address of the vote taken back is free")
+		assert.Equal(t, 2, c.Score)
+	})
+
+	t.Run("records without voters, change from the address of another vote", func(t *testing.T) {
+		b := prep(t)
+		_, err := vote(b, "user2", "456", true)
+		require.NoError(t, err)
+		_, err = vote(b, "user3", "123", false)
+		require.NoError(t, err)
+		stripVoters(t, b)
+
+		c, err := vote(b, "user2", "123", false)
+		require.NoError(t, err, "user2 takes the vote back from the address user3 voted down from")
+		assert.Equal(t, -1, c.Score)
+		_, err = vote(b, "user4", "123", false)
+		assert.EqualError(t, err, sameIP, "the record there holds a vote the other way, it is not the one of user2")
+	})
+
+	t.Run("window ended for the first vote", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			b := prep(t)
+			b.RestrictSameIPVotes.Duration = 500 * time.Millisecond
+			_, err := vote(b, "user2", "123", false)
+			require.NoError(t, err)
+			time.Sleep(501 * time.Millisecond)
+			_, err = vote(b, "user3", "123", true)
+			require.NoError(t, err, "a new window, the address may vote again")
+
+			c, err := vote(b, "user2", "123", true)
+			require.NoError(t, err, "user2 takes the old vote back")
+			assert.Equal(t, 1, c.Score)
+			_, err = vote(b, "user2", "123", true)
+			assert.EqualError(t, err, sameIP, "the vote of user3 stands for the address in this window")
+			_, err = vote(b, "user4", "123", true)
+			assert.EqualError(t, err, sameIP)
+		})
+	})
 }
 
 func TestService_VoteSameIPWithDuration(t *testing.T) {
@@ -733,7 +1635,7 @@ func TestService_VoteSameIPWithDuration(t *testing.T) {
 
 		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
 			UserID: "user3", UserIP: "123", Val: true})
-		assert.EqualError(t, err, "the same ip cce61be6e0a692420ae0de31dceca179123c3b8a already voted for id-2")
+		assert.EqualError(t, err, "the same ip already voted for id-2")
 		assert.Equal(t, 1, c.Score, "still have 1 score")
 
 		c, err = b.Vote(VoteReq{Locator: store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, CommentID: "id-2",
@@ -806,13 +1708,13 @@ func TestService_VotePrunesExpiredIPs(t *testing.T) {
 				// the same-ip limit keeps working on what is left
 				err := vote(&b, "user5", "10.0.0.2")
 				if tt.enabled {
-					assert.EqualError(t, err, "the same ip "+freshIP+" already voted for id-2", "ip inside the window is still limited")
+					assert.EqualError(t, err, "the same ip already voted for id-2", "ip inside the window is still limited")
 				} else {
 					assert.NoError(t, err, "no limit with the restriction off")
 				}
 				err = vote(&b, "user6", "10.0.0.1")
 				if tt.enabled && !tt.pruned {
-					assert.EqualError(t, err, "the same ip "+oldIP+" already voted for id-2", "unlimited window still limits the old ip")
+					assert.EqualError(t, err, "the same ip already voted for id-2", "unlimited window still limits the old ip")
 				} else {
 					assert.NoError(t, err, "ip outside the window can vote again")
 				}
@@ -897,6 +1799,82 @@ func TestService_EditComment(t *testing.T) {
 	_, err = b.EditComment(store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}, res[0].ID,
 		EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit"})
 	assert.NoError(t, err, "allow second edit")
+}
+
+func TestService_EditCommentSanitizesSummary(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	comment, err := b.EditComment(locator, "id-1",
+		EditRequest{Orig: "yyy", Text: "xxx", Summary: `<script>alert(1)</script><b>why</b> & "how"`})
+	require.NoError(t, err)
+	require.NotNil(t, comment.Edit)
+	assert.Equal(t, `why &amp; "how"`, comment.Edit.Summary, "returned by the edit")
+
+	c, err := b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	require.NotNil(t, c.Edit)
+	assert.Equal(t, `why &amp; "how"`, c.Edit.Summary, "stored by the edit")
+
+	// a delete sent through an edit keeps no summary
+	_, err = b.EditComment(locator, "id-2", EditRequest{Delete: true, Summary: "<b>gone</b>"})
+	require.NoError(t, err)
+	c, err = b.Engine.Get(getReq(locator, "id-2"))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted)
+	assert.Nil(t, c.Edit, "no edit record stored on delete")
+}
+
+func TestService_ReadSanitizesStoredSummary(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+	defer b.Close()
+
+	// a summary stored before edits cleaned it
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	const raw = `<script>alert(1)</script><b>why</b> & "how"`
+	const clean = `why &amp; "how"`
+	c, err := b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	c.Edit = &store.Edit{Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), Summary: raw}
+	require.NoError(t, b.Engine.Update(c))
+
+	summaryOf := func(t *testing.T, cc []store.Comment) string {
+		t.Helper()
+		for _, c := range cc {
+			if c.ID == "id-1" {
+				require.NotNil(t, c.Edit)
+				return c.Edit.Summary
+			}
+		}
+		require.FailNow(t, "id-1 not in the result")
+		return ""
+	}
+
+	got, err := b.Get(locator, "id-1", store.User{})
+	require.NoError(t, err)
+	require.NotNil(t, got.Edit)
+	assert.Equal(t, clean, got.Edit.Summary, "Get")
+
+	cc, err := b.Find(locator, "time", store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "Find")
+
+	cc, err = b.Last("radio-t", 0, time.Time{}, store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "Last")
+
+	cc, err = b.User("radio-t", "user1", 0, 0, store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, clean, summaryOf(t, cc), "User")
+
+	c, err = b.Engine.Get(getReq(locator, "id-1"))
+	require.NoError(t, err)
+	assert.Equal(t, raw, c.Edit.Summary, "reading does not rewrite the stored record")
 }
 
 func TestService_DeleteComment(t *testing.T) {
@@ -986,6 +1964,132 @@ func TestService_EditCommentAdmin(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestService_EditCommentDeleted(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), AdminEdits: true}
+	defer b.Close()
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	res, err := b.Last("radio-t", 0, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	id := res[0].ID
+	require.NoError(t, b.Delete(locator, id, store.SoftDelete))
+
+	// admin edits skip the edit window and the replies check, but not this one
+	for _, isAdmin := range []bool{false, true} {
+		_, err = b.EditComment(locator, id, EditRequest{Orig: "yyy", Text: "xxx", Summary: "my edit", Admin: isAdmin})
+		assert.EqualError(t, err, "deleted comment can't be edited, "+id, "admin %v", isAdmin)
+	}
+
+	c, err := b.Engine.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.True(t, c.Deleted)
+	assert.Empty(t, c.Text, "stored text stays empty")
+	assert.Empty(t, c.Orig, "stored original text stays empty")
+	assert.Nil(t, c.Edit, "no edit record stored")
+
+	c, err = b.EditComment(locator, id, EditRequest{Delete: true})
+	require.NoError(t, err, "a repeated delete is accepted")
+	assert.True(t, c.Deleted)
+	assert.Empty(t, c.Text)
+}
+
+func TestService_SetTitleDeleted(t *testing.T) {
+	var fetched atomic.Int32
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fetched.Add(1)
+		_, _ = w.Write([]byte("<html><title>post title</title></html>"))
+	}))
+	defer tss.Close()
+
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"),
+		TitleExtractor: NewTitleExtractor(http.Client{Timeout: 5 * time.Second}, []string{"127.0.0.1"})}
+	defer b.Close()
+	locator := store.Locator{URL: tss.URL + "/post1", SiteID: "radio-t"}
+	id, err := b.Create(store.Comment{Text: "text", Locator: locator, User: store.User{ID: "user", Name: "name"},
+		PostTitle: "old title"})
+	require.NoError(t, err)
+	require.NoError(t, b.Delete(locator, id, store.SoftDelete))
+
+	c, err := b.SetTitle(locator, id)
+	require.NoError(t, err, "a deleted comment is skipped, so a title run over a post with one does not fail")
+	assert.True(t, c.Deleted)
+	assert.Zero(t, fetched.Load(), "no title is fetched for a deleted comment")
+	res, err := b.Engine.Get(getReq(locator, id))
+	require.NoError(t, err)
+	assert.Equal(t, c, res, "the deleted comment is left as it was")
+}
+
+// deleteAfterGet deletes a comment in the engine right after the first read of any comment, the way a delete made
+// by somebody else lands between the read and the write of a change
+type deleteAfterGet struct {
+	engine.Interface
+	req     engine.DeleteRequest
+	deletes int
+}
+
+func (d *deleteAfterGet) Get(req engine.GetRequest) (store.Comment, error) {
+	c, err := d.Interface.Get(req)
+	if err == nil && d.deletes == 0 {
+		d.deletes++
+		err = d.Delete(d.req)
+	}
+	return c, err
+}
+
+// a delete that lands after a change has read the comment and before it writes it back has to hold
+func TestService_ChangeDoesNotUndoDelete(t *testing.T) {
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	tbl := []struct {
+		name   string
+		change func(b *DataStore) error
+	}{
+		{"edit", func(b *DataStore) error {
+			_, err := b.EditComment(locator, "id-1", EditRequest{Orig: "edited", Text: "edited", Summary: "my edit"})
+			return err
+		}},
+		{"vote", func(b *DataStore) error {
+			_, err := b.Vote(VoteReq{Locator: locator, CommentID: "id-1", UserID: "user2", Val: true})
+			return err
+		}},
+	}
+	for _, tt := range tbl {
+		for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+			t.Run(fmt.Sprintf("%s, delete mode %v", tt.name, mode), func(t *testing.T) {
+				eng, teardown := prepStoreEngine(t)
+				defer teardown()
+				// the delete lands right after the change has read the comment, before it writes it back
+				hooked := &deleteAfterGet{Interface: eng,
+					req: engine.DeleteRequest{Locator: locator, CommentID: "id-1", DeleteMode: mode}}
+				b := DataStore{Engine: hooked, AdminStore: admin.NewStaticKeyStore("secret 123"), MaxVotes: -1}
+				defer b.Close()
+
+				assert.Error(t, tt.change(&b), "the change is refused")
+				require.Equal(t, 1, hooked.deletes, "the delete ran in the middle of the change")
+
+				res, err := eng.Get(getReq(locator, "id-1"))
+				require.NoError(t, err)
+				assert.True(t, res.Deleted, "the comment stays deleted")
+				assert.Empty(t, res.Text)
+				assert.Empty(t, res.Votes)
+				comments, err := eng.Find(engine.FindRequest{Locator: locator})
+				require.NoError(t, err)
+				live := []string{}
+				for _, c := range comments {
+					if !c.Deleted {
+						live = append(live, c.ID)
+					}
+				}
+				assert.Equal(t, []string{"id-2"}, live, "the other comment of the post is the only one not deleted")
+			})
+		}
+	}
+}
+
 func TestService_ValidateComment(t *testing.T) {
 	b := DataStore{MinCommentSize: 6, MaxCommentSize: 2000, AdminStore: admin.NewStaticKeyStore("secret 123")}
 	longText := fmt.Sprintf("%4000s", "X")
@@ -1002,10 +2106,12 @@ func TestService_ValidateComment(t *testing.T) {
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 		{inp: store.Comment{Orig: "here is a link with relative URL: [google.com](url)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
 		{inp: store.Comment{Orig: "multiple links, one is bad: [test](http://test) [test2](bad_url) [test3](https://test3)", User: store.User{ID: "myid", Name: "name"}}, err: "links should start with mailto:, http:// or https://"},
+		{inp: store.Comment{Orig: "some text\n[0]:<", User: store.User{ID: "myid", Name: "name"}}, err: "can't parse comment text"}, // the parser panics on it
 	}
 
 	for n, tt := range tbl {
-		err := b.ValidateComment(&tt.inp)
+		var err error
+		require.NotPanics(t, func() { err = b.ValidateComment(&tt.inp) }, "check #%d", n)
 		if tt.err == "" {
 			assert.NoError(t, err, "check #%d", n)
 			continue
@@ -1118,6 +2224,26 @@ func TestService_SetMetas(t *testing.T) {
 	assert.Equal(t, []engine.UserDetailEntry{{UserID: "user1", Email: "test@example.org"}}, val)
 }
 
+func TestService_SetMetasExpiredBlock(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123")}
+
+	expired := UserMetaData{ID: "user1"}
+	expired.Blocked.Status = true
+	expired.Blocked.Until = time.Now().Add(-time.Hour)
+	permanent := UserMetaData{ID: "user2"} // no end time, as an export without one carries it
+	permanent.Blocked.Status = true
+
+	require.NoError(t, b.SetMetas("radio-t", []UserMetaData{expired, permanent}, nil))
+	assert.False(t, b.IsBlocked("radio-t", "user1"), "a block that ran out before the restore stays out")
+	assert.True(t, b.IsBlocked("radio-t", "user2"), "a block without an end time stays permanent")
+	blocked, err := b.BlockedUsers("radio-t")
+	require.NoError(t, err)
+	require.Len(t, blocked, 1)
+	assert.Equal(t, "user2", blocked[0].ID)
+}
+
 func TestService_UserDetailsOperations(t *testing.T) {
 	eng, teardown := prepStoreEngine(t)
 	defer teardown()
@@ -1210,45 +2336,94 @@ func TestService_HasReplies(t *testing.T) {
 	}
 	_, err := b.Create(reply)
 	assert.NoError(t, err)
-	_, found := b.repliesCache.Peek(comment.ID)
-	assert.False(t, found, "not yet checked")
 	assert.True(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies")
 
 	// deletion of the parent comment shouldn't work as the comment has replies
 	_, err = b.EditComment(reply.Locator, comment.ID, EditRequest{Orig: comment.ID, Delete: true, Summary: "user deletes the comment"})
 	assert.EqualError(t, err, "parent comment with reply can't be edited, "+comment.ID)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies")
 
 	// should not report replies after deletion of the child
 	err = b.Delete(reply.Locator, reply.ID, store.HardDelete)
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "cleaned up from cache by Delete call")
 	assert.False(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "checked and has no replies")
 
 	// recreate reply with the new ID
 	reply.ID = "c-2"
 	_, err = b.Create(reply)
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "not yet checked")
 	assert.True(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.True(t, found, "checked and has replies again")
 
 	// should not report replies after deletion of the child using Edit mechanism
 	_, err = b.EditComment(reply.Locator, reply.ID, EditRequest{Orig: reply.ID, Delete: true, Summary: "user deletes the comment"})
 	assert.NoError(t, err)
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "cleaned up from cache by EditComment call")
 	assert.False(t, b.HasReplies(comment))
-	_, found = b.repliesCache.Peek(reply.ParentID)
-	assert.False(t, found, "checked and has no replies")
+}
+
+func TestService_HasRepliesAfterManyLaterComments(t *testing.T) {
+	// the reply check must see a reply however many comments the site got after it on other posts
+	eng, err := engine.NewBoltDB(bolt.Options{NoSync: true}, engine.BoltSite{FileName: path.Join(t.TempDir(), "test.db"), SiteID: "radio-t"})
+	require.NoError(t, err)
+	b := DataStore{Engine: eng,
+		AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+	defer func() { assert.NoError(t, b.Close()) }()
+
+	ts := time.Date(2017, 12, 20, 15, 18, 22, 0, time.UTC)
+	post := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	_, err = eng.Create(store.Comment{ID: "id-1", Text: `some text, <a href="http://radio-t.com">link</a>`, Timestamp: ts,
+		Locator: post, User: store.User{ID: "user1", Name: "user name"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply-1", ParentID: "id-1", Text: "reply", Timestamp: ts.Add(time.Minute),
+		Locator: post, User: store.User{ID: "user2", Name: "user name 2"}})
+	require.NoError(t, err)
+
+	// more later comments on another post than the engine returns as the site's last comments
+	other := store.Locator{URL: "https://radio-t.com/other", SiteID: "radio-t"}
+	for i := range 1001 {
+		c := store.Comment{ID: fmt.Sprintf("other-%d", i), Text: "text", Timestamp: ts.Add(time.Hour + time.Duration(i)*time.Second),
+			Locator: other, User: store.User{ID: "user3", Name: "user name 3"}}
+		_, err = eng.Create(c)
+		require.NoError(t, err)
+	}
+
+	parent, err := eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+	require.NoError(t, err)
+	assert.True(t, b.HasReplies(parent), "the reply to id-1 is on its post")
+
+	// the author of id-1 can neither delete nor edit it while it has a reply
+	_, err = b.EditComment(post, "id-1", EditRequest{Delete: true})
+	require.EqualError(t, err, "parent comment with reply can't be edited, id-1")
+	_, err = b.EditComment(post, "id-1", EditRequest{Text: "new text", Orig: "new text"})
+	require.EqualError(t, err, "parent comment with reply can't be edited, id-1")
+	parent, err = eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+	require.NoError(t, err)
+	assert.False(t, parent.Deleted)
+	assert.Equal(t, `some text, <a href="http://radio-t.com">link</a>`, parent.Text)
+}
+
+func TestService_HasRepliesAfterUserDelete(t *testing.T) {
+	// deleting the author of the only reply leaves the parent without replies straight away
+	for name, mode := range map[string]store.DeleteMode{"soft": store.SoftDelete, "hard": store.HardDelete} {
+		t.Run(name, func(t *testing.T) {
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := DataStore{Engine: eng,
+				AdminStore: admin.NewStaticStore("secret 123", []string{"radio-t"}, []string{"user2"}, "user@email.com")}
+			defer b.Close()
+
+			post := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+			_, err := b.Create(store.Comment{ID: "reply-1", ParentID: "id-1", Text: "reply", Locator: post,
+				User: store.User{ID: "user2", Name: "user name 2"}})
+			require.NoError(t, err)
+			parent, err := eng.Get(engine.GetRequest{Locator: post, CommentID: "id-1"})
+			require.NoError(t, err)
+			require.True(t, b.HasReplies(parent))
+
+			require.NoError(t, b.DeleteUser("radio-t", "user2", mode))
+			assert.False(t, b.HasReplies(parent), "the only reply is deleted with its author")
+			_, err = b.EditComment(post, "id-1", EditRequest{Delete: true})
+			require.NoError(t, err, "the author can delete a comment that has no replies left")
+		})
+	}
 }
 
 func TestService_UserReplies(t *testing.T) {
@@ -1344,6 +2519,166 @@ func TestService_UserReplies(t *testing.T) {
 	})
 }
 
+func TestService_UserRepliesLimit(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	loc := store.Locator{URL: "https://radio-t.com/limit", SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: loc, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	for i := 1; i <= 3; i++ {
+		_, err = eng.Create(store.Comment{ID: fmt.Sprintf("reply-%d", i), ParentID: "parent", Locator: loc,
+			Timestamp: base.Add(time.Duration(i) * time.Second), User: store.User{ID: "u2", Name: "user two"}})
+		require.NoError(t, err)
+	}
+
+	cc, _, err := b.UserReplies("radio-t", "u1", 2, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 2, "no more replies than the limit")
+	assert.Equal(t, "reply-3", cc[0].ID, "newest first")
+	assert.Equal(t, "reply-2", cc[1].ID)
+}
+
+func TestService_UserRepliesSkipsOrphanReply(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	loc := store.Locator{URL: "https://radio-t.com/orphan", SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: loc, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply", ParentID: "parent", Locator: loc, Timestamp: base.Add(time.Second),
+		User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+	// a later reply by another user to a comment that is not in the store
+	_, err = eng.Create(store.Comment{ID: "orphan", ParentID: "missing", Locator: loc, Timestamp: base.Add(2 * time.Second),
+		User: store.User{ID: "u3", Name: "user three"}})
+	require.NoError(t, err)
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err, "a reply to a missing comment does not fail the replies of another user")
+	assert.Equal(t, "user one", u)
+	require.Len(t, cc, 1)
+	assert.Equal(t, "reply", cc[0].ID)
+
+	// more replies to missing comments on the same post cost one read of the post, not one each
+	for i := range 3 {
+		_, err = eng.Create(store.Comment{ID: "orphan" + strconv.Itoa(i), ParentID: "missing" + strconv.Itoa(i), Locator: loc,
+			Timestamp: base.Add(time.Duration(3+i) * time.Second), User: store.User{ID: "u3", Name: "user three"}})
+		require.NoError(t, err)
+	}
+	counted := &failingReads{Interface: eng}
+	b.Engine = counted
+	cc, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 1)
+	assert.Equal(t, 1, counted.postReads, "the post is read once for all its replies to missing comments")
+
+	// a parent that can't be told missing because the post can't be read still fails the call
+	b.Engine = &failingReads{Interface: eng, post: true}
+	_, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.Error(t, err, "a store error while checking the parent is returned")
+	assert.Contains(t, err.Error(), "can't get parent comment")
+
+	// a parent that is in the post but can't be read fails the call too
+	b.Engine = &failingReads{Interface: eng, get: true}
+	_, _, err = b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.Error(t, err, "a store error while reading an existing parent is returned")
+	assert.Contains(t, err.Error(), "can't get parent comment")
+}
+
+// failingReads fails reads of single comments (get) or of a post's comments (post), and counts the latter
+type failingReads struct {
+	engine.Interface
+	get, post bool
+	postReads int // reads of a post's comments
+}
+
+func (f *failingReads) Get(req engine.GetRequest) (store.Comment, error) {
+	if f.get {
+		return store.Comment{}, errors.New("read failed")
+	}
+	return f.Interface.Get(req)
+}
+
+func (f *failingReads) Find(req engine.FindRequest) ([]store.Comment, error) {
+	if req.Locator.URL != "" {
+		f.postReads++
+		if f.post {
+			return nil, errors.New("read failed")
+		}
+	}
+	return f.Interface.Find(req)
+}
+
+func TestService_UserRepliesBackslashInURL(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	// the url is sanitized on create and again on every read, both passes give the same url
+	loc := store.Locator{URL: `https://radio-t.com/backslash?ref=\`, SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := b.Create(store.Comment{ID: "parent", Text: "test 123", Locator: loc, Timestamp: base,
+		User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = b.Create(store.Comment{ID: "reply", ParentID: "parent", Text: "xyz test", Locator: loc,
+		Timestamp: base.Add(time.Second), User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+
+	last, err := b.Last("radio-t", 1, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, last, 1)
+	assert.Equal(t, loc, last[0].Locator, "the reported locator is the stored one")
+	_, err = b.Get(last[0].Locator, last[0].ID, store.User{})
+	require.NoError(t, err, "the comment is found by its reported locator")
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err)
+	require.Len(t, cc, 1)
+	assert.Equal(t, "reply", cc[0].ID)
+	assert.Equal(t, "user one", u)
+
+	cc, _, err = b.UserReplies("radio-t", "uxxx", 10, 24*time.Hour)
+	require.NoError(t, err, "the reply does not fail the replies of another user")
+	assert.Empty(t, cc)
+}
+
+func TestService_UserRepliesBackslashInStoredURL(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{}, "user@email.com")}
+
+	// older versions stored a url with a single backslash in the query with the backslash doubled, and a reply
+	// sent with that url was stored with it doubled again, in another post than its parent
+	stored := store.Locator{URL: `https://radio-t.com/backslash?ref=\\`, SiteID: "radio-t"}
+	other := store.Locator{URL: `https://radio-t.com/backslash?ref=\\\\`, SiteID: "radio-t"}
+	base := time.Now().Add(-time.Hour)
+	_, err := eng.Create(store.Comment{ID: "parent", Locator: stored, Timestamp: base, User: store.User{ID: "u1", Name: "user one"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "reply", ParentID: "parent", Locator: stored, Timestamp: base.Add(time.Second),
+		User: store.User{ID: "u2", Name: "user two"}})
+	require.NoError(t, err)
+	_, err = eng.Create(store.Comment{ID: "elsewhere", ParentID: "parent", Locator: other, Timestamp: base.Add(2 * time.Second),
+		User: store.User{ID: "u3", Name: "user three"}})
+	require.NoError(t, err)
+
+	last, err := b.Last("radio-t", 2, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, last, 2)
+	assert.Equal(t, other, last[0].Locator, "a stored url is reported as stored")
+	assert.Equal(t, stored, last[1].Locator, "a stored url is reported as stored")
+
+	cc, u, err := b.UserReplies("radio-t", "u1", 10, 24*time.Hour)
+	require.NoError(t, err, "a reply stored apart from its parent does not fail the feed")
+	assert.Equal(t, "user one", u)
+	require.Len(t, cc, 1, "the reply stored apart from its parent is skipped")
+	assert.Equal(t, "reply", cc[0].ID)
+}
+
 func TestService_Find(t *testing.T) {
 	// two comments for https://radio-t.com, no reply
 	eng, teardown := prepStoreEngine(t)
@@ -1380,6 +2715,29 @@ func TestService_Find(t *testing.T) {
 
 	// make sure title sanitized
 	assert.Equal(t, "some title, link", res[0].PostTitle)
+}
+
+// comments stored by a release that marked links nofollow only are read back with ugc added
+func TestService_ReadMarksStoredLinksUGC(t *testing.T) {
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, AdminStore: admin.NewStaticStore("secret 123", nil, []string{"user2"}, "user@email.com")}
+
+	locator := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	_, err := b.Engine.Create(store.Comment{ID: "stored", Text: `see <a href="http://radio-t.com" rel="nofollow">link</a>`,
+		Timestamp: time.Date(2017, 12, 20, 15, 18, 24, 0, time.UTC), Locator: locator,
+		User: store.User{ID: "user1", Name: "user name"}}) // written directly, as an earlier release stored it
+	require.NoError(t, err)
+	want := `see <a href="http://radio-t.com" rel="nofollow ugc">link</a>`
+
+	res, err := b.Find(locator, "time", store.User{})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	assert.Equal(t, want, res[2].Text, "find")
+
+	c, err := b.Get(locator, "stored", store.User{})
+	require.NoError(t, err)
+	assert.Equal(t, want, c.Text, "get")
 }
 
 func TestService_FindSince(t *testing.T) {
@@ -1553,7 +2911,7 @@ func TestService_deleteImagesOnCommentDelete(t *testing.T) {
 	})
 }
 
-// an admin deleting a comment removes only the pictures its author uploaded, and a user's own delete removes none
+// deleting a comment, by an admin or by its author, removes only the pictures its author uploaded
 func TestService_DeleteCommentPictures(t *testing.T) {
 	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
 	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
@@ -1594,8 +2952,275 @@ func TestService_DeleteCommentPictures(t *testing.T) {
 		b, mockStore := prep(t)
 		_, err := b.EditComment(store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}, "u1-a", EditRequest{Delete: true})
 		require.NoError(t, err)
-		assert.Empty(t, deletedImages(mockStore), "a user's own delete removes no pictures")
+		// user2's upload and the cached external image stay, as on an admin delete
+		assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
 	})
+}
+
+// editing a picture out of a comment removes it only when its author uploaded it and no other comment on the page shows it
+func TestService_EditCommentPictures(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	proxied := `<img src="/non_existent?src=` + base64.URLEncoding.EncodeToString([]byte("https://example.com/cat.png")) + `"/>`
+	allPics := pic("user1/own.png") + pic("user1/kept.png") + pic("user1/reused.png") + pic("user2/up.png") + proxied
+	locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		now := time.Now()
+		for _, c := range []store.Comment{
+			{ID: "u1-a", Text: allPics, Locator: locator, User: store.User{ID: "user1"}, Timestamp: now},
+			// user2 shows user1's upload on the same page
+			{ID: "u2-a", Text: pic("user1/reused.png"), Locator: locator, User: store.User{ID: "user2"}, Timestamp: now.Add(time.Second)},
+			// past the edit window
+			{ID: "u1-old", Text: pic("user1/old.png"), Locator: locator, User: store.User{ID: "user1"}, Timestamp: now.Add(-2 * time.Hour)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	t.Run("pictures edited out", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-a", EditRequest{Text: pic("user1/kept.png")})
+		require.NoError(t, err)
+		// user1/reused.png stays as user2 shows it on the page, user2's upload and the cached external image are not user1's
+		assert.Equal(t, []string{"user1/own.png"}, deletedImages(mockStore))
+	})
+
+	t.Run("edit keeps every picture", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-a", EditRequest{Text: allPics + " more text"})
+		require.NoError(t, err)
+		assert.Empty(t, deletedImages(mockStore))
+	})
+
+	t.Run("rejected edit", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(locator, "u1-old", EditRequest{Text: "no picture"})
+		require.EqualError(t, err, "too late to edit u1-old")
+		_, err = b.EditComment(locator, "u1-old", EditRequest{Delete: true})
+		require.EqualError(t, err, "too late to edit u1-old")
+		assert.Empty(t, deletedImages(mockStore))
+	})
+}
+
+// the address of an upload can be pasted into another comment: a picture any other comment of its author shows,
+// on whatever page, stays when one of the comments showing it is deleted or edited
+func TestService_EditCommentPicturesUsedOnAnotherPage(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	pageA := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	pageB := store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}
+	prep := func(t *testing.T) (*DataStore, *image.StoreMock) {
+		mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+		imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+		t.Cleanup(func() { imgSvc.Close(context.TODO()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		now := time.Now()
+		for _, c := range []store.Comment{
+			{ID: "u1-a", Text: pic("user1/first.png"), Locator: pageA, User: store.User{ID: "user1"}, Timestamp: now},
+			// the same upload shown again in a new comment on another page, next to an upload of its own
+			{ID: "u1-b", Text: pic("user1/first.png") + pic("user1/second.png"), Locator: pageB, User: store.User{ID: "user1"},
+				Timestamp: now.Add(time.Second)},
+		} {
+			_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+			require.NoError(t, err)
+		}
+		return b, mockStore
+	}
+
+	t.Run("second comment deleted", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+	})
+
+	t.Run("pictures edited out of the second comment", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Text: "no pictures"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+	})
+
+	t.Run("both comments deleted", func(t *testing.T) {
+		b, mockStore := prep(t)
+		_, err := b.EditComment(pageB, "u1-b", EditRequest{Delete: true})
+		require.NoError(t, err)
+		_, err = b.EditComment(pageA, "u1-a", EditRequest{Delete: true})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"user1/second.png", "user1/first.png"}, deletedImages(mockStore),
+			"a deleted comment keeps no picture")
+	})
+}
+
+// an admin's delete keeps a picture the author's comment on another page shows, as the author's own delete does
+func TestService_DeletePicturesUsedOnAnotherPage(t *testing.T) {
+	pic := func(id string) string { return `<img src="/images/` + id + `"/>` }
+	pageA := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	pageB := store.Locator{URL: "https://radio-t.com/b", SiteID: "radio-t"}
+
+	for _, mode := range []store.DeleteMode{store.SoftDelete, store.HardDelete} {
+		t.Run(fmt.Sprintf("mode %d", mode), func(t *testing.T) {
+			mockStore := &image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			eng, teardown := prepStoreEngine(t)
+			defer teardown()
+			b := &DataStore{Engine: eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+			now := time.Now()
+			for _, c := range []store.Comment{
+				{ID: "u1-a", Text: pic("user1/first.png"), Locator: pageA, User: store.User{ID: "user1"}, Timestamp: now},
+				// the same upload shown again in a new comment on another page, next to an upload of its own
+				{ID: "u1-b", Text: pic("user1/first.png") + pic("user1/second.png"), Locator: pageB, User: store.User{ID: "user1"},
+					Timestamp: now.Add(time.Second)},
+			} {
+				_, err := b.Engine.Create(c) // create directly with engine, doesn't call submitImages
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, b.Delete(pageB, "u1-b", mode))
+			assert.Equal(t, []string{"user1/second.png"}, deletedImages(mockStore), "the first comment still shows first.png")
+
+			require.NoError(t, b.Delete(pageA, "u1-a", mode))
+			assert.ElementsMatch(t, []string{"user1/second.png", "user1/first.png"}, deletedImages(mockStore),
+				"no comment shows first.png any more")
+		})
+	}
+}
+
+// an admin's delete removes pictures only once the engine has deleted the comment, and only when the page could be read
+func TestService_DeletePicturesEngineError(t *testing.T) {
+	tbl := []struct {
+		name               string
+		deleteErr, findErr error
+		wantErr            bool
+		deleted            []string
+	}{
+		{name: "delete stored", deleted: []string{"user1/own.png"}},
+		{name: "delete fails", deleteErr: errors.New("delete failed"), wantErr: true},
+		{name: "page lookup fails", findErr: errors.New("find failed")},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+			eng := engine.InterfaceMock{
+				GetFunc: func(engine.GetRequest) (store.Comment, error) {
+					return store.Comment{ID: "c1", Text: `<img src="/images/user1/own.png"/>`, Locator: locator,
+						User: store.User{ID: "user1"}, Timestamp: time.Now()}, nil
+				},
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if req.UserID != "" { // the author has no other comments on the site
+						return nil, engine.ErrNoUserComments
+					}
+					return nil, tt.findErr
+				},
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			err := b.Delete(locator, "c1", store.SoftDelete)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.ElementsMatch(t, tt.deleted, deletedImages(&mockStore))
+		})
+	}
+}
+
+// a picture is removed only once the engine has stored the edit or the delete, and only when the page could be read
+func TestService_EditCommentPicturesEngineError(t *testing.T) {
+	tbl := []struct {
+		name                          string
+		req                           EditRequest
+		updateErr, deleteErr, findErr error
+		userFindErr                   error // for the lookup of the author's comments on the site
+		found                         []store.Comment
+		wantErr                       bool
+		deleted                       []string
+	}{
+		{name: "edit stored", req: EditRequest{Text: "no picture"}, deleted: []string{"user1/own.png"}},
+		{name: "delete stored", req: EditRequest{Delete: true}, deleted: []string{"user1/own.png"}},
+		{name: "update fails", req: EditRequest{Text: "no picture"}, updateErr: errors.New("update failed"), wantErr: true},
+		{name: "delete fails", req: EditRequest{Delete: true}, deleteErr: errors.New("delete failed"), wantErr: true},
+		{name: "page lookup fails", req: EditRequest{Text: "no picture"}, findErr: errors.New("find failed")},
+		{name: "author's comments lookup fails", req: EditRequest{Text: "no picture"}, userFindErr: errors.New("find failed")},
+		{name: "author has no other comments", req: EditRequest{Delete: true}, userFindErr: engine.ErrNoUserComments,
+			deleted: []string{"user1/own.png"}},
+		{name: "stored text shows the picture again", req: EditRequest{Text: "no picture"},
+			found: []store.Comment{{ID: "c1", Text: `<img src="/images/user1/own.png"/>`}}},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			mockStore := image.StoreMock{DeleteFunc: func(string) error { return nil }}
+			imgSvc := image.NewService(&mockStore, image.ServiceParams{ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+			defer imgSvc.Close(context.TODO())
+			locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+			eng := engine.InterfaceMock{
+				GetFunc: func(engine.GetRequest) (store.Comment, error) {
+					return store.Comment{ID: "c1", Text: `<img src="/images/user1/own.png"/>`, Locator: locator,
+						User: store.User{ID: "user1"}, Timestamp: time.Now()}, nil
+				},
+				FindFunc: func(req engine.FindRequest) ([]store.Comment, error) {
+					if req.UserID != "" { // the author's comments on the site: none, or the error of the case
+						return nil, tt.userFindErr
+					}
+					return tt.found, tt.findErr
+				},
+				UpdateFunc: func(store.Comment) error { return tt.updateErr },
+				DeleteFunc: func(engine.DeleteRequest) error { return tt.deleteErr },
+			}
+			b := DataStore{Engine: &eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+			_, err := b.EditComment(locator, "c1", tt.req)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.ElementsMatch(t, tt.deleted, deletedImages(&mockStore))
+		})
+	}
+}
+
+// a picture edited out of a comment before the delayed commit is removed from staging at once, and the
+// commit, which reads the comment's current text, moves only the pictures the comment still shows
+func TestService_EditCommentPicturesStaged(t *testing.T) {
+	fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+	imgSvc := image.NewService(fs, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: "/non_existent"})
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	b := DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+
+	for _, id := range []string{"user1/gone.png", "user1/kept.png"} {
+		require.NoError(t, fs.Save(id, []byte("image data"))) // uploaded, in staging
+	}
+	locator := store.Locator{URL: "https://radio-t.com/a", SiteID: "radio-t"}
+	id, err := b.Create(store.Comment{Text: `<img src="/images/user1/gone.png"/> <img src="/images/user1/kept.png"/>`,
+		Locator: locator, User: store.User{ID: "user1", Name: "user1"}}) // queues the commit for EditDuration
+	require.NoError(t, err)
+
+	_, err = b.EditComment(locator, id, EditRequest{Text: `<img src="/images/user1/kept.png"/>`})
+	require.NoError(t, err)
+	_, err = fs.Load("user1/gone.png")
+	require.Error(t, err, "the picture edited out is removed from staging")
+
+	imgSvc.Close(context.Background()) // commits the queued pictures without waiting out EditDuration
+	_, err = os.Stat(filepath.Join(fs.Location, "user1", "kept.png"))
+	require.NoError(t, err, "the picture the comment still shows is committed")
+	_, err = fs.Load("user1/gone.png")
+	assert.Error(t, err, "the picture edited out is not committed")
 }
 
 // DeleteUser removes all comments from user
@@ -2032,11 +3657,15 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 				ImageAPI:     "http://127.0.0.1:8080/api/v1/picture/",
 			})
 		defer imgSvcEmpty.Close(context.TODO())
-		bEmpty := DataStore{Engine: eng, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
+		engEmpty := engine.InterfaceMock{FindFunc: func(engine.FindRequest) ([]store.Comment, error) { return nil, nil }}
+		bEmpty := DataStore{Engine: &engEmpty, EditDuration: 10 * time.Millisecond, ImageService: imgSvcEmpty}
 
-		// resubmit receive empty timestamp and should do nothing )
+		// with nothing staged, resubmit goes through the comments still in their edit window only
 		err = bEmpty.ResubmitStagingImages([]string{"radio-t", "non_existent"})
 		assert.NoError(t, err)
+		require.Len(t, engEmpty.FindCalls(), 2)
+		assert.Equal(t, time.Now().Add(-10*time.Millisecond), engEmpty.FindCalls()[0].Req.Since)
+		assert.Equal(t, "non_existent", engEmpty.FindCalls()[1].Req.Locator.SiteID)
 
 		assert.Equal(t, 1, len(mockStore.InfoCalls()))
 
@@ -2064,6 +3693,107 @@ func TestService_ResubmitStagingImages(t *testing.T) {
 	})
 }
 
+// TestService_ResubmitStagingImages_StagedAfterComment checks the images of a comment are resubmitted
+// although their staging time is later than the comment's own, as it always is once the comment's
+// submit has reset their cleanup timers
+func TestService_ResubmitStagingImages_StagedAfterComment(t *testing.T) {
+	const editDuration = 5 * time.Minute
+	const imageAPI = "http://127.0.0.1:8080/api/v1/picture/"
+
+	// prep returns a data store with a comment posted age ago, holding one staged picture whose staging
+	// time is stagedAfter after the comment's, and a check whether that picture is committed
+	prep := func(t *testing.T, age, stagedAfter time.Duration) (b *DataStore, imgSvc *image.Service, committed func() bool) {
+		t.Helper()
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		dir := t.TempDir()
+		fsStore := &image.FileSystem{Location: filepath.Join(dir, "images"), Staging: filepath.Join(dir, "staging")}
+		imgSvc = image.NewService(fsStore, image.ServiceParams{EditDuration: editDuration, ImageAPI: imageAPI})
+		t.Cleanup(func() { imgSvc.Close(context.Background()) })
+
+		const picID = "dev_user/pic1"
+		require.NoError(t, fsStore.Save(picID, []byte("picture")))
+		ts := time.Now().Add(-age)
+		stagedTS := ts.Add(stagedAfter)
+		require.NoError(t, os.Chtimes(filepath.Join(fsStore.Staging, picID), stagedTS, stagedTS))
+		_, err := eng.Create(store.Comment{
+			ID:        "id-pic",
+			Text:      `<img src="` + imageAPI + picID + `">`,
+			Timestamp: ts,
+			Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+			User:      store.User{ID: "dev_user", Name: "dev user"},
+		})
+		require.NoError(t, err)
+
+		b = &DataStore{Engine: eng, EditDuration: editDuration, ImageService: imgSvc}
+		committed = func() bool {
+			_, err := os.Stat(filepath.Join(fsStore.Location, picID))
+			return err == nil
+		}
+		return b, imgSvc, committed
+	}
+
+	t.Run("comment in its edit window", func(t *testing.T) {
+		b, imgSvc, committed := prep(t, time.Minute, time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.False(t, committed(), "waits for the edit window to end")
+		imgSvc.Close(context.Background()) // commits submitted images without waiting
+		assert.True(t, committed(), "picture committed")
+	})
+
+	t.Run("comment past its edit window", func(t *testing.T) {
+		b, _, committed := prep(t, 2*editDuration, time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.True(t, committed(), "picture committed right away")
+	})
+
+	t.Run("picture staged just after its comment's edit window", func(t *testing.T) {
+		// a submit after a restart can reset the staging time just as the comment's window ends
+		b, _, committed := prep(t, 3*editDuration, editDuration+time.Second)
+		require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+		assert.True(t, committed(), "picture committed right away")
+	})
+}
+
+// TestService_ResubmitStagingImages_EditAfterRestart checks a picture added by editing a comment after a
+// restart is committed, although nothing was staged when the server started, as after a graceful stop
+func TestService_ResubmitStagingImages_EditAfterRestart(t *testing.T) {
+	const imageAPI = "http://127.0.0.1:8080/api/v1/picture/"
+	eng, teardown := prepStoreEngine(t)
+	defer teardown()
+	dir := t.TempDir()
+	fsStore := &image.FileSystem{Location: filepath.Join(dir, "images"), Staging: filepath.Join(dir, "staging")}
+	imgSvc := image.NewService(fsStore, image.ServiceParams{EditDuration: 5 * time.Minute, ImageAPI: imageAPI})
+	defer imgSvc.Close(context.Background())
+	b := DataStore{Engine: eng, EditDuration: 5 * time.Minute, ImageService: imgSvc}
+
+	// a comment posted a minute before the restart, whose first picture was committed at the stop
+	require.NoError(t, fsStore.Save("dev_user/pic1", []byte("picture 1")))
+	require.NoError(t, fsStore.Commit("dev_user/pic1"))
+	comment := store.Comment{
+		ID:        "id-pic",
+		Text:      `<img src="` + imageAPI + `dev_user/pic1">`,
+		Timestamp: time.Now().Add(-time.Minute),
+		Locator:   store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"},
+		User:      store.User{ID: "dev_user", Name: "dev user"},
+	}
+	_, err := eng.Create(comment)
+	require.NoError(t, err)
+
+	require.NoError(t, b.ResubmitStagingImages([]string{"radio-t"}))
+
+	// the comment is edited after the restart to add a second picture
+	require.NoError(t, fsStore.Save("dev_user/pic2", []byte("picture 2")))
+	comment.Text += `<img src="` + imageAPI + `dev_user/pic2">`
+	require.NoError(t, eng.Update(comment))
+
+	imgSvc.Close(context.Background()) // commits submitted images without waiting
+	for _, id := range []string{"dev_user/pic1", "dev_user/pic2"} {
+		_, err = os.Stat(filepath.Join(fsStore.Location, id))
+		assert.NoError(t, err, "%s committed", id)
+	}
+}
+
 func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 	mockStore := image.StoreMock{InfoFunc: func() (image.StoreInfo, error) {
 		return image.StoreInfo{FirstStagingImageTS: time.Time{}.Add(time.Second)}, nil
@@ -2085,8 +3815,9 @@ func TestService_ResubmitStagingImages_EngineError(t *testing.T) {
 			return nil, fmt.Errorf("mockError")
 		},
 	}
-	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
-	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: time.Time{}.Add(time.Second)}
+	since := time.Time{}.Add(time.Second - 20*time.Millisecond) // the oldest staged image's time less two edit windows
+	site1Req := engine.FindRequest{Locator: store.Locator{SiteID: "site1", URL: ""}, Sort: "time", Since: since}
+	site2Req := engine.FindRequest{Locator: store.Locator{SiteID: "site2", URL: ""}, Sort: "time", Since: since}
 	b := DataStore{Engine: &engineMock, EditDuration: 10 * time.Millisecond, ImageService: imgSvc}
 
 	// one call without error and one with error
@@ -2160,6 +3891,21 @@ func TestService_alterComment(t *testing.T) {
 	assert.Equal(t, engine.FlagRequest{Flag: engine.Blocked, UserID: "devid"}, engineMock.FlagCalls()[0].Req)
 }
 
+// a comment deleted before SetDeleted cleared the title keeps it in the store, readers must not get it
+func TestService_alterCommentDeletedTitle(t *testing.T) {
+	engineMock := engine.InterfaceMock{
+		FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil },
+	}
+	svc := DataStore{Engine: &engineMock}
+
+	for _, user := range []store.User{{}, {ID: "devid"}, {ID: "admin", Admin: true}} {
+		r := svc.alterComment(store.Comment{ID: "123", PostTitle: "some title", Deleted: true}, user)
+		assert.Empty(t, r.PostTitle, "title of a deleted comment is dropped for %+v", user)
+		r = svc.alterComment(store.Comment{ID: "123", PostTitle: "some title"}, user)
+		assert.Equal(t, "some title", r.PostTitle, "title of a live comment is kept for %+v", user)
+	}
+}
+
 func TestService_alterCommentsFlagCaching(t *testing.T) {
 	t.Run("repeated user looked up once", func(t *testing.T) {
 		engineMock := engine.InterfaceMock{
@@ -2229,6 +3975,76 @@ func TestService_alterCommentsFlagCaching(t *testing.T) {
 		assert.True(t, res[1].User.Blocked, "retry after error picks up blocked state")
 		assert.True(t, res[2].User.Blocked, "successful read is cached")
 		assert.Equal(t, 2, blockedCalls, "blocked retried once after the error, then cached")
+	})
+}
+
+// a token's admin flag is set for the site it was issued for, and the open routes accept the token
+// for every site of the instance, so on another site the viewer counts as admin only if the admin
+// store says so for that site
+func TestService_alterCommentAdminPerSite(t *testing.T) {
+	engineMock := &engine.InterfaceMock{FlagFunc: func(engine.FlagRequest) (bool, error) { return false, nil }}
+	comments := func() []store.Comment {
+		return []store.Comment{
+			{ID: "a1", User: store.User{ID: "u1", IP: "ip-a1"}, Locator: store.Locator{SiteID: "site-a"}},
+			{ID: "b1", User: store.User{ID: "u1", IP: "ip-b1"}, Locator: store.Locator{SiteID: "site-b"}},
+			{ID: "b2", User: store.User{ID: "u2", IP: "ip-b2"}, Locator: store.Locator{SiteID: "site-b"}},
+		}
+	}
+	ips := func(cc []store.Comment) []string {
+		res := make([]string, len(cc))
+		for i, c := range cc {
+			res[i] = c.User.IP
+		}
+		return res
+	}
+	adminOfA := store.User{ID: "adm", Name: "adm", Admin: true, SiteID: "site-a"}
+
+	t.Run("admin of one site only", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(siteID string) ([]string, error) {
+			if siteID == "site-a" {
+				return []string{"adm"}, nil
+			}
+			return []string{"other"}, nil
+		}}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "", ""}, ips(res), "ip kept on the token's site only")
+		require.Len(t, as.AdminsCalls(), 1, "other site's admins read once per listing")
+		assert.Equal(t, "site-b", as.AdminsCalls()[0].SiteID)
+
+		c := svc.alterComment(comments()[1], adminOfA)
+		assert.Empty(t, c.User.IP, "single comment of the other site")
+	})
+
+	t.Run("shared admins see every site as today", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"adm"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "ip-b1", "ip-b2"}, ips(res))
+	})
+
+	t.Run("admin store error hides ip", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return nil, errors.New("rpc failed") }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), adminOfA)
+		assert.Equal(t, []string{"ip-a1", "", ""}, ips(res))
+	})
+
+	t.Run("basic-auth admin sees every site", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"other"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), store.User{ID: "admin", Name: "admin", Admin: true})
+		assert.Equal(t, []string{"ip-a1", "ip-b1", "ip-b2"}, ips(res))
+		assert.Empty(t, as.AdminsCalls(), "no lookup for a user without a site")
+	})
+
+	t.Run("non-admin sees no ip anywhere", func(t *testing.T) {
+		as := &admin.StoreMock{AdminsFunc: func(string) ([]string, error) { return []string{"adm"}, nil }}
+		svc := DataStore{Engine: engineMock, AdminStore: as}
+		res := svc.alterComments(comments(), store.User{ID: "adm", SiteID: "site-a"})
+		assert.Equal(t, []string{"", "", ""}, ips(res))
+		assert.Empty(t, as.AdminsCalls(), "the token's flag is not widened by the store")
 	})
 }
 

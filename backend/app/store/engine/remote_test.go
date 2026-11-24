@@ -208,3 +208,42 @@ func testServer(t *testing.T, req, resp string) *httptest.Server {
 		_, _ = fmt.Fprint(w, resp)
 	}))
 }
+
+// a remote engine written in Go answers with null for a nil slice, as the memory_store example does for a
+// site without user details: a list call reads that as empty, a call that has to return a value fails
+func TestRemote_NullResult(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"result":null,"id":1}`)
+	}))
+	defer ts.Close()
+	c := RPC{Client: jrpc.Client{API: ts.URL, Client: http.Client{}}}
+	loc := store.Locator{SiteID: "site", URL: "http://example.com/url"}
+
+	details, err := c.UserDetail(UserDetailRequest{Locator: loc, UserID: "all", Detail: AllUserDetails})
+	require.NoError(t, err)
+	assert.Empty(t, details)
+
+	comments, err := c.Find(FindRequest{Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, comments)
+
+	info, err := c.Info(InfoRequest{Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, info)
+
+	flags, err := c.ListFlags(FlagRequest{Flag: Blocked, Locator: loc})
+	require.NoError(t, err)
+	assert.Empty(t, flags)
+
+	_, err = c.Flag(FlagRequest{Flag: ReadOnly, Locator: loc})
+	require.ErrorIs(t, err, errNoResult)
+
+	_, err = c.Count(FindRequest{Locator: loc})
+	require.ErrorIs(t, err, errNoResult)
+
+	_, err = c.Get(GetRequest{Locator: loc, CommentID: "id"})
+	require.ErrorIs(t, err, errNoResult, "no comment is not an empty comment")
+
+	_, err = c.Create(store.Comment{Locator: loc})
+	require.ErrorIs(t, err, errNoResult, "no ID is not a created comment")
+}

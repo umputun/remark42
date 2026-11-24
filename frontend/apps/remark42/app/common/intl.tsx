@@ -6,11 +6,10 @@ import { createIntl, type IntlShape, type MessageDescriptor, type MessageValues 
 /**
  * Preact binding over the message formatting in intl-message.ts.
  *
- * `formatjs extract` finds messages by recognising the identifiers `defineMessages`,
- * `FormattedMessage` and `intl.formatMessage` in the AST instead of by import source, so those
- * three names are fixed. Renaming one silently empties the extracted catalogue. The re-exports
- * below keep `common/intl` a complete surface for the call sites that use it; a caller may equally
- * import `defineMessages` from the formatter, and one that runs without a bundler has to.
+ * `tasks/extract-messages.ts` finds messages by their `id` and `defaultMessage` pairs, not by the
+ * names of the functions and components they are passed to, so those names can change. The
+ * re-exports below keep `common/intl` a complete surface for the call sites that use it; a caller
+ * may equally import `defineMessages` from the formatter, and one that runs without a bundler has to.
  */
 
 export { createIntl, defineMessages } from './intl-message';

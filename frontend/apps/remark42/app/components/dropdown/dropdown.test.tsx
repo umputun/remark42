@@ -1,10 +1,12 @@
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/preact';
 import { h } from 'preact';
+import { act } from 'preact/test-utils';
 
 import { render } from 'tests/utils';
 
-import { Dropdown } from './dropdown';
+import { Dropdown, useDropdown } from './dropdown';
+import { sleep } from 'utils/sleep';
 
 const initialStore = {
   user: null,
@@ -57,5 +59,74 @@ describe('<Dropdown/>', () => {
     // though the event target is no longer in the tree by the bubble phase
     const remaining = document.querySelector('div[role="listbox"]');
     expect(remaining).not.toBeNull();
+  });
+
+  it('closes a dropdown kept open when the reader opens another, and puts the page height back', async () => {
+    let keepOpen: (on: boolean) => void = () => undefined;
+    function Waiting() {
+      keepOpen = useDropdown().keepOpen;
+      return <button type="button">Waiting</button>;
+    }
+    render(
+      <div>
+        <Dropdown title="Email" theme="light" buttonTitle="First">
+          <Waiting />
+        </Dropdown>
+        <Dropdown title="Telegram" theme="light" buttonTitle="Second">
+          <button type="button">Other</button>
+        </Dropdown>
+      </div>,
+      initialStore
+    );
+    document.body.style.minHeight = '';
+
+    fireEvent.click(screen.getByTitle('First'));
+    // opening finishes after a render and a tick of its own, and only then saves the page height
+    await act(() => sleep(20));
+    keepOpen(true);
+    // what the first dropdown's own check does on a short page, which jsdom has no layout for
+    document.body.style.minHeight = '860px';
+
+    // a click on the page leaves the waiting dropdown open
+    fireEvent.click(document.body);
+    await act(() => sleep(20));
+    expect(screen.getByRole('button', { name: 'Waiting' })).toBeTruthy();
+
+    // opening another one closes it: two open panels would fight over the page height
+    fireEvent.click(screen.getByTitle('Second'));
+    await act(() => sleep(20));
+    expect(screen.queryByRole('button', { name: 'Waiting' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Other' })).toBeTruthy();
+    expect(document.body.style.minHeight).toBe('');
+
+    fireEvent.click(document.body);
+    await act(() => sleep(20));
+    expect(screen.queryByRole('button', { name: 'Other' })).toBeNull();
+    expect(document.body.style.minHeight).toBe('');
+  });
+
+  it('puts the page height back when a dropdown kept open is removed', async () => {
+    let keepOpen: (on: boolean) => void = () => undefined;
+    function Waiting() {
+      keepOpen = useDropdown().keepOpen;
+      return <button type="button">Waiting</button>;
+    }
+    const { unmount } = render(
+      <Dropdown title="Email" theme="light" buttonTitle="Held">
+        <Waiting />
+      </Dropdown>,
+      initialStore
+    );
+    document.body.style.minHeight = '';
+
+    fireEvent.click(screen.getByTitle('Held'));
+    await act(() => sleep(20));
+    keepOpen(true);
+    document.body.style.minHeight = '860px';
+
+    // signing out replaces the subscription buttons with the sign-in form while the panel is open
+    unmount();
+
+    expect(document.body.style.minHeight).toBe('');
   });
 });

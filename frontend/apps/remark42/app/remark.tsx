@@ -4,12 +4,13 @@ import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
 import { getDirection } from 'common/direction';
+import { getDocumentLang } from 'common/document-lang';
 import { loadLocale } from 'utils/loadLocale';
 import { parseMessage, isFromParent } from 'utils/post-message';
 import { ConnectedRoot } from 'components/root';
 import { Profile } from 'components/profile';
 import { store } from 'store';
-import { NODE_ID, BASE_URL, THEMES } from 'common/constants';
+import { NODE_ID, THEMES } from 'common/constants';
 import type { Theme } from 'common/types';
 import { StaticStore } from 'common/static-store';
 import { getConfig } from 'common/api';
@@ -29,14 +30,14 @@ if (document.readyState === 'loading') {
 
 function applyTheme(next: Theme) {
   document.body.classList.toggle('dark', next === 'dark');
+  // global.css keys the light theme's own colors on this class
+  document.documentElement.classList.toggle('light', next === 'light');
   document.documentElement.style.colorScheme = next;
   // Root renders from the store, whose initial theme is the URL's
   boundActions.setTheme(next);
 }
 
 async function init(): Promise<void> {
-  __webpack_public_path__ = `${BASE_URL}/web/`;
-
   const node = document.getElementById(NODE_ID);
 
   if (!node) {
@@ -57,7 +58,7 @@ async function init(): Promise<void> {
     }
   });
 
-  // the inline listener in iframe.ejs keeps the latest theme the parent posted before this bundle
+  // the inline listener in iframe.html keeps the latest theme the parent posted before this bundle
   // ran; the URL only has the one the iframe was built with
   const current = window.remark_config?.theme;
   applyTheme(current && THEMES.includes(current) ? current : theme);
@@ -69,6 +70,8 @@ async function init(): Promise<void> {
   // locale is fixed for the life of the page (no message updates it after init), so this only
   // needs to run once, unlike the theme above which a parent page can flip at any time
   document.documentElement.dir = getDirection(locale);
+  // an empty catalogue means the widget shows English, either chosen or because the catalogue failed to load
+  document.documentElement.lang = Object.keys(messages).length > 0 ? getDocumentLang(locale) : 'en';
 
   boundActions.fetchHiddenUsers();
   boundActions.restoreCollapsedThreads();

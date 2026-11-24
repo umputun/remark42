@@ -1,6 +1,7 @@
 const path = require('path');
 module.exports = {
   getLocalePath({ locale }) {
-    return path.resolve(__dirname, `../app/locales/${locale}.json`);
+    // the catalogues are served as plain files from the assets embedded in the backend binary
+    return path.resolve(__dirname, `../../../../backend/app/webassets/assets/${locale}.json`);
   },
 };

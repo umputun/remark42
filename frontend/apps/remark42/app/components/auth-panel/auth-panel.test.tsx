@@ -1,10 +1,11 @@
-import { render } from '@testing-library/preact';
+import { fireEvent, render } from '@testing-library/preact';
 import createMockStore from 'redux-mock-store';
 import type { Middleware } from 'redux';
 import { Provider } from 'store/context';
 
 import { IntlProvider } from 'common/intl';
 import type { User } from 'common/types';
+import * as postMessage from 'utils/post-message';
 import enMessages from 'locales/en.json';
 
 import type { Props } from './auth-panel';
@@ -77,6 +78,32 @@ describe('<AuthPanel />', () => {
 
       expect(authPanelColumn).toHaveLength(2);
       expect(authPanelColumn[0].textContent).toEqual(expect.stringContaining('John'));
+    });
+
+    // the message goes to whatever page embeds the widget
+    it('sends the parent only the profile fields when the user opens their own profile', () => {
+      const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
+      const { getByTitle } = createWrapper({
+        ...DefaultProps,
+        user: {
+          id: 'john',
+          name: 'John',
+          picture: 'http://localhost/john.png',
+          ip: 'ip-hash',
+          admin: true,
+          block: false,
+          verified: true,
+          email_subscription: true,
+        },
+      } as Props);
+
+      fireEvent.click(getByTitle('Open your profile'));
+
+      expect(postMessageToParent).toHaveBeenCalledTimes(1);
+      expect(postMessageToParent).toHaveBeenCalledWith({
+        profile: { id: 'john', name: 'John', picture: 'http://localhost/john.png', current: '1' },
+      });
+      postMessageToParent.mockRestore();
     });
   });
 

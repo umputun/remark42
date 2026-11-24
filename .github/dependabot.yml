@@ -35,6 +35,14 @@ updates:
     groups:
       "Go modules updates":
         dependency-type: "production"
+  # the program that compiles the widget, whose one dependency is the compiler itself
+  - package-ecosystem: "gomod"
+    directory: "/frontend/build"
+    schedule:
+      interval: "monthly"
+    groups:
+      "Go modules updates":
+        dependency-type: "production"
   - package-ecosystem: "npm"
     directory: "/frontend"
     open-pull-requests-limit: 0

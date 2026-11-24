@@ -30,20 +30,26 @@ Writes the static site to `build/`, which is what the Docker image serves. `--cl
 
 ## Layout
 
-| Path                  | Contents                                                             |
-| --------------------- | -------------------------------------------------------------------- |
-| `content/`            | Pages as markdown. `content/docs/` is the documentation tree          |
-| `layouts/`            | Templates. `partials/`, `shortcodes/` and `_markup/` render hooks     |
-| `assets/`             | `styles.css` and the scripts, fingerprinted at build time             |
-| `static/`             | Files copied to the site root as-is: favicons, manifest, `robots.txt` |
-| `data/nav.json`       | The documentation sidebar                                             |
-| `hugo.toml`           | Site configuration                                                    |
+| Path                       | Contents                                                              |
+| -------------------------- | --------------------------------------------------------------------- |
+| `content/`                 | Pages as markdown. `content/docs/` is the documentation tree          |
+| `layouts/`                 | Templates. `partials/`, `shortcodes/` and `_markup/` render hooks     |
+| `assets/`                  | `styles.css` and the scripts, fingerprinted at build time             |
+| `static/`                  | Files copied to the site root as-is: favicons, manifest, `robots.txt` |
+| `data/nav.json`            | The documentation sidebar                                             |
+| `data/anchor_aliases.json` | Previous anchors of headings, kept as link targets                    |
+| `data/meta.json`           | Title and description of each page for search and link previews       |
+| `hugo.toml`                | Site configuration                                                    |
 
 ## Writing docs
 
 A page is a markdown file with a `title` in its front matter. A directory becomes a section when it holds `_index.md`, and a page that carries its own images is a directory with `index.md` and the images beside it.
 
 Adding a page to the sidebar means adding an entry to `data/nav.json`; the paths there are relative to `/docs`.
+
+The title and description a page shows in search results and link previews are set in `data/meta.json`, keyed by the page's URL path, such as `/docs/manuals/nginx/`. Without an entry a page gets "<its title> | Remark42" as the title, and as the description its front-matter `metaDescription` or `description`, or else the start of its text.
+
+`data/anchor_aliases.json` keeps a heading's previous anchors working after its anchor changes. For each page it maps a heading's current anchor to its previous anchor, or to a list of them, and the heading renders each one as an empty target. A renamed heading listed there needs its entry re-keyed under the new anchor, with the old anchor added to its list; otherwise every previous anchor of that heading stops resolving.
 
 Callouts use the `note` shortcode, which takes the emoji to show:
 
@@ -53,7 +59,7 @@ Anything markdown here.
 {{< /note >}}
 ```
 
-Two documentation pages are symlinked into the repository as `backend/README.md` and `frontend/apps/remark42/README.md`, so moving or renaming `content/docs/contributing/backend/index.md` or `content/docs/contributing/frontend/index.md` means repointing those symlinks.
+Two documentation pages are symlinked into the repository as `backend/README.md` and `frontend/apps/remark42/README.md`, so moving or renaming `content/docs/contributing/backend/index.md` or `content/docs/contributing/frontend/index.md` means repointing those symlinks. GitHub renders those two as plain markdown, where a shortcode shows as raw text, so their callouts are blockquotes instead of the `note` shortcode.
 
 ## Styling
 
@@ -63,6 +69,8 @@ Code highlighting is Hugo's built-in Chroma. The rules at the end of the stylesh
 
 ## Dates
 
-The "Updated" line on a documentation page comes from `.Lastmod`. `hugo.toml` resolves it through `[frontmatter] lastmod`, which tries git, then a `lastmod` in the page's front matter, then the file's modification time; without that chain it would resolve to `.Date` and every page would read `Jan 01, 0001`. A deployed page therefore shows the build date, since a checkout does not preserve modification times.
+The "Updated" line on a documentation page and the `lastmod` of every sitemap entry show the date of the last commit that changed the page. The image build has no git history, so `scripts/page-dates.sh` writes `data/lastmod.json` before it, with the commit date of every tracked file under `content/`. The file is not committed; `layouts/partials/page-date.html` reads it.
 
-`HUGO_ENABLEGITINFO=true hugo` gives real per-page commit dates. It is off by default because the image build context is `site/` alone, where there is no `.git` for Hugo to read and it fails rather than falling back.
+The workflow `ci-site.yml` runs the script on a full clone before it builds the image, and builds with `REQUIRE_PAGE_DATES=true`, which fails the build on a page without a date. The script refuses a shallow clone, where the cut history can give a page a wrong date.
+
+A local build shows the published dates once `scripts/page-dates.sh` has run. The file stays in the checkout and takes precedence, so run the script again after pulling changes to the content. Without the file, `HUGO_ENABLEGITINFO=true hugo` reads git itself; its date can differ from the published one for a page whose last change arrived through a merge commit. With neither, the build succeeds and the pages carry no date.

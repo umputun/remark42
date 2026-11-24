@@ -17,7 +17,11 @@ if [ -n "${SITE}" ]; then
 		;;
 	esac
 	echo "single_site_id: ${single_site_id}"
-	sed -i "s|site_id:\"[^\"]*\"|site_id:\"${single_site_id}\"|g" /srv/web/*.html
+	# the image ships no html of its own since the server embeds the pages; an operator may add some
+	for page in /srv/web/*.html; do
+		[ -e "$page" ] || continue
+		sed -i "s|site_id:\"[^\"]*\"|site_id:\"${single_site_id}\"|g" "$page"
+	done
 fi
 
 if [ -d "/srv/var" ]; then

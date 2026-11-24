@@ -1,7 +1,3 @@
-process.env.REMARK_NODE = 'remark42';
-// webpack defines it in the bundle; init assigns it before anything else
-globalThis.__webpack_public_path__ = '';
-
 // keeps init suspended at its first await, which is the window a theme message used to be lost in
 jest.mock('utils/loadLocale', () => ({ loadLocale: () => new Promise(() => undefined) }));
 
@@ -29,11 +25,12 @@ describe('remark', () => {
     delete window.remark_config.theme;
     document.body.className = '';
     document.body.innerHTML = '';
+    document.documentElement.className = '';
     document.documentElement.style.colorScheme = '';
   });
 
-  it('takes the theme iframe.ejs kept over the one in the URL', async () => {
-    // what the inline listener in iframe.ejs leaves for a theme posted before the bundle ran
+  it('takes the theme iframe.html kept over the one in the URL', async () => {
+    // what the inline listener in iframe.html leaves for a theme posted before the bundle ran
     window.remark_config.theme = 'dark';
 
     const store = await start();
@@ -46,10 +43,13 @@ describe('remark', () => {
   it('applies a theme posted while the locale is still loading', async () => {
     const store = await start();
     expect(store.getState().theme).toBe('light');
+    // the class the light theme's own colors are keyed on
+    expect(document.documentElement.classList.contains('light')).toBe(true);
 
     window.dispatchEvent(new MessageEvent('message', { data: { theme: 'dark' }, source: window.parent }));
 
     expect(document.body.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('light')).toBe(false);
     expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(store.getState().theme).toBe('dark');
   });

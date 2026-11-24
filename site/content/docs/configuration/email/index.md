@@ -4,7 +4,7 @@ title: Email Settings
 
 ## Overview
 
-This documentation describes how to enable the email-related capabilities of Remark.
+This documentation describes how to enable the email-related capabilities of Remark42.
 
 - email authentication for users:
 
@@ -17,6 +17,8 @@ This documentation describes how to enable the email-related capabilities of Rem
   GitHub or Google or any other kind of user gets the ability to get email notifications about new replies to their comments (and any of the responses down the tree):
 
   ![Email notifications subscription](images/email_notifications.png)
+
+  The confirmation email carries a link that opens a page with a button confirming the subscription, which works without signing in, so the email can be opened on any device. Once confirmed, the page closes itself where the browser allows it, and the comment form shows the subscription without a reload. The token in the same email can still be pasted into the comment form instead. The link does not replace an address the user has already confirmed; to change it, unsubscribe first and open the link again.
 
 ## Setup email server connection
 
@@ -31,8 +33,11 @@ SMTP_INSECURE_SKIP_VERIFY
 SMTP_STARTTLS
 SMTP_USERNAME
 SMTP_PASSWORD
+SMTP_LOGIN_AUTH
 SMTP_TIMEOUT
 ```
+
+`SMTP_LOGIN_AUTH=true` makes Remark42 authenticate with the LOGIN mechanism instead of PLAIN, which some servers, such as Office 365 and Outlook.com, still require; it sends the credentials only over TLS or to localhost.
 
 ### SMTP_HELO_HOST
 
@@ -52,7 +57,7 @@ It applies to both paths that send mail: notification emails and the verificatio
 
 Here is the list of variables that affect user email notifications:
 
-```yaml
+```
 NOTIFY_USERS=email
 NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
@@ -62,11 +67,13 @@ NOTIFY_EMAIL_VERIFICATION_SUBJ # "Email verification" by default
 
 Admin would receive a message for each new comment on your site. Here is the list of variables that affect them:
 
-```yaml
+```
 NOTIFY_ADMINS=email
 NOTIFY_EMAIL_FROM="Remark42 notifications"<notify@example.com>
 ADMIN_SHARED_EMAIL=admin@example.com
 ```
+
+`ADMIN_SHARED_EMAIL` is required here: its default `admin@` address is not used for notifications. Without it, the server logs `notifications are not fully set up` at start and sends no admin email.
 
 ### Mailgun
 
@@ -109,8 +116,7 @@ To use any of the containers below within the Remark42 environment, set the foll
 
 #### stevenolen/mailgun-smtp-server
 
-Here is the `docker-compose.yml` configuration part spinning up a container for
-[stevenolen/mailgun-smtp-server](https://hub.docker.com/r/stevenolen/mailgun-smtp-server):
+Here is the `docker-compose.yml` configuration part spinning up a container for [stevenolen/mailgun-smtp-server](https://hub.docker.com/r/stevenolen/mailgun-smtp-server):
 
 ```yaml
 mailgun:
@@ -133,8 +139,7 @@ Please note that this Docker image is unmaintained and Europe domain names are n
 
 #### fgribreau/smtp-to-sendgrid-gateway
 
-Here is the `docker-compose.yml` configuration part spinning up a container for
-[fgribreau/smtp-to-sendgrid-gateway](https://hub.docker.com/r/fgribreau/smtp-to-sendgrid-gateway):
+Here is the `docker-compose.yml` configuration part spinning up a container for [fgribreau/smtp-to-sendgrid-gateway](https://hub.docker.com/r/fgribreau/smtp-to-sendgrid-gateway):
 
 ```yaml
 sendgrid:
@@ -218,6 +223,8 @@ After you set `SMTP_` variables, you can allow email authentication by setting t
 - AUTH_EMAIL_FROM="Remark42 login"<notify@example.com>
 ```
 
+A user signs in with a name and an email address. The name must contain 3 to 64 characters: letters, ASCII digits, underscores, hyphens or ordinary spaces, with no space at the start or end. A dot is refused, because the name appears in the email sent to an address nobody has confirmed yet. The token sent to the email address expires after 30 minutes.
+
 ## HTML templates for emails and error messages
 
 Remark42 uses golang templates for email templating. Templates are located in `backend/app/templates/static` and embedded into binary by `go:embed` [directive](https://pkg.go.dev/embed).
@@ -226,17 +233,19 @@ Now we have the following templates:
 
 - `email_confirmation_login.html.tmpl` – used for confirmation of login
 - `email_confirmation_subscription.html.tmpl` – used for confirmation of subscription
+- `email_subscribe.html.tmpl` – used for the page the link in the subscription confirmation email opens, both before and after the subscription is confirmed
 - `email_reply.html.tmpl` – used for sending replies to user comments (when the user subscribed to it) and for noticing admins about new comments on a site
 - `email_unsubscribe.html.tmpl` – used for notification about successful unsubscribing from replies
 - `error_response.html.tmpl` – used for HTML errors
 
-To replace any template, add the file with the same name to the directory with the remark42 executable file. In case you run Remark42 inside Docker Compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
+To replace any template, add the file with the same name to the working directory of the remark42 process: `/srv` in the Docker image, or the `WorkingDirectory` of a systemd service. In case you run Remark42 inside Docker Compose, you can put customised templates into a directory like `customised_templates` and then mount it like that:
 
 ```yaml
 volumes:
   - ./var:/srv/var
   - ./customised_templates/email_confirmation_login.html.tmpl:/srv/email_confirmation_login.html.tmpl:ro
   - ./customised_templates/email_confirmation_subscription.html.tmpl:/srv/email_confirmation_subscription.html.tmpl:ro
+  - ./customised_templates/email_subscribe.html.tmpl:/srv/email_subscribe.html.tmpl:ro
   - ./customised_templates/email_reply.html.tmpl:/srv/email_reply.html.tmpl:ro
   - ./customised_templates/email_unsubscribe.html.tmpl:/srv/email_unsubscribe.html.tmpl:ro
   - ./customised_templates/error_response.html.tmpl:/srv/error_response.html.tmpl:ro
@@ -246,7 +255,7 @@ The easiest way to test it is to mount `error_response.html.tmpl`, and then head
 
 ![Error_template](images/error_template.png)
 
-If the file is mounted correctly, the page will render the new file content immediately after hitting the refresh button in your browser once you change the file.
+If the file is mounted correctly, the page will render the new file content immediately after hitting the refresh button in your browser once you change the file. This holds for `error_response.html.tmpl` and `email_unsubscribe.html.tmpl`, which are read on every request. The three email templates are read once at start, so restart Remark42 after changing them.
 
 ### Template variables
 
@@ -259,31 +268,42 @@ Used for notifying users about replies to their comments and for admin notificat
 | Variable | Type | Description |
 |----------|------|-------------|
 | `{{.UserName}}` | string | Comment author name |
-| `{{.UserPicture}}` | string | Comment author avatar URL |
-| `{{.CommentText}}` | string | Comment body (HTML) |
-| `{{.CommentLink}}` | string | Direct link to the comment |
+| `{{.UserPicture}}` | string | Comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .UserPicture}}` |
+| `{{.CommentText}}` | string | Comment body (HTML, with links and images removed) |
+| `{{.CommentLink}}` | string | Direct link to the comment. In an admin notification the page address is written again from its parts, and the link is empty when it is not a plain `http` or `https` address with a host, so wrap it in `{{if .CommentLink}}` |
 | `{{.CommentDate}}` | time.Time | Comment timestamp, format with `{{.CommentDate.Format "02.01.2006 at 15:04"}}` |
 | `{{.ParentUserName}}` | string | Parent comment author name |
-| `{{.ParentUserPicture}}` | string | Parent comment author avatar URL |
-| `{{.ParentCommentText}}` | string | Parent comment body (HTML) |
-| `{{.ParentCommentLink}}` | string | Direct link to parent comment |
+| `{{.ParentUserPicture}}` | string | Parent comment author avatar URL; empty unless the avatar is stored by this server, so wrap the image in `{{if .ParentUserPicture}}` |
+| `{{.ParentCommentText}}` | string | Parent comment body (HTML, with links and images removed) |
+| `{{.ParentCommentLink}}` | string | Direct link to parent comment, with the same rule for admin notifications |
 | `{{.ParentCommentDate}}` | time.Time | Parent comment timestamp |
 | `{{.PostTitle}}` | string | Title of the post |
 | `{{.Email}}` | string | Recipient email address |
 | `{{.UnsubscribeLink}}` | string | Unsubscribe URL |
 | `{{.ForAdmin}}` | bool | True when this is an admin notification |
+| `{{.LinkHost}}` | string | Host that `{{.CommentLink}}` and `{{.ParentCommentLink}}` open, in ASCII, set in admin notifications only: the page address of a comment comes from the commenter, so the default template names the host next to both links |
 
 #### `email_confirmation_subscription.html.tmpl` — subscription confirmation
 
-Sent when a user subscribes to email notifications for a comment thread.
+Sent when a user subscribes to email notifications about replies to their comments.
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `{{.User}}` | string | Username |
+| `{{.User}}` | string | Username, reduced to letters, digits, underscores and single spaces, at most 64 characters |
 | `{{.Token}}` | string | Confirmation token |
 | `{{.Email}}` | string | Recipient email address |
 | `{{.Site}}` | string | Site name |
-| `{{.SubscribeURL}}` | string | Subscription confirmation base URL |
+| `{{.SubscribeURL}}` | string | Start of the confirmation link; the link is `{{.SubscribeURL}}{{.Token}}` |
+
+#### `email_subscribe.html.tmpl` — subscription confirmation page
+
+Shown at `/email/subscribe.html` when the link from the subscription confirmation email is opened. Without `{{.Confirmed}}` the page must offer a form posting back to itself (`<form method="post">`), as opening the link alone does not subscribe: mail scanners open links in incoming messages on their own.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{{.Site}}` | string | Site name |
+| `{{.Confirmed}}` | bool | True once the form was submitted and the subscription is stored |
+| `{{.Nonce}}` | string | Value for the `nonce` attribute of an inline `<script>`; the page's Content Security Policy runs no other script |
 
 #### `email_confirmation_login.html.tmpl` — login confirmation
 
@@ -295,6 +315,15 @@ Sent when a user logs in via email authentication.
 | `{{.Token}}` | string | Login token |
 | `{{.Site}}` | string | Site name |
 | `{{.Address}}` | string | Recipient address |
+
+#### `error_response.html.tmpl`
+
+Shown when the subscription confirmation page or the unsubscribe page fails.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `{{.Error}}` | string | Error message |
+| `{{.Details}}` | string | Description of the failure |
 
 ### Plain-text emails
 

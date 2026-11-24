@@ -200,7 +200,7 @@ func TestRest_FileServerEmbeddedFrontend(t *testing.T) {
 		assert.Equal(t, "embedded frontend index", body)
 	})
 
-	for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg"} {
+	for _, name := range []string{"privacy.html", "markdown-help.html", "400x400.jpeg", "emoji.json"} {
 		t.Run("falls back to "+name, func(t *testing.T) {
 			want, err := fs.ReadFile(webassets.FS, name)
 			require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestRest_FileServerDemoPageFromAssets(t *testing.T) {
 
 			body, code := get(t, ts.URL+"/web/iframe.html")
 			assert.Equal(t, http.StatusOK, code)
-			assert.Equal(t, "widget document", body, "the build's own files still come first")
+			assert.Equal(t, "widget document", body, "a frontend file of an embedded name still comes first")
 		})
 	}
 }
@@ -334,7 +334,8 @@ func TestRest_FileServerFrontendSourceRefused(t *testing.T) {
 	})
 
 	t.Run("a frontend name is missing rather than fatal", func(t *testing.T) {
-		_, code := get(t, ts.URL+"/web/iframe.html")
+		// a bundle: only the frontend build supplies it, so with that source refused nothing answers
+		_, code := get(t, ts.URL+"/web/remark.mjs")
 		assert.Equal(t, http.StatusNotFound, code)
 	})
 }
@@ -386,6 +387,37 @@ func TestRest_RejectHeadOnDestructiveGET(t *testing.T) {
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 		assert.Contains(t, resp.Header.Get("Allow"), "GET", "405 must advertise the allowed methods")
 	})
+}
+
+// TestRest_AuthEndpointsHaveOnePath checks that the auth handler answers each of its endpoints
+// under one path only. The limiter of the auth routes and validEmailAuth both go by the path
+func TestRest_AuthEndpointsHaveOnePath(t *testing.T) {
+	ts, _, teardown := startupT(t)
+	defer teardown()
+
+	client := http.Client{Timeout: 10 * time.Second}
+	defer client.CloseIdleConnections()
+	get := func(path string) int {
+		t.Helper()
+		resp, err := client.Get(ts.URL + path)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode
+	}
+
+	// startupT registers "email" as a provider that signs in anyone with a user name and a password
+	const login = "/email/login?user=someone&passwd=password&aud=remark42"
+	assert.Equal(t, http.StatusOK, get("/auth"+login), "the sign-in under its own path")
+	assert.Equal(t, http.StatusOK, get("/auth/status"))
+
+	for _, path := range []string{
+		"/auth/x" + login, "/auth/1/2" + login, "/auth/x%2Femail/login?user=someone&passwd=password&aud=remark42",
+		"/auth/email/login/?user=someone&passwd=password&aud=remark42", "/auth/nobody" + strings.TrimPrefix(login, "/email"),
+		"/auth/x/status", "/auth/x/user", "/auth/x/list", "/auth/x/logout",
+		"/auth/email/status", "/auth/email/user", "/auth/email/list", "/auth/email/logout",
+	} {
+		assert.Equal(t, http.StatusNotFound, get(path), path)
+	}
 }
 
 // regression: a browser holding cached admin basic credentials replayed them for a cross-site page
@@ -463,8 +495,9 @@ func TestRest_RequestLogHidesEmail(t *testing.T) {
 			body: `{"site":"remark42","token":"` + devToken + `"}`, status: http.StatusBadRequest, want: `"token":"********"`},
 		{name: "email confirm, token in query", method: "POST", path: "/api/v1/email/confirm?site=remark42&tkn=" + devToken,
 			status: http.StatusBadRequest, want: "tkn=********"},
+		// the parameter is dropped before the request is logged, and the rest of the query is not
 		{name: "session token in query", method: "GET", path: "/api/v1/config?site=remark42&jwt=" + devToken,
-			status: http.StatusOK, want: "jwt=********"},
+			status: http.StatusOK, want: "/api/v1/config?site=remark42 - "},
 		{name: "comment keeps mentions and urls", method: "POST", path: "/api/v1/comment?site=remark42",
 			body:   `{"text":"thanks @umputun","locator":{"url":"https://radio-t.com/@handle/blah1","site":"remark42"}}`,
 			status: http.StatusCreated,

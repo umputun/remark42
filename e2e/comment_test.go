@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -63,7 +64,7 @@ func TestComment_ReplyNestsUnderItsParent(t *testing.T) {
 	submitForm(t, replyForm(t, frame), reply)
 
 	// nesting is the point: the reply has to live inside the parent's thread, not beside it
-	parentThread := frame.Locator("[aria-expanded]", playwright.FrameLocatorLocatorOptions{HasText: parent}).First()
+	parentThread := frame.Locator(`[role="listitem"]`, playwright.FrameLocatorLocatorOptions{HasText: parent}).First()
 	waitVisible(t, parentThread.Locator("article", playwright.LocatorLocatorOptions{HasText: reply}))
 }
 
@@ -272,6 +273,49 @@ func TestComment_PostFailureKeepsTheText(t *testing.T) {
 	waitVisible(t, comment(frame, text))
 }
 
+// TestComment_ShortcutSendsNothingWhenTheWidgetShowsAGuest covers Ctrl+Enter in a form that offers
+// no Send button. A guest has only the shortcut, and for one without a session the server refuses
+// the request anyway. The case that tells is a widget showing a guest over a session that is still
+// alive, which the host page's signout message produces: it clears the user in the widget and
+// leaves the cookies alone, so a request the form sent would be accepted
+func TestComment_ShortcutSendsNothingWhenTheWidgetShowsAGuest(t *testing.T) {
+	t.Parallel()
+
+	page := newPage(t)
+	frame := openThread(t, page)
+	signInDev(t, page, frame)
+
+	var posts atomic.Int32
+	page.OnRequest(func(r playwright.Request) {
+		if u, err := neturl.Parse(r.URL()); err == nil && r.Method() == http.MethodPost && u.Path == "/api/v1/comment" {
+			posts.Add(1)
+		}
+	})
+
+	_, err := page.Evaluate(`() => {
+		document.querySelector('#remark42 iframe').contentWindow.postMessage({ signout: true }, '*');
+	}`)
+	require.NoError(t, err)
+	waitVisible(t, frame.Locator(".auth-button"))
+
+	form := frame.Locator(commentFormSel).First()
+	waitHidden(t, form.Locator(`button[type="submit"]`), "the form of a guest still offers a Send button")
+
+	field := form.Locator("textarea")
+	require.NoError(t, field.Fill("typed in a form that shows a guest "+runID))
+	require.NoError(t, field.Press("Control+Enter"))
+
+	// the message is waited for first and required last: the wait gives a request the time to
+	// leave, and a failure then names the comment that was sent, not only the message that is missing
+	alertErr := form.Locator(`[role="alert"]`, playwright.LocatorLocatorOptions{HasText: "Please sign in to do this."}).
+		WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: new(float64(waitTimeout.Milliseconds())),
+		})
+	assert.Zero(t, posts.Load(), "the shortcut sent the comment from a form that shows nobody signed in")
+	require.NoError(t, alertErr, "the form did not ask the guest to sign in")
+}
+
 // TestComment_AdminPinsAndVerifies covers two moderator actions that change what every reader
 // sees. Both are server-side, so the assertions come after a reload on a second reader's page
 // and not from the moderator's own optimistic render
@@ -436,6 +480,77 @@ func TestComment_BlockedAuthorCannotPost(t *testing.T) {
 	// not scoped to the form: the widget re-renders the whole panel once the server reports the
 	// author as blocked, so where the message lands is not the point, only that it is said
 	waitVisible(t, authorFrame.Locator("text=blocked").First())
+}
+
+// TestComment_BlockAfterUnblockReachesTheSameUser covers changing the length of a block, which a
+// moderator does by taking the block back and blocking again from the same comment. Unblock
+// rewrites the author on that user's comments in the page, and the next block is sent for
+// whoever that author is by then. Only a thread whose first comment belongs to somebody else
+// tells the right author from the wrong one
+func TestComment_BlockAfterUnblockReachesTheSameUser(t *testing.T) {
+	t.Parallel()
+
+	moderatedName, bystanderName := anonName("reblocked"), anonName("bystander")
+	moderatedText := "to be moderated " + runID
+	bystanderText := "nothing to moderate here " + runID
+
+	moderated := newPage(t)
+	moderatedFrame := openThread(t, moderated)
+	signInAnon(t, moderated, moderatedFrame, moderatedName)
+	postComment(t, moderatedFrame, moderatedText)
+
+	bystander := newPage(t)
+	bystanderFrame := openURL(t, bystander, threadURL(t))
+	signInAnon(t, bystander, bystanderFrame, bystanderName)
+	postComment(t, bystanderFrame, bystanderText)
+
+	admin := newPage(t)
+	adminFrame := openURL(t, admin, threadURL(t))
+	signInDev(t, admin, adminFrame)
+
+	// the newest thread comes first under the default sort. With the moderated comment on top
+	// the case would pass whichever comment the author is taken from
+	first, err := adminFrame.Locator("article").First().InnerText()
+	require.NoError(t, err)
+	require.Contains(t, first, bystanderText, "the bystander's comment is not the first on the page")
+
+	var mu sync.Mutex
+	var blockedUsers []string
+	admin.OnRequest(func(r playwright.Request) {
+		u, perr := neturl.Parse(r.URL())
+		if perr != nil || r.Method() != http.MethodPut || !strings.HasPrefix(u.Path, "/api/v1/admin/user/") {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		blockedUsers = append(blockedUsers, strings.TrimPrefix(u.Path, "/api/v1/admin/user/"))
+	})
+	admin.OnDialog(func(d playwright.Dialog) { _ = d.Accept() })
+
+	moderation := actions(adminFrame, moderatedText)
+	blockForADay := func() {
+		t.Helper()
+		_, serr := moderation.Locator("select").SelectOption(playwright.SelectOptionValues{Values: &[]string{"1440m"}})
+		require.NoError(t, serr)
+		waitVisible(t, moderation.Locator(`button:has-text("Unblock")`))
+	}
+
+	blockForADay()
+	require.NoError(t, moderation.Locator(`button:has-text("Unblock")`).Click())
+	waitVisible(t, moderation.Locator("select"))
+
+	shown, err := comment(adminFrame, moderatedText).InnerText()
+	require.NoError(t, err)
+	assert.Contains(t, shown, moderatedName, "the unblocked user's comment no longer shows its author")
+	assert.NotContains(t, shown, bystanderName, "the unblocked user's comment shows the author of the first comment")
+
+	blockForADay()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, blockedUsers, 3, "expected a block, an unblock and a block, got requests for %v", blockedUsers)
+	assert.Equal(t, blockedUsers[0], blockedUsers[1], "the unblock went to another user than the block")
+	assert.Equal(t, blockedUsers[0], blockedUsers[2], "the block after an unblock went to another user")
 }
 
 // TestComment_ReadOnlyThreadTakesTheFormAway covers the admin switch that closes a thread. A

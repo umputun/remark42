@@ -77,11 +77,11 @@
   color: var(--color0);
 
   & .copyright {
-    color: var(--color1);
+    color: var(--color14);
   }
 
   & .copyrightLink {
-    color: var(--color1);
+    color: var(--color14);
   }
 
   & .pinnedComment {

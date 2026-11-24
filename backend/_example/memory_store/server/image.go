@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/go-pkgz/jrpc"
+
+	"github.com/umputun/remark42/backend/app/store/image"
 )
 
 func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
@@ -28,51 +30,8 @@ func (s *RPC) imgSaveWithIDHndl(id uint64, params json.RawMessage) (rr jrpc.Resp
 	return jrpc.EncodeResponse(id, nil, err)
 }
 
-func (s *RPC) imgResetClnTimerHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var fileID string
-	if err := json.Unmarshal(params, &fileID); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	err := s.img.ResetCleanupTimer(fileID)
-	return jrpc.EncodeResponse(id, nil, err)
-}
-
-func (s *RPC) imgLoadHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var fileID string
-	if err := json.Unmarshal(params, &fileID); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	value, err := s.img.Load(fileID)
-	return jrpc.EncodeResponse(id, value, err)
-}
-
-func (s *RPC) imgDeleteHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var fileID string
-	if err := json.Unmarshal(params, &fileID); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	err := s.img.Delete(fileID)
-	return jrpc.EncodeResponse(id, nil, err)
-
-}
-
-func (s *RPC) imgCommitHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var fileID string
-	if err := json.Unmarshal(params, &fileID); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	err := s.img.Commit(fileID)
-	return jrpc.EncodeResponse(id, nil, err)
-}
-
-func (s *RPC) imgCleanupHndl(id uint64, params json.RawMessage) (rr jrpc.Response) {
-	var ttl time.Duration
-	if err := json.Unmarshal(params, &ttl); err != nil {
-		return jrpc.Response{Error: err.Error()}
-	}
-	err := s.img.Cleanup(context.TODO(), ttl)
-	return jrpc.EncodeResponse(id, nil, err)
-}
+// imgCleanup is image.Store's Cleanup without the context, which an RPC call doesn't carry
+func imgCleanup(img image.Store, ttl time.Duration) error { return img.Cleanup(context.TODO(), ttl) }
 
 func (s *RPC) imgInfoHndl(id uint64, _ json.RawMessage) (rr jrpc.Response) {
 	info, err := s.img.Info()

@@ -66,7 +66,7 @@ export function CommentActions({
   );
 
   return (
-    <div className={clsx('comment-actions', styles.root)}>
+    <div className={clsx('comment-actions', styles.root)} data-nosnippet>
       {!readOnly && (
         <Button kind="link" size="sm" onClick={onToggleReplying}>
           {intl.formatMessage(replying ? messages.cancel : messages.reply)}

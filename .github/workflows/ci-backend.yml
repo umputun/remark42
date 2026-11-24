@@ -50,7 +50,7 @@ jobs:
       - name: test and build backend
         run: |
           go test -race -timeout=300s -covermode=atomic -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
-          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v "_mock.go" > $GITHUB_WORKSPACE/profile.cov
+          cat $GITHUB_WORKSPACE/profile.cov_tmp | grep -v -e "_mock.go" -e "/store/engine/enginetest/" > $GITHUB_WORKSPACE/profile.cov
           go build -race ./...
         working-directory: backend/app
         env:

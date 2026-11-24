@@ -2,8 +2,7 @@ FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-deps
 
 ARG SKIP_FRONTEND_TEST
 ARG SKIP_FRONTEND_BUILD
-# the manifest's prepare script installs husky hooks, which needs a git repository the build
-# context does not have. husky itself skips on CI, and this is the same flag the build stage sets
+# pnpm installs exactly what the lockfile holds when CI is set, and the test stage sets it too
 ENV CI=true
 
 WORKDIR /srv/frontend/apps/remark42/
@@ -12,7 +11,6 @@ COPY ./frontend/apps/remark42/package.json ./frontend/apps/remark42/pnpm-lock.ya
 
 RUN \
   if [[ -z "$SKIP_FRONTEND_BUILD" || -z "$SKIP_FRONTEND_TEST" ]]; then \
-    apk add --no-cache --update git && \
     npm i -g pnpm@10.10.0; \
   fi
 
@@ -22,30 +20,42 @@ RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store/v3 \
   fi
 
 
-FROM --platform=$BUILDPLATFORM frontend-deps AS build-frontend
+FROM --platform=$BUILDPLATFORM frontend-deps AS test-frontend
 
 ARG SKIP_FRONTEND_TEST
-ARG SKIP_FRONTEND_BUILD
-# the same argument the backend stage reads, so one flag instruments both halves of the stack
-ARG COVERAGE
 ENV CI=true
 
 WORKDIR /srv/frontend/apps/remark42/
 
 COPY ./frontend/apps/remark42/ /srv/frontend/apps/remark42/
+# the message catalogs live with the assets embedded in the backend; the translation check and the
+# tests below read them from there
+COPY ./backend/app/webassets/assets/*.json /srv/backend/app/webassets/assets/
 
 RUN \
   if [ -z "$SKIP_FRONTEND_TEST" ]; then \
-    pnpm lint type-check translation-check test; \
+    pnpm lint && pnpm type-check && pnpm translation-check && pnpm test; \
   else \
     echo 'Skip frontend test'; \
   fi
 
-RUN \
+# the widget is compiled by a go program, so this stage has go and no node. It takes the sources
+# from the stage that tested them, which also puts the tests ahead of the build, and with them the
+# installed runtime packages the widget is bundled with
+FROM --platform=$BUILDPLATFORM umputun/baseimage:buildgo-v1.21.1 AS build-frontend
+
+ARG SKIP_FRONTEND_BUILD
+
+COPY --from=test-frontend /srv/frontend/apps/remark42/ /srv/frontend/apps/remark42/
+COPY ./frontend/build/ /srv/frontend/build/
+
+WORKDIR /srv/frontend/build/
+
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
   if [ -z "$SKIP_FRONTEND_BUILD" ]; then \
-    E2E_COVERAGE=$COVERAGE pnpm build; \
+    go run .; \
   else \
-    mkdir /srv/frontend/apps/remark42/public; \
+    mkdir -p /srv/frontend/apps/remark42/public; \
     echo 'Skip frontend build'; \
   fi
 
@@ -121,6 +131,6 @@ RUN chown -R app:app /srv
 RUN ln -s /srv/remark42 /usr/bin/remark42
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8080/ping || exit 1
+HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail "http://localhost:${REMARK_PORT:-8080}/ping" || exit 1
 
 CMD ["/srv/remark42", "server"]

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -63,14 +66,14 @@ func TestNative_Export(t *testing.T) {
 	assert.NoError(t, dec.Decode(&comments[1]), "decode comment 0")
 	assert.Error(t, dec.Decode(&comments[2]), "EOF")
 
-	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>", comments[0].Text)
+	assert.Equal(t, "some text, <a href=\"http://radio-t.com\" rel=\"nofollow ugc\">link</a>", comments[0].Text)
 }
 
 func TestNative_Import(t *testing.T) {
 	b, teardown := prep(t) // write 2 comments
 	defer teardown()
 
-	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
+	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2100-01-01T00:00:00Z"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00","imported":false}`
 
@@ -98,6 +101,34 @@ func TestNative_Import(t *testing.T) {
 
 	assert.Equal(t, true, b.IsBlocked("radio-t", "user2"))
 	assert.Equal(t, false, b.IsVerified("radio-t", "user2"))
+}
+
+func TestNative_ImportSkipsCommentsOfAnotherSite(t *testing.T) {
+	// a backup restored under the wrong site ID: the site given is cleared, and a comment recorded
+	// for another site must not be written there, into a site the import did not clear
+	boltStore, err := engine.NewBoltDB(bolt.Options{},
+		engine.BoltSite{SiteID: "radio-t", FileName: filepath.Join(t.TempDir(), "radio-t.db")},
+		engine.BoltSite{SiteID: "other", FileName: filepath.Join(t.TempDir(), "other.db")})
+	require.NoError(t, err)
+	b := &service.DataStore{Engine: boltStore, AdminStore: admin.NewStaticStore("12345", nil, []string{}, "")}
+	defer func() { require.NoError(t, b.Close()) }()
+
+	inp := `{"version":1,"users":[],"posts":[]}
+	{"id":"c1","text":"own site","user":{"name":"user name","id":"user1"},"locator":{"site":"radio-t","url":"https://radio-t.com"},"time":"2017-12-20T15:18:22-06:00"}
+	{"id":"c2","text":"another site","user":{"name":"user name","id":"user1"},"locator":{"site":"other","url":"https://other.com"},"time":"2017-12-20T15:18:23-06:00"}`
+
+	size, err := (&Native{DataStore: b}).Import(strings.NewReader(inp), "radio-t")
+	require.EqualError(t, err, "failed to save 1 comments")
+	assert.Equal(t, 1, size)
+
+	comments, err := b.Last("radio-t", 10, time.Time{}, store.User{})
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	assert.Equal(t, "c1", comments[0].ID)
+
+	comments, err = b.Last("other", 10, time.Time{}, store.User{})
+	require.NoError(t, err)
+	assert.Empty(t, comments, "nothing is written into the site the import did not clear")
 }
 
 func TestNative_ImportWithMapperBadRecord(t *testing.T) {
@@ -129,7 +160,7 @@ func TestNative_ImportWithMapper(t *testing.T) {
 	mapper, err := NewURLMapper(strings.NewReader(rules))
 	assert.NoError(t, err)
 
-	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2018-12-23T02:55:22.472041-06:00"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
+	inp := `{"version":1,"users":[{"id":"user1","blocked":{"status":false,"until":"0001-01-01T00:00:00Z"},"verified":true},{"id":"user2","blocked":{"status":true,"until":"2100-01-01T00:00:00Z"},"verified":false}],"posts":[{"url":"https://radio-t.com","read_only":true}]}
 	{"id":"efbc17f177ee1a1c0ee6e1e025749966ec071adc","pid":"","text":"some text, <a href=\"http://radio-t.com\" rel=\"nofollow\">link</a>","user":{"name":"user name","id":"user1","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com"},"score":0,"votes":{},"time":"2017-12-20T15:18:22-06:00"}
 	{"id":"f863bd79-fec6-4a75-b308-61fe5dd02aa1","pid":"1234","text":"some text2","user":{"name":"user name","id":"user2","picture":"","ip":"293ec5b0cf154855258824ec7fac5dc63d176915","admin":false},"locator":{"site":"radio-t","url":"https://radio-t.com/2"},"score":0,"votes":{},"time":"2017-12-20T15:18:23-06:00"}`
 	mappedReader := WithMapper(strings.NewReader(inp), mapper)
@@ -290,6 +321,43 @@ func TestNative_ImportRestoresMetasWhenCommentRejected(t *testing.T) {
 	assert.True(t, b.IsReadOnly(store.Locator{SiteID: "radio-t", URL: "https://radio-t.com"}), "read-only post restored")
 }
 
+func TestNative_ImportKeepsCommentsOfReadOnlyPost(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	closed := store.Locator{URL: "https://radio-t.com", SiteID: "radio-t"}
+	require.NoError(t, b.SetReadOnly(closed, true))
+
+	// a restore into the same store, as the remap does: the site is cleared and the post stays read-only
+	buf := &bytes.Buffer{}
+	_, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+	size, err := (&Native{DataStore: b}).Import(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+
+	comments, err := b.Engine.Find(engine.FindRequest{Locator: closed})
+	require.NoError(t, err)
+	require.Len(t, comments, 1, "the comment of the read-only post is back")
+	assert.Equal(t, "efbc17f177ee1a1c0ee6e1e025749966ec071adc", comments[0].ID)
+	assert.True(t, b.IsReadOnly(closed), "the post is still read-only")
+}
+
+func TestNative_ImportKeepsCommentsWithRestrictedWords(t *testing.T) {
+	b, teardown := prep(t)
+	defer teardown()
+
+	buf := &bytes.Buffer{}
+	_, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+
+	// both stored comments hold a word restricted after they were written
+	b.RestrictedWordsMatcher = service.NewRestrictedWordsMatcher(service.StaticRestrictedWordsLister{Words: []string{"text*"}})
+	size, err := (&Native{DataStore: b}).Import(buf, "radio-t")
+	require.NoError(t, err)
+	assert.Equal(t, 2, size)
+}
+
 func TestNative_ImportSkipsRecordWithWrongValue(t *testing.T) {
 	b, teardown := prep(t)
 	defer teardown()
@@ -339,6 +407,42 @@ func TestNative_ExportKeepsStoredComments(t *testing.T) {
 	assert.Equal(t, 1, c.Score)
 	assert.Empty(t, c.VotedIPs, "voters' IP hashes are not exported")
 	assert.False(t, c.User.Blocked, "blocked status lives in the users meta, not in the comment")
+}
+
+func TestNative_ExportDropsTitleOfDeletedComment(t *testing.T) {
+	b, teardown := prep(t) // write 2 comments
+	defer teardown()
+	const deletedID = "efbc17f177ee1a1c0ee6e1e025749966ec071adc"
+
+	// both comments get a title, and the first is stored the way a delete used to leave it: no text, the title kept
+	for _, post := range []string{"https://radio-t.com", "https://radio-t.com/2"} {
+		comments, err := b.Engine.Find(engine.FindRequest{Locator: store.Locator{SiteID: "radio-t", URL: post}})
+		require.NoError(t, err)
+		require.Len(t, comments, 1)
+		c := comments[0]
+		c.PostTitle = "title sent with the comment"
+		if c.ID == deletedID {
+			c.Text, c.Orig, c.Deleted = "", "", true
+		}
+		require.NoError(t, b.Engine.Update(c))
+	}
+
+	buf := &bytes.Buffer{}
+	size, err := (&Native{DataStore: b}).Export(buf, "radio-t")
+	require.NoError(t, err)
+	require.Equal(t, 2, size)
+
+	dec := json.NewDecoder(buf)
+	require.NoError(t, dec.Decode(&meta{}))
+	titles := map[bool]string{}
+	for range size {
+		c := store.Comment{}
+		require.NoError(t, dec.Decode(&c))
+		require.Equal(t, c.ID == deletedID, c.Deleted)
+		titles[c.Deleted] = c.PostTitle
+	}
+	assert.Equal(t, map[bool]string{true: "", false: "title sent with the comment"}, titles,
+		"the title of a deleted comment is not exported, the title of another comment is")
 }
 
 func TestNative_ImportClearsBlockedMarkInComments(t *testing.T) {
@@ -410,4 +514,66 @@ func TestNative_ExportImportKeepsEachUsersDetails(t *testing.T) {
 	tg, err = b.GetUserTelegram("radio-t", "user2")
 	require.NoError(t, err)
 	assert.Empty(t, tg, "email-only user has no telegram after restore")
+}
+
+// import reads a record only when a writer is free for it, so a slow store holds back the reading
+// of the export instead of piling decoded records up in memory
+func TestNative_ImportWaitsForFreeWriter(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		st := &blockingStore{release: make(chan struct{})}
+		pr, pw := io.Pipe()
+		var sent atomic.Int32 // records the import has read from the pipe
+		go func() {
+			_, _ = io.WriteString(pw, `{"version":1}`+"\n")
+			for i := range 10 {
+				rec := fmt.Sprintf(`{"id":"%d","locator":{"site":"radio-t","url":"https://radio-t.com"}}`+"\n", i)
+				if _, err := io.WriteString(pw, rec); err != nil {
+					return
+				}
+				sent.Add(1)
+			}
+			_ = pw.Close()
+		}()
+
+		var size int
+		var err error
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			size, err = (&Native{DataStore: st, Concurrent: 2}).Import(pr, "radio-t")
+		}()
+
+		synctest.Wait()
+		assert.Equal(t, int32(2), st.started.Load(), "two writes run")
+		assert.Equal(t, int32(3), sent.Load(), "one more record is read, then reading waits for a free writer")
+
+		close(st.release)
+		<-done
+		require.NoError(t, err)
+		assert.Equal(t, 10, size)
+		assert.Equal(t, int32(10), st.started.Load())
+	})
+}
+
+// blockingStore is a Store whose Create waits until release is closed
+type blockingStore struct {
+	release chan struct{}
+	started atomic.Int32
+}
+
+func (s *blockingStore) Create(c store.Comment) (string, error) {
+	s.started.Add(1)
+	<-s.release
+	return c.ID, nil
+}
+
+func (*blockingStore) FindRaw(store.Locator) ([]store.Comment, error)  { return nil, nil }
+func (*blockingStore) List(string, int, int) ([]store.PostInfo, error) { return nil, nil }
+func (*blockingStore) DeleteAll(string) error                          { return nil }
+func (*blockingStore) Metas(string) ([]service.UserMetaData, []service.PostMetaData, error) {
+	return nil, nil, nil
+}
+
+func (*blockingStore) SetMetas(string, []service.UserMetaData, []service.PostMetaData) error {
+	return nil
 }

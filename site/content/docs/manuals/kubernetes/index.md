@@ -33,10 +33,14 @@ spec:
     spec:
       containers:
         - name: remark42
-          image: ghcr.io/umputun/remark42:v1.16.0
+          image: ghcr.io/umputun/remark42:v1.18.0
           ports:
             # http:
             - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /ping, port: 8080 }
+          livenessProbe:
+            httpGet: { path: /ping, port: 8080 }
           env:
             - name: REMARK_URL
               value: "https://remark42.mysite.com/"
@@ -117,16 +121,17 @@ spec:
       port: 8080
       targetPort: 8080
 ---
-# TODO: switch to networking.k8s.io/v1
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: remark42-ingress
   namespace: remark42
   annotations:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - remark42.mysite.com
@@ -138,14 +143,19 @@ spec:
           - path: /
             pathType: Prefix
             backend:
-              serviceName: remark42-web
-              servicePort: 8080
+              service:
+                name: remark42-web
+                port:
+                  number: 8080
 ```
 
 Change `storageClassName` if you run on top of different cloud / bare metal.
 
-This example assumes there is Nginx Ingress with a cert-manager already set up.
-Adjust if you use different Ingress.
+This example assumes ingress-nginx with its `nginx` IngressClass, cert-manager and a `letsencrypt-prod` ClusterIssuer are already set up, and that the `remark42` namespace exists (`kubectl create namespace remark42`). Adjust if you use a different Ingress. The ingress-nginx project is retired and no longer maintained; with another Ingress controller, set its own request body limit in place of the `nginx.ingress.kubernetes.io/` annotations.
+
+The `nginx.ingress.kubernetes.io/proxy-body-size` annotation raises the request body limit of ingress-nginx, which by default refuses larger picture uploads and imports. Keep it above `IMAGE_MAX_SIZE` and above the uncompressed size of the largest backup or export you restore or import through the Ingress, since the `restore` and `import` commands send a `.gz` file unpacked.
+
+Remark42 takes the client IP from the forwarding headers the Ingress controller sends. Set [`--trusted-proxy`](../../configuration/parameters/#trusted-proxies-and-client-ip) (`TRUSTED_PROXY` in `env`) to the address or CIDR Remark42 sees the Ingress controller's connections come from: usually the pod network, or the node addresses when the controller uses host networking. Without it Remark42 trusts those headers from any client and logs a warning at start, which lets a client spoof its IP and bypass rate limiting and vote de-duplication.
 
 In addition you'd need to define secrets, e.g.
 

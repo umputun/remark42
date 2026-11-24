@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 type CleanupCommand struct {
 	Dry      bool     `long:"dry" description:"dry mode, will not remove comments"`
 	From     string   `long:"from" description:"from yyyymmdd"`
-	To       string   `long:"to" description:"from yyyymmdd"`
+	To       string   `long:"to" description:"to yyyymmdd"`
 	BadWords []string `short:"w" long:"bword" description:"bad word(s)"`
 	BadUsers []string `short:"u" long:"buser" description:"bad user(s)"`
 	SetTitle bool     `long:"title" description:"title mode, will not remove comments, but reset titles to page's title'"`
@@ -37,25 +38,36 @@ var (
 // This command uses provided flags to detect and remove junk comments
 func (cc *CleanupCommand) Execute(_ []string) error {
 	log.Printf("[INFO] cleanup for site %s", cc.Site)
+	resetEnv("SECRET", "ADMIN_PASSWD")
 
-	posts, err := cc.postsInRange(cc.From, cc.To)
+	ctx, cancel := context.WithTimeout(context.Background(), cc.Timeout)
+	defer cancel()
+
+	posts, err := cc.postsInRange(ctx, cc.From, cc.To)
 	if err != nil {
 		return fmt.Errorf("can't get posts: %w", err)
 	}
 	log.Printf("[DEBUG] got %d posts", len(posts))
 
-	totalComments, spamComments := 0, 0
+	totalComments, spamComments, failedPosts, failedComments := 0, 0, 0, 0
 	for _, post := range posts {
-		comments, e := cc.listComments(post.URL)
+		comments, e := cc.listComments(ctx, post.URL)
 		if e != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("can't get comments for %s: %w", post.URL, e)
+			}
+			log.Printf("[WARN] can't get comments for %s, %v", post.URL, e)
+			failedPosts++
 			continue
 		}
 		totalComments += len(comments)
 
 		if cc.SetTitle {
-			cc.procTitles(comments)
+			failedComments += cc.procTitles(ctx, comments)
 		} else {
-			spamComments += cc.procSpam(comments)
+			spam, failed := cc.procSpam(ctx, comments)
+			spamComments += spam
+			failedComments += failed
 		}
 	}
 
@@ -64,41 +76,62 @@ func (cc *CleanupCommand) Execute(_ []string) error {
 		msg = fmt.Sprintf("comments=%d", totalComments)
 	}
 
+	if err = ctx.Err(); err != nil { // the timeout can also cut short the deletes or title updates of the last post
+		return fmt.Errorf("cleanup interrupted, %s: %w", msg, err)
+	}
 	log.Printf("[INFO] completed, %s", msg)
-	return err
+	var failures []string
+	if failedPosts > 0 {
+		failures = append(failures, fmt.Sprintf("can't get comments for %d of %d posts", failedPosts, len(posts)))
+	}
+	if failedComments > 0 && cc.SetTitle {
+		failures = append(failures, fmt.Sprintf("can't set title for %d of %d comments", failedComments, totalComments))
+	}
+	if failedComments > 0 && !cc.SetTitle {
+		failures = append(failures, fmt.Sprintf("can't remove %d of %d spam comments", failedComments, spamComments))
+	}
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, ", "))
+	}
+	return nil
 }
 
-func (cc *CleanupCommand) procSpam(comments []store.Comment) int {
-	spamComments := 0
+// procSpam removes the spam comments unless the run is dry, and returns how many comments were spam
+// and how many of them could not be removed
+func (cc *CleanupCommand) procSpam(ctx context.Context, comments []store.Comment) (spamComments, failed int) {
 	for _, comment := range comments {
 		spam, score := cc.isSpam(comment)
 		if spam {
 			spamComments++
 			if !cc.Dry {
-				if err := cc.deleteComment(comment); err != nil {
+				if err := cc.deleteComment(ctx, comment); err != nil {
 					log.Printf("[WARN] can't remove comment, %v", err)
+					failed++
 				}
 			}
 			comment.Text = strings.ReplaceAll(comment.Text, "\n", " ")
 			log.Printf("[SPAM] %+v [%.0f%%]", comment, score)
 		}
 	}
-	return spamComments
+	return spamComments, failed
 }
 
-func (cc *CleanupCommand) procTitles(comments []store.Comment) {
+// procTitles sets the title of every comment unless the run is dry, and returns how many titles could not be set
+func (cc *CleanupCommand) procTitles(ctx context.Context, comments []store.Comment) (failed int) {
 	for _, comment := range comments {
 		if !cc.Dry {
-			if err := cc.setTitle(comment); err != nil {
+			if err := cc.setTitle(ctx, comment); err != nil {
 				log.Printf("[WARN] can't set title for comment, %v", err)
+				failed++
 			}
 		}
 	}
+	return failed
 }
 
 // get list of posts in from/to represented as yyyymmdd. this is [from-to] inclusive
-func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, error) {
-	posts, err := cc.listPosts()
+func (cc *CleanupCommand) postsInRange(ctx context.Context, fromS, toS string) ([]store.PostInfo, error) {
+	posts, err := cc.listPosts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't list posts for %s: %w", cc.Site, err)
 	}
@@ -129,82 +162,78 @@ func (cc *CleanupCommand) postsInRange(fromS, toS string) ([]store.PostInfo, err
 }
 
 // get all posts via GET /list?site=siteID&limit=50&skip=10
-func (cc *CleanupCommand) listPosts() ([]store.PostInfo, error) {
+func (cc *CleanupCommand) listPosts(ctx context.Context) ([]store.PostInfo, error) {
 	listURL := fmt.Sprintf("%s/api/v1/list?site=%s&limit=10000", cc.RemarkURL, url.QueryEscape(cc.Site))
-	client := http.Client{Timeout: 30 * time.Second}
-	defer client.CloseIdleConnections()
-	r, err := client.Get(listURL)
-	if err != nil {
-		return nil, fmt.Errorf("get request failed for list of posts, site %s: %w", cc.Site, err)
-	}
-	defer func() { _ = r.Body.Close() }()
-
-	if r.StatusCode != 200 {
-		return nil, fmt.Errorf("request %s failed with status %d", listURL, r.StatusCode)
-	}
-
 	list := []store.PostInfo{}
-	if err = json.NewDecoder(r.Body).Decode(&list); err != nil {
-		return nil, fmt.Errorf("can't decode list of posts for site %s: %w", cc.Site, err)
+	if err := getJSON(ctx, listURL, &list); err != nil {
+		return nil, fmt.Errorf("can't get list of posts for site %s: %w", cc.Site, err)
 	}
 	return list, nil
 }
 
 // get all comments for post url via /find?site=siteID&url=post-url&format=[tree|plain]
-func (cc *CleanupCommand) listComments(postURL string) ([]store.Comment, error) {
+func (cc *CleanupCommand) listComments(ctx context.Context, postURL string) ([]store.Comment, error) {
 	commentsURL := fmt.Sprintf("%s/api/v1/find?site=%s&url=%s&format=plain", cc.RemarkURL, url.QueryEscape(cc.Site), url.QueryEscape(postURL))
-
-	var r *http.Response
-	var err error
-
-	// handle 429 error from limiter
-	client := http.Client{Timeout: 30 * time.Second}
-	defer client.CloseIdleConnections()
-	for {
-		r, err = client.Get(commentsURL)
-		if err != nil {
-			return nil, fmt.Errorf("get request failed for comments, %s: %w", postURL, err)
-		}
-		if r.StatusCode == http.StatusTooManyRequests {
-			_ = r.Body.Close()
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
-	defer func() { _ = r.Body.Close() }()
-
-	if r.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request %s failed with status %d", commentsURL, r.StatusCode)
-	}
-
 	commentsWithInfo := struct {
 		Comments []store.Comment `json:"comments"`
 		Info     store.PostInfo  `json:"info"`
 	}{}
-
-	if err = json.NewDecoder(r.Body).Decode(&commentsWithInfo); err != nil {
-		return nil, fmt.Errorf("can't decode list of comments for %s: %w", postURL, err)
+	if err := getJSON(ctx, commentsURL, &commentsWithInfo); err != nil {
+		return nil, fmt.Errorf("can't get comments for %s: %w", postURL, err)
 	}
 	return commentsWithInfo.Comments, nil
 }
 
+// getJSON decodes the response to a GET of reqURL into v. A 429 from the rate limiter is retried
+// until ctx is done, any other status but 200 is an error
+func getJSON(ctx context.Context, reqURL string, v any) error {
+	client := http.Client{Timeout: 30 * time.Second}
+	defer client.CloseIdleConnections()
+	var resp *http.Response
+	for {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, http.NoBody)
+		if err != nil {
+			return fmt.Errorf("can't make request for %s: %w", reqURL, err)
+		}
+		if resp, err = client.Do(req); err != nil { //nolint:gosec // reqURL is built from operator-supplied CLI flags, not user input
+			return fmt.Errorf("request failed for %s: %w", reqURL, err)
+		}
+		if resp.StatusCode != http.StatusTooManyRequests {
+			break
+		}
+		_ = resp.Body.Close()
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("request %s rate limited: %w", reqURL, ctx.Err())
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request %s failed with status %d", reqURL, resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
+		return fmt.Errorf("can't decode response of %s: %w", reqURL, err)
+	}
+	return nil
+}
+
 // deleteComment with DELETE /admin/comment/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) deleteComment(c store.Comment) error {
-	return cc.commentRequest(http.MethodDelete, "comment", c)
+func (cc *CleanupCommand) deleteComment(ctx context.Context, c store.Comment) error {
+	return cc.commentRequest(ctx, http.MethodDelete, "comment", c)
 }
 
 // setTitle with PUT /admin/title/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) setTitle(c store.Comment) error {
-	return cc.commentRequest(http.MethodPut, "title", c)
+func (cc *CleanupCommand) setTitle(ctx context.Context, c store.Comment) error {
+	return cc.commentRequest(ctx, http.MethodPut, "title", c)
 }
 
 // commentRequest sends method to /admin/{route}/{id}?site=siteID&url=post-url
-func (cc *CleanupCommand) commentRequest(method, route string, c store.Comment) error {
+func (cc *CleanupCommand) commentRequest(ctx context.Context, method, route string, c store.Comment) error {
 	endpoint := fmt.Sprintf("%s/api/v1/admin/%s/%s", cc.RemarkURL, route, url.PathEscape(c.ID))
 	query := url.Values{"site": {cc.Site}, "url": {c.Locator.URL}, "format": {"plain"}}
-	return cc.adminRequest(context.Background(), method, endpoint, query, http.NoBody, nil)
+	return cc.adminRequest(ctx, method, endpoint, query, http.NoBody, nil)
 }
 
 // isSpam calculates spam's probability as a score
@@ -238,7 +267,7 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore 
 		return false, 0
 	}
 
-	score += 50 * badWord(comment.Text) // up to 50, 4 bad words will reach max
+	score += 50 * badWord(comment.Text) // 12.5 for each listed word found, up to 50 for four or more
 
 	if hasBadUser(comment.User.ID) { // predefined list of bad user substrings
 		score += 10
@@ -261,5 +290,7 @@ func (cc *CleanupCommand) isSpam(comment store.Comment) (isSpam bool, spamScore 
 	score = math.Max(score, 0)
 	score = math.Min(score, 100)
 
+	// spam is a score above 50. The other signs add up to 50 at most, so a comment needs at least one
+	// listed word, and four or more of them, which give the 50 maximum, still need one more sign
 	return score > 50, score
 }

@@ -4,17 +4,23 @@ title: Interface Translations
 
 ## Add a New Language to Remark42
 
-Translation files are stored in [/frontend/apps/remark42/app/locales](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
-directory with `.json` extension and content like following:
+Translation files are stored in the [/backend/app/webassets/assets](https://github.com/umputun/remark42/tree/master/backend/app/webassets/assets)
+directory, one `<code>.json` file per language, with content like the following. The server embeds them and serves them under `/web/`, and the widget fetches the one for its locale:
 
 ```json
 {
-  "anonymousLoginForm.length-limit": "Username must be at least 3 characters long",
-  "anonymousLoginForm.log-in": "Log in",
-  "anonymousLoginForm.symbol-limit": "Username must start from the letter and contain only Latin letters, numbers, underscores, and spaces",
+  "auth.back": "Back",
+  "auth.email-address": "Email address",
+  "auth.loading": "Loading...",
   <...>
 }
 ```
+
+`en.json` is different from the other files: the widget never loads it. The English text lives in
+the widget's code, and `pnpm translation:generate` copies it into `en.json`, which serves as the
+reference that every other file translates. To change an English message, change it in the code
+and run `pnpm translation:extract` and `pnpm translation:generate`; an edit made only in `en.json`
+does not reach the page, and CI fails until the file and the code agree again.
 
 {{< note "🚨" >}}
 Translations support `{name}` placeholders and paired tags such as `<a>text</a>`. ICU plural,
@@ -47,7 +53,7 @@ below to have your translation available to all remark42 users and included in t
     git push
     ```
 
-1.  Add a new locale with a [two-letter code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) of the language you want to do the translation into to list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
+1.  Add the code of the language you want to translate into, normally its [two-letter ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes), to the list in [frontend/apps/remark42/tasks/supportedLocales.json](https://github.com/umputun/remark42/blob/master/frontend/apps/remark42/tasks/supportedLocales.json)
 
     {{< note "↔️" >}}
     If the language is written right-to-left (e.g. Arabic, Hebrew, Persian), also add its code to
@@ -57,13 +63,13 @@ below to have your translation available to all remark42 users and included in t
     {{< /note >}}
 
 1.  Run `pnpm i` in the `frontend/apps/remark42` folder
-1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder
+1.  Run `pnpm translation:extract` in the `frontend/apps/remark42` folder. It stops when a message in `en.json` is no longer in the code; if you removed that message on purpose, run `pnpm translation:extract --allow-removal` instead
 1.  Run `pnpm translation:generate` in the `frontend/apps/remark42` folder
 1.  Translate all values in the newly created JSON file in
-    [frontend/apps/remark42/app/locales/](https://github.com/umputun/remark42/tree/master/frontend/apps/remark42/app/locales)
+    [backend/app/webassets/assets/](https://github.com/umputun/remark42/tree/master/backend/app/webassets/assets)
 1.  Run `pnpm translation-check` in `frontend/apps/remark42` to validate the translation keys, tags and placeholders
 1.  Update the [documented locale list](https://github.com/umputun/remark42/blob/master/site/content/docs/configuration/frontend/_index.md#locales) with the language name and code
-1.  Commit all changes above in your fork, including the generated `app/utils/loadLocale.ts`
+1.  Commit all changes above in your fork
 1.  Test your changes in the interface:
 
     1.  Uncomment `locale: "ru"` line in [backend/app/webassets/assets/index.html](https://github.com/umputun/remark42/blob/master/backend/app/webassets/assets/index.html)
@@ -87,4 +93,4 @@ below to have your translation available to all remark42 users and included in t
     4.  Open <http://127.0.0.1:9000/web/>, log in, make a comment, make a reply to a comment, and check your translation
     5.  Take a screenshot of that page with your translation in place
 
-1.  after all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it
+1.  After all previous steps are done, create a [Pull Request](https://github.com/umputun/remark42/pulls) to umputun/remark42 repo with your changes, attaching a screenshot or two from your local test instance to it

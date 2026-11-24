@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -36,7 +37,7 @@ func TestAdmin_Delete(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
@@ -143,7 +144,7 @@ func TestAdmin_Title(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post1"}}
-	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"}, ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2", User: store.User{ID: "id", Name: "name"},
 		Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post2"}}
 
 	id1 := addComment(t, c1, ts)
@@ -164,6 +165,54 @@ func TestAdmin_Title(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
 	assert.Equal(t, "post1 blah 123", cr.PostTitle)
+}
+
+// TestAdmin_TitleKeptWhenPageFails runs the title update the way cleanup --title does, one request per
+// comment of a post, against a page that can no longer be read: every comment keeps the title it has
+func TestAdmin_TitleKeptWhenPageFails(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	var pageDown atomic.Bool
+	tss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if pageDown.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, err := w.Write([]byte("<html><title>post1 blah 123</title><body> 2222</body></html>"))
+		assert.NoError(t, err)
+	}))
+	defer tss.Close()
+
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
+	ids := make([]string, 3)
+	for i := range ids {
+		ids[i] = addComment(t, store.Comment{Text: fmt.Sprintf("test test #%d", i), User: store.User{ID: "id", Name: "name"},
+			Locator: store.Locator{SiteID: "remark42", URL: tss.URL + "/post1"}}, ts)
+	}
+
+	// the page stops answering, and the title cache no longer holds its title
+	pageDown.Store(true)
+	require.NoError(t, srv.DataService.TitleExtractor.Close())
+	srv.DataService.TitleExtractor = service.NewTitleExtractor(http.Client{Timeout: time.Second}, []string{"127.0.0.1"})
+
+	for _, id := range ids {
+		req, err := http.NewRequest(http.MethodPut,
+			fmt.Sprintf("%s/api/v1/admin/title/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL), http.NoBody)
+		require.NoError(t, err)
+		resp, err := sendReq(req, adminUmputunToken)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "title of comment %s not updated", id)
+	}
+
+	for _, id := range ids {
+		body, code := get(t, fmt.Sprintf("%s/api/v1/id/%s?site=remark42&url=%s/post1", ts.URL, id, tss.URL))
+		require.Equal(t, http.StatusOK, code)
+		cr := store.Comment{}
+		require.NoError(t, json.Unmarshal([]byte(body), &cr))
+		assert.Equal(t, "post1 blah 123", cr.PostTitle, "title of comment %s kept", id)
+	}
 }
 
 func TestAdmin_DeleteUser(t *testing.T) {
@@ -463,7 +512,7 @@ func TestAdmin_Pin(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 
 	id1 := addComment(t, c1, ts)
@@ -501,6 +550,32 @@ func TestAdmin_Pin(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &cr)
 	assert.NoError(t, err)
 	assert.False(t, cr.Pin)
+}
+
+func TestAdmin_PinFlushesLastComments(t *testing.T) {
+	ts, _, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+	})
+	defer teardown()
+
+	id := addComment(t, store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}, ts)
+	res, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, "test test #1", "the comment is in the last comments, and they are cached")
+	require.NotContains(t, res, `"pin":true`)
+
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/pin/"+id+"?site=remark42&url=https://radio-t.com/blah&pin=1", http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	assert.Contains(t, res, `"pin":true`, "the cached last comments are dropped when a comment is pinned")
 }
 
 func TestAdmin_Block(t *testing.T) {
@@ -622,6 +697,108 @@ func TestAdmin_Block(t *testing.T) {
 
 	assert.False(t, srv.DataService.IsBlocked("remark42", "user1"))
 	assert.False(t, srv.DataService.IsBlocked("remark42", "user2"))
+}
+
+// putBlockUser sends PUT /admin/user/{userID} with the given query and returns the status and body.
+// Each case below blocks a user of its own, so every request has its own path and its own bucket
+// in the 10 req/s limiter of the admin routes.
+func putBlockUser(t *testing.T, tsURL, userID, query string) (code int, body string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/api/v1/admin/user/%s?site=remark42&%s", tsURL, userID, query), http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	b, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	return resp.StatusCode, string(b)
+}
+
+func TestAdmin_BlockRejectsBadTTL(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, userID, query string
+		blockedBefore       bool
+	}{
+		{"day unit", "bad-day", "block=1&ttl=7d", false},
+		{"not a duration", "bad-word", "block=1&ttl=week", false},
+		{"negative", "bad-negative", "block=1&ttl=-1h", false},
+		{"unblock with bad ttl", "bad-unblock", "block=0&ttl=7d", true},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			id, err := srv.DataService.Create(store.Comment{Text: "kept text", Locator: locator,
+				User: store.User{Name: tt.userID, ID: tt.userID}})
+			require.NoError(t, err)
+			if tt.blockedBefore {
+				require.NoError(t, srv.DataService.SetBlock("remark42", tt.userID, true, time.Hour))
+			}
+
+			code, body := putBlockUser(t, ts.URL, tt.userID, tt.query)
+			assert.Equal(t, http.StatusBadRequest, code, "a bad ttl is rejected, %s", body)
+			assert.Contains(t, body, "invalid ttl")
+			assert.Equal(t, tt.blockedBefore, srv.DataService.IsBlocked("remark42", tt.userID), "block status unchanged")
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			assert.Equal(t, "kept text", c.Text, "comment text kept")
+			assert.False(t, c.Deleted, "comment not deleted")
+		})
+	}
+}
+
+func TestAdmin_BlockAcceptedTTL(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	tbl := []struct {
+		name, userID, query string
+		ttl                 time.Duration // 0 for a permanent block
+	}{
+		{"widget, a month", "ttl-month", "block=1&ttl=43200m", 30 * 24 * time.Hour},
+		{"widget, a week", "ttl-week", "block=1&ttl=10080m", 7 * 24 * time.Hour},
+		{"widget, a day", "ttl-day", "block=1&ttl=1440m", 24 * time.Hour},
+		{"hours", "ttl-hours", "block=1&ttl=168h", 7 * 24 * time.Hour},
+		{"widget, permanently", "ttl-absent", "block=1", 0},
+		{"widget before v1.17, permanently", "ttl-undefined", "block=1&ttl=undefined", 0},
+		{"zero", "ttl-zero", "block=1&ttl=0", 0},
+	}
+	for _, tt := range tbl {
+		t.Run(tt.name, func(t *testing.T) {
+			locator := store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}
+			id, err := srv.DataService.Create(store.Comment{Text: "some text", Locator: locator,
+				User: store.User{Name: tt.userID, ID: tt.userID}})
+			require.NoError(t, err)
+
+			before := time.Now()
+			code, body := putBlockUser(t, ts.URL, tt.userID, tt.query)
+			after := time.Now()
+			require.Equal(t, http.StatusOK, code, body)
+			assert.True(t, srv.DataService.IsBlocked("remark42", tt.userID))
+
+			blocked, err := srv.DataService.BlockedUsers("remark42")
+			require.NoError(t, err)
+			var until time.Time
+			for _, u := range blocked {
+				if u.ID == tt.userID {
+					until = u.Until
+				}
+			}
+			c, err := srv.DataService.Get(locator, id, store.User{})
+			require.NoError(t, err)
+			if tt.ttl == 0 {
+				assert.True(t, until.After(after.AddDate(99, 0, 0)), "permanent block, until %v", until)
+				assert.True(t, c.Deleted, "a permanent block deletes the user's comments")
+				return
+			}
+			assert.False(t, until.Before(before.Add(tt.ttl)), "block until %v, not before %v", until, before.Add(tt.ttl))
+			assert.False(t, until.After(after.Add(tt.ttl)), "block until %v, not after %v", until, after.Add(tt.ttl))
+			assert.Equal(t, "some text", c.Text, "a block with ttl keeps the user's comments")
+			assert.False(t, c.Deleted)
+		})
+	}
 }
 
 func TestAdmin_BlockedList(t *testing.T) {
@@ -760,7 +937,7 @@ func TestAdmin_ReadOnly(t *testing.T) {
 	assert.False(t, info.ReadOnly)
 
 	// try to write comment
-	c = store.Comment{Text: "test test #2", ParentID: "p1",
+	c = store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}}
 	b, err = json.Marshal(c)
 	assert.NoError(t, err, "can't marshal comment %+v", c)
@@ -905,13 +1082,42 @@ func TestAdmin_Verify(t *testing.T) {
 	assert.False(t, comments.Comments[0].User.Verified)
 }
 
+func TestAdmin_VerifyFlushesLastComments(t *testing.T) {
+	ts, srv, teardown := startupT(t, func(srv *Rest) { // a real cache, the default test one keeps nothing
+		lru, err := cache.NewLruCache(cache.NewOpts[[]byte]().MaxKeys(100))
+		require.NoError(t, err)
+		srv.Cache = cache.NewScache(lru)
+	})
+	defer teardown()
+
+	_, err := srv.DataService.Create(store.Comment{Text: "test test #1", User: store.User{Name: "user1 name", ID: "user1"},
+		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"}})
+	require.NoError(t, err)
+	require.NoError(t, srv.DataService.SetVerified("remark42", "user1", true))
+
+	res, code := get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	require.Contains(t, res, `"verified":true`, "the user is verified in the last comments, and they are cached")
+
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/admin/verify/user1?site=remark42&verified=0", http.NoBody)
+	require.NoError(t, err)
+	resp, err := sendReq(req, adminUmputunToken)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	res, code = get(t, ts.URL+"/api/v1/last/10?site=remark42")
+	require.Equal(t, http.StatusOK, code)
+	assert.NotContains(t, res, `"verified":true`, "the cached last comments are dropped when the status changes")
+}
+
 func TestAdmin_ExportStream(t *testing.T) {
 	ts, _, teardown := startupT(t)
 	defer teardown()
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -930,7 +1136,7 @@ func TestAdmin_ExportFile(t *testing.T) {
 
 	c1 := store.Comment{Text: "test test #1",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah1"}}
-	c2 := store.Comment{Text: "test test #2", ParentID: "p1",
+	c2 := store.Comment{Text: "test test #2",
 		Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah2"}}
 
 	addComment(t, c1, ts)
@@ -1022,6 +1228,40 @@ func TestAdmin_DeleteMeRequest(t *testing.T) {
 	assert.Empty(t, email, "user1 email was deleted")
 
 	assert.NoFileExists(t, testAvatarDir(srv)+"/42/pic.image", "user's avatar should be removed on deleteme")
+}
+
+func TestAdmin_DeleteMeRequestRejectsExpiredToken(t *testing.T) {
+	ts, srv, teardown := startupT(t)
+	defer teardown()
+
+	c := store.Comment{Text: "test test #1", Locator: store.Locator{SiteID: "remark42", URL: "https://radio-t.com/blah"},
+		User: store.User{Name: "user1 name", ID: "user1"}}
+	_, err := srv.DataService.Create(c)
+	require.NoError(t, err)
+
+	tkn, err := srv.Authenticator.TokenService().Token(token.Claims{
+		Audience:  jwt.ClaimStrings{"remark42"},
+		ID:        "4567890",
+		Issuer:    "remark42",
+		NotBefore: jwt.NewNumericDate(time.Now().AddDate(0, -4, 0)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+		User:      &token.User{ID: "user1", Attributes: map[string]any{"delete_me": true}},
+	})
+	require.NoError(t, err)
+
+	client := http.Client{}
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/admin/deleteme?token=%s", ts.URL, tkn), http.NoBody)
+	require.NoError(t, err)
+	req.SetBasicAuth("admin", "password")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+
+	comments, err := srv.DataService.User("remark42", "user1", 0, 0, store.User{})
+	require.NoError(t, err)
+	assert.Len(t, comments, 1, "an expired link deletes nothing")
 }
 
 // an admin is an admin of the site the session belongs to, so a deletion token for another site

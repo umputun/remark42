@@ -38,21 +38,22 @@ type Migrator struct {
 	lock sync.Mutex
 }
 
-// POST /import?secret=key&site=site-id&provider=disqus|wordpress|commento|native
-// imports comments from post body.
+// POST /import?site=siteID&provider=native|disqus|wordpress|commento - saves the request body, starts the
+// import in the background and answers 202; GET /wait reports when it is done. No provider means native
 func (m *Migrator) importCtrl(w http.ResponseWriter, r *http.Request) {
 	m.startImport(w, r, func() string {
 		tmpfile, err := m.saveTemp(r.Body)
 		if err != nil {
-			rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+			rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("temp file error")),
+				"can't save request to temp file", rest.ErrInternal)
 			return ""
 		}
 		return tmpfile
 	})
 }
 
-// POST /import/form?secret=key&site=site-id&provider=disqus|wordpress|commento|native
-// imports comments from form body.
+// POST /import/form?site=siteID&provider=native|disqus|wordpress|commento - the same as POST /import, with the
+// file in the "file" field of a multipart form
 func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 	m.startImport(w, r, func() string {
 		r.Body = http.MaxBytesReader(w, r.Body, 256*1024*1024) // hard cap on upload to prevent memory exhaustion
@@ -80,7 +81,8 @@ func (m *Migrator) importFormCtrl(w http.ResponseWriter, r *http.Request) {
 				err = closeErr
 			}
 			if err != nil {
-				rest.SendErrorJSON(w, r, http.StatusInternalServerError, err, "can't save request to temp file", rest.ErrInternal)
+				rest.SendErrorJSONAs(w, r, http.StatusInternalServerError, err, withoutPath(err, fmt.Errorf("temp file error")),
+					"can't save request to temp file", rest.ErrInternal)
 				return ""
 			}
 			return tmpfile
@@ -140,8 +142,8 @@ func (m *Migrator) waitCtrl(w http.ResponseWriter, r *http.Request) {
 	R.RenderJSON(w, R.JSON{"status": "completed", "site_id": siteID})
 }
 
-// GET /export?site=site-id&secret=12345&?mode=file|stream
-// exports all comments for siteID as gz file
+// GET /export?site=siteID&mode=file|stream - exports all comments of the site; mode=file sends them as a gzipped
+// attachment, any other mode streams them uncompressed
 func (m *Migrator) exportCtrl(w http.ResponseWriter, r *http.Request) {
 	siteID := r.URL.Query().Get("site")
 

@@ -30,6 +30,8 @@
   --fg-subheading: var(--gray-700);
   --accent: var(--brand-500);
   --accent-hover: var(--brand-600);
+  --link: #0d7d7a;
+  --link-hover: var(--brand-800);
   --accent-soft-bg: var(--brand-100);
   --accent-soft-fg: var(--brand-600);
   --code-fg: var(--brand-800);
@@ -54,6 +56,8 @@
   --fg-subheading: var(--gray-200);
   --accent: var(--brand-400);
   --accent-hover: var(--brand-300);
+  --link: var(--brand-400);
+  --link-hover: var(--brand-300);
   --accent-soft-bg: var(--brand-900);
   --accent-soft-fg: var(--brand-400);
   --code-fg: var(--brand-300);
@@ -673,13 +677,13 @@ kbd {
 }
 
 .prose a {
-  color: var(--accent);
+  color: var(--link);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .prose a:hover {
-  color: var(--accent-hover);
+  color: var(--link-hover);
 }
 
 .prose strong {

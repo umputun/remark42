@@ -1,9 +1,5 @@
 import path from 'node:path';
 
-// babel reads this to pick the test branch of .babelrc.js; setting it here rather than relying on
-// NODE_ENV means running the suite under any other NODE_ENV still compiles for the current node
-process.env.BABEL_ENV = 'test';
-
 /**
  * Plain ESM rather than TypeScript on purpose: a `.ts` config is compiled against
  * `tsconfig.json`, whose `verbatimModuleSyntax` rejects ESM syntax in a file the package has not
@@ -18,7 +14,7 @@ const config = {
   // bundler, which is the property they exist to hold
   testPathIgnorePatterns: ['/node_modules/', '\\.unit\\.test\\.ts$'],
   // babel-jest would otherwise skip node_modules, where .babelrc.js does not reach: passing it as
-  // configFile applies the same config the bundle uses to the ESM-only packages below
+  // configFile applies the suites' own config to the ESM-only packages below as well
   transform: {
     '^.+\\.(t|j|mj)sx?$': ['babel-jest', { configFile: path.join(import.meta.dirname, '.babelrc.js') }],
   },
@@ -26,6 +22,8 @@ const config = {
   moduleDirectories: ['node_modules', 'app'],
   moduleNameMapper: {
     '\\.css': 'identity-obj-proxy',
+    // the catalogues are served from the assets embedded in the backend binary
+    '^locales/(.*)$': '<rootDir>/../../../backend/app/webassets/assets/$1',
   },
   setupFilesAfterEnv: [
     '<rootDir>/app/__mocks__/fetch.ts',
@@ -35,6 +33,7 @@ const config = {
     '<rootDir>/app/__stubs__/static-config.ts',
   ],
   collectCoverageFrom: [
+    // the plain JavaScript files are left out: jest runs none of them, and the e2e suite tests them
     'app/**/*.{ts,tsx}',
     // jest excludes a file it ran as a test from coverage, but these it never runs, so without
     // this they are counted as source that nothing covers and drag the whole figure down. their
@@ -42,8 +41,6 @@ const config = {
     '!**/*.unit.test.ts',
     '!**/__mocks__/**',
     '!**/__stubs__/**',
-    '!app/locales/**',
-    '!app/utils/loadLocale.ts',
     '!app/tests',
   ],
 };

@@ -3,6 +3,8 @@ package rest
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/go-pkgz/auth/v2/token"
 
@@ -37,6 +39,28 @@ func GetUserInfo(r *http.Request) (user store.User, err error) {
 		SiteID:   u.Audience,
 		PaidSub:  u.IsPaidSub(),
 	}, nil
+}
+
+// PaidSubPeriod is how long the paid status Patreon reports at a sign-in counts in subscribers-only mode.
+// Patreon is asked only at the sign-in, and a session goes on for as long as it is used
+const PaidSubPeriod = 14 * 24 * time.Hour
+
+// paidSubUntilAttr is the token attribute with the end of the paid status, in unix seconds
+const paidSubUntilAttr = "paid_sub_until"
+
+// SetPaidSubUntil sets the end of the user's paid status
+func SetPaidSubUntil(u *token.User, until time.Time) {
+	u.SetStrAttr(paidSubUntilAttr, strconv.FormatInt(until.Unix(), 10))
+}
+
+// PaidSubActive tells whether the user is a paid subscriber whose paid status has not ended by now. A paid
+// status without an end, from a token made before subscribers-only mode set one, does not count
+func PaidSubActive(u token.User, now time.Time) bool {
+	if !u.IsPaidSub() {
+		return false
+	}
+	until, err := strconv.ParseInt(u.StrAttr(paidSubUntilAttr), 10, 64)
+	return err == nil && now.Unix() < until
 }
 
 // GetUserOrEmpty attempts to get user info from request and returns empty object if failed

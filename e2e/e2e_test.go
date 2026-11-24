@@ -6,6 +6,7 @@
 // up itself when nothing is listening. Files:
 //
 //   - e2e_test.go: TestMain, shared helpers, constants
+//   - assets_test.go: the instance URL filled into the published files
 //   - harness_test.go: the stale-stack guard and the browser failures no assertion covers
 //   - auth_test.go: dev, anonymous and email sign-in
 //   - comment_test.go: post, reply, edit, delete
@@ -25,6 +26,7 @@
 //   - telegram_test.go: Telegram authentication through the bot API stub
 //   - telegramsub_test.go: the Telegram notification subscription round trip
 //   - widgets_test.go: last-comments, counter and the profile iframe
+//   - jscoverage_test.go: collecting the instrumented widget's coverage counters
 package e2e
 
 import (
@@ -34,6 +36,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -73,15 +76,12 @@ const (
 	// the host page over TLS, which is the only way to reach what the browser gates on the page
 	// protocol. the certificate is self-signed, so every context passes IgnoreHTTPSErrors
 	httpsHostSiteURL = "https://host-site-https:8444"
+	// the instance that page embeds, for the cases that also visit it as a site of its own
+	httpsURL = "https://remark42-https:8443"
 
 	// what this process asks for, since it is not the browser and has no resolver rules
-	probeURL          = "http://127.0.0.1:8080"
-	shortEditProbeURL = "http://127.0.0.1:8081"
-	adminEditProbeURL = "http://127.0.0.1:8082"
-	jwtHeaderProbeURL = "http://127.0.0.1:8083"
-	noAuthProbeURL    = "http://127.0.0.1:8085"
-	anonVoteProbeURL  = "http://127.0.0.1:8086"
-	telegramProbeURL  = "http://127.0.0.1:8087"
+	probeURL         = "http://127.0.0.1:8080"
+	telegramProbeURL = "http://127.0.0.1:8087"
 	// the stub is driven from this process because the step it stands in for happens inside
 	// Telegram, where no page can reach
 	telegramStubURL   = "http://127.0.0.1:8091"
@@ -189,12 +189,7 @@ func TestMain(m *testing.M) {
 		Headless: new(headless),
 		SlowMo:   new(slowMo),
 		Args: []string{
-			"--host-resolver-rules=MAP remark42 127.0.0.1, MAP remark42-shortedit 127.0.0.1, " +
-				"MAP remark42-adminedit 127.0.0.1, MAP remark42-jwtheader 127.0.0.1, " +
-				"MAP remark42-noauth 127.0.0.1, MAP remark42-anonvote 127.0.0.1, " +
-				"MAP remark42-telegram 127.0.0.1, " +
-				"MAP host-site 127.0.0.1, " +
-				"MAP remark42-https 127.0.0.1, MAP host-site-https 127.0.0.1",
+			hostResolverRules(),
 		},
 	})
 	if err != nil {
@@ -263,21 +258,18 @@ func ensureStack() error {
 
 // stackReady reports whether every service the suite needs answers
 func stackReady(timeout time.Duration) bool {
-	for _, url := range []string{
-		probeURL + "/ping",
-		shortEditProbeURL + "/ping",
-		adminEditProbeURL + "/ping",
-		jwtHeaderProbeURL + "/ping",
-		noAuthProbeURL + "/ping",
-		anonVoteProbeURL + "/ping",
-		telegramProbeURL + "/ping",
-		telegramStubURL + "/botstub-token/getMe",
-		hostSiteProbeURL + "/post.html",
-		httpsProbeURL + "/ping",
-		httpsHostProbeURL + "/post-https.html",
-		mailpitURL + "/api/v1/messages",
-	} {
-		if err := serverReady(url, timeout); err != nil {
+	urls := make([]string, 0, len(instances)+4)
+	for _, inst := range instances {
+		urls = append(urls, inst.scheme+"://"+inst.loopback()+"/ping")
+	}
+	urls = append(urls,
+		telegramStubURL+"/botstub-token/getMe",
+		hostSiteProbeURL+"/post.html",
+		httpsHostProbeURL+"/post-https.html",
+		mailpitURL+"/api/v1/messages",
+	)
+	for _, probe := range urls {
+		if err := serverReady(probe, timeout); err != nil {
 			return false
 		}
 	}
@@ -401,9 +393,6 @@ func newPageInContext(t *testing.T, b playwright.Browser, opts playwright.Browse
 
 	page, err := ctx.NewPage()
 	require.NoError(t, err)
-	// cleanups run last registered first, so this reads the counters while the context above is
-	// still open. A closed context has no frames left to ask.
-	t.Cleanup(func() { snapshotJSCoverage(t, page) })
 	// before the first navigation, so nothing the page reports on its way up is missed
 	watchPage(t, page)
 	debug := os.Getenv("E2E_DEBUG") != ""
@@ -435,28 +424,58 @@ func forwardedReaderIP(second byte, seq int64) string {
 	return fmt.Sprintf("8.%d.%d.%d", second, slot/254, slot%254+1)
 }
 
+// instances is every remark42 service in compose-e2e-test.yml, by the address the browser asks for.
+// The resolver rules, the authorities that get a reader address and the readiness probes all come
+// from it, so a new instance is one line here
+var instances = parseServices(baseURL, shortEditURL, adminEditURL, jwtHeaderURL, noAuthURL, anonVoteURL, telegramURL, httpsURL)
+
+// service is a compose service as the browser addresses it
+type service struct{ scheme, name, port string }
+
+// parseServices splits scheme://name:port addresses. A malformed one panics, which fails the
+// whole run before any test starts
+func parseServices(addrs ...string) []service {
+	res := make([]service, 0, len(addrs))
+	for _, addr := range addrs {
+		scheme, authority, _ := strings.Cut(addr, "://")
+		name, port, err := net.SplitHostPort(authority)
+		if err != nil || scheme == "" || name == "" || port == "" {
+			panic(fmt.Sprintf("%q is not a scheme://name:port address: %v", addr, err))
+		}
+		res = append(res, service{scheme: scheme, name: name, port: port})
+	}
+	return res
+}
+
+// authority is the service by name, as the browser reaches it
+func (s service) authority() string { return net.JoinHostPort(s.name, s.port) }
+
+// loopback is the port the service is published on, as this process and the rendering tests
+// reach it
+func (s service) loopback() string { return net.JoinHostPort("127.0.0.1", s.port) }
+
+// hostResolverRules maps every name the browser asks for, the instances and the host pages, back
+// to the loopback the stack publishes on
+func hostResolverRules() string {
+	services := append(parseServices(hostSiteURL, httpsHostSiteURL), instances...)
+	rules := make([]string, 0, len(services))
+	for _, s := range services {
+		rules = append(rules, "MAP "+s.name+" 127.0.0.1")
+	}
+	return "--host-resolver-rules=" + strings.Join(rules, ", ")
+}
+
 // readerIPAuthorities lists every host and port through which a browser can reach a remark42
 // instance, by name inside the compose network and over the loopback the demo pages are built on.
 // Host pages and Mailpit are absent on purpose: they must keep their ordinary transport identity.
-var readerIPAuthorities = []string{
-	"remark42:8080",
-	"remark42:8084", // the dev oauth2 provider, whose port the provider fixes
-	"remark42-shortedit:8081",
-	"remark42-adminedit:8082",
-	"remark42-jwtheader:8083",
-	"remark42-noauth:8085",
-	"remark42-anonvote:8086",
-	"remark42-telegram:8087",
-	"remark42-https:8443",
-	"127.0.0.1:8080",
-	"127.0.0.1:8081",
-	"127.0.0.1:8082",
-	"127.0.0.1:8083",
-	"127.0.0.1:8085",
-	"127.0.0.1:8086",
-	"127.0.0.1:8087",
-	"127.0.0.1:8443",
-}
+var readerIPAuthorities = func() []string {
+	res := make([]string, 0, 1+2*len(instances))
+	res = append(res, "remark42:8084") // the dev oauth2 provider, whose port the provider fixes
+	for _, inst := range instances {
+		res = append(res, inst.authority(), inst.loopback())
+	}
+	return res
+}()
 
 // installOpts asks for the browser system libraries on CI only: install-deps shells out to
 // apt with sudo, which is right for a runner and wrong for someone's laptop
@@ -546,15 +565,14 @@ func threadURLOn(t *testing.T, base string) string {
 // stack repeats it, which is exactly what `make e2e-up` invites. The pid distinguishes those
 // while leaving CI, where every job is one process, with the run id it wants in the name.
 //
-// Everything outside [\p{L}\d\s_] is dropped, because the form validates its input against that
-// pattern (auth.tsx:332) and the browser refuses to submit anything else: no request is made, and
-// the test waits out its timeout on a panel that was never going to change. E2E_RUN_ID is
-// "<run id>-<attempt>" on CI, whose hyphen is exactly such a character
+// Everything outside [\p{L}\d _.-] is dropped, because the form validates its input against that
+// pattern (the username input in auth.tsx) and the browser refuses to submit anything else: no
+// request is made, and the test waits out its timeout on a panel that was never going to change
 func anonName(prefix string) string {
 	var b strings.Builder
 	b.WriteString(prefix)
 	for _, r := range runID {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '.' || r == '-' {
 			b.WriteRune(r)
 		}
 	}
@@ -570,8 +588,6 @@ func openThread(t *testing.T, page playwright.Page) playwright.FrameLocator {
 
 func openURL(t *testing.T, page playwright.Page, url string) playwright.FrameLocator {
 	t.Helper()
-	// a page that is already showing something has counted something, and Goto discards it
-	snapshotJSCoverage(t, page)
 	_, err := page.Goto(url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateDomcontentloaded,
 	})
@@ -604,9 +620,6 @@ func embedConfigOn(t *testing.T, page playwright.Page, hostPage string, config m
 		}
 	}
 
-	// the other navigation boundary: every caller happens to pass a fresh page today, and nothing
-	// says they must
-	snapshotJSCoverage(t, page)
 	_, err := page.Goto(baseURL + hostPage)
 	require.NoError(t, err)
 
@@ -652,7 +665,6 @@ func fulfillJSON(t *testing.T, route playwright.Route, status int, body string) 
 // that a comment is absent would otherwise pass against a thread that has not rendered yet
 func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	t.Helper()
-	snapshotJSCoverage(t, page)
 	pauseForAuthLimit()
 	_, err := page.ExpectResponse("**/api/v1/find**", func() error {
 		_, rerr := page.Reload()
@@ -661,8 +673,12 @@ func reload(t *testing.T, page playwright.Page) playwright.FrameLocator {
 	require.NoError(t, err)
 
 	frame := widget(t, page)
-	// the response has arrived; give preact the frame it needs to swap the preloader out
-	waitHidden(t, frame.Locator(`[role="list"] .preloader`))
+	// the response has arrived; give preact the frame it needs to swap out every preloader: the one
+	// iframe.html starts with, the one shown while the user loads and the one in place of the threads
+	eventually(t, waitTimeout, "the widget still shows a preloader", func() bool {
+		n, cerr := frame.Locator(".preloader").Count()
+		return cerr == nil && n == 0
+	})
 	return frame
 }
 

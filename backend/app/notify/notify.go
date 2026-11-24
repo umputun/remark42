@@ -4,6 +4,7 @@ package notify
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -58,6 +59,8 @@ type Request struct {
 	parent    store.Comment
 	Emails    []string
 	Telegrams []string
+
+	emailUsers map[string]string // ID of the user each of Emails belongs to, set by Service.Submit
 }
 
 // VerificationRequest notification for user
@@ -110,8 +113,8 @@ func (s *Service) Submit(req Request) {
 	if s.dataService != nil && req.Comment.ParentID != "" {
 		if p, err := s.dataService.Get(req.Comment.Locator, req.Comment.ParentID, store.User{}); err == nil {
 			req.parent = p
-			req.Emails = s.getNotificationTargets(req, p, s.dataService.GetUserEmail)
-			req.Telegrams = s.getNotificationTargets(req, p, s.dataService.GetUserTelegram)
+			req.Emails, req.emailUsers = s.getNotificationTargets(req, p, s.dataService.GetUserEmail)
+			req.Telegrams, _ = s.getNotificationTargets(req, p, s.dataService.GetUserTelegram)
 		}
 	}
 	s.queueMu.RLock()
@@ -122,37 +125,43 @@ func (s *Service) Submit(req Request) {
 	select {
 	case s.queue <- req:
 	default:
-		log.Printf("[WARN] can't send notification to queue, %+v", req.Comment)
+		log.Printf("[WARN] can't send notification to queue, comment %s on %s", req.Comment.ID, req.Comment.Locator.URL)
 	}
 }
 
 // getNotificationTargets returns list of notification targets (like email or telegram username) for users
-// interested in notifications for provided comment.
+// interested in notifications for provided comment, the authors of notifyComment and of the comments above it,
+// and the ID of the user each target belongs to.
 // Targets are not added to the returned list in case the original message
 // is from the same user as the notification receiver.
-// Results are sorted and deduplicated.
+// Results are sorted and deduplicated; a target shared by several users belongs to the one nearest to notifyComment.
 func (s *Service) getNotificationTargets(
 	req Request,
 	notifyComment store.Comment,
 	getUserDetail getUserDetail,
-) (result []string) {
-	// add current user email only if the user is not the one who wrote the original comment
-	if notifyComment.User.ID != req.Comment.User.ID {
-		detail, err := getUserDetail(req.Comment.Locator.SiteID, notifyComment.User.ID)
+) (result []string, users map[string]string) {
+	users = map[string]string{}
+	for c := notifyComment; ; {
+		// add the user's target only if the user is not the one who wrote the original comment
+		if c.User.ID != req.Comment.User.ID {
+			detail, err := getUserDetail(req.Comment.Locator.SiteID, c.User.ID)
+			if err != nil {
+				log.Printf("[WARN] can't read notification detail for %s, %v", c.User.ID, err)
+			}
+			if _, seen := users[detail]; detail != "" && !seen {
+				users[detail] = c.User.ID
+			}
+		}
+		if c.ParentID == "" {
+			break
+		}
+		p, err := s.dataService.Get(req.Comment.Locator, c.ParentID, store.User{})
 		if err != nil {
-			log.Printf("[WARN] can't read notification detail for %s, %v", notifyComment.User.ID, err)
+			break
 		}
-		if detail != "" {
-			result = append(result, detail)
-		}
+		c = p
 	}
-	if notifyComment.ParentID != "" {
-		if p, err := s.dataService.Get(req.Comment.Locator, notifyComment.ParentID, store.User{}); err == nil {
-			result = append(result, s.getNotificationTargets(req, p, getUserDetail)...)
-		}
-	}
-	slices.Sort(result)
-	return slices.Compact(result)
+	return slices.Sorted(maps.Keys(users)), users
 }
 
 // SubmitVerification to internal channel if not busy, drop if can't send

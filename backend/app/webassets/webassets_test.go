@@ -1,6 +1,7 @@
 package webassets
 
 import (
+	"encoding/json"
 	"io/fs"
 	"regexp"
 	"strings"
@@ -8,24 +9,62 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
+
+// catalogName is how a message catalog is named: the locale code, two letters with an optional
+// region, and .json
+var catalogName = regexp.MustCompile(`^[a-z]{2}(-[a-z]{2})?\.json$`)
 
 func TestFS_Contents(t *testing.T) {
 	entries, err := fs.ReadDir(FS, ".")
 	require.NoError(t, err)
 
-	names := make([]string, 0, len(entries))
+	names, catalogs := make([]string, 0, len(entries)), 0
 	for _, e := range entries {
 		assert.False(t, e.IsDir(), "the assets are served flat under /web, %s is a directory", e.Name())
 		info, err := e.Info()
 		require.NoError(t, err)
 		assert.NotZero(t, info.Size(), "%s is empty", e.Name())
+		// the catalogs are listed in the frontend's tasks/supportedLocales.json, and adding a
+		// language adds one here, so they are counted and checked by TestFS_Catalogs, not named
+		if catalogName.MatchString(e.Name()) {
+			catalogs++
+			continue
+		}
 		names = append(names, e.Name())
 	}
 	assert.Equal(t, []string{"400x400.jpeg", "apple-dark.svg", "apple-light.svg", "comments.html", "counter.html",
-		"custom.svg", "deleteme.html", "dev.svg", "discord.svg", "facebook.svg", "ghost.svg", "github-dark.svg",
-		"github-light.svg", "google.svg", "index.html", "last-comments.html", "markdown-help.html", "microsoft.svg",
-		"patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg", "yandex.svg"}, names)
+		"counter.mjs", "custom.svg", "deleteme.html", "dev.svg", "discord.svg", "emoji.json", "facebook.svg", "ghost.svg",
+		"github-dark.svg", "github-light.svg", "google.svg", "iframe.html", "index.html", "last-comments.html", "markdown-help.html",
+		"microsoft.svg", "patreon.svg", "privacy.html", "telegram.svg", "twitter-dark.svg", "twitter-light.svg",
+		"yandex.svg"}, names)
+	// a floor and not the count, so a language added keeps this green and the move of the
+	// catalogs out of here does not
+	assert.GreaterOrEqual(t, catalogs, 29, "the message catalogs are missing from the embedded assets")
+}
+
+// TestFS_Catalogs checks that every message catalog is a flat object of message id to translated
+// text, which is the shape the widget's loader hands to its formatter, and that English is there:
+// the translation tasks read en.json as the list of messages in the source
+func TestFS_Catalogs(t *testing.T) {
+	entries, err := fs.ReadDir(FS, ".")
+	require.NoError(t, err)
+
+	seen := map[string]bool{}
+	for _, e := range entries {
+		if !catalogName.MatchString(e.Name()) {
+			continue
+		}
+		seen[e.Name()] = true
+		raw, err := fs.ReadFile(FS, e.Name())
+		require.NoError(t, err)
+		var catalog map[string]string
+		require.NoError(t, json.Unmarshal(raw, &catalog), "%s is not an object of strings", e.Name())
+		assert.NotEmpty(t, catalog, "%s holds no messages", e.Name())
+	}
+	assert.True(t, seen["en.json"], "en.json, the catalog the translation tasks compare against, is missing")
 }
 
 // TestFS_ContentShape catches an asset that has been truncated or replaced by something of the
@@ -40,6 +79,7 @@ func TestFS_ContentShape(t *testing.T) {
 		{name: "comments.html", want: "<!DOCTYPE html>"},
 		{name: "counter.html", want: "<!DOCTYPE html>"},
 		{name: "deleteme.html", want: "<!DOCTYPE html>"},
+		{name: "iframe.html", want: "<!DOCTYPE html>"},
 		{name: "index.html", want: "<!DOCTYPE html>"},
 		{name: "last-comments.html", want: "<!DOCTYPE html>"},
 		{name: "markdown-help.html", want: "<!DOCTYPE html>"},
@@ -62,6 +102,87 @@ func TestFS_ContentShape(t *testing.T) {
 	}
 }
 
+// TestFS_IframeLang checks that the widget document declares English, which holds until the widget
+// sets the language of the locale it shows
+func TestFS_IframeLang(t *testing.T) {
+	f, err := FS.Open("iframe.html")
+	require.NoError(t, err)
+	defer f.Close()
+	doc, err := html.Parse(f)
+	require.NoError(t, err)
+
+	var lang string
+	for n := doc.FirstChild; n != nil; n = n.NextSibling {
+		if n.Type != html.ElementNode || n.DataAtom != atom.Html {
+			continue
+		}
+		for _, a := range n.Attr {
+			if a.Key == "lang" {
+				lang = a.Val
+			}
+		}
+	}
+	assert.Equal(t, "en", lang)
+}
+
+// TestFS_IframeLoadsBundle pins how the widget document loads its bundle: one module script in the
+// head and no preload link. With a preload link Safari 27.2 was seen to reuse the script a tab
+// already holds without asking the server whether it changed, so after an update a reader gets the
+// old script next to the new stylesheet. A module script without async runs after the document is parsed, which the
+// inline scripts in the body rely on: they define remark_config before the bundle reads it. The
+// query string is for a tab that holds such a copy from a release with the preload link: it went
+// on running that copy under the new document, and fetched the script when asked for it this way.
+func TestFS_IframeLoadsBundle(t *testing.T) {
+	f, err := FS.Open("iframe.html")
+	require.NoError(t, err)
+	defer f.Close()
+	doc, err := html.Parse(f)
+	require.NoError(t, err)
+
+	attr := func(n *html.Node, key string) (string, bool) {
+		for _, a := range n.Attr {
+			if a.Key == key {
+				return a.Val, true
+			}
+		}
+		return "", false
+	}
+
+	var bundles []*html.Node
+	var preloads []string
+	var walk func(n *html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch n.DataAtom {
+			case atom.Script:
+				if _, external := attr(n, "src"); external {
+					bundles = append(bundles, n)
+				}
+			case atom.Link:
+				if rel, _ := attr(n, "rel"); strings.Contains(strings.ToLower(rel), "preload") {
+					preloads = append(preloads, rel)
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(doc)
+
+	assert.Empty(t, preloads, "with a preload link Safari 27.2 reused the bundle without revalidating it")
+	require.Len(t, bundles, 1, "the document loads one script file, the bundle")
+	bundle := bundles[0]
+	src, _ := attr(bundle, "src")
+	assert.Equal(t, "remark.mjs?v=1", src, "without the query string a tab keeps the script it preloaded before")
+	kind, _ := attr(bundle, "type")
+	assert.Equal(t, "module", kind, "a classic script in the head would run before remark_config exists")
+	_, async := attr(bundle, "async")
+	assert.False(t, async, "an async module may run before the inline scripts in the body")
+	require.NotNil(t, bundle.Parent)
+	assert.Equal(t, atom.Head, bundle.Parent.DataAtom, "in the head the fetch starts with the stylesheet's")
+}
+
 // TestFS_SVGShape does the same for the images the widget loads by name: the ghost avatar and the
 // sign-in provider icons. A file that is not a whole SVG document shows as a broken image.
 func TestFS_SVGShape(t *testing.T) {
@@ -80,10 +201,42 @@ func TestFS_SVGShape(t *testing.T) {
 	}
 }
 
+// TestFS_CounterIsAClassicScript keeps counter.mjs loadable under its legacy name: the server answers
+// counter.js with the same bytes, and an integration that loads that name with a plain script tag
+// gets a syntax error from any import, export or import.meta. It also checks the file carries the
+// placeholder the server fills in, which is its address when a page sets no remark_config.host.
+func TestFS_CounterIsAClassicScript(t *testing.T) {
+	b, err := fs.ReadFile(FS, "counter.mjs")
+	require.NoError(t, err)
+	src := string(b)
+
+	moduleSyntax := regexp.MustCompile(`(?m)^\s*(import|export)\b|\bimport\.meta\b|\bimport\s*\(`)
+	assert.Empty(t, moduleSyntax.FindAllString(src, -1), "module syntax in counter.mjs")
+	assert.Contains(t, src, "{% REMARK_URL %}")
+	assert.Contains(t, src, "remark42__counter")
+}
+
+// TestFS_EmojiTable checks the table the comment form fetches for its emoji suggestions: a JSON
+// object of name to emoji. A file that does not parse, or parses to something else, leaves the
+// form with no suggestions and nothing else to show for it.
+func TestFS_EmojiTable(t *testing.T) {
+	b, err := fs.ReadFile(FS, "emoji.json")
+	require.NoError(t, err)
+
+	table := map[string]string{}
+	require.NoError(t, json.Unmarshal(b, &table), "not a JSON object of strings")
+	assert.Len(t, table, 1878)
+	assert.Equal(t, "😄", table["smile"])
+	for name, emoji := range table {
+		assert.NotEmpty(t, name, "a name is empty")
+		assert.NotEmpty(t, emoji, "%s has no emoji", name)
+	}
+}
+
 // TestFS_RelativeReferencesResolve keeps the two standalone pages self-contained: every relative
 // src and href they use has to name a sibling that ships alongside them, since nothing else supplies
-// one. The demo, counter, last-comments, deleteme and comments pages are left out on purpose: they
-// load the widget's scripts, which the frontend build supplies.
+// one. The widget document and the demo, counter, last-comments, deleteme and comments pages are left
+// out on purpose: they load the widget's scripts and styles, which the frontend build supplies.
 func TestFS_RelativeReferencesResolve(t *testing.T) {
 	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
 	external := regexp.MustCompile(`^(?:[a-z]+:|//|#|mailto:)`)
@@ -101,6 +254,40 @@ func TestFS_RelativeReferencesResolve(t *testing.T) {
 				_, err := fs.Stat(FS, target)
 				assert.NoError(t, err, "%s references %q, which ships nowhere", page, target)
 			}
+		})
+	}
+}
+
+// TestFS_Robots keeps every page under /web out of search results. Each one is the same stock page on
+// every installation, and comments.html takes any site and address in its query, so an indexed copy
+// only multiplies one page under many hosts. The widget document is the exception: it carries
+// indexifembedded as well, which lets Google keep the comments as part of the page that embeds them,
+// and a plain noindex there would drop them.
+func TestFS_Robots(t *testing.T) {
+	robots := regexp.MustCompile(`<meta\s+name="robots"\s+content="([^"]*)"`)
+	want := map[string]string{
+		"comments.html":      "noindex",
+		"counter.html":       "noindex",
+		"deleteme.html":      "noindex",
+		"iframe.html":        "noindex, indexifembedded",
+		"index.html":         "noindex",
+		"last-comments.html": "noindex",
+		"markdown-help.html": "noindex",
+		"privacy.html":       "noindex",
+	}
+
+	pages, err := fs.Glob(FS, "*.html")
+	require.NoError(t, err)
+	require.Len(t, pages, len(want), "a page was added or removed; decide its robots rule here")
+
+	for _, page := range pages {
+		t.Run(page, func(t *testing.T) {
+			b, err := fs.ReadFile(FS, page)
+			require.NoError(t, err)
+
+			rules := robots.FindAllStringSubmatch(string(b), -1)
+			require.Len(t, rules, 1, "%s needs exactly one robots meta tag", page)
+			assert.Equal(t, want[page], rules[0][1])
 		})
 	}
 }

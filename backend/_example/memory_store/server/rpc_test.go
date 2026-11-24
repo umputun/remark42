@@ -81,3 +81,8 @@ func prepTestStore(t *testing.T) (port int, teardown func()) {
 		require.NoError(t, s.Shutdown())
 	}
 }
+
+// a plugin serving only some of the stores passes nil for the others
+func TestRPC_NewWithoutAdminAndImageStores(t *testing.T) {
+	require.NotPanics(t, func() { NewRPC(accessor.NewMemData(), nil, nil, jrpc.NewServer("/test")) })
+}

@@ -11,6 +11,8 @@ on:
       - "e2e/**"
       - "compose-e2e-test.yml"
       - "Dockerfile"
+      - "docker-init.sh"
+      - ".dockerignore"
       - "!**.md"
 
   pull_request:
@@ -23,6 +25,8 @@ on:
       - "e2e/**"
       - "compose-e2e-test.yml"
       - "Dockerfile"
+      - "docker-init.sh"
+      - ".dockerignore"
       - "!**.md"
 
 concurrency:

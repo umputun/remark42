@@ -7,8 +7,11 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "noEmit": true,
+    // the entries written without packages are plain JavaScript, typed in JSDoc comments
+    "allowJs": true,
+    "checkJs": true,
     // the dependency-free tests and every module they reach import with an explicit .ts
-    // extension, which is the only form node --test resolves; webpack, jest and this compiler all
+    // extension, which is the only form node --test resolves; the build, jest and this compiler all
     // accept it. shipped modules are among them, so the option is not test-only
     "allowImportingTsExtensions": true,
     "strict": true,
@@ -20,8 +23,9 @@
     "skipLibCheck": true,
     "paths": {
       "preact": ["../node_modules/preact"],
-      "preact/*": ["../node_modules/preact/*"]
+      "preact/*": ["../node_modules/preact/*"],
+      "locales/*": ["../../../../backend/app/webassets/assets/*"]
     }
   },
-  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts"]
+  "include": ["app/typings", "app/**/*.tsx", "app/**/*.ts", "app/**/*.js"]
 }

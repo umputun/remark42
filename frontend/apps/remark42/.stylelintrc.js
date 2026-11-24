@@ -1,13 +1,14 @@
-const { CUSTOM_PROPERTIES_PATH } = require('./webpack.config');
+const path = require('path');
+
+const CUSTOM_PROPERTIES_PATH = path.resolve(__dirname, './app/styles/custom-properties.css');
 
 module.exports = {
   extends: ['stylelint-config-standard'],
   plugins: ['stylelint-value-no-unknown-custom-properties', 'stylelint-declaration-strict-value'],
   // lets property-layout-mappings/value-keyword-layout-mappings autofix a physical property to
-  // the correct logical one (stylelint --fix, already run on commit by lint-staged): every logical
+  // the correct logical one (stylelint --fix): every logical
   // property in this codebase is authored as if ltr were the base direction, and ships to the
-  // browser as written — postcss-preset-env's logical-properties-and-values transform is disabled
-  // (see webpack.config.js) so the browser's own bidi/dir handling resolves it per element, rather
+  // browser as written, so the browser's own bidi/dir handling resolves it per element, rather
   // than a build-time [dir=rtl] selector pair keyed off the page's direction — so ltr is still the
   // direction stylelint normalizes from
   languageOptions: {
@@ -98,21 +99,4 @@ module.exports = {
       },
     ],
   },
-  overrides: [
-    {
-      files: ['*.ejs', '**/*.ejs'],
-      customSyntax: 'postcss-html',
-      // standalone pages rather than the themeable widget surface, so literal colours are fine
-      rules: {
-        'scale-unlimited/declaration-strict-value': null,
-        // these files are copied to production unprocessed, unlike the module CSS that
-        // postcss-preset-env downlevels, so their media queries stay in the prefix form
-        'media-feature-range-notation': 'prefix',
-        // standalone dev/demo pages, deliberately left LTR-only regardless of widget locale — see
-        // scale-unlimited/declaration-strict-value above for the same reasoning
-        'property-layout-mappings': null,
-        'value-keyword-layout-mappings': null,
-      },
-    },
-  ],
 };

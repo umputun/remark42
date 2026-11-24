@@ -2,10 +2,12 @@ import clsx from 'clsx';
 import type { JSX } from 'preact';
 import { h, Fragment } from 'preact';
 import { useState, useRef } from 'preact/hooks';
-import { useDispatch } from 'store/context';
+import { useAppDispatch } from 'store';
 
 import { useIntl } from 'common/intl';
-import { setUser } from 'store/user/actions';
+import { signin } from 'store/user/actions';
+import { getUser } from 'common/api';
+import type { User } from 'common/types';
 import { Input } from 'components/input';
 import { TelegramLink } from 'components/telegram/telegram-link';
 import { CrossIcon } from 'components/icons/cross';
@@ -17,7 +19,7 @@ import { Button } from './components/button';
 import { OAuth } from './components/oauth';
 import { messages } from './auth.messages';
 import { useDropdown, useErrorMessage } from './auth.hooks';
-import { getProviders, getTokenInvalidReason, persistEmail } from './auth.utils';
+import { getProviders, getTokenInvalidReason, isCompleteToken, persistEmail } from './auth.utils';
 import {
   oauthSignin,
   emailSignin,
@@ -27,18 +29,29 @@ import {
   getTelegramSigninParams,
 } from './auth.api';
 
+// before the form's own styles: the token field takes the input's look and auth.module.css adjusts it
+import inputStyles from 'components/input/input.module.css';
 import styles from './auth.module.css';
+
+const USERNAME_PATTERN = String.raw`\s*[\p{L}\d_.\-][\p{L}\d _.\-]{1,62}[\p{L}\d_.\-]\s*`;
+const EMAIL_USERNAME_PATTERN = String.raw`\s*[\p{L}\d_\-][\p{L}\d _\-]{1,62}[\p{L}\d_\-]\s*`;
 
 export function Auth() {
   const intl = useIntl();
   const telegramParamsRef = useRef<null | { bot: string; token: string }>(null);
   const emailRef = useRef('');
-  const dispatch = useDispatch();
+  const isVerifyingRef = useRef(false);
+  const dispatch = useAppDispatch();
   const [oauthProviders, formProviders] = getProviders();
 
   // UI State
   const [isLoading, setLoading] = useState(false);
   const [view, setView] = useState<(typeof formProviders)[number] | 'token' | 'telegram'>(formProviders[0]);
+  // what the reader has typed and the tab it is on stay while the dropdown is closed and opened
+  // again, and the address while the email field is away on another tab or step
+  const [formView, setFormView] = useState(formProviders[0]);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [ref, isDropdownShown, toggleDropdownState] = useDropdown(view === 'token' || view === 'telegram');
 
   // Errors
@@ -50,7 +63,7 @@ export function Auth() {
   }
 
   function resetView() {
-    setView(formProviders[0]);
+    setView(formView);
     setError(null);
   }
 
@@ -90,17 +103,88 @@ export function Auth() {
         // TODO: add error message when user is null
         return;
       }
-      dispatch(setUser(user));
+      dispatch(signin(user));
     } catch (e) {
       setError(e);
     }
   }
 
   function handleProviderChange(evt: Event) {
-    const { value } = evt.currentTarget as HTMLInputElement;
+    const value = (evt.currentTarget as HTMLInputElement).value as (typeof formProviders)[number];
 
-    setView(value as (typeof formProviders)[number]);
+    setFormView(value);
+    setView(value);
     setError(null);
+  }
+
+  /**
+   * A confirmation token signs in once, so a second request with the same one is refused. The
+   * state that disables the form is set a render later than the events that can ask twice
+   */
+  async function verifyToken(token: string) {
+    if (isVerifyingRef.current) {
+      return;
+    }
+
+    isVerifyingRef.current = true;
+
+    try {
+      let user: User | null;
+
+      try {
+        user = await verifyEmailSignin(token);
+        persistEmail(emailRef.current);
+      } catch (e) {
+        // a token refused as used may be the one that signed this browser in: its first request
+        // went through and the user was not loaded after it. The session is what tells. It can
+        // also belong to another account signed in from another tab, so the address typed here
+        // is not kept for it
+        user = await getUser();
+
+        if (user === null) {
+          throw e;
+        }
+      }
+
+      dispatch(signin(user));
+    } finally {
+      isVerifyingRef.current = false;
+    }
+  }
+
+  /**
+   * Signs in as soon as the field holds a whole token, the way the subscription form does. Text
+   * that is not one yet is left alone, since it may still be typed, and the submit button reports it
+   */
+  async function handleTokenInput(evt: JSX.TargetedEvent<HTMLTextAreaElement>) {
+    const token = evt.currentTarget.value.trim();
+
+    if (isVerifyingRef.current) {
+      return;
+    }
+
+    setError(null);
+
+    if (!isCompleteToken(token)) {
+      return;
+    }
+
+    const invalidReason = getTokenInvalidReason(token);
+
+    if (invalidReason) {
+      setError(invalidReason);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await verifyToken(token);
+    } catch (e) {
+      setError(e);
+    }
+
+    setLoading(false);
   }
 
   async function handleSubmit(evt: Event) {
@@ -113,15 +197,16 @@ export function Auth() {
     try {
       switch (view) {
         case 'anonymous': {
-          const username = data.get('username') as string;
+          // the field is trimmed on blur, which pressing Enter skips, and the server refuses a space at either end
+          const username = (data.get('username') as string).trim();
           const user = await anonymousSignin(username);
 
-          dispatch(setUser(user));
+          dispatch(signin(user));
           break;
         }
         case 'email': {
           const email = data.get('email') as string;
-          const username = data.get('username') as string;
+          const username = (data.get('username') as string).trim();
 
           emailRef.current = email;
 
@@ -130,7 +215,7 @@ export function Auth() {
           break;
         }
         case 'token': {
-          const token = data.get('token') as string;
+          const token = (data.get('token') as string).trim();
           const invalidReason = getTokenInvalidReason(token);
 
           if (invalidReason) {
@@ -138,9 +223,7 @@ export function Auth() {
             break;
           }
 
-          const user = await verifyEmailSignin(token);
-          dispatch(setUser(user));
-          persistEmail(emailRef.current);
+          await verifyToken(token);
 
           break;
         }
@@ -169,7 +252,7 @@ export function Auth() {
     try {
       const user = await verifyTelegramSignin(telegramParamsRef.current.token);
 
-      dispatch(setUser(user));
+      dispatch(signin(user));
     } catch (e) {
       setError(e);
     }
@@ -179,6 +262,7 @@ export function Auth() {
 
   function handleShowEmailStep(evt: Event) {
     evt.preventDefault();
+    setFormView('email');
     setView('email');
     setError(null);
   }
@@ -280,9 +364,10 @@ export function Auth() {
                 <div className={clsx('auth-row', styles.row)}>
                   <TextareaAutosize
                     name="token"
-                    className={clsx('auth-token-textarea', styles.textarea)}
+                    className={clsx('auth-token-textarea', inputStyles.input, styles.textarea)}
                     placeholder={intl.formatMessage(messages.token)}
                     disabled={isLoading}
+                    onInput={handleTokenInput}
                   />
                 </div>
                 {formFooterJSX}
@@ -329,14 +414,22 @@ export function Auth() {
                         className="auth-input-username"
                         required
                         name="username"
-                        minLength={3}
-                        pattern="[\p{L}\d\s_]+"
-                        title={intl.formatMessage(messages.usernameRestriction)}
+                        // 3 to 64 characters once trimmed, counted in code points as the server counts
+                        // them; minLength would count UTF-16 code units and miss a space at either end.
+                        // \s is the whitespace trim() removes on blur and on submit. Email sign-in takes
+                        // no dot, as the name goes into a mail to an address nobody has confirmed yet
+                        pattern={view === 'email' ? EMAIL_USERNAME_PATTERN : USERNAME_PATTERN}
+                        title={intl.formatMessage(
+                          view === 'email' ? messages.emailUsernameRestriction : messages.usernameRestriction
+                        )}
                         placeholder={intl.formatMessage(messages.username)}
                         disabled={isLoading}
+                        value={username}
+                        onInput={(evt) => setUsername(evt.currentTarget.value)}
                         onBlur={(evt) => {
-                          const element = evt.target as HTMLInputElement;
+                          const element = evt.currentTarget;
                           element.value = element.value.trim();
+                          setUsername(element.value);
                         }}
                         dir="auto"
                       />
@@ -350,11 +443,12 @@ export function Auth() {
                           type="email"
                           placeholder={intl.formatMessage(messages.emailAddress)}
                           disabled={isLoading}
+                          value={email}
+                          onInput={(evt) => setEmail(evt.currentTarget.value)}
                           dir="auto"
                         />
                       </div>
                     )}
-                    <input className={styles.honeypot} type="checkbox" tabIndex={-1} autoComplete="off" />
                     {formFooterJSX}
                   </>
                 )}

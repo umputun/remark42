@@ -1,94 +1,28 @@
-/** this is generated file by "pnpm translation:generate" **/
-// it is ok that is empty. Default messages from code will be used.
-const enMessages = {};
+import supportedLocales from '../../tasks/supportedLocales.json';
+import { BASE_URL } from 'common/constants.config';
 
+// the catalogues are plain files among the assets embedded in the binary, served as
+// /web/<locale>.json. English is never fetched: the messages in the code are the English text,
+// and en.json is only the copy of them that translators work from
+const catalogues = new Set(supportedLocales.filter((locale) => locale !== 'en'));
+
+/**
+ * Fetches the catalogue for a locale, or resolves to an empty one, which makes every message fall
+ * back to English. The locale comes from the host page, so only a name on the list of supported
+ * catalogues ever becomes part of a URL. last-comments runs on the host page, which makes this a
+ * cross-origin request there: the server's CORS headers cover it, or with --proxy-cors the proxy's.
+ */
 export async function loadLocale(locale: string): Promise<Record<string, string>> {
-  if (locale === 'ru') {
-    return import(/* webpackChunkName: "ru" */ '../locales/ru.json').then((res) => res.default).catch(() => enMessages);
+  if (!catalogues.has(locale)) {
+    return {};
   }
-  if (locale === 'de') {
-    return import(/* webpackChunkName: "de" */ '../locales/de.json').then((res) => res.default).catch(() => enMessages);
+  try {
+    const response = await fetch(`${BASE_URL}/web/${locale}.json`);
+    if (!response.ok) {
+      return {};
+    }
+    return await response.json();
+  } catch {
+    return {};
   }
-  if (locale === 'fi') {
-    return import(/* webpackChunkName: "fi" */ '../locales/fi.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'es') {
-    return import(/* webpackChunkName: "es" */ '../locales/es.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'zh') {
-    return import(/* webpackChunkName: "zh" */ '../locales/zh.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'tr') {
-    return import(/* webpackChunkName: "tr" */ '../locales/tr.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'bg') {
-    return import(/* webpackChunkName: "bg" */ '../locales/bg.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'ua') {
-    return import(/* webpackChunkName: "ua" */ '../locales/ua.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'pl') {
-    return import(/* webpackChunkName: "pl" */ '../locales/pl.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'vi') {
-    return import(/* webpackChunkName: "vi" */ '../locales/vi.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'be') {
-    return import(/* webpackChunkName: "be" */ '../locales/be.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'fr') {
-    return import(/* webpackChunkName: "fr" */ '../locales/fr.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'ja') {
-    return import(/* webpackChunkName: "ja" */ '../locales/ja.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'ko') {
-    return import(/* webpackChunkName: "ko" */ '../locales/ko.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'bp') {
-    return import(/* webpackChunkName: "bp" */ '../locales/bp.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'it') {
-    return import(/* webpackChunkName: "it" */ '../locales/it.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'ar') {
-    return import(/* webpackChunkName: "ar" */ '../locales/ar.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'zh-tw') {
-    return import(/* webpackChunkName: "zh-tw" */ '../locales/zh-tw.json')
-      .then((res) => res.default)
-      .catch(() => enMessages);
-  }
-  if (locale === 'th') {
-    return import(/* webpackChunkName: "th" */ '../locales/th.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'cs') {
-    return import(/* webpackChunkName: "cs" */ '../locales/cs.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'fa') {
-    return import(/* webpackChunkName: "fa" */ '../locales/fa.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'mk') {
-    return import(/* webpackChunkName: "mk" */ '../locales/mk.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'ro') {
-    return import(/* webpackChunkName: "ro" */ '../locales/ro.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'sv') {
-    return import(/* webpackChunkName: "sv" */ '../locales/sv.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'he') {
-    return import(/* webpackChunkName: "he" */ '../locales/he.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'nl') {
-    return import(/* webpackChunkName: "nl" */ '../locales/nl.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'is') {
-    return import(/* webpackChunkName: "is" */ '../locales/is.json').then((res) => res.default).catch(() => enMessages);
-  }
-  if (locale === 'hu') {
-    return import(/* webpackChunkName: "hu" */ '../locales/hu.json').then((res) => res.default).catch(() => enMessages);
-  }
-
-  return enMessages;
 }

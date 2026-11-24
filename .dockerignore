@@ -9,8 +9,9 @@
 !backend
 
 # the widget. package.json and pnpm-lock.yaml prime the dependency layer, the rest of the
-# directory feeds the build stage
+# directory feeds the build stage, and frontend/build is the program that compiles it
 !frontend/apps/remark42
+!frontend/build
 
 # installed as /srv/init.sh in the final image
 !docker-init.sh

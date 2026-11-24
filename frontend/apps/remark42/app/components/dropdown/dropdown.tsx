@@ -10,12 +10,20 @@ import { parseMessage, isFromParent } from 'utils/post-message';
 
 import styles from './dropdown.module.css';
 
+// top-level dropdowns that are open or opening. Opening one closes the others, including one its content
+// keeps open against outside clicks: the reader chose the other dropdown, and two open panels would each
+// stretch the page and put back the height the other one left
+const openTopLevel = new Set<Dropdown>();
+
 /**
  * Lets the content close the dropdown it is rendered in. Without it a child can only close the
  * panel by removing the clicked node from the tree and relying on the outside-click handler
  * failing to find it, which stops working the moment that handler runs in the capture phase.
  */
-export const DropdownContext = createContext<{ close: () => void }>({ close: () => undefined });
+export const DropdownContext = createContext<{ close: () => void; keepOpen: (on: boolean) => void }>({
+  close: () => undefined,
+  keepOpen: () => undefined,
+});
 
 export function useDropdown() {
   return useContext(DropdownContext);
@@ -45,6 +53,9 @@ export class Dropdown extends Component<Props, State> {
   storedDocumentHeight: string | null = null;
   storedDocumentHeightSet = false;
   checkInterval: number | undefined = undefined;
+  // set by content that waits for something from outside the widget, such as a token from an email,
+  // so a click elsewhere on the page does not throw that step away. The title button still closes it
+  keptOpen = false;
 
   constructor(props: Props) {
     super(props);
@@ -62,11 +73,20 @@ export class Dropdown extends Component<Props, State> {
   }
 
   // stable across renders, so consumers do not re-run effects on every parent render
-  dropdownContext = { close: () => this.close() };
+  dropdownContext = {
+    close: () => this.close(),
+    keepOpen: (on: boolean) => {
+      this.keptOpen = on;
+    },
+  };
 
   onTitleClick = () => {
     const isActive = !this.state.isActive;
     const contentTranslateX = isActive ? this.state.contentTranslateX : 0;
+    if (isActive && !this.isNested()) {
+      openTopLevel.forEach((other) => other !== this && other.close());
+      openTopLevel.add(this);
+    }
     this.setState(
       {
         contentTranslateX,
@@ -90,16 +110,7 @@ export class Dropdown extends Component<Props, State> {
   };
 
   __onOpen() {
-    const isChildOfDropDown = (() => {
-      if (!this.rootNode.current) return false;
-      let parent = this.rootNode.current.parentElement!;
-      while (parent !== document.body) {
-        if (parent.hasAttribute('data-dropdown')) return true;
-        parent = parent.parentElement!;
-      }
-      return false;
-    })();
-    if (isChildOfDropDown) return;
+    if (this.isNested()) return;
 
     this.storedDocumentHeight = document.body.style.minHeight;
     this.storedDocumentHeightSet = true;
@@ -123,7 +134,18 @@ export class Dropdown extends Component<Props, State> {
     }, 100);
   }
 
+  isNested(): boolean {
+    if (!this.rootNode.current) return false;
+    let parent = this.rootNode.current.parentElement;
+    while (parent && parent !== document.body) {
+      if (parent.hasAttribute('data-dropdown')) return true;
+      parent = parent.parentElement;
+    }
+    return false;
+  }
+
   __onClose() {
+    openTopLevel.delete(this);
     window.clearInterval(this.checkInterval);
     if (this.storedDocumentHeightSet) {
       document.body.style.minHeight = typeof this.storedDocumentHeight === 'string' ? this.storedDocumentHeight : '';
@@ -158,7 +180,7 @@ export class Dropdown extends Component<Props, State> {
 
     const data = parseMessage(evt);
 
-    if (!data.clickOutside || !this.state.isActive) {
+    if (!data.clickOutside || !this.state.isActive || this.keptOpen) {
       return;
     }
 
@@ -189,7 +211,14 @@ export class Dropdown extends Component<Props, State> {
   }
 
   onOutsideClick(e: MouseEvent) {
-    if (!this.rootNode.current || this.rootNode.current.contains(e.target as Node) || !this.state.isActive) return;
+    if (
+      !this.rootNode.current ||
+      this.rootNode.current.contains(e.target as Node) ||
+      !this.state.isActive ||
+      this.keptOpen
+    ) {
+      return;
+    }
     this.setState(
       {
         contentTranslateX: 0,
@@ -213,6 +242,12 @@ export class Dropdown extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+    // a panel kept open can now be removed while open, for example when the reader signs out on the
+    // token step, so it has to stop its timer and put the page height back itself
+    if (this.state.isActive) {
+      this.__onClose();
+    }
+    openTopLevel.delete(this);
     document.removeEventListener('click', this.onOutsideClick, { capture: true });
     window.removeEventListener('message', this.receiveMessage);
   }

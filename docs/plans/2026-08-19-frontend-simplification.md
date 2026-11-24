@@ -33,7 +33,7 @@ ported to Go to satisfy the goal.
 
 Value imports in the node layer write the extension in full and use a relative path, never the
 `common/…` alias, because node resolves neither. Type-only imports erase and keep the ordinary
-style. This is recorded in both `CLAUDE.md` files; it is repeated here because it decides whether a
+style. This is recorded in both `AGENTS.md` files; it is repeated here because it decides whether a
 given jest case can move at all. A case whose subject imports through the alias cannot move until
 the subject does, which is why the split extracted the pure half of each module first.
 
@@ -84,28 +84,31 @@ hashed names stay. Settling the class-name direction first is what stops that wo
 | type checking | undecided | open |
 | lint and style lint | undecided, and an accepted loss is a real option | open |
 | size budgets | a Go test over the embedded filesystem | designed |
-| translation completeness | only message extraction is bound to npm; everything downstream of it is already node built-ins | narrowed |
+| translation completeness | node scripts with no dependencies, extraction included | in place |
 
 Type checking is the hard one, and the only gate with no route. Dropping the bundler without
 answering it means either shipping untyped source or finding a checker that is not npm, and there is
 no third option that keeps the current guarantee.
 
-The translation failure mode is worth carrying forward because it is silent. Extraction matches the
-identifiers the widget calls, not an import source, so moving strings into Go templates would
-extract nothing with a zero exit code, after which generation deletes them from every catalogue.
+The translation failure mode is worth carrying forward because it was silent. Moving strings into Go
+templates takes their keys out of the extraction, after which generation deletes them from every
+catalogue. Extraction now stops when a key of the English catalogue disappears, until the removal is
+confirmed with `--allow-removal`.
 
 ## What the bundler still does
 
-The list any no-bundler proposal has to answer for.
+The bundler is esbuild, called through its Go API by the program in `frontend/build`, so the build
+runs on go and the installed runtime packages, with no node and no bundler configuration in
+JavaScript. The list any no-bundler proposal has to answer for:
 
 - transpiles TypeScript and JSX
-- CSS modules, with nesting and with one `composes` that crosses a file boundary. That one has no
-  plain-CSS equivalent and has to be flattened instead of translated
-- code-splits the locale catalogues and the emoji data
-- runs an autoprefixer pass against a browserslist query. Without a transpiler that query becomes the
-  literal browser floor and source syntax ships as written
-- builds the widget's own document, `iframe.html`. The other pages are plain files among the
-  embedded assets, including the fallback page a reader is offered when the widget detects a
+- CSS modules, with nesting. The one `composes` that crossed a file boundary is gone: the element
+  carries both classes instead
+- writes the scripts and the styles down to a list of browser versions kept in `build.go`. That
+  list is the literal browser floor: nothing derives it from a query and nothing adds vendor
+  prefixes below it
+- no longer builds any HTML page: all of them are plain files among the embedded assets, including
+  the widget's own document and the fallback page a reader is offered when the widget detects a
   third-party context with storage unavailable. This is the one point where multi-domain hosting
   constrains this work: that page went unbuilt from the January 2021 rewrite until #2197 restored
   it, so it returned 404 for four years in exactly the configuration that needs it
@@ -129,29 +132,37 @@ Worth stating because the widget build is now the last npm consumer in the repos
   proof that the no-build serving path carries real files
 - since #2197 there is one manifest and one lockfile. The release pipeline still runs pnpm to build
   the widget, and that step goes when the widget build does
+- the widget's images are served from the embedded assets since #2309, and the comment counter is a
+  script written by hand among them since #2341, so neither passes through the bundler
+- the git hooks went with #2343; nothing runs on commit or push, and CI is the only gate
+- the message catalogues are plain JSON among the embedded assets, which the widget fetches from
+  `/web/<locale>.json`, so no locale chunk and no dynamic import is left in the bundle
+- webpack, its loaders and plugins, postcss and the babel loader went when the build moved to
+  esbuild's Go API. Node is still needed to install the six runtime packages and to run the type
+  check, the linters and jest; babel stays for jest alone
+- the development server is the same go program: `-serve` rebuilds on change and serves the result
+  with the API proxied to a backend
 
 ## Still open
 
 Each of these can move the answer.
 
 - **A definition of done.** Which files and jobs actually go: the node stages in the image build, the
-  remaining npm CI jobs, the pnpm steps in the release pipeline, and the git hooks. For each, the
+  remaining npm CI jobs and the pnpm steps in the release pipeline. For each, the
   replacement or the accepted loss
 - **Type checking**, the one gate with no route yet
 - **A runtime-dependency inventory.** For every package the widget actually ships with: whether a
   usable ESM build exists, the licence, and whether it is vendored or dropped. Vendoring the custom
   elements understates them, because they mutate the textarea selection, emit their own events and
   lazily load data, so rendering the tags is not the same as the behaviour working
-- **A build-output acceptance matrix.** The generated pages, the catalogue and emoji payloads, the
-  copied images and the size budgets are today the emergent result of separate bundler rules and
-  plugins. Without a statement of what the output must contain, a replacement cannot be checked
-  against anything
+- **A build-output acceptance matrix.** The generated pages, the catalogue payloads, the copied
+  images and the size budgets are today the emergent result of separate bundler rules and plugins.
+  Without a statement of what the output must contain, a replacement cannot be checked against
+  anything
 - **The integrator contract.** The documented `/web` URLs, the component loader, and the legacy `.js`
   names, which must stay module-free. `/web` is an overlay: a `--web-root` file wins and only a
   missing name falls through to the embedded assets, so moving a page between the two sources
   silently changes whether an operator can override it
-- **The development loop.** The dev server goes with npm, and `make rundev` with `--web-root`
-  replaces it
 - **Message-channel hardening**, available and not done. Both ends post with `'*'` and check the
   sender instead of the target. The parent builds the iframe URL itself, so it knows the widget
   origin and could pass it as `targetOrigin` and compare the origin alongside the source
@@ -163,7 +174,7 @@ Each of these can move the answer.
   known small library for a less-known one
 - **preact with htm over native ESM**: dropping the JSX transpile drops type-checked markup, since
   the JSX pragma is what types templates today and tagged literals are opaque to the type checker.
-  Unbundling every source file and locale chunk into individually fetched modules also multiplies a
+  Unbundling every source file into individually fetched modules also multiplies a
   cold load's request count against the rate limit the file server applies, and the cache headers
   revalidate each one
 - **Packaging the widget for npm (#1715)**: it must run in an iframe on the remark42 origin for OAuth

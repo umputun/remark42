@@ -8,11 +8,14 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
+	"github.com/go-pkgz/auth/v2/token"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
 	"github.com/umputun/remark42/backend/app/rest"
@@ -237,18 +240,21 @@ func (s *Rest) rejectCrossSiteBasicAuth(next http.Handler) http.Handler {
 	})
 }
 
-// cacheControl is a middleware setting cache expiration. Using url+version as etag
-func cacheControl(expiration time.Duration, version string) func(http.Handler) http.Handler {
-	etag := func(r *http.Request, version string) string {
-		s := version + ":" + r.URL.String()
-		return store.EncodeID(s)
-	}
-
+// cacheControl is a middleware setting cache expiration and a validator. The etag is built from the
+// version, the url and the fingerprint of what the request is answered with, and a request whose
+// fingerprint is empty gets no etag, since there is nothing to validate it against
+func cacheControl(expiration time.Duration, version string, fingerprint func(*http.Request) string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			e := `"` + etag(r, version) + `"`
-			w.Header().Set("Etag", e)
 			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d, no-cache", int(expiration.Seconds())))
+
+			content := fingerprint(r)
+			if content == "" {
+				h.ServeHTTP(w, r)
+				return
+			}
+			e := `"` + store.EncodeID(version+":"+r.URL.String()+":"+content) + `"`
+			w.Header().Set("Etag", e)
 
 			if match := r.Header.Get("If-None-Match"); match != "" {
 				if strings.Contains(match, e) {
@@ -311,17 +317,17 @@ func securityHeadersMiddleware(imageProxyEnabled bool, allowedAncestors []string
 	}
 }
 
-// subscribersOnly is a middleware rejecting non-paid_sub users
+// subscribersOnly is a middleware rejecting users without a paid status that is still running
 func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if enable {
-				user, err := rest.GetUserInfo(r)
+				user, err := token.GetUserInfo(r)
 				if err != nil {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
-				if !user.PaidSub {
+				if !rest.PaidSubActive(user, time.Now()) {
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -332,24 +338,160 @@ func subscribersOnly(enable bool) func(http.Handler) http.Handler {
 	}
 }
 
+// QueryTokenParam is the query parameter the auth library is told to read a token from. It has to
+// be given a name, because left empty it falls back to "token", which carries the delete-me token.
+// The parameter is taken out of every request before the library sees it, see ignoreQueryToken.
+const QueryTokenParam = "jwt"
+
+// ignoreQueryToken removes the token parameter from the query, so a token is taken from the X-JWT
+// header or from the cookie and never from the URL. The auth library reads one in the query ahead
+// of both, without the XSRF check, and when the token is then rejected it expires the cookies of
+// whoever sent the request. A URL is where somebody else can put a token: as the source of an
+// image in a comment it is requested by every reader's browser, with that reader's cookies.
+// The rest of the query is passed on as it was sent.
+func ignoreQueryToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.RawQuery != "" {
+			r.URL.RawQuery = withoutQueryParam(r.URL.RawQuery, QueryTokenParam)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// withoutQueryParam returns the raw query with every pair of the given key removed and everything
+// else left byte for byte. A query without the key is returned as it is: a new one is built only
+// when there is a pair to leave out.
+func withoutQueryParam(rawQuery, key string) string {
+	isKey := func(pair string) bool {
+		name, _, _ := strings.Cut(pair, "=")
+		if name == key {
+			return true
+		}
+		if !strings.ContainsAny(name, "%+") {
+			return false // nothing to unescape, so it is some other name
+		}
+		unescaped, err := url.QueryUnescape(name)
+		return err == nil && unescaped == key
+	}
+
+	var kept strings.Builder
+	found, separate := false, false
+	for left, start := rawQuery, 0; ; {
+		pair, tail, more := strings.Cut(left, "&")
+		switch {
+		case isKey(pair):
+			if !found { // the first one: everything before it is kept
+				found, separate = true, start > 0
+				kept.Grow(len(rawQuery))
+				kept.WriteString(strings.TrimSuffix(rawQuery[:start], "&"))
+			}
+		case found:
+			if separate {
+				kept.WriteByte('&')
+			}
+			kept.WriteString(pair)
+			separate = true
+		}
+		if !more {
+			break
+		}
+		start += len(pair) + 1
+		left = tail
+	}
+	if !found {
+		return rawQuery
+	}
+	return kept.String()
+}
+
+// rejectEmbedded refuses a request the browser makes for an embedded resource: an image, a script,
+// a stylesheet, a frame. Browsers name what a request is for in Sec-Fetch-Dest, "empty" for a call
+// made from script and "document" for a page or a window, and those two are how the widget and the
+// sign-in windows reach the auth routes. The routes answer a plain GET by setting or expiring the
+// session cookies, so one of their URLs must not work as the source of an image in a comment.
+// A client that does not send the header, as command-line tools do not, is let through.
+func rejectEmbedded(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Header.Get("Sec-Fetch-Dest") {
+		case "", "empty", "document":
+			next.ServeHTTP(w, r)
+		default:
+			http.Error(w, "Access denied", http.StatusForbidden)
+		}
+	})
+}
+
+// authRoutePrefix is where the auth handler is mounted
+const authRoutePrefix = "/auth/"
+
+// the calls the auth handler answers: authActions without a provider in the path and
+// providerAuthActions for a provider
+var (
+	authActions         = []string{"list", "logout", "status", "user"}
+	providerAuthActions = []string{"login", "callback"}
+)
+
+// singleAuthPath is a middleware for the auth routes that leaves every endpoint of the auth handler
+// one path. The handler takes the action from the last element of the path and the provider from
+// the one before it, whatever stands in front of them, so it answers /auth/x/email/login as the
+// email sign-in and /auth/email/status as /auth/status. The rate limiter counts requests by path
+// and validEmailAuth compares the path, so each such path had a limit of its own and skipped the
+// check. Only /auth/<action> for the four calls without a provider and /auth/<provider>/<action>
+// for a registered provider's sign-in and callback pass, anything else gets 404. The path checked
+// is the decoded one, which the handler, the limiter and validEmailAuth read, so an encoded slash
+// makes no difference.
+func singleAuthPath(registered func(provider string) bool) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			elems := strings.Split(strings.TrimPrefix(r.URL.Path, authRoutePrefix), "/")
+			known := false
+			switch len(elems) {
+			case 1:
+				known = slices.Contains(authActions, elems[0])
+			case 2:
+				known = registered(elems[0]) && slices.Contains(providerAuthActions, elems[1])
+			}
+			if !known {
+				http.NotFound(w, r)
+				return
+			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// isPlainEmail reports whether s is an email address and nothing else. net/mail parses a mailbox
+// the way a mail header writes it, so it also takes a display name, a comment, a group and a
+// quoted local part, and the free text of those would end up in the mail sent to the address
+func isPlainEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return false
+	}
+	// net/mail lets any non-ASCII rune into an address, spaces and invisible ones included
+	return !strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) })
+}
+
 // validEmailAuth is a middleware for auth endpoints for email method.
 // it rejects login request if user, site or email are suspicious
 func validEmailAuth() func(http.Handler) http.Handler {
 
-	reUser := regexp.MustCompile(`^[\p{L}\d\s_]{4,64}$`) // matches ui side validation, adding min/max limitation
 	reSite := regexp.MustCompile(`^[a-zA-Z\d\s_.-]{1,64}$`)
 
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 
-			if r.URL.Path != "/auth/email/login" {
+			if r.URL.Path != authRoutePrefix+"email/login" {
 				// not email login, skip the check
 				h.ServeHTTP(w, r)
 				return
 			}
 
 			if u := r.URL.Query().Get("user"); u != "" {
-				if !reUser.MatchString(u) {
+				// the rule of anonymous login, without dots: the name goes into the confirmation mail to an
+				// address nobody has confirmed yet, where a dotted name can be a domain a mail client links
+				if store.CheckUserName(u) != nil || strings.Contains(u, ".") {
 					log.Printf("[WARN] suspicious user rejected: %s", store.MaskForLog(u))
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
@@ -359,6 +501,11 @@ func validEmailAuth() func(http.Handler) http.Handler {
 			if a := r.URL.Query().Get("address"); a != "" {
 				if _, err := mail.ParseAddress(a); err != nil {
 					log.Printf("[WARN] suspicious address rejected: %s", store.MaskForLog(err.Error())) // it can quote the input
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+				if !isPlainEmail(a) {
+					log.Print("[WARN] suspicious address rejected: more than an address")
 					http.Error(w, "Access denied", http.StatusForbidden)
 					return
 				}
@@ -389,4 +536,103 @@ func rateLimiter(maxReq float64) func(http.Handler) http.Handler {
 		IndexFromRight: 0,
 	})
 	return tollbooth.HTTPMiddleware(lmt)
+}
+
+// recoverer is the panic recovery middleware. Its first line carries the request URL, which holds the address
+// during email sign-in, so that line is masked
+func recoverer(l log.L) func(http.Handler) http.Handler {
+	return R.Recoverer(panicLog{l: l})
+}
+
+// panicLog masks the recovery line and leaves the stack trace, logged as a bare string, as it is:
+// operators paste it into bug reports, and module paths in it can look like addresses
+type panicLog struct {
+	l log.L
+}
+
+// Logf writes the line to l, masked when it is formatted from arguments
+func (p panicLog) Logf(format string, args ...any) {
+	if len(args) == 0 {
+		p.l.Logf("%s", format)
+		return
+	}
+	rest.MaskedLog{L: p.l}.Logf(format, args...)
+}
+
+// partitionedCookieHeader is what a client sends, with the value "1", to be given its auth cookies
+// in the partitioned form as well. The widget sends it when the page framing it is on another host
+const partitionedCookieHeader = "X-Remark42-Partitioned-Cookie"
+
+// partitionedAuthCookies gives a widget framed by another host a session it can keep. With issue
+// set, for a request carrying partitionedCookieHeader, every Set-Cookie for one of the named cookies
+// is repeated in its third-party form: Partitioned, Secure and SameSite=None. A browser that blocks
+// third-party cookies drops the original and keeps the copy, keyed to the embedding site.
+//
+// The copy goes before the original, so a browser that does not know Partitioned reads both lines
+// as one cookie and ends up with the original and its configured SameSite.
+//
+// An expiry is repeated whoever asks. A partitioned cookie is also sent to a top-level page of the
+// site it is keyed to, so signing out on remark42's own page has to clear the pair a widget framed
+// by another host of that site was given, and that request does not carry the header.
+// Nothing else changes in a response to a request without it.
+//
+// An expiry is repeated without issue as well. A reader may still hold a pair issued before the
+// server stopped issuing them, and its JWT is HttpOnly, so only the server can clear it. Left
+// behind by a sign-out, it is sent ahead of the cookie of the next session and that session is
+// refused for as long as the stale one lasts.
+func partitionedAuthCookies(issue bool, names ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			asked := issue && r.Header.Get(partitionedCookieHeader) == "1"
+			next.ServeHTTP(&partitioningWriter{ResponseWriter: w, names: names, asked: asked}, r)
+		})
+	}
+}
+
+// partitioningWriter adds the partitioned copies just before the headers are sent
+type partitioningWriter struct {
+	http.ResponseWriter
+	names []string
+	asked bool // the request carried partitionedCookieHeader
+	done  bool
+}
+
+func (p *partitioningWriter) WriteHeader(code int) {
+	p.addCopies()
+	p.ResponseWriter.WriteHeader(code)
+}
+
+func (p *partitioningWriter) Write(b []byte) (int, error) {
+	p.addCopies()
+	return p.ResponseWriter.Write(b)
+}
+
+// Flush sends the headers when nothing was written before it, so the copies have to be in by then
+func (p *partitioningWriter) Flush() {
+	p.addCopies()
+	_ = http.NewResponseController(p.ResponseWriter).Flush()
+}
+
+// Unwrap lets http.ResponseController reach the writer below
+func (p *partitioningWriter) Unwrap() http.ResponseWriter { return p.ResponseWriter }
+
+func (p *partitioningWriter) addCopies() {
+	if p.done {
+		return
+	}
+	p.done = true
+
+	lines := p.Header().Values("Set-Cookie")
+	out := make([]string, 0, len(lines)*2)
+	for _, line := range lines {
+		c, err := http.ParseSetCookie(line)
+		if err == nil && slices.Contains(p.names, c.Name) && !c.Partitioned && (p.asked || c.MaxAge < 0) {
+			c.Partitioned, c.Secure, c.SameSite = true, true, http.SameSiteNoneMode
+			out = append(out, c.String())
+		}
+		out = append(out, line)
+	}
+	if len(out) > len(lines) {
+		p.Header()["Set-Cookie"] = out
+	}
 }

@@ -6,7 +6,10 @@ import (
 	"crypto/sha1" //nolint:gosec // used only for stable ID hashing, not for security
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
+	"math/big"
 	"net"
 	"net/http"
 	"net/url"
@@ -15,6 +18,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -104,7 +108,7 @@ type ServerCommand struct {
 			Cookie time.Duration `long:"cookie" env:"COOKIE" default:"200h" description:"auth cookie TTL"`
 		} `group:"ttl" namespace:"ttl" env-namespace:"TTL"`
 
-		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"also send JWT as a header, so the frontend can store it in a client-side cookie that survives third-party cookie blocking; server-set cookies are still sent (note: increases vulnerability to XSS attacks)"`
+		SendJWTHeader bool   `long:"send-jwt-header" env:"SEND_JWT_HEADER" description:"also send JWT as a header and, for a widget embedded on another host, set the auth cookies a second time as Partitioned, so its session survives third-party cookie blocking; server-set cookies are still sent (note: increases vulnerability to XSS attacks)"`
 		SameSite      string `long:"same-site" env:"SAME_SITE" description:"set same site policy for cookies" choice:"default" choice:"none" choice:"lax" choice:"strict" default:"default"` // nolint
 
 		Apple     AppleGroup         `group:"apple" namespace:"apple" env-namespace:"APPLE" description:"Apple OAuth"`
@@ -113,7 +117,7 @@ type ServerCommand struct {
 		Facebook  AuthGroup          `group:"facebook" namespace:"facebook" env-namespace:"FACEBOOK" description:"Facebook OAuth"`
 		Microsoft MicrosoftAuthGroup `group:"microsoft" namespace:"microsoft" env-namespace:"MICROSOFT" description:"Microsoft OAuth"`
 		Yandex    AuthGroup          `group:"yandex" namespace:"yandex" env-namespace:"YANDEX" description:"Yandex OAuth"`
-		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"[deprecated, doesn't work] Twitter OAuth"`
+		Twitter   AuthGroup          `group:"twitter" namespace:"twitter" env-namespace:"TWITTER" description:"X (Twitter) OAuth"`
 		Patreon   AuthGroup          `group:"patreon" namespace:"patreon" env-namespace:"PATREON" description:"Patreon OAuth"`
 		Discord   AuthGroup          `group:"discord" namespace:"discord" env-namespace:"DISCORD" description:"Discord OAuth"`
 		Custom    CustomAuthGroup    `group:"custom" namespace:"custom" env-namespace:"CUSTOM" description:"Custom OAuth2 provider"`
@@ -142,7 +146,7 @@ type ServerCommand struct {
 
 // ImageProxyGroup defines options group for image proxy
 type ImageProxyGroup struct {
-	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy"`
+	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy, no effect when remark url is http"`
 	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
 }
 
@@ -289,7 +293,7 @@ type NotifyGroup struct {
 	Webhook struct {
 		URL      string        `long:"url" env:"URL" description:"webhook URL for admin notifications"`
 		Template string        `long:"template" env:"TEMPLATE" description:"webhook payload template (Go text/template); falls back to {\"text\": {{.Text | escapeJSONString}}} when empty"`
-		Headers  []string      `long:"headers" description:"webhook headers in format --notify.webhook.headers=Header1:Value1,Value2,... [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
+		Headers  []string      `long:"headers" description:"webhook header in format Header:Value, repeat the flag for each header; the env var takes Header1:Value1,Header2:Value2 [$NOTIFY_WEBHOOK_HEADERS]"` // env NOTIFY_WEBHOOK_HEADERS split in code below to allow , inside ""
 		Timeout  time.Duration `long:"timeout" env:"TIMEOUT" description:"webhook timeout" default:"5s"`
 	} `group:"webhook" namespace:"webhook" env-namespace:"WEBHOOK"`
 }
@@ -339,9 +343,13 @@ type serverApp struct {
 	authRefreshCache *authRefreshCache // stored only to close it properly on shutdown
 }
 
-// Execute is the entry point for "server" command, called by flag parser
-func (s *ServerCommand) Execute(_ []string) error {
-	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
+// clearSecretEnv removes secrets from the environment once the flags are parsed. The webhook headers,
+// which may carry an Authorization value, are read from the environment here, because the flag parser
+// can't split them, and kept in the options
+func (s *ServerCommand) clearSecretEnv() {
+	if len(s.Notify.Webhook.Headers) == 0 {
+		s.Notify.Webhook.Headers = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside ""
+	}
 	resetEnv(
 		"SECRET",
 		"AUTH_APPLE_KID",
@@ -354,10 +362,23 @@ func (s *ServerCommand) Execute(_ []string) error {
 		"AUTH_PATREON_CSEC",
 		"AUTH_DISCORD_CSEC",
 		"AUTH_CUSTOM_CSEC",
+		"AUTH_EMAIL_PASSWD",
 		"TELEGRAM_TOKEN",
+		"NOTIFY_TELEGRAM_TOKEN",
+		"NOTIFY_SLACK_TOKEN",
+		"NOTIFY_WEBHOOK_HEADERS",
 		"SMTP_PASSWORD",
 		"ADMIN_PASSWD",
+		"STORE_RPC_AUTH_PASSWD",
+		"IMAGE_RPC_AUTH_PASSWD",
+		"ADMIN_RPC_AUTH_PASSWD",
 	)
+}
+
+// Execute is the entry point for "server" command, called by flag parser
+func (s *ServerCommand) Execute(_ []string) error {
+	log.Printf("[INFO] start server on port %s:%d", s.Address, s.Port)
+	s.clearSecretEnv()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) // graceful termination
 	defer cancel()
@@ -415,12 +436,6 @@ func (s *ServerCommand) HandleDeprecatedFlags() (result []DeprecatedFlag) {
 			result = append(result, deprecated("notify.telegram.api", "telegram.api-url", "1.9", true))
 		}
 	}
-	if s.Auth.Twitter.CID != "" {
-		result = append(result, DeprecatedFlag{Old: "auth.twitter.cid", Version: "1.14"})
-	}
-	if s.Auth.Twitter.CSEC != "" {
-		result = append(result, DeprecatedFlag{Old: "auth.twitter.csec", Version: "1.14"})
-	}
 	return result
 }
 
@@ -477,18 +492,77 @@ var reservedCustomProviderNames = []string{
 
 var validCustomProviderName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 
-func customProviderSourceID(data provider.UserData, cfg CustomAuthGroup) string {
-	sourceID := cmp.Or(data.Value(cfg.IDField), data.Value(cfg.EmailField), data.Value(cfg.NameField), data.Value(cfg.PictureField))
-	if sourceID == "" {
-		log.Printf("[WARN] custom oauth provider returned no stable user identifier fields, falling back to hashed payload")
-		payload, err := json.Marshal(data)
-		if err != nil {
-			log.Printf("[WARN] failed to serialize custom oauth user data for ID fallback: %v", err)
-		} else {
-			sourceID = string(payload)
-		}
+// customProviderSourceID returns the value identifying a user at the custom OAuth2 provider: what
+// the user info holds in the configured id field, or the email when it holds nothing there, which
+// keeps the ids of users of a provider set up without an id field. With neither it returns an empty
+// string. A name or a picture never stands in: its owner can change it and two users can have the
+// same one, so a user identified by it is whoever claims that value. An email identifies a user
+// only as well as the provider checks it, so its use is logged. Only a string with something in it
+// is an email: false, 0 or [] sent for a missing one would be the id of every account without one.
+// raw is the user info as the provider sent it and data the same decoded. An id sent as a whole
+// number too large for a float64 to hold exactly is taken from raw, with all its digits.
+func customProviderSourceID(data provider.UserData, raw []byte, cfg CustomAuthGroup) string {
+	if id := cmp.Or(customProviderLargeInt(raw, cfg.IDField), data.Value(cfg.IDField)); id != "" {
+		return id
 	}
-	return sourceID
+	email, _ := data[cfg.EmailField].(string)
+	if strings.TrimSpace(email) == "" {
+		return ""
+	}
+	// no advice to set the id field here: a user identified by the email gets a new id when it is set
+	log.Printf("[WARN] custom oauth provider returned no value in the id field %q, user identified by the email field %q",
+		cfg.IDField, cfg.EmailField)
+	return email
+}
+
+// maxExactFloatInt is 2^53: every whole number up to it, of either sign, is a float64 of its own,
+// and above it several share one
+var maxExactFloatInt = new(big.Int).Lsh(big.NewInt(1), 53)
+
+// customProviderLargeInt returns the digits of a top-level field of the user info when the provider
+// sent it as a whole number beyond 2^53, and an empty string for anything else. The user info is
+// decoded with numbers as float64, where such numbers lose their last digits, so that adjacent
+// ids of different users read as one. A number within the exact range is left to the decoded value,
+// formatted as it always was, 1345027 as "1.345027e+06": users keep the id that format gave them.
+func customProviderLargeInt(raw []byte, field string) string {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return ""
+	}
+	// only a plain integer literal parses here, a string comes with its quotes
+	n, ok := new(big.Int).SetString(string(fields[field]), 10)
+	if !ok || n.CmpAbs(maxExactFloatInt) <= 0 {
+		return ""
+	}
+	return n.String()
+}
+
+// customProviderUser maps the user info of the custom OAuth2 provider to a user: raw is what the
+// provider sent and data the same decoded. The id is the provider name and the sha1 of the value
+// identifying the user at the provider. That value is always hashed, also when it looks like a sha1
+// digest already: token.HashID returns such a value as it is, and a user whose identifier at the
+// provider spells the hash of another user's would get that user's id.
+//
+// User info with neither a value in the id field nor an email gives a user without an id, whom
+// customAvatarSaver refuses to sign in.
+func customProviderUser(name string, data provider.UserData, raw []byte, cfg CustomAuthGroup) token.User {
+	sourceID := customProviderSourceID(data, raw, cfg)
+	if sourceID == "" {
+		log.Printf("[WARN] custom oauth provider returned no value in the id field %q and no email in %q, sign-in refused: "+
+			"set AUTH_CUSTOM_ID_FIELD to the user info field that identifies a user", cfg.IDField, cfg.EmailField)
+		return token.User{}
+	}
+	hashID := fmt.Sprintf("%x", sha1.Sum([]byte(sourceID))) //nolint:gosec // stable id, not a secret
+	user := token.User{
+		ID:      name + "_" + hashID,
+		Name:    data.Value(cfg.NameField),
+		Picture: data.Value(cfg.PictureField),
+		Email:   data.Value(cfg.EmailField),
+	}
+	if user.Name == "" {
+		user.Name = "noname_" + hashID[:4]
+	}
+	return user
 }
 
 func (c CustomAuthGroup) isConfigured() bool {
@@ -609,9 +683,12 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 		return nil, err
 	}
 
-	err = s.addAuthProviders(authenticator)
+	providersCount, err := s.addAuthProviders(authenticator)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make authenticator: %w", err)
+	}
+	if providersCount == 0 {
+		log.Printf("[WARN] no auth providers defined")
 	}
 
 	exporter := &migrator.Native{DataStore: dataService}
@@ -632,7 +709,9 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 
 	notifyDestinations, err := s.makeNotifyDestinations(authenticator)
 	if err != nil {
-		log.Printf("[WARN] failed to prepare notify destinations, %s", err)
+		// each error leaves out one destination or the admin part of one; the rest are set up and work.
+		// errors.Join puts each error on its own line, kept on this one so every part carries the level
+		log.Printf("[ERROR] notifications are not fully set up, %s", strings.ReplaceAll(err.Error(), "\n", "; "))
 	}
 
 	notifyService := s.makeNotifyService(dataService, notifyDestinations, telegramService)
@@ -648,7 +727,8 @@ func (s *ServerCommand) newServerApp(ctx context.Context) (_ *serverApp, err err
 	if s.EnableEmoji {
 		emojiFmt = func(text string) string { return emoji.Sprint(text) }
 	}
-	commentFormatter := store.NewCommentFormatter(imgProxy, emojiFmt)
+	// sizes go on after the proxy, which turns an external image into one the image store may hold
+	commentFormatter := store.NewCommentFormatter(imgProxy, store.CommentConverterFunc(imageService.SetSizes), emojiFmt)
 
 	sslConfig, err := s.makeSSLConfig()
 	if err != nil {
@@ -817,7 +897,7 @@ func (a *serverApp) run(ctx context.Context) error {
 		a.restSrv.Shutdown()
 	}()
 
-	a.activateBackup(ctx) // runs in goroutine for each site
+	stopBackups := a.activateBackup(ctx)
 	if a.Auth.Dev {
 		go a.devAuth.Run(ctx) // dev oauth2 server on :8084
 	}
@@ -832,9 +912,15 @@ func (a *serverApp) run(ctx context.Context) error {
 	a.restSrv.Run(a.Address, a.Port)
 
 	// shutdown procedures after HTTP server is stopped
+	stopBackups() // before the data store closes under an export in progress
 	if a.devAuth != nil {
 		a.devAuth.Shutdown()
 	}
+	// commit the pictures of comments still in their edit window before the data store closes, as each
+	// commit reads its comment from the store. Bounded by a minute, as a safeguard against a store that hangs
+	minuteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	a.imageService.Close(minuteCtx)
 	if e := a.dataService.Close(); e != nil {
 		log.Printf("[WARN] failed to close data store, %s", e)
 	}
@@ -848,10 +934,6 @@ func (a *serverApp) run(ctx context.Context) error {
 		log.Printf("[WARN] failed to close auth authRefreshCache, %s", e)
 	}
 	a.notifyService.Close()
-	// call potentially infinite loop with cancellation after a minute as a safeguard
-	minuteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	a.imageService.Close(minuteCtx)
 
 	close(a.terminated)
 	return nil
@@ -862,8 +944,11 @@ func (a *serverApp) Wait() {
 	<-a.terminated
 }
 
-// activateBackup runs background backups for each site
-func (a *serverApp) activateBackup(ctx context.Context) {
+// activateBackup runs background backups for each site. The returned function stops them and waits,
+// for up to backupStopWait, for an export in progress to end
+func (a *serverApp) activateBackup(ctx context.Context) (stop func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
 	for _, siteID := range a.Sites {
 		backup := migrator.AutoBackup{
 			Exporter:       a.exporter,
@@ -872,7 +957,32 @@ func (a *serverApp) activateBackup(ctx context.Context) {
 			KeepMax:        a.MaxBackupFiles,
 			Duration:       24 * time.Hour,
 		}
-		go backup.Do(ctx)
+		wg.Go(func() { backup.Do(ctx) })
+	}
+	return func() {
+		cancel()
+		if !waitGroupTimeout(&wg, backupStopWait) {
+			log.Printf("[WARN] a backup did not stop in %s, shutdown goes on without it", backupStopWait)
+		}
+	}
+}
+
+// backupStopWait is how long shutdown waits for a backup in progress. An export stops at its next write,
+// but with a remote store that has stopped answering it sits in a read for the rpc timeout of each call
+const backupStopWait = 10 * time.Second
+
+// waitGroupTimeout waits for wg for up to d and reports whether it finished in that time
+func waitGroupTimeout(wg *sync.WaitGroup, d time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(d):
+		return false
 	}
 }
 
@@ -986,12 +1096,10 @@ func (s *ServerCommand) makeCache() (api.LoadingCache, error) {
 	return nil, fmt.Errorf("unsupported cache type %s", s.Cache.Type)
 }
 
-func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
-	providersCount := 0
-	if s.Auth.Telegram {
-		providersCount++
-	}
-
+// addAuthProviders registers the configured sign-in providers and returns how many the authenticator
+// has in total, the Telegram one registered earlier by makeTelegramAuth included. The count is taken
+// from the authenticator, so email and anonymous sign-in, which need no OAuth2 provider, count as well.
+func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) (int, error) {
 	if s.Auth.Apple.CID != "" && s.Auth.Apple.TID != "" && s.Auth.Apple.KID != "" {
 		err := authenticator.AddAppleProvider(
 			provider.AppleConfig{
@@ -1002,9 +1110,8 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			provider.LoadApplePrivateKeyFromFile(s.Auth.Apple.PrivateKeyFilePath),
 		)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		providersCount++
 	}
 	// registration order is the order of providers in /api/v1/config
 	for _, p := range []struct{ name, cid, csec string }{
@@ -1025,56 +1132,56 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 		} else {
 			authenticator.AddProvider(p.name, p.cid, p.csec)
 		}
-		providersCount++
 	}
 
 	if s.Auth.Custom.isConfigured() {
 		missing := s.Auth.Custom.missingRequired()
 		if len(missing) > 0 {
-			return fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
+			return 0, fmt.Errorf("custom oauth provider configuration is incomplete, missing: %s", strings.Join(missing, ", "))
 		}
 
 		customName := strings.ToLower(strings.TrimSpace(s.Auth.Custom.Name))
 		if !validCustomProviderName.MatchString(customName) {
-			return fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
+			return 0, fmt.Errorf("custom oauth provider name %q is invalid, expected pattern %q", customName, validCustomProviderName.String())
 		}
 		if slices.Contains(reservedCustomProviderNames, customName) {
-			return fmt.Errorf("custom oauth provider name %q is reserved", customName)
+			return 0, fmt.Errorf("custom oauth provider name %q is reserved", customName)
 		}
 
-		authenticator.AddCustomProvider(customName, auth.Client{Cid: s.Auth.Custom.CID, Csecret: s.Auth.Custom.CSEC}, provider.CustomHandlerOpt{
+		// registered as a handler of our own making and not with AddCustomProvider, which gives the
+		// provider the avatar proxy as it is: the proxy requests any address the user info names as
+		// the picture. The other parameters are the ones getAuthenticator gives the authenticator,
+		// which hands them to the providers it makes itself
+		params := provider.Params{
+			URL:                  s.authURL(),
+			JwtService:           authenticator.TokenService(),
+			Issuer:               authIssuer,
+			AvatarSaver:          customAvatarSaver{proxy: authenticator.AvatarProxy()},
+			Cid:                  s.Auth.Custom.CID,
+			Csecret:              s.Auth.Custom.CSEC,
+			L:                    authLogger(),
+			AllowedRedirectHosts: s.allowedRedirectHosts(),
+		}
+		authenticator.AddCustomHandler(provider.NewCustom(customName, params, provider.CustomHandlerOpt{
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  s.Auth.Custom.AuthURL,
 				TokenURL: s.Auth.Custom.TokenURL,
 			},
 			InfoURL: s.Auth.Custom.InfoURL,
 			Scopes:  s.Auth.Custom.Scopes,
-			MapUserFn: func(data provider.UserData, _ []byte) token.User {
-				sourceID := customProviderSourceID(data, s.Auth.Custom)
-				hashID := token.HashID(sha1.New(), sourceID) //nolint:gosec // stable provider user id hash
-				user := token.User{
-					ID:      customName + "_" + hashID,
-					Name:    data.Value(s.Auth.Custom.NameField),
-					Picture: data.Value(s.Auth.Custom.PictureField),
-					Email:   data.Value(s.Auth.Custom.EmailField),
-				}
-				if user.Name == "" {
-					user.Name = "noname_" + hashID[:4]
-				}
-				return user
+			MapUserFn: func(data provider.UserData, raw []byte) token.User {
+				return customProviderUser(customName, data, raw, s.Auth.Custom)
 			},
-		})
-		providersCount++
+		}))
 	}
 
 	if s.Auth.Dev {
 		log.Print("[INFO] dev access enabled")
 		u, errURL := url.Parse(s.RemarkURL)
 		if errURL != nil {
-			return fmt.Errorf("can't parse Remark42 URL: %w", errURL)
+			return 0, fmt.Errorf("can't parse Remark42 URL: %w", errURL)
 		}
 		authenticator.AddDevProvider(u.Hostname(), 8084)
-		providersCount++
 	}
 
 	if s.Auth.Email.Enable {
@@ -1094,10 +1201,10 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			Subject:            s.Auth.Email.Subject,
 			ContentType:        s.Auth.Email.ContentType,
 		}
-		sndr := sender.NewEmailClient(params, log.Default())
+		sndr := newEmailSender(params, log.Default())
 		tmpl, err := templates.Read(s.Auth.Email.MsgTemplate)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		authenticator.AddVerifProvider("email", string(tmpl), sndr)
 	}
@@ -1108,11 +1215,7 @@ func (s *ServerCommand) addAuthProviders(authenticator *auth.Service) error {
 			anonymousUserID(s.SharedSecret))
 	}
 
-	if providersCount == 0 {
-		log.Printf("[WARN] no auth providers defined")
-	}
-
-	return nil
+	return len(authenticator.Providers()), nil
 }
 
 // impersonationLogLine makes the log line for a user blocked for taking a restricted name. It names
@@ -1134,32 +1237,19 @@ func anonymousUserID(secret string) func(user string, r *http.Request) string {
 	}
 }
 
-var isValidAnonName = regexp.MustCompile(`^[\p{L}\d_ ]+$`).MatchString
-
-// checkAnonymousName accepts a name for anonymous login: 3 to 64 letters, digits, underscores and spaces,
-// with no space at either end
-func checkAnonymousName(user, _ string) (ok bool, err error) {
-	// don't allow anon with space prefix or suffix
-	if strings.HasPrefix(user, " ") || strings.HasSuffix(user, " ") {
-		log.Printf("[WARN] name %q has space as a suffix or prefix", user)
-		return false, nil
-	}
-
-	user = strings.TrimSpace(user)
-	if len(user) < 3 {
-		log.Printf("[WARN] name %q is too short, should be at least 3 characters", user)
-		return false, nil
-	}
-	if len(user) > 64 {
-		log.Printf("[WARN] name %q is too long, should be up to 64 characters", user)
-		return false, nil
-	}
-
-	if !isValidAnonName(user) {
-		log.Printf("[WARN] name %q should have letters, digits, underscores and spaces only", user)
+// checkAnonymousName accepts a name for anonymous login by the rule of store.CheckUserName. A rejected name
+// is logged through the mask, as an email address can be typed here
+func checkAnonymousName(user, _ string) (bool, error) {
+	if err := store.CheckUserName(user); err != nil {
+		log.Printf("[WARN] anonymous login refused for %q: %v", store.MaskForLog(user), err)
 		return false, nil
 	}
 	return true, nil
+}
+
+// newEmailSender makes the sender of sign-in emails. Its debug line names the recipient, so the address is masked
+func newEmailSender(params sender.EmailParams, l log.L) *sender.Email {
+	return sender.NewEmailClient(params, rest.MaskedLog{L: l})
 }
 
 // creates and registers telegram auth, which we need separately from other auth providers
@@ -1208,27 +1298,39 @@ func (s *ServerCommand) makeNotifyService(dataStore *service.DataStore, destinat
 	return notify.NopService
 }
 
-// constructs list of notify destinations except for telegram, returns empty list in case of error
+// avatarURLs returns the URL prefixes of this instance's avatars at both routes, on the base URL the avatar
+// proxy makes pictures with. Each prefix is given as written and as a stored picture has it: a user picture is
+// stored through the URL sanitizer, which escapes a host name that is not ASCII.
+func (s *ServerCommand) avatarURLs() (res []string) {
+	base := strings.TrimSuffix(s.RemarkURL, "/")
+	for _, route := range []string{api.AvatarRoutePath, api.LegacyAvatarRoutePath} {
+		prefix := base + route + "/"
+		res = append(res, prefix)
+		if stored := (&store.Comment{}).SanitizeAsURL(prefix); stored != "" && stored != prefix {
+			res = append(res, stored)
+		}
+	}
+	return res
+}
+
+// constructs list of notify destinations except for telegram. A destination that cannot be built is
+// left out and its error returned, joined with the others, while the remaining destinations are still built
 func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]notify.Destination, error) {
 	destinations := make([]notify.Destination, 0)
+	var errs []error
 
 	if contains("webhook", s.Notify.Admins) {
-		webhookHeaders := s.Notify.Webhook.Headers
-		if len(webhookHeaders) == 0 {
-			webhookHeaders = splitAtCommas(os.Getenv("NOTIFY_WEBHOOK_HEADERS")) // env value may have comma inside "", parsed separately
-		}
-
 		whParams := notify.WebhookParams{
 			URL:      s.Notify.Webhook.URL,
 			Template: s.Notify.Webhook.Template,
-			Headers:  webhookHeaders,
+			Headers:  s.Notify.Webhook.Headers,
 			Timeout:  s.Notify.Webhook.Timeout,
 		}
-		webhook, err := notify.NewWebhook(whParams)
-		if err != nil {
-			return destinations, fmt.Errorf("failed to create webhook notification destination: %w", err)
+		if webhook, err := notify.NewWebhook(whParams); err != nil {
+			errs = append(errs, fmt.Errorf("failed to create webhook notification destination: %w", err))
+		} else {
+			destinations = append(destinations, webhook)
 		}
-		destinations = append(destinations, webhook)
 	}
 
 	if contains("slack", s.Notify.Admins) {
@@ -1244,8 +1346,8 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			From:                s.Notify.Email.From,
 			VerificationSubject: s.Notify.Email.VerificationSubject,
 			UnsubscribeURL:      s.RemarkURL + "/email/unsubscribe.html",
-			// TODO: uncomment after #560 frontend part is ready and URL is known
-			// subscribeURL:        s.RemarkURL + "/subscribe.html?token=",
+			AvatarURLs:          s.avatarURLs(),
+			SubscribeURL:        s.RemarkURL + "/email/subscribe.html?tkn=",
 			TokenGenFn: func(userID, email, site string) (string, error) {
 				claims := token.Claims{
 					Handshake: &token.Handshake{ID: userID + "::" + email},
@@ -1262,7 +1364,17 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			},
 		}
 		if contains("email", s.Notify.Admins) {
-			emailParams.AdminEmails = s.Admin.Shared.Email
+			// the admin@ default of makeAdminStore is not used here: it is a guess, and notifications
+			// carry comment text, so they go only to addresses the operator has set
+			for _, email := range s.Admin.Shared.Email {
+				if strings.TrimSpace(email) != "" {
+					emailParams.AdminEmails = append(emailParams.AdminEmails, email)
+				}
+			}
+			if len(emailParams.AdminEmails) == 0 {
+				errs = append(errs, errors.New("admin email notifications are on, but --admin.shared.email (ADMIN_SHARED_EMAIL) "+
+					"has no address, so no admin is notified by email"))
+			}
 		}
 		smtpParams := ntf.SMTPParams{
 			Host:               s.SMTP.Host,
@@ -1278,20 +1390,20 @@ func (s *ServerCommand) makeNotifyDestinations(authenticator *auth.Service) ([]n
 			ContentType:        "text/html",
 			Charset:            "UTF-8",
 		}
-		emailService, err := notify.NewEmail(emailParams, smtpParams)
-		if err != nil {
-			return destinations, fmt.Errorf("failed to create email notification destination: %w", err)
+		if emailService, err := notify.NewEmail(emailParams, smtpParams); err != nil {
+			errs = append(errs, fmt.Errorf("failed to create email notification destination: %w", err))
+		} else {
+			destinations = append(destinations, emailService)
 		}
-		destinations = append(destinations, emailService)
 	}
 
-	return destinations, nil
+	return destinations, errors.Join(errs...)
 }
 
 // constructs Telegram notify service
 func (s *ServerCommand) makeTelegramNotify() (*notify.Telegram, error) {
 	if contains("telegram", s.Notify.Admins) && s.Notify.Telegram.Channel == "" {
-		return nil, fmt.Errorf("--notify.telegram.channel must be set for admin notifications to work")
+		return nil, errors.New("--notify.telegram.chan (NOTIFY_TELEGRAM_CHAN) must be set for admin notifications to work")
 	}
 	telegramParams := notify.TelegramParams{
 		AdminChannelID:    s.Notify.Telegram.Channel,
@@ -1341,11 +1453,70 @@ func (s *ServerCommand) makeSSLConfig() (config api.SSLConfig, err error) {
 	return config, err
 }
 
+// authIssuer is the issuer of the tokens the authenticator and its providers sign
+const authIssuer = "remark42"
+
+// authURL returns the address the authenticator and its providers build their own links from
+func (s *ServerCommand) authURL() string {
+	return strings.TrimSuffix(s.RemarkURL, "/")
+}
+
+// allowedRedirectHosts returns the hosts a sign-in may send the user back to, besides the host of
+// RemarkURL itself
+func (s *ServerCommand) allowedRedirectHosts() token.AllowedHosts {
+	return token.AllowedHostsFunc(func() ([]string, error) {
+		return s.getAllowedRedirectHosts(), nil
+	})
+}
+
+// authLogger returns the logger of the authenticator and its providers. Their error lines carry
+// the request url, which holds the address during email sign-in, so every line is masked
+func authLogger() rest.MaskedLog {
+	return rest.MaskedLog{L: log.Default()}
+}
+
 // getAuthenticator creates new authenticator service, which doesn't have any auth providers enabled
 func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Store, admns admin.Store, authRefreshCache *authRefreshCache) *auth.Service {
+	// claimsUpd sets what the store and the options say about a user, on a new token and on a refresh
+	claimsUpd := func(c token.Claims) token.Claims {
+		if c.User == nil {
+			return c
+		}
+		// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
+		if len(c.Audience) != 1 {
+			return c
+		}
+		audience := c.Audience[0]
+
+		if s.SubscribersOnly {
+			updatePaidSub(c.User, time.Now())
+		}
+		c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
+		c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
+		var err error
+		c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
+		if err != nil {
+			log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
+		}
+
+		// don't allow anonymous and email with admins names
+		// exclude admin from impersonation detection over email, it prevents a valid admin to login with RestrictedNames
+		if strings.HasPrefix(c.User.ID, "anonymous_") || (strings.HasPrefix(c.User.ID, "email_") && !c.User.IsAdmin()) {
+			for _, a := range s.RestrictedNames {
+				if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
+					c.User.SetBoolAttr("blocked", true)
+					log.Print(impersonationLogLine(c.User))
+					break
+				}
+			}
+		}
+
+		return c
+	}
+
 	return auth.NewService(auth.Opts{
-		URL:            strings.TrimSuffix(s.RemarkURL, "/"),
-		Issuer:         "remark42",
+		URL:            s.authURL(),
+		Issuer:         authIssuer,
 		TokenDuration:  s.Auth.TTL.JWT,
 		CookieDuration: s.Auth.TTL.Cookie,
 		SendJWTHeader:  s.Auth.SendJWTHeader,
@@ -1354,46 +1525,13 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 		// enable the `from` redirect allowlist in go-pkgz/auth v2.1.2+ — limits
 		// post-auth redirects to RemarkURL's own host plus any configured
 		// AllowedHosts. Prevents the OAuth open-redirect / phishing vector.
-		AllowedRedirectHosts: token.AllowedHostsFunc(func() ([]string, error) {
-			return s.getAllowedRedirectHosts(), nil
-		}),
+		AllowedRedirectHosts: s.allowedRedirectHosts(),
 		SecretReader: token.SecretFunc(func(aud string) (string, error) { // get secret per site
 			return admns.Key(aud)
 		}),
 		AudienceReader: s.tokenAudiences(),
-		ClaimsUpd: token.ClaimsUpdFunc(func(c token.Claims) token.Claims { // set attributes, on new token or refresh
-			if c.User == nil {
-				return c
-			}
-			// audience is a slice but we set it to a single element, and situation when there is no audience or there are more than one is unexpected
-			if len(c.Audience) != 1 {
-				return c
-			}
-			audience := c.Audience[0]
-
-			c.User.SetAdmin(ds.IsAdmin(audience, c.User.ID))
-			c.User.SetBoolAttr("blocked", ds.IsBlocked(audience, c.User.ID))
-			var err error
-			c.User.Email, err = ds.GetUserEmail(audience, c.User.ID)
-			if err != nil {
-				log.Printf("[WARN] can't read email for %s, %v", c.User.ID, err)
-			}
-
-			// don't allow anonymous and email with admins names
-			// exclude admin from impersonation detection over email, it prevents a valid admin to login with RestrictedNames
-			if strings.HasPrefix(c.User.ID, "anonymous_") || (strings.HasPrefix(c.User.ID, "email_") && !c.User.IsAdmin()) {
-				for _, a := range s.RestrictedNames {
-					if strings.EqualFold(strings.TrimSpace(c.User.Name), a) {
-						c.User.SetBoolAttr("blocked", true)
-						log.Print(impersonationLogLine(c.User))
-						break
-					}
-				}
-			}
-
-			return c
-		}),
-		AdminPasswd: s.AdminPasswd,
+		ClaimsUpd:      token.ClaimsUpdFunc(claimsUpd),
+		AdminPasswd:    s.AdminPasswd,
 		Validator: token.ValidatorFunc(func(_ string, claims token.Claims) bool { // check on each auth call (in middleware)
 			if claims.User == nil {
 				return false
@@ -1409,18 +1547,56 @@ func (s *ServerCommand) getAuthenticator(ds *service.DataStore, avas avatar.Stor
 			if !s.servesAudience(claims.Audience) {
 				return false
 			}
-			return !claims.User.BoolAttr("blocked")
+			if claims.User.BoolAttr("blocked") {
+				return false
+			}
+			// the middleware refreshes an expired token after this check and serves the request on the
+			// refreshed claims without checking them, so an expired token is also judged here by the
+			// claims its refresh gives it. A cookie from before a block, sent again and again, would
+			// otherwise pass for good. The user is copied, the claims in hand stay as they came
+			if tokenExpired(claims) {
+				user := *claims.User
+				user.Attributes = maps.Clone(user.Attributes)
+				claims.User = &user
+				return !claimsUpd(claims).User.BoolAttr("blocked")
+			}
+			return true
 		}),
-		JWTQuery:            "jwt", // change default from "token" as it used for deleteme
+		JWTQuery:            api.QueryTokenParam, // not the default "token", which carries the delete-me token
 		AvatarStore:         avas,
 		AvatarResizeLimit:   s.Avatar.RszLmt,
 		AvatarIdenticonSize: s.Avatar.IdenticonSize,
-		AvatarRoutePath:     "/api/v1/avatar",
-		Logger:              rest.MaskedLog{L: log.Default()}, // its error lines carry the request url with the login address
+		AvatarRoutePath:     api.AvatarRoutePath,
+		Logger:              authLogger(),
 		RefreshCache:        authRefreshCache,
 		UseGravatar:         true,
 		AudSecrets:          s.Admin.RPC.SecretPerSite,
 	})
+}
+
+// updatePaidSub limits the paid status Patreon reports at a sign-in to rest.PaidSubPeriod, for subscribers-only
+// mode. It has to run before the claims updater sets any attribute of its own: a user without the "blocked"
+// attribute comes straight from the provider at a sign-in, the only time Patreon is asked, and the end of
+// the paid status is counted from then. Every token remark42 has made carries that attribute, so a refresh
+// keeps the end it finds, and a paid status that has ended or has no end, as in a token from before this
+// limit, is dropped until the next sign-in with Patreon
+func updatePaidSub(u *token.User, now time.Time) {
+	if !u.IsPaidSub() {
+		return
+	}
+	if _, refresh := u.Attributes["blocked"]; !refresh {
+		rest.SetPaidSubUntil(u, now.Add(rest.PaidSubPeriod))
+		return
+	}
+	if !rest.PaidSubActive(*u, now) {
+		u.SetPaidSub(false)
+	}
+}
+
+// tokenExpired reports whether the auth middleware takes the token of these claims for an expired
+// one, which it then refreshes. It is the check of token.Service.IsExpired, made without the service
+func tokenExpired(claims token.Claims) bool {
+	return errors.Is(jwt.NewValidator(jwt.WithExpirationRequired()).Validate(claims), jwt.ErrTokenExpired)
 }
 
 // tokenAudiences limits the audience of issued and accepted tokens to the configured sites when
@@ -1522,10 +1698,10 @@ func (s *ServerCommand) startTelegramAuthAndNotify(
 // based on https://stackoverflow.com/a/59318708
 func splitAtCommas(s string) []string {
 	cleanup := func(s string) string {
-		if s == "" {
-			return s
-		}
 		res := strings.TrimSpace(s)
+		if res == "" {
+			return res
+		}
 		if res[0] == '"' && res[len(res)-1] == '"' {
 			res = strings.TrimPrefix(res, `"`)
 			res = strings.TrimSuffix(res, `"`)

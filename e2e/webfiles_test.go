@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -38,7 +40,10 @@ const (
 	// teardown and leaves the stack running
 	dockerTimeout = 30 * time.Second
 
-	localesDir = "../frontend/apps/remark42/app/locales"
+	// the message catalogs are plain files among the assets embedded in the binary, and the list of
+	// the ones the widget asks for lives with the translation tasks
+	catalogDir           = "../backend/app/webassets/assets"
+	supportedLocalesFile = "../frontend/apps/remark42/tasks/supportedLocales.json"
 )
 
 // the /web paths the documentation publishes, plus the legacy names of the same files. each is
@@ -102,8 +107,27 @@ func TestWeb_UnknownNameIs404(t *testing.T) {
 		"above cannot tell a served file from a fallback")
 }
 
+// TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded pins the robots rule of the widget document.
+// Every embed loads the same /web/iframe.html, which before its bundle runs is an empty page, so
+// a crawler indexing it on its own finds one empty page under many query strings and reports
+// them as duplicate content, as #1683 described. noindex keeps it out of the index as a page of
+// its own, and indexifembedded keeps the comments indexed as part of the page that embeds them,
+// which a bare noindex would stop as well
+func TestWeb_WidgetDocumentIsIndexedOnlyWhereEmbedded(t *testing.T) {
+	t.Parallel()
+
+	resp := getWeb(t, "/web/iframe.html?site_id=remark&url=https%3A%2F%2Fexample.com%2Fpost")
+	require.Equal(t, http.StatusOK, resp.status)
+	// the tag is found by its name and its content read separately, so attribute order and
+	// spacing do not matter
+	robots := regexp.MustCompile(`<meta[^>]*\bname="robots"[^>]*>`).FindString(resp.body)
+	require.NotEmpty(t, robots, "the widget document carries no robots meta tag")
+	assert.Contains(t, robots, `content="noindex, indexifembedded"`,
+		"the widget document has to tell crawlers to index it only inside the page embedding it")
+}
+
 // TestWeb_EveryBundleServesUnderBothSuffixes covers the names the list above does not, and takes
-// its input from the build and not from a list somebody maintains, so a locale joining or
+// its input from the build and not from a list somebody maintains, so a bundle joining or
 // leaving needs no edit here. Whatever the bundler emitted has to answer under its legacy .js name
 // with the same bytes and the same type, and has to parse as a classic script, which is the premise
 // serving one under the other rests on
@@ -111,12 +135,11 @@ func TestWeb_EveryBundleServesUnderBothSuffixes(t *testing.T) {
 	t.Parallel()
 
 	names := emittedBundles(t)
-	// a listing from the wrong place, or one that lost most of its entries to a chunk directory,
-	// would leave a handful of cases running and report green. every locale is a chunk of its own,
-	// so the catalog count on disk is a floor the build cannot drop below
-	require.Contains(t, names, "remark.mjs", "listing is not the served web root: %v", names)
-	require.GreaterOrEqual(t, len(names), localeCount(t),
-		"%d bundles is fewer than there are locales, so the listing is missing chunks: %v", len(names), names)
+	// a listing from the wrong place, or one that lost entries to a chunk directory, would leave a
+	// handful of cases running and report green. every entry point is a bundle of its own, so
+	// the four of them are a floor the build cannot drop below
+	require.Subset(t, names, []string{"deleteme.mjs", "embed.mjs", "last-comments.mjs", "remark.mjs"},
+		"the listing is not the served web root, or it lost entry points: %v", names)
 	t.Logf("checking %d bundles", len(names))
 
 	page := parsePage(t)
@@ -196,22 +219,48 @@ func emittedBundles(t *testing.T) []string {
 	return names
 }
 
-// localeCount is how many message catalogs the app carries, each of which the bundler emits as
-// its own chunk
-func localeCount(t *testing.T) int {
+// supportedLocales is the list of catalogs the widget asks the server for, read from the file the
+// translation tasks and the widget's loader read too
+func supportedLocales(t *testing.T) []string {
 	t.Helper()
 
-	entries, err := os.ReadDir(localesDir)
-	require.NoError(t, err, "reading %s", localesDir)
+	raw, err := os.ReadFile(supportedLocalesFile)
+	require.NoError(t, err, "reading %s", supportedLocalesFile)
+	var locales []string
+	require.NoError(t, json.Unmarshal(raw, &locales), "parsing %s", supportedLocalesFile)
+	require.NotEmpty(t, locales, "no locales in %s, so the cases built on it would assert nothing", supportedLocalesFile)
+	return locales
+}
 
-	count := 0
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".json") {
-			count++
-		}
+// TestWeb_EveryCatalogServesAsJSON covers the catalogs the widget fetches at runtime: each one the
+// loader may ask for answers under /web with the bytes on disk and a JSON type. The request carries
+// the host page's origin, as last-comments sends it from the embedding page, so a catalog the
+// browser would refuse to hand over fails here too
+func TestWeb_EveryCatalogServesAsJSON(t *testing.T) {
+	t.Parallel()
+
+	for _, locale := range supportedLocales(t) {
+		t.Run(locale, func(t *testing.T) {
+			want, err := os.ReadFile(filepath.Join(catalogDir, locale+".json")) //nolint:gosec // name from the list
+			require.NoError(t, err)
+
+			// probeURL: the instance's own name resolves inside the browser only
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, probeURL+"/web/"+locale+".json", http.NoBody)
+			require.NoError(t, err)
+			req.Header.Set("Origin", hostSiteURL)
+			resp, err := probeClient.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+
+			require.Equal(t, http.StatusOK, resp.StatusCode, "the %s catalog is not served", locale)
+			assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+			assert.Equal(t, digest(string(want)), digest(string(body)), "the %s catalog served is not the one on disk", locale)
+			assert.Equal(t, hostSiteURL, resp.Header.Get("Access-Control-Allow-Origin"),
+				"a page on another origin cannot read the %s catalog, so last-comments there stays in english", locale)
+		})
 	}
-	require.NotZero(t, count, "no catalogs in %s, so the floor below would be meaningless", localesDir)
-	return count
 }
 
 // exitStderr is what the command wrote to stderr, which Output keeps out of the parsed result
@@ -272,15 +321,14 @@ func pauseForWebLimit() {
 }
 
 // TestWeb_NoBundleHardcodesTheWebRoot pins the fix for #2203, which shipped with no test at any
-// level. The bundler used to bake a fixed public path into every entry, so an instance mounted
-// under a prefix, which manuals/subdomain documents, asked the domain root for its provider icons
-// and got nothing. The path is derived from the URL the bundle was loaded from now, which is
-// correct for both arrangements.
+// level. Every entry used to carry a fixed path to the web root, so an instance mounted under a
+// prefix, which manuals/subdomain documents, asked the domain root for its provider icons and got
+// nothing. A bundle addresses the files beside it from the instance URL now, which is correct for
+// both arrangements.
 //
-// What separates the two builds is the assignment webpack emits for its runtime public path: a
-// literal when the path is fixed, and a computed value when it is derived. Asset filenames appear
-// bare either way, so a case looking for a rooted "/web/name.svg" string finds nothing in either
-// build and proves nothing; this asserts the assignment instead.
+// What gives a fixed path away is a string that starts at the web root. An address built from the
+// instance URL has that URL in front of "/web/", so the text of a correct bundle holds no quote
+// followed by it, while "/web/name.svg" written out in the source arrives in the bundle as is.
 //
 // Every emitted bundle is checked rather than the obvious one: the original defect put fifteen
 // icons in remark.mjs and one in last-comments.mjs, so a case reading a single entry would have
@@ -291,18 +339,16 @@ func TestWeb_NoBundleHardcodesTheWebRoot(t *testing.T) {
 	require.Contains(t, names, "last-comments.mjs",
 		"the entry carrying the second half of #2203 is missing from the listing: %v", names)
 
-	// webpack writes its public path to the `p` property of the runtime object. A baked-in path
-	// is a string literal there; a derived one is an expression
-	baked := regexp.MustCompile("\\.p\\s*=\\s*[\"'`]/web/[\"'`]")
+	rooted := regexp.MustCompile("[\"'`]/web/")
 
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			body := getWeb(t, "/web/"+name).body
 			require.NotEmpty(t, body, "%s serves nothing, so this asserts nothing", name)
 
-			assert.NotRegexp(t, baked, body,
-				"%s bakes the public path in rather than deriving it, so an instance mounted under "+
-					"a prefix fetches its assets from the domain root", name)
+			assert.NotRegexp(t, rooted, body,
+				"%s carries a path that starts at the web root, so an instance mounted under a "+
+					"prefix fetches that file from the domain root", name)
 		})
 	}
 }

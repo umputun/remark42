@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ import (
 	cache "github.com/go-pkgz/lcw/v2"
 	log "github.com/go-pkgz/lgr"
 	R "github.com/go-pkgz/rest"
-	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 
 	"github.com/umputun/remark42/backend/app/rest"
@@ -85,13 +85,8 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// not checked for a UUID: imported comments keep the IDs of the system they came from
 	offsetID := r.URL.Query().Get("offset_id")
-	if offsetID != "" {
-		if _, err = uuid.Parse(offsetID); err != nil {
-			rest.SendErrorJSON(w, r, http.StatusBadRequest, err, "bad offset_id value", rest.ErrCommentNotFound)
-			return
-		}
-	}
 
 	log.Printf("[DEBUG] get comments for %+v, sort %s, format %s, since %v, limit %d, offset %s", locator, sort, format, since, limit, offsetID)
 
@@ -135,6 +130,9 @@ func (s *public) findCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 
 		if format == "tree" {
 			withInfo := treeWithInfo{Tree: service.MakeTree(comments, sort, limit, offsetID), Info: commentsInfo}
+			if limit > 0 && offsetID == "" { // the first page lists the pins of the later ones too
+				withInfo.Pinned = pinnedComments(comments)
+			}
 			withInfo.Info.CountLeft = withInfo.CountLeft()
 			withInfo.Info.LastComment = withInfo.LastComment()
 			if withInfo.Nodes == nil { // eliminate json nil serialization
@@ -179,7 +177,7 @@ func (s *public) lastCommentsCtrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := cache.NewKey(siteID).ID(urlKey(r, true)).Scopes(lastCommentsScope, lastVotesScope)
+	key := cache.NewKey(siteID).ID(urlKey(r, true)).Scopes(siteID, lastCommentsScope, lastVotesScope)
 	s.cachedJSON(w, r, key, func() (any, error) {
 		user := rest.GetUserOrEmpty(r)
 		comments, e := s.dataService.Last(siteID, limit, sinceTime, user)
@@ -379,7 +377,7 @@ func (s *public) loadPictureCtrl(w http.ResponseWriter, r *http.Request) {
 	// limits ARE preserved verbatim by resize, so the browser defense relies on the
 	// response headers (validated Content-Type + nosniff + strict CSP +
 	// Content-Disposition: inline), not on byte normalization. Picture IDs are limited
-	// to image.SafeIDSegment (alphanumeric xid-generated guids), so the comma split
+	// to image.SafeIDSegment (alphanumeric generated guids), so the comma split
 	// inside rest.EtagMatches cannot collide; if the ID format ever changes, revisit.
 	etag := `"` + id + `"`
 	w.Header().Set("Etag", etag)
@@ -473,10 +471,17 @@ func (s *public) parseSince(r *http.Request) (time.Time, error) {
 	return sinceTS, nil
 }
 
+// pinnedComments returns the pinned comments that are not deleted, oldest first
+func pinnedComments(comments []store.Comment) []store.Comment {
+	res := filterComments(comments, func(c store.Comment) bool { return c.Pin && !c.Deleted })
+	slices.SortStableFunc(res, func(a, b store.Comment) int { return a.Timestamp.Compare(b.Timestamp) })
+	return res
+}
+
 // limitComments returns limited list of comments and count of comments left after limit.
 // If offsetID is provided, the list will be sliced starting from the comment with this ID.
 // If offsetID is not found, the full list will be returned.
-// It's used for only "
+// It's used only for the plain format of GET /find; service.MakeTree limits the tree format.
 func limitComments(c []store.Comment, limit int, offsetID string) (comments []store.Comment, countLeft int) {
 	if offsetID != "" {
 		for i, comment := range c {

@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex" />
     <title>Counter</title>
     <style>
       body {
@@ -30,7 +31,7 @@
         (<a href="./" target="_blank">note</a>)
       </p>
 
-      <p>If it can't get url from data-attribute or remark config, it will try to use window.location.href for it.</p>
+      <p>If it can't get url from data-attribute or remark config, it uses the page address without its query and fragment, window.location.origin + window.location.pathname.</p>
     </div>
 
     <script>

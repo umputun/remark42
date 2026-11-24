@@ -79,8 +79,10 @@
      embedding site can match its own font without forking/rebuilding this widget. Only
      font-family, not font-size: nearly every component sets its own explicit font-size
      (a real 10/12/14/16/20px type scale), so a single --font-size variable here would
-     only affect the handful of elements that don't, not the widget's rendered text. */
-  --font-family: system-ui;
+     only affect the handful of elements that don't, not the widget's rendered text.
+     The names after system-ui are what a browser without it falls back to, written out because
+     nothing adds them at build time. */
+  --font-family: system-ui, -apple-system, 'Segoe UI', roboto, ubuntu, cantarell, 'Noto Sans', sans-serif;
 }
 
 :root .dark {

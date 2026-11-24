@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Latest comments on somebody else's site</title>
+  </head>
+  <body>
+    <h1>Latest comments on somebody else's site</h1>
+    <p>
+      last-comments renders into this page, which is served from a different origin than the
+      comments, so its message catalog is a cross-origin request. The locale comes from the query.
+    </p>
+    <div class="remark42__last-comments" data-max="50"></div>
+    <script>
+      var remark_config = {
+        host: 'http://remark42:8080',
+        site_id: 'remark',
+        components: ['last-comments'],
+        locale: new URLSearchParams(window.location.search).get('locale') || 'en',
+      };
+    </script>
+    <script src="embed.js"></script>
+  </body>
+</html>

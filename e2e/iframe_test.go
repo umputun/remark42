@@ -5,6 +5,7 @@ package e2e
 import (
 	"math"
 	"regexp"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,7 +35,10 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(engine+"/"+tc.name, func(t *testing.T) {
 				page := newPageOn(t, browserFor(t, engine))
-				require.NoError(t, page.Route(regexp.MustCompile(`remark\.m?js$`), func(route playwright.Route) {
+				// the document asks for the bundle with a query string
+				var blocked atomic.Bool
+				require.NoError(t, page.Route(regexp.MustCompile(`remark\.m?js(\?|$)`), func(route playwright.Route) {
+					blocked.Store(true)
 					if err := route.Abort(); err != nil {
 						t.Errorf("abort widget bundle: %v", err)
 					}
@@ -42,6 +46,8 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 
 				_, err := page.Goto(probeURL + "/web/iframe.html" + tc.query)
 				require.NoError(t, err)
+				require.True(t, blocked.Load(), "the bundle was not held back, so the assertions below "+
+					"would read what the bundle set and not what the inline script did")
 
 				inline, err := page.Evaluate("() => document.documentElement.style.colorScheme")
 				require.NoError(t, err)
@@ -50,6 +56,26 @@ func TestIframe_ColorSchemeIsSetBeforeTheBundleRuns(t *testing.T) {
 				computed, err := page.Evaluate("() => getComputedStyle(document.documentElement).colorScheme")
 				require.NoError(t, err)
 				assert.Equal(t, tc.expected, computed)
+
+				// the stylesheet keys the colors of the light theme on this class, the preloader's
+				// among them, and the preloader is on screen before the bundle runs
+				hasLight := func() bool {
+					v, lerr := page.Evaluate("() => document.documentElement.classList.contains('light')")
+					return lerr == nil && v == true
+				}
+				assert.Equal(t, tc.expected == "light", hasLight(), "the class of the theme in the address")
+
+				// a theme the parent posts before the bundle runs: opened on its own, the document is
+				// its own parent
+				posted := "dark"
+				if tc.expected == "dark" {
+					posted = "light"
+				}
+				_, err = page.Evaluate("(theme) => window.postMessage({ theme }, '*')", posted)
+				require.NoError(t, err)
+				eventually(t, waitTimeout, "the class did not follow a theme posted before the bundle ran", func() bool {
+					return hasLight() == (posted == "light")
+				})
 			})
 		}
 	}

@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import '@testing-library/jest-dom';
-import { fireEvent, screen, waitFor } from '@testing-library/preact';
+import { act, fireEvent, screen, waitFor } from '@testing-library/preact';
 
 import type { IntlShape } from 'common/intl';
 import { createIntl, useIntl } from 'common/intl';
@@ -11,6 +11,7 @@ import type { CommentProps } from './comment';
 import { Comment } from './comment';
 import { CommentForm } from 'components/comment-form';
 import { CommentMode } from 'common/types';
+import * as postMessage from 'utils/post-message';
 import de from 'locales/de.json';
 
 function CommentWithIntl(props: CommentProps) {
@@ -81,6 +82,40 @@ describe('<Comment />', () => {
     expect(patreonSubscriberIcon.tagName).toBe('IMG');
   });
 
+  it('should give the time of the comment in a machine-readable form', () => {
+    const props = getProps();
+    props.data.time = '2026-11-21T18:05:00+03:00';
+
+    const { container } = render(<CommentWithIntl {...props} />);
+
+    expect(container.querySelector('time')).toHaveAttribute('datetime', '2026-11-21T15:05:00.000Z');
+  });
+
+  describe('opening a profile', () => {
+    // the message goes to whatever page embeds the widget, and an admin's copy of a comment has
+    // the commenter's IP hash in its user record
+    it.each([
+      ['of another user', 'someone', { id: 'someone', name: 'username', picture: 'http://localhost/somepicture-url' }],
+      [
+        'of the current user',
+        'testuser',
+        { id: 'testuser', name: 'username', picture: 'http://localhost/somepicture-url', current: '1' },
+      ],
+    ])('sends the parent only the profile fields %s', (_label, id, expected) => {
+      const postMessageToParent = jest.spyOn(postMessage, 'postMessageToParent').mockReturnValue(true);
+      const props = getProps();
+      props.user!.admin = true;
+      Object.assign(props.data.user, { id, ip: 'ip-hash', verified: true, paid_sub: true, site_id: 'remark' });
+
+      render(<CommentWithIntl {...props} />);
+      fireEvent.click(screen.getByText('username'));
+
+      expect(postMessageToParent).toHaveBeenCalledTimes(1);
+      expect(postMessageToParent).toHaveBeenCalledWith({ profile: expected });
+      postMessageToParent.mockRestore();
+    });
+  });
+
   describe('voting', () => {
     let props = getProps();
 
@@ -99,12 +134,6 @@ describe('<Comment />', () => {
         'when rendered in profile',
         () => {
           props.view = 'user';
-        },
-      ],
-      [
-        'when rendered in preview',
-        () => {
-          props.view = 'preview';
         },
       ],
       [
@@ -205,6 +234,142 @@ describe('<Comment />', () => {
     });
   });
 
+  describe('edit controls follow the reader while the comment stays mounted', () => {
+    // signing in and out reloads the thread in place, so the same component sees the reader change
+    function ownRecentComment(): CommentProps {
+      const own = getProps();
+      own.repliesCount = 0;
+      own.data.user = own.user!;
+      own.data.time = new Date().toString();
+      StaticStore.config.edit_duration = 300;
+      return own;
+    }
+
+    it('takes them away when the reader signs out', () => {
+      const own = ownRecentComment();
+      const { rerender } = render(<CommentWithIntl {...own} />);
+      expect(screen.getByText('Edit')).toBeVisible();
+
+      rerender(<CommentWithIntl {...own} user={null} />);
+      // a later update, such as the reloaded thread arriving, must not bring them back either
+      rerender(<CommentWithIntl {...own} user={null} />);
+
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+    });
+
+    it('offers them when the author signs in', () => {
+      const own = ownRecentComment();
+      const { rerender } = render(<CommentWithIntl {...own} user={null} />);
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+
+      rerender(<CommentWithIntl {...own} />);
+
+      expect(screen.getByText('Edit')).toBeVisible();
+    });
+  });
+
+  describe('edit on a read-only post', () => {
+    // the author's own comment, still inside the edit window
+    function ownRecentComment(readOnly: boolean, admin: boolean): CommentProps {
+      const own = getProps();
+      own.repliesCount = 0;
+      own.user!.admin = admin;
+      own.data.user = own.user!;
+      own.data.time = new Date().toString();
+      own.post_info!.read_only = readOnly;
+      StaticStore.config.edit_duration = 300;
+      return own;
+    }
+
+    it('hides Edit and its countdown from a commenter but keeps Delete', () => {
+      render(<CommentWithIntl {...ownRecentComment(true, false)} />);
+
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+      expect(screen.getByText('Delete')).toBeVisible();
+    });
+
+    it('offers Edit to a commenter on an open post', () => {
+      render(<CommentWithIntl {...ownRecentComment(false, false)} />);
+
+      expect(screen.getByText('Edit')).toBeVisible();
+      expect(screen.getByRole('timer')).toBeVisible();
+    });
+
+    it('offers Edit to an admin', () => {
+      render(<CommentWithIntl {...ownRecentComment(true, true)} />);
+
+      expect(screen.getByText('Edit')).toBeVisible();
+    });
+
+    it('takes Delete away from a commenter when the edit window ends', () => {
+      jest.useFakeTimers();
+      try {
+        render(<CommentWithIntl {...ownRecentComment(true, false)} />);
+        expect(screen.getByText('Delete')).toBeVisible();
+
+        act(() => {
+          jest.advanceTimersByTime(301 * 1000);
+        });
+
+        expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('keeps Delete through an edit window longer than one timeout can wait', () => {
+      jest.useFakeTimers();
+      try {
+        const own = ownRecentComment(true, false);
+        StaticStore.config.edit_duration = 30 * 24 * 60 * 60;
+        const { unmount } = render(<CommentWithIntl {...own} />);
+
+        act(() => {
+          jest.advanceTimersByTime(25 * 24 * 60 * 60 * 1000);
+        });
+
+        expect(screen.getByText('Delete')).toBeVisible();
+        unmount();
+        expect(jest.getTimerCount()).toBe(0);
+      } finally {
+        StaticStore.config.edit_duration = 300;
+        jest.useRealTimers();
+      }
+    });
+
+    it('takes Delete away at the end of an edit window longer than one timeout can wait', () => {
+      jest.useFakeTimers();
+      try {
+        const own = ownRecentComment(true, false);
+        StaticStore.config.edit_duration = 30 * 24 * 60 * 60;
+        render(<CommentWithIntl {...own} />);
+
+        act(() => {
+          jest.advanceTimersByTime(25 * 24 * 60 * 60 * 1000);
+        });
+        expect(screen.getByText('Delete')).toBeVisible();
+
+        act(() => {
+          jest.advanceTimersByTime(6 * 24 * 60 * 60 * 1000);
+        });
+        expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+      } finally {
+        StaticStore.config.edit_duration = 300;
+        jest.useRealTimers();
+      }
+    });
+
+    it('keeps Cancel for a commenter whose editor is open when the post closes', () => {
+      const own = ownRecentComment(true, false);
+      own.editMode = CommentMode.Edit;
+      render(<CommentWithIntl {...own} />);
+
+      expect(screen.getByText('Cancel')).toBeVisible();
+    });
+  });
+
   // Regression tests for issue #2040.
   // The edit textarea must reflect `data.orig` byte-for-byte; any transformation
   // (HTML-entity decoding in particular) corrupts user input on save because
@@ -283,7 +448,6 @@ describe('<Comment />', () => {
       p.user!.id = '100';
       p.data.user.id = '100';
       p.editMode = CommentMode.Edit;
-      // @ts-ignore - CommentForm prop is optional on CommentProps
       p.CommentForm = CommentForm;
       Object.assign(p.data, {
         id: '101',
@@ -299,6 +463,7 @@ describe('<Comment />', () => {
       expect(textarea.value).toBe(expectedTextareaValue(payload));
     });
   });
+
   describe('block confirmation', () => {
     // the duration is a select label reused inside the sentence: only its first letter may be
     // lowered, or a language that capitalises nouns, such as German, loses those capitals
