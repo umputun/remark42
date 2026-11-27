@@ -119,14 +119,13 @@ export const telegramSubscribe = (): Promise<{
 /**
  * Start process of telegram subscription to updates
  * Example of error response: {"code":0,"details":"can't set telegram for user","error":"request is not verified yet"}
- * Example of success response: {"address":"223211010","updated":true}
+ * Example of success response: {"updated":true}
  */
 export const telegramCurrentSubscribtion = ({
   token,
 }: {
   token: string;
 }): Promise<{
-  address: string;
   updated: boolean;
 }> => apiFetcher.get('/telegram/subscribe', { tkn: token });
 

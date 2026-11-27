@@ -73,7 +73,7 @@ To integrate notifications about any comment on your sites with remark42 with [T
 
 Enabling Telegram user notifications allows users to sign up for notifications about replies to their messages. To do it, set the variable `NOTIFY_USERS=telegram`.
 
-A signed-in user who is not anonymous subscribes under the comment form: "Subscribe by" and then "Telegram" shows a link to your bot, and on a wide screen also a QR code. The user opens the bot in Telegram, presses "Start" there and then clicks "Check" in the widget. The link works for 10 minutes.
+A signed-in user who is not anonymous subscribes under the comment form: "Subscribe by" and then "Telegram" shows a link to your bot, and on a wide screen also a QR code. The user opens the bot in Telegram, presses "Start" there and then clicks "Check" in the widget. The link works for 10 minutes. Notifications go to the Telegram account that presses "Start" on that link, so it should be opened only by the user who asked for it.
 
 At start, Remark42 asks Telegram for the bot's details. If that fails, Remark42 refuses to start when `AUTH_TELEGRAM` or `TELEGRAM_API_URL` is set; otherwise it logs one warning and runs without any Telegram notifications.
 
