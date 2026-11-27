@@ -3274,6 +3274,64 @@ func TestService_EditCommentPicturesStaged(t *testing.T) {
 	assert.Error(t, err, "the picture edited out is not committed")
 }
 
+// the external images a comment shows through the image proxy are fetched for a stored comment only, and those an
+// edit adds to an imported comment, which has no delayed commit, are committed once fetched
+func TestService_CommentExternalPictures(t *testing.T) {
+	const proxyAPI = "https://remark42.example/api/v1/img"
+	pic, err := os.ReadFile("../image/testdata/circles.png")
+	require.NoError(t, err)
+	proxied := func(imgURL string) string {
+		return `<img src="` + proxyAPI + "?src=" + base64.URLEncoding.EncodeToString([]byte(imgURL)) + `"/>`
+	}
+	prep := func(t *testing.T) (*DataStore, *image.FileSystem, func() []string) {
+		fs := &image.FileSystem{Location: t.TempDir(), Staging: t.TempDir()}
+		var mu sync.Mutex
+		var fetched []string
+		imgSvc := image.NewService(fs, image.ServiceParams{EditDuration: time.Hour, ImageAPI: "/images/", ProxyAPI: proxyAPI,
+			MaxSize: 1 << 20, FetchExternal: func(_ context.Context, imgURL string) ([]byte, error) {
+				mu.Lock()
+				defer mu.Unlock()
+				fetched = append(fetched, imgURL)
+				return pic, nil
+			}})
+		t.Cleanup(func() { imgSvc.Close(context.Background()) })
+		eng, teardown := prepStoreEngine(t)
+		t.Cleanup(teardown)
+		b := &DataStore{Engine: eng, EditDuration: time.Hour, AdminStore: admin.NewStaticKeyStore("secret 123"), ImageService: imgSvc}
+		return b, fs, func() []string {
+			mu.Lock()
+			defer mu.Unlock()
+			return append([]string(nil), fetched...)
+		}
+	}
+
+	t.Run("a comment the store refuses has nothing fetched", func(t *testing.T) {
+		b, _, fetched := prep(t)
+		locator := store.Locator{URL: "https://radio-t.com/ro", SiteID: "radio-t"}
+		require.NoError(t, b.SetReadOnly(locator, true))
+		_, err := b.Create(store.Comment{Text: proxied("https://images.example/ro.png"), Locator: locator,
+			User: store.User{ID: "user1", Name: "user1"}})
+		require.Error(t, err)
+		require.Never(t, func() bool { return len(fetched()) > 0 }, 300*time.Millisecond, 10*time.Millisecond)
+	})
+
+	t.Run("an image an edit adds to an imported comment is committed", func(t *testing.T) {
+		b, fs, fetched := prep(t)
+		locator := store.Locator{URL: "https://radio-t.com/imported", SiteID: "radio-t"}
+		id, err := b.Create(store.Comment{Text: "imported", Locator: locator, Imported: true, Timestamp: time.Now(),
+			User: store.User{ID: "user1", Name: "user1"}})
+		require.NoError(t, err)
+		_, err = b.EditComment(locator, id, EditRequest{Text: proxied("https://images.example/added.png")})
+		require.NoError(t, err)
+		imgID, err := image.CachedImgID("https://images.example/added.png")
+		require.NoError(t, err)
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(filepath.Join(fs.Location, imgID))
+			return err == nil
+		}, 30*time.Second, 10*time.Millisecond, "the image is committed, fetched %v", fetched())
+	})
+}
+
 // DeleteUser removes all comments from user
 func TestService_DeleteUser(t *testing.T) {
 	// two comments for https://radio-t.com, no reply

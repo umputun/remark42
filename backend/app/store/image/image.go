@@ -52,6 +52,11 @@ type Service struct {
 	done      chan struct{} // closed by Close, so queued submits commit without waiting out EditDuration
 	closed    chan struct{} // closed once every submitted image is committed after Close
 	closeOnce sync.Once
+
+	extOnce    sync.Once        // starts the external image fetchers on the first SubmitExternal
+	extMu      sync.Mutex       // guards extPending and the sends to extJobs
+	extPending map[string]int   // external images waiting to be fetched, per user
+	extJobs    chan externalJob // external images waiting to be fetched
 }
 
 // ServiceParams contains externally adjustable parameters of Service
@@ -62,6 +67,9 @@ type ServiceParams struct {
 	MaxSize      int
 	MaxHeight    int
 	MaxWidth     int
+	// FetchExternal downloads an external image shown through the image proxy; set only when external images
+	// are cached, see SubmitExternal
+	FetchExternal func(ctx context.Context, imgURL string) ([]byte, error)
 }
 
 // StoreInfo contains image store meta information
@@ -337,7 +345,7 @@ const maxDrawnHeight = 300
 // SetSizes gives every image in the comment html that is in the store the width and height the
 // widget draws it at, so a browser reserves its space before loading it and the text below doesn't
 // move when it loads. Uploaded images are in the store from the upload on; a proxied one only once
-// the proxy has cached it, which needs CacheExternal. An image with a width or height of its own is
+// SubmitExternal has fetched it for a posted or previewed comment, which needs CacheExternal. An image with a width or height of its own is
 // left as it is, and so is any picture past the first maxSizedPictures different ones.
 func (s *Service) SetSizes(commentHTML string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(commentHTML))

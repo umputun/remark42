@@ -79,6 +79,6 @@ Avatars are fetched from the provider at sign-in and saved in the avatar store, 
 
 Images served over HTTP can be proxied to HTTPS (`IMAGE_PROXY_HTTP2HTTPS=true`) to prevent mixed HTTP/HTTPS.
 
-All images can be proxied and saved locally (`IMAGE_PROXY_CACHE_EXTERNAL=true`) instead of serving from the original location. Beware, images that are posted with this parameter enabled will be served from proxy even after it is disabled.
+All images can be proxied and saved locally (`IMAGE_PROXY_CACHE_EXTERNAL=true`) instead of serving from the original location. Remark42 fetches and stores the images of a comment when it is previewed, posted or edited, up to ten per comment; any other image the proxy is asked for is fetched from its site each time and not stored. Beware, images that are posted with this parameter enabled will be served from proxy even after it is disabled.
 
 Docker build uses [publicly available](https://github.com/umputun/baseimage) base images.

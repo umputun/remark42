@@ -100,6 +100,10 @@ func (s *private) previewCommentCtrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// the external images are fetched as for a posted comment, so that posting after the preview finds them
+	// stored and gives them their sizes. A preview commits nothing: the post commits what it shows, and staging
+	// cleanup removes the rest
+	s.imageService.SubmitExternal(user.ID, time.Now(), s.imageService.ExternalPictures(comment.Text), func() []string { return nil })
 	rest.HTMLResponse(w, http.StatusOK, comment.Text)
 }
 

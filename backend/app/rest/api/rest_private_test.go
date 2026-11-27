@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -79,7 +80,8 @@ func TestRest_CreateFilteredCode(t *testing.T) {
 	assert.True(t, len(c["id"].(string)) > 8)
 }
 
-// based on issue https://github.com/umputun/remark42/issues/1631
+// based on issue https://github.com/umputun/remark42/issues/1631. With external images cached, the image a posted
+// or edited comment shows is stored, while one only previewed or requested from the proxy is not
 func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 	ts, srv := startupT(t)
 	ts.Close()
@@ -93,19 +95,44 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 		ImageService:  srv.ImageService,
 		Transport:     http.DefaultTransport,
 	}
-	srv.CommentFormatter = store.NewCommentFormatter(srv.ImageProxy)
+	srv.DataService.ImageService = srv.ImageService
+	t.Cleanup(func() { srv.ImageService.Close(context.Background()) })
+	srv.CommentFormatter = store.NewCommentFormatter(srv.ImageProxy, store.CommentConverterFunc(srv.ImageService.SetSizes))
 	// need to recreate the server with new ImageProxy, otherwise old one will be used
 	ts = httptest.NewServer(srv.routes())
 	defer ts.Close()
 
-	var pngRead bool
+	var mu sync.Mutex
+	requested := map[string]bool{}
+	wasRequested := func(path string) bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return requested[path]
+	}
 	// server with the test PNG image
-	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
 		_, e := io.Copy(w, gopherPNG())
 		assert.NoError(t, e)
-		pngRead = true
+		mu.Lock()
+		requested[r.URL.Path] = true
+		mu.Unlock()
 	}))
 	defer pngServer.Close()
+	// images of other hosts, which a subtest posts, are not fetched over the network
+	srv.ImageService.FetchExternal = func(ctx context.Context, imgURL string) ([]byte, error) {
+		if !strings.HasPrefix(imgURL, pngServer.URL+"/") {
+			return nil, errors.New("not the test image server")
+		}
+		return srv.ImageProxy.Download(ctx, imgURL)
+	}
+	stored := func(path string) bool {
+		imgID, err := image.CachedImgID(pngServer.URL + path)
+		require.NoError(t, err)
+		_, err = srv.ImageService.Load(imgID)
+		return err == nil
+	}
+	var commentID string
 
 	t.Run("create", func(t *testing.T) {
 		b, code := call(t, http.MethodPost, ts.URL+"/api/v1/comment?site=remark42",
@@ -120,29 +147,43 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 		loc := c["locator"].(map[string]any)
 		assert.Equal(t, "remark42", loc["site"])
 		assert.Equal(t, "https://radio-t.com/blah1", loc["url"])
-		assert.True(t, len(c["id"].(string)) > 8)
-		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
+		commentID = c["id"].(string)
+		assert.True(t, len(commentID) > 8)
+		require.Eventually(t, func() bool { return stored("/gopher.png") }, waitTimeout, pollInterval,
+			"the posted comment's image is stored")
 	})
 
-	t.Run("preview", func(t *testing.T) {
-		b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview",
-			`{"text": "![](`+pngServer.URL+`/gopher.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, adminPasswd)
-		require.Equal(t, http.StatusOK, code, b)
+	t.Run("edit", func(t *testing.T) {
+		_, code := call(t, http.MethodPut, ts.URL+"/api/v1/comment/"+commentID+"?site=remark42&url=https://radio-t.com/blah1",
+			`{"text": "![](`+pngServer.URL+`/gopher.png) ![](`+pngServer.URL+`/edited.png)"}`, adminPasswd)
+		require.Equal(t, http.StatusOK, code)
+		require.Eventually(t, func() bool { return stored("/edited.png") }, waitTimeout, pollInterval,
+			"the image the edit added is stored")
+	})
 
+	t.Run("an image requested through the proxy is not stored", func(t *testing.T) {
+		src := base64.URLEncoding.EncodeToString([]byte(pngServer.URL + "/requested.png"))
+		b, code := get(t, ts.URL+"/api/v1/img?src="+src)
+		require.Equal(t, http.StatusOK, code, b)
+		assert.Equal(t, gopher, base64.StdEncoding.EncodeToString([]byte(b)))
+		assert.True(t, wasRequested("/requested.png"), "the proxy fetched the image to show it")
+		assert.False(t, stored("/requested.png"), "and did not store it")
+	})
+
+	t.Run("preview, then post", func(t *testing.T) {
+		text := `{"text": "![](` + pngServer.URL + `/preview.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`
+		b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview", text, adminPasswd)
+		require.Equal(t, http.StatusOK, code, b)
 		assert.NotContains(t, b, pngServer.URL)
 		assert.Contains(t, b, srv.RemarkURL)
+		require.Eventually(t, func() bool { return stored("/preview.png") }, waitTimeout, pollInterval,
+			"the previewed comment's image is stored")
 
-		assert.Equal(t, false, pngRead, "original image is not yet accessed by server")
-		// retrieve the image from the cache
-		imgURL, _, _ := strings.Cut(strings.Split(b, "src=\"")[1], "\"")
-		// replace srv.RemarkURL with ts.URL
-		imgURL = strings.ReplaceAll(imgURL, srv.RemarkURL, ts.URL)
-		b, code = get(t, imgURL)
-		require.Equal(t, http.StatusOK, code, b)
-		// compare image to original gopher png after decoding from base64
-		assert.Equal(t, gopher, base64.StdEncoding.EncodeToString([]byte(b)))
-
-		assert.Equal(t, true, pngRead, "original image accessed to be shown to user")
+		b, code = call(t, http.MethodPost, ts.URL+"/api/v1/comment?site=remark42", text, adminPasswd)
+		require.Equal(t, http.StatusCreated, code, b)
+		c := R.JSON{}
+		require.NoError(t, json.Unmarshal([]byte(b), &c), b)
+		assert.Contains(t, c["text"], `width="`, "the posted image, stored by the preview, has its size")
 	})
 
 	t.Run("every stored image is proxied", func(t *testing.T) {
@@ -159,6 +200,43 @@ func TestRest_CreateAndPreviewWithImage(t *testing.T) {
 		assert.Equal(t, 3, strings.Count(stored, srv.RemarkURL+"/api/v1/img?src="), stored)
 		assert.Less(t, len(stored), 2048, "empty sources don't multiply the text")
 	})
+}
+
+// TestRest_PreviewCommitsNothing previews a comment with an external image when no edit window is left to wait
+// for: the image is fetched to staging, so a post after the preview can size it, and is not committed, which only
+// a posted comment's commit does
+func TestRest_PreviewCommitsNothing(t *testing.T) {
+	pngServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, e := io.Copy(w, gopherPNG())
+		assert.NoError(t, e)
+	}))
+	defer pngServer.Close()
+	location, staging := t.TempDir(), t.TempDir()
+	ts, srv := startupT(t, func(srv *Rest) {
+		srv.ImageService = image.NewService(&image.FileSystem{Location: location, Staging: staging}, image.ServiceParams{
+			ImageAPI: srv.RemarkURL + "/api/v1/picture/", ProxyAPI: srv.RemarkURL + "/api/v1/img", MaxSize: 10000})
+		srv.ImageProxy = &proxy.Image{CacheExternal: true, RoutePath: "/api/v1/img", RemarkURL: srv.RemarkURL,
+			ImageService: srv.ImageService, Transport: http.DefaultTransport}
+		srv.ImageService.FetchExternal = srv.ImageProxy.Download
+		srv.DataService.ImageService = srv.ImageService
+		srv.CommentFormatter = store.NewCommentFormatter(srv.ImageProxy)
+	})
+	t.Cleanup(func() { srv.ImageService.Close(context.Background()) })
+
+	b, code := call(t, http.MethodPost, ts.URL+"/api/v1/preview",
+		`{"text": "![](`+pngServer.URL+`/a.png)", "locator":{"url": "https://radio-t.com/blah1", "site": "remark42"}}`, adminPasswd)
+	require.Equal(t, http.StatusOK, code, b)
+	imgID, err := image.CachedImgID(pngServer.URL + "/a.png")
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		_, loadErr := srv.ImageService.Load(imgID)
+		return loadErr == nil
+	}, waitTimeout, pollInterval, "the previewed image is stored")
+	_, err = os.Stat(filepath.Join(location, imgID))
+	assert.ErrorIs(t, err, os.ErrNotExist, "the previewed image is not committed")
+	_, err = os.Stat(filepath.Join(staging, imgID))
+	assert.NoError(t, err, "the previewed image is in staging")
 }
 
 func TestRest_CreateOldPost(t *testing.T) {

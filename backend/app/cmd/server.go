@@ -145,7 +145,7 @@ type ServerCommand struct {
 // ImageProxyGroup defines options group for image proxy
 type ImageProxyGroup struct {
 	HTTP2HTTPS    bool `long:"http2https" env:"HTTP2HTTPS" description:"enable HTTP->HTTPS proxy, no effect when remark url is http"`
-	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"enable caching for external images"`
+	CacheExternal bool `long:"cache-external" env:"CACHE_EXTERNAL" description:"proxy external images, store the ones posted comments show"`
 }
 
 // AppleGroup defines options for Apple auth params
@@ -998,7 +998,8 @@ func (s *ServerCommand) makeAvatarStore() (avatar.Store, error) {
 }
 
 // makeCommentFormatter makes the image proxy and the formatter of comment text, which proxies images, sizes
-// the ones the image store holds and, when enabled, turns emoji codes into emoji
+// the ones the image store holds and, when enabled, turns emoji codes into emoji. With external images cached,
+// the image store fetches the ones posted comments show through the proxy
 func (s *ServerCommand) makeCommentFormatter(imageService *image.Service) (*proxy.Image, *store.CommentFormatter) {
 	imgProxy := &proxy.Image{
 		HTTP2HTTPS:    s.ImageProxy.HTTP2HTTPS,
@@ -1006,6 +1007,9 @@ func (s *ServerCommand) makeCommentFormatter(imageService *image.Service) (*prox
 		RoutePath:     "/api/v1/img",
 		RemarkURL:     s.sanitizedRemarkURL(),
 		ImageService:  imageService,
+	}
+	if s.ImageProxy.CacheExternal {
+		imageService.FetchExternal = imgProxy.Download
 	}
 	emojiFmt := store.CommentConverterFunc(func(text string) string { return text })
 	if s.EnableEmoji {

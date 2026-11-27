@@ -118,7 +118,9 @@ func TestImage_DisabledCachingAndHTTP2HTTPS(t *testing.T) {
 	assert.Equal(t, 1, len(imageStore.LoadCalls()))
 }
 
-func TestImage_RoutesCachingImage(t *testing.T) {
+// TestImage_RoutesDontStoreImage requests an image no stored copy exists for with CacheExternal on: the route is
+// open to anyone, so the image is proxied and not stored. Posted comments have theirs stored by the image service
+func TestImage_RoutesDontStoreImage(t *testing.T) {
 	imageStore := image.StoreMock{
 		LoadFunc: func(string) ([]byte, error) {
 			return nil, nil
@@ -146,9 +148,26 @@ func TestImage_RoutesCachingImage(t *testing.T) {
 	assert.Equal(t, "image/png", resp.Header["Content-Type"][0])
 
 	assert.Equal(t, 1, len(imageStore.LoadCalls()))
-	assert.Equal(t, 1, len(imageStore.SaveCalls()))
-	assert.Equal(t, "cached_images/4b84b15bff6ee5796152495a230e45e3d7e947d9-"+image.Sha1Str(imgURL), imageStore.SaveCalls()[0].ID)
-	assert.Equal(t, gopherPNGBytes(), imageStore.SaveCalls()[0].Img)
+	assert.Empty(t, imageStore.SaveCalls(), "a request alone stores nothing")
+}
+
+// TestImage_Download fetches an image the way the image service does for a posted comment, and checks that the
+// transport the proxy builds for itself doesn't ask for compressed answers
+func TestImage_Download(t *testing.T) {
+	httpSrv := imgHTTPTestsServer(t)
+	defer httpSrv.Close()
+	img := Image{Transport: http.DefaultTransport}
+
+	data, err := img.Download(t.Context(), httpSrv.URL+"/image/img1.png")
+	require.NoError(t, err)
+	assert.Equal(t, gopherPNGBytes(), data)
+	_, err = img.Download(t.Context(), httpSrv.URL+"/page.html")
+	require.ErrorIs(t, err, errInvalidUpstreamContentType)
+
+	assert.Same(t, http.DefaultTransport, img.transport(), "a given transport is used as it is")
+	own, ok := Image{}.transport().(*http.Transport)
+	require.True(t, ok)
+	assert.True(t, own.DisableCompression, "the proxy's own transport asks for images as they are")
 }
 
 func TestImage_RoutesUsingCachedImage(t *testing.T) {
